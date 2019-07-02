@@ -3,7 +3,8 @@ kind: System
 metadata:
   name: noobaa
   namespace: noobaa
-spec:
+spec: {
   # Image is the container image to use for the deployment.
   # The oeprator will update spec.image to default if missing.
   # image: noobaa/noobaa-core:4.0
+}

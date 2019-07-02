@@ -1,0 +1,7 @@
+apiVersion: noobaa.io/v1alpha1
+kind: BucketClass
+metadata:
+  name: example-bucketclass
+spec:
+  # Add fields here
+  size: 3
