@@ -12,7 +12,6 @@ import (
 
 	"github.com/noobaa/noobaa-operator/pkg/apis"
 	"github.com/noobaa/noobaa-operator/pkg/controller"
-
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
