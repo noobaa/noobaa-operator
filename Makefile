@@ -6,7 +6,10 @@ all: build
 build:
 	go build -mod=vendor -o $(BIN)/noobaa-operator $(REPO)/cmd/manager
 
-image: build
-	docker build -f build/Dockerfile .
+vendor:
+	go mod vendor
 
-.PHONY: all build image
+image: build
+	docker build -f build/Dockerfile -t noobaa-operator .
+
+.PHONY: all build vendor image 
