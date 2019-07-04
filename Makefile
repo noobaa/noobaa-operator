@@ -1,8 +1,7 @@
 
 BIN = build/_output/bin
 REPO = github.com/noobaa/noobaa-operator
-DEV_IMAGE = noobaa-operator
-IMAGE = noobaa/noobaa-operator
+IMAGE = noobaa/noobaa-operator:master
 
 # Default tasks:
 
@@ -39,7 +38,7 @@ vendor:
 
 image:
 	GOOS=linux GOARCH=amd64 go build -mod=vendor -o $(BIN)/noobaa-operator $(REPO)/cmd/manager
-	docker build -f build/Dockerfile -t $(DEV_IMAGE) .
+	docker build -f build/Dockerfile -t $(IMAGE) .
 .PHONY: image
 
 push:
@@ -53,6 +52,4 @@ test:
 clean:
 	rm $(BIN)/*
 	rm -rf vendor/
-	docker rmi $(IMAGE)
 .PHONY: clean
-
