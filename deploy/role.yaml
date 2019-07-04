@@ -44,5 +44,7 @@ rules:
   - noobaa.io
   resources:
   - '*'
+  - backingstores
+  - bucketclasses
   verbs:
   - '*'

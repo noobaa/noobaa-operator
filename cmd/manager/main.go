@@ -30,7 +30,8 @@ var (
 	metricsHost       = "0.0.0.0"
 	metricsPort int32 = 8383
 )
-var log = logf.Log.WithName("cmd")
+
+var log = logf.Log.WithName("noobaa").WithName("operator")
 
 func printVersion() {
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))

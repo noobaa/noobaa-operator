@@ -6,31 +6,32 @@ require (
 	github.com/appscode/jsonpatch v0.0.0-20190108182946-7c0e3b262f30 // indirect
 	github.com/coreos/prometheus-operator v0.26.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+	github.com/docker/distribution v2.7.1+incompatible
 	github.com/emicklei/go-restful v2.8.1+incompatible // indirect
-	github.com/go-logr/logr v0.1.0 // indirect
+	github.com/go-logr/logr v0.1.0
 	github.com/go-logr/zapr v0.1.0 // indirect
 	github.com/go-openapi/spec v0.18.0
 	github.com/golang/groupcache v0.0.0-20180924190550-6f2cf27854a4 // indirect
 	github.com/golang/mock v1.2.0 // indirect
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
-	github.com/google/pprof v0.0.0-20190515194954-54271f7e092f // indirect
 	github.com/google/uuid v1.0.0 // indirect
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20190318015731-ff9851476e98 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.8.5 // indirect
-	github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6 // indirect
+	github.com/hashicorp/go-version v1.2.0
 	github.com/imdario/mergo v0.3.6 // indirect
+	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/operator-framework/operator-sdk v0.8.2-0.20190522220659-031d71ef8154
 	github.com/pborman/uuid v0.0.0-20180906182336-adf5a7427709 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3
+	github.com/stretchr/testify v1.3.0
 	go.opencensus.io v0.19.2 // indirect
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1 // indirect
-	golang.org/x/arch v0.0.0-20190312162104-788fe5ffcd8c // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	k8s.io/api v0.0.0-20190222213804-5cb15d344471
 	k8s.io/apimachinery v0.0.0-20190221213512-86fb29eff628
