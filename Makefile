@@ -50,7 +50,9 @@ image:
 .PHONY: image
 
 push:
-	docker push $(IMAGE)
+	@echo TODO: To which tag do we want to push here?
+	@echo       version from version/version.go? master? git describe?
+	# docker push $(IMAGE)
 .PHONY: push
 
 test: vendor
