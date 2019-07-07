@@ -1,0 +1,37 @@
+language: go
+sudo: required
+dist: xenial
+
+go:
+- 1.12.5
+
+stages:
+  - name: build
+  - name: deploy
+
+env:
+  global:
+    - CHANGE_MINIKUBE_NONE_USER=true
+    - MINIKUBE_WANTUPDATENOTIFICATION=false
+    - MINIKUBE_WANTREPORTERRORPROMPT=false
+    - MINIKUBE_HOME=$HOME
+    - CHANGE_MINIKUBE_NONE_USER=true
+    - KUBECONFIG=$HOME/.kube/config
+
+jobs:
+  include:
+    - stage: build
+      name: "Build and unit test"
+      install:
+        - make install-sdk install-tools
+      script:
+        - make all
+
+    - stage: build
+      name: "Run smoke tests"
+      install:
+        - "./.travis/deploy_minikube.sh"
+      script:
+        - make test
+      env:
+        - TEST_GROUP=smoke
