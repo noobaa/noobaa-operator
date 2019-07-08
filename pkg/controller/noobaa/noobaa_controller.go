@@ -1,4 +1,4 @@
-package system
+package noobaa
 
 import (
 	"bytes"
@@ -56,38 +56,38 @@ const (
 var (
 	// ContainerImageConstraint is the instantiated semver contraints used for image verification
 	ContainerImageConstraint, _ = semver.NewConstraint(ContainerImageConstraintSemver)
-	// SystemType is and empty system struct used for passing the object type
-	SystemType = &nbv1.System{}
+	// NooBaaType is and empty noobaa struct used for passing the object type
+	NooBaaType = &nbv1.NooBaa{}
 
-	logger = logf.Log.WithName("noobaa").WithName("system")
+	logger = logf.Log.WithName("noobaa")
 )
 
-// Add creates a System Controller and adds it to the Manager.
+// Add creates a Controller and adds it to the Manager.
 // The Manager will set fields on the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 
 	// Create a new controller
-	c, err := controller.New("system-controller", mgr, controller.Options{
+	c, err := controller.New("noobaa-controller", mgr, controller.Options{
 		MaxConcurrentReconciles: 1,
 		Reconciler: reconcile.Func(
 			func(req reconcile.Request) (reconcile.Result, error) {
-				return NewSystem(mgr, req).Reconcile()
+				return NewReconciler(mgr, req).Reconcile()
 			}),
 	})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to primary resource System
-	err = c.Watch(&source.Kind{Type: SystemType}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource
+	err = c.Watch(&source.Kind{Type: NooBaaType}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to secondary resources and requeue the owner System
+	// Watch for changes to secondary resources and requeue the owner resource
 	ownerHandler := &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    SystemType,
+		OwnerType:    NooBaaType,
 	}
 	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, ownerHandler)
 	if err != nil {
@@ -105,16 +105,16 @@ func Add(mgr manager.Manager) error {
 	return nil
 }
 
-// System is the context for reconciling a noobaa system.
+// Reconciler is the context for reconciling noobaa.
 // It is created per every reconcile call and keeps state between calls of the reconcile flow.
-type System struct {
+type Reconciler struct {
 	Mgr      manager.Manager
 	Request  reconcile.Request
 	Ctx      context.Context
 	Logger   logr.Logger
 	Recorder record.EventRecorder
 
-	System      *nbv1.System
+	NooBaa      *nbv1.NooBaa
 	CoreApp     *appsv1.StatefulSet
 	ServiceMgmt *corev1.Service
 	ServiceS3   *corev1.Service
@@ -123,15 +123,15 @@ type System struct {
 	NBClient    nb.Client
 }
 
-// NewSystem initializes a new system reconciler
-func NewSystem(mgr manager.Manager, req reconcile.Request) *System {
-	return &System{
+// NewReconciler initializes a new noobaa reconciler
+func NewReconciler(mgr manager.Manager, req reconcile.Request) *Reconciler {
+	return &Reconciler{
 		Mgr:      mgr,
 		Request:  req,
 		Ctx:      context.TODO(),
-		Logger:   logger.WithValues("system", req.Namespace+"/"+req.Name),
+		Logger:   logger.WithValues("name", req.Namespace+"/"+req.Name),
 		Recorder: mgr.GetRecorder("noobaa-operator"),
-		System:   &nbv1.System{},
+		NooBaa:   &nbv1.NooBaa{},
 	}
 }
 
@@ -139,24 +139,24 @@ func NewSystem(mgr manager.Manager, req reconcile.Request) *System {
 // and makes changes based on the state read and what is in the System.Spec.
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (s *System) Reconcile() (reconcile.Result, error) {
+func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
-	log := s.Logger.WithName("Reconcile")
+	log := r.Logger.WithName("Reconcile")
 	log.Info("Start ...")
 
-	err := s.Mgr.GetClient().Get(s.Ctx, s.Request.NamespacedName, s.System)
+	err := r.Mgr.GetClient().Get(r.Ctx, r.Request.NamespacedName, r.NooBaa)
 	if errors.IsNotFound(err) {
-		log.Info("Ignoring request on deleted system")
+		log.Info("Ignoring request on deleted noobaa")
 		return reconcile.Result{}, nil
 	}
 	if err != nil {
-		log.Error(err, "Failed getting system")
+		log.Error(err, "Failed getting noobaa")
 		return reconcile.Result{}, err
 	}
 
 	err = CombineErrors(
-		s.ReconcileSystem(),
-		s.UpdateSystemStatus(),
+		r.ReconcileSystem(),
+		r.UpdateSystemStatus(),
 	)
 	if err == nil {
 		log.Info("✅ Done")
@@ -171,62 +171,62 @@ func (s *System) Reconcile() (reconcile.Result, error) {
 }
 
 // ReconcileSystem runs the reconcile flow and populates System.Status.
-func (s *System) ReconcileSystem() error {
+func (r *Reconciler) ReconcileSystem() error {
 
-	s.System.Status.Phase = nbv1.SystemPhaseVerifying
+	r.NooBaa.Status.Phase = nbv1.SystemPhaseVerifying
 
-	if err := s.VerifySpecImage(); err != nil {
+	if err := r.VerifySpecImage(); err != nil {
 		return err
 	}
 
-	s.System.Status.Phase = nbv1.SystemPhaseCreating
+	r.NooBaa.Status.Phase = nbv1.SystemPhaseCreating
 
 	if err := CombineErrors(
-		s.ReconcileServiceMgmt(),
-		s.ReconcileServiceS3(),
-		s.ReconcileCoreApp(),
-		s.UpdateServiceStatus(s.ServiceMgmt, &s.System.Status.Services.ServiceMgmt, "mgmt-https"),
-		s.UpdateServiceStatus(s.ServiceS3, &s.System.Status.Services.ServiceS3, "s3-https"),
+		r.ReconcileServiceMgmt(),
+		r.ReconcileServiceS3(),
+		r.ReconcileCoreApp(),
+		r.UpdateServiceStatus(r.ServiceMgmt, &r.NooBaa.Status.Services.ServiceMgmt, "mgmt-https"),
+		r.UpdateServiceStatus(r.ServiceS3, &r.NooBaa.Status.Services.ServiceS3, "s3-https"),
 	); err != nil {
 		return err
 	}
 
-	s.System.Status.Phase = nbv1.SystemPhaseConfiguring
+	r.NooBaa.Status.Phase = nbv1.SystemPhaseConfiguring
 
-	if err := s.SetupNooBaaClient(); err != nil {
+	if err := r.SetupNooBaaClient(); err != nil {
 		return err
 	}
 
-	if err := s.SetupNooBaaSystem(); err != nil {
+	if err := r.SetupNooBaaSystem(); err != nil {
 		return err
 	}
 
-	if err := s.SetupAdminAccount(); err != nil {
+	if err := r.SetupAdminAccount(); err != nil {
 		return err
 	}
 
-	s.System.Status.Phase = nbv1.SystemPhaseReady
+	r.NooBaa.Status.Phase = nbv1.SystemPhaseReady
 
-	return s.Complete()
+	return r.Complete()
 }
 
 // UpdateSystemStatus will update the System.Status field to match the observed status
-func (s *System) UpdateSystemStatus() error {
-	log := s.Logger.WithName("UpdateSystemStatus")
-	log.Info("Updating system status")
-	s.System.Status.ObservedGeneration = s.System.Generation
-	return s.Mgr.GetClient().Status().Update(s.Ctx, s.System)
+func (r *Reconciler) UpdateSystemStatus() error {
+	log := r.Logger.WithName("UpdateSystemStatus")
+	log.Info("Updating noobaa status")
+	r.NooBaa.Status.ObservedGeneration = r.NooBaa.Generation
+	return r.Mgr.GetClient().Status().Update(r.Ctx, r.NooBaa)
 }
 
 // VerifySpecImage checks the System.Spec.Image property,
 // and sets System.Status.ActualImage
-func (s *System) VerifySpecImage() error {
+func (r *Reconciler) VerifySpecImage() error {
 
-	log := s.Logger.WithName("VerifySpecImage")
+	log := r.Logger.WithName("VerifySpecImage")
 
 	specImage := ContainerImage
-	if s.System.Spec.Image != "" {
-		specImage = s.System.Spec.Image
+	if r.NooBaa.Spec.Image != "" {
+		specImage = r.NooBaa.Spec.Image
 	}
 
 	// Parse the image spec as a docker image url
@@ -236,9 +236,9 @@ func (s *System) VerifySpecImage() error {
 	// since we don't need to retry until the spec is updated.
 	if err != nil {
 		log.Error(err, "Invalid image", "image", specImage)
-		s.Recorder.Eventf(s.System, corev1.EventTypeWarning,
+		r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning,
 			"BadImage", `Invalid image requested "%s"`, specImage)
-		s.System.Status.Phase = nbv1.SystemPhaseRejected
+		r.NooBaa.Status.Phase = nbv1.SystemPhaseRejected
 		return NewPersistentError(err)
 	}
 
@@ -267,39 +267,39 @@ func (s *System) VerifySpecImage() error {
 			if !ContainerImageConstraint.Check(version) {
 				log.Error(nil, "Unsupported image version",
 					"image", imageRef, "contraints", ContainerImageConstraint)
-				s.Recorder.Eventf(s.System, corev1.EventTypeWarning,
+				r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning,
 					"BadImage", `Unsupported image version requested "%s" not matching constraints "%s"`,
 					imageRef, ContainerImageConstraint)
-				s.System.Status.Phase = nbv1.SystemPhaseRejected
+				r.NooBaa.Status.Phase = nbv1.SystemPhaseRejected
 				return NewPersistentError(fmt.Errorf(`Unsupported image version "%+v"`, imageRef))
 			}
 		} else {
 			log.Info("Using custom image version", "image", imageRef, "contraints", ContainerImageConstraint)
-			s.Recorder.Eventf(s.System, corev1.EventTypeNormal,
+			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
 				"CustomImage", `Custom image version requested "%s", I hope you know what you're doing ...`, imageRef)
 		}
 	} else {
 		log.Info("Using custom image name", "image", imageRef, "default", ContainerImageName)
-		s.Recorder.Eventf(s.System, corev1.EventTypeNormal,
+		r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
 			"CustomImage", `Custom image requested "%s", I hope you know what you're doing ...`, imageRef)
 	}
 
-	// Set ActualImage to be updated in the system status
-	s.System.Status.ActualImage = specImage
+	// Set ActualImage to be updated in the noobaa status
+	r.NooBaa.Status.ActualImage = specImage
 	return nil
 }
 
 // ReconcileObject is a generic call to reconcile a kubernetes object
 // desiredFunc can be passed to modify the object before create/update.
 // Currently we ignore enforcing a desired state, but it might be needed on upgrades.
-func (s *System) ReconcileObject(obj metav1.Object, desiredFunc func()) error {
+func (r *Reconciler) ReconcileObject(obj metav1.Object, desiredFunc func()) error {
 
-	log := s.Logger.WithName("ReconcileObject")
+	log := r.Logger.WithName("ReconcileObject")
 
-	s.Own(obj)
+	r.Own(obj)
 
 	op, err := controllerutil.CreateOrUpdate(
-		s.Ctx, s.Mgr.GetClient(), obj.(runtime.Object),
+		r.Ctx, r.Mgr.GetClient(), obj.(runtime.Object),
 		func(obj runtime.Object) error {
 			if desiredFunc != nil {
 				desiredFunc()
@@ -317,12 +317,12 @@ func (s *System) ReconcileObject(obj metav1.Object, desiredFunc func()) error {
 }
 
 // ReconcileServiceMgmt create or update the mgmt service.
-func (s *System) ReconcileServiceMgmt() error {
+func (r *Reconciler) ReconcileServiceMgmt() error {
 
-	s.ServiceMgmt = &corev1.Service{
+	r.ServiceMgmt = &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: s.Request.Namespace,
-			Name:      s.Request.Name + "-mgmt",
+			Namespace: r.Request.Namespace,
+			Name:      r.Request.Name + "-mgmt",
 			Labels:    map[string]string{"app": "noobaa"},
 			Annotations: map[string]string{
 				"prometheus.io/scrape": "true",
@@ -332,7 +332,7 @@ func (s *System) ReconcileServiceMgmt() error {
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeLoadBalancer,
-			Selector: map[string]string{"noobaa-mgmt": s.Request.Name},
+			Selector: map[string]string{"noobaa-mgmt": r.Request.Name},
 			Ports: []corev1.ServicePort{
 				{Port: 8080, Name: "mgmt"},
 				{Port: 8443, Name: "mgmt-https"},
@@ -344,41 +344,41 @@ func (s *System) ReconcileServiceMgmt() error {
 			},
 		},
 	}
-	return s.ReconcileObject(s.ServiceMgmt, nil)
+	return r.ReconcileObject(r.ServiceMgmt, nil)
 }
 
 // ReconcileServiceS3 create or update the s3 service.
-func (s *System) ReconcileServiceS3() error {
+func (r *Reconciler) ReconcileServiceS3() error {
 
-	s.ServiceS3 = &corev1.Service{
+	r.ServiceS3 = &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: s.Request.Namespace,
+			Namespace: r.Request.Namespace,
 			Name:      "s3", // TODO: handle collision in namespace
 			Labels:    map[string]string{"app": "noobaa"},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeLoadBalancer,
-			Selector: map[string]string{"noobaa-s3": s.Request.Name},
+			Selector: map[string]string{"noobaa-s3": r.Request.Name},
 			Ports: []corev1.ServicePort{
 				{Port: 80, TargetPort: intstr.FromInt(6001), Name: "s3"},
 				{Port: 443, TargetPort: intstr.FromInt(6443), Name: "s3-https"},
 			},
 		},
 	}
-	return s.ReconcileObject(s.ServiceS3, nil)
+	return r.ReconcileObject(r.ServiceS3, nil)
 }
 
 // ReconcileCoreApp create or update the core statefulset.
-func (s *System) ReconcileCoreApp() error {
+func (r *Reconciler) ReconcileCoreApp() error {
 
-	ns := s.Request.Namespace
-	name := s.Request.Name
+	ns := r.Request.Namespace
+	name := r.Request.Name
 	coreAppName := name + "-core"
 	serviceAccountName := "noobaa-operator" // TODO do we use the same SA?
-	image := s.System.Status.ActualImage
+	image := r.NooBaa.Status.ActualImage
 	replicas := int32(1)
 
-	s.CoreApp = &appsv1.StatefulSet{
+	r.CoreApp = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      coreAppName,
@@ -389,7 +389,7 @@ func (s *System) ReconcileCoreApp() error {
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"noobaa-core": name},
 			},
-			ServiceName: s.ServiceMgmt.Name,
+			ServiceName: r.ServiceMgmt.Name,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ns,
@@ -481,16 +481,16 @@ func (s *System) ReconcileCoreApp() error {
 			},
 		},
 	}
-	return s.ReconcileObject(s.CoreApp, func() {
-		s.CoreApp.Spec.Template.Spec.Containers[0].Image = image
+	return r.ReconcileObject(r.CoreApp, func() {
+		r.CoreApp.Spec.Template.Spec.Containers[0].Image = image
 	})
 }
 
 // UpdateServiceStatus populates the status of a service by detecting all of its addresses
-func (s *System) UpdateServiceStatus(srv *corev1.Service, status *nbv1.SystemServiceStatus, portName string) error {
+func (r *Reconciler) UpdateServiceStatus(srv *corev1.Service, status *nbv1.ServiceStatus, portName string) error {
 
-	log := s.Logger.WithName("UpdateServiceStatus").WithValues("service", srv.Name)
-	*status = nbv1.SystemServiceStatus{}
+	log := r.Logger.WithName("UpdateServiceStatus").WithValues("service", srv.Name)
+	*status = nbv1.ServiceStatus{}
 	servicePort := nb.FindPortByName(srv, portName)
 	proto := "http"
 	if strings.HasSuffix(portName, "https") {
@@ -498,48 +498,29 @@ func (s *System) UpdateServiceStatus(srv *corev1.Service, status *nbv1.SystemSer
 	}
 
 	// Node IP:Port
-
-	nodes := corev1.NodeList{}
-	nodesListOptions := &client.ListOptions{}
-	err := s.Mgr.GetClient().List(s.Ctx, nodesListOptions, &nodes)
-	if err == nil {
-		for _, node := range nodes.Items {
-			for _, addr := range node.Status.Addresses {
-				switch addr.Type {
-				case corev1.NodeHostName:
-					break // currently ignoring
-				case corev1.NodeExternalIP:
-					fallthrough
-				case corev1.NodeExternalDNS:
-					fallthrough
-				case corev1.NodeInternalIP:
-					fallthrough
-				case corev1.NodeInternalDNS:
-					// log.Info("Adding NodePorts", "addr", addr)
-					status.NodePorts = append(
-						status.NodePorts,
-						fmt.Sprintf("%s://%s:%d", proto, addr.Address, servicePort.NodePort),
-					)
-				}
-			}
-		}
-	}
-
 	// Pod IP:Port
 
 	pods := corev1.PodList{}
 	podsListOptions := &client.ListOptions{
-		Namespace:     s.Request.Namespace,
+		Namespace:     r.Request.Namespace,
 		LabelSelector: labels.SelectorFromSet(srv.Spec.Selector),
 	}
-	err = s.Mgr.GetClient().List(s.Ctx, podsListOptions, &pods)
+	err := r.Mgr.GetClient().List(r.Ctx, podsListOptions, &pods)
 	if err == nil {
 		for _, pod := range pods.Items {
-			if pod.Status.PodIP != "" && pod.Status.Phase == corev1.PodRunning {
-				status.PodPorts = append(
-					status.PodPorts,
-					fmt.Sprintf("%s://%s:%s", proto, pod.Status.PodIP, servicePort.TargetPort.String()),
-				)
+			if pod.Status.Phase == corev1.PodRunning {
+				if pod.Status.HostIP != "" {
+					status.NodePorts = append(
+						status.NodePorts,
+						fmt.Sprintf("%s://%s:%d", proto, pod.Status.HostIP, servicePort.NodePort),
+					)
+				}
+				if pod.Status.PodIP != "" {
+					status.PodPorts = append(
+						status.PodPorts,
+						fmt.Sprintf("%s://%s:%s", proto, pod.Status.PodIP, servicePort.TargetPort.String()),
+					)
+				}
 			}
 		}
 	}
@@ -592,46 +573,43 @@ func (s *System) UpdateServiceStatus(srv *corev1.Service, status *nbv1.SystemSer
 }
 
 // SetupNooBaaClient initializes the noobaa client for making calls to the server.
-func (s *System) SetupNooBaaClient() error {
+func (r *Reconciler) SetupNooBaaClient() error {
 
-	// log := s.Logger.WithName("SetupNooBaaClient")
+	// log := r.Logger.WithName("SetupNooBaaClient")
 
-	if len(s.System.Status.Services.ServiceMgmt.PodPorts) == 0 ||
-		len(s.System.Status.Services.ServiceMgmt.NodePorts) == 0 {
-		return fmt.Errorf("core pod not ready yet")
-	}
-
-	if true {
-		nodePort := s.System.Status.Services.ServiceMgmt.NodePorts[0]
+	if len(r.NooBaa.Status.Services.ServiceMgmt.NodePorts) != 0 {
+		nodePort := r.NooBaa.Status.Services.ServiceMgmt.NodePorts[0]
 		nodeIP := nodePort[strings.Index(nodePort, "://")+3 : strings.LastIndex(nodePort, ":")]
-		s.NBClient = nb.NewClient(&nb.APIRouterNodePort{
-			ServiceMgmt: s.ServiceMgmt,
+		r.NBClient = nb.NewClient(&nb.APIRouterNodePort{
+			ServiceMgmt: r.ServiceMgmt,
 			NodeIP:      nodeIP,
 		})
-	} else {
-		podPort := s.System.Status.Services.ServiceMgmt.PodPorts[0]
+	} else if len(r.NooBaa.Status.Services.ServiceMgmt.PodPorts) != 0 {
+		podPort := r.NooBaa.Status.Services.ServiceMgmt.PodPorts[0]
 		podIP := podPort[strings.Index(podPort, "://")+3 : strings.LastIndex(podPort, ":")]
-		s.NBClient = nb.NewClient(&nb.APIRouterPodPort{
-			ServiceMgmt: s.ServiceMgmt,
+		r.NBClient = nb.NewClient(&nb.APIRouterPodPort{
+			ServiceMgmt: r.ServiceMgmt,
 			PodIP:       podIP,
 		})
+	} else {
+		return fmt.Errorf("core pod port not ready yet")
 	}
 
 	return nil
 }
 
 // SetupNooBaaSystem creates a new system in the noobaa server if not created yet.
-func (s *System) SetupNooBaaSystem() error {
+func (r *Reconciler) SetupNooBaaSystem() error {
 
-	log := s.Logger.WithName("SetupNooBaaSystem")
-	ns := s.Request.Namespace
-	name := s.Request.Name
+	log := r.Logger.WithName("SetupNooBaaSystem")
+	ns := r.Request.Namespace
+	name := r.Request.Name
 	secretOpName := name + "-operator"
 
-	s.SecretOp = &corev1.Secret{}
-	err := s.GetObject(secretOpName, s.SecretOp)
+	r.SecretOp = &corev1.Secret{}
+	err := r.GetObject(secretOpName, r.SecretOp)
 	if err == nil {
-		s.NBClient.SetAuthToken(string(s.SecretOp.Data["auth_token"]))
+		r.NBClient.SetAuthToken(string(r.SecretOp.Data["auth_token"]))
 		return nil
 	}
 	if !errors.IsNotFound(err) {
@@ -644,7 +622,7 @@ func (s *System) SetupNooBaaSystem() error {
 	fatal(err)
 	randomPassword := base64.StdEncoding.EncodeToString(randomBytes)
 
-	res, err := s.NBClient.CreateSystemAPI(nb.CreateSystemParams{
+	res, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
 		Name:     name,
 		Email:    AdminAccountEmail,
 		Password: randomPassword,
@@ -653,9 +631,9 @@ func (s *System) SetupNooBaaSystem() error {
 	if err != nil {
 		return err
 	}
-	s.NBClient.SetAuthToken(res.Token)
+	r.NBClient.SetAuthToken(res.Token)
 
-	s.SecretOp = &corev1.Secret{
+	r.SecretOp = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      secretOpName,
@@ -670,20 +648,20 @@ func (s *System) SetupNooBaaSystem() error {
 		},
 	}
 
-	s.Own(s.SecretOp)
-	return s.Mgr.GetClient().Create(s.Ctx, s.SecretOp)
+	r.Own(r.SecretOp)
+	return r.Mgr.GetClient().Create(r.Ctx, r.SecretOp)
 }
 
 // SetupAdminAccount creates the admin secret
-func (s *System) SetupAdminAccount() error {
+func (r *Reconciler) SetupAdminAccount() error {
 
-	log := s.Logger.WithName("SetupAdminAccount")
-	ns := s.Request.Namespace
-	name := s.Request.Name
+	log := r.Logger.WithName("SetupAdminAccount")
+	ns := r.Request.Namespace
+	name := r.Request.Name
 	secretAdminName := name + "-admin"
 
-	s.SecretAdmin = &corev1.Secret{}
-	err := s.GetObject(secretAdminName, s.SecretAdmin)
+	r.SecretAdmin = &corev1.Secret{}
+	err := r.GetObject(secretAdminName, r.SecretAdmin)
 	if err == nil {
 		return nil
 	}
@@ -692,7 +670,7 @@ func (s *System) SetupAdminAccount() error {
 		return err
 	}
 
-	s.SecretAdmin = &corev1.Secret{
+	r.SecretAdmin = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      secretAdminName,
@@ -702,26 +680,26 @@ func (s *System) SetupAdminAccount() error {
 		StringData: map[string]string{
 			"system":   name,
 			"email":    AdminAccountEmail,
-			"password": string(s.SecretOp.Data["password"]),
+			"password": string(r.SecretOp.Data["password"]),
 		},
 	}
 
 	log.Info("listing accounts")
-	res, err := s.NBClient.ListAccountsAPI()
+	res, err := r.NBClient.ListAccountsAPI()
 	if err != nil {
 		return err
 	}
 	for _, account := range res.Accounts {
 		if account.Email == AdminAccountEmail {
 			if len(account.AccessKeys) > 0 {
-				s.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"] = account.AccessKeys[0].AccessKey
-				s.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"] = account.AccessKeys[0].SecretKey
+				r.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"] = account.AccessKeys[0].AccessKey
+				r.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"] = account.AccessKeys[0].SecretKey
 			}
 		}
 	}
 
-	s.Own(s.SecretAdmin)
-	return s.Mgr.GetClient().Create(s.Ctx, s.SecretAdmin)
+	r.Own(r.SecretAdmin)
+	return r.Mgr.GetClient().Create(r.Ctx, r.SecretAdmin)
 }
 
 var readmeTemplate = template.Must(template.New("NooBaaSystem.Status.Readme").Parse(`
@@ -752,29 +730,29 @@ var readmeTemplate = template.Must(template.New("NooBaaSystem.Status.Readme").Pa
 
 `))
 
-// Complete populates the system status at the end of reconcile.
-func (s *System) Complete() error {
+// Complete populates the noobaa status at the end of reconcile.
+func (r *Reconciler) Complete() error {
 
 	var readmeBuffer bytes.Buffer
-	err := readmeTemplate.Execute(&readmeBuffer, s)
+	err := readmeTemplate.Execute(&readmeBuffer, r)
 	if err != nil {
 		return err
 	}
-	s.System.Status.Readme = readmeBuffer.String()
-	s.System.Status.Accounts.Admin.SecretRef.Name = s.SecretAdmin.Name
-	s.System.Status.Accounts.Admin.SecretRef.Namespace = s.SecretAdmin.Namespace
+	r.NooBaa.Status.Readme = readmeBuffer.String()
+	r.NooBaa.Status.Accounts.Admin.SecretRef.Name = r.SecretAdmin.Name
+	r.NooBaa.Status.Accounts.Admin.SecretRef.Namespace = r.SecretAdmin.Namespace
 	return nil
 }
 
 // GetObject gets an object by name from the request namespace.
-func (s *System) GetObject(name string, obj runtime.Object) error {
-	return s.Mgr.GetClient().Get(s.Ctx, client.ObjectKey{Namespace: s.Request.Namespace, Name: name}, obj)
+func (r *Reconciler) GetObject(name string, obj runtime.Object) error {
+	return r.Mgr.GetClient().Get(r.Ctx, client.ObjectKey{Namespace: r.Request.Namespace, Name: name}, obj)
 }
 
-// Own marks the object as owned by the system controller,
-// so that it will be garbage collected once the system is deleted.
-func (s *System) Own(obj metav1.Object) {
-	fatal(controllerutil.SetControllerReference(s.System, obj, s.Mgr.GetScheme()))
+// Own marks the object as owned by the noobaa controller,
+// so that it will be garbage collected once noobaa is deleted.
+func (r *Reconciler) Own(obj metav1.Object) {
+	fatal(controllerutil.SetControllerReference(r.NooBaa, obj, r.Mgr.GetScheme()))
 }
 
 func fatal(err error) {

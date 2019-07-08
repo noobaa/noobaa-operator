@@ -13,157 +13,17 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStore":       schema_pkg_apis_noobaa_v1alpha1_BackingStore(ref),
-		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreSpec":   schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref),
-		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreStatus": schema_pkg_apis_noobaa_v1alpha1_BackingStoreStatus(ref),
-		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClass":        schema_pkg_apis_noobaa_v1alpha1_BucketClass(ref),
-		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassSpec":    schema_pkg_apis_noobaa_v1alpha1_BucketClassSpec(ref),
-		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassStatus":  schema_pkg_apis_noobaa_v1alpha1_BucketClassStatus(ref),
-		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.System":             schema_pkg_apis_noobaa_v1alpha1_System(ref),
-		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemSpec":         schema_pkg_apis_noobaa_v1alpha1_SystemSpec(ref),
-		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemStatus":       schema_pkg_apis_noobaa_v1alpha1_SystemStatus(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaa":       schema_pkg_apis_noobaa_v1alpha1_NooBaa(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaSpec":   schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaStatus": schema_pkg_apis_noobaa_v1alpha1_NooBaaStatus(ref),
 	}
 }
 
-func schema_pkg_apis_noobaa_v1alpha1_BackingStore(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_noobaa_v1alpha1_NooBaa(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "BackingStore is the Schema for the backingstores API",
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"metadata": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
-						},
-					},
-					"spec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreSpec"),
-						},
-					},
-					"status": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreStatus"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
-	}
-}
-
-func schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "BackingStoreSpec defines the desired state of BackingStore",
-				Properties:  map[string]spec.Schema{},
-			},
-		},
-		Dependencies: []string{},
-	}
-}
-
-func schema_pkg_apis_noobaa_v1alpha1_BackingStoreStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "BackingStoreStatus defines the observed state of BackingStore",
-				Properties:  map[string]spec.Schema{},
-			},
-		},
-		Dependencies: []string{},
-	}
-}
-
-func schema_pkg_apis_noobaa_v1alpha1_BucketClass(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "BucketClass is the Schema for the bucketclasses API",
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"metadata": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
-						},
-					},
-					"spec": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassSpec"),
-						},
-					},
-					"status": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassStatus"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
-	}
-}
-
-func schema_pkg_apis_noobaa_v1alpha1_BucketClassSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "BucketClassSpec defines the desired state of BucketClass",
-				Properties:  map[string]spec.Schema{},
-			},
-		},
-		Dependencies: []string{},
-	}
-}
-
-func schema_pkg_apis_noobaa_v1alpha1_BucketClassStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "BucketClassStatus defines the observed state of BucketClass",
-				Properties:  map[string]spec.Schema{},
-			},
-		},
-		Dependencies: []string{},
-	}
-}
-
-func schema_pkg_apis_noobaa_v1alpha1_System(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "System is the Schema for the systems API",
+				Description: "NooBaa is the Schema for the NooBaas API",
 				Properties: map[string]spec.Schema{
 					"kind": {
 						SchemaProps: spec.SchemaProps{
@@ -187,29 +47,29 @@ func schema_pkg_apis_noobaa_v1alpha1_System(ref common.ReferenceCallback) common
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Specification of the desired behavior of the System.",
-							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemSpec"),
+							Description: "Specification of the desired behavior of the noobaa system.",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Most recently observed status of the System.",
-							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemStatus"),
+							Description: "Most recently observed status of the noobaa system.",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
-func schema_pkg_apis_noobaa_v1alpha1_SystemSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "SystemSpec defines the desired state of System",
+				Description: "NooBaaSpec defines the desired state of System",
 				Properties: map[string]spec.Schema{
 					"image": {
 						SchemaProps: spec.SchemaProps{
@@ -225,15 +85,15 @@ func schema_pkg_apis_noobaa_v1alpha1_SystemSpec(ref common.ReferenceCallback) co
 	}
 }
 
-func schema_pkg_apis_noobaa_v1alpha1_SystemStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_noobaa_v1alpha1_NooBaaStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "SystemStatus defines the observed state of System",
+				Description: "NooBaaStatus defines the observed state of System",
 				Properties: map[string]spec.Schema{
 					"observedGeneration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ObservedGeneration is the most recent generation observed for this System. It corresponds to the System's generation, which is updated on mutation by the API Server.",
+							Description: "ObservedGeneration is the most recent generation observed for this noobaa system. It corresponds to the CR generation, which is updated on mutation by the API Server.",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
@@ -254,12 +114,12 @@ func schema_pkg_apis_noobaa_v1alpha1_SystemStatus(ref common.ReferenceCallback) 
 					},
 					"accounts": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemAccountsStatus"),
+							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AccountsStatus"),
 						},
 					},
 					"services": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemServicesStatus"),
+							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.ServicesStatus"),
 						},
 					},
 					"readme": {
@@ -274,6 +134,6 @@ func schema_pkg_apis_noobaa_v1alpha1_SystemStatus(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemAccountsStatus", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemServicesStatus"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AccountsStatus", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.ServicesStatus"},
 	}
 }

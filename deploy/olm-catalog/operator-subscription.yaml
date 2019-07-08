@@ -1,0 +1,10 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: noobaa-operator-subscription
+  namespace: noobaa
+spec:
+  channel: alpha
+  name: noobaa-operator
+  source: noobaa-operator
+  sourceNamespace: olm

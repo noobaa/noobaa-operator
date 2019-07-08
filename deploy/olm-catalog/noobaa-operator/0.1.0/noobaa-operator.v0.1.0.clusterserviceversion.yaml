@@ -2,16 +2,19 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    categories: "Data"
+    categories: Storage,Big Data
     capabilities: Basic Install
     repository: https://github.com/noobaa/noobaa-operator
+    containerImage: noobaa/noobaa-operator@sha256:99e85a6cc64936590a952d9b0b3f2b672e8ab548d88935e1390f0fb1eba81368
+    createdAt: 2019-07-07T08:31:56.156Z
+    certified: "false"
     description: NooBaa is an object data service for hybrid and multi cloud environments.
     support: Red Hat
     alm-examples: |-
       [
         {
           "apiVersion": "noobaa.io/v1alpha1",
-          "kind": "System",
+          "kind": "NooBaa",
           "metadata": {
             "name": "noobaa",
             "namespace": "noobaa"
@@ -19,27 +22,27 @@ metadata:
           "spec":{}
         }
       ]
-  name: noobaa-operator.v0.0.1
+  name: noobaa-operator.v0.1.0
   namespace: placeholder
 spec:
   displayName: NooBaa Operator
   description: |
-    NooBaa Operator will manage a NooBaa System in your kubernetes cluster.
+    NooBaa Operator will manage a NooBaa system in your kubernetes cluster.
     ## Getting Started
     - Install the operator in a namespace (typically `noobaa`)
-    - Create a System
-    - The System will deploy a Mgmt and S3 services, both requires credentials.
+    - Create a NooBaa system
+    - The operator will deploy two services - Mgmt and S3, both require credentials.
     - Use `kubectl describe noobaa` and `kubectl get noobaa` to get the endpoints and credentials information.
     - Feel free to email us or open github issues on any question.
     - Enjoy and tell us how it goes.
-  version: 0.0.1
+  version: 0.1.0
   maturity: alpha
   provider:
     name: NooBaa
   links:
-  - name: noobaa-core
+  - name: Github
     url: https://github.com/noobaa/noobaa-core
-  - name: noobaa.io
+  - name: Website
     url: https://www.noobaa.io
   maintainers:
   - email: gmargali@redhat.com
@@ -65,15 +68,17 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - kind: System
-      name: systems.noobaa.io
+    - kind: NooBaa
+      name: noobaas.noobaa.io
       version: v1alpha1
-      displayName: System
-      description: NooBaa System provides a flexible S3 data service backed by any storage resource for hybrid and multi-cloud environments
+      displayName: NooBaa
+      description: NooBaa provides a flexible S3 data service backed by any storage resource for hybrid and multi-cloud environments
       resources:
         - kind: Service
           version: v1
         - kind: StatefulSet
+          version: v1
+        - kind: Secret
           version: v1
   installModes:
   - supported: true
@@ -87,7 +92,8 @@ spec:
   install:
     spec:
       clusterPermissions:
-      - rules:
+      - serviceAccountName: noobaa-operator
+        rules:
         - apiGroups:
           - ""
           resources:
@@ -96,7 +102,6 @@ spec:
           - get
           - list
           - watch
-        serviceAccountName: noobaa-operator
       deployments:
       - name: noobaa-operator
         spec:
@@ -123,7 +128,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                image: noobaa/noobaa-operator:master
+                image: noobaa/noobaa-operator:0.1.0
                 imagePullPolicy: IfNotPresent
                 name: noobaa-operator
                 resources:
@@ -132,7 +137,14 @@ spec:
                     memory: 256Mi
               serviceAccountName: noobaa-operator
       permissions:
-      - rules:
+      - serviceAccountName: noobaa-operator
+        rules:
+        - apiGroups:
+          - noobaa.io
+          resources:
+          - '*'
+          verbs:
+          - '*'
         - apiGroups:
           - ""
           resources:
@@ -169,16 +181,6 @@ spec:
           - deployments/finalizers
           verbs:
           - update
-        - apiGroups:
-          - noobaa.io
-          resources:
-          - '*'
-          - systems
-          - backingstores
-          - bucketclasses
-          verbs:
-          - '*'
-        serviceAccountName: noobaa-operator
     strategy: deployment
   icon:
   - mediatype: image/png

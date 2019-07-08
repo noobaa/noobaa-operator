@@ -22,16 +22,16 @@ jobs:
   include:
     - stage: build
       name: "Build and unit test"
-      install:
-        - make install-sdk install-tools
       script:
         - make all
+        - make test
 
     - stage: build
       name: "Run smoke tests"
       install:
+        - make install-sdk
         - "./.travis/deploy_minikube.sh"
       script:
-        - make test
+        - make test-e2e
       env:
         - TEST_GROUP=smoke
