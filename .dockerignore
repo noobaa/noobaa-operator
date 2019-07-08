@@ -1,6 +1,7 @@
-# we only want to take build/ and perhaps also deploy/ into the image
+# we only want to take build/ into the image
 # so we ignore everything else here
 cmd/
+deploy/
 pkg/
 vendor/
 version/

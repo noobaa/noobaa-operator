@@ -2,9 +2,12 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    categories: "Data"
+    categories: Storage,Big Data
     capabilities: Basic Install
     repository: https://github.com/noobaa/noobaa-operator
+    containerImage: noobaa/noobaa-operator@sha256:99e85a6cc64936590a952d9b0b3f2b672e8ab548d88935e1390f0fb1eba81368
+    createdAt: 2019-07-07T08:31:56.156Z
+    certified: "false"
     description: NooBaa is an object data service for hybrid and multi cloud environments.
     support: Red Hat
     alm-examples: |-
@@ -89,9 +92,9 @@ spec:
   install:
     spec:
       clusterPermissions:
-      - rules:
-        - serviceAccountName: noobaa-operator
-          apiGroups:
+      - serviceAccountName: noobaa-operator
+        rules:
+        - apiGroups:
           - ""
           resources:
           - nodes

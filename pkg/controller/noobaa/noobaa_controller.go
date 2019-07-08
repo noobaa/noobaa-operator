@@ -498,33 +498,6 @@ func (r *Reconciler) UpdateServiceStatus(srv *corev1.Service, status *nbv1.Servi
 	}
 
 	// Node IP:Port
-
-	nodes := corev1.NodeList{}
-	nodesListOptions := &client.ListOptions{}
-	err := r.Mgr.GetClient().List(r.Ctx, nodesListOptions, &nodes)
-	if err == nil {
-		for _, node := range nodes.Items {
-			for _, addr := range node.Status.Addresses {
-				switch addr.Type {
-				case corev1.NodeHostName:
-					break // currently ignoring
-				case corev1.NodeExternalIP:
-					fallthrough
-				case corev1.NodeExternalDNS:
-					fallthrough
-				case corev1.NodeInternalIP:
-					fallthrough
-				case corev1.NodeInternalDNS:
-					// log.Info("Adding NodePorts", "addr", addr)
-					status.NodePorts = append(
-						status.NodePorts,
-						fmt.Sprintf("%s://%s:%d", proto, addr.Address, servicePort.NodePort),
-					)
-				}
-			}
-		}
-	}
-
 	// Pod IP:Port
 
 	pods := corev1.PodList{}
@@ -532,14 +505,22 @@ func (r *Reconciler) UpdateServiceStatus(srv *corev1.Service, status *nbv1.Servi
 		Namespace:     r.Request.Namespace,
 		LabelSelector: labels.SelectorFromSet(srv.Spec.Selector),
 	}
-	err = r.Mgr.GetClient().List(r.Ctx, podsListOptions, &pods)
+	err := r.Mgr.GetClient().List(r.Ctx, podsListOptions, &pods)
 	if err == nil {
 		for _, pod := range pods.Items {
-			if pod.Status.PodIP != "" && pod.Status.Phase == corev1.PodRunning {
-				status.PodPorts = append(
-					status.PodPorts,
-					fmt.Sprintf("%s://%s:%s", proto, pod.Status.PodIP, servicePort.TargetPort.String()),
-				)
+			if pod.Status.Phase == corev1.PodRunning {
+				if pod.Status.HostIP != "" {
+					status.NodePorts = append(
+						status.NodePorts,
+						fmt.Sprintf("%s://%s:%d", proto, pod.Status.HostIP, servicePort.NodePort),
+					)
+				}
+				if pod.Status.PodIP != "" {
+					status.PodPorts = append(
+						status.PodPorts,
+						fmt.Sprintf("%s://%s:%s", proto, pod.Status.PodIP, servicePort.TargetPort.String()),
+					)
+				}
 			}
 		}
 	}
@@ -596,25 +577,22 @@ func (r *Reconciler) SetupNooBaaClient() error {
 
 	// log := r.Logger.WithName("SetupNooBaaClient")
 
-	if len(r.NooBaa.Status.Services.ServiceMgmt.PodPorts) == 0 ||
-		len(r.NooBaa.Status.Services.ServiceMgmt.NodePorts) == 0 {
-		return fmt.Errorf("core pod not ready yet")
-	}
-
-	if true {
+	if len(r.NooBaa.Status.Services.ServiceMgmt.NodePorts) != 0 {
 		nodePort := r.NooBaa.Status.Services.ServiceMgmt.NodePorts[0]
 		nodeIP := nodePort[strings.Index(nodePort, "://")+3 : strings.LastIndex(nodePort, ":")]
 		r.NBClient = nb.NewClient(&nb.APIRouterNodePort{
 			ServiceMgmt: r.ServiceMgmt,
 			NodeIP:      nodeIP,
 		})
-	} else {
+	} else if len(r.NooBaa.Status.Services.ServiceMgmt.PodPorts) != 0 {
 		podPort := r.NooBaa.Status.Services.ServiceMgmt.PodPorts[0]
 		podIP := podPort[strings.Index(podPort, "://")+3 : strings.LastIndex(podPort, ":")]
 		r.NBClient = nb.NewClient(&nb.APIRouterPodPort{
 			ServiceMgmt: r.ServiceMgmt,
 			PodIP:       podIP,
 		})
+	} else {
+		return fmt.Errorf("core pod port not ready yet")
 	}
 
 	return nil

@@ -1,0 +1,9 @@
+apiVersion: operators.coreos.com/v1
+kind: CatalogSourceConfig
+metadata:
+  name: noobaa-operator
+  namespace: marketplace
+spec:
+  targetNamespace: olm
+  source: noobaa-operator
+  packages: noobaa-operator
