@@ -1,6 +1,6 @@
-VERSION = 0.1.0
-REPO = github.com/noobaa/noobaa-operator
-IMAGE = noobaa/noobaa-operator:master
+VERSION ?= 0.1.0
+IMAGE ?= noobaa/noobaa-operator:$(VERSION)
+REPO ?= github.com/noobaa/noobaa-operator
 
 GO_FLAGS ?= CGO_ENABLED=0 GO111MODULE=on
 GO_LINUX_FLAGS ?= GOOS=linux GOARCH=amd64

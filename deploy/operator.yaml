@@ -16,7 +16,7 @@ spec:
       serviceAccountName: noobaa-operator
       containers:
         - name: noobaa-operator
-          image: noobaa/noobaa-operator:master
+          image: noobaa/noobaa-operator:0.1.0
           imagePullPolicy: IfNotPresent
           resources:
             limits:
