@@ -5,8 +5,8 @@ metadata:
     categories: Storage,Big Data
     capabilities: Basic Install
     repository: https://github.com/noobaa/noobaa-operator
-    containerImage: noobaa/noobaa-operator@sha256:99e85a6cc64936590a952d9b0b3f2b672e8ab548d88935e1390f0fb1eba81368
-    createdAt: 2019-07-07T08:31:56.156Z
+    containerImage: noobaa/noobaa-operator@sha256:dec4bb34afae86aa32f2cde9a0859eb75130c83ac342be84cccc4689843b6c30
+    createdAt: 2019-07-08T13:10:20.940Z
     certified: "false"
     description: NooBaa is an object data service for hybrid and multi cloud environments.
     support: Red Hat
