@@ -29,6 +29,7 @@ build: cli image
 .PHONY: build
 
 cli: vendor
+	${GO_FLAGS} go generate cmd/cli/cli.go
 	${GO_FLAGS} go build -mod=vendor -o $(BIN)/kubectl-noobaa $(REPO)/cmd/cli
 .PHONY: cli
 
