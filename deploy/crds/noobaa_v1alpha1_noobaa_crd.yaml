@@ -55,6 +55,12 @@ spec:
               description: Image (optional) overrides the default image for server
                 pods
               type: string
+            storageClassName:
+              description: StorageClassName (optional) overrides the default StorageClass
+                for the PVC that the operator creates, this affects where the system
+                stores its database which contains system config, buckets, objects
+                meta-data and mapping file parts to storage locations.
+              type: string
           type: object
         status:
           description: Most recently observed status of the noobaa system.

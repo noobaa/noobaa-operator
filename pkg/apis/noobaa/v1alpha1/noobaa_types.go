@@ -61,6 +61,13 @@ type NooBaaSpec struct {
 	// Image (optional) overrides the default image for server pods
 	// +optional
 	Image string `json:"image,omitempty"`
+
+	// StorageClassName (optional) overrides the default StorageClass
+	// for the PVC that the operator creates, this affects where the
+	// system stores its database which contains system config,
+	// buckets, objects meta-data and mapping file parts to storage locations.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
 // NooBaaStatus defines the observed state of System

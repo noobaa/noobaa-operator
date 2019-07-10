@@ -375,8 +375,9 @@ func (r *Reconciler) ReconcileCoreApp() error {
 	name := r.Request.Name
 	coreAppName := name + "-core"
 	serviceAccountName := "noobaa-operator" // TODO do we use the same SA?
-	image := r.NooBaa.Status.ActualImage
 	replicas := int32(1)
+	image := r.NooBaa.Status.ActualImage
+	storageClassName := r.NooBaa.Spec.StorageClassName
 
 	r.CoreApp = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -456,7 +457,8 @@ func (r *Reconciler) ReconcileCoreApp() error {
 						Labels:    map[string]string{"app": "noobaa"},
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+						StorageClassName: storageClassName,
+						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceStorage: resource.MustParse("50Gi"),
@@ -470,7 +472,8 @@ func (r *Reconciler) ReconcileCoreApp() error {
 						Labels:    map[string]string{"app": "noobaa"},
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+						StorageClassName: storageClassName,
+						AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceStorage: resource.MustParse("10Gi"),

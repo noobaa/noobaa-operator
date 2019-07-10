@@ -78,6 +78,13 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
+					"storageClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageClassName (optional) overrides the default StorageClass for the PVC that the operator creates, this affects where the system stores its database which contains system config, buckets, objects meta-data and mapping file parts to storage locations.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
