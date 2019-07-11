@@ -1,12 +1,6 @@
 package version
 
-import "fmt"
-
-var (
+const (
 	// Version is the noobaa-operator version (semver)
-	Version = "0.1.0"
+	Version = "1.0.0"
 )
-
-func main() {
-	fmt.Println(Version)
-}

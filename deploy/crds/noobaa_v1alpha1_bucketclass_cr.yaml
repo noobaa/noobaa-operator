@@ -1,0 +1,12 @@
+apiVersion: noobaa.io/v1alpha1
+kind: BucketClass
+metadata:
+  name: default-class
+spec:
+  placementPolicy:
+    tiers:
+      - tier:
+          mirrors:
+            - mirror:
+                spread:
+                  - default-store

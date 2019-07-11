@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: s3
+  labels:
+    app: noobaa
+spec:
+  type: LoadBalancer
+  selector:
+    noobaa-s3: SYSNAME
+  ports:
+    - port: 80
+      targetPort: 6001
+      name: s3
+    - port: 443
+      targetPort: 6443
+      name: s3-https
