@@ -1,0 +1,55 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: k8s
+    role: alert-rules
+  name: prometheus-noobaa-rules
+  namespace: default
+spec:
+  groups:
+  - name: system-capacity-alert.rules
+    rules:
+    - alert: NooBaaSystemCapacityWarning85
+      annotations:
+        description: A NooBaa system is approaching its capacity, usage is more than
+          85%
+        message: A NooBaa System Is Approaching Its Capacity
+        severity_level: warning
+        storage_type: NooBaa
+      expr: |
+        NooBaa_system_capacity > 85
+      labels:
+        severity: warning
+    - alert: NooBaaSystemCapacityWarning95
+      annotations:
+        description: A NooBaa system is approaching its capacity, usage is more than
+          95%
+        message: A NooBaa System Is Approaching Its Capacity
+        severity_level: warning
+        storage_type: NooBaa
+      expr: |
+        NooBaa_system_capacity > 95
+      labels:
+        severity: warning
+    - alert: NooBaaSystemCapacityWarning100
+      annotations:
+        description: A NooBaa system approached its capacity, usage is at 100%
+        message: A NooBaa System Approached Its Capacity
+        severity_level: warning
+        storage_type: NooBaa
+      expr: |
+        NooBaa_system_capacity == 100
+      labels:
+        severity: warning
+  - name: noobaa-telemeter.rules
+    rules:
+    - expr: |
+        sum(NooBaa_num_unhealthy_buckets + NooBaa_num_unhealthy_bucket_claims)
+      record: job:NooBaa_buckets_health:sum
+    - expr: |
+        sum(NooBaa_num_buckets + NooBaa_num_buckets_claims)
+      record: job:NooBaa_bucket_count:sum
+    - expr: |
+        sum(NooBaa_num_objects + NooBaa_num_objects_buckets_claims)
+      record: job:NooBaa_total_object_count:sum

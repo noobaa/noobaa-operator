@@ -12,7 +12,7 @@ VENV = $(OUTPUT)/venv
 
 # Default tasks:
 
-all: build
+all: mixins build
 	@echo "@@@ All Done."
 .PHONY: all
 
@@ -93,5 +93,32 @@ install-sdk:
 	curl https://github.com/operator-framework/operator-sdk/releases/download/${SDK_VERSION}/operator-sdk-${SDK_VERSION}-x86_64-linux-gnu -sLo ${GOPATH}/bin/operator-sdk
 	chmod +x ${GOPATH}/bin/operator-sdk
 .PHONY: install-sdk
+
+mixins: dependencies
+	cd jsonnet && \
+	jb update && \
+	./build-jsonnet.sh make.jsonnet
+.PHONY: mixins
+
+dependencies: jb jsonnet gojsontoyaml jq
+.PHONY: dependencies
+
+jb:
+	go get -u github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb
+.PHONY: jb
+
+jsonnet:
+	go get -u github.com/google/go-jsonnet/cmd/jsonnet
+.PHONY: jsonnet
+
+gojsontoyaml:
+	go get -u github.com/brancz/gojsontoyaml
+.PHONY: gojsontoyaml
+
+jq:
+	wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O jq && \
+	chmod +x jq && \
+	mv jq $(GOPATH)/bin
+.PHONY: jq
 
 #TODO scorecard 

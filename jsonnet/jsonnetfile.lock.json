@@ -1,0 +1,14 @@
+{
+    "dependencies": [
+        {
+            "name": "noobaa-mixins",
+            "source": {
+                "git": {
+                    "remote": "https://github.com/noobaa/noobaa-mixins",
+                    "subdir": ""
+                }
+            },
+            "version": "c640daf2fc2aa88746d5187893c092e198c39cfa"
+        }
+    ]
+}
