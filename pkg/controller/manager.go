@@ -92,7 +92,6 @@ func OperatorMain() {
 	}
 
 	logrus.Info("Starting the Operator.")
-
 	// Start the manager
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
 		logrus.WithError(err).Errorln("Manager exited non-zero")
