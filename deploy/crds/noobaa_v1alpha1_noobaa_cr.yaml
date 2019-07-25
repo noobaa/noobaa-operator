@@ -2,8 +2,4 @@ apiVersion: noobaa.io/v1alpha1
 kind: NooBaa
 metadata:
   name: noobaa
-spec: {
-  # Image is the container image to use for the deployment.
-  # The oeprator will update spec.image to default if missing.
-  # image: noobaa/noobaa-core:4.0
-}
+spec: {}

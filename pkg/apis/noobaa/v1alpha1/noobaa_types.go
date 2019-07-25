@@ -1,12 +1,12 @@
 package v1alpha1
 
-// Note 1: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-// Note 2: Add custom validation using kubebuilder tags: https://book.kubebuilder.io/reference/generating-crd.html
-
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// Note 1: Run "operator-sdk generate k8s" to regenerate code after modifying this file
+// Note 2: Add custom validation using kubebuilder tags: https://book.kubebuilder.io/reference/generating-crd.html
 
 func init() {
 	SchemeBuilder.Register(&NooBaa{}, &NooBaaList{})
@@ -60,7 +60,11 @@ type NooBaaSpec struct {
 
 	// Image (optional) overrides the default image for server pods
 	// +optional
-	Image string `json:"image,omitempty"`
+	Image *string `json:"image,omitempty"`
+
+	// ImagePullSecret (optional) sets a pull secret for the system image
+	// +optional
+	ImagePullSecret *corev1.LocalObjectReference `json:"imagePullSecret,omitempty"`
 
 	// StorageClassName (optional) overrides the default StorageClass
 	// for the PVC that the operator creates, this affects where the
@@ -80,6 +84,13 @@ type NooBaaStatus struct {
 
 	// Phase is a simple, high-level summary of where the System is in its lifecycle
 	Phase SystemPhase `json:"phase"`
+
+	// Current service state of the noobaa system.
+	// Based on: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
+	// +optional
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	Conditions []SystemCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 
 	// ActualImage is set to report which image the operator is using
 	ActualImage string `json:"actualImage"`
@@ -109,11 +120,42 @@ const (
 	// SystemPhaseCreating means the operator is creating the resources on the cluster
 	SystemPhaseCreating SystemPhase = "Creating"
 
+	// SystemPhaseWaitingToConnect means the operator is waiting to connect to the pods and services it created
+	SystemPhaseWaitingToConnect SystemPhase = "WaitingToConnect"
+
 	// SystemPhaseConfiguring means the operator is configuring the as requested
 	SystemPhaseConfiguring SystemPhase = "Configuring"
 
 	// SystemPhaseReady means the noobaa system has been created and ready to serve.
 	SystemPhaseReady SystemPhase = "Ready"
+)
+
+// SystemCondition contains details for the current condition of this system.
+type SystemCondition struct {
+	// Type is the type of the condition.
+	Type SystemConditionType `json:"type"`
+	// Status is the status of the condition.
+	Status SystemConditionStatus `json:"status"`
+	// Last time we probed the condition.
+	// +optional
+	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty"`
+	// Last time the condition transitioned from one status to another.
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// Unique, one-word, CamelCase reason for the condition's last transition.
+	// +optional
+	Reason string `json:"reason,omitempty"`
+	// Human-readable message indicating details about last transition.
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
+type SystemConditionType string
+type SystemConditionStatus SystemPhase
+
+// These are the valid conditions types and statuses:
+const (
+	SystemPhaseCond SystemConditionType = "Phase"
 )
 
 // AccountsStatus is the status info of admin account

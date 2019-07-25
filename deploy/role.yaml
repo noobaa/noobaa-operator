@@ -8,6 +8,9 @@ rules:
   - noobaa.io
   resources:
   - '*'
+  - noobaas
+  - backingstores
+  - bucketclasses
   verbs:
   - '*'
 - apiGroups:

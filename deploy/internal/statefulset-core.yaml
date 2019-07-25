@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: SYSNAME-core
+  labels:
+    app: noobaa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      noobaa-core: SYSNAME
+  serviceName: SYSNAME-mgmt
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: noobaa
+        noobaa-core: SYSNAME
+        noobaa-mgmt: SYSNAME
+        noobaa-s3: SYSNAME
+    spec:
+      serviceAccountName: noobaa-operator # TODO do we use the same SA?
+      initContainers:
+        - name: init-mongo
+          image: NOOBAA_IMAGE
+          command:
+            - "/noobaa_init_files/noobaa_init.sh"
+            - "init_mongo"
+          volumeMounts:
+            - mountPath: /mongo_data
+              name: mongo-datadir
+      containers:
+        - name: mongodb
+          image: centos/mongodb-36-centos7
+          imagePullPolicy: IfNotPresent
+          command: ['/bin/bash', '-c', '/opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip 127.0.0.1 --dbpath /data/mongo/cluster/shard1']
+          resources:
+            # https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "8Gi"
+          volumeMounts:
+            - mountPath: /data
+              name: mongo-datadir
+        - name: noobaa-server
+          image: NOOBAA_IMAGE
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /log
+              name: logdir
+          readinessProbe:
+            # https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+            # ready when s3 port is open
+            tcpSocket:
+              port: 6001
+            timeoutSeconds: 5
+          resources:
+            # https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+            - containerPort: 8080
+            - containerPort: 8443
+            - containerPort: 8444
+            - containerPort: 8445
+            - containerPort: 8446
+            - containerPort: 60100
+          env:
+            - name: CONTAINER_PLATFORM
+              value: KUBERNETES
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-server
+                  key: jwt
+            - name: SERVER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-server
+                  key: server_secret
+            - name: OAUTH_AUTHORIZATION_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config-map
+                  key: oauth_authorization_endpoint
+                  optional: true
+            - name: OAUTH_TOKEN_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config-map
+                  key: oauth_token_endpoint
+                  optional: true
+            - name: container_dbg
+              value: "" # replacing the empty value with any value will set the container to dbg mode
+  volumeClaimTemplates:
+    # this will provision a dynamic persistent volume (volume is automatically provisioned by a provisioner)
+    # in minikube it is provisioned as hostPath volume under hosts /tmp which is not persistent between
+    # minikube restarts. if we want it to be persistent between restarts we need to statically provision a
+    # volume according to this https://kubernetes.io/docs/setup/minikube/#persistent-volumes
+    - metadata:
+        name: logdir
+        labels:
+          app: noobaa
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+    - metadata:
+        name: mongo-datadir
+        labels:
+          app: noobaa
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi

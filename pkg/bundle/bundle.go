@@ -19,17 +19,18 @@ const (
 	backtick        = "`"
 	backtickReplace = "` + \"`\" + `"
 	nameRE          = `[\\.,/?:;'"|\-+=~!@#$%^&*()<>{}\[\]]`
-	root            = "../../"
 )
 
 var compiledNameRE = regexp.MustCompile(nameRE)
 
 func main() {
 
-	log.Printf("CLI GEN BUNDLE: Starting ...\n")
+	src := os.Args[1]
+	out := os.Args[2]
+	log.Printf("GEN: Start src=%s out=%s\n", src, out)
 
 	files := []string{}
-	err := filepath.Walk(root+"deploy/",
+	err := filepath.Walk(src,
 		func(path string, info os.FileInfo, err error) error {
 			if err == nil && !info.IsDir() {
 				files = append(files, path)
@@ -38,18 +39,18 @@ func main() {
 		},
 	)
 
-	w, err := os.Create("bundle/bundle.go")
+	w, err := os.Create(out)
 	fatal(err)
 	write(w, "package bundle\n\n")
 	writef(w, "const Version = \"%s\"\n\n", version.Version)
 
 	for _, path := range files {
-		name := compiledNameRE.ReplaceAllString(strings.TrimPrefix(path, root), "_")
+		name := compiledNameRE.ReplaceAllString(path, "_")
 		bytes, err := ioutil.ReadFile(path)
 		fatal(err)
 		sha256Bytes := sha256.Sum256(bytes)
 		sha256Hex := hex.EncodeToString(sha256Bytes[:])
-		log.Printf("CLI GEN BUNDLE: Adding name:%s size:%d sha256:%s\n",
+		log.Printf("GEN: Adding name:%s size:%d sha256:%s\n",
 			name, len(bytes), sha256Hex)
 		writef(w, "const Sha256_%s = \"%s\"\n\n", name, sha256Hex)
 		writef(w, "const File_%s = `", name)
@@ -59,7 +60,7 @@ func main() {
 
 	err = w.Close()
 	fatal(err)
-	log.Printf("CLI GEN BUNDLE: Done.\n")
+	log.Printf("GEN: Done.\n")
 }
 
 func fatal(err error) {

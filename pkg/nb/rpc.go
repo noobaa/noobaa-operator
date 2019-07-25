@@ -8,10 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"github.com/sirupsen/logrus"
 )
-
-var logger = logf.Log.WithName("noobaa")
 
 // RPCClient makes API calls to noobaa.
 // Requests to noobaa are plain http requests with json request and json response.
@@ -55,6 +53,9 @@ type RPCResponseIfc interface {
 // SetAuthToken is setting the client token for next calls
 func (c *RPCClient) SetAuthToken(token string) { c.AuthToken = token }
 
+// GetAuthToken is getting the client token for next calls
+func (c *RPCClient) GetAuthToken() string { return c.AuthToken }
+
 // Response is implementing the RPCResponseIfc interface
 func (r *RPCResponse) Response() *RPCResponse { return r }
 
@@ -66,7 +67,7 @@ var _ RPCResponseIfc = &RPCResponse{}
 var _ error = &RPCError{}
 
 // NewClient initializes an RPCClient with defaults
-func NewClient(router APIRouter) *RPCClient {
+func NewClient(router APIRouter) Client {
 	return &RPCClient{
 		Router: router,
 		HTTPClient: http.Client{
@@ -88,8 +89,8 @@ func (c *RPCClient) Call(req RPCRequest, res RPCResponseIfc) error {
 		req.AuthToken = c.AuthToken
 	}
 	address := c.Router.GetAddress(api)
-	log := logger.WithName("RPC").WithValues("api", api, "method", method)
-	log.Info("RPC: %s.%s - Call to %s: %+v", api, method, address, req)
+	log := logrus.WithFields(logrus.Fields{"mod": "nb", "api": api, "method": method})
+	log.Infof("RPC: %s.%s - Call to %s: %+v", api, method, address, req)
 
 	reqBytes, err := json.Marshal(req)
 	fatal(err)

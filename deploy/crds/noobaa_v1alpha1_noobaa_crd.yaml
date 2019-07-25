@@ -55,6 +55,10 @@ spec:
               description: Image (optional) overrides the default image for server
                 pods
               type: string
+            imagePullSecret:
+              description: ImagePullSecret (optional) sets a pull secret for the system
+                image
+              type: object
             storageClassName:
               description: StorageClassName (optional) overrides the default StorageClass
                 for the PVC that the operator creates, this affects where the system
@@ -81,6 +85,40 @@ spec:
               description: ActualImage is set to report which image the operator is
                 using
               type: string
+            conditions:
+              description: 'Current service state of the noobaa system. Based on:
+                https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
+                +patchMergeKey=type +patchStrategy=merge'
+              items:
+                properties:
+                  lastProbeTime:
+                    description: Last time we probed the condition.
+                    format: date-time
+                    type: string
+                  lastTransitionTime:
+                    description: Last time the condition transitioned from one status
+                      to another.
+                    format: date-time
+                    type: string
+                  message:
+                    description: Human-readable message indicating details about last
+                      transition.
+                    type: string
+                  reason:
+                    description: Unique, one-word, CamelCase reason for the condition's
+                      last transition.
+                    type: string
+                  status:
+                    description: Status is the status of the condition.
+                    type: string
+                  type:
+                    description: Type is the type of the condition.
+                    type: string
+                required:
+                - type
+                - status
+                type: object
+              type: array
             observedGeneration:
               description: ObservedGeneration is the most recent generation observed
                 for this noobaa system. It corresponds to the CR generation, which

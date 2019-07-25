@@ -1,13 +1,10 @@
 language: go
 sudo: required
 dist: xenial
-
+sevices:
+  - docker
 go:
-- 1.12.5
-
-stages:
-  - name: build
-  - name: deploy
+- 1.12.7
 
 env:
   global:
@@ -17,21 +14,21 @@ env:
     - MINIKUBE_HOME=$HOME
     - CHANGE_MINIKUBE_NONE_USER=true
     - KUBECONFIG=$HOME/.kube/config
+    - GO111MODULE=on
+    - CGO_ENABLED=0
+
+stages:
+  - name: build
 
 jobs:
   include:
     - stage: build
-      name: "Build and unit test"
-      script:
-        - make all
-        - make test
-
-    - stage: build
-      name: "Run smoke tests"
+      name: "Build and Test"
       install:
-        - make install-sdk
-        - "./.travis/deploy_minikube.sh"
+        - bash .travis/install-operator-sdk.sh
+        - bash .travis/install-python.sh
+        - bash .travis/install-minikube.sh
       script:
-        - make test-e2e
-      env:
-        - TEST_GROUP=smoke
+        - make build
+        - make test
+        - make test-integ
