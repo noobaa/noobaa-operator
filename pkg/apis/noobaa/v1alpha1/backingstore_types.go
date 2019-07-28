@@ -46,7 +46,7 @@ type BackingStoreSpec struct {
 
 	// S3Options specifies client options for the backing store
 	// +optional
-	S3Options *S3Options `json:"s3Options"`
+	S3Options *S3Options `json:"s3Options,omitempty"`
 }
 
 // StoreType is the backing store type enum
@@ -67,20 +67,20 @@ const (
 type S3Options struct {
 	// Region is the AWS region
 	// +optional
-	Region string `json:"region"`
+	Region string `json:"region,omitempty"`
 	// Endpoint is the S3 endpoint to use
 	// +optional
-	Endpoint string `json:"endpoint"`
+	Endpoint string `json:"endpoint,omitempty"`
 	// SSLDisabled allows to disable SSL and use plain http
 	// +optional
-	SSLDisabled bool `json:"sslDisabled"`
+	SSLDisabled bool `json:"sslDisabled,omitempty"`
 	// S3ForcePathStyle forces the client to send the bucket name in the path
 	// aka path-style rather than as a subdomain of the endpoint.
 	// +optional
-	S3ForcePathStyle bool `json:"s3ForcePathStyle"`
+	S3ForcePathStyle bool `json:"s3ForcePathStyle,omitempty"`
 	// SignatureVersion specifies the client signature version to use when signing requests.
 	// +optional
-	SignatureVersion S3SignatureVersion `json:"signatureVersion"`
+	SignatureVersion S3SignatureVersion `json:"signatureVersion,omitempty"`
 }
 
 // S3SignatureVersion specifies the client signature version to use when signing requests.

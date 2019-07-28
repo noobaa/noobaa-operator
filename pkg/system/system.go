@@ -520,7 +520,8 @@ func (s *System) ReconcileSecretOp() error {
 		if err != nil {
 			return err
 		}
-		s.SecretOp.StringData["auth_token"] = res.OperatorToken
+		// TODO use res.OperatorToken after https://github.com/noobaa/noobaa-core/issues/5635
+		s.SecretOp.StringData["auth_token"] = res.Token
 	}
 	s.NBClient.SetAuthToken(s.SecretOp.StringData["auth_token"])
 	return s.Client.Update(s.Ctx, s.SecretOp)
