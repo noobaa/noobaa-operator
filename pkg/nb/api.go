@@ -130,7 +130,8 @@ type CreateSystemParams struct {
 
 // CreateSystemReply is the reply of system_api.create_system()
 type CreateSystemReply struct {
-	Token string `json:"token"`
+	Token         string `json:"token"`
+	OperatorToken string `json:"operator_token"`
 }
 
 // CreateSystemAPI calls system_api.create_system()

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -89,8 +90,9 @@ func (c *RPCClient) Call(req RPCRequest, res RPCResponseIfc) error {
 		req.AuthToken = c.AuthToken
 	}
 	address := c.Router.GetAddress(api)
-	log := logrus.WithFields(logrus.Fields{"mod": "nb", "api": api, "method": method})
-	log.Infof("RPC: %s.%s - Call to %s: %+v", api, method, address, req)
+	// u := address + strings.TrimSuffix(api, "_api") + "/" + method
+	u := strings.TrimSuffix(api, "_api") + "." + method + "()"
+	logrus.Infof("✈️  RPC: %s Request: %#v", u, req.Params)
 
 	reqBytes, err := json.Marshal(req)
 	fatal(err)
@@ -105,29 +107,29 @@ func (c *RPCClient) Call(req RPCRequest, res RPCResponseIfc) error {
 		}
 	}()
 	if err != nil {
-		log.Error(err, "⚠️ Sending http request failed", api, method)
+		logrus.Errorf("⚠️ RPC: %s Sending http request failed: %s", u, err)
 		return err
 	}
 
 	resBytes, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
-		log.Error(err, "⚠️ Reading http response failed", api, method)
+		logrus.Errorf("⚠️ RPC: %s Reading http response failed: %s", u, err)
 		return err
 	}
 
 	err = json.Unmarshal(resBytes, res)
 	if err != nil {
-		log.Error(err, "⚠️ Decoding response failed", api, method)
+		logrus.Errorf("⚠️ RPC: %s Decoding response failed: %s", u, err)
 		return err
 	}
 
 	r := res.Response()
 	if r.Error != nil {
-		log.Error(r.Error, "⚠️ Response Error")
+		logrus.Errorf("⚠️ RPC: %s Response Error: %s", u, r.Error)
 		return r.Error
 	}
 
-	log.Info("✅ Response OK", "res", res)
+	logrus.Infof("✅ RPC: %s Response OK: %#v", u, r)
 	return nil
 }
 

@@ -5,8 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
 
+	"github.com/noobaa/noobaa-operator/pkg/apis"
 	"github.com/noobaa/noobaa-operator/pkg/controller"
 	"github.com/noobaa/noobaa-operator/pkg/system"
 	"github.com/noobaa/noobaa-operator/pkg/util"
@@ -14,6 +16,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	"k8s.io/client-go/kubernetes/scheme"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/util/templates"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,7 +25,7 @@ import (
 
 // ASCIILogo1 is an ascii logo of noobaa
 const ASCIILogo1 = `
- _   _            ______              
+._   _            ______              
 | \ | |           | ___ \             
 |  \| | ___   ___ | |_/ / __ _  __ _  
 | . \ |/ _ \ / _ \| ___ \/ _\ |/ _\ | 
@@ -34,14 +38,17 @@ const ASCIILogo2 = `
 #                       # 
 #    /~~\___~___/~~\    # 
 #   |               |   # 
-#    \~~\__   __/~~/    # 
-#         \\ //         # 
+#    \~~|\     /|~~/    # 
+#        \|   |/        # 
 #         |   |         # 
 #         \~~~/         # 
 #                       # 
 #      N O O B A A      # 
 `
 
+// CLI is the common tools used for most of this binary's commands.
+// It creates the command structure and defines all the methods that
+// implement the CLI commands.
 type CLI struct {
 	Client client.Client
 	Ctx    context.Context
@@ -71,10 +78,7 @@ type CLI struct {
 
 func New() *CLI {
 
-	logrus.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp: true,
-	})
-	logrus.SetLevel(logrus.DebugLevel)
+	util.InitLogger()
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -83,10 +87,11 @@ func New() *CLI {
 		logo = ASCIILogo2
 	}
 
+	ctx := context.TODO()
+
 	cli := &CLI{
-		Client: util.KubeClient(),
-		Ctx:    context.TODO(),
-		Log:    logrus.WithField("mod", "cli"),
+		Ctx: ctx,
+		Log: logrus.WithContext(ctx),
 
 		Namespace:        "noobaa", //CurrentNamespace(),
 		SystemName:       "noobaa",
@@ -371,29 +376,20 @@ func New() *CLI {
 	return cli
 }
 
-type Runnable func(cmd *cobra.Command, args []string)
-
-func ToRunnable(f func()) Runnable {
-	return func(cmd *cobra.Command, args []string) {
-		f()
-	}
-}
-
-func ToRunnableArgs(f func(args []string)) Runnable {
-	return func(cmd *cobra.Command, args []string) {
-		f(args)
-	}
-}
-
-func ForEachCommand(cmd *cobra.Command, handler func(c *cobra.Command)) {
-	for _, c := range cmd.Commands() {
-		handler(c)
-		ForEachCommand(c, handler)
-	}
-}
-
+// Run the CLI - the main
 func (cli *CLI) Run() {
-	cli.Cmd.Execute()
+	util.Panic(apiextv1beta1.AddToScheme(scheme.Scheme))
+	util.Panic(apis.AddToScheme(scheme.Scheme))
+	cmd, args, err := cli.Cmd.Traverse(os.Args[1:])
+	util.Panic(err)
+	if cmd.Runnable() &&
+		cmd != cli.CmdVersion &&
+		cmd != cli.CmdOptions {
+		cli.Client = util.KubeClient()
+		cmd.Run(cmd, args)
+	} else {
+		cmd.Execute()
+	}
 }
 
 func (cli *CLI) Version() {
@@ -420,11 +416,14 @@ func (cli *CLI) Uninstall() {
 
 func (cli *CLI) Status() {
 	cli.Log.Infof("Namespace: %s", cli.Namespace)
-	cli.Log.Info("CRD Status:")
+	cli.Log.Infof("")
+	cli.Log.Infof("CRD Status:")
 	cli.CrdsStatus()
-	cli.Log.Println("Operator Status:")
+	cli.Log.Infof("")
+	cli.Log.Infof("Operator Status:")
 	cli.OperatorStatus()
-	cli.Log.Println("System Status:")
+	cli.Log.Infof("")
+	cli.Log.Infof("System Status:")
 	cli.SystemStatus()
 }
 
@@ -433,6 +432,31 @@ func CurrentNamespace() string {
 	configOverrides := &clientcmd.ConfigOverrides{}
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
 	ns, _, err := kubeConfig.Namespace()
-	util.Fatal(err)
+	util.Panic(err)
 	return ns
+}
+
+// Runnable is the type of cobra.Command.Run
+type Runnable func(cmd *cobra.Command, args []string)
+
+// ToRunnable adapts functions to Runnable
+func ToRunnable(f func()) Runnable {
+	return func(cmd *cobra.Command, args []string) {
+		f()
+	}
+}
+
+// ToRunnableArgs adapts functions to Runnable
+func ToRunnableArgs(f func(args []string)) Runnable {
+	return func(cmd *cobra.Command, args []string) {
+		f(args)
+	}
+}
+
+// ForEachCommand recursivly visits all subcommands
+func ForEachCommand(cmd *cobra.Command, handler func(c *cobra.Command)) {
+	for _, c := range cmd.Commands() {
+		handler(c)
+		ForEachCommand(c, handler)
+	}
 }

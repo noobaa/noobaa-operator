@@ -53,12 +53,16 @@ spec:
           properties:
             image:
               description: Image (optional) overrides the default image for server
-                pods
+                container
               type: string
             imagePullSecret:
               description: ImagePullSecret (optional) sets a pull secret for the system
                 image
               type: object
+            mongoImage:
+              description: MongoImage (optional) overrides the default image for mongodb
+                container
+              type: string
             storageClassName:
               description: StorageClassName (optional) overrides the default StorageClass
                 for the PVC that the operator creates, this affects where the system

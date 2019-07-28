@@ -75,7 +75,7 @@ func (cli *CLI) OperatorStatus() {
 
 func (cli *CLI) OperatorLocalReconcile() {
 	intervalSec := time.Duration(3)
-	util.Fatal(wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
+	util.Panic(wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
 		req := reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Namespace: cli.Namespace,

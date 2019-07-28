@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"text/template"
@@ -45,6 +46,8 @@ const (
 	ContainerImageName = ContainerImageOrg + "/" + ContainerImageRepo
 	// ContainerImage is the full default image url
 	ContainerImage = ContainerImageName + ":" + ContainerImageTag
+	// MongoImage is the default mongodb image url
+	MongoImage = "centos/mongodb-36-centos7"
 
 	// AdminAccountEmail is the default email used for admin account
 	AdminAccountEmail = "admin@noobaa.io"
@@ -58,6 +61,7 @@ var (
 	NooBaaType = &nbv1.NooBaa{}
 )
 
+// System is the context for loading or reconciling a noobaa system
 type System struct {
 	Request  types.NamespacedName
 	Client   client.Client
@@ -76,6 +80,7 @@ type System struct {
 	SecretAdmin  *corev1.Secret
 }
 
+// New initializes a system to be used for loading or reconciling a noobaa system
 func New(req types.NamespacedName, client client.Client, scheme *runtime.Scheme, recorder record.EventRecorder) *System {
 	s := &System{
 		Request:      req,
@@ -83,7 +88,7 @@ func New(req types.NamespacedName, client client.Client, scheme *runtime.Scheme,
 		Scheme:       scheme,
 		Recorder:     recorder,
 		Ctx:          context.TODO(),
-		Logger:       logrus.WithFields(logrus.Fields{"mod": "system", "system": req.Namespace + "/" + req.Name}),
+		Logger:       logrus.WithFields(logrus.Fields{"ns": req.Namespace, "sys": req.Name}),
 		NooBaa:       util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		CoreApp:      util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
 		ServiceMgmt:  util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
@@ -116,6 +121,7 @@ func New(req types.NamespacedName, client client.Client, scheme *runtime.Scheme,
 	return s
 }
 
+// Load reads the state of the kubernetes objects of the system
 func (s *System) Load() {
 	util.KubeCheck(s.Client, s.NooBaa)
 	util.KubeCheck(s.Client, s.CoreApp)
@@ -135,11 +141,11 @@ func (s *System) Load() {
 func (s *System) Reconcile() (reconcile.Result, error) {
 
 	log := s.Logger.WithField("func", "Reconcile")
-	log.Info("Start ...")
+	log.Infof("Start ...")
 
 	util.KubeCheck(s.Client, s.NooBaa)
 	if s.NooBaa.UID == "" {
-		log.Info("NooBaa not found or already deleted. Skip reconcile.")
+		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return reconcile.Result{}, nil
 	}
 
@@ -148,27 +154,27 @@ func (s *System) Reconcile() (reconcile.Result, error) {
 		s.UpdateSystemStatus(),
 	)
 	if err == nil {
-		log.Info("✅ Done")
+		log.Infof("✅ Done")
 		return reconcile.Result{}, nil
 	}
 	if !IsPersistentError(err) {
-		log.Error(err, "⏳ Temporary Error")
+		log.Warnf("⏳ Temporary Error: %s", err)
 		return reconcile.Result{RequeueAfter: 2 * time.Second}, nil
 	}
-	log.Error(err, "❌ Persistent Error")
+	log.Errorf("❌ Persistent Error: %s", err)
 	return reconcile.Result{}, nil
 }
 
 // ReconcileSystem runs the reconcile flow and populates System.Status.
 func (s *System) ReconcileSystem() error {
 
-	s.NooBaa.Status.Phase = nbv1.SystemPhaseVerifying
+	s.SetPhase(nbv1.SystemPhaseVerifying)
 
 	if err := s.CheckSpecImage(); err != nil {
 		return err
 	}
 
-	s.NooBaa.Status.Phase = nbv1.SystemPhaseCreating
+	s.SetPhase(nbv1.SystemPhaseCreating)
 
 	if err := s.ReconcileSecretServer(); err != nil {
 		return err
@@ -186,13 +192,13 @@ func (s *System) ReconcileSystem() error {
 	s.CheckServiceStatus(s.ServiceMgmt, &s.NooBaa.Status.Services.ServiceMgmt, "mgmt-https")
 	s.CheckServiceStatus(s.ServiceS3, &s.NooBaa.Status.Services.ServiceS3, "s3-https")
 
-	s.NooBaa.Status.Phase = nbv1.SystemPhaseWaitingToConnect
+	s.SetPhase(nbv1.SystemPhaseWaitingToConnect)
 
 	if err := s.InitNooBaaClient(); err != nil {
 		return err
 	}
 
-	s.NooBaa.Status.Phase = nbv1.SystemPhaseConfiguring
+	s.SetPhase(nbv1.SystemPhaseConfiguring)
 
 	if err := s.ReconcileSecretOp(); err != nil {
 		return err
@@ -202,25 +208,28 @@ func (s *System) ReconcileSystem() error {
 		return err
 	}
 
-	s.NooBaa.Status.Phase = nbv1.SystemPhaseReady
+	s.SetPhase(nbv1.SystemPhaseReady)
 
 	return s.Complete()
 }
 
+// ReconcileSecretServer creates a secret needed for the server pod
 func (s *System) ReconcileSecretServer() error {
 	util.KubeCheck(s.Client, s.SecretServer)
 	SecretResetStringDataFromData(s.SecretServer)
 
 	if s.SecretServer.StringData["jwt"] == "" {
-		s.SecretServer.StringData["jwt"] = randomString(16)
+		s.SecretServer.StringData["jwt"] = randomBase64(16)
 	}
 	if s.SecretServer.StringData["server_secret"] == "" {
-		s.SecretServer.StringData["server_secret"] = randomString(16)
+		s.SecretServer.StringData["server_secret"] = randomHex(4)
 	}
+	s.Own(s.SecretServer)
 	util.KubeCreateSkipExisting(s.Client, s.SecretServer)
 	return nil
 }
 
+// SetDesiredCoreApp updates the CoreApp as desired for reconciling
 func (s *System) SetDesiredCoreApp() {
 	s.CoreApp.Spec.Template.Labels["noobaa-core"] = s.Request.Name
 	s.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = s.Request.Name
@@ -238,6 +247,12 @@ func (s *System) SetDesiredCoreApp() {
 	for i := range podSpec.Containers {
 		if podSpec.Containers[i].Image == "NOOBAA_IMAGE" {
 			podSpec.Containers[i].Image = s.NooBaa.Status.ActualImage
+		} else if podSpec.Containers[i].Image == "MONGO_IMAGE" {
+			if s.NooBaa.Spec.MongoImage == nil {
+				podSpec.Containers[i].Image = MongoImage
+			} else {
+				podSpec.Containers[i].Image = *s.NooBaa.Spec.MongoImage
+			}
 		}
 	}
 	if s.NooBaa.Spec.ImagePullSecret == nil {
@@ -263,10 +278,12 @@ func (s *System) SetDesiredCoreApp() {
 	}
 }
 
+// SetDesiredServiceMgmt updates the ServiceMgmt as desired for reconciling
 func (s *System) SetDesiredServiceMgmt() {
 	s.ServiceMgmt.Spec.Selector["noobaa-mgmt"] = s.Request.Name
 }
 
+// SetDesiredServiceS3 updates the ServiceS3 as desired for reconciling
 func (s *System) SetDesiredServiceS3() {
 	s.ServiceS3.Spec.Selector["noobaa-s3"] = s.Request.Name
 }
@@ -288,12 +305,12 @@ func (s *System) CheckSpecImage() error {
 	// If the image cannot be parsed log the incident and mark as persistent error
 	// since we don't need to retry until the spec is updated.
 	if err != nil {
-		log.Error(err, "Invalid image", "image", specImage)
+		log.Errorf("Invalid image %s: %s", specImage, err)
 		if s.Recorder != nil {
 			s.Recorder.Eventf(s.NooBaa, corev1.EventTypeWarning,
 				"BadImage", `Invalid image requested "%s"`, specImage)
 		}
-		s.NooBaa.Status.Phase = nbv1.SystemPhaseRejected
+		s.SetPhase(nbv1.SystemPhaseRejected)
 		return NewPersistentError(err)
 	}
 
@@ -302,43 +319,43 @@ func (s *System) CheckSpecImage() error {
 	imageTag := ""
 	switch image := imageRef.(type) {
 	case dockerref.NamedTagged:
-		log.Info("Parsed image (NamedTagged)", "image", image)
+		log.Infof("Parsed image (NamedTagged) %v", image)
 		imageName = image.Name()
 		imageTag = image.Tag()
 	case dockerref.Tagged:
-		log.Info("Parsed image (Tagged)", "image", image)
+		log.Infof("Parsed image (Tagged) %v", image)
 		imageTag = image.Tag()
 	case dockerref.Named:
-		log.Info("Parsed image (Named)", "image", image)
+		log.Infof("Parsed image (Named) %v", image)
 		imageName = image.Name()
 	default:
-		log.Info("Parsed image (unstructured)", "image", image)
+		log.Infof("Parsed image (unstructured) %v", image)
 	}
 
 	if imageName == ContainerImageName {
 		version, err := semver.NewVersion(imageTag)
 		if err == nil {
-			log.Info("Parsed version from image tag", "tag", imageTag, "version", version)
+			log.Infof("Parsed version \"%s\" from image tag \"%s\"", version.String(), imageTag)
 			if !ContainerImageConstraint.Check(version) {
-				log.Error(nil, "Unsupported image version",
-					"image", imageRef, "contraints", ContainerImageConstraint)
+				log.Errorf("Unsupported image version \"%s\" for contraints \"%s\"",
+					imageRef.String(), ContainerImageConstraint.String())
 				if s.Recorder != nil {
 					s.Recorder.Eventf(s.NooBaa, corev1.EventTypeWarning,
 						"BadImage", `Unsupported image version requested "%s" not matching constraints "%s"`,
 						imageRef, ContainerImageConstraint)
 				}
-				s.NooBaa.Status.Phase = nbv1.SystemPhaseRejected
+				s.SetPhase(nbv1.SystemPhaseRejected)
 				return NewPersistentError(fmt.Errorf(`Unsupported image version "%+v"`, imageRef))
 			}
 		} else {
-			log.Info("Using custom image version", "image", imageRef, "contraints", ContainerImageConstraint)
+			log.Infof("Using custom image \"%s\" contraints \"%s\"", imageRef.String(), ContainerImageConstraint.String())
 			if s.Recorder != nil {
 				s.Recorder.Eventf(s.NooBaa, corev1.EventTypeNormal,
 					"CustomImage", `Custom image version requested "%s", I hope you know what you're doing ...`, imageRef)
 			}
 		}
 	} else {
-		log.Info("Using custom image name", "image", imageRef, "default", ContainerImageName)
+		log.Infof("Using custom image name \"%s\" the default is \"%s\"", imageRef.String(), ContainerImageName)
 		if s.Recorder != nil {
 			s.Recorder.Eventf(s.NooBaa, corev1.EventTypeNormal,
 				"CustomImage", `Custom image requested "%s", I hope you know what you're doing ...`, imageRef)
@@ -428,7 +445,7 @@ func (s *System) CheckServiceStatus(srv *corev1.Service, status *nbv1.ServiceSta
 		}
 	}
 
-	log.Info("Collected addresses", "status", status)
+	log.Infof("Collected addresses: %+v", status)
 }
 
 // InitNooBaaClient initializes the noobaa client for making calls to the server.
@@ -477,7 +494,8 @@ func (s *System) ReconcileSecretOp() error {
 	}
 
 	if s.SecretOp.StringData["password"] == "" {
-		s.SecretOp.StringData["password"] = randomString(16)
+		s.SecretOp.StringData["password"] = randomBase64(16)
+		s.Own(s.SecretOp)
 		err := s.Client.Create(s.Ctx, s.SecretOp)
 		if err != nil {
 			return err
@@ -491,6 +509,7 @@ func (s *System) ReconcileSecretOp() error {
 		Password: s.SecretOp.StringData["password"],
 	})
 	if err == nil {
+		// TODO this recovery flow does not allow us to get OperatorToken like CreateSystem
 		s.SecretOp.StringData["auth_token"] = res.Token
 	} else {
 		res, err := s.NBClient.CreateSystemAPI(nb.CreateSystemParams{
@@ -501,7 +520,7 @@ func (s *System) ReconcileSecretOp() error {
 		if err != nil {
 			return err
 		}
-		s.SecretOp.StringData["auth_token"] = res.Token
+		s.SecretOp.StringData["auth_token"] = res.OperatorToken
 	}
 	s.NBClient.SetAuthToken(s.SecretOp.StringData["auth_token"])
 	return s.Client.Update(s.Ctx, s.SecretOp)
@@ -525,7 +544,7 @@ func (s *System) ReconcileSecretAdmin() error {
 		return nil
 	}
 	if !errors.IsNotFound(err) {
-		log.Error(err, "Failed getting admin secret")
+		log.Errorf("Failed getting admin secret: %v", err)
 		return err
 	}
 
@@ -543,7 +562,7 @@ func (s *System) ReconcileSecretAdmin() error {
 		},
 	}
 
-	log.Info("listing accounts")
+	log.Infof("listing accounts")
 	res, err := s.NBClient.ListAccountsAPI()
 	if err != nil {
 		return err
@@ -589,6 +608,27 @@ var readmeTemplate = template.Must(template.New("NooBaaSystem.Status.Readme").Pa
 
 `))
 
+// SetPhase updates the status phase and conditions
+func (s *System) SetPhase(phase nbv1.SystemPhase) {
+	s.Logger.Warnf("GGG SetPhase %s", phase)
+	s.NooBaa.Status.Phase = phase
+	if s.NooBaa.Status.Conditions == nil || len(s.NooBaa.Status.Conditions) == 0 {
+		s.NooBaa.Status.Conditions = []nbv1.SystemCondition{{
+			Type:    nbv1.ConditionTypePhase,
+			Reason:  "ReconcileSetPhase",
+			Message: "Reconcile reached phase",
+		}}
+	}
+	phaseCond := &s.NooBaa.Status.Conditions[0]
+	newPhaseStatus := nbv1.ConditionStatus(phase)
+	currstatus := phaseCond.Status
+	if currstatus != newPhaseStatus {
+		phaseCond.LastTransitionTime = metav1.Time{Time: time.Now()}
+	}
+	phaseCond.Status = newPhaseStatus
+	phaseCond.LastProbeTime = metav1.Time{Time: time.Now()}
+}
+
 // Complete populates the noobaa status at the end of reconcile.
 func (s *System) Complete() error {
 
@@ -603,15 +643,17 @@ func (s *System) Complete() error {
 	return nil
 }
 
+// UpdateSystemStatus updates the system status in kubernetes from the memory
 func (s *System) UpdateSystemStatus() error {
 	log := s.Logger.WithField("func", "UpdateSystemStatus")
-	log.Info("Updating noobaa status")
+	log.Infof("Updating noobaa status")
 	s.NooBaa.Status.ObservedGeneration = s.NooBaa.Generation
 	return s.Client.Status().Update(s.Ctx, s.NooBaa)
 }
 
+// Own sets the object owner references to the noobaa system
 func (s *System) Own(obj metav1.Object) {
-	util.Fatal(controllerutil.SetControllerReference(s.NooBaa, obj, s.Scheme))
+	util.Panic(controllerutil.SetControllerReference(s.NooBaa, obj, s.Scheme))
 }
 
 // GetObject gets an object by name from the request namespace.
@@ -640,11 +682,11 @@ func (s *System) ReconcileObject(obj runtime.Object, desiredFunc func()) error {
 		},
 	)
 	if err != nil {
-		log.Error(err, "Failed")
+		log.Errorf("ReconcileObject Failed: %v", err)
 		return err
 	}
 
-	log.Info("Done", "op", op)
+	log.Infof("Done. op=%s", op)
 	return nil
 }
 
@@ -694,6 +736,8 @@ func CombineErrors(errs ...error) error {
 	return combined
 }
 
+// SecretResetStringDataFromData reads the secret data into string data
+// to streamline the paths that use the secret values as strings.
 func SecretResetStringDataFromData(secret *corev1.Secret) {
 	secret.StringData = map[string]string{}
 	for key, val := range secret.Data {
@@ -702,9 +746,16 @@ func SecretResetStringDataFromData(secret *corev1.Secret) {
 	secret.Data = map[string][]byte{}
 }
 
-func randomString(numBytes int) string {
+func randomBase64(numBytes int) string {
 	randomBytes := make([]byte, numBytes)
 	_, err := rand.Read(randomBytes)
-	util.Fatal(err)
+	util.Panic(err)
 	return base64.StdEncoding.EncodeToString(randomBytes)
+}
+
+func randomHex(numBytes int) string {
+	randomBytes := make([]byte, numBytes)
+	_, err := rand.Read(randomBytes)
+	util.Panic(err)
+	return hex.EncodeToString(randomBytes)
 }

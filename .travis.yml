@@ -30,5 +30,6 @@ jobs:
         - bash .travis/install-minikube.sh
       script:
         - make build
+        - make gen-api-fail-if-dirty
         - make test
         - make test-integ

@@ -132,10 +132,10 @@ gen-api: gen
 	operator-sdk generate openapi
 .PHONY: gen-api
 
-ensure-gen-api-is-noop: gen-api
+gen-api-fail-if-dirty: gen-api
 	git diff -s --exit-code pkg/apis/noobaa/v1alpha1/zz_generated.deepcopy.go || (echo "Build failed: API has been changed but the deep copy functions aren't up to date. Run 'make gen-api' and update your PR." && exit 1)
 	git diff -s --exit-code pkg/apis/noobaa/v1alpha1/zz_generated.openapi.go || (echo "Build failed: API has been changed but the deep copy functions aren't up to date. Run 'make gen-api' and update your PR." && exit 1)
-.PHONY: ensure-gen-api-is-noop
+.PHONY: gen-api-fail-if-dirty
 
 clean:
 	rm -rf $(OUTPUT)

@@ -25,8 +25,8 @@ Applications
 
 - Fork and clone the repo: `git clone https://github.com/<username>/noobaa-operator`
 - Use minikube: `minikube start`
+- Use you package manager to install `go`, `operator-sdk` and `python3`.
 - Source the devenv into your shell: `. devenv.sh`
 - Build the project: `make`
 - Test with the alias `nb` that runs the local operator from `build/_output/bin` (alias created by devenv)
-- `nb install`
-- ...
+- Install the operator and create the system with: `nb install`

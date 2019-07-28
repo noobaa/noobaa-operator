@@ -24,6 +24,7 @@ spec:
       initContainers:
         - name: init-mongo
           image: NOOBAA_IMAGE
+          imagePullPolicy: IfNotPresent
           command:
             - "/noobaa_init_files/noobaa_init.sh"
             - "init_mongo"
@@ -32,7 +33,7 @@ spec:
               name: mongo-datadir
       containers:
         - name: mongodb
-          image: centos/mongodb-36-centos7
+          image: MONGO_IMAGE
           imagePullPolicy: IfNotPresent
           command: ['/bin/bash', '-c', '/opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip 127.0.0.1 --dbpath /data/mongo/cluster/shard1']
           resources:
