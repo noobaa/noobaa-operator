@@ -1,5 +1,5 @@
 packageName: noobaa-operator
 channels:
 - name: alpha
-  currentCSV: noobaa-operator.v1.0.0
+  currentCSV: noobaa-operator.v1.0.1
 defaultChannel: alpha
