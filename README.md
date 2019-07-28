@@ -6,7 +6,7 @@ NooBaa is an object data service for hybrid and multi cloud environments. NooBaa
 
 # Using the operator as CLI
 
-- Download the compiled operator binary from the [releases page](/releases)
+- Download the compiled operator binary from the [releases page](https://github.com/noobaa/noobaa-operator/releases)
 - Run: `noobaa --help` for CLI usage
 - Install the operator and noobaa with: `noobaa install`
 
