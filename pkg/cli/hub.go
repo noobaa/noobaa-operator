@@ -37,7 +37,7 @@ type HubConf struct {
 func (cli *CLI) loadHubConf() *HubConf {
 	hub := &HubConf{}
 	req, err := http.Get("https://operatorhub.io/install/noobaa-operator.yaml")
-	util.Fatal(err)
+	util.Panic(err)
 	decoder := yaml.NewYAMLOrJSONDecoder(req.Body, 16*1024)
 	for {
 		obj := &unstructured.Unstructured{}
@@ -45,7 +45,7 @@ func (cli *CLI) loadHubConf() *HubConf {
 		if err == io.EOF {
 			break
 		}
-		util.Fatal(err)
+		util.Panic(err)
 		hub.Objects = append(hub.Objects, obj)
 		// p := printers.YAMLPrinter{}
 		// p.PrintObj(obj, os.Stdout)

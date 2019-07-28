@@ -58,9 +58,13 @@ type NooBaaList struct {
 // +k8s:openapi-gen=true
 type NooBaaSpec struct {
 
-	// Image (optional) overrides the default image for server pods
+	// Image (optional) overrides the default image for server container
 	// +optional
 	Image *string `json:"image,omitempty"`
+
+	// MongoImage (optional) overrides the default image for mongodb container
+	// +optional
+	MongoImage *string `json:"mongoImage,omitempty"`
 
 	// ImagePullSecret (optional) sets a pull secret for the system image
 	// +optional
@@ -133,9 +137,9 @@ const (
 // SystemCondition contains details for the current condition of this system.
 type SystemCondition struct {
 	// Type is the type of the condition.
-	Type SystemConditionType `json:"type"`
+	Type ConditionType `json:"type"`
 	// Status is the status of the condition.
-	Status SystemConditionStatus `json:"status"`
+	Status ConditionStatus `json:"status"`
 	// Last time we probed the condition.
 	// +optional
 	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty"`
@@ -150,12 +154,27 @@ type SystemCondition struct {
 	Message string `json:"message,omitempty"`
 }
 
-type SystemConditionType string
-type SystemConditionStatus SystemPhase
+// ConditionType is a simple string type.
+// Types should be used from the enum below.
+type ConditionType string
 
 // These are the valid conditions types and statuses:
 const (
-	SystemPhaseCond SystemConditionType = "Phase"
+	ConditionTypePhase ConditionType = "Phase"
+)
+
+// ConditionStatus is a simple string type.
+// In addition to the generic True/False/Unknown it also can accept SystemPhase enums
+type ConditionStatus string
+
+// These are general valid condition statuses. "ConditionTrue" means a resource is in the condition.
+// "ConditionFalse" means a resource is not in the condition. "ConditionUnknown" means kubernetes
+// can't decide if a resource is in the condition or not. In the future, we could add other
+// intermediate conditions, e.g. ConditionDegraded.
+const (
+	ConditionTrue    ConditionStatus = "True"
+	ConditionFalse   ConditionStatus = "False"
+	ConditionUnknown ConditionStatus = "Unknown"
 )
 
 // AccountsStatus is the status info of admin account

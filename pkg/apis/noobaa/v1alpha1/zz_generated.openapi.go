@@ -74,15 +74,35 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref common.ReferenceCallba
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
+							Description: "Type",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"bucketName": {
+						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
 							Format: "",
 						},
 					},
+					"secret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Secret refers to a secret that provides the credentials",
+							Ref:         ref("k8s.io/api/core/v1.SecretReference"),
+						},
+					},
+					"s3Options": {
+						SchemaProps: spec.SchemaProps{
+							Description: "S3Options specifies client options for the backing store",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.S3Options"),
+						},
+					},
 				},
-				Required: []string{"type"},
+				Required: []string{"type", "bucketName", "secret"},
 			},
 		},
-		Dependencies: []string{},
+		Dependencies: []string{
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.S3Options", "k8s.io/api/core/v1.SecretReference"},
 	}
 }
 
@@ -219,7 +239,14 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref common.ReferenceCallback) co
 				Properties: map[string]spec.Schema{
 					"image": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Image (optional) overrides the default image for server pods",
+							Description: "Image (optional) overrides the default image for server container",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"mongoImage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MongoImage (optional) overrides the default image for mongodb container",
 							Type:        []string{"string"},
 							Format:      "",
 						},

@@ -2,65 +2,47 @@ package cli
 
 import (
 	"fmt"
-	"os"
-	"strings"
+	"strconv"
 
 	"github.com/noobaa/noobaa-operator/pkg/nb"
-	"github.com/noobaa/noobaa-operator/pkg/system"
 	"github.com/noobaa/noobaa-operator/pkg/util"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
+	"github.com/sirupsen/logrus"
 )
 
+// BucketCreate runs a CLI command
 func (cli *CLI) BucketCreate(args []string) {
 	if len(args) < 1 || args[0] == "" {
-		util.Fatal(fmt.Errorf("Expected 1st argument: bucket-name"))
+		logrus.Fatalf("Expected 1st argument: bucket-name")
 	}
 	bucketName := args[0]
 	nbClient := cli.GetNBClient()
 	_, err := nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName})
-	util.Fatal(err)
+	util.Panic(err)
 }
 
+// BucketDelete runs a CLI command
 func (cli *CLI) BucketDelete(args []string) {
 	if len(args) < 1 || args[0] == "" {
-		util.Fatal(fmt.Errorf("Expected 1st argument: bucket-name"))
+		logrus.Fatalf("Expected 1st argument: bucket-name")
 	}
 	bucketName := args[0]
 	nbClient := cli.GetNBClient()
 	_, err := nbClient.DeleteBucketAPI(nb.DeleteBucketParams{Name: bucketName})
-	util.Fatal(err)
+	util.Panic(err)
 }
 
+// BucketList runs a CLI command
 func (cli *CLI) BucketList() {
 	nbClient := cli.GetNBClient()
 	list, err := nbClient.ListBucketsAPI()
-	util.Fatal(err)
-	for _, bucket := range list.Buckets {
-		cli.Log.Println(bucket.Name)
+	util.Panic(err)
+	if len(list.Buckets) == 0 {
+		fmt.Printf("No buckets found.\n")
 	}
-}
-
-func (cli *CLI) GetNBClient() nb.Client {
-	s := system.New(types.NamespacedName{Namespace: cli.Namespace, Name: cli.SystemName}, cli.Client, scheme.Scheme, nil)
-	s.Load()
-
-	mgmtStatus := s.NooBaa.Status.Services.ServiceMgmt
-	if len(mgmtStatus.NodePorts) == 0 {
-		fmt.Println("❌ Mgmt service not ready")
-		os.Exit(1)
+	table := (&util.PrintTable{}).AddRow("#", "BUCKET-NAME")
+	for i := range list.Buckets {
+		b := &list.Buckets[i]
+		table.AddRow(strconv.Itoa(i+1), b.Name)
 	}
-	if s.SecretOp.StringData["auth_token"] == "" {
-		fmt.Println("❌ Auth token not ready")
-		os.Exit(1)
-	}
-
-	nodePort := mgmtStatus.NodePorts[0]
-	nodeIP := nodePort[strings.Index(nodePort, "://")+3 : strings.LastIndex(nodePort, ":")]
-	nbClient := nb.NewClient(&nb.APIRouterNodePort{
-		ServiceMgmt: s.ServiceMgmt,
-		NodeIP:      nodeIP,
-	})
-	nbClient.SetAuthToken(s.SecretOp.StringData["auth_token"])
-	return nbClient
+	fmt.Print(table.String())
 }

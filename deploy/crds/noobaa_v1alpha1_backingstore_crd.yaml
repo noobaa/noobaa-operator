@@ -29,10 +29,47 @@ spec:
           type: object
         spec:
           properties:
+            bucketName:
+              type: string
+            s3Options:
+              description: S3Options specifies client options for the backing store
+              properties:
+                endpoint:
+                  description: Endpoint is the S3 endpoint to use
+                  type: string
+                region:
+                  description: Region is the AWS region
+                  type: string
+                s3ForcePathStyle:
+                  description: S3ForcePathStyle forces the client to send the bucket
+                    name in the path aka path-style rather than as a subdomain of
+                    the endpoint.
+                  type: boolean
+                signatureVersion:
+                  description: SignatureVersion specifies the client signature version
+                    to use when signing requests.
+                  type: string
+                sslDisabled:
+                  description: SSLDisabled allows to disable SSL and use plain http
+                  type: boolean
+              required:
+              - region
+              - endpoint
+              - sslDisabled
+              - s3ForcePathStyle
+              - signatureVersion
+              type: object
+            secret:
+              description: Secret refers to a secret that provides the credentials
+              type: object
             type:
+              description: Type
               type: string
           required:
           - type
+          - bucketName
+          - secret
+          - s3Options
           type: object
         status:
           type: object

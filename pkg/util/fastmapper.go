@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/restmapper"
 )
 
+// APIGroupFilterFunc is a filtering function to limit the amount of server groups we load
 type APIGroupFilterFunc func(*metav1.APIGroup) bool
 
 // FastRESTMapper loads the mapper data from the server with filter and concurrency
@@ -21,6 +22,7 @@ type FastRESTMapper struct {
 	Mapper    meta.RESTMapper
 }
 
+// NewFastRESTMapper initializes a FastRESTMapper
 func NewFastRESTMapper(dc discovery.DiscoveryInterface, filter APIGroupFilterFunc) meta.RESTMapper {
 	return &FastRESTMapper{
 		Discovery: dc,
@@ -29,7 +31,9 @@ func NewFastRESTMapper(dc discovery.DiscoveryInterface, filter APIGroupFilterFun
 	}
 }
 
-func (m *FastRESTMapper) ReDiscover() error {
+// Discover reads server groups and then reads each group
+// to initialize the mapper groups.
+func (m *FastRESTMapper) Discover() error {
 	groups, err := m.Discovery.ServerGroups()
 	if err != nil {
 		return err
@@ -51,7 +55,7 @@ func (m *FastRESTMapper) ReDiscover() error {
 			VersionedResources: make(map[string][]metav1.APIResource),
 		}
 		grs = append(grs, gr)
-		wg.Start(func() { m.ReDiscoverGroupResources(gr) })
+		wg.Start(func() { m.DiscoverGroup(gr) })
 	}
 	wg.Wait()
 	logrus.Tracef("Filtered %d/%d", filterCount, totalCount)
@@ -59,7 +63,8 @@ func (m *FastRESTMapper) ReDiscover() error {
 	return nil
 }
 
-func (m *FastRESTMapper) ReDiscoverGroupResources(gr *restmapper.APIGroupResources) error {
+// DiscoverGroup reads the server group
+func (m *FastRESTMapper) DiscoverGroup(gr *restmapper.APIGroupResources) error {
 	var errResult error
 	for _, version := range gr.Group.Versions {
 		resources, err := m.Discovery.ServerResourcesForGroupVersion(version.GroupVersion)
@@ -71,65 +76,73 @@ func (m *FastRESTMapper) ReDiscoverGroupResources(gr *restmapper.APIGroupResourc
 	return errResult
 }
 
-func (m *FastRESTMapper) ReDiscoverOnError(err error) bool {
-	_, retry := err.(*meta.NoKindMatchError)
-	if retry {
-		m.ReDiscover()
+// DiscoverOnError check if the error is NoMatchError and calls discover
+func (m *FastRESTMapper) DiscoverOnError(err error) bool {
+	if meta.IsNoMatchError(err) {
+		m.Discover()
+		return true
 	}
-	return retry
+	return false
 }
 
+// KindFor implements Mapper.KindFor
 func (m *FastRESTMapper) KindFor(resource schema.GroupVersionResource) (schema.GroupVersionKind, error) {
 	res, err := m.Mapper.KindFor(resource)
-	if m.ReDiscoverOnError(err) {
+	if m.DiscoverOnError(err) {
 		res, err = m.Mapper.KindFor(resource)
 	}
 	return res, err
 }
 
+// KindsFor implements Mapper.KindsFor
 func (m *FastRESTMapper) KindsFor(resource schema.GroupVersionResource) ([]schema.GroupVersionKind, error) {
 	res, err := m.Mapper.KindsFor(resource)
-	if m.ReDiscoverOnError(err) {
+	if m.DiscoverOnError(err) {
 		res, err = m.Mapper.KindsFor(resource)
 	}
 	return res, err
 }
 
+// ResourceFor implements Mapper.ResourceFor
 func (m *FastRESTMapper) ResourceFor(input schema.GroupVersionResource) (schema.GroupVersionResource, error) {
 	res, err := m.Mapper.ResourceFor(input)
-	if m.ReDiscoverOnError(err) {
+	if m.DiscoverOnError(err) {
 		res, err = m.Mapper.ResourceFor(input)
 	}
 	return res, err
 }
 
+// ResourcesFor implements Mapper.ResourcesFor
 func (m *FastRESTMapper) ResourcesFor(input schema.GroupVersionResource) ([]schema.GroupVersionResource, error) {
 	res, err := m.Mapper.ResourcesFor(input)
-	if m.ReDiscoverOnError(err) {
+	if m.DiscoverOnError(err) {
 		res, err = m.Mapper.ResourcesFor(input)
 	}
 	return res, err
 }
 
+// RESTMapping implements Mapper.RESTMapping
 func (m *FastRESTMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
 	res, err := m.Mapper.RESTMapping(gk, versions...)
-	if m.ReDiscoverOnError(err) {
+	if m.DiscoverOnError(err) {
 		res, err = m.Mapper.RESTMapping(gk, versions...)
 	}
 	return res, err
 }
 
+// RESTMappings implements Mapper.RESTMappings
 func (m *FastRESTMapper) RESTMappings(gk schema.GroupKind, versions ...string) ([]*meta.RESTMapping, error) {
 	res, err := m.Mapper.RESTMappings(gk, versions...)
-	if m.ReDiscoverOnError(err) {
+	if m.DiscoverOnError(err) {
 		res, err = m.Mapper.RESTMappings(gk, versions...)
 	}
 	return res, err
 }
 
+// ResourceSingularizer implements Mapper.ResourceSingularizer
 func (m *FastRESTMapper) ResourceSingularizer(resource string) (string, error) {
 	res, err := m.Mapper.ResourceSingularizer(resource)
-	if m.ReDiscoverOnError(err) {
+	if m.DiscoverOnError(err) {
 		res, err = m.Mapper.ResourceSingularizer(resource)
 	}
 	return res, err
