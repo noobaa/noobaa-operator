@@ -16,8 +16,8 @@ spec:
       serviceAccountName: noobaa-operator
       containers:
         - name: noobaa-operator
-          image: noobaa/noobaa-operator:1.0.1
-          imagePullPolicy: Always
+          image: noobaa/noobaa-operator:1.0.2
+          imagePullPolicy: IfNotPresent
           resources:
             limits:
               cpu: "250m"
