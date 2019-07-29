@@ -12,6 +12,7 @@ import (
 	"github.com/noobaa/noobaa-operator/pkg/system"
 	"github.com/noobaa/noobaa-operator/pkg/util"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,26 +46,48 @@ func (cli *CLI) LoadSystemDefaults() *nbv1.NooBaa {
 // SystemCreate runs a CLI command
 func (cli *CLI) SystemCreate() {
 	sys := cli.LoadSystemDefaults()
+	ns := util.KubeObject(bundle.File_deploy_namespace_yaml).(*corev1.Namespace)
+	ns.Name = cli.Namespace
+	// TODO check PVC if exist and the system does not exist -
+	// fail and suggest to delete them first with cli system delete.
+	util.KubeCreateSkipExisting(cli.Client, ns)
 	util.KubeCreateSkipExisting(cli.Client, sys)
 }
 
 // SystemDelete runs a CLI command
 func (cli *CLI) SystemDelete() {
 	sys := &nbv1.NooBaa{
+		TypeMeta: metav1.TypeMeta{Kind: "NooBaa"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cli.SystemName,
 			Namespace: cli.Namespace,
 		},
 	}
+
 	util.KubeDelete(cli.Client, sys)
+
+	// TEMPORARY ? delete PVCs here because we couldn't own them in openshift
+	// See https://github.com/noobaa/noobaa-operator/issues/12
+	// So we delete the PVC here on system delete.
+	coreApp := util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet)
+	for i := range coreApp.Spec.VolumeClaimTemplates {
+		t := &coreApp.Spec.VolumeClaimTemplates[i]
+		pvc := &corev1.PersistentVolumeClaim{
+			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      t.Name + "-" + cli.SystemName + "-core-0",
+				Namespace: cli.Namespace,
+			},
+		}
+		util.KubeDelete(cli.Client, pvc)
+	}
 }
 
 // SystemList runs a CLI command
 func (cli *CLI) SystemList() {
 	list := nbv1.NooBaaList{}
 	err := cli.Client.List(cli.Ctx, nil, &list)
-	_, noKind := err.(*meta.NoKindMatchError)
-	if noKind {
+	if meta.IsNoMatchError(err) {
 		cli.Log.Warningf("CRD not installed.\n")
 		return
 	}
@@ -108,6 +131,20 @@ func (cli *CLI) SystemYaml() {
 func (cli *CLI) SystemStatus() {
 	s := system.New(types.NamespacedName{Namespace: cli.Namespace, Name: cli.SystemName}, cli.Client, scheme.Scheme, nil)
 	s.Load()
+
+	// TEMPORARY ? check PVCs here because we couldn't own them in openshift
+	// See https://github.com/noobaa/noobaa-operator/issues/12
+	for i := range s.CoreApp.Spec.VolumeClaimTemplates {
+		t := &s.CoreApp.Spec.VolumeClaimTemplates[i]
+		pvc := &corev1.PersistentVolumeClaim{
+			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      t.Name + "-" + cli.SystemName + "-core-0",
+				Namespace: cli.Namespace,
+			},
+		}
+		util.KubeCheck(cli.Client, pvc)
+	}
 
 	// sys := cli.LoadSystemDefaults()
 	// util.KubeCheck(cli.Client, sys)

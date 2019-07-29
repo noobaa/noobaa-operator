@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"flag"
-	"fmt"
 	"math/rand"
 	"os"
 	"time"
@@ -393,37 +392,54 @@ func (cli *CLI) Run() {
 }
 
 func (cli *CLI) Version() {
-	fmt.Printf("version: %s\n", version.Version)
-	fmt.Printf("noobaa-image: %s\n", cli.NooBaaImage)
-	fmt.Printf("operator-image: %s\n", cli.OperatorImage)
+	cli.Log.Printf("CLI version: %s\n", version.Version)
+	cli.Log.Printf("noobaa-image: %s\n", cli.NooBaaImage)
+	cli.Log.Printf("operator-image: %s\n", cli.OperatorImage)
 }
 
 func (cli *CLI) Install() {
-	cli.Log.Infof("Namespace: %s", cli.Namespace)
+	cli.Version()
+	cli.Log.Printf("Namespace: %s", cli.Namespace)
+	cli.Log.Printf("")
+	cli.Log.Printf("CRD Create:")
 	cli.CrdsCreate()
 	cli.CrdsWaitReady()
+	cli.Log.Printf("")
+	cli.Log.Printf("Operator Install:")
 	cli.OperatorInstall()
+	cli.Log.Printf("")
+	cli.Log.Printf("System Create:")
 	cli.SystemCreate()
 	cli.SystemWaitReady()
 	cli.Status()
 }
 
 func (cli *CLI) Uninstall() {
-	cli.Log.Infof("Namespace: %s", cli.Namespace)
+	cli.Version()
+	cli.Log.Printf("Namespace: %s", cli.Namespace)
+	cli.Log.Printf("")
+	cli.Log.Printf("System Delete:")
 	cli.SystemDelete()
+	cli.Log.Printf("")
+	cli.Log.Printf("Operator Delete:")
 	cli.OperatorUninstall()
+	cli.Log.Printf("")
+	cli.Log.Printf("CRD - Leaving Untouched - Status:")
+	cli.Log.Printf("(use \"noobaa crd delete\" to force deletion)")
+	cli.CrdsStatus()
 }
 
 func (cli *CLI) Status() {
-	cli.Log.Infof("Namespace: %s", cli.Namespace)
-	cli.Log.Infof("")
-	cli.Log.Infof("CRD Status:")
+	cli.Version()
+	cli.Log.Printf("Namespace: %s", cli.Namespace)
+	cli.Log.Printf("")
+	cli.Log.Printf("CRD Status:")
 	cli.CrdsStatus()
-	cli.Log.Infof("")
-	cli.Log.Infof("Operator Status:")
+	cli.Log.Printf("")
+	cli.Log.Printf("Operator Status:")
 	cli.OperatorStatus()
-	cli.Log.Infof("")
-	cli.Log.Infof("System Status:")
+	cli.Log.Printf("")
+	cli.Log.Printf("System Status:")
 	cli.SystemStatus()
 }
 

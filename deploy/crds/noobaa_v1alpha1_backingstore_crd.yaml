@@ -52,12 +52,6 @@ spec:
                 sslDisabled:
                   description: SSLDisabled allows to disable SSL and use plain http
                   type: boolean
-              required:
-              - region
-              - endpoint
-              - sslDisabled
-              - s3ForcePathStyle
-              - signatureVersion
               type: object
             secret:
               description: Secret refers to a secret that provides the credentials
@@ -69,7 +63,6 @@ spec:
           - type
           - bucketName
           - secret
-          - s3Options
           type: object
         status:
           type: object

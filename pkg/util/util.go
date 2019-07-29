@@ -121,6 +121,11 @@ func KubeCreateSkipExisting(c client.Client, obj runtime.Object) bool {
 			logrus.Printf("✅ Created: %s \"%s\"\n", gvk.Kind, objKey.Name)
 			return true
 		}
+		if errors.IsNotFound(err) {
+			logrus.Printf("❌ Namespace Missing: %s \"%s\": kubectl create ns %s\n",
+				gvk.Kind, objKey.Name, objKey.Namespace)
+			return true
+		}
 	}
 	if errors.IsConflict(err) {
 		logrus.Printf("❌ Conflict: %s \"%s\": %s\n", gvk.Kind, objKey.Name, err)
@@ -140,7 +145,7 @@ func KubeDelete(c client.Client, obj runtime.Object) bool {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	err := c.Delete(ctx, obj)
 	if err == nil {
-		logrus.Printf("✅ Deleted: %s \"%s\"\n", gvk.Kind, objKey.Name)
+		logrus.Printf("❌ Deleted: %s \"%s\"\n", gvk.Kind, objKey.Name)
 		return true
 	}
 	if errors.IsConflict(err) {
@@ -183,7 +188,8 @@ func KubeCheck(c client.Client, obj runtime.Object) bool {
 // Panic is conviniently calling panic only if err is not nil
 func Panic(err error) {
 	if err != nil {
-		logrus.Panicf("☠️  Panic Attack: %s", err)
+		reason := errors.ReasonForError(err)
+		logrus.Panicf("☠️  Panic Attack: [%s] %s", reason, err)
 	}
 }
 
