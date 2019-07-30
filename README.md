@@ -7,8 +7,30 @@ NooBaa is an object data service for hybrid and multi cloud environments. NooBaa
 # Using the operator as CLI
 
 - Download the compiled operator binary from the [releases page](https://github.com/noobaa/noobaa-operator/releases)
-- Run: `noobaa --help` for CLI usage
-- Install the operator and noobaa with: `noobaa install`
+
+For Mac
+```
+wget https://github.com/noobaa/noobaa-operator/releases/download/v1.0.2/noobaa-mac-v1.0.2;mv noobaa-mac-* noobaa;chmod +x noobaa
+```
+For Linux
+```
+wget https://github.com/noobaa/noobaa-operator/releases/download/v1.0.2/noobaa-linux-v1.0.2;mv noobaa-linux-* noobaa;chmod +x noobaa
+```
+
+- Run: `./noobaa --help` for CLI usage
+- Install the operator and noobaa with: `./noobaa install`
+  The install output includes S3 service endpoint and credentials, as well as web management console address with credentials.
+- Getting this information is always available with: `./noobaa status`
+- Remove NooBaa deployment can be done with: `./noobaa uninstall`
+# Troubleshooting
+
+- The operator is running, but there is no noobaa-core-0 pod 
+
+    Make sure that there is a single default storage class with `oc get sc`. run `oc describe sts` for more information
+    
+- The operator is running, but the noobaa-core-0 is pending
+
+    Verify that there are enough resrouces. run `oc describe pod noobaa-core-0` for more information
 
 # Operator Design
 
