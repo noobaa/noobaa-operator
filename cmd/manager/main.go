@@ -9,5 +9,5 @@ import (
 )
 
 func main() {
-	cli.New().Run()
+	cli.Cmd().Execute()
 }

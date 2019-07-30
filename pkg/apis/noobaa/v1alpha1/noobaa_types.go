@@ -125,8 +125,8 @@ const (
 	// SystemPhaseCreating means the operator is creating the resources on the cluster
 	SystemPhaseCreating SystemPhase = "Creating"
 
-	// SystemPhaseWaitingToConnect means the operator is waiting to connect to the pods and services it created
-	SystemPhaseWaitingToConnect SystemPhase = "WaitingToConnect"
+	// SystemPhaseConnecting means the operator is trying to connect to the pods and services it created
+	SystemPhaseConnecting SystemPhase = "Connecting"
 
 	// SystemPhaseConfiguring means the operator is configuring the as requested
 	SystemPhaseConfiguring SystemPhase = "Configuring"
