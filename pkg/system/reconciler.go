@@ -66,7 +66,7 @@ func NewReconciler(
 	recorder record.EventRecorder,
 ) *Reconciler {
 
-	s := &Reconciler{
+	r := &Reconciler{
 		Request:      req,
 		Client:       client,
 		Scheme:       scheme,
@@ -81,63 +81,63 @@ func NewReconciler(
 		SecretOp:     util.KubeObject(bundle.File_deploy_internal_secret_operator_yaml).(*corev1.Secret),
 		SecretAdmin:  util.KubeObject(bundle.File_deploy_internal_secret_admin_yaml).(*corev1.Secret),
 	}
-	util.SecretResetStringDataFromData(s.SecretServer)
-	util.SecretResetStringDataFromData(s.SecretOp)
-	util.SecretResetStringDataFromData(s.SecretAdmin)
+	util.SecretResetStringDataFromData(r.SecretServer)
+	util.SecretResetStringDataFromData(r.SecretOp)
+	util.SecretResetStringDataFromData(r.SecretAdmin)
 
 	// Set Namespace
-	s.NooBaa.Namespace = s.Request.Namespace
-	s.CoreApp.Namespace = s.Request.Namespace
-	s.ServiceMgmt.Namespace = s.Request.Namespace
-	s.ServiceS3.Namespace = s.Request.Namespace
-	s.SecretServer.Namespace = s.Request.Namespace
-	s.SecretOp.Namespace = s.Request.Namespace
-	s.SecretAdmin.Namespace = s.Request.Namespace
+	r.NooBaa.Namespace = r.Request.Namespace
+	r.CoreApp.Namespace = r.Request.Namespace
+	r.ServiceMgmt.Namespace = r.Request.Namespace
+	r.ServiceS3.Namespace = r.Request.Namespace
+	r.SecretServer.Namespace = r.Request.Namespace
+	r.SecretOp.Namespace = r.Request.Namespace
+	r.SecretAdmin.Namespace = r.Request.Namespace
 
 	// Set Names
-	s.NooBaa.Name = s.Request.Name
-	s.CoreApp.Name = s.Request.Name + "-core"
-	s.ServiceMgmt.Name = s.Request.Name + "-mgmt"
-	s.ServiceS3.Name = "s3" // TODO: handle collision in namespace
-	s.SecretServer.Name = s.Request.Name + "-server"
-	s.SecretOp.Name = s.Request.Name + "-operator"
-	s.SecretAdmin.Name = s.Request.Name + "-admin"
+	r.NooBaa.Name = r.Request.Name
+	r.CoreApp.Name = r.Request.Name + "-core"
+	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
+	r.ServiceS3.Name = "s3" // TODO: handle collision in namespace
+	r.SecretServer.Name = r.Request.Name + "-server"
+	r.SecretOp.Name = r.Request.Name + "-operator"
+	r.SecretAdmin.Name = r.Request.Name + "-admin"
 
-	return s
+	return r
 }
 
 // Load reads the state of the kubernetes objects of the system
-func (s *Reconciler) Load() {
-	util.KubeCheck(s.NooBaa)
-	util.KubeCheck(s.CoreApp)
-	util.KubeCheck(s.ServiceMgmt)
-	util.KubeCheck(s.ServiceS3)
-	util.KubeCheck(s.SecretServer)
-	util.KubeCheck(s.SecretOp)
-	util.KubeCheck(s.SecretAdmin)
-	util.SecretResetStringDataFromData(s.SecretServer)
-	util.SecretResetStringDataFromData(s.SecretOp)
-	util.SecretResetStringDataFromData(s.SecretAdmin)
+func (r *Reconciler) Load() {
+	util.KubeCheck(r.NooBaa)
+	util.KubeCheck(r.CoreApp)
+	util.KubeCheck(r.ServiceMgmt)
+	util.KubeCheck(r.ServiceS3)
+	util.KubeCheck(r.SecretServer)
+	util.KubeCheck(r.SecretOp)
+	util.KubeCheck(r.SecretAdmin)
+	util.SecretResetStringDataFromData(r.SecretServer)
+	util.SecretResetStringDataFromData(r.SecretOp)
+	util.SecretResetStringDataFromData(r.SecretAdmin)
 }
 
 // Reconcile reads that state of the cluster for a System object,
 // and makes changes based on the state read and what is in the System.Spec.
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (s *Reconciler) Reconcile() (reconcile.Result, error) {
+func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
-	log := s.Logger.WithField("func", "Reconcile")
+	log := r.Logger.WithField("func", "Reconcile")
 	log.Infof("Start ...")
 
-	util.KubeCheck(s.NooBaa)
-	if s.NooBaa.UID == "" {
+	util.KubeCheck(r.NooBaa)
+	if r.NooBaa.UID == "" {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return reconcile.Result{}, nil
 	}
 
 	err := util.CombineErrors(
-		s.RunReconcile(),
-		s.UpdateStatus(),
+		r.RunReconcile(),
+		r.UpdateStatus(),
 	)
 	if util.IsPersistentError(err) {
 		log.Errorf("❌ Persistent Error: %s", err)
@@ -152,110 +152,110 @@ func (s *Reconciler) Reconcile() (reconcile.Result, error) {
 }
 
 // UpdateStatus updates the system status in kubernetes from the memory
-func (s *Reconciler) UpdateStatus() error {
-	log := s.Logger.WithField("func", "UpdateStatus")
+func (r *Reconciler) UpdateStatus() error {
+	log := r.Logger.WithField("func", "UpdateStatus")
 	log.Infof("Updating noobaa status")
-	s.NooBaa.Status.ObservedGeneration = s.NooBaa.Generation
-	return s.Client.Status().Update(s.Ctx, s.NooBaa)
+	r.NooBaa.Status.ObservedGeneration = r.NooBaa.Generation
+	return r.Client.Status().Update(r.Ctx, r.NooBaa)
 }
 
 // RunReconcile runs the reconcile flow and populates System.Status.
-func (s *Reconciler) RunReconcile() error {
+func (r *Reconciler) RunReconcile() error {
 
-	s.SetPhase(nbv1.SystemPhaseVerifying)
+	r.SetPhase(nbv1.SystemPhaseVerifying)
 
-	if err := s.CheckSpecImage(); err != nil {
+	if err := r.CheckSpecImage(); err != nil {
 		return err
 	}
 
-	s.SetPhase(nbv1.SystemPhaseCreating)
+	r.SetPhase(nbv1.SystemPhaseCreating)
 
-	if err := s.ReconcileSecretServer(); err != nil {
+	if err := r.ReconcileSecretServer(); err != nil {
 		return err
 	}
-	if err := s.ReconcileObject(s.CoreApp, s.SetDesiredCoreApp); err != nil {
+	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}
-	if err := s.ReconcileObject(s.ServiceMgmt, s.SetDesiredServiceMgmt); err != nil {
+	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
 		return err
 	}
-	if err := s.ReconcileObject(s.ServiceS3, s.SetDesiredServiceS3); err != nil {
-		return err
-	}
-
-	s.SetPhase(nbv1.SystemPhaseConnecting)
-
-	if err := s.Connect(); err != nil {
+	if err := r.ReconcileObject(r.ServiceS3, r.SetDesiredServiceS3); err != nil {
 		return err
 	}
 
-	s.SetPhase(nbv1.SystemPhaseConfiguring)
+	r.SetPhase(nbv1.SystemPhaseConnecting)
 
-	if err := s.ReconcileSecretOp(); err != nil {
+	if err := r.Connect(); err != nil {
 		return err
 	}
 
-	if err := s.ReconcileSecretAdmin(); err != nil {
+	r.SetPhase(nbv1.SystemPhaseConfiguring)
+
+	if err := r.ReconcileSecretOp(); err != nil {
 		return err
 	}
 
-	s.SetPhase(nbv1.SystemPhaseReady)
+	if err := r.ReconcileSecretAdmin(); err != nil {
+		return err
+	}
 
-	return s.Complete()
+	r.SetPhase(nbv1.SystemPhaseReady)
+
+	return r.Complete()
 }
 
 // ReconcileSecretServer creates a secret needed for the server pod
-func (s *Reconciler) ReconcileSecretServer() error {
-	util.KubeCheck(s.SecretServer)
-	util.SecretResetStringDataFromData(s.SecretServer)
+func (r *Reconciler) ReconcileSecretServer() error {
+	util.KubeCheck(r.SecretServer)
+	util.SecretResetStringDataFromData(r.SecretServer)
 
-	if s.SecretServer.StringData["jwt"] == "" {
-		s.SecretServer.StringData["jwt"] = util.RandomBase64(16)
+	if r.SecretServer.StringData["jwt"] == "" {
+		r.SecretServer.StringData["jwt"] = util.RandomBase64(16)
 	}
-	if s.SecretServer.StringData["server_secret"] == "" {
-		s.SecretServer.StringData["server_secret"] = util.RandomHex(4)
+	if r.SecretServer.StringData["server_secret"] == "" {
+		r.SecretServer.StringData["server_secret"] = util.RandomHex(4)
 	}
-	s.Own(s.SecretServer)
-	util.KubeCreateSkipExisting(s.SecretServer)
+	r.Own(r.SecretServer)
+	util.KubeCreateSkipExisting(r.SecretServer)
 	return nil
 }
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
-func (s *Reconciler) SetDesiredCoreApp() {
-	s.CoreApp.Spec.Template.Labels["noobaa-core"] = s.Request.Name
-	s.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = s.Request.Name
-	s.CoreApp.Spec.Template.Labels["noobaa-s3"] = s.Request.Name
-	s.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = s.Request.Name
-	s.CoreApp.Spec.ServiceName = s.ServiceMgmt.Name
+func (r *Reconciler) SetDesiredCoreApp() {
+	r.CoreApp.Spec.Template.Labels["noobaa-core"] = r.Request.Name
+	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
+	r.CoreApp.Spec.Template.Labels["noobaa-s3"] = r.Request.Name
+	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
+	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
 
-	podSpec := &s.CoreApp.Spec.Template.Spec
+	podSpec := &r.CoreApp.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa-operator" // TODO do we use the same SA?
 	for i := range podSpec.InitContainers {
 		if podSpec.InitContainers[i].Image == "NOOBAA_IMAGE" {
-			podSpec.InitContainers[i].Image = s.NooBaa.Status.ActualImage
+			podSpec.InitContainers[i].Image = r.NooBaa.Status.ActualImage
 		}
 	}
 	for i := range podSpec.Containers {
 		if podSpec.Containers[i].Image == "NOOBAA_IMAGE" {
-			podSpec.Containers[i].Image = s.NooBaa.Status.ActualImage
+			podSpec.Containers[i].Image = r.NooBaa.Status.ActualImage
 		} else if podSpec.Containers[i].Image == "MONGO_IMAGE" {
-			if s.NooBaa.Spec.MongoImage == nil {
+			if r.NooBaa.Spec.MongoImage == nil {
 				podSpec.Containers[i].Image = options.MongoImage
 			} else {
-				podSpec.Containers[i].Image = *s.NooBaa.Spec.MongoImage
+				podSpec.Containers[i].Image = *r.NooBaa.Spec.MongoImage
 			}
 		}
 	}
-	if s.NooBaa.Spec.ImagePullSecret == nil {
+	if r.NooBaa.Spec.ImagePullSecret == nil {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{}
 	} else {
 		podSpec.ImagePullSecrets =
-			[]corev1.LocalObjectReference{*s.NooBaa.Spec.ImagePullSecret}
+			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
-	for i := range s.CoreApp.Spec.VolumeClaimTemplates {
-		pvc := &s.CoreApp.Spec.VolumeClaimTemplates[i]
-		pvc.Spec.StorageClassName = s.NooBaa.Spec.StorageClassName
+	for i := range r.CoreApp.Spec.VolumeClaimTemplates {
+		pvc := &r.CoreApp.Spec.VolumeClaimTemplates[i]
+		pvc.Spec.StorageClassName = r.NooBaa.Spec.StorageClassName
 
 		// TODO we want to own the PVC's by NooBaa system but get errors on openshift:
 		//   Warning  FailedCreate  56s  statefulset-controller
@@ -265,29 +265,29 @@ func (s *Reconciler) SetDesiredCoreApp() {
 		//   cannot set blockOwnerDeletion if an ownerReference refers to a resource
 		//   you can't set finalizers on: , <nil>, ...
 
-		// s.Own(pvc)
+		// r.Own(pvc)
 	}
 }
 
 // SetDesiredServiceMgmt updates the ServiceMgmt as desired for reconciling
-func (s *Reconciler) SetDesiredServiceMgmt() {
-	s.ServiceMgmt.Spec.Selector["noobaa-mgmt"] = s.Request.Name
+func (r *Reconciler) SetDesiredServiceMgmt() {
+	r.ServiceMgmt.Spec.Selector["noobaa-mgmt"] = r.Request.Name
 }
 
 // SetDesiredServiceS3 updates the ServiceS3 as desired for reconciling
-func (s *Reconciler) SetDesiredServiceS3() {
-	s.ServiceS3.Spec.Selector["noobaa-s3"] = s.Request.Name
+func (r *Reconciler) SetDesiredServiceS3() {
+	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
 }
 
 // CheckSpecImage checks the System.Spec.Image property,
 // and sets System.Status.ActualImage
-func (s *Reconciler) CheckSpecImage() error {
+func (r *Reconciler) CheckSpecImage() error {
 
-	log := s.Logger.WithField("func", "CheckSpecImage")
+	log := r.Logger.WithField("func", "CheckSpecImage")
 
 	specImage := options.ContainerImage
-	if s.NooBaa.Spec.Image != nil {
-		specImage = *s.NooBaa.Spec.Image
+	if r.NooBaa.Spec.Image != nil {
+		specImage = *r.NooBaa.Spec.Image
 	}
 
 	// Parse the image spec as a docker image url
@@ -297,11 +297,11 @@ func (s *Reconciler) CheckSpecImage() error {
 	// since we don't need to retry until the spec is updated.
 	if err != nil {
 		log.Errorf("Invalid image %s: %s", specImage, err)
-		if s.Recorder != nil {
-			s.Recorder.Eventf(s.NooBaa, corev1.EventTypeWarning,
+		if r.Recorder != nil {
+			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning,
 				"BadImage", `Invalid image requested "%s"`, specImage)
 		}
-		s.SetPhase(nbv1.SystemPhaseRejected)
+		r.SetPhase(nbv1.SystemPhaseRejected)
 		return util.NewPersistentError(err)
 	}
 
@@ -330,38 +330,38 @@ func (s *Reconciler) CheckSpecImage() error {
 			if !ContainerImageConstraint.Check(version) {
 				log.Errorf("Unsupported image version \"%s\" for contraints \"%s\"",
 					imageRef.String(), ContainerImageConstraint.String())
-				if s.Recorder != nil {
-					s.Recorder.Eventf(s.NooBaa, corev1.EventTypeWarning,
+				if r.Recorder != nil {
+					r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning,
 						"BadImage", `Unsupported image version requested "%s" not matching constraints "%s"`,
 						imageRef, ContainerImageConstraint)
 				}
-				s.SetPhase(nbv1.SystemPhaseRejected)
+				r.SetPhase(nbv1.SystemPhaseRejected)
 				return util.NewPersistentError(fmt.Errorf(`Unsupported image version "%+v"`, imageRef))
 			}
 		} else {
 			log.Infof("Using custom image \"%s\" contraints \"%s\"", imageRef.String(), ContainerImageConstraint.String())
-			if s.Recorder != nil {
-				s.Recorder.Eventf(s.NooBaa, corev1.EventTypeNormal,
+			if r.Recorder != nil {
+				r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
 					"CustomImage", `Custom image version requested "%s", I hope you know what you're doing ...`, imageRef)
 			}
 		}
 	} else {
 		log.Infof("Using custom image name \"%s\" the default is \"%s\"", imageRef.String(), options.ContainerImageName)
-		if s.Recorder != nil {
-			s.Recorder.Eventf(s.NooBaa, corev1.EventTypeNormal,
+		if r.Recorder != nil {
+			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
 				"CustomImage", `Custom image requested "%s", I hope you know what you're doing ...`, imageRef)
 		}
 	}
 
 	// Set ActualImage to be updated in the noobaa status
-	s.NooBaa.Status.ActualImage = specImage
+	r.NooBaa.Status.ActualImage = specImage
 	return nil
 }
 
 // CheckServiceStatus populates the status of a service by detecting all of its addresses
-func (s *Reconciler) CheckServiceStatus(srv *corev1.Service, status *nbv1.ServiceStatus, portName string) {
+func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, status *nbv1.ServiceStatus, portName string) {
 
-	log := s.Logger.WithField("func", "CheckServiceStatus").WithField("service", srv.Name)
+	log := r.Logger.WithField("func", "CheckServiceStatus").WithField("service", srv.Name)
 	*status = nbv1.ServiceStatus{}
 	servicePort := nb.FindPortByName(srv, portName)
 	proto := "http"
@@ -373,10 +373,10 @@ func (s *Reconciler) CheckServiceStatus(srv *corev1.Service, status *nbv1.Servic
 	// Pod IP:Port
 	pods := corev1.PodList{}
 	podsListOptions := &client.ListOptions{
-		Namespace:     s.Request.Namespace,
+		Namespace:     r.Request.Namespace,
 		LabelSelector: labels.SelectorFromSet(srv.Spec.Selector),
 	}
-	err := s.Client.List(s.Ctx, podsListOptions, &pods)
+	err := r.Client.List(r.Ctx, podsListOptions, &pods)
 	if err == nil {
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == corev1.PodRunning {
@@ -440,107 +440,107 @@ func (s *Reconciler) CheckServiceStatus(srv *corev1.Service, status *nbv1.Servic
 }
 
 // Connect initializes the noobaa client for making calls to the server.
-func (s *Reconciler) Connect() error {
+func (r *Reconciler) Connect() error {
 
-	s.CheckServiceStatus(s.ServiceMgmt, &s.NooBaa.Status.Services.ServiceMgmt, "mgmt-https")
-	s.CheckServiceStatus(s.ServiceS3, &s.NooBaa.Status.Services.ServiceS3, "s3-https")
+	r.CheckServiceStatus(r.ServiceMgmt, &r.NooBaa.Status.Services.ServiceMgmt, "mgmt-https")
+	r.CheckServiceStatus(r.ServiceS3, &r.NooBaa.Status.Services.ServiceS3, "s3-https")
 
-	if len(s.NooBaa.Status.Services.ServiceMgmt.NodePorts) == 0 {
+	if len(r.NooBaa.Status.Services.ServiceMgmt.NodePorts) == 0 {
 		return fmt.Errorf("core pod port not ready yet")
 	}
 
-	nodePort := s.NooBaa.Status.Services.ServiceMgmt.NodePorts[0]
+	nodePort := r.NooBaa.Status.Services.ServiceMgmt.NodePorts[0]
 	nodeIP := nodePort[strings.Index(nodePort, "://")+3 : strings.LastIndex(nodePort, ":")]
 
-	s.NBClient = nb.NewClient(&nb.APIRouterNodePort{
-		ServiceMgmt: s.ServiceMgmt,
+	r.NBClient = nb.NewClient(&nb.APIRouterNodePort{
+		ServiceMgmt: r.ServiceMgmt,
 		NodeIP:      nodeIP,
 	})
 
-	s.NBClient.SetAuthToken(s.SecretOp.StringData["auth_token"])
+	r.NBClient.SetAuthToken(r.SecretOp.StringData["auth_token"])
 
 	// Check that the server is indeed serving the API already
 	// we use the read_auth call here because it's an API that always answers
 	// even when auth_token is empty.
-	_, err := s.NBClient.ReadAuthAPI()
+	_, err := r.NBClient.ReadAuthAPI()
 	return err
 
-	// if len(s.NooBaa.Status.Services.ServiceMgmt.PodPorts) != 0 {
-	// 	podPort := s.NooBaa.Status.Services.ServiceMgmt.PodPorts[0]
+	// if len(r.NooBaa.Status.Services.ServiceMgmt.PodPorts) != 0 {
+	// 	podPort := r.NooBaa.Status.Services.ServiceMgmt.PodPorts[0]
 	// 	podIP := podPort[strings.Index(podPort, "://")+3 : strings.LastIndex(podPort, ":")]
-	// 	s.NBClient = nb.NewClient(&nb.APIRouterPodPort{
-	// 		ServiceMgmt: s.ServiceMgmt,
+	// 	r.NBClient = nb.NewClient(&nb.APIRouterPodPort{
+	// 		ServiceMgmt: r.ServiceMgmt,
 	// 		PodIP:       podIP,
 	// 	})
-	// 	s.NBClient.SetAuthToken(s.SecretOp.StringData["auth_token"])
+	// 	r.NBClient.SetAuthToken(r.SecretOp.StringData["auth_token"])
 	// 	return nil
 	// }
 
 }
 
 // ReconcileSecretOp creates a new system in the noobaa server if not created yet.
-func (s *Reconciler) ReconcileSecretOp() error {
+func (r *Reconciler) ReconcileSecretOp() error {
 
-	// log := s.Logger.WithName("ReconcileSecretOp")
-	util.KubeCheck(s.SecretOp)
-	util.SecretResetStringDataFromData(s.SecretOp)
+	// log := r.Logger.WithName("ReconcileSecretOp")
+	util.KubeCheck(r.SecretOp)
+	util.SecretResetStringDataFromData(r.SecretOp)
 
-	if s.SecretOp.StringData["auth_token"] != "" {
+	if r.SecretOp.StringData["auth_token"] != "" {
 		return nil
 	}
 
-	if s.SecretOp.StringData["email"] == "" {
-		s.SecretOp.StringData["email"] = options.AdminAccountEmail
+	if r.SecretOp.StringData["email"] == "" {
+		r.SecretOp.StringData["email"] = options.AdminAccountEmail
 	}
 
-	if s.SecretOp.StringData["password"] == "" {
-		s.SecretOp.StringData["password"] = util.RandomBase64(16)
-		s.Own(s.SecretOp)
-		err := s.Client.Create(s.Ctx, s.SecretOp)
+	if r.SecretOp.StringData["password"] == "" {
+		r.SecretOp.StringData["password"] = util.RandomBase64(16)
+		r.Own(r.SecretOp)
+		err := r.Client.Create(r.Ctx, r.SecretOp)
 		if err != nil {
 			return err
 		}
 	}
 
-	res, err := s.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-		System:   s.Request.Name,
+	res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+		System:   r.Request.Name,
 		Role:     "admin",
-		Email:    s.SecretOp.StringData["email"],
-		Password: s.SecretOp.StringData["password"],
+		Email:    r.SecretOp.StringData["email"],
+		Password: r.SecretOp.StringData["password"],
 	})
 	if err == nil {
 		// TODO this recovery flow does not allow us to get OperatorToken like CreateSystem
-		s.SecretOp.StringData["auth_token"] = res.Token
+		r.SecretOp.StringData["auth_token"] = res.Token
 	} else {
-		res, err := s.NBClient.CreateSystemAPI(nb.CreateSystemParams{
-			Name:     s.Request.Name,
-			Email:    s.SecretOp.StringData["email"],
-			Password: s.SecretOp.StringData["password"],
+		res, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
+			Name:     r.Request.Name,
+			Email:    r.SecretOp.StringData["email"],
+			Password: r.SecretOp.StringData["password"],
 		})
 		if err != nil {
 			return err
 		}
 		// TODO use res.OperatorToken after https://github.com/noobaa/noobaa-core/issues/5635
-		s.SecretOp.StringData["auth_token"] = res.Token
+		r.SecretOp.StringData["auth_token"] = res.Token
 	}
-	s.NBClient.SetAuthToken(s.SecretOp.StringData["auth_token"])
-	return s.Client.Update(s.Ctx, s.SecretOp)
+	r.NBClient.SetAuthToken(r.SecretOp.StringData["auth_token"])
+	return r.Client.Update(r.Ctx, r.SecretOp)
 }
 
 // ReconcileSecretAdmin creates the admin secret
-func (s *Reconciler) ReconcileSecretAdmin() error {
+func (r *Reconciler) ReconcileSecretAdmin() error {
 
-	log := s.Logger.WithField("func", "ReconcileSecretAdmin")
+	log := r.Logger.WithField("func", "ReconcileSecretAdmin")
 
-	util.KubeCheck(s.SecretAdmin)
-	util.SecretResetStringDataFromData(s.SecretAdmin)
+	util.KubeCheck(r.SecretAdmin)
+	util.SecretResetStringDataFromData(r.SecretAdmin)
 
-	ns := s.Request.Namespace
-	name := s.Request.Name
+	ns := r.Request.Namespace
+	name := r.Request.Name
 	secretAdminName := name + "-admin"
 
-	s.SecretAdmin = &corev1.Secret{}
-	err := s.GetObject(secretAdminName, s.SecretAdmin)
+	r.SecretAdmin = &corev1.Secret{}
+	err := r.GetObject(secretAdminName, r.SecretAdmin)
 	if err == nil {
 		return nil
 	}
@@ -549,7 +549,7 @@ func (s *Reconciler) ReconcileSecretAdmin() error {
 		return err
 	}
 
-	s.SecretAdmin = &corev1.Secret{
+	r.SecretAdmin = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      secretAdminName,
@@ -559,26 +559,26 @@ func (s *Reconciler) ReconcileSecretAdmin() error {
 		StringData: map[string]string{
 			"system":   name,
 			"email":    options.AdminAccountEmail,
-			"password": string(s.SecretOp.Data["password"]),
+			"password": string(r.SecretOp.Data["password"]),
 		},
 	}
 
 	log.Infof("listing accounts")
-	res, err := s.NBClient.ListAccountsAPI()
+	res, err := r.NBClient.ListAccountsAPI()
 	if err != nil {
 		return err
 	}
 	for _, account := range res.Accounts {
 		if account.Email == options.AdminAccountEmail {
 			if len(account.AccessKeys) > 0 {
-				s.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"] = account.AccessKeys[0].AccessKey
-				s.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"] = account.AccessKeys[0].SecretKey
+				r.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"] = account.AccessKeys[0].AccessKey
+				r.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"] = account.AccessKeys[0].SecretKey
 			}
 		}
 	}
 
-	s.Own(s.SecretAdmin)
-	return s.Client.Create(s.Ctx, s.SecretAdmin)
+	r.Own(r.SecretAdmin)
+	return r.Client.Create(r.Ctx, r.SecretAdmin)
 }
 
 var readmeTemplate = template.Must(template.New("NooBaaSystem.Status.Readme").Parse(`
@@ -610,17 +610,17 @@ var readmeTemplate = template.Must(template.New("NooBaaSystem.Status.Readme").Pa
 `))
 
 // SetPhase updates the status phase and conditions
-func (s *Reconciler) SetPhase(phase nbv1.SystemPhase) {
-	s.Logger.Infof("SetPhase: %s", phase)
-	s.NooBaa.Status.Phase = phase
-	if s.NooBaa.Status.Conditions == nil || len(s.NooBaa.Status.Conditions) == 0 {
-		s.NooBaa.Status.Conditions = []nbv1.SystemCondition{{
+func (r *Reconciler) SetPhase(phase nbv1.SystemPhase) {
+	r.Logger.Infof("SetPhase: %s", phase)
+	r.NooBaa.Status.Phase = phase
+	if r.NooBaa.Status.Conditions == nil || len(r.NooBaa.Status.Conditions) == 0 {
+		r.NooBaa.Status.Conditions = []nbv1.SystemCondition{{
 			Type:    nbv1.ConditionTypePhase,
 			Reason:  "ReconcileSetPhase",
 			Message: "Reconcile reached phase",
 		}}
 	}
-	phaseCond := &s.NooBaa.Status.Conditions[0]
+	phaseCond := &r.NooBaa.Status.Conditions[0]
 	newPhaseStatus := nbv1.ConditionStatus(phase)
 	currstatus := phaseCond.Status
 	if currstatus != newPhaseStatus {
@@ -631,45 +631,45 @@ func (s *Reconciler) SetPhase(phase nbv1.SystemPhase) {
 }
 
 // Complete populates the noobaa status at the end of reconcile.
-func (s *Reconciler) Complete() error {
+func (r *Reconciler) Complete() error {
 
 	var readmeBuffer bytes.Buffer
-	err := readmeTemplate.Execute(&readmeBuffer, s)
+	err := readmeTemplate.Execute(&readmeBuffer, r)
 	if err != nil {
 		return err
 	}
-	s.NooBaa.Status.Readme = readmeBuffer.String()
-	s.NooBaa.Status.Accounts.Admin.SecretRef.Name = s.SecretAdmin.Name
-	s.NooBaa.Status.Accounts.Admin.SecretRef.Namespace = s.SecretAdmin.Namespace
+	r.NooBaa.Status.Readme = readmeBuffer.String()
+	r.NooBaa.Status.Accounts.Admin.SecretRef.Name = r.SecretAdmin.Name
+	r.NooBaa.Status.Accounts.Admin.SecretRef.Namespace = r.SecretAdmin.Namespace
 	return nil
 }
 
 // Own sets the object owner references to the noobaa system
-func (s *Reconciler) Own(obj metav1.Object) {
-	util.Panic(controllerutil.SetControllerReference(s.NooBaa, obj, s.Scheme))
+func (r *Reconciler) Own(obj metav1.Object) {
+	util.Panic(controllerutil.SetControllerReference(r.NooBaa, obj, r.Scheme))
 }
 
 // GetObject gets an object by name from the request namespace.
-func (s *Reconciler) GetObject(name string, obj runtime.Object) error {
-	return s.Client.Get(s.Ctx, client.ObjectKey{Namespace: s.Request.Namespace, Name: name}, obj)
+func (r *Reconciler) GetObject(name string, obj runtime.Object) error {
+	return r.Client.Get(r.Ctx, client.ObjectKey{Namespace: r.Request.Namespace, Name: name}, obj)
 }
 
 // ReconcileObject is a generic call to reconcile a kubernetes object
 // desiredFunc can be passed to modify the object before create/update.
 // Currently we ignore enforcing a desired state, but it might be needed on upgrades.
-func (s *Reconciler) ReconcileObject(obj runtime.Object, desiredFunc func()) error {
+func (r *Reconciler) ReconcileObject(obj runtime.Object, desiredFunc func()) error {
 
 	kind := obj.GetObjectKind().GroupVersionKind().Kind
 	objMeta, _ := meta.Accessor(obj)
-	log := s.Logger.
+	log := r.Logger.
 		WithField("func", "ReconcileObject").
 		WithField("kind", kind).
 		WithField("name", objMeta.GetName())
 
-	s.Own(objMeta)
+	r.Own(objMeta)
 
 	op, err := controllerutil.CreateOrUpdate(
-		s.Ctx, s.Client, obj.(runtime.Object),
+		r.Ctx, r.Client, obj.(runtime.Object),
 		func(obj runtime.Object) error {
 			if desiredFunc != nil {
 				desiredFunc()

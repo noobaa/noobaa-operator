@@ -40,7 +40,8 @@ func NewReconciler(
 	scheme *runtime.Scheme,
 	recorder record.EventRecorder,
 ) *Reconciler {
-	s := &Reconciler{
+
+	r := &Reconciler{
 		Request:  req,
 		Client:   client,
 		Scheme:   scheme,
@@ -49,17 +50,17 @@ func NewReconciler(
 		Logger:   logrus.WithFields(logrus.Fields{"ns": req.Namespace, "sys": req.Name}),
 		NooBaa:   util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 	}
-	util.SecretResetStringDataFromData(s.Secret)
+	util.SecretResetStringDataFromData(r.Secret)
 
 	// Set Namespace
-	s.NooBaa.Namespace = s.Request.Namespace
-	s.BackingStore.Namespace = s.Request.Namespace
-	s.Secret.Namespace = s.Request.Namespace
+	r.NooBaa.Namespace = r.Request.Namespace
+	r.BackingStore.Namespace = r.Request.Namespace
+	r.Secret.Namespace = r.Request.Namespace
 
 	// Set Names
-	s.NooBaa.Name = s.Request.Name
-	s.BackingStore.Name = s.Request.Name + "-core"
-	s.Secret.Name = s.Request.Name + "-mgmt"
+	r.NooBaa.Name = r.Request.Name
+	r.BackingStore.Name = r.Request.Name + "-core"
+	r.Secret.Name = r.Request.Name + "-mgmt"
 
 	return s
 }
