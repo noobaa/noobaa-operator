@@ -111,10 +111,39 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreStatus(ref common.ReferenceCall
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "BackingStoreStatus defines the observed state of BackingStore",
-				Properties:  map[string]spec.Schema{},
+				Properties: map[string]spec.Schema{
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase is a simple, high-level summary of where the System is in its lifecycle",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"conditions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-patch-merge-key": "type",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Current service state of the noobaa system. Based on: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemCondition"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"phase"},
 			},
 		},
-		Dependencies: []string{},
+		Dependencies: []string{
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.SystemCondition"},
 	}
 }
 

@@ -77,9 +77,9 @@ func NewReconciler(
 		CoreApp:      util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
 		ServiceMgmt:  util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
 		ServiceS3:    util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
-		SecretServer: util.KubeObject(bundle.File_deploy_internal_secret_server_yaml).(*corev1.Secret),
-		SecretOp:     util.KubeObject(bundle.File_deploy_internal_secret_operator_yaml).(*corev1.Secret),
-		SecretAdmin:  util.KubeObject(bundle.File_deploy_internal_secret_admin_yaml).(*corev1.Secret),
+		SecretServer: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretOp:     util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretAdmin:  util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 	}
 	util.SecretResetStringDataFromData(r.SecretServer)
 	util.SecretResetStringDataFromData(r.SecretOp)

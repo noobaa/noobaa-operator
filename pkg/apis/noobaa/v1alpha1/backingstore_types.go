@@ -16,6 +16,10 @@ func init() {
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type",description="Type"
+// +kubebuilder:printcolumn:name="Bucket-Name",type="string",JSONPath=".spec.bucketName",description="Bucket Name"
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type BackingStore struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -96,4 +100,38 @@ const (
 // BackingStoreStatus defines the observed state of BackingStore
 // +k8s:openapi-gen=true
 type BackingStoreStatus struct {
+
+	// Phase is a simple, high-level summary of where the System is in its lifecycle
+	Phase BackingStorePhase `json:"phase"`
+
+	// Current service state of the noobaa system.
+	// Based on: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
+	// +optional
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	Conditions []SystemCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }
+
+// BackingStorePhase is a string enum type for system phases
+type BackingStorePhase string
+
+// These are the valid phases:
+const (
+
+	// BackingStorePhaseRejected means the spec has been rejected by the operator,
+	// this is most likely due to an incompatible configuration.
+	// Describe the noobaa system to see events.
+	BackingStorePhaseRejected BackingStorePhase = "Rejected"
+
+	// BackingStorePhaseVerifying means the operator is verifying the spec
+	BackingStorePhaseVerifying BackingStorePhase = "Verifying"
+
+	// BackingStorePhaseCreating means the operator is creating the resources on the cluster
+	BackingStorePhaseCreating BackingStorePhase = "Creating"
+
+	// BackingStorePhaseConnecting means the operator is trying to connect to the pods and services it created
+	BackingStorePhaseConnecting BackingStorePhase = "Connecting"
+
+	// BackingStorePhaseReady means the noobaa system has been created and ready to serve.
+	BackingStorePhaseReady BackingStorePhase = "Ready"
+)

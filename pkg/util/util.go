@@ -150,7 +150,7 @@ func KubeCreateSkipExisting(obj runtime.Object) bool {
 		if errors.IsNotFound(err) {
 			logrus.Printf("❌ Namespace Missing: %s \"%s\": kubectl create ns %s\n",
 				gvk.Kind, objKey.Name, objKey.Namespace)
-			return true
+			return false
 		}
 	}
 	if errors.IsConflict(err) {
@@ -172,7 +172,7 @@ func KubeDelete(obj runtime.Object) bool {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	err := klient.Delete(ctx, obj)
 	if err == nil {
-		logrus.Printf("❌ Deleted: %s \"%s\"\n", gvk.Kind, objKey.Name)
+		logrus.Printf("🗑️  Deleted: %s \"%s\"\n", gvk.Kind, objKey.Name)
 		return true
 	}
 	if errors.IsConflict(err) {

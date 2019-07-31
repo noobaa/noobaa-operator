@@ -33,7 +33,7 @@ type Reconciler struct {
 	Secret       *corev1.Secret
 }
 
-// NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
+// NewReconciler initializes a reconciler to be used for loading or reconciling a backing store
 func NewReconciler(
 	req types.NamespacedName,
 	client client.Client,
@@ -62,7 +62,7 @@ func NewReconciler(
 	r.BackingStore.Name = r.Request.Name + "-core"
 	r.Secret.Name = r.Request.Name + "-mgmt"
 
-	return s
+	return r
 }
 
 // Reconcile reads that state of the cluster for a System object,

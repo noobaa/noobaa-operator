@@ -2,6 +2,8 @@ apiVersion: noobaa.io/v1alpha1
 kind: BucketClass
 metadata:
   name: default-class
+  labels:
+    app: noobaa
 spec:
   placementPolicy:
     tiers:

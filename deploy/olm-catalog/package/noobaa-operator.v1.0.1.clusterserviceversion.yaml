@@ -25,14 +25,13 @@ metadata:
           "apiVersion": "noobaa.io/v1alpha1",
           "kind": "BackingStore",
           "metadata": {
-            "name": "default-store",
+            "name": "aws1",
             "namespace": "my-noobaa-operator"
           },
           "spec": {
             "type": "aws-s3",
-            "region": "us-east-1",
-            "bucketName": "noobaa1-aws-backing-store",
-            "credentialsSecretName": "aws-credentials-secret"
+            "bucketName": "noobaa-aws1",
+            "secretName": "backing-store-secret-aws1"
           }
         },
         {

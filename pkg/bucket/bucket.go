@@ -28,7 +28,7 @@ func Cmd() *cobra.Command {
 // CmdCreate creates a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create <bucket-name>",
 		Short: "Create a NooBaa bucket",
 		Run:   RunCreate,
 	}
@@ -38,7 +38,7 @@ func CmdCreate() *cobra.Command {
 // CmdDelete creates a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete",
+		Use:   "delete <bucket-name>",
 		Short: "Delete a NooBaa bucket",
 		Run:   RunDelete,
 	}
@@ -58,8 +58,8 @@ func CmdList() *cobra.Command {
 // RunCreate runs a CLI command
 func RunCreate(cmd *cobra.Command, args []string) {
 	log := util.Logger()
-	if len(args) < 1 || args[0] == "" {
-		log.Fatalf("Expected 1st argument: bucket-name")
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`Missing expected arguments: <bucket-name> %s`, cmd.UsageString())
 	}
 	bucketName := args[0]
 	nbClient := system.GetNBClient()
@@ -70,8 +70,8 @@ func RunCreate(cmd *cobra.Command, args []string) {
 // RunDelete runs a CLI command
 func RunDelete(cmd *cobra.Command, args []string) {
 	log := util.Logger()
-	if len(args) < 1 || args[0] == "" {
-		log.Fatalf("Expected 1st argument: bucket-name")
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`Missing expected arguments: <bucket-name> %s`, cmd.UsageString())
 	}
 	bucketName := args[0]
 	nbClient := system.GetNBClient()

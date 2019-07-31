@@ -1,10 +1,10 @@
 apiVersion: noobaa.io/v1alpha1
 kind: BackingStore
 metadata:
-  name: default-store
+  name: aws1
+  labels:
+    app: noobaa
 spec:
   type: aws-s3
-  bucketName: noobaa1-aws-backing-store
-  secretName: aws-credentials-secret
-  s3Options:
-    region: us-east-1
+  bucketName: noobaa-aws1
+  secretName: backing-store-secret-aws1
