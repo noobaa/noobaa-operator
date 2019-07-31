@@ -28,6 +28,8 @@ spec:
     kind: NooBaa
     listKind: NooBaaList
     plural: noobaas
+    shortNames:
+    - nb
     singular: noobaa
   scope: Namespaced
   subresources:

@@ -16,9 +16,11 @@ import (
 
 // Crds is the
 type Crds struct {
-	NooBaa       *apiextv1beta1.CustomResourceDefinition
-	BackingStore *apiextv1beta1.CustomResourceDefinition
-	BucketClass  *apiextv1beta1.CustomResourceDefinition
+	NooBaa            *apiextv1beta1.CustomResourceDefinition
+	BackingStore      *apiextv1beta1.CustomResourceDefinition
+	BucketClass       *apiextv1beta1.CustomResourceDefinition
+	ObjectBucket      *apiextv1beta1.CustomResourceDefinition
+	ObjectBucketClaim *apiextv1beta1.CustomResourceDefinition
 }
 
 // CrdsCreate runs a CLI command
@@ -27,6 +29,8 @@ func (cli *CLI) CrdsCreate() {
 	util.KubeCreateSkipExisting(cli.Client, crds.NooBaa)
 	util.KubeCreateSkipExisting(cli.Client, crds.BackingStore)
 	util.KubeCreateSkipExisting(cli.Client, crds.BucketClass)
+	util.KubeCreateSkipExisting(cli.Client, crds.ObjectBucket)
+	util.KubeCreateSkipExisting(cli.Client, crds.ObjectBucketClaim)
 }
 
 // CrdsDelete runs a CLI command
@@ -35,6 +39,8 @@ func (cli *CLI) CrdsDelete() {
 	util.KubeDelete(cli.Client, crds.NooBaa)
 	util.KubeDelete(cli.Client, crds.BackingStore)
 	util.KubeDelete(cli.Client, crds.BucketClass)
+	util.KubeDelete(cli.Client, crds.ObjectBucket)
+	util.KubeDelete(cli.Client, crds.ObjectBucketClaim)
 }
 
 // CrdsStatus runs a CLI command
@@ -43,6 +49,8 @@ func (cli *CLI) CrdsStatus() {
 	util.KubeCheck(cli.Client, crds.NooBaa)
 	util.KubeCheck(cli.Client, crds.BackingStore)
 	util.KubeCheck(cli.Client, crds.BucketClass)
+	util.KubeCheck(cli.Client, crds.ObjectBucket)
+	util.KubeCheck(cli.Client, crds.ObjectBucketClaim)
 }
 
 // CrdsYaml dumps a combined yaml of all the CRDs from the bundled yamls
@@ -54,6 +62,10 @@ func (cli *CLI) CrdsYaml() {
 	p.PrintObj(crds.BackingStore, os.Stdout)
 	fmt.Println("---")
 	p.PrintObj(crds.BucketClass, os.Stdout)
+	fmt.Println("---")
+	p.PrintObj(crds.ObjectBucket, os.Stdout)
+	fmt.Println("---")
+	p.PrintObj(crds.ObjectBucketClaim, os.Stdout)
 }
 
 // LoadCrds loads the CRDs structures from the bundled yamls
@@ -65,6 +77,10 @@ func (cli *CLI) LoadCrds() *Crds {
 	crds.BackingStore = o.(*apiextv1beta1.CustomResourceDefinition)
 	o = util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml)
 	crds.BucketClass = o.(*apiextv1beta1.CustomResourceDefinition)
+	o = util.KubeObject(bundle.File_deploy_manual_crds_ob_v1alpha1_crd_yaml)
+	crds.ObjectBucket = o.(*apiextv1beta1.CustomResourceDefinition)
+	o = util.KubeObject(bundle.File_deploy_manual_crds_obc_v1alpha1_crd_yaml)
+	crds.ObjectBucketClaim = o.(*apiextv1beta1.CustomResourceDefinition)
 	return crds
 }
 

@@ -14,8 +14,20 @@ type Client interface {
 	CreateAuthAPI(CreateAuthParams) (CreateAuthReply, error)
 	CreateSystemAPI(CreateSystemParams) (CreateSystemReply, error)
 	CreateBucketAPI(CreateBucketParams) (CreateBucketReply, error)
+	CreateAccountAPI(CreateAccountParams) (CreateAccountReply, error)
 
 	DeleteBucketAPI(DeleteBucketParams) (DeleteBucketReply, error)
+	DeleteAccountAPI(DeleteAccountParams) (DeleteAccountReply, error)
+}
+
+//////////////////
+// COMMON TYPES //
+//////////////////
+
+// S3AccessKeys is a struct holding S3 access and secret keys
+type S3AccessKeys struct {
+	AccessKey string `json:"access_key"`
+	SecretKey string `json:"secret_key"`
 }
 
 //////////
@@ -56,12 +68,9 @@ func (c *RPCClient) ReadAuthAPI() (ReadAuthReply, error) {
 // ListAccountsReply is the reply to account_api.list_accounts()
 type ListAccountsReply struct {
 	Accounts []struct {
-		Name       string `json:"name"`
-		Email      string `json:"email"`
-		AccessKeys []struct {
-			AccessKey string `json:"access_key"`
-			SecretKey string `json:"secret_key"`
-		} `json:"access_keys"`
+		Name       string         `json:"name"`
+		Email      string         `json:"email"`
+		AccessKeys []S3AccessKeys `json:"access_keys"`
 	} `json:"accounts"`
 }
 
@@ -165,6 +174,39 @@ func (c *RPCClient) CreateBucketAPI(params CreateBucketParams) (CreateBucketRepl
 	return res.Reply, err
 }
 
+// AccountAllowedBuckets is part of CreateAccountParams
+type AccountAllowedBuckets struct {
+	FullPermission bool     `json:"full_permission"`
+	PermissionList []string `json:"permission_list"`
+}
+
+// CreateAccountParams is the params of account_api.create_account()
+type CreateAccountParams struct {
+	Name              string                `json:"name"`
+	Email             string                `json:"email"`
+	HasLogin          bool                  `json:"has_login"`
+	S3Access          bool                  `json:"s3_access"`
+	AllowBucketCreate bool                  `json:"allow_bucket_creation"`
+	AllowedBuckets    AccountAllowedBuckets `json:"allowed_buckets"`
+}
+
+// CreateAccountReply is the Reply of account_apo.create_account()
+type CreateAccountReply struct {
+	Token      string         `json:"token"`
+	AccessKeys []S3AccessKeys `json:"access_keys"`
+}
+
+// CreateAccountAPI calls account_api.create_account
+func (c *RPCClient) CreateAccountAPI(params CreateAccountParams) (CreateAccountReply, error) {
+	req := RPCRequest{API: "account_api", Method: "create_account", Params: params}
+	res := struct {
+		RPCResponse `json:",inline"`
+		Reply       CreateAccountReply `json:"reply"`
+	}{}
+	err := c.Call(req, &res)
+	return res.Reply, err
+}
+
 ////////////
 // DELETE //
 ////////////
@@ -184,6 +226,26 @@ func (c *RPCClient) DeleteBucketAPI(params DeleteBucketParams) (DeleteBucketRepl
 	res := struct {
 		RPCResponse `json:",inline"`
 		Reply       DeleteBucketReply `json:"reply"`
+	}{}
+	err := c.Call(req, &res)
+	return res.Reply, err
+}
+
+// DeleteAccountParams is the params of account_api.delete_account()
+type DeleteAccountParams struct {
+	Email string `json:"email"`
+}
+
+// DeleteAccountReply is the reply of account_api.delete_account()
+type DeleteAccountReply struct {
+}
+
+// DeleteAccountAPI calls account_api.delete_account()
+func (c *RPCClient) DeleteAccountAPI(params DeleteAccountParams) (DeleteAccountReply, error) {
+	req := RPCRequest{API: "account_api", Method: "delete_account", Params: params}
+	res := struct {
+		RPCResponse `json:",inline"`
+		Reply       DeleteAccountReply `json:"reply"`
 	}{}
 	err := c.Call(req, &res)
 	return res.Reply, err
