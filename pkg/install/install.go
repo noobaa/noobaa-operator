@@ -25,6 +25,7 @@ func CmdUninstall() *cobra.Command {
 		Short: "Uninstall the operator and delete the system",
 		Run:   RunUninstall,
 	}
+	cmd.Flags().Bool("crd", false, "Enable deletion of CRD's")
 	return cmd
 }
 
@@ -51,8 +52,9 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	log.Printf("System Create:")
 	system.RunCreate(cmd, args)
 	log.Printf("")
-	system.WaitReady()
-	RunStatus(cmd, args)
+	if system.WaitReady() {
+		RunStatus(cmd, args)
+	}
 }
 
 func RunUninstall(cmd *cobra.Command, args []string) {
@@ -66,9 +68,15 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	log.Printf("Operator Delete:")
 	operator.RunUninstall(cmd, args)
 	log.Printf("")
-	log.Printf("CRD - Leaving Untouched - Status:")
-	log.Printf("(use \"noobaa crd delete\" to force deletion)")
-	crd.RunStatus(cmd, args)
+	crdDelete, _ := cmd.Flags().GetBool("crd")
+	if crdDelete {
+		log.Printf("CRD Delete:")
+		crd.RunDelete(cmd, args)
+	} else {
+		log.Printf("CRD Delete: currently disabled (enable with \"--crd\")")
+		log.Printf("CRD Status:")
+		crd.RunStatus(cmd, args)
+	}
 }
 
 func RunStatus(cmd *cobra.Command, args []string) {

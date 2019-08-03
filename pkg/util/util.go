@@ -7,7 +7,8 @@ import (
 	"encoding/hex"
 	"strings"
 
-	"github.com/noobaa/noobaa-operator/pkg/apis"
+	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
+	nbapis "github.com/noobaa/noobaa-operator/pkg/apis"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -24,14 +25,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-var ctx = context.TODO()
-var lazyConfig *rest.Config
-var lazyRest *rest.RESTClient
-var lazyClient client.Client
+var (
+	ctx        = context.TODO()
+	log        = logrus.WithContext(ctx)
+	lazyConfig *rest.Config
+	lazyRest   *rest.RESTClient
+	lazyClient client.Client
+)
 
 func init() {
 	Panic(apiextv1beta1.AddToScheme(scheme.Scheme))
-	Panic(apis.AddToScheme(scheme.Scheme))
+	Panic(nbapis.AddToScheme(scheme.Scheme))
+	Panic(obv1.AddToScheme(scheme.Scheme))
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)
@@ -68,6 +73,7 @@ func KubeClient() client.Client {
 				if g.Name == "" ||
 					g.Name == "apps" ||
 					g.Name == "noobaa.io" ||
+					g.Name == "objectbucket.io" ||
 					g.Name == "operator.openshift.io" ||
 					g.Name == "cloudcredential.openshift.io" ||
 					strings.HasSuffix(g.Name, ".k8s.io") {
@@ -106,19 +112,23 @@ func KubeApply(obj runtime.Object) bool {
 	if err == nil {
 		err = klient.Update(ctx, obj)
 		if err == nil {
-			logrus.Printf("✅ Updated: %s \"%s\"\n", gvk.Kind, objKey.Name)
+			log.Printf("✅ Updated: %s %q\n", gvk.Kind, objKey.Name)
 			return false
 		}
+	}
+	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+		log.Printf("❌ CRD Missing: %s %q\n", gvk.Kind, objKey.Name)
+		return false
 	}
 	if errors.IsNotFound(err) {
 		err = klient.Create(ctx, obj)
 		if err == nil {
-			logrus.Printf("✅ Created: %s \"%s\"\n", gvk.Kind, objKey.Name)
+			log.Printf("✅ Created: %s %q\n", gvk.Kind, objKey.Name)
 			return true
 		}
 	}
 	if errors.IsConflict(err) {
-		logrus.Printf("❌ Conflict: %s \"%s\": %s\n", gvk.Kind, objKey.Name, err)
+		log.Printf("❌ Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
 		return false
 	}
 	Panic(err)
@@ -134,31 +144,31 @@ func KubeCreateSkipExisting(obj runtime.Object) bool {
 	clone := obj.DeepCopyObject()
 	err := klient.Get(ctx, objKey, clone)
 	if err == nil {
-		logrus.Printf("✅ Already Exists: %s \"%s\"\n", gvk.Kind, objKey.Name)
+		log.Printf("✅ Already Exists: %s %q\n", gvk.Kind, objKey.Name)
 		return false
 	}
-	if meta.IsNoMatchError(err) {
-		logrus.Printf("❌ CRD Missing: %s \"%s\"\n", gvk.Kind, objKey.Name)
+	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+		log.Printf("❌ CRD Missing: %s %q\n", gvk.Kind, objKey.Name)
 		return false
 	}
 	if errors.IsNotFound(err) {
 		err = klient.Create(ctx, obj)
 		if err == nil {
-			logrus.Printf("✅ Created: %s \"%s\"\n", gvk.Kind, objKey.Name)
+			log.Printf("✅ Created: %s %q\n", gvk.Kind, objKey.Name)
 			return true
 		}
 		if errors.IsNotFound(err) {
-			logrus.Printf("❌ Namespace Missing: %s \"%s\": kubectl create ns %s\n",
+			log.Printf("❌ Namespace Missing: %s %q: kubectl create ns %s\n",
 				gvk.Kind, objKey.Name, objKey.Namespace)
 			return false
 		}
 	}
 	if errors.IsConflict(err) {
-		logrus.Printf("❌ Conflict: %s \"%s\": %s\n", gvk.Kind, objKey.Name, err)
+		log.Printf("❌ Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
 		return false
 	}
 	if errors.IsForbidden(err) {
-		logrus.Printf("❌ Forbidden: %s \"%s\": %s\n", gvk.Kind, objKey.Name, err)
+		log.Printf("❌ Forbidden: %s %q: %s\n", gvk.Kind, objKey.Name, err)
 		return false
 	}
 	Panic(err)
@@ -172,15 +182,19 @@ func KubeDelete(obj runtime.Object) bool {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	err := klient.Delete(ctx, obj)
 	if err == nil {
-		logrus.Printf("🗑️  Deleted: %s \"%s\"\n", gvk.Kind, objKey.Name)
+		log.Printf("🗑️  Deleted: %s %q\n", gvk.Kind, objKey.Name)
 		return true
 	}
-	if errors.IsConflict(err) {
-		logrus.Printf("❌ Conflict: %s \"%s\": %s\n", gvk.Kind, objKey.Name, err)
+	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+		log.Printf("❌ CRD Missing: %s %q\n", gvk.Kind, objKey.Name)
 		return false
 	}
-	if meta.IsNoMatchError(err) || errors.IsNotFound(err) {
-		logrus.Printf("❌ Not Found: %s \"%s\"\n", gvk.Kind, objKey.Name)
+	if errors.IsConflict(err) {
+		log.Printf("❌ Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		return false
+	}
+	if errors.IsNotFound(err) {
+		log.Printf("❌ Not Found: %s %q\n", gvk.Kind, objKey.Name)
 		return false
 	}
 	Panic(err)
@@ -194,19 +208,43 @@ func KubeCheck(obj runtime.Object) bool {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	err := klient.Get(ctx, objKey, obj)
 	if err == nil {
-		logrus.Printf("✅ Exists: %s \"%s\"\n", gvk.Kind, objKey.Name)
+		log.Printf("✅ Exists: %s %q\n", gvk.Kind, objKey.Name)
 		return true
 	}
-	if meta.IsNoMatchError(err) {
-		logrus.Printf("❌ CRD Missing: %s \"%s\"\n", gvk.Kind, objKey.Name)
+	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+		log.Printf("❌ CRD Missing: %s %q\n", gvk.Kind, objKey.Name)
 		return false
 	}
 	if errors.IsNotFound(err) {
-		logrus.Printf("❌ Not Found: %s \"%s\"\n", gvk.Kind, objKey.Name)
+		log.Printf("❌ Not Found: %s %q\n", gvk.Kind, objKey.Name)
 		return false
 	}
 	if errors.IsConflict(err) {
-		logrus.Printf("❌ Conflict: %s \"%s\": %s\n", gvk.Kind, objKey.Name, err)
+		log.Printf("❌ Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		return false
+	}
+	Panic(err)
+	return false
+}
+
+// KubeList returns a list of objects.
+func KubeList(list runtime.Object, options *client.ListOptions) bool {
+	klient := KubeClient()
+	gvk := list.GetObjectKind().GroupVersionKind()
+	err := klient.List(ctx, options, list)
+	if err == nil {
+		return true
+	}
+	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+		log.Printf("❌ CRD Missing: %s: %s\n", gvk.Kind, err)
+		return false
+	}
+	if errors.IsNotFound(err) {
+		log.Printf("❌ Not Found: %s\n", gvk.Kind)
+		return false
+	}
+	if errors.IsConflict(err) {
+		log.Printf("❌ Conflict: %s: %s\n", gvk.Kind, err)
 		return false
 	}
 	Panic(err)
@@ -217,7 +255,7 @@ func KubeCheck(obj runtime.Object) bool {
 func Panic(err error) {
 	if err != nil {
 		reason := errors.ReasonForError(err)
-		logrus.Panicf("☠️  Panic Attack: [%s] %s", reason, err)
+		log.Panicf("☠️  Panic Attack: [%s] %s", reason, err)
 	}
 }
 
@@ -231,7 +269,7 @@ func InitLogger() {
 
 // Logger returns a default logger
 func Logger() *logrus.Entry {
-	return logrus.WithContext(ctx)
+	return log
 }
 
 // Context returns a default Context
@@ -239,6 +277,7 @@ func Context() context.Context {
 	return ctx
 }
 
+// CurrentNamespace reads the current namespace from the kube config
 func CurrentNamespace() string {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	configOverrides := &clientcmd.ConfigOverrides{}
@@ -304,6 +343,8 @@ func SecretResetStringDataFromData(secret *corev1.Secret) {
 	secret.Data = map[string][]byte{}
 }
 
+// RandomBase64 creates a random buffer with numBytes and returns it encoded in base64
+// Returned string length is 4*math.Ceil(numBytes/3)
 func RandomBase64(numBytes int) string {
 	randomBytes := make([]byte, numBytes)
 	_, err := rand.Read(randomBytes)
@@ -311,6 +352,8 @@ func RandomBase64(numBytes int) string {
 	return base64.StdEncoding.EncodeToString(randomBytes)
 }
 
+// RandomHex creates a random buffer with numBytes and returns it encoded in hex
+// Returned string length is 2*numBytes
 func RandomHex(numBytes int) string {
 	randomBytes := make([]byte, numBytes)
 	_, err := rand.Read(randomBytes)

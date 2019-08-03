@@ -11,7 +11,7 @@ import (
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "options",
-		Short: "Print the list of flags inherited by all commands",
+		Short: "Print the list of global flags",
 		Run:   RunOptions,
 	}
 	return cmd

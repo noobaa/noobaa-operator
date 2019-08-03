@@ -144,8 +144,8 @@ func LoadCrds() *Crds {
 	o1 := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_crd_yaml)
 	o2 := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml)
 	o3 := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml)
-	o4 := util.KubeObject(bundle.File_deploy_manual_crds_ob_v1alpha1_crd_yaml)
-	o5 := util.KubeObject(bundle.File_deploy_manual_crds_obc_v1alpha1_crd_yaml)
+	o4 := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_ob_crd_yaml)
+	o5 := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_obc_crd_yaml)
 	return &Crds{
 		NooBaa:            o1.(*CrdType),
 		BackingStore:      o2.(*CrdType),

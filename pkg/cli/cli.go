@@ -9,6 +9,7 @@ import (
 	"github.com/noobaa/noobaa-operator/pkg/bucket"
 	"github.com/noobaa/noobaa-operator/pkg/crd"
 	"github.com/noobaa/noobaa-operator/pkg/install"
+	"github.com/noobaa/noobaa-operator/pkg/obc"
 	"github.com/noobaa/noobaa-operator/pkg/olm"
 	"github.com/noobaa/noobaa-operator/pkg/operator"
 	"github.com/noobaa/noobaa-operator/pkg/options"
@@ -78,6 +79,7 @@ func Cmd() *cobra.Command {
 		Commands: []*cobra.Command{
 			bucket.Cmd(),
 			backingstore.Cmd(),
+			obc.Cmd(),
 		},
 	}, {
 		Message: "Advanced:",

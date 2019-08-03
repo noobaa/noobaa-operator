@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/noobaa/noobaa-operator/pkg/options"
+
 	"github.com/noobaa/noobaa-operator/build/_output/bundle"
 	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/pkg/nb"
@@ -28,8 +30,8 @@ type Reconciler struct {
 	Recorder record.EventRecorder
 	NBClient nb.Client
 
-	NooBaa       *nbv1.NooBaa
 	BackingStore *nbv1.BackingStore
+	NooBaa       *nbv1.NooBaa
 	Secret       *corev1.Secret
 }
 
@@ -53,14 +55,14 @@ func NewReconciler(
 	util.SecretResetStringDataFromData(r.Secret)
 
 	// Set Namespace
-	r.NooBaa.Namespace = r.Request.Namespace
 	r.BackingStore.Namespace = r.Request.Namespace
+	r.NooBaa.Namespace = r.Request.Namespace
 	r.Secret.Namespace = r.Request.Namespace
 
 	// Set Names
-	r.NooBaa.Name = r.Request.Name
-	r.BackingStore.Name = r.Request.Name + "-core"
-	r.Secret.Name = r.Request.Name + "-mgmt"
+	r.BackingStore.Name = r.Request.Name
+	r.NooBaa.Name = options.SystemName
+	r.Secret.Name = r.Request.Name
 
 	return r
 }

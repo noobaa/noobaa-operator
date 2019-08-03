@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -105,7 +106,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 
 	if len(args) != 1 || args[0] == "" {
-		log.Fatalf(`Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
+		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
 	}
 
 	name := args[0]
@@ -116,10 +117,10 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	secretKey, _ := cmd.Flags().GetString("secret-key")
 
 	if bucketName == "" {
-		log.Fatalf(`Flag --bucket-name is required %s`, cmd.UsageString())
+		log.Fatalf(`❌ Flag --bucket-name is required %s`, cmd.UsageString())
 	}
 	if accessKey == "" {
-		log.Fatalf(`Flag --access-key is required %s`, cmd.UsageString())
+		log.Fatalf(`❌ Flag --access-key is required %s`, cmd.UsageString())
 	}
 
 	o := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml)
@@ -146,7 +147,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 
 	// Check and get system
 	if !util.KubeCheck(sys) {
-		log.Fatalf(`System "%s" not found in namespace "%s"`, sys.Name, sys.Namespace)
+		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
 	}
 
 	if secretKey == "" {
@@ -162,13 +163,13 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	// Create backing store CR
 	util.Panic(controllerutil.SetControllerReference(sys, backStore, scheme.Scheme))
 	if !util.KubeCreateSkipExisting(backStore) {
-		log.Fatalf(`Backing store name "%s" conflict in namespace "%s"`, backStore.Name, backStore.Namespace)
+		log.Fatalf(`❌ Could not create backing-store %q in namespace %q (conflict)`, backStore.Name, backStore.Namespace)
 	}
 
 	// Create secret
 	util.Panic(controllerutil.SetControllerReference(backStore, secret, scheme.Scheme))
 	if !util.KubeCreateSkipExisting(secret) {
-		log.Fatalf(`Backing store secret name "%s" conflict in namespace "%s"`, secret.Name, secret.Namespace)
+		log.Fatalf(`❌ Could not create secret %q in namespace %q (conflict)`, secret.Name, secret.Namespace)
 	}
 }
 
@@ -178,7 +179,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 
 	if len(args) != 1 || args[0] == "" {
-		log.Fatalf(`Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
+		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
 	}
 
 	o := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml)
@@ -187,18 +188,19 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	backStore.Namespace = options.Namespace
 
 	if !util.KubeDelete(backStore) {
-		log.Fatalf(`Backing store name "%s" not found in namespace "%s"`, backStore.Name, backStore.Namespace)
+		log.Fatalf(`❌ Could not delete backing-store %q in namespace %q`,
+			backStore.Name, backStore.Namespace)
 	}
 }
 
 // RunList runs a CLI command
 func RunList(cmd *cobra.Command, args []string) {
-	list := &nbv1.BackingStoreList{}
-	util.KubeClient().List(
-		util.Context(),
-		&client.ListOptions{Namespace: options.Namespace},
-		list,
-	)
+	list := &nbv1.BackingStoreList{
+		TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
+	}
+	if !util.KubeList(list, &client.ListOptions{Namespace: options.Namespace}) {
+		return
+	}
 	if len(list.Items) == 0 {
 		fmt.Printf("No backing stores found.\n")
 		return
@@ -244,9 +246,9 @@ func ParseBackingStoreType(cmd *cobra.Command) nbv1.StoreType {
 		return nbv1.StoreTypeAWSS3
 	default:
 		if s == "" {
-			log.Fatalf(`Flag --type is required %s`, cmd.UsageString())
+			log.Fatalf(`❌ Flag --type is required %s`, cmd.UsageString())
 		} else {
-			log.Fatalf(`Flag "--type %s" unsupported value %s`, s, cmd.UsageString())
+			log.Fatalf(`❌ Flag "--type %s" unsupported value %s`, s, cmd.UsageString())
 		}
 	}
 	return ""

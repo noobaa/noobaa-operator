@@ -231,18 +231,25 @@ func (r *Reconciler) SetDesiredCoreApp() {
 	podSpec := &r.CoreApp.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa-operator" // TODO do we use the same SA?
 	for i := range podSpec.InitContainers {
-		if podSpec.InitContainers[i].Image == "NOOBAA_IMAGE" {
-			podSpec.InitContainers[i].Image = r.NooBaa.Status.ActualImage
+		c := &podSpec.InitContainers[i]
+		if c.Image == "NOOBAA_IMAGE" {
+			c.Image = r.NooBaa.Status.ActualImage
 		}
 	}
 	for i := range podSpec.Containers {
-		if podSpec.Containers[i].Image == "NOOBAA_IMAGE" {
-			podSpec.Containers[i].Image = r.NooBaa.Status.ActualImage
-		} else if podSpec.Containers[i].Image == "MONGO_IMAGE" {
+		c := &podSpec.Containers[i]
+		if c.Image == "NOOBAA_IMAGE" {
+			c.Image = r.NooBaa.Status.ActualImage
+			for j := range c.Env {
+				if c.Env[j].Value == "NOOBAA_IMAGE" {
+					c.Env[j].Value = r.NooBaa.Status.ActualImage
+				}
+			}
+		} else if c.Image == "MONGO_IMAGE" {
 			if r.NooBaa.Spec.MongoImage == nil {
-				podSpec.Containers[i].Image = options.MongoImage
+				c.Image = options.MongoImage
 			} else {
-				podSpec.Containers[i].Image = *r.NooBaa.Spec.MongoImage
+				c.Image = *r.NooBaa.Spec.MongoImage
 			}
 		}
 	}
@@ -299,7 +306,7 @@ func (r *Reconciler) CheckSpecImage() error {
 		log.Errorf("Invalid image %s: %s", specImage, err)
 		if r.Recorder != nil {
 			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning,
-				"BadImage", `Invalid image requested "%s"`, specImage)
+				"BadImage", `Invalid image requested %q`, specImage)
 		}
 		r.SetPhase(nbv1.SystemPhaseRejected)
 		return util.NewPersistentError(err)
@@ -326,30 +333,30 @@ func (r *Reconciler) CheckSpecImage() error {
 	if imageName == options.ContainerImageName {
 		version, err := semver.NewVersion(imageTag)
 		if err == nil {
-			log.Infof("Parsed version \"%s\" from image tag \"%s\"", version.String(), imageTag)
+			log.Infof("Parsed version %q from image tag %q", version.String(), imageTag)
 			if !ContainerImageConstraint.Check(version) {
-				log.Errorf("Unsupported image version \"%s\" for contraints \"%s\"",
+				log.Errorf("Unsupported image version %q for contraints %q",
 					imageRef.String(), ContainerImageConstraint.String())
 				if r.Recorder != nil {
 					r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning,
-						"BadImage", `Unsupported image version requested "%s" not matching constraints "%s"`,
+						"BadImage", `Unsupported image version requested %q not matching constraints %q`,
 						imageRef, ContainerImageConstraint)
 				}
 				r.SetPhase(nbv1.SystemPhaseRejected)
 				return util.NewPersistentError(fmt.Errorf(`Unsupported image version "%+v"`, imageRef))
 			}
 		} else {
-			log.Infof("Using custom image \"%s\" contraints \"%s\"", imageRef.String(), ContainerImageConstraint.String())
+			log.Infof("Using custom image %q contraints %q", imageRef.String(), ContainerImageConstraint.String())
 			if r.Recorder != nil {
 				r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
-					"CustomImage", `Custom image version requested "%s", I hope you know what you're doing ...`, imageRef)
+					"CustomImage", `Custom image version requested %q, I hope you know what you're doing ...`, imageRef)
 			}
 		}
 	} else {
-		log.Infof("Using custom image name \"%s\" the default is \"%s\"", imageRef.String(), options.ContainerImageName)
+		log.Infof("Using custom image name %q the default is %q", imageRef.String(), options.ContainerImageName)
 		if r.Recorder != nil {
 			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
-				"CustomImage", `Custom image requested "%s", I hope you know what you're doing ...`, imageRef)
+				"CustomImage", `Custom image requested %q, I hope you know what you're doing ...`, imageRef)
 		}
 	}
 

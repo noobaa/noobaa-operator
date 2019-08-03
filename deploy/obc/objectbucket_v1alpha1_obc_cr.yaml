@@ -1,0 +1,9 @@
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: BUCKET_NAME
+spec:
+  bucketName: BUCKET_NAME
+  storageClassName: noobaa
+  SSL: false
+  versioned: false

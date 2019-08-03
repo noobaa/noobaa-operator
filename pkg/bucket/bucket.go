@@ -2,7 +2,6 @@ package bucket
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/noobaa/noobaa-operator/pkg/nb"
 	"github.com/noobaa/noobaa-operator/pkg/system"
@@ -86,11 +85,12 @@ func RunList(cmd *cobra.Command, args []string) {
 	util.Panic(err)
 	if len(list.Buckets) == 0 {
 		fmt.Printf("No buckets found.\n")
+		return
 	}
-	table := (&util.PrintTable{}).AddRow("#", "BUCKET-NAME")
+	table := (&util.PrintTable{}).AddRow("BUCKET-NAME")
 	for i := range list.Buckets {
 		b := &list.Buckets[i]
-		table.AddRow(strconv.Itoa(i+1), b.Name)
+		table.AddRow(b.Name)
 	}
 	fmt.Print(table.String())
 }

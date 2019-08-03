@@ -1,7 +1,7 @@
-package bucketprovisioner
+package obc
 
 import (
-	// nbProvisioner "github.com/noobaa/noobaa-operator/pkg/controller/bucketprovisioner"
+	"github.com/noobaa/noobaa-operator/pkg/obc"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -10,7 +10,7 @@ import (
 func Add(mgr manager.Manager) error {
 
 	// run the noobaa bucket provisioner:
-	err := RunNoobaaProvisioner(
+	err := obc.RunProvisioner(
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		mgr.GetRecorder("noobaa-operator"),
