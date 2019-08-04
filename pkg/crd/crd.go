@@ -129,13 +129,9 @@ func RunYaml(cmd *cobra.Command, args []string) {
 	crds := LoadCrds()
 	p := printers.YAMLPrinter{}
 	p.PrintObj(crds.NooBaa, os.Stdout)
-	fmt.Println("---")
 	p.PrintObj(crds.BackingStore, os.Stdout)
-	fmt.Println("---")
 	p.PrintObj(crds.BucketClass, os.Stdout)
-	fmt.Println("---")
 	p.PrintObj(crds.ObjectBucket, os.Stdout)
-	fmt.Println("---")
 	p.PrintObj(crds.ObjectBucketClaim, os.Stdout)
 }
 
