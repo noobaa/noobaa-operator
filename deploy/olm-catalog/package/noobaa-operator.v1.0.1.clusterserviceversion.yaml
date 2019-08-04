@@ -5,7 +5,7 @@ metadata:
     categories: Storage,Big Data
     capabilities: Basic Install
     repository: https://github.com/noobaa/noobaa-operator
-    containerImage: noobaa/noobaa-operator:1.0.2
+    containerImage: noobaa/noobaa-operator:1.0.3
     createdAt: 2019-07-08T13:10:20.940Z
     certified: "false"
     description: NooBaa is an object data service for hybrid and multi cloud environments.
@@ -25,14 +25,13 @@ metadata:
           "apiVersion": "noobaa.io/v1alpha1",
           "kind": "BackingStore",
           "metadata": {
-            "name": "default-store",
+            "name": "aws1",
             "namespace": "my-noobaa-operator"
           },
           "spec": {
             "type": "aws-s3",
-            "region": "us-east-1",
-            "bucketName": "noobaa1-aws-backing-store",
-            "credentialsSecretName": "aws-credentials-secret"
+            "bucketName": "noobaa-aws1",
+            "secretName": "backing-store-secret-aws1"
           }
         },
         {
@@ -59,11 +58,11 @@ metadata:
           }
         }
       ]
-  name: noobaa-operator.v1.0.2
+  name: noobaa-operator.v1.0.3
   namespace: placeholder
 spec:
   displayName: NooBaa Operator
-  version: "1.0.2"
+  version: "1.0.3"
   replaces: noobaa-operator.v0.1.0
   maturity: alpha
   provider:
@@ -170,7 +169,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                image: noobaa/noobaa-operator:1.0.2
+                image: noobaa/noobaa-operator:1.0.3
                 imagePullPolicy: IfNotPresent
                 name: noobaa-operator
                 resources:

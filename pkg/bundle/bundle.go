@@ -35,7 +35,7 @@ func main() {
 	w, err := os.Create(out)
 	fatal(err)
 	write(w, "package bundle\n\n")
-	writef(w, "const Version = \"%s\"\n\n", version.Version)
+	writef(w, "const Version = %q\n\n", version.Version)
 
 	err = filepath.Walk(src,
 		func(path string, info os.FileInfo, err error) error {
@@ -50,7 +50,7 @@ func main() {
 			sha256Hex := hex.EncodeToString(sha256Bytes[:])
 			logrus.Printf("bundle file %s size:%d sha256:%s\n",
 				path, len(bytes), sha256Hex)
-			writef(w, "const Sha256_%s = \"%s\"\n\n", name, sha256Hex)
+			writef(w, "const Sha256_%s = %q\n\n", name, sha256Hex)
 			writef(w, "const File_%s = `", name)
 			write(w, strings.ReplaceAll(string(bytes), backtick, backtickReplace))
 			write(w, "`\n\n")

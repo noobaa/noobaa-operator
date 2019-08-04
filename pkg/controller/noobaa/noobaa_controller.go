@@ -1,9 +1,9 @@
 package noobaa
 
 import (
+	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/pkg/system"
 
-	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -23,7 +23,7 @@ func Add(mgr manager.Manager) error {
 		MaxConcurrentReconciles: 1,
 		Reconciler: reconcile.Func(
 			func(req reconcile.Request) (reconcile.Result, error) {
-				return system.New(
+				return system.NewReconciler(
 					req.NamespacedName,
 					mgr.GetClient(),
 					mgr.GetScheme(),
