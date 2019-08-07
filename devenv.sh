@@ -5,8 +5,7 @@ alias nb="build/_output/bin/noobaa-operator-local"
 
 if minikube status &> /dev/null
 then
-  echo "minikube is started - using minikube docker-env"
   eval $(minikube docker-env)
 else
-  echo "minikube is not started - cannot change docker-env"
+  echo "WARNING: minikube is not started - cannot change docker-env"
 fi

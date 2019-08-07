@@ -21,10 +21,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// Cmd creates a CLI command
+// Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "backing-store",
+		Use:   "backingstore",
 		Short: "Manage noobaa backing stores",
 	}
 	cmd.AddCommand(
@@ -36,7 +36,7 @@ func Cmd() *cobra.Command {
 	return cmd
 }
 
-// CmdCreate creates a CLI command
+// CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <backing-store-name>",
@@ -45,32 +45,32 @@ func CmdCreate() *cobra.Command {
 	}
 	cmd.Flags().String(
 		"type", "",
-		`**REQUIRED** Backing store type: 'aws-s3' or 'google-cloud-store' or 'azure-blob' or 's3-compatible'`,
+		`Backing store type: 'aws-s3' or 'google-cloud-store' or 'azure-blob' or 's3-compatible'`,
 	)
 	cmd.Flags().String(
 		"bucket-name", "",
-		"**REQUIRED** The target bucket name",
+		"The target bucket name",
 	)
 	cmd.Flags().String(
 		"access-key", "",
-		"**REQUIRED** Access key for authentication",
+		`Access key for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
 	)
 	cmd.Flags().String(
 		"secret-key", "",
-		`[Optional] Secret key for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to read the secret from the terminal to avoid leaking secrets in the shell history`,
+		`Secret key for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
 	)
 	cmd.Flags().String(
 		"endpoint", "",
-		"[Optional] The target endpoint",
+		"The target endpoint",
 	)
 	cmd.Flags().String(
 		"aws-region", "",
-		"[Optional] The AWS bucket region",
+		"The AWS bucket region",
 	)
 	return cmd
 }
 
-// CmdDelete creates a CLI command
+// CmdDelete returns a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <backing-store-name>",
@@ -80,7 +80,7 @@ func CmdDelete() *cobra.Command {
 	return cmd
 }
 
-// CmdList creates a CLI command
+// CmdList returns a CLI command
 func CmdList() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -90,11 +90,11 @@ func CmdList() *cobra.Command {
 	return cmd
 }
 
-// CmdReconcile creates a CLI command
+// CmdReconcile returns a CLI command
 func CmdReconcile() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reconcile",
-		Short: "Reconcile backing stores",
+		Short: "Runs a reconcile attempt like noobaa-operator",
 		Run:   RunReconcile,
 	}
 	return cmd
@@ -108,8 +108,33 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if len(args) != 1 || args[0] == "" {
 		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
 	}
-
 	name := args[0]
+
+	// Check and get system
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml)
+	sys := o.(*nbv1.NooBaa)
+	o = util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+	secret := o.(*corev1.Secret)
+	o = util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml)
+	backStore := o.(*nbv1.BackingStore)
+
+	sys.Name = options.SystemName
+	secret.Name = "backing-store-secret-" + name
+	backStore.Name = name
+
+	sys.Namespace = options.Namespace
+	secret.Namespace = options.Namespace
+	backStore.Namespace = options.Namespace
+
+	if !util.KubeCheck(sys) {
+		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
+	}
+
+	err := util.KubeClient().Get(util.Context(), util.ObjectKey(backStore), backStore)
+	if err == nil {
+		log.Fatalf(`❌ BackingStore %q already exists in namespace %q`, backStore.Name, backStore.Namespace)
+	}
+
 	typeVal := ParseBackingStoreType(cmd)
 	endpoint, _ := cmd.Flags().GetString("endpoint")
 	bucketName, _ := cmd.Flags().GetString("bucket-name")
@@ -117,45 +142,35 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	secretKey, _ := cmd.Flags().GetString("secret-key")
 
 	if bucketName == "" {
-		log.Fatalf(`❌ Flag --bucket-name is required %s`, cmd.UsageString())
+		fmt.Printf("Enter target bucket name: ")
+		_, err := fmt.Scan(&bucketName)
+		util.Panic(err)
+		if bucketName == "" {
+			log.Fatalf(`❌ Missing bucket name %s`, cmd.UsageString())
+		}
 	}
-	if accessKey == "" {
-		log.Fatalf(`❌ Flag --access-key is required %s`, cmd.UsageString())
-	}
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml)
-	sys := o.(*nbv1.NooBaa)
-	o = util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml)
-	backStore := o.(*nbv1.BackingStore)
-	o = util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
-	secret := o.(*corev1.Secret)
-
-	sys.Name = options.SystemName
-	sys.Namespace = options.Namespace
-
-	secret.Name = "backing-store-secret-" + name
-	secret.Namespace = options.Namespace
 	secret.StringData = map[string]string{}
 	secret.Data = nil
 
-	backStore.Name = name
-	backStore.Namespace = options.Namespace
 	backStore.Spec.Type = typeVal
 	backStore.Spec.BucketName = bucketName
 	backStore.Spec.S3Options = &nbv1.S3Options{Endpoint: endpoint}
 	backStore.Spec.Secret = corev1.SecretReference{Name: secret.Name, Namespace: secret.Namespace}
 
-	// Check and get system
-	if !util.KubeCheck(sys) {
-		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
+	if accessKey == "" {
+		fmt.Printf("Enter Access Key: ")
+		accessKeyBytes, err := terminal.ReadPassword(0)
+		util.Panic(err)
+		accessKey = string(accessKeyBytes)
+		fmt.Printf("[got %d characters]\n", len(accessKey))
 	}
-
 	if secretKey == "" {
 		fmt.Printf("Enter Secret Key: ")
 		secretBytes, err := terminal.ReadPassword(0)
 		util.Panic(err)
 		secretKey = string(secretBytes)
-		fmt.Println()
+		fmt.Printf("[got %d characters]\n", len(secretKey))
 	}
 	secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
 	secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
@@ -216,13 +231,17 @@ func RunList(cmd *cobra.Command, args []string) {
 // RunReconcile runs a CLI command
 func RunReconcile(cmd *cobra.Command, args []string) {
 	log := util.Logger()
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`Missing expected arguments: <bucket-name> %s`, cmd.UsageString())
+	}
+	backingStoreName := args[0]
 	klient := util.KubeClient()
 	intervalSec := time.Duration(3)
 	util.Panic(wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
 		req := reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Namespace: options.Namespace,
-				Name:      options.SystemName,
+				Name:      backingStoreName,
 			},
 		}
 		res, err := NewReconciler(req.NamespacedName, klient, scheme.Scheme, nil).Reconcile()
@@ -241,15 +260,18 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 func ParseBackingStoreType(cmd *cobra.Command) nbv1.StoreType {
 	log := util.Logger()
 	s, _ := cmd.Flags().GetString("type")
+	if s == "" {
+		fmt.Printf("Enter BackingStore Type - 'aws-s3' or 'google-cloud-store' or 'azure-blob' or 's3-compatible': ")
+		_, err := fmt.Scan(&s)
+		util.Panic(err)
+	}
 	switch s {
 	case string(nbv1.StoreTypeAWSS3):
 		return nbv1.StoreTypeAWSS3
+	case "":
+		log.Fatalf(`❌ Missing type value %s`, cmd.UsageString())
 	default:
-		if s == "" {
-			log.Fatalf(`❌ Flag --type is required %s`, cmd.UsageString())
-		} else {
-			log.Fatalf(`❌ Flag "--type %s" unsupported value %s`, s, cmd.UsageString())
-		}
+		log.Fatalf(`❌ Unsupported type value %q %s`, s, cmd.UsageString())
 	}
 	return ""
 }

@@ -1,4 +1,9 @@
 /vendor
 /build/_output
 /build/_test
+
+# local folder to save the binaries being released
+build-releases/
+
+# the output of `go build`
 noobaa-operator

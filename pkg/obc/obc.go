@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Cmd creates a CLI command
+// Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "obc",
@@ -26,17 +26,25 @@ func Cmd() *cobra.Command {
 	return cmd
 }
 
-// CmdCreate creates a CLI command
+// CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <bucket-name>",
 		Short: "Create an OBC",
 		Run:   RunCreate,
 	}
+	cmd.Flags().Bool("exact", false,
+		"Request an exact bucketName instead of the default generateBucketName")
+	cmd.Flags().Bool("ssl", false,
+		"Request an SSL endpoint to be provisioned")
+	cmd.Flags().Bool("versioned", false,
+		"Request a versioned S3 bucket to be provisioned")
+	cmd.Flags().String("storage-class", options.Namespace+"-storage-class",
+		"Set storage-class to specify which provisioner to use")
 	return cmd
 }
 
-// CmdDelete creates a CLI command
+// CmdDelete returns a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <bucket-name>",
@@ -46,7 +54,7 @@ func CmdDelete() *cobra.Command {
 	return cmd
 }
 
-// CmdList creates a CLI command
+// CmdList returns a CLI command
 func CmdList() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -63,18 +71,30 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if len(args) != 1 || args[0] == "" {
 		log.Fatalf(`Missing expected arguments: <bucket-name> %s`, cmd.UsageString())
 	}
+	name := args[0]
+
+	exact, _ := cmd.Flags().GetBool("exact")
+	ssl, _ := cmd.Flags().GetBool("ssl")
+	versioned, _ := cmd.Flags().GetBool("versioned")
+	storageClass, _ := cmd.Flags().GetString("storage-class")
 
 	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_obc_cr_yaml)
 	obc := o.(*nbv1.ObjectBucketClaim)
-	obc.Name = args[0]
+	obc.Name = name
 	obc.Namespace = options.Namespace
-	obc.Spec.BucketName = args[0]
-	obc.Spec.StorageClassName = options.Namespace
-	obc.Spec.SSL = false
-	obc.Spec.Versioned = false
+	if exact {
+		obc.Spec.BucketName = name
+		obc.Spec.GenerateBucketName = ""
+	} else {
+		obc.Spec.BucketName = ""
+		obc.Spec.GenerateBucketName = name
+	}
+	obc.Spec.StorageClassName = storageClass
+	obc.Spec.SSL = ssl
+	obc.Spec.Versioned = versioned
 
 	if !util.KubeCreateSkipExisting(obc) {
-		log.Fatalf(`❌ Could not OBC %q in namespace %q (conflict)`, obc.Name, obc.Namespace)
+		log.Fatalf(`❌ Could not create OBC %q in namespace %q (conflict)`, obc.Name, obc.Namespace)
 	}
 }
 

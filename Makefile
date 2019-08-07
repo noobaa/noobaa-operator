@@ -133,8 +133,11 @@ gen-api: gen
 .PHONY: gen-api
 
 gen-api-fail-if-dirty: gen-api
-	git diff -s --exit-code pkg/apis/noobaa/v1alpha1/zz_generated.deepcopy.go || (echo "Build failed: API has been changed but the deep copy functions aren't up to date. Run 'make gen-api' and update your PR." && exit 1)
-	git diff -s --exit-code pkg/apis/noobaa/v1alpha1/zz_generated.openapi.go || (echo "Build failed: API has been changed but the deep copy functions aren't up to date. Run 'make gen-api' and update your PR." && exit 1)
+	git diff --exit-code || ( \
+		echo "Build failed: gen-api is not up to date."; \
+		echo "Run 'make gen-api' and update your PR.";  \
+		exit 1; \
+	)
 .PHONY: gen-api-fail-if-dirty
 
 clean:

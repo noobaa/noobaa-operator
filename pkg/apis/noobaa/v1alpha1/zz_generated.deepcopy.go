@@ -305,6 +305,16 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.CoreResources != nil {
+		in, out := &in.CoreResources, &out.CoreResources
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.MongoResources != nil {
+		in, out := &in.MongoResources, &out.MongoResources
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ImagePullSecret != nil {
 		in, out := &in.ImagePullSecret, &out.ImagePullSecret
 		*out = new(corev1.LocalObjectReference)

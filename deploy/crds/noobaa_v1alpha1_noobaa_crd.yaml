@@ -53,8 +53,12 @@ spec:
         spec:
           description: Specification of the desired behavior of the noobaa system.
           properties:
+            coreResources:
+              description: CoreResources (optional) overrides the default resource
+                requirements for the server container
+              type: object
             image:
-              description: Image (optional) overrides the default image for server
+              description: Image (optional) overrides the default image for the server
                 container
               type: string
             imagePullSecret:
@@ -62,9 +66,13 @@ spec:
                 image
               type: object
             mongoImage:
-              description: MongoImage (optional) overrides the default image for mongodb
-                container
+              description: MongoImage (optional) overrides the default image for the
+                mongodb container
               type: string
+            mongoResources:
+              description: MongoResources (optional) overrides the default resource
+                requirements for the mongodb container
+              type: object
             storageClassName:
               description: StorageClassName (optional) overrides the default StorageClass
                 for the PVC that the operator creates, this affects where the system

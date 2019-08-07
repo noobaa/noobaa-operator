@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Cmd creates a CLI command
+// Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "bucket",
@@ -24,7 +24,7 @@ func Cmd() *cobra.Command {
 	return cmd
 }
 
-// CmdCreate creates a CLI command
+// CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <bucket-name>",
@@ -34,7 +34,7 @@ func CmdCreate() *cobra.Command {
 	return cmd
 }
 
-// CmdDelete creates a CLI command
+// CmdDelete returns a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <bucket-name>",
@@ -44,7 +44,7 @@ func CmdDelete() *cobra.Command {
 	return cmd
 }
 
-// CmdList creates a CLI command
+// CmdList returns a CLI command
 func CmdList() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -74,7 +74,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	}
 	bucketName := args[0]
 	nbClient := system.GetNBClient()
-	_, err := nbClient.DeleteBucketAPI(nb.DeleteBucketParams{Name: bucketName})
+	err := nbClient.DeleteBucketAPI(nb.DeleteBucketParams{Name: bucketName})
 	util.Panic(err)
 }
 

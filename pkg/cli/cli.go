@@ -44,7 +44,7 @@ const ASCIILogo2 = `
 #      N O O B A A      # 
 `
 
-// Cmd creates a CLI command
+// Cmd returns a CLI command
 func Cmd() *cobra.Command {
 
 	util.InitLogger()
@@ -77,16 +77,16 @@ func Cmd() *cobra.Command {
 	}, {
 		Message: "Manage:",
 		Commands: []*cobra.Command{
-			bucket.Cmd(),
 			backingstore.Cmd(),
 			obc.Cmd(),
 		},
 	}, {
 		Message: "Advanced:",
 		Commands: []*cobra.Command{
-			crd.Cmd(),
 			operator.Cmd(),
 			system.Cmd(),
+			bucket.Cmd(),
+			crd.Cmd(),
 			olm.Cmd(),
 		},
 	}}

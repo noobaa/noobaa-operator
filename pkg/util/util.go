@@ -5,10 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"strings"
+	"time"
 
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/pkg/apis"
+	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -60,28 +63,35 @@ func KubeRest() *rest.RESTClient {
 	return lazyRest
 }
 
+// MapperProvider creates RESTMapper
+func MapperProvider(config *rest.Config) (meta.RESTMapper, error) {
+	return meta.NewLazyRESTMapperLoader(func() (meta.RESTMapper, error) {
+		dc, err := discovery.NewDiscoveryClientForConfig(config)
+		if err != nil {
+			return nil, err
+		}
+		return NewFastRESTMapper(dc, func(g *metav1.APIGroup) bool {
+			if g.Name == "" ||
+				g.Name == "apps" ||
+				g.Name == "noobaa.io" ||
+				g.Name == "objectbucket.io" ||
+				g.Name == "operator.openshift.io" ||
+				g.Name == "cloudcredential.openshift.io" ||
+				strings.HasSuffix(g.Name, ".k8s.io") {
+				return true
+			}
+			return false
+		}), nil
+	}), nil
+}
+
 // KubeClient resturns a controller-runtime client
 // We use a lazy mapper and a specialized implementation of fast mapper
 // in order to avoid lags when running a CLI client to a far away cluster.
 func KubeClient() client.Client {
 	if lazyClient == nil {
 		config := KubeConfig()
-		mapper := meta.NewLazyRESTMapperLoader(func() (meta.RESTMapper, error) {
-			dc, err := discovery.NewDiscoveryClientForConfig(config)
-			Panic(err)
-			return NewFastRESTMapper(dc, func(g *metav1.APIGroup) bool {
-				if g.Name == "" ||
-					g.Name == "apps" ||
-					g.Name == "noobaa.io" ||
-					g.Name == "objectbucket.io" ||
-					g.Name == "operator.openshift.io" ||
-					g.Name == "cloudcredential.openshift.io" ||
-					strings.HasSuffix(g.Name, ".k8s.io") {
-					return true
-				}
-				return false
-			}), nil
-		})
+		mapper, _ := MapperProvider(config)
 		var err error
 		lazyClient, err = client.New(config, client.Options{Mapper: mapper, Scheme: scheme.Scheme})
 		Panic(err)
@@ -105,7 +115,7 @@ func KubeObject(text string) runtime.Object {
 // and report the object status.
 func KubeApply(obj runtime.Object) bool {
 	klient := KubeClient()
-	objKey, _ := client.ObjectKeyFromObject(obj)
+	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	clone := obj.DeepCopyObject()
 	err := klient.Get(ctx, objKey, clone)
@@ -139,7 +149,7 @@ func KubeApply(obj runtime.Object) bool {
 // and report the object status.
 func KubeCreateSkipExisting(obj runtime.Object) bool {
 	klient := KubeClient()
-	objKey, _ := client.ObjectKeyFromObject(obj)
+	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	clone := obj.DeepCopyObject()
 	err := klient.Get(ctx, objKey, clone)
@@ -178,11 +188,37 @@ func KubeCreateSkipExisting(obj runtime.Object) bool {
 // KubeDelete deletes an object and reports the object status.
 func KubeDelete(obj runtime.Object) bool {
 	klient := KubeClient()
-	objKey, _ := client.ObjectKeyFromObject(obj)
+	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	err := klient.Delete(ctx, obj)
 	if err == nil {
 		log.Printf("🗑️  Deleted: %s %q\n", gvk.Kind, objKey.Name)
+		return true
+	}
+	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+		log.Printf("❌ CRD Missing: %s %q\n", gvk.Kind, objKey.Name)
+		return false
+	}
+	if errors.IsConflict(err) {
+		log.Printf("❌ Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		return false
+	}
+	if errors.IsNotFound(err) {
+		log.Printf("🗑️  Not Found: %s %q\n", gvk.Kind, objKey.Name)
+		return false
+	}
+	Panic(err)
+	return false
+}
+
+// KubeUpdate updates an object and reports the object status.
+func KubeUpdate(obj runtime.Object) bool {
+	klient := KubeClient()
+	objKey := ObjectKey(obj)
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	err := klient.Update(ctx, obj)
+	if err == nil {
+		log.Printf("✅ Updated: %s %q\n", gvk.Kind, objKey.Name)
 		return true
 	}
 	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
@@ -204,7 +240,7 @@ func KubeDelete(obj runtime.Object) bool {
 // KubeCheck checks if the object exists and reports the object status.
 func KubeCheck(obj runtime.Object) bool {
 	klient := KubeClient()
-	objKey, _ := client.ObjectKeyFromObject(obj)
+	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	err := klient.Get(ctx, objKey, obj)
 	if err == nil {
@@ -249,6 +285,58 @@ func KubeList(list runtime.Object, options *client.ListOptions) bool {
 	}
 	Panic(err)
 	return false
+}
+
+// RemoveFinalizer modifies the object and removes the finalizer
+func RemoveFinalizer(obj metav1.Object, finalizer string) bool {
+	finalizers := obj.GetFinalizers()
+	if finalizers == nil {
+		return false
+	}
+	// see https://github.com/golang/go/wiki/SliceTricks#filter-in-place
+	n := 0
+	found := false
+	for _, f := range finalizers {
+		if f == finalizer {
+			found = true
+		} else {
+			finalizers[n] = f
+			n++
+		}
+	}
+	finalizers = finalizers[:n]
+	obj.SetFinalizers(finalizers)
+	return found
+}
+
+// GetPodStatusLine returns a one liner status for a pod
+func GetPodStatusLine(pod *corev1.Pod) string {
+	s := fmt.Sprintf("Phase=%q. ", pod.Status.Phase)
+	for i := range pod.Status.Conditions {
+		c := &pod.Status.Conditions[i]
+		if c.Status != corev1.ConditionTrue {
+			s += fmt.Sprintf("%s (%s). ", c.Reason, c.Message)
+		}
+	}
+	return s
+}
+
+// GetContainerStatusLine returns a one liner status for a container
+func GetContainerStatusLine(cont *corev1.ContainerStatus) string {
+	s := ""
+	if cont.RestartCount > 0 {
+		s += fmt.Sprintf("RestartCount=%d. ", cont.RestartCount)
+	}
+	if cont.State.Waiting != nil {
+		s += fmt.Sprintf("%s (%s). ", cont.State.Waiting.Reason, cont.State.Waiting.Message)
+	}
+	if cont.State.Terminated != nil {
+		s += fmt.Sprintf("%s (%s). ", cont.State.Terminated.Reason, cont.State.Terminated.Message)
+	}
+	if s == "" {
+		s = "starting..."
+	}
+	return s
 }
 
 // Panic is conviniently calling panic only if err is not nil
@@ -343,6 +431,13 @@ func SecretResetStringDataFromData(secret *corev1.Secret) {
 	secret.Data = map[string][]byte{}
 }
 
+// ObjectKey returns the objects key (namespace + name)
+func ObjectKey(obj runtime.Object) client.ObjectKey {
+	objKey, err := client.ObjectKeyFromObject(obj)
+	Panic(err)
+	return objKey
+}
+
 // RandomBase64 creates a random buffer with numBytes and returns it encoded in base64
 // Returned string length is 4*math.Ceil(numBytes/3)
 func RandomBase64(numBytes int) string {
@@ -359,4 +454,107 @@ func RandomHex(numBytes int) string {
 	_, err := rand.Read(randomBytes)
 	Panic(err)
 	return hex.EncodeToString(randomBytes)
+}
+
+// SetErrorCondition updates the status conditions to error state
+func SetErrorCondition(conditions *[]conditionsv1.Condition, err error) {
+	reason := "ReconcileFailed"
+	message := fmt.Sprintf("Error while reconciling: %v", err)
+	currentTime := metav1.NewTime(time.Now())
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		//LastHeartbeatTime should be set by the custom-resource-status just like lastTransitionTime
+		// Setting it here temporarity
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionAvailable,
+		Status:            corev1.ConditionUnknown,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionProgressing,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionDegraded,
+		Status:            corev1.ConditionTrue,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionUpgradeable,
+		Status:            corev1.ConditionUnknown,
+		Reason:            reason,
+		Message:           message,
+	})
+}
+
+// SetAvailableCondition updates the status conditions to available state
+func SetAvailableCondition(conditions *[]conditionsv1.Condition, reason string, message string) {
+	currentTime := metav1.NewTime(time.Now())
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionAvailable,
+		Status:            corev1.ConditionTrue,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionProgressing,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionDegraded,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionUpgradeable,
+		Status:            corev1.ConditionTrue,
+		Reason:            reason,
+		Message:           message,
+	})
+}
+
+// SetProgressingCondition updates the status conditions to in-progress state
+func SetProgressingCondition(conditions *[]conditionsv1.Condition, reason string, message string) {
+	currentTime := metav1.NewTime(time.Now())
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionAvailable,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionProgressing,
+		Status:            corev1.ConditionTrue,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionDegraded,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionUpgradeable,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
+	})
 }

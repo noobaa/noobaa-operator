@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// CmdInstall returns a CLI command
 func CmdInstall() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
@@ -19,6 +20,7 @@ func CmdInstall() *cobra.Command {
 	return cmd
 }
 
+// CmdUninstall returns a CLI command
 func CmdUninstall() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall",
@@ -29,6 +31,7 @@ func CmdUninstall() *cobra.Command {
 	return cmd
 }
 
+// CmdStatus returns a CLI command
 func CmdStatus() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
@@ -38,6 +41,7 @@ func CmdStatus() *cobra.Command {
 	return cmd
 }
 
+// RunInstall runs a CLI command
 func RunInstall(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 	version.RunVersion(cmd, args)
@@ -57,6 +61,7 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	}
 }
 
+// RunUninstall runs a CLI command
 func RunUninstall(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 	version.RunVersion(cmd, args)
@@ -79,6 +84,7 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	}
 }
 
+// RunStatus runs a CLI command
 func RunStatus(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 	version.RunVersion(cmd, args)

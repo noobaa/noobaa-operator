@@ -2,12 +2,13 @@ package options
 
 import (
 	"github.com/noobaa/noobaa-operator/version"
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-// Cmd creates a CLI command
+// Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "options",
@@ -41,10 +42,12 @@ const (
 
 	// AdminAccountEmail is the default email used for admin account
 	AdminAccountEmail = "admin@noobaa.io"
+
+	// SystemName is a constant as we want just a single system per namespace
+	SystemName = "noobaa"
 )
 
 var Namespace = "noobaa" //util.CurrentNamespace()
-var SystemName = "noobaa"
 var NooBaaImage = ContainerImage
 var OperatorImage = "noobaa/noobaa-operator:" + version.Version
 var StorageClassName = ""
@@ -54,13 +57,13 @@ var ImagePullSecret = ""
 var FlagSet = pflag.NewFlagSet("noobaa", pflag.ContinueOnError)
 
 func init() {
+	ns, _ := k8sutil.GetWatchNamespace()
+	if ns != "" {
+		Namespace = ns
+	}
 	FlagSet.StringVarP(
 		&Namespace, "namespace", "n",
 		Namespace, "Target namespace",
-	)
-	FlagSet.StringVarP(
-		&SystemName, "system-name", "N",
-		SystemName, "NooBaa system name",
 	)
 	FlagSet.StringVar(
 		&StorageClassName, "storage-class",

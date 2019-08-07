@@ -83,7 +83,7 @@ func NewClient(router APIRouter) Client {
 // Call an API method to noobaa.
 // The response type should be defined to include RPCResponseIfc inline.
 // This is needed in order for json.Unmarshal() to decode into the reply structure.
-func (c *RPCClient) Call(req RPCRequest, res RPCResponseIfc) error {
+func (c *RPCClient) Call(req *RPCRequest, res RPCResponseIfc) error {
 	api := req.API
 	method := req.Method
 	if req.AuthToken == "" {
@@ -125,7 +125,7 @@ func (c *RPCClient) Call(req RPCRequest, res RPCResponseIfc) error {
 
 	r := res.Response()
 	if r.Error != nil {
-		logrus.Errorf("⚠️ RPC: %s Response Error: %s", u, r.Error)
+		logrus.Errorf("⚠️ RPC: %s Response Error: Code=%s Message=%s", u, r.Error.RPCCode, r.Error.Message)
 		return r.Error
 	}
 
