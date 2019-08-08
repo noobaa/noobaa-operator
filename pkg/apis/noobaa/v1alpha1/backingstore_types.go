@@ -3,6 +3,8 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 )
 
 // Note 1: Run "operator-sdk generate k8s" to regenerate code after modifying this file
@@ -104,12 +106,14 @@ type BackingStoreStatus struct {
 	// Phase is a simple, high-level summary of where the System is in its lifecycle
 	Phase BackingStorePhase `json:"phase"`
 
-	// Current service state of the noobaa system.
-	// Based on: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
-	// +optional
+	// Conditions is a list of conditions related to operator reconciliation
 	// +patchMergeKey=type
 	// +patchStrategy=merge
-	Conditions []SystemCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+	// +optional
+	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
+
+	// RelatedObjects is a list of objects that are "interesting" or related to this operator.
+	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 }
 
 // BackingStorePhase is a string enum type for system phases

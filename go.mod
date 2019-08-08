@@ -12,6 +12,7 @@ require (
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/go-logr/logr v0.1.0 // indirect
 	github.com/go-logr/zapr v0.1.0 // indirect
+	github.com/go-openapi/spec v0.19.2
 	github.com/golang/groupcache v0.0.0-20180924190550-6f2cf27854a4 // indirect
 	github.com/golang/mock v1.2.0 // indirect
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
@@ -24,6 +25,7 @@ require (
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20190712220128-5b3f4e3b90ed
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
+	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
 	github.com/operator-framework/operator-sdk v0.8.2-0.20190522220659-031d71ef8154
 	github.com/pborman/uuid v0.0.0-20180906182336-adf5a7427709 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
@@ -40,12 +42,12 @@ require (
 	golang.org/x/sys v0.0.0-20190712062909-fae7ac547cb7 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	golang.org/x/tools v0.0.0-20190723021737-8bb11ff117ca // indirect
-	k8s.io/api v0.0.0-20190718062839-c8a0b81cb10e
+	k8s.io/api v0.0.0-20190725062911-6607c48751ae
 	k8s.io/apiextensions-apiserver v0.0.0-20190228180357-d002e88f6236
 	k8s.io/apimachinery v0.0.0-20190719140911-bfcf53abc9f8
 	k8s.io/cli-runtime v0.0.0-20190717024643-59adbd30f884
 	k8s.io/client-go v2.0.0-alpha.0.0.20181126152608-d082d5923d3c+incompatible
-	k8s.io/code-generator v0.0.0-20180823001027-3dcf91f64f63
+	k8s.io/code-generator v0.0.0-20190717022600-77f3a1fe56bb
 	k8s.io/gengo v0.0.0-20190128074634-0689ccc1d7d6
 	k8s.io/kube-openapi v0.0.0-20180711000925-0cf8f7e6ed1d
 	k8s.io/kubectl v0.0.0-20190720024926-08c6807d9aef

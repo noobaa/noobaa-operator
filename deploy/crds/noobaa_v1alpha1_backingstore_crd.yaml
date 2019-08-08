@@ -83,43 +83,41 @@ spec:
         status:
           properties:
             conditions:
-              description: 'Current service state of the noobaa system. Based on:
-                https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
-                +patchMergeKey=type +patchStrategy=merge'
+              description: Conditions is a list of conditions related to operator
+                reconciliation +patchMergeKey=type +patchStrategy=merge
               items:
                 properties:
-                  lastProbeTime:
-                    description: Last time we probed the condition.
+                  lastHeartbeatTime:
                     format: date-time
                     type: string
                   lastTransitionTime:
-                    description: Last time the condition transitioned from one status
-                      to another.
                     format: date-time
                     type: string
                   message:
-                    description: Human-readable message indicating details about last
-                      transition.
                     type: string
                   reason:
-                    description: Unique, one-word, CamelCase reason for the condition's
-                      last transition.
                     type: string
                   status:
-                    description: Status is the status of the condition.
                     type: string
                   type:
-                    description: Type is the type of the condition.
                     type: string
                 required:
                 - type
                 - status
+                - lastHeartbeatTime
+                - lastTransitionTime
                 type: object
               type: array
             phase:
               description: Phase is a simple, high-level summary of where the System
                 is in its lifecycle
               type: string
+            relatedObjects:
+              description: RelatedObjects is a list of objects that are "interesting"
+                or related to this operator.
+              items:
+                type: object
+              type: array
           required:
           - phase
           type: object
