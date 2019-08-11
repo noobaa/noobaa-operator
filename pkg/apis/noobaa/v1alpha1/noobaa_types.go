@@ -3,6 +3,8 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 )
 
 // Note 1: Run "operator-sdk generate k8s" to regenerate code after modifying this file
@@ -90,12 +92,14 @@ type NooBaaStatus struct {
 	// Phase is a simple, high-level summary of where the System is in its lifecycle
 	Phase SystemPhase `json:"phase"`
 
-	// Current service state of the noobaa system.
-	// Based on: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
-	// +optional
+	// Conditions is a list of conditions related to operator reconciliation
 	// +patchMergeKey=type
 	// +patchStrategy=merge
-	Conditions []SystemCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+	// +optional
+	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
+
+	// RelatedObjects is a list of objects that are "interesting" or related to this operator.
+	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 
 	// ActualImage is set to report which image the operator is using
 	ActualImage string `json:"actualImage"`
@@ -134,26 +138,6 @@ const (
 	// SystemPhaseReady means the noobaa system has been created and ready to serve.
 	SystemPhaseReady SystemPhase = "Ready"
 )
-
-// SystemCondition contains details for the current condition of this system.
-type SystemCondition struct {
-	// Type is the type of the condition.
-	Type ConditionType `json:"type"`
-	// Status is the status of the condition.
-	Status ConditionStatus `json:"status"`
-	// Last time we probed the condition.
-	// +optional
-	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty"`
-	// Last time the condition transitioned from one status to another.
-	// +optional
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-	// Unique, one-word, CamelCase reason for the condition's last transition.
-	// +optional
-	Reason string `json:"reason,omitempty"`
-	// Human-readable message indicating details about last transition.
-	// +optional
-	Message string `json:"message,omitempty"`
-}
 
 // ConditionType is a simple string type.
 // Types should be used from the enum below.
