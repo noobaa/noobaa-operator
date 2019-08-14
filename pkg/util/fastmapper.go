@@ -70,8 +70,9 @@ func (m *FastRESTMapper) DiscoverGroup(gr *restmapper.APIGroupResources) error {
 		resources, err := m.Discovery.ServerResourcesForGroupVersion(version.GroupVersion)
 		if err != nil {
 			errResult = err
+		} else {
+			gr.VersionedResources[version.Version] = resources.APIResources
 		}
-		gr.VersionedResources[version.Version] = resources.APIResources
 	}
 	return errResult
 }

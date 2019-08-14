@@ -14,9 +14,9 @@ import (
 	"github.com/noobaa/noobaa-operator/pkg/options"
 	"github.com/noobaa/noobaa-operator/pkg/util"
 
-	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	dockerref "github.com/docker/distribution/reference"
 	semver "github.com/hashicorp/go-version"
+	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -240,20 +240,20 @@ func (r *Reconciler) SetDesiredCoreApp() {
 	podSpec.ServiceAccountName = "noobaa-operator" // TODO do we use the same SA?
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
-		if c.Image == "NOOBAA_IMAGE" {
+		if c.Name == "init-mongo" {
 			c.Image = r.NooBaa.Status.ActualImage
 		}
 	}
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
-		if c.Image == "NOOBAA_IMAGE" {
+		if c.Name == "noobaa-server" {
 			c.Image = r.NooBaa.Status.ActualImage
 			for j := range c.Env {
-				if c.Env[j].Value == "NOOBAA_IMAGE" {
+				if c.Env[j].Name == "AGENT_IMAGE" {
 					c.Env[j].Value = r.NooBaa.Status.ActualImage
 				}
 			}
-		} else if c.Image == "MONGO_IMAGE" {
+		} else if c.Name == "mongodb" {
 			if r.NooBaa.Spec.MongoImage == nil {
 				c.Image = options.MongoImage
 			} else {
@@ -632,31 +632,31 @@ func (r *Reconciler) setErrorCondition(err error) {
 		//LastHeartbeatTime should be set by the custom-resource-status just like lastTransitionTime
 		// Setting it here temporarity
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionAvailable,
-		Status: corev1.ConditionUnknown,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionAvailable,
+		Status:            corev1.ConditionUnknown,
+		Reason:            reason,
+		Message:           message,
 	})
 	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionProgressing,
-		Status: corev1.ConditionFalse,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionProgressing,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
 	})
 	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionDegraded,
-		Status: corev1.ConditionTrue,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionDegraded,
+		Status:            corev1.ConditionTrue,
+		Reason:            reason,
+		Message:           message,
 	})
 	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionUpgradeable,
-		Status: corev1.ConditionUnknown,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionUpgradeable,
+		Status:            corev1.ConditionUnknown,
+		Reason:            reason,
+		Message:           message,
 	})
 }
 
@@ -664,31 +664,31 @@ func (r *Reconciler) setAvailableCondition(reason string, message string) {
 	currentTime := metav1.NewTime(time.Now())
 	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionAvailable,
-		Status: corev1.ConditionTrue,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionAvailable,
+		Status:            corev1.ConditionTrue,
+		Reason:            reason,
+		Message:           message,
 	})
 	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionProgressing,
-		Status: corev1.ConditionFalse,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionProgressing,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
 	})
 	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionDegraded,
-		Status: corev1.ConditionFalse,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionDegraded,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
 	})
 	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionUpgradeable,
-		Status: corev1.ConditionTrue,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionUpgradeable,
+		Status:            corev1.ConditionTrue,
+		Reason:            reason,
+		Message:           message,
 	})
 }
 
@@ -696,31 +696,31 @@ func (r *Reconciler) setProgressingCondition(reason string, message string) {
 	currentTime := metav1.NewTime(time.Now())
 	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionAvailable,
-		Status: corev1.ConditionFalse,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionAvailable,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
 	})
 	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionProgressing,
-		Status: corev1.ConditionTrue,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionProgressing,
+		Status:            corev1.ConditionTrue,
+		Reason:            reason,
+		Message:           message,
 	})
 	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionDegraded,
-		Status: corev1.ConditionFalse,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionDegraded,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
 	})
 	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
 		LastHeartbeatTime: currentTime,
-		Type:   conditionsv1.ConditionUpgradeable,
-		Status: corev1.ConditionFalse,
-		Reason: reason,
-		Message: message,
+		Type:              conditionsv1.ConditionUpgradeable,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
 	})
 }
 
@@ -731,21 +731,21 @@ func (r *Reconciler) SetPhase(phase nbv1.SystemPhase) {
 	reason := fmt.Sprintf("%v", phase)
 	message := fmt.Sprintf("%v", phase)
 	switch phase {
-		case nbv1.SystemPhaseVerifying:
-			reason = "ReconcileInit"
-			message = "Initializing noobaa cluster"
-			r.setAvailableCondition(reason, message)
-		case nbv1.SystemPhaseCreating:
-			r.setProgressingCondition(reason, message)
-		case nbv1.SystemPhaseConnecting:
-			r.setProgressingCondition(reason, message)
-		case nbv1.SystemPhaseConfiguring:
-			r.setProgressingCondition(reason, message)
-		case nbv1.SystemPhaseReady:
-			reason = "Reconcilecompleted"
-			message = "ReconcileCompleted"
-			r.setAvailableCondition(reason, message)
-		default:
+	case nbv1.SystemPhaseVerifying:
+		reason = "ReconcileInit"
+		message = "Initializing noobaa cluster"
+		r.setAvailableCondition(reason, message)
+	case nbv1.SystemPhaseCreating:
+		r.setProgressingCondition(reason, message)
+	case nbv1.SystemPhaseConnecting:
+		r.setProgressingCondition(reason, message)
+	case nbv1.SystemPhaseConfiguring:
+		r.setProgressingCondition(reason, message)
+	case nbv1.SystemPhaseReady:
+		reason = "Reconcilecompleted"
+		message = "ReconcileCompleted"
+		r.setAvailableCondition(reason, message)
+	default:
 	}
 }
 
