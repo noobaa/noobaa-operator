@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// Cmd creates a CLI command
+// Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "system",
@@ -44,7 +44,7 @@ func Cmd() *cobra.Command {
 	return cmd
 }
 
-// CmdCreate creates a CLI command
+// CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -54,7 +54,7 @@ func CmdCreate() *cobra.Command {
 	return cmd
 }
 
-// CmdDelete creates a CLI command
+// CmdDelete returns a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete",
@@ -64,7 +64,7 @@ func CmdDelete() *cobra.Command {
 	return cmd
 }
 
-// CmdList creates a CLI command
+// CmdList returns a CLI command
 func CmdList() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -74,7 +74,7 @@ func CmdList() *cobra.Command {
 	return cmd
 }
 
-// CmdStatus creates a CLI command
+// CmdStatus returns a CLI command
 func CmdStatus() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
@@ -84,17 +84,17 @@ func CmdStatus() *cobra.Command {
 	return cmd
 }
 
-// CmdReconcile creates a CLI command
+// CmdReconcile returns a CLI command
 func CmdReconcile() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "reconcile-local",
+		Use:   "reconcile",
 		Short: "Runs a reconcile attempt like noobaa-operator",
 		Run:   RunReconcile,
 	}
 	return cmd
 }
 
-// CmdYaml creates a CLI command
+// CmdYaml returns a CLI command
 func CmdYaml() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "yaml",
@@ -106,7 +106,7 @@ func CmdYaml() *cobra.Command {
 
 // LoadSystemDefaults loads a noobaa system CR from bundled yamls
 // and apply's changes from CLI flags to the defaults.
-func LoadSystemDefaults(cmd *cobra.Command) *nbv1.NooBaa {
+func LoadSystemDefaults() *nbv1.NooBaa {
 	sys := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa)
 	sys.Namespace = options.Namespace
 	sys.Name = options.SystemName
@@ -124,9 +124,18 @@ func LoadSystemDefaults(cmd *cobra.Command) *nbv1.NooBaa {
 	return sys
 }
 
+// RunOperatorCreate creates the default system when the operator starts.
+func RunOperatorCreate(cmd *cobra.Command, args []string) {
+	// The concern with this behavior was that it might be unexpected to the user that this happens.
+	// For now we disable it but might reconsider later.
+	//
+	// sys := LoadSystemDefaults()
+	// util.KubeCreateSkipExisting(sys)
+}
+
 // RunCreate runs a CLI command
 func RunCreate(cmd *cobra.Command, args []string) {
-	sys := LoadSystemDefaults(cmd)
+	sys := LoadSystemDefaults()
 	ns := util.KubeObject(bundle.File_deploy_namespace_yaml).(*corev1.Namespace)
 	ns.Name = sys.Namespace
 	// TODO check PVC if exist and the system does not exist -
@@ -166,7 +175,6 @@ func RunDelete(cmd *cobra.Command, args []string) {
 
 // RunList runs a CLI command
 func RunList(cmd *cobra.Command, args []string) {
-	log := util.Logger()
 	list := &nbv1.NooBaaList{
 		TypeMeta: metav1.TypeMeta{Kind: "NooBaa"},
 	}
@@ -174,7 +182,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		return
 	}
 	if len(list.Items) == 0 {
-		log.Printf("No systems found.\n")
+		fmt.Printf("No systems found.\n")
 		return
 	}
 
@@ -204,7 +212,7 @@ func RunList(cmd *cobra.Command, args []string) {
 
 // RunYaml runs a CLI command
 func RunYaml(cmd *cobra.Command, args []string) {
-	sys := LoadSystemDefaults(cmd)
+	sys := LoadSystemDefaults()
 	p := printers.YAMLPrinter{}
 	p.PrintObj(sys, os.Stdout)
 }
@@ -334,8 +342,8 @@ func WaitReady() bool {
 		sys := &nbv1.NooBaa{}
 		err := klient.Get(util.Context(), sysKey, sys)
 		if err != nil {
-			log.Errorf("❌ Failed to get system: %s", err)
-			return false, err
+			log.Printf("⏳ Failed to get system: %s", err)
+			return false, nil
 		}
 		if sys.Status.Phase == nbv1.SystemPhaseRejected {
 			log.Errorf("❌ System Phase is %q. describe noobaa for more information", sys.Status.Phase)
@@ -353,6 +361,8 @@ func WaitReady() bool {
 	return true
 }
 
+// CheckWaitingFor checks what the system deployment is waiting for in order to become ready
+// in order to help the user troubleshoot common deployment issues.
 func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 	log := util.Logger()
 	klient := util.KubeClient()
@@ -398,24 +408,16 @@ func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 		return false, fmt.Errorf("Can't find the operator pods")
 	}
 	operPod := &operPodList.Items[0]
-	if operPodList.Items[0].Status.Phase != corev1.PodRunning {
-		log.Printf(`⏳ System Phase is %q. Pod %q is not running:`+
-			` Phase=%q Reason=%q Message=%q`,
-			sys.Status.Phase,
-			operPod.Name,
-			operPod.Status.Phase,
-			operPod.Status.Reason,
-			operPod.Status.Message)
+	if operPod.Status.Phase != corev1.PodRunning {
+		log.Printf(`⏳ System Phase is %q. Pod %q is not yet ready: %s`,
+			sys.Status.Phase, operPod.Name, util.GetPodStatusLine(operPod))
 		return false, nil
 	}
 	for i := range operPod.Status.ContainerStatuses {
 		c := &operPod.Status.ContainerStatuses[i]
 		if !c.Ready {
-			log.Printf(`⏳ System Phase is %q. Container %q is not ready:`+
-				` RestartCount=%d`,
-				sys.Status.Phase,
-				c.Name,
-				c.RestartCount)
+			log.Printf(`⏳ System Phase is %q. Container %q is not yet ready: %s`,
+				sys.Status.Phase, c.Name, util.GetContainerStatusLine(c))
 			return false, nil
 		}
 	}
@@ -439,7 +441,7 @@ func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 		desiredReplicas = *coreApp.Spec.Replicas
 	}
 	if coreApp.Status.Replicas != desiredReplicas {
-		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not ready:`+
+		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not yet ready:`+
 			` ReadyReplicas %d/%d`,
 			sys.Status.Phase,
 			coreAppName,
@@ -462,23 +464,15 @@ func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 	}
 	corePod := &corePodList.Items[0]
 	if corePod.Status.Phase != corev1.PodRunning {
-		log.Printf(`⏳ System Phase is %q. Pod %q is not running:`+
-			` Phase=%q Reason=%q Message=%q`,
-			sys.Status.Phase,
-			corePod.Name,
-			corePod.Status.Phase,
-			corePod.Status.Reason,
-			corePod.Status.Message)
+		log.Printf(`⏳ System Phase is %q. Pod %q is not yet ready: %s`,
+			sys.Status.Phase, corePod.Name, util.GetPodStatusLine(corePod))
 		return false, nil
 	}
 	for i := range corePod.Status.ContainerStatuses {
 		c := &corePod.Status.ContainerStatuses[i]
 		if !c.Ready {
-			log.Printf(`⏳ System Phase is %q. Container %q is not ready:`+
-				` RestartCount=%d`,
-				sys.Status.Phase,
-				c.Name,
-				c.RestartCount)
+			log.Printf(`⏳ System Phase is %q. Container %q is not yet ready: %s`,
+				sys.Status.Phase, c.Name, util.GetContainerStatusLine(c))
 			return false, nil
 		}
 	}
@@ -501,7 +495,9 @@ func GetNBClient() nb.Client {
 	if len(mgmtStatus.NodePorts) == 0 {
 		log.Fatalf("❌ System mgmt service (nodeport) is not ready")
 	}
-	if s.SecretOp.StringData["auth_token"] == "" {
+
+	authToken := s.SecretOp.StringData["auth_token"]
+	if authToken == "" {
 		log.Fatalf("❌ Operator secret with auth token is not ready")
 	}
 
@@ -511,7 +507,7 @@ func GetNBClient() nb.Client {
 		ServiceMgmt: s.ServiceMgmt,
 		NodeIP:      nodeIP,
 	})
-	nbClient.SetAuthToken(s.SecretOp.StringData["auth_token"])
+	nbClient.SetAuthToken(authToken)
 	return nbClient
 }
 

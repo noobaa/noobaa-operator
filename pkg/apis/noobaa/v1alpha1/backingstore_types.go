@@ -133,6 +133,9 @@ const (
 	// BackingStorePhaseCreating means the operator is creating the resources on the cluster
 	BackingStorePhaseCreating BackingStorePhase = "Creating"
 
+	// BackingStorePhaseDeleting means the operator is deleting the resources on the cluster
+	BackingStorePhaseDeleting BackingStorePhase = "Deleting"
+
 	// BackingStorePhaseConnecting means the operator is trying to connect to the pods and services it created
 	BackingStorePhaseConnecting BackingStorePhase = "Connecting"
 

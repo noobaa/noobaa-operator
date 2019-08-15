@@ -4,6 +4,8 @@ metadata:
   name: aws1
   labels:
     app: noobaa
+  finalizers:
+    - noobaa.io/backingstore
 spec:
   type: aws-s3
   bucketName: noobaa-aws1

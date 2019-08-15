@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Cmd creates a CLI command
+// Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",

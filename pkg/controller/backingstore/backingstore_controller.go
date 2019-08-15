@@ -2,6 +2,7 @@ package backingstore
 
 import (
 	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/pkg/backingstore"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -19,7 +20,12 @@ func Add(mgr manager.Manager) error {
 		MaxConcurrentReconciles: 1,
 		Reconciler: reconcile.Func(
 			func(req reconcile.Request) (reconcile.Result, error) {
-				return reconcile.Result{}, nil
+				return backingstore.NewReconciler(
+					req.NamespacedName,
+					mgr.GetClient(),
+					mgr.GetScheme(),
+					mgr.GetRecorder("noobaa-operator"),
+				).Reconcile()
 			}),
 	})
 	if err != nil {

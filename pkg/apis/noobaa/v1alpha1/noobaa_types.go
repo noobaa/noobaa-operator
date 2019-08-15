@@ -61,13 +61,21 @@ type NooBaaList struct {
 // +k8s:openapi-gen=true
 type NooBaaSpec struct {
 
-	// Image (optional) overrides the default image for server container
+	// Image (optional) overrides the default image for the server container
 	// +optional
 	Image *string `json:"image,omitempty"`
 
-	// MongoImage (optional) overrides the default image for mongodb container
+	// MongoImage (optional) overrides the default image for the mongodb container
 	// +optional
 	MongoImage *string `json:"mongoImage,omitempty"`
+
+	// CoreResources (optional) overrides the default resource requirements for the server container
+	// +optional
+	CoreResources *corev1.ResourceRequirements `json:"coreResources,omitempty"`
+
+	// MongoResources (optional) overrides the default resource requirements for the mongodb container
+	// +optional
+	MongoResources *corev1.ResourceRequirements `json:"mongoResources,omitempty"`
 
 	// ImagePullSecret (optional) sets a pull secret for the system image
 	// +optional

@@ -16,7 +16,6 @@ import (
 
 	dockerref "github.com/docker/distribution/reference"
 	semver "github.com/hashicorp/go-version"
-	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -73,7 +72,7 @@ func NewReconciler(
 		Scheme:       scheme,
 		Recorder:     recorder,
 		Ctx:          context.TODO(),
-		Logger:       logrus.WithFields(logrus.Fields{"ns": req.Namespace, "sys": req.Name}),
+		Logger:       logrus.WithFields(logrus.Fields{"ns": req.Namespace}),
 		NooBaa:       util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		CoreApp:      util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
 		ServiceMgmt:  util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
@@ -99,7 +98,7 @@ func NewReconciler(
 	r.NooBaa.Name = r.Request.Name
 	r.CoreApp.Name = r.Request.Name + "-core"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
-	r.ServiceS3.Name = "s3" // TODO: handle collision in namespace
+	r.ServiceS3.Name = "s3"
 	r.SecretServer.Name = r.Request.Name + "-server"
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
@@ -131,23 +130,27 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	log.Infof("Start ...")
 
 	util.KubeCheck(r.NooBaa)
+
 	if r.NooBaa.UID == "" {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return reconcile.Result{}, nil
 	}
 
-	err := util.CombineErrors(
-		r.RunReconcile(),
-		r.UpdateStatus(),
-	)
+	err := r.RunReconcile()
+
 	if util.IsPersistentError(err) {
 		log.Errorf("❌ Persistent Error: %s", err)
+		util.SetErrorCondition(&r.NooBaa.Status.Conditions, err)
+		r.UpdateStatus()
 		return reconcile.Result{}, nil
 	}
 	if err != nil {
 		log.Warnf("⏳ Temporary Error: %s", err)
+		util.SetErrorCondition(&r.NooBaa.Status.Conditions, err)
+		r.UpdateStatus()
 		return reconcile.Result{RequeueAfter: 2 * time.Second}, nil
 	}
+	r.UpdateStatus()
 	log.Infof("✅ Done")
 	return reconcile.Result{}, nil
 }
@@ -165,45 +168,38 @@ func (r *Reconciler) RunReconcile() error {
 
 	r.SetPhase(nbv1.SystemPhaseVerifying)
 
-	if err := r.CheckSpecImage(); err != nil {
+	if err := r.CheckSystemCR(); err != nil {
 		return err
 	}
 
 	r.SetPhase(nbv1.SystemPhaseCreating)
 
 	if err := r.ReconcileSecretServer(); err != nil {
-		r.setErrorCondition(err)
 		return err
 	}
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
-		r.setErrorCondition(err)
 		return err
 	}
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
-		r.setErrorCondition(err)
 		return err
 	}
 	if err := r.ReconcileObject(r.ServiceS3, r.SetDesiredServiceS3); err != nil {
-		r.setErrorCondition(err)
 		return err
 	}
 
 	r.SetPhase(nbv1.SystemPhaseConnecting)
 
 	if err := r.Connect(); err != nil {
-		r.setErrorCondition(err)
 		return err
 	}
 
 	r.SetPhase(nbv1.SystemPhaseConfiguring)
 
 	if err := r.ReconcileSecretOp(); err != nil {
-		r.setErrorCondition(err)
 		return err
 	}
 
 	if err := r.ReconcileSecretAdmin(); err != nil {
-		r.setErrorCondition(err)
 		return err
 	}
 
@@ -253,11 +249,17 @@ func (r *Reconciler) SetDesiredCoreApp() {
 					c.Env[j].Value = r.NooBaa.Status.ActualImage
 				}
 			}
+			if r.NooBaa.Spec.CoreResources != nil {
+				c.Resources = *r.NooBaa.Spec.CoreResources
+			}
 		} else if c.Name == "mongodb" {
 			if r.NooBaa.Spec.MongoImage == nil {
 				c.Image = options.MongoImage
 			} else {
 				c.Image = *r.NooBaa.Spec.MongoImage
+			}
+			if r.NooBaa.Spec.MongoResources != nil {
+				c.Resources = *r.NooBaa.Spec.MongoResources
 			}
 		}
 	}
@@ -294,11 +296,23 @@ func (r *Reconciler) SetDesiredServiceS3() {
 	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
 }
 
-// CheckSpecImage checks the System.Spec.Image property,
-// and sets System.Status.ActualImage
-func (r *Reconciler) CheckSpecImage() error {
+// CheckSystemCR checks the validity of the system CR
+// (i.e system.metadata.name and system.spec.image)
+// and updates the status accordingly
+func (r *Reconciler) CheckSystemCR() error {
 
-	log := r.Logger.WithField("func", "CheckSpecImage")
+	log := r.Logger.WithField("func", "CheckSystemCR")
+
+	// we assume a single system per ns here
+	if r.NooBaa.Name != options.SystemName {
+		err := fmt.Errorf("Invalid system name %q expected %q", r.NooBaa.Name, options.SystemName)
+		log.Errorf("%s", err)
+		if r.Recorder != nil {
+			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "BadName", "%s", err)
+		}
+		r.SetPhase(nbv1.SystemPhaseRejected)
+		return util.NewPersistentError(err)
+	}
 
 	specImage := options.ContainerImage
 	if r.NooBaa.Spec.Image != nil {
@@ -343,15 +357,14 @@ func (r *Reconciler) CheckSpecImage() error {
 		if err == nil {
 			log.Infof("Parsed version %q from image tag %q", version.String(), imageTag)
 			if !ContainerImageConstraint.Check(version) {
-				log.Errorf("Unsupported image version %q for contraints %q",
-					imageRef.String(), ContainerImageConstraint.String())
+				err := fmt.Errorf(`Unsupported image version %q not matching contraints %q`,
+					imageRef, ContainerImageConstraint)
+				log.Errorf("%s", err)
 				if r.Recorder != nil {
-					r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning,
-						"BadImage", `Unsupported image version requested %q not matching constraints %q`,
-						imageRef, ContainerImageConstraint)
+					r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "BadImage", "%s", err)
 				}
 				r.SetPhase(nbv1.SystemPhaseRejected)
-				return util.NewPersistentError(fmt.Errorf(`Unsupported image version "%+v"`, imageRef))
+				return util.NewPersistentError(err)
 			}
 		} else {
 			log.Infof("Using custom image %q contraints %q", imageRef.String(), ContainerImageConstraint.String())
@@ -624,131 +637,6 @@ var readmeTemplate = template.Must(template.New("NooBaaSystem.Status.Readme").Pa
 
 `))
 
-func (r *Reconciler) setErrorCondition(err error) {
-	reason := "ReconcileFailed"
-	message := fmt.Sprintf("Error while reconciling: %v", err)
-	currentTime := metav1.NewTime(time.Now())
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		//LastHeartbeatTime should be set by the custom-resource-status just like lastTransitionTime
-		// Setting it here temporarity
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionAvailable,
-		Status:            corev1.ConditionUnknown,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionProgressing,
-		Status:            corev1.ConditionFalse,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionDegraded,
-		Status:            corev1.ConditionTrue,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionUpgradeable,
-		Status:            corev1.ConditionUnknown,
-		Reason:            reason,
-		Message:           message,
-	})
-}
-
-func (r *Reconciler) setAvailableCondition(reason string, message string) {
-	currentTime := metav1.NewTime(time.Now())
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionAvailable,
-		Status:            corev1.ConditionTrue,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionProgressing,
-		Status:            corev1.ConditionFalse,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionDegraded,
-		Status:            corev1.ConditionFalse,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionUpgradeable,
-		Status:            corev1.ConditionTrue,
-		Reason:            reason,
-		Message:           message,
-	})
-}
-
-func (r *Reconciler) setProgressingCondition(reason string, message string) {
-	currentTime := metav1.NewTime(time.Now())
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionAvailable,
-		Status:            corev1.ConditionFalse,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionProgressing,
-		Status:            corev1.ConditionTrue,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionDegraded,
-		Status:            corev1.ConditionFalse,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(&r.NooBaa.Status.Conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionUpgradeable,
-		Status:            corev1.ConditionFalse,
-		Reason:            reason,
-		Message:           message,
-	})
-}
-
-// SetPhase updates the status phase and conditions
-func (r *Reconciler) SetPhase(phase nbv1.SystemPhase) {
-	r.Logger.Infof("SetPhase: %s", phase)
-	r.NooBaa.Status.Phase = phase
-	reason := fmt.Sprintf("%v", phase)
-	message := fmt.Sprintf("%v", phase)
-	switch phase {
-	case nbv1.SystemPhaseVerifying:
-		reason = "ReconcileInit"
-		message = "Initializing noobaa cluster"
-		r.setAvailableCondition(reason, message)
-	case nbv1.SystemPhaseCreating:
-		r.setProgressingCondition(reason, message)
-	case nbv1.SystemPhaseConnecting:
-		r.setProgressingCondition(reason, message)
-	case nbv1.SystemPhaseConfiguring:
-		r.setProgressingCondition(reason, message)
-	case nbv1.SystemPhaseReady:
-		reason = "Reconcilecompleted"
-		message = "ReconcileCompleted"
-		r.setAvailableCondition(reason, message)
-	default:
-	}
-}
-
 // Complete populates the noobaa status at the end of reconcile.
 func (r *Reconciler) Complete() error {
 
@@ -803,4 +691,21 @@ func (r *Reconciler) ReconcileObject(obj runtime.Object, desiredFunc func()) err
 
 	log.Infof("Done. op=%s", op)
 	return nil
+}
+
+// SetPhase updates the status phase and conditions
+func (r *Reconciler) SetPhase(phase nbv1.SystemPhase) {
+	r.Logger.Infof("SetPhase: %s", phase)
+	r.NooBaa.Status.Phase = phase
+	conditions := &r.NooBaa.Status.Conditions
+	reason := fmt.Sprintf("NooBaaSystemPhase%s", phase)
+	message := fmt.Sprintf("NooBaa operator system reconcile phase %s", phase)
+	switch phase {
+	case nbv1.SystemPhaseReady:
+		util.SetAvailableCondition(conditions, reason, message)
+	case nbv1.SystemPhaseRejected:
+		// handle rejected here too?
+	default:
+		util.SetProgressingCondition(conditions, reason, message)
+	}
 }

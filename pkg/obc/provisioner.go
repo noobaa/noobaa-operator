@@ -3,7 +3,6 @@ package obc
 import (
 	"fmt"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -27,15 +26,11 @@ import (
 )
 
 const (
-	obStateAccountNameKey = "UserName"
 	allNamespaces         = ""
+	obStateAccountNameKey = "UserName"
 )
 
-var (
-	namespace       = os.Getenv("WATCH_NAMESPACE")
-	provisionerName = "noobaa.io/" + namespace + ".bucket"
-	log             = util.Logger().WithField("mod", "OBC")
-)
+var log = util.Logger()
 
 // RunProvisioner will run OBC provisioner
 func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder record.EventRecorder) error {
@@ -52,6 +47,8 @@ func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder recor
 		scheme:    scheme,
 		recorder:  recorder,
 	}
+
+	provisionerName := "noobaa.io/" + options.Namespace + ".bucket"
 
 	// Create and run the s3 provisioner controller.
 	// It implements the Provisioner interface expected by the bucket
@@ -224,7 +221,7 @@ func (p *Provisioner) createAccountForBucket() error {
 func (p *Provisioner) deleteAccount() error {
 
 	log.Infof("deleting account %q", p.accountUserName)
-	_, err := p.nbClient.DeleteAccountAPI(nb.DeleteAccountParams{Email: p.accountUserName})
+	err := p.nbClient.DeleteAccountAPI(nb.DeleteAccountParams{Email: p.accountUserName})
 	if err != nil {
 		return fmt.Errorf("failed to delete account %q. got error: %v", p.accountUserName, err)
 	}
@@ -237,7 +234,7 @@ func (p *Provisioner) initNoobaaInfo() error {
 
 	// TODO how to get the system name of the provisioner?
 	r := system.NewReconciler(
-		types.NamespacedName{Namespace: namespace, Name: options.SystemName},
+		types.NamespacedName{Namespace: options.Namespace, Name: options.SystemName},
 		p.client, p.scheme, nil,
 	)
 	r.Load()

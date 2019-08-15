@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/noobaa/noobaa-operator/build/_output/bundle"
-	"github.com/noobaa/noobaa-operator/pkg/controller"
 	"github.com/noobaa/noobaa-operator/pkg/options"
 	"github.com/noobaa/noobaa-operator/pkg/util"
 
@@ -16,7 +15,7 @@ import (
 	"k8s.io/cli-runtime/pkg/printers"
 )
 
-// Cmd creates a CLI command
+// Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "operator",
@@ -32,7 +31,7 @@ func Cmd() *cobra.Command {
 	return cmd
 }
 
-// CmdInstall creates a CLI command
+// CmdInstall returns a CLI command
 func CmdInstall() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
@@ -43,7 +42,7 @@ func CmdInstall() *cobra.Command {
 	return cmd
 }
 
-// CmdUninstall creates a CLI command
+// CmdUninstall returns a CLI command
 func CmdUninstall() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall",
@@ -53,7 +52,7 @@ func CmdUninstall() *cobra.Command {
 	return cmd
 }
 
-// CmdStatus creates a CLI command
+// CmdStatus returns a CLI command
 func CmdStatus() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
@@ -63,7 +62,7 @@ func CmdStatus() *cobra.Command {
 	return cmd
 }
 
-// CmdYaml creates a CLI command
+// CmdYaml returns a CLI command
 func CmdYaml() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "yaml",
@@ -73,14 +72,12 @@ func CmdYaml() *cobra.Command {
 	return cmd
 }
 
-// CmdRun creates a CLI command
+// CmdRun returns a CLI command
 func CmdRun() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Runs the noobaa-operator",
-		Run: func(cmd *cobra.Command, args []string) {
-			controller.OperatorMain()
-		},
+		Run:   RunOperator,
 	}
 	return cmd
 }

@@ -11,8 +11,8 @@ Adding support for a new type of backing-store is rather easy as it requires jus
 
 # Definitions
 
-- CRD: [noobaa_v1alpha1_bucketclass_crd.yaml](../deploy/crds/noobaa_v1alpha1_backingstore_crd.yaml)
-- CR: [noobaa_v1alpha1_bucketclass_cr.yaml](../deploy/crds/noobaa_v1alpha1_backingstore_cr.yaml)
+- CRD: [noobaa_v1alpha1_backingstore_crd.yaml](../deploy/crds/noobaa_v1alpha1_backingstore_crd.yaml)
+- CR: [noobaa_v1alpha1_backingstore_cr.yaml](../deploy/crds/noobaa_v1alpha1_backingstore_cr.yaml)
 
 
 # Reconcile
