@@ -13,6 +13,7 @@ import (
 	"github.com/noobaa/noobaa-operator/pkg/olm"
 	"github.com/noobaa/noobaa-operator/pkg/operator"
 	"github.com/noobaa/noobaa-operator/pkg/options"
+	"github.com/noobaa/noobaa-operator/pkg/pvstore"
 	"github.com/noobaa/noobaa-operator/pkg/system"
 	"github.com/noobaa/noobaa-operator/pkg/util"
 	"github.com/noobaa/noobaa-operator/pkg/version"
@@ -79,6 +80,7 @@ func Cmd() *cobra.Command {
 		Commands: []*cobra.Command{
 			backingstore.Cmd(),
 			obc.Cmd(),
+			pvstore.Cmd(),
 		},
 	}, {
 		Message: "Advanced:",

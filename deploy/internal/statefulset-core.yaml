@@ -89,8 +89,8 @@ spec:
                 secretKeyRef:
                   name: noobaa-server
                   key: server_secret
-            - name: AGENT_IMAGE
-              value: NOOBAA_IMAGE
+            - name: AGENT_PROFILE
+              value: VALUE_AGENT_PROFILE
             - name: OAUTH_AUTHORIZATION_ENDPOINT
               valueFrom:
                 configMapKeyRef:
