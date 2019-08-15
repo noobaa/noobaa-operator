@@ -245,8 +245,8 @@ func (r *Reconciler) SetDesiredCoreApp() {
 		if c.Name == "noobaa-server" {
 			c.Image = r.NooBaa.Status.ActualImage
 			for j := range c.Env {
-				if c.Env[j].Name == "AGENT_IMAGE" {
-					c.Env[j].Value = r.NooBaa.Status.ActualImage
+				if c.Env[j].Name == "AGENT_PROFILE" {
+					c.Env[j].Value = fmt.Sprintf(`{ "image": "%s" }`, r.NooBaa.Status.ActualImage)
 				}
 			}
 			if r.NooBaa.Spec.CoreResources != nil {

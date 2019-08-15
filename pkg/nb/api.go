@@ -99,6 +99,10 @@ type PoolInfo struct {
 	} `json:"cloud_info,omitempty"`
 	MongoInfo *map[string]interface{} `json:"mongo_info,omitempty"`
 	HostInfo  *PoolHostsInfo          `json:"host_info,omitempty"`
+	Hosts     *struct {
+		ConfiguredCount int64 `json:"configured_count"`
+		Count           int64 `json:"count"`
+	} `json:"hosts,omitempty"`
 	// TODO PoolInfo struct is partial ...
 }
 
