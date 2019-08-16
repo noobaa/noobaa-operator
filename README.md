@@ -10,6 +10,8 @@ NooBaa is an object data service for hybrid and multi cloud environments. NooBaa
 
 For Mac
 ```
+brew install noobaa/noobaa/noobaa
+# or
 wget https://github.com/noobaa/noobaa-operator/releases/download/v1.0.2/noobaa-mac-v1.0.2;mv noobaa-mac-* noobaa;chmod +x noobaa
 ```
 For Linux
