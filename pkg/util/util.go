@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/pkg/apis"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
@@ -40,6 +41,7 @@ func init() {
 	Panic(apiextv1beta1.AddToScheme(scheme.Scheme))
 	Panic(nbapis.AddToScheme(scheme.Scheme))
 	Panic(obv1.AddToScheme(scheme.Scheme))
+	Panic(monitoringv1.AddToScheme(scheme.Scheme))
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)
@@ -77,6 +79,7 @@ func MapperProvider(config *rest.Config) (meta.RESTMapper, error) {
 				g.Name == "objectbucket.io" ||
 				g.Name == "operator.openshift.io" ||
 				g.Name == "cloudcredential.openshift.io" ||
+				g.Name == "monitoring.coreos.com" ||
 				strings.HasSuffix(g.Name, ".k8s.io") {
 				return true
 			}
