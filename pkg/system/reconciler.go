@@ -14,6 +14,7 @@ import (
 	"github.com/noobaa/noobaa-operator/pkg/options"
 	"github.com/noobaa/noobaa-operator/pkg/util"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	dockerref "github.com/docker/distribution/reference"
 	semver "github.com/hashicorp/go-version"
 	"github.com/sirupsen/logrus"
@@ -49,13 +50,14 @@ type Reconciler struct {
 	Recorder record.EventRecorder
 	NBClient nb.Client
 
-	NooBaa       *nbv1.NooBaa
-	CoreApp      *appsv1.StatefulSet
-	ServiceMgmt  *corev1.Service
-	ServiceS3    *corev1.Service
-	SecretServer *corev1.Secret
-	SecretOp     *corev1.Secret
-	SecretAdmin  *corev1.Secret
+	NooBaa         *nbv1.NooBaa
+	CoreApp        *appsv1.StatefulSet
+	ServiceMgmt    *corev1.Service
+	ServiceS3      *corev1.Service
+	SecretServer   *corev1.Secret
+	SecretOp       *corev1.Secret
+	SecretAdmin    *corev1.Secret
+	PrometheusRule *monitoringv1.PrometheusRule
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -67,19 +69,20 @@ func NewReconciler(
 ) *Reconciler {
 
 	r := &Reconciler{
-		Request:      req,
-		Client:       client,
-		Scheme:       scheme,
-		Recorder:     recorder,
-		Ctx:          context.TODO(),
-		Logger:       logrus.WithFields(logrus.Fields{"ns": req.Namespace}),
-		NooBaa:       util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
-		CoreApp:      util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
-		ServiceMgmt:  util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
-		ServiceS3:    util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
-		SecretServer: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		SecretOp:     util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		SecretAdmin:  util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		Request:        req,
+		Client:         client,
+		Scheme:         scheme,
+		Recorder:       recorder,
+		Ctx:            context.TODO(),
+		Logger:         logrus.WithFields(logrus.Fields{"ns": req.Namespace}),
+		NooBaa:         util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
+		CoreApp:        util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
+		ServiceMgmt:    util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
+		ServiceS3:      util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
+		SecretServer:   util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretOp:       util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretAdmin:    util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		PrometheusRule: util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 	}
 	util.SecretResetStringDataFromData(r.SecretServer)
 	util.SecretResetStringDataFromData(r.SecretOp)
@@ -93,6 +96,7 @@ func NewReconciler(
 	r.SecretServer.Namespace = r.Request.Namespace
 	r.SecretOp.Namespace = r.Request.Namespace
 	r.SecretAdmin.Namespace = r.Request.Namespace
+	r.PrometheusRule.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -102,6 +106,7 @@ func NewReconciler(
 	r.SecretServer.Name = r.Request.Name + "-server"
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
+	r.PrometheusRule.Name = r.Request.Name + "-prometheus-rules"
 
 	return r
 }
@@ -118,6 +123,7 @@ func (r *Reconciler) Load() {
 	util.SecretResetStringDataFromData(r.SecretServer)
 	util.SecretResetStringDataFromData(r.SecretOp)
 	util.SecretResetStringDataFromData(r.SecretAdmin)
+	util.KubeCheck(r.PrometheusRule)
 }
 
 // Reconcile reads that state of the cluster for a System object,
@@ -185,6 +191,13 @@ func (r *Reconciler) RunReconcile() error {
 	}
 	if err := r.ReconcileObject(r.ServiceS3, r.SetDesiredServiceS3); err != nil {
 		return err
+	}
+	if err := r.ReconcileObject(r.PrometheusRule, nil); err != nil {
+		if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+			r.Logger.Printf("No PrometheusRule CRD existing, skip creating PrometheusRules\n")
+		} else {
+			return err
+		}
 	}
 
 	r.SetPhase(nbv1.SystemPhaseConnecting)
