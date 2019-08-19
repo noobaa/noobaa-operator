@@ -25,16 +25,22 @@ BUNDLE ?= $(OUTPUT)/bundle
 #- Building -#
 #------------#
 
-all: local build
+all: build
 	@echo "all - done."
 .PHONY: all
 
-build: image olm
+build: cli image
 	@echo "build - done."
 .PHONY: build
 
+cli: gen
+	operator-sdk up local --operator-flags "version"
+	@echo "cli - done."
+.PHONY: cli
+
 image: gen
 	operator-sdk build $(IMAGE)
+	@echo "image - done."
 .PHONY: image
 
 gen: vendor $(BUNDLE)/deploy.go
@@ -48,21 +54,6 @@ vendor:
 	$(GO) mod vendor
 .PHONY: vendor
 
-olm:
-	rm -rf $(OLM)
-	mkdir -p $(OLM)
-	cp deploy/olm-catalog/package/* $(OLM)/
-	cp deploy/crds/*crd.yaml $(OLM)/
-	python3 -m venv $(VENV)
-	( \
-		. $(VENV)/bin/activate && \
-		pip3 install --upgrade pip && \
-		pip3 install operator-courier && \
-		operator-courier verify --ui_validate_io $(OLM) \
-	)
-	@echo "olm - ready at $(OLM)"
-.PHONY: olm
-
 
 #-----------#
 #- Testing -#
@@ -72,7 +63,7 @@ test: lint unittest
 	@echo "test - done."
 .PHONY: test
 
-test-integ: scorecard test-e2e
+test-integ: scorecard test-cli
 	@echo "test-integ - done."
 .PHONY: test-integ
 
@@ -82,16 +73,20 @@ lint: gen
 .PHONY: lint
 
 unittest: gen
-	go test ./cmd/... ./pkg/... ./version/...
+	go test ./pkg/...
 .PHONY: unittest
 
-test-e2e: gen
-	# TODO fix test-e2e !
-	# operator-sdk test local ./test/e2e \
-	# 	--global-manifest deploy/cluster_role_binding.yaml \
-	# 	--debug \
-	# 	--go-test-flags "-v -parallel=1"
-.PHONY: test-e2e
+test-cli: cli
+	go test ./test/
+.PHONY: test-cli
+
+# TODO operator-sdk test local is not working on CI !
+# test-e2e: gen
+# 	operator-sdk test local ./test/e2e \
+# 		--global-manifest deploy/cluster_role_binding.yaml \
+# 		--debug \
+# 		--go-test-flags "-v -parallel=1"
+# .PHONY: test-e2e
 
 scorecard: gen
 	kubectl create ns test-noobaa-operator-scorecard
@@ -103,6 +98,16 @@ scorecard: gen
 		--namespace test-noobaa-operator-scorecard
 .PHONY: scorecard
 
+test-olm:
+	rm -rf $(OLM)
+	mkdir -p $(OLM)
+	cp  deploy/olm-catalog/package/* \
+		deploy/crds/*_crd.yaml \
+		deploy/obc/*_crd.yaml \
+		$(OLM)/
+	./test/test-olm.sh
+	@echo "olm - done."
+.PHONY: test-olm
 
 #-------------#
 #- Releasing -#
@@ -118,10 +123,6 @@ push-image:
 #--------------#
 #- Developing -#
 #--------------#
-
-local: gen
-	operator-sdk up local &>/dev/null
-.PHONY: local
 
 run: gen
 	operator-sdk up local --operator-flags "operator run"

@@ -21,11 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const (
-	// Finalizer is the name of the backing-store finalizer
-	Finalizer = "noobaa.io/backingstore"
-)
-
 // Reconciler is the context for loading or reconciling a noobaa system
 type Reconciler struct {
 	Request  types.NamespacedName
@@ -63,21 +58,20 @@ func NewReconciler(
 		Scheme:       scheme,
 		Recorder:     recorder,
 		Ctx:          context.TODO(),
-		Logger:       logrus.WithFields(logrus.Fields{"ns": req.Namespace, "backing-store": req.Name}),
-		NooBaa:       util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
+		Logger:       logrus.WithField("backingstore", req.Namespace+"/"+req.Name),
 		BackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
+		NooBaa:       util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		Secret:       util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 	}
-	util.SecretResetStringDataFromData(r.Secret)
 
 	// Set Namespace
-	r.NooBaa.Namespace = r.Request.Namespace
 	r.BackingStore.Namespace = r.Request.Namespace
+	r.NooBaa.Namespace = r.Request.Namespace
 	r.Secret.Namespace = r.Request.Namespace
 
 	// Set Names
-	r.NooBaa.Name = options.SystemName
 	r.BackingStore.Name = r.Request.Name
+	r.NooBaa.Name = options.SystemName
 	r.Secret.Name = "backing-store-secret-" + r.Request.Name
 
 	return r
@@ -89,56 +83,77 @@ func NewReconciler(
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
-	log := r.Logger.WithField("func", "Reconcile")
+	res := reconcile.Result{}
+	log := r.Logger
 	log.Infof("Start ...")
 
-	util.KubeCheck(r.NooBaa)
 	util.KubeCheck(r.BackingStore)
-	util.KubeCheck(r.Secret)
-	util.SecretResetStringDataFromData(r.Secret)
 
 	if r.BackingStore.UID == "" {
 		log.Infof("BackingStore %q not found or deleted. Skip reconcile.", r.BackingStore.Name)
 		return reconcile.Result{}, nil
 	}
 
+	r.Secret.Name = r.BackingStore.Spec.Secret.Name
+	r.Secret.Namespace = r.BackingStore.Spec.Secret.Namespace
+
+	util.KubeCheck(r.NooBaa)
+	util.KubeCheck(r.Secret)
+
 	var err error
 	if r.BackingStore.DeletionTimestamp != nil {
 		err = r.ReconcileDeletion()
 	} else {
-		err = r.RunReconcile()
-	}
-	if util.IsPersistentError(err) {
-		log.Errorf("❌ Persistent Error: %s", err)
-		util.SetErrorCondition(&r.BackingStore.Status.Conditions, err)
-		r.UpdateStatus()
-		return reconcile.Result{}, nil
+		err = r.ReconcilePhases()
 	}
 	if err != nil {
-		log.Warnf("⏳ Temporary Error: %s", err)
-		util.SetErrorCondition(&r.BackingStore.Status.Conditions, err)
-		r.UpdateStatus()
-		return reconcile.Result{RequeueAfter: 2 * time.Second}, nil
+		if perr, isPERR := err.(*util.PersistentError); isPERR {
+			r.SetPhase(nbv1.BackingStorePhaseRejected, perr.Reason, perr.Message)
+			log.Errorf("❌ Persistent Error: %s", err)
+			if r.Recorder != nil {
+				r.Recorder.Eventf(r.BackingStore, corev1.EventTypeWarning, perr.Reason, perr.Message)
+			}
+		} else {
+			res.RequeueAfter = 3 * time.Second
+			// leave current phase as is
+			r.SetPhase("", "TemporaryError", err.Error())
+			log.Warnf("⏳ Temporary Error: %s", err)
+		}
+	} else {
+		r.SetPhase(
+			nbv1.BackingStorePhaseReady,
+			"BackingStorePhaseReady",
+			"noobaa operator completed reconcile - backing store is ready",
+		)
+		log.Infof("✅ Done")
 	}
+
 	r.UpdateStatus()
-	log.Infof("✅ Done")
-	return reconcile.Result{}, nil
+	return res, nil
 }
 
-// RunReconcile runs the reconcile flow and populates System.Status.
-func (r *Reconciler) RunReconcile() error {
+// ReconcilePhases runs the reconcile flow and populates System.Status.
+func (r *Reconciler) ReconcilePhases() error {
 
-	r.SetPhase(nbv1.BackingStorePhaseVerifying)
-
-	if err := r.Verify(); err != nil {
+	if err := r.ReconcilePhaseVerifying(); err != nil {
 		return err
 	}
+
+	r.SetPhase(
+		nbv1.BackingStorePhaseConnecting,
+		"BackingStorePhaseConnecting",
+		"noobaa operator started phase 2/3 - \"Connecting\"",
+	)
 
 	if err := r.ReadSystemInfo(); err != nil {
 		return err
 	}
 
-	r.SetPhase(nbv1.BackingStorePhaseCreating)
+	r.SetPhase(
+		nbv1.BackingStorePhaseCreating,
+		"BackingStorePhaseCreating",
+		"noobaa operator started phase 3/3 - \"Creating\"",
+	)
 
 	if err := r.ReconcileExternalConnection(); err != nil {
 		return err
@@ -147,34 +162,59 @@ func (r *Reconciler) RunReconcile() error {
 		return err
 	}
 
-	r.SetPhase(nbv1.BackingStorePhaseConnecting)
-
-	r.SetPhase(nbv1.BackingStorePhaseReady)
-
 	return nil
 }
 
-// Verify checks that we have the system and secret needed to reconcile
-func (r *Reconciler) Verify() error {
+// SetPhase updates the status phase and conditions
+func (r *Reconciler) SetPhase(phase nbv1.BackingStorePhase, reason string, message string) {
+
+	c := &r.BackingStore.Status.Conditions
+
+	if phase == "" {
+		r.Logger.Infof("SetPhase: temporary error during phase %q", r.BackingStore.Status.Phase)
+		util.SetProgressingCondition(c, reason, message)
+		return
+	}
+
+	r.Logger.Infof("SetPhase: %s", phase)
+	r.BackingStore.Status.Phase = phase
+	switch phase {
+	case nbv1.BackingStorePhaseReady:
+		util.SetAvailableCondition(c, reason, message)
+	case nbv1.BackingStorePhaseRejected:
+		util.SetErrorCondition(c, reason, message)
+	default:
+		util.SetProgressingCondition(c, reason, message)
+	}
+}
+
+// UpdateStatus updates the backing store status in kubernetes from the memory
+func (r *Reconciler) UpdateStatus() {
+	err := r.Client.Status().Update(r.Ctx, r.BackingStore)
+	if err != nil {
+		r.Logger.Errorf("UpdateStatus: %s", err)
+	} else {
+		r.Logger.Infof("UpdateStatus: Done")
+	}
+}
+
+// ReconcilePhaseVerifying checks that we have the system and secret needed to reconcile
+func (r *Reconciler) ReconcilePhaseVerifying() error {
+
+	r.SetPhase(
+		nbv1.BackingStorePhaseVerifying,
+		"BackingStorePhaseVerifying",
+		"noobaa operator started phase 1/3 - \"Verifying\"",
+	)
 
 	if r.NooBaa.UID == "" {
-		err := fmt.Errorf("NooBaa system %q not found or deleted", r.NooBaa.Name)
-		r.Logger.Errorf("%s", err)
-		if r.Recorder != nil {
-			r.Recorder.Eventf(r.BackingStore, corev1.EventTypeWarning, "MissingSystem", "%s", err)
-		}
-		r.SetPhase(nbv1.BackingStorePhaseRejected)
-		return util.NewPersistentError(err)
+		return util.NewPersistentError("MissingSystem",
+			fmt.Sprintf("NooBaa system %q not found or deleted", r.NooBaa.Name))
 	}
 
 	if r.Secret.UID == "" {
-		err := fmt.Errorf("BackingStore Secret %q not found or deleted", r.Secret.Name)
-		r.Logger.Errorf("%s", err)
-		if r.Recorder != nil {
-			r.Recorder.Eventf(r.BackingStore, corev1.EventTypeWarning, "MissingSecret", "%s", err)
-		}
-		r.SetPhase(nbv1.BackingStorePhaseRejected)
-		return util.NewPersistentError(err)
+		return util.NewPersistentError("MissingSecret",
+			fmt.Sprintf("BackingStore Secret %q not found or deleted", r.Secret.Name))
 	}
 
 	return nil
@@ -184,7 +224,11 @@ func (r *Reconciler) Verify() error {
 // and prepares the structures to reconcile
 func (r *Reconciler) ReadSystemInfo() error {
 
-	r.NBClient = system.GetNBClient()
+	sysClient, err := system.Connect()
+	if err != nil {
+		return nil
+	}
+	r.NBClient = sysClient.NBClient
 
 	systemInfo, err := r.NBClient.ReadSystemAPI()
 	if err != nil {
@@ -192,7 +236,10 @@ func (r *Reconciler) ReadSystemInfo() error {
 	}
 	r.SystemInfo = &systemInfo
 
-	conn := r.MakeExternalConnectionParams()
+	conn, err := r.MakeExternalConnectionParams()
+	if err != nil {
+		return err
+	}
 
 	// Check if pool exists
 	for i := range r.SystemInfo.Pools {
@@ -239,13 +286,14 @@ func (r *Reconciler) ReadSystemInfo() error {
 
 // MakeExternalConnectionParams translates the backing store spec and secret,
 // to noobaa api structures to be used for creating/updating external connetion and pool
-func (r *Reconciler) MakeExternalConnectionParams() *nb.AddExternalConnectionParams {
+func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionParams, error) {
 
 	conn := &nb.AddExternalConnectionParams{
 		Name: r.BackingStore.Name,
 	}
 
 	switch r.BackingStore.Spec.Type {
+
 	case nbv1.StoreTypeAWSS3:
 		conn.EndpointType = nb.EndpointTypeAws
 		conn.Endpoint = r.BackingStore.Spec.S3Options.Endpoint
@@ -261,24 +309,38 @@ func (r *Reconciler) MakeExternalConnectionParams() *nb.AddExternalConnectionPar
 		}
 		conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
 		conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+
 	case nbv1.StoreTypeS3Compatible:
 		conn.EndpointType = nb.EndpointTypeS3Compat
 		conn.Endpoint = r.BackingStore.Spec.S3Options.Endpoint
 		conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
 		conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
 		// conn.AuthMethod =
+
 	case nbv1.StoreTypeAzureBlob:
-		conn.EndpointType = nb.EndpointTypeAzure
+		return nil, util.NewPersistentError("NotYetImplemented",
+			fmt.Sprintf("Not yet implemented backing store type %q", r.BackingStore.Spec.Type))
+		// conn.EndpointType = nb.EndpointTypeAzure
 		// conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
 		// conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+
 	case nbv1.StoreTypeGoogleCloudStorage:
-		conn.EndpointType = nb.EndpointTypeGoogle
+		return nil, util.NewPersistentError("NotYetImplemented",
+			fmt.Sprintf("Not yet implemented backing store type %q", r.BackingStore.Spec.Type))
+		// conn.EndpointType = nb.EndpointTypeGoogle
 		// conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
 		// conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+
+	case nbv1.StoreTypePV:
+		return nil, util.NewPersistentError("NotYetImplemented",
+			fmt.Sprintf("Not yet implemented backing store type %q", r.BackingStore.Spec.Type))
+
 	default:
+		return nil, util.NewPersistentError("InvalidType",
+			fmt.Sprintf("Invalid backing store type %q", r.BackingStore.Spec.Type))
 	}
 
-	return conn
+	return conn, nil
 }
 
 // ReconcileExternalConnection handles the external connection using noobaa api
@@ -290,6 +352,11 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 
 	res, err := r.NBClient.CheckExternalConnectionAPI(*r.AddExternalConnectionParams)
 	if err != nil {
+		if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
+			if rpcErr.RPCCode == "INVALID_SCHEMA_PARAMS" {
+				return util.NewPersistentError("InvalidConnectionParams", rpcErr.Message)
+			}
+		}
 		return err
 	}
 	switch res.Status {
@@ -304,13 +371,8 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	case nb.ExternalConnectionTimeSkew:
 		fallthrough
 	case nb.ExternalConnectionNotSupported:
-		err := fmt.Errorf("BackingStore %q invalid external connection %q", r.Secret.Name, res.Status)
-		r.Logger.Errorf("%s", err)
-		if r.Recorder != nil {
-			r.Recorder.Eventf(r.BackingStore, corev1.EventTypeWarning, string(res.Status), "%s", err)
-		}
-		r.SetPhase(nbv1.BackingStorePhaseRejected)
-		return util.NewPersistentError(err)
+		return util.NewPersistentError(string(res.Status),
+			fmt.Sprintf("BackingStore %q invalid external connection %q", r.Secret.Name, res.Status))
 
 	case nb.ExternalConnectionTimeout:
 		fallthrough
@@ -344,19 +406,16 @@ func (r *Reconciler) ReconcilePool() error {
 	return nil
 }
 
-// UpdateStatus updates the backing store status in kubernetes from the memory
-func (r *Reconciler) UpdateStatus() error {
-	log := r.Logger.WithField("func", "UpdateStatus")
-	log.Infof("Updating backing store status")
-	return r.Client.Status().Update(r.Ctx, r.BackingStore)
-}
-
 // ReconcileDeletion handles the deletion of a backing-store using the noobaa api
 func (r *Reconciler) ReconcileDeletion() error {
 
 	// Set the phase to let users know the operator has noticed the deletion request
 	if r.BackingStore.Status.Phase != nbv1.BackingStorePhaseDeleting {
-		r.SetPhase(nbv1.BackingStorePhaseDeleting)
+		r.SetPhase(
+			nbv1.BackingStorePhaseDeleting,
+			"BackingStorePhaseDeleting",
+			"noobaa operator started deletion",
+		)
 		r.UpdateStatus()
 	}
 
@@ -415,28 +474,9 @@ func (r *Reconciler) ReconcileDeletion() error {
 
 // FinalizeDeletion removed the finalizer and updates in order to let the backing-store get reclaimed by kubernetes
 func (r *Reconciler) FinalizeDeletion() error {
-	util.RemoveFinalizer(r.BackingStore, Finalizer)
+	util.RemoveFinalizer(r.BackingStore, nbv1.BackingStoreFinalizer)
 	if !util.KubeUpdate(r.BackingStore) {
-		return fmt.Errorf("BackingStore %q failed to remove finalizer %q", r.BackingStore.Name, Finalizer)
+		return fmt.Errorf("BackingStore %q failed to remove finalizer %q", r.BackingStore.Name, nbv1.BackingStoreFinalizer)
 	}
 	return nil
-}
-
-// SetPhase updates the status phase and conditions
-func (r *Reconciler) SetPhase(phase nbv1.BackingStorePhase) {
-	r.Logger.Infof("SetPhase: %s", phase)
-	r.BackingStore.Status.Phase = phase
-	conditions := &r.BackingStore.Status.Conditions
-	reason := fmt.Sprintf("BackingStorePhase%s", phase)
-	message := fmt.Sprintf("NooBaa operator backing-store reconcile phase %s", phase)
-	switch phase {
-	case nbv1.BackingStorePhaseReady:
-		util.SetAvailableCondition(conditions, reason, message)
-	case nbv1.BackingStorePhaseDeleting:
-		// handle deleting here too?
-	case nbv1.BackingStorePhaseRejected:
-		// handle rejected here too?
-	default:
-		util.SetProgressingCondition(conditions, reason, message)
-	}
 }

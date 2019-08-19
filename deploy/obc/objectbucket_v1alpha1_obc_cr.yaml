@@ -3,7 +3,7 @@ kind: ObjectBucketClaim
 metadata:
   name: noobaa-obc
 spec:
-  generateBucketName: noobaa-obc
   storageClassName: noobaa-storage-class
+  generateBucketName: noobaa-obc
   SSL: false
   versioned: false

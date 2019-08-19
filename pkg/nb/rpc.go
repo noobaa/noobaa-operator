@@ -92,7 +92,7 @@ func (c *RPCClient) Call(req *RPCRequest, res RPCResponseIfc) error {
 	address := c.Router.GetAddress(api)
 	// u := address + strings.TrimSuffix(api, "_api") + "/" + method
 	u := strings.TrimSuffix(api, "_api") + "." + method + "()"
-	logrus.Infof("✈️  RPC: %s Request: %#v", u, req.Params)
+	logrus.Infof("✈️  RPC: %s Request: %+v", u, req.Params)
 
 	reqBytes, err := json.Marshal(req)
 	fatal(err)
@@ -107,29 +107,29 @@ func (c *RPCClient) Call(req *RPCRequest, res RPCResponseIfc) error {
 		}
 	}()
 	if err != nil {
-		logrus.Errorf("⚠️ RPC: %s Sending http request failed: %s", u, err)
+		logrus.Errorf("⚠️  RPC: %s Sending http request failed: %s", u, err)
 		return err
 	}
 
 	resBytes, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
-		logrus.Errorf("⚠️ RPC: %s Reading http response failed: %s", u, err)
+		logrus.Errorf("⚠️  RPC: %s Reading http response failed: %s", u, err)
 		return err
 	}
 
 	err = json.Unmarshal(resBytes, res)
 	if err != nil {
-		logrus.Errorf("⚠️ RPC: %s Decoding response failed: %s", u, err)
+		logrus.Errorf("⚠️  RPC: %s Decoding response failed: %s", u, err)
 		return err
 	}
 
 	r := res.Response()
 	if r.Error != nil {
-		logrus.Errorf("⚠️ RPC: %s Response Error: Code=%s Message=%s", u, r.Error.RPCCode, r.Error.Message)
+		logrus.Errorf("⚠️  RPC: %s Response Error: Code=%s Message=%s", u, r.Error.RPCCode, r.Error.Message)
 		return r.Error
 	}
 
-	logrus.Infof("✅ RPC: %s Response OK: %#v", u, r)
+	logrus.Infof("✅ RPC: %s Response OK: %+v", u, r)
 	return nil
 }
 

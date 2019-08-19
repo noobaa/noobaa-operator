@@ -5,7 +5,7 @@ metadata:
   labels:
     app: noobaa
   finalizers:
-    - noobaa.io/backingstore
+    - noobaa.io/finalizer
 spec:
   type: aws-s3
   bucketName: noobaa-aws1

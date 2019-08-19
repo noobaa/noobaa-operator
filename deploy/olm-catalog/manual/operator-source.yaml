@@ -1,11 +1,11 @@
 apiVersion: operators.coreos.com/v1
 kind: OperatorSource
 metadata:
-  name: noobaa-operator
+  name: noobaa-operator-source
   namespace: marketplace
 spec:
   type: appregistry
   endpoint: https://quay.io/cnr
-  registryNamespace: noobaa
+  # registryNamespace: noobaa
   displayName: "NooBaa Operator"
-  publisher: "Red Hat"
+  publisher: "NooBaa"

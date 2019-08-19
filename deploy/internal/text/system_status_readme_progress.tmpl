@@ -1,0 +1,12 @@
+
+
+	NooBaa operator is still working to reconcile this system.
+	Check out the system status.phase, status.conditions, and events with:
+
+		kubectl -n {{.NooBaa.Namespace}} describe noobaa
+		kubectl -n {{.NooBaa.Namespace}} get noobaa -o yaml
+		kubectl -n {{.NooBaa.Namespace}} get events --sort-by=metadata.creationTimestamp
+
+	You can wait for a specific condition with:
+
+		kubectl -n {{.NooBaa.Namespace}} wait noobaa/noobaa --for condition=available --timeout -1s

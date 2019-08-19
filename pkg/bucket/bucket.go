@@ -2,6 +2,7 @@ package bucket
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/noobaa/noobaa-operator/pkg/nb"
 	"github.com/noobaa/noobaa-operator/pkg/system"
@@ -62,8 +63,10 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 	bucketName := args[0]
 	nbClient := system.GetNBClient()
-	_, err := nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName})
-	util.Panic(err)
+	err := nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 // RunDelete runs a CLI command
@@ -75,14 +78,18 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	bucketName := args[0]
 	nbClient := system.GetNBClient()
 	err := nbClient.DeleteBucketAPI(nb.DeleteBucketParams{Name: bucketName})
-	util.Panic(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 // RunList runs a CLI command
 func RunList(cmd *cobra.Command, args []string) {
 	nbClient := system.GetNBClient()
 	list, err := nbClient.ListBucketsAPI()
-	util.Panic(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if len(list.Buckets) == 0 {
 		fmt.Printf("No buckets found.\n")
 		return

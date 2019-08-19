@@ -12,13 +12,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/printers"
 )
 
-type CrdType = apiextv1beta1.CustomResourceDefinition
+// CRD is just an alias for a long name
+type CRD = apiextv1beta1.CustomResourceDefinition
 
+// Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "crd",
@@ -34,6 +35,7 @@ func Cmd() *cobra.Command {
 	return cmd
 }
 
+// CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -43,6 +45,7 @@ func CmdCreate() *cobra.Command {
 	return cmd
 }
 
+// CmdDelete returns a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete",
@@ -52,6 +55,7 @@ func CmdDelete() *cobra.Command {
 	return cmd
 }
 
+// CmdStatus returns a CLI command
 func CmdStatus() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
@@ -61,6 +65,7 @@ func CmdStatus() *cobra.Command {
 	return cmd
 }
 
+// CmdWait returns a CLI command
 func CmdWait() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "wait",
@@ -70,6 +75,7 @@ func CmdWait() *cobra.Command {
 	return cmd
 }
 
+// CmdYaml returns a CLI command
 func CmdYaml() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "yaml",
@@ -81,41 +87,41 @@ func CmdYaml() *cobra.Command {
 
 // Crds is the
 type Crds struct {
-	NooBaa            *CrdType
-	BackingStore      *CrdType
-	BucketClass       *CrdType
-	ObjectBucket      *CrdType
-	ObjectBucketClaim *CrdType
+	NooBaa            *CRD
+	BackingStore      *CRD
+	BucketClass       *CRD
+	ObjectBucket      *CRD
+	ObjectBucketClaim *CRD
 }
 
 // RunCreate runs a CLI command
 func RunCreate(cmd *cobra.Command, args []string) {
 	crds := LoadCrds()
-	CrdCreate(crds.NooBaa)
-	CrdCreate(crds.BackingStore)
-	CrdCreate(crds.BucketClass)
-	CrdCreate(crds.ObjectBucket)
-	CrdCreate(crds.ObjectBucketClaim)
+	CreateCRD(crds.NooBaa)
+	CreateCRD(crds.BackingStore)
+	CreateCRD(crds.BucketClass)
+	CreateCRD(crds.ObjectBucket)
+	CreateCRD(crds.ObjectBucketClaim)
 }
 
 // RunDelete runs a CLI command
 func RunDelete(cmd *cobra.Command, args []string) {
 	crds := LoadCrds()
-	CrdDelete(crds.NooBaa)
-	CrdDelete(crds.BackingStore)
-	CrdDelete(crds.BucketClass)
-	CrdDelete(crds.ObjectBucket)
-	CrdDelete(crds.ObjectBucketClaim)
+	DeleteCRD(crds.NooBaa)
+	DeleteCRD(crds.BackingStore)
+	DeleteCRD(crds.BucketClass)
+	DeleteCRD(crds.ObjectBucket)
+	DeleteCRD(crds.ObjectBucketClaim)
 }
 
 // RunStatus runs a CLI command
 func RunStatus(cmd *cobra.Command, args []string) {
 	crds := LoadCrds()
-	CrdCheck(crds.NooBaa)
-	CrdCheck(crds.BackingStore)
-	CrdCheck(crds.BucketClass)
-	CrdCheck(crds.ObjectBucket)
-	CrdCheck(crds.ObjectBucketClaim)
+	CheckCRD(crds.NooBaa)
+	CheckCRD(crds.BackingStore)
+	CheckCRD(crds.BucketClass)
+	CheckCRD(crds.ObjectBucket)
+	CheckCRD(crds.ObjectBucketClaim)
 }
 
 // RunWait runs a CLI command
@@ -143,28 +149,28 @@ func LoadCrds() *Crds {
 	o4 := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_ob_crd_yaml)
 	o5 := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_obc_crd_yaml)
 	return &Crds{
-		NooBaa:            o1.(*CrdType),
-		BackingStore:      o2.(*CrdType),
-		BucketClass:       o3.(*CrdType),
-		ObjectBucket:      o4.(*CrdType),
-		ObjectBucketClaim: o5.(*CrdType),
+		NooBaa:            o1.(*CRD),
+		BackingStore:      o2.(*CRD),
+		BucketClass:       o3.(*CRD),
+		ObjectBucket:      o4.(*CRD),
+		ObjectBucketClaim: o5.(*CRD),
 	}
 }
 
-// CrdCreate creates a CRD
-func CrdCreate(crd *CrdType) {
+// CreateCRD creates a CRD
+func CreateCRD(crd *CRD) {
 	util.KubeCreateSkipExisting(crd)
 }
 
-// CrdDelete deletes a CRD
-func CrdDelete(crd *CrdType) {
+// DeleteCRD deletes a CRD
+func DeleteCRD(crd *CRD) {
 	util.KubeDelete(crd)
 }
 
-// CrdCheck checks a CRD
-func CrdCheck(crd *CrdType) {
+// CheckCRD checks a CRD
+func CheckCRD(crd *CRD) {
 	log := util.Logger()
-	desired := crd.DeepCopyObject().(*CrdType)
+	desired := crd.DeepCopyObject().(*CRD)
 	util.KubeCheck(crd)
 	if crd.Spec.Version != desired.Spec.Version {
 		log.Printf("❌ CRD Version Mismatch: found %s desired %s",
@@ -178,7 +184,7 @@ func WaitAllReady() {
 	klient := util.KubeClient()
 	crds := LoadCrds()
 	intervalSec := time.Duration(3)
-	list := []*CrdType{
+	list := []*CRD{
 		crds.NooBaa, crds.BackingStore, crds.BucketClass,
 	}
 	util.Panic(wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
@@ -203,7 +209,7 @@ func WaitAllReady() {
 }
 
 // IsReady checks the status of a CRD
-func IsReady(crd *CrdType) (bool, error) {
+func IsReady(crd *CRD) (bool, error) {
 	for _, cond := range crd.Status.Conditions {
 		switch cond.Type {
 		case apiextv1beta1.NamesAccepted:
@@ -221,11 +227,3 @@ func IsReady(crd *CrdType) (bool, error) {
 	}
 	return true, nil
 }
-
-func IsSame(a, b runtime.Object) bool {
-	return true
-}
-
-// func (crd *CrdType) DeepCopyObject() runtime.Object {
-// 	return (*crd).DeepCopyObject()
-// }

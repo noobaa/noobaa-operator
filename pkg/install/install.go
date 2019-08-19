@@ -56,6 +56,7 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	log.Printf("System Create:")
 	system.RunCreate(cmd, args)
 	log.Printf("")
+	log.Printf("System Wait:")
 	if system.WaitReady() {
 		RunStatus(cmd, args)
 	}

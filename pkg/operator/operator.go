@@ -101,14 +101,14 @@ func RunInstall(cmd *cobra.Command, args []string) {
 // RunUninstall runs a CLI command
 func RunUninstall(cmd *cobra.Command, args []string) {
 	c := LoadOperatorConf(cmd)
-	util.KubeDelete(c.NS)
-	util.KubeDelete(c.SA)
-	util.KubeDelete(c.Role)
-	util.KubeDelete(c.RoleBinding)
-	util.KubeDelete(c.ClusterRole)
-	util.KubeDelete(c.ClusterRoleBinding)
-	util.KubeDelete(c.StorageClass)
 	util.KubeDelete(c.Deployment)
+	util.KubeDelete(c.ClusterRoleBinding)
+	util.KubeDelete(c.ClusterRole)
+	util.KubeDelete(c.RoleBinding)
+	util.KubeDelete(c.Role)
+	util.KubeDelete(c.SA)
+	util.KubeDelete(c.StorageClass)
+	util.KubeDelete(c.NS)
 }
 
 // RunStatus runs a CLI command
@@ -163,7 +163,7 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.StorageClass = util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass)
 	c.Deployment = util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
 
-	c.StorageClass.Provisioner = "noobaa.io/" + options.Namespace + ".bucket"
+	c.StorageClass.Provisioner = options.ObjectBucketProvisionerName()
 	c.StorageClass.Name = options.Namespace + "-storage-class"
 	c.NS.Name = options.Namespace
 	c.SA.Namespace = options.Namespace

@@ -15,10 +15,12 @@ type Client interface {
 
 	CreateAuthAPI(CreateAuthParams) (CreateAuthReply, error)
 	CreateSystemAPI(CreateSystemParams) (CreateSystemReply, error)
-	CreateBucketAPI(CreateBucketParams) (CreateBucketReply, error)
 	CreateAccountAPI(CreateAccountParams) (CreateAccountReply, error)
+	CreateBucketAPI(CreateBucketParams) error
 	CreateHostsPoolAPI(CreateHostsPoolParams) error
 	CreateCloudPoolAPI(CreateCloudPoolParams) error
+	CreateTierAPI(CreateTierParams) error
+	CreateTieringPolicyAPI(CreateTieringPolicyParams) error
 
 	DeleteBucketAPI(DeleteBucketParams) error
 	DeleteAccountAPI(DeleteAccountParams) error
@@ -141,7 +143,7 @@ type ReadAccountParams struct {
 
 // ListAccountsReply is the reply to account_api.list_accounts()
 type ListAccountsReply struct {
-	Accounts []AccountInfo `json:"accounts"`
+	Accounts []*AccountInfo `json:"accounts"`
 }
 
 // ListBucketsReply is the reply of bucket_api.list_buckets()
@@ -179,11 +181,8 @@ type CreateSystemReply struct {
 
 // CreateBucketParams is the params of bucket_api.create_bucket()
 type CreateBucketParams struct {
-	Name string `json:"name"`
-}
-
-// CreateBucketReply is the reply of bucket_api.create_bucket()
-type CreateBucketReply struct {
+	Name    string `json:"name"`
+	Tiering string `json:"tiering,omitempty"`
 }
 
 // AccountAllowedBuckets is part of CreateAccountParams
@@ -200,6 +199,7 @@ type CreateAccountParams struct {
 	S3Access          bool                  `json:"s3_access"`
 	AllowBucketCreate bool                  `json:"allow_bucket_creation"`
 	AllowedBuckets    AccountAllowedBuckets `json:"allowed_buckets"`
+	DefaultPool       string                `json:"default_pool,omitempty"`
 }
 
 // CreateAccountReply is the reply of account_api.create_account()
@@ -221,6 +221,51 @@ type CreateCloudPoolParams struct {
 	Name         string `json:"name"`
 	Connection   string `json:"connection"`
 	TargetBucket string `json:"target_bucket"`
+}
+
+// CreateTierParams is the reply of tier_api.create_tier()
+type CreateTierParams struct {
+	Name             string            `json:"name"`
+	DataPlacement    string            `json:"data_placement,omitempty"`
+	AttachedPools    []string          `json:"attached_pools,omitempty"`
+	ChunkCoderConfig *ChunkCoderConfig `json:"chunk_coder_config,omitempty"`
+}
+
+// CreateTieringPolicyParams is the reply of tiering_policy_api.create_policy()
+type CreateTieringPolicyParams struct {
+	Name             string            `json:"name"`
+	Tiers            []TierItem        `json:"tiers"`
+	ChunkSplitConfig *ChunkSplitConfig `json:"chunk_split_config,omitempty"`
+}
+
+// ChunkCoderConfig defines a storage coding configuration
+type ChunkCoderConfig struct {
+	DigestType     *string `json:"digest_type,omitempty"`
+	FragDigestType *string `json:"frag_digest_type,omitempty"`
+	CompressType   *string `json:"compress_type,omitempty"`
+	CipherType     *string `json:"cipher_type,omitempty"`
+	// Data Copies:
+	Replicas *int64 `json:"replicas,omitempty"`
+	// Erasure Coding:
+	DataFrags   *int64  `json:"data_frags,omitempty"`
+	ParityFrags *int64  `json:"parity_frags,omitempty"`
+	ParityType  *string `json:"parity_type,omitempty"`
+	// LRC:
+	LrcGroup *int64  `json:"lrc_group,omitempty"`
+	LrcFrags *int64  `json:"lrc_frags,omitempty"`
+	LrcType  *string `json:"lrc_type,omitempty"`
+}
+
+// ChunkSplitConfig defines a storage chunking (splitting objects) configuration
+type ChunkSplitConfig struct {
+	AvgChunk   int64 `json:"avg_chunk"`
+	DeltaChunk int64 `json:"delta_chunk"`
+}
+
+// TierItem is an item in a tiering policy
+type TierItem struct {
+	Order int64  `json:"order"`
+	Tier  string `json:"tier"`
 }
 
 // DeleteBucketParams is the params of bucket_api.delete_bucket()
@@ -419,17 +464,6 @@ func (c *RPCClient) CreateSystemAPI(params CreateSystemParams) (CreateSystemRepl
 	return res.Reply, err
 }
 
-// CreateBucketAPI calls bucket_api.create_bucket()
-func (c *RPCClient) CreateBucketAPI(params CreateBucketParams) (CreateBucketReply, error) {
-	req := &RPCRequest{API: "bucket_api", Method: "create_bucket", Params: params}
-	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       CreateBucketReply `json:"reply"`
-	}{}
-	err := c.Call(req, res)
-	return res.Reply, err
-}
-
 // CreateAccountAPI calls account_api.create_account()
 func (c *RPCClient) CreateAccountAPI(params CreateAccountParams) (CreateAccountReply, error) {
 	req := &RPCRequest{API: "account_api", Method: "create_account", Params: params}
@@ -439,6 +473,13 @@ func (c *RPCClient) CreateAccountAPI(params CreateAccountParams) (CreateAccountR
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
+}
+
+// CreateBucketAPI calls bucket_api.create_bucket()
+func (c *RPCClient) CreateBucketAPI(params CreateBucketParams) error {
+	req := &RPCRequest{API: "bucket_api", Method: "create_bucket", Params: params}
+	res := &RPCResponse{}
+	return c.Call(req, res)
 }
 
 // CreateHostsPoolAPI calls pool_api.create_hosts_pool()
@@ -451,6 +492,20 @@ func (c *RPCClient) CreateHostsPoolAPI(params CreateHostsPoolParams) error {
 // CreateCloudPoolAPI calls pool_api.create_cloud_pool()
 func (c *RPCClient) CreateCloudPoolAPI(params CreateCloudPoolParams) error {
 	req := &RPCRequest{API: "pool_api", Method: "create_cloud_pool", Params: params}
+	res := &RPCResponse{}
+	return c.Call(req, res)
+}
+
+// CreateTierAPI calls tier_api.create_tier()
+func (c *RPCClient) CreateTierAPI(params CreateTierParams) error {
+	req := &RPCRequest{API: "tier_api", Method: "create_tier", Params: params}
+	res := &RPCResponse{}
+	return c.Call(req, res)
+}
+
+// CreateTieringPolicyAPI calls tiering_policy_api.create_policy()
+func (c *RPCClient) CreateTieringPolicyAPI(params CreateTieringPolicyParams) error {
+	req := &RPCRequest{API: "tiering_policy_api", Method: "create_policy", Params: params}
 	res := &RPCResponse{}
 	return c.Call(req, res)
 }

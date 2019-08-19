@@ -41,6 +41,8 @@ func CmdCreate() *cobra.Command {
 		"Request a versioned S3 bucket to be provisioned")
 	cmd.Flags().String("storage-class", options.Namespace+"-storage-class",
 		"Set storage-class to specify which provisioner to use")
+	cmd.Flags().String("backing-store", "",
+		"Set backing-store to specify for the bucket")
 	return cmd
 }
 
@@ -77,6 +79,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	ssl, _ := cmd.Flags().GetBool("ssl")
 	versioned, _ := cmd.Flags().GetBool("versioned")
 	storageClass, _ := cmd.Flags().GetString("storage-class")
+	backingStore, _ := cmd.Flags().GetString("backing-store")
 
 	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_obc_cr_yaml)
 	obc := o.(*nbv1.ObjectBucketClaim)
@@ -92,6 +95,13 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	obc.Spec.StorageClassName = storageClass
 	obc.Spec.SSL = ssl
 	obc.Spec.Versioned = versioned
+
+	if backingStore != "" {
+		// TODO check that this backing store name exists...
+		obc.Spec.AdditionalConfig = map[string]string{
+			"backingstore": backingStore,
+		}
+	}
 
 	if !util.KubeCreateSkipExisting(obc) {
 		log.Fatalf(`❌ Could not create OBC %q in namespace %q (conflict)`, obc.Name, obc.Namespace)
