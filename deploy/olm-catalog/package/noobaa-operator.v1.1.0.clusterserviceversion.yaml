@@ -35,26 +35,16 @@ metadata:
           }
         },
         {
-          "apiVersion": "noobaa.io/v1alpha1",
-          "kind": "BucketClass",
+          "apiVersion": "objectbucket.io/v1alpha1",
+          "kind": "ObjectBucketClaim",
           "metadata": {
-            "name": "default-class",
-            "namespace": "my-noobaa-operator"
+            "name": "noobaa-obc"
           },
           "spec": {
-            "placementPolicy": {
-              "tiers": [{
-                "tier": {
-                  "mirrors": [{
-                    "mirror": {
-                      "spread": [
-                        "default-store"
-                      ]
-                    }
-                  }]
-                }
-              }]
-            }
+            "storageClassName": "noobaa-storage-class",
+            "generateBucketName": "noobaa-obc",
+            "SSL": false,
+            "versioned": false
           }
         }
       ]
@@ -63,7 +53,6 @@ metadata:
 spec:
   displayName: NooBaa Operator
   version: "1.1.0"
-  replaces: noobaa-operator.v0.1.0
   maturity: alpha
   provider:
     name: NooBaa
@@ -114,12 +103,17 @@ spec:
       name: backingstores.noobaa.io
       version: v1alpha1
       displayName: Backing Store
-      description: Add backing stores to customize the data placement locations.
-    - kind: BucketClass
-      name: bucketclasses.noobaa.io
+      description: Add BackingStores to customize the data placement locations. You will need to create a matching secret to provide the credentials to the BackingStore and reference that secret from the BackingStore spec.
+    # - kind: BucketClass
+    #   name: bucketclasses.noobaa.io
+    #   version: v1alpha1
+    #   displayName: Bucket Class
+    #   description: Add bucket classes to customize the data placement locations.
+    - kind: ObjectBucketClaim
+      name: objectbucketclaims.objectbucket.io
       version: v1alpha1
-      displayName: Bucket Class
-      description: Add bucket classes to customize the data placement locations.
+      displayName: Object Bucket Claim
+      description: Create ObjectBucketClaim in the application namespace to claim a bucket just like claiming a PV.
   installModes:
   - supported: true
     type: OwnNamespace
@@ -132,17 +126,6 @@ spec:
   install:
     strategy: deployment
     spec:
-      clusterPermissions:
-      - serviceAccountName: noobaa-operator
-        rules:
-        - apiGroups:
-          - ""
-          resources:
-          - nodes
-          verbs:
-          - get
-          - list
-          - watch
       deployments:
       - name: noobaa-operator
         spec:
@@ -150,33 +133,70 @@ spec:
           selector:
             matchLabels:
               noobaa-operator: deployment
-          strategy: {}
           template:
             metadata:
               labels:
                 app: noobaa
                 noobaa-operator: deployment
             spec:
-              containers:
-              - env:
-                - name: OPERATOR_NAME
-                  value: noobaa-operator
-                - name: POD_NAME
-                  valueFrom:
-                    fieldRef:
-                      fieldPath: metadata.name
-                - name: WATCH_NAMESPACE
-                  valueFrom:
-                    fieldRef:
-                      fieldPath: metadata.namespace
-                image: noobaa/noobaa-operator:1.1.0
-                imagePullPolicy: IfNotPresent
-                name: noobaa-operator
-                resources:
-                  limits:
-                    cpu: 250m
-                    memory: 256Mi
               serviceAccountName: noobaa-operator
+              containers:
+                - name: noobaa-operator
+                  image: noobaa/noobaa-operator:1.1.0
+                  imagePullPolicy: IfNotPresent
+                  resources:
+                    limits:
+                      cpu: "250m"
+                      memory: "256Mi"
+                  env:
+                    - name: OPERATOR_NAME
+                      value: noobaa-operator
+                    - name: POD_NAME
+                      valueFrom:
+                        fieldRef:
+                          fieldPath: metadata.name
+                    - name: WATCH_NAMESPACE
+                      valueFrom:
+                        fieldRef:
+                          fieldPath: metadata.namespace
+      clusterPermissions:
+      - serviceAccountName: noobaa-operator
+        rules:
+        - apiGroups:
+            - ""
+          resources:
+            - nodes
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - ""
+          resources:
+            - configmaps
+            - secrets
+          verbs:
+            - "*"
+        - apiGroups:
+            - ""
+          resources:
+            - namespaces
+          verbs:
+            - get
+        - apiGroups:
+            - storage.k8s.io
+          resources:
+            - storageclasses
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - objectbucket.io
+          resources:
+            - "*"
+          verbs:
+            - "*"
       permissions:
       - serviceAccountName: noobaa-operator
         rules:
@@ -184,6 +204,9 @@ spec:
           - noobaa.io
           resources:
           - '*'
+          - noobaas
+          - backingstores
+          - bucketclasses
           verbs:
           - '*'
         - apiGroups:
@@ -211,9 +234,12 @@ spec:
           - monitoring.coreos.com
           resources:
           - servicemonitors
+          - prometheusrules
           verbs:
           - get
           - create
+          - update
+          - list
         - apiGroups:
           - apps
           resourceNames:

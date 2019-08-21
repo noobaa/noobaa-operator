@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
@@ -16,44 +15,50 @@ import (
 	"github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner"
 	obAPI "github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner/api"
 	obErrors "github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner/api/errors"
+	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 const (
-	allNamespaces         = ""
-	obStateAccountNameKey = "UserName"
+	allNamespaces = ""
 )
 
-var log = util.Logger()
+// Provisioner implements lib-bucket-provisioner callbacks
+type Provisioner struct {
+	clientset *kubernetes.Clientset
+	client    client.Client
+	scheme    *runtime.Scheme
+	recorder  record.EventRecorder
+	Logger    *logrus.Entry
+}
 
 // RunProvisioner will run OBC provisioner
 func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder record.EventRecorder) error {
-	log.Info("OBC Provisioner - start..")
+	util.Logger().Info("OBC Provisioner - start..")
 
-	config, clientset, err := createConfigAndClient()
-	if err != nil {
-		return err
-	}
+	config := util.KubeConfig()
+	clientset, err := kubernetes.NewForConfig(config)
+	util.Panic(err)
 
-	p := Provisioner{
+	provisionerName := options.ObjectBucketProvisionerName()
+	log := logrus.WithField("provisioner", provisionerName)
+
+	p := &Provisioner{
 		clientset: clientset,
 		client:    client,
 		scheme:    scheme,
 		recorder:  recorder,
+		Logger:    log,
 	}
-
-	provisionerName := "noobaa.io/" + options.Namespace + ".bucket"
 
 	// Create and run the s3 provisioner controller.
 	// It implements the Provisioner interface expected by the bucket
 	// provisioning lib.
-	prov, err := provisioner.NewProvisioner(config, provisionerName, p, allNamespaces)
+	libProv, err := provisioner.NewProvisioner(config, provisionerName, p, allNamespaces)
 	if err != nil {
 		log.Error(err, "failed to create noobaa provisioner")
 		return err
@@ -62,108 +67,81 @@ func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder recor
 	log.Info("running noobaa provisioner ", provisionerName)
 	stopChan := make(chan struct{})
 	go func() {
-		prov.Run(stopChan)
+		libProv.Run(stopChan)
 	}()
 
 	return nil
 }
 
-// Provisioner implements lib-bucket-provisioner callbacks
-type Provisioner struct {
-	clientset *kubernetes.Clientset
-	client    client.Client
-	scheme    *runtime.Scheme
-	recorder  record.EventRecorder
-	nbClient  nb.Client
-
-	// request info
-	bucketName string
-
-	// noobaa system info
-	isSSL  bool
-	s3Host string
-	s3Port int
-
-	// account details
-	accountUserName string
-	accessKey       string
-	secretKey       string
-}
-
 // Provision implements lib-bucket-provisioner callback to create a new bucket
-func (p Provisioner) Provision(options *obAPI.BucketOptions) (*nbv1.ObjectBucket, error) {
-	p.bucketName = options.BucketName
-	log.Infof("Provision: got request to provision bucket %q", p.bucketName)
+func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBucket, error) {
 
-	err := p.initNoobaaInfo()
+	log := p.Logger
+	log.Infof("Provision: got request to provision bucket %q", bucketOptions.BucketName)
+
+	r, err := NewBucketRequest(p, nil, bucketOptions)
 	if err != nil {
-		log.Info("GetNBClient returned error ", err)
 		return nil, err
 	}
 
 	// TODO: we need to better handle the case that a bucket was created, but Provision failed
 	// right now we will fail on create bucket when Provision is called the second time
-	err = p.createBucket()
+	err = r.CreateBucket()
 	if err != nil {
 		return nil, err
 	}
 
 	// create account and give permissions for bucket
-	p.createAccountForBucket()
+	err = r.CreateAccount()
 	if err != nil {
 		return nil, err
 	}
 
-	return p.getObjectBucket(), nil
-}
-
-// Delete implements lib-bucket-provisioner callback to delete a bucket
-func (p Provisioner) Delete(ob *nbv1.ObjectBucket) error {
-	p.bucketName = ob.Spec.Endpoint.BucketName
-	p.accountUserName = ob.Spec.AdditionalState[obStateAccountNameKey]
-	log.Infof("Delete: got request to delete bucket %q and account %q", p.bucketName, p.accountUserName)
-
-	err := p.initNoobaaInfo()
-
-	// TODO: delete the bucket and all its object
-
-	err = p.deleteAccount()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.OB, nil
 }
 
 // Grant implements lib-bucket-provisioner callback to use an existing bucket
-func (p Provisioner) Grant(options *obAPI.BucketOptions) (*nbv1.ObjectBucket, error) {
-	p.bucketName = options.BucketName
-	log.Infof("Grant: got request to grant access to bucket %q", p.bucketName)
+func (p *Provisioner) Grant(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBucket, error) {
 
-	err := p.initNoobaaInfo()
+	log := p.Logger
+	log.Infof("Grant: got request to grant access to bucket %q", bucketOptions.BucketName)
+
+	r, err := NewBucketRequest(p, nil, bucketOptions)
 	if err != nil {
-		log.Info("GetNBClient returned error ", err)
 		return nil, err
 	}
 
 	// create account and give permissions for bucket
-	p.createAccountForBucket()
+	err = r.CreateAccount()
 	if err != nil {
 		return nil, err
 	}
 
-	return p.getObjectBucket(), nil
+	return r.OB, nil
 }
 
-// Revoke implements lib-bucket-provisioner callback to stop using an existing bucket
-func (p Provisioner) Revoke(ob *nbv1.ObjectBucket) error {
-	p.bucketName = ob.Spec.Endpoint.BucketName
-	p.accountUserName = ob.Spec.AdditionalState[obStateAccountNameKey]
-	log.Infof("Revoke: got request to revoke access to bucket %q for account %q", p.bucketName, p.accountUserName)
+// Delete implements lib-bucket-provisioner callback to delete a bucket
+func (p *Provisioner) Delete(ob *nbv1.ObjectBucket) error {
 
-	err := p.initNoobaaInfo()
+	log := p.Logger
 
-	err = p.deleteAccount()
+	r, err := NewBucketRequest(p, ob, nil)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Delete: got request to delete bucket %q and account %q", r.BucketName, r.AccountName)
+
+	if ob.Spec.ReclaimPolicy != nil &&
+		(*ob.Spec.ReclaimPolicy == corev1.PersistentVolumeReclaimDelete ||
+			*ob.Spec.ReclaimPolicy == corev1.PersistentVolumeReclaimRecycle) {
+		err = r.DeleteBucket()
+		if err != nil {
+			return err
+		}
+	}
+
+	err = r.DeleteAccount()
 	if err != nil {
 		return err
 	}
@@ -171,35 +149,173 @@ func (p Provisioner) Revoke(ob *nbv1.ObjectBucket) error {
 	return nil
 }
 
-func (p *Provisioner) createBucket() error {
-	_, err := p.nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: p.bucketName})
+// Revoke implements lib-bucket-provisioner callback to stop using an existing bucket
+func (p *Provisioner) Revoke(ob *nbv1.ObjectBucket) error {
+
+	log := p.Logger
+
+	r, err := NewBucketRequest(p, ob, nil)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Revoke: got request to revoke access to bucket %q for account %q", r.BucketName, r.AccountName)
+
+	err = r.DeleteAccount()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// BucketRequest is the context of handling a single bucket request
+type BucketRequest struct {
+	Provisioner *Provisioner
+	SysClient   *system.Client
+	BucketName  string
+	AccountName string
+	TierName    string
+	PoolName    string
+	OB          *nbv1.ObjectBucket
+}
+
+// NewBucketRequest initializes an obc bucket request
+func NewBucketRequest(
+	p *Provisioner,
+	ob *nbv1.ObjectBucket,
+	bucketOptions *obAPI.BucketOptions,
+) (*BucketRequest, error) {
+
+	sysClient, err := system.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	s3URL, err := url.Parse(sysClient.S3Client.Endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse s3 endpoint %q. got error: %v", sysClient.S3Client.Endpoint, err)
+	}
+	s3Hostname := s3URL.Hostname()
+	s3Port, err := strconv.Atoi(s3URL.Port())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse s3 port %q. got error: %v", sysClient.S3Client.Endpoint, err)
+	}
+
+	var bucketName string
+	var accountName string
+	var tierName string
+	var bsName string
+
+	if ob == nil {
+		bucketName = bucketOptions.BucketName
+		accountName = fmt.Sprintf("obc-account.%s.%x@noobaa.io", bucketName, time.Now().Unix())
+		bsName = bucketOptions.ObjectBucketClaim.Spec.AdditionalConfig["backingstore"]
+		tierName = fmt.Sprintf("%s-%x", bucketName, time.Now().Unix())
+		if bsName == "" {
+			bsName = bucketOptions.Parameters["backingstore"]
+			if bsName == "" {
+				// TODO list pools instead of read system
+				backingStoreList := &nbv1.BackingStoreList{}
+				util.KubeList(backingStoreList, &client.ListOptions{Namespace: sysClient.NooBaa.Namespace})
+				for i := range backingStoreList.Items {
+					bs := &backingStoreList.Items[i]
+					if bs.Status.Phase == nbv1.BackingStorePhaseReady {
+						bsName = bs.Name
+						break
+					}
+				}
+				if bsName == "" {
+					return nil, fmt.Errorf("no ready backing stores %+v", backingStoreList)
+				}
+			}
+		}
+		ob = &nbv1.ObjectBucket{
+			Spec: nbv1.ObjectBucketSpec{
+				Connection: &nbv1.ObjectBucketConnection{
+					Endpoint: &nbv1.ObjectBucketEndpoint{
+						BucketHost: s3Hostname,
+						BucketPort: s3Port,
+						BucketName: bucketOptions.BucketName,
+						SSL:        s3URL.Scheme == "https:",
+					},
+					AdditionalState: map[string]string{
+						"AccountName": accountName, // needed for delete flow
+					},
+				},
+			},
+		}
+	} else {
+		bucketName = ob.Spec.Connection.Endpoint.BucketName
+		accountName = ob.Spec.AdditionalState["AccountName"]
+	}
+
+	return &BucketRequest{
+		Provisioner: p,
+		SysClient:   sysClient,
+		BucketName:  bucketName,
+		AccountName: accountName,
+		TierName:    tierName,
+		PoolName:    bsName,
+		OB:          ob,
+	}, nil
+}
+
+// CreateBucket creates the obc bucket
+func (r *BucketRequest) CreateBucket() error {
+
+	log := r.Provisioner.Logger
+
+	err := r.SysClient.NBClient.CreateTierAPI(nb.CreateTierParams{
+		Name:          r.TierName,
+		AttachedPools: []string{r.PoolName},
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to create tier %q with error: %v", r.TierName, err)
+	}
+
+	err = r.SysClient.NBClient.CreateTieringPolicyAPI(nb.CreateTieringPolicyParams{
+		Name:  r.TierName,
+		Tiers: []nb.TierItem{{Order: 0, Tier: r.TierName}},
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to create tier %q with error: %v", r.TierName, err)
+	}
+
+	err = r.SysClient.NBClient.CreateBucketAPI(nb.CreateBucketParams{
+		Name:    r.BucketName,
+		Tiering: r.TierName,
+	})
 	if err != nil {
 		if nbErr, ok := err.(*nb.RPCError); ok {
 			if nbErr.RPCCode == "BUCKET_ALREADY_EXISTS" {
-				msg := fmt.Sprintf("Bucket %q already exists", p.bucketName)
+				msg := fmt.Sprintf("Bucket %q already exists", r.BucketName)
 				log.Error(msg)
 				return obErrors.NewBucketExistsError(msg)
 			}
 		}
-		return fmt.Errorf("Failed to create bucket %q with error: %v", p.bucketName, err)
+		return fmt.Errorf("Failed to create bucket %q with error: %v", r.BucketName, err)
 	}
 
-	log.Infof("✅ Successfully created bucket %q", p.bucketName)
+	log.Infof("✅ Successfully created bucket %q", r.BucketName)
 	return nil
 }
 
-func (p *Provisioner) createAccountForBucket() error {
-	timeSuffix := time.Now().Unix()
-	name := fmt.Sprintf("%s.account-%v@noobaa.io", p.bucketName, timeSuffix)
-	accountInfo, err := p.nbClient.CreateAccountAPI(nb.CreateAccountParams{
-		Name:              name,
-		Email:             name,
+// CreateAccount creates the obc account
+func (r *BucketRequest) CreateAccount() error {
+
+	log := r.Provisioner.Logger
+
+	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{
+		Name:              r.AccountName,
+		Email:             r.AccountName,
+		DefaultPool:       r.PoolName,
 		HasLogin:          false,
 		S3Access:          true,
 		AllowBucketCreate: false,
 		AllowedBuckets: nb.AccountAllowedBuckets{
 			FullPermission: false,
-			PermissionList: []string{p.bucketName},
+			PermissionList: []string{r.BucketName},
 		},
 	})
 	if err != nil {
@@ -210,118 +326,45 @@ func (p *Provisioner) createAccountForBucket() error {
 		return fmt.Errorf("Create account did not return access keys")
 	}
 
-	p.accountUserName = name
-	p.accessKey = accountInfo.AccessKeys[0].AccessKey
-	p.secretKey = accountInfo.AccessKeys[0].SecretKey
+	r.OB.Spec.Authentication = &nbv1.ObjectBucketAuthentication{
+		AccessKeys: &nbv1.ObjectBucketAccessKeys{
+			AccessKeyID:     accountInfo.AccessKeys[0].AccessKey,
+			SecretAccessKey: accountInfo.AccessKeys[0].SecretKey,
+		},
+	}
 
-	log.Infof("✅ Successfully created account %q with access to bucket %q", name, p.bucketName)
+	log.Infof("✅ Successfully created account %q with access to bucket %q", r.AccountName, r.BucketName)
 	return nil
 }
 
-func (p *Provisioner) deleteAccount() error {
+// DeleteAccount deletes the obc account
+func (r *BucketRequest) DeleteAccount() error {
 
-	log.Infof("deleting account %q", p.accountUserName)
-	err := p.nbClient.DeleteAccountAPI(nb.DeleteAccountParams{Email: p.accountUserName})
+	log := r.Provisioner.Logger
+
+	log.Infof("deleting account %q", r.AccountName)
+	err := r.SysClient.NBClient.DeleteAccountAPI(nb.DeleteAccountParams{Email: r.AccountName})
 	if err != nil {
-		return fmt.Errorf("failed to delete account %q. got error: %v", p.accountUserName, err)
+		return fmt.Errorf("failed to delete account %q. got error: %v", r.AccountName, err)
 	}
 
-	log.Infof("✅ Successfully deleted account %q", p.accountUserName)
+	log.Infof("✅ Successfully deleted account %q", r.AccountName)
 	return nil
 }
 
-func (p *Provisioner) initNoobaaInfo() error {
+// DeleteBucket deletes the obc bucket **including data**
+func (r *BucketRequest) DeleteBucket() error {
 
-	// TODO how to get the system name of the provisioner?
-	r := system.NewReconciler(
-		types.NamespacedName{Namespace: options.Namespace, Name: options.SystemName},
-		p.client, p.scheme, nil,
-	)
-	r.Load()
+	log := r.Provisioner.Logger
+	log.Infof("deleting bucket %q", r.BucketName)
 
-	mgmtStatus := &r.NooBaa.Status.Services.ServiceMgmt
-	s3Status := &r.NooBaa.Status.Services.ServiceS3
-	token := r.SecretOp.StringData["auth_token"]
+	// TODO delete bucket data!!!
 
-	if len(mgmtStatus.NodePorts) == 0 {
-		err := fmt.Errorf("❌ Mgmt service not ready")
-		log.Error(err)
-		return err
-	}
-	if len(s3Status.NodePorts) == 0 {
-		err := fmt.Errorf("❌ S3 service not ready")
-		log.Error(err)
-		return err
-	}
-	if token == "" {
-		err := fmt.Errorf("❌ Auth token not ready")
-		log.Error(err)
-		return err
-	}
-
-	s3URL, err := url.Parse(s3Status.NodePorts[0])
+	err := r.SysClient.NBClient.DeleteBucketAPI(nb.DeleteBucketParams{Name: r.BucketName})
 	if err != nil {
-		return fmt.Errorf("failed to parse s3 endpoint %q. got error: %v", s3Status.NodePorts[0], err)
+		return fmt.Errorf("failed to delete bucket %q. got error: %v", r.BucketName, err)
 	}
 
-	nodePort := mgmtStatus.NodePorts[0]
-	nodeIP := nodePort[strings.Index(nodePort, "://")+3 : strings.LastIndex(nodePort, ":")]
-	nbClient := nb.NewClient(&nb.APIRouterNodePort{
-		ServiceMgmt: r.ServiceMgmt,
-		NodeIP:      nodeIP,
-	})
-
-	nbClient.SetAuthToken(token)
-	p.nbClient = nbClient
-	p.s3Host = s3URL.Hostname()
-	p.s3Port, err = strconv.Atoi(s3URL.Port())
-	p.isSSL = strings.HasPrefix(s3Status.NodePorts[0], "https")
-	if err != nil {
-		return fmt.Errorf("failed to parse s3 port %q. got error: %v", s3URL.Port(), err)
-	}
-
+	log.Infof("✅ Successfully deleted bucket %q", r.BucketName)
 	return nil
-}
-
-func (p *Provisioner) getObjectBucket() *nbv1.ObjectBucket {
-	conn := &nbv1.Connection{
-		Endpoint: &nbv1.Endpoint{
-			BucketHost: p.s3Host,
-			BucketPort: p.s3Port,
-			BucketName: p.bucketName,
-			SSL:        p.isSSL,
-		},
-		Authentication: &nbv1.Authentication{
-			AccessKeys: &nbv1.AccessKeys{
-				AccessKeyID:     p.accessKey,
-				SecretAccessKey: p.secretKey,
-			},
-		},
-		// store the user information so we can remove the user once the OB is deleted
-		AdditionalState: map[string]string{
-			obStateAccountNameKey: p.accountUserName,
-		},
-	}
-
-	return &nbv1.ObjectBucket{
-		Spec: nbv1.ObjectBucketSpec{
-			Connection: conn,
-		},
-	}
-}
-
-// create k8s config and client for the runtime-controller.
-// Note: panics on errors.
-func createConfigAndClient() (*restclient.Config, *kubernetes.Clientset, error) {
-	config, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "Failed to create config")
-		return nil, nil, err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Error(err, "Failed to create client")
-		return nil, nil, err
-	}
-	return config, clientset, nil
 }

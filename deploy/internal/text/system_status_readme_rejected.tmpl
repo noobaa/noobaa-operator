@@ -1,0 +1,10 @@
+
+	ERROR: NooBaa operator cannot reconcile this system spec.
+
+	Check out the system status.phase, status.conditions, and events with:
+
+		kubectl -n {{.NooBaa.Namespace}} describe noobaa
+		kubectl -n {{.NooBaa.Namespace}} get noobaa -o yaml
+		kubectl -n {{.NooBaa.Namespace}} get events --sort-by=metadata.creationTimestamp
+
+	In order to retry, edit the system spec and the operator is watching and will be notified.

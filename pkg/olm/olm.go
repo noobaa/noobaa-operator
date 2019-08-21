@@ -112,7 +112,8 @@ func RunHubInstall(cmd *cobra.Command, args []string) {
 // RunHubUninstall runs a CLI command
 func RunHubUninstall(cmd *cobra.Command, args []string) {
 	hub := LoadHubConf()
-	for _, obj := range hub.Objects {
+	for i := len(hub.Objects) - 1; i >= 0; i-- {
+		obj := hub.Objects[i]
 		util.KubeDelete(obj)
 	}
 }

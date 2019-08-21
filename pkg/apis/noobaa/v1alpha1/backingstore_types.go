@@ -14,6 +14,11 @@ func init() {
 	SchemeBuilder.Register(&BackingStore{}, &BackingStoreList{})
 }
 
+const (
+	// BackingStoreFinalizer is the name of the backing-store finalizer
+	BackingStoreFinalizer = "noobaa.io/finalizer"
+)
+
 // BackingStore is the Schema for the backingstores API
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -67,6 +72,8 @@ const (
 	StoreTypeAzureBlob StoreType = "azure-blob"
 	// StoreTypeS3Compatible is used to connect to S3 compatible storage
 	StoreTypeS3Compatible StoreType = "s3-compatible"
+	// StoreTypePV is used to allocate storage by dynamically allocating PVs (using PVCs)
+	StoreTypePV StoreType = "pv"
 )
 
 // S3Options specifies client options for the backing store
@@ -130,15 +137,15 @@ const (
 	// BackingStorePhaseVerifying means the operator is verifying the spec
 	BackingStorePhaseVerifying BackingStorePhase = "Verifying"
 
+	// BackingStorePhaseConnecting means the operator is trying to connect to the system
+	BackingStorePhaseConnecting BackingStorePhase = "Connecting"
+
 	// BackingStorePhaseCreating means the operator is creating the resources on the cluster
 	BackingStorePhaseCreating BackingStorePhase = "Creating"
 
-	// BackingStorePhaseDeleting means the operator is deleting the resources on the cluster
-	BackingStorePhaseDeleting BackingStorePhase = "Deleting"
-
-	// BackingStorePhaseConnecting means the operator is trying to connect to the pods and services it created
-	BackingStorePhaseConnecting BackingStorePhase = "Connecting"
-
 	// BackingStorePhaseReady means the noobaa system has been created and ready to serve.
 	BackingStorePhaseReady BackingStorePhase = "Ready"
+
+	// BackingStorePhaseDeleting means the operator is deleting the resources on the cluster
+	BackingStorePhaseDeleting BackingStorePhase = "Deleting"
 )

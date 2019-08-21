@@ -47,11 +47,32 @@ const (
 	SystemName = "noobaa"
 )
 
+// Namespace is the target namespace for locating the noobaa system
+// default is "noobaa" but in shared clusters (mainly for developers?)
+// this can be very confusing and cause unintentional overrides
+// so we may consider to use current namespace.
 var Namespace = "noobaa" //util.CurrentNamespace()
+
+// NooBaaImage is the container image url built from https://github.com/noobaa/noobaa-core
+// it can be overriden for testing or for different registry locations.
 var NooBaaImage = ContainerImage
+
+// OperatorImage is the container image url built from https://github.com/noobaa/noobaa-operator
+// it can be overriden for testing or for different registry locations.
 var OperatorImage = "noobaa/noobaa-operator:" + version.Version
+
+// StorageClassName is used for PVC's allocation for the noobaa server data
+// it can be overriden for testing or for different PV providers.
 var StorageClassName = ""
+
+// ImagePullSecret is optionally used to authenticate when pulling the container images
+// which is needed when using a private container registry.
 var ImagePullSecret = ""
+
+// ObjectBucketProvisionerName returns the provisioner name to be used in storage classes for OB/OBC
+func ObjectBucketProvisionerName() string {
+	return "noobaa.io/" + Namespace + ".bucket"
+}
 
 // FlagSet defines the
 var FlagSet = pflag.NewFlagSet("noobaa", pflag.ContinueOnError)

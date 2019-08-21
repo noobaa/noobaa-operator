@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/pkg/apis"
@@ -111,6 +113,7 @@ func KubeObject(text string) runtime.Object {
 	Panic(err)
 	// not sure if really needed, but set it anyway
 	obj.GetObjectKind().SetGroupVersionKind(*group)
+	SecretResetStringDataFromData(obj)
 	return obj
 }
 
@@ -189,29 +192,41 @@ func KubeCreateSkipExisting(obj runtime.Object) bool {
 }
 
 // KubeDelete deletes an object and reports the object status.
-func KubeDelete(obj runtime.Object) bool {
+func KubeDelete(obj runtime.Object, opts ...client.DeleteOptionFunc) bool {
 	klient := KubeClient()
 	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
-	err := klient.Delete(ctx, obj)
-	if err == nil {
-		log.Printf("🗑️  Deleted: %s %q\n", gvk.Kind, objKey.Name)
-		return true
-	}
-	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
-		log.Printf("❌ CRD Missing: %s %q\n", gvk.Kind, objKey.Name)
-		return false
-	}
-	if errors.IsConflict(err) {
-		log.Printf("❌ Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
-		return false
-	}
-	if errors.IsNotFound(err) {
-		log.Printf("🗑️  Not Found: %s %q\n", gvk.Kind, objKey.Name)
-		return false
-	}
+	deleted := false
+	conflicted := false
+
+	err := wait.PollImmediateInfinite(time.Second, func() (bool, error) {
+		err := klient.Delete(ctx, obj, opts...)
+		if err == nil {
+			if !deleted {
+				deleted = true
+				log.Printf("🗑️  Deleting: %s %q\n", gvk.Kind, objKey.Name)
+			}
+			return false, nil
+		}
+		if errors.IsConflict(err) {
+			if !conflicted {
+				conflicted = true
+				log.Printf("🗑️  Conflict (OK): %s %q: %s\n", gvk.Kind, objKey.Name, err)
+			}
+			return false, nil
+		}
+		if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+			log.Printf("🗑️  CRD Missing (OK): %s %q\n", gvk.Kind, objKey.Name)
+			return true, nil
+		}
+		if errors.IsNotFound(err) {
+			log.Printf("🗑️  Deleted : %s %q\n", gvk.Kind, objKey.Name)
+			return true, nil
+		}
+		return false, err
+	})
 	Panic(err)
-	return false
+	return deleted
 }
 
 // KubeUpdate updates an object and reports the object status.
@@ -247,6 +262,7 @@ func KubeCheck(obj runtime.Object) bool {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	err := klient.Get(ctx, objKey, obj)
 	if err == nil {
+		SecretResetStringDataFromData(obj)
 		log.Printf("✅ Exists: %s %q\n", gvk.Kind, objKey.Name)
 		return true
 	}
@@ -380,21 +396,19 @@ func CurrentNamespace() string {
 
 // PersistentError is an error type that tells the reconcile to avoid requeueing.
 type PersistentError struct {
-	E error
+	Reason  string
+	Message string
 }
 
 // Error function makes PersistentError implement error interface
-func (e *PersistentError) Error() string { return e.E.Error() }
+func (e *PersistentError) Error() string { return e.Message }
 
 // assert implement error interface
 var _ error = &PersistentError{}
 
 // NewPersistentError returns a new persistent error.
-func NewPersistentError(err error) *PersistentError {
-	if err == nil {
-		panic("NewPersistentError expects non nil error")
-	}
-	return &PersistentError{E: err}
+func NewPersistentError(reason string, message string) *PersistentError {
+	return &PersistentError{Reason: reason, Message: message}
 }
 
 // IsPersistentError checks if the provided error is persistent.
@@ -426,7 +440,11 @@ func CombineErrors(errs ...error) error {
 
 // SecretResetStringDataFromData reads the secret data into string data
 // to streamline the paths that use the secret values as strings.
-func SecretResetStringDataFromData(secret *corev1.Secret) {
+func SecretResetStringDataFromData(obj runtime.Object) {
+	secret, isSecret := obj.(*corev1.Secret)
+	if !isSecret {
+		return
+	}
 	secret.StringData = map[string]string{}
 	for key, val := range secret.Data {
 		secret.StringData[key] = string(val)
@@ -457,43 +475,6 @@ func RandomHex(numBytes int) string {
 	_, err := rand.Read(randomBytes)
 	Panic(err)
 	return hex.EncodeToString(randomBytes)
-}
-
-// SetErrorCondition updates the status conditions to error state
-func SetErrorCondition(conditions *[]conditionsv1.Condition, err error) {
-	reason := "ReconcileFailed"
-	message := fmt.Sprintf("Error while reconciling: %v", err)
-	currentTime := metav1.NewTime(time.Now())
-	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
-		//LastHeartbeatTime should be set by the custom-resource-status just like lastTransitionTime
-		// Setting it here temporarity
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionAvailable,
-		Status:            corev1.ConditionUnknown,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionProgressing,
-		Status:            corev1.ConditionFalse,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionDegraded,
-		Status:            corev1.ConditionTrue,
-		Reason:            reason,
-		Message:           message,
-	})
-	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
-		LastHeartbeatTime: currentTime,
-		Type:              conditionsv1.ConditionUpgradeable,
-		Status:            corev1.ConditionUnknown,
-		Reason:            reason,
-		Message:           message,
-	})
 }
 
 // SetAvailableCondition updates the status conditions to available state
@@ -557,6 +538,41 @@ func SetProgressingCondition(conditions *[]conditionsv1.Condition, reason string
 		LastHeartbeatTime: currentTime,
 		Type:              conditionsv1.ConditionUpgradeable,
 		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
+	})
+}
+
+// SetErrorCondition updates the status conditions to error state
+func SetErrorCondition(conditions *[]conditionsv1.Condition, reason string, message string) {
+	currentTime := metav1.NewTime(time.Now())
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		//LastHeartbeatTime should be set by the custom-resource-status just like lastTransitionTime
+		// Setting it here temporarity
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionAvailable,
+		Status:            corev1.ConditionUnknown,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionProgressing,
+		Status:            corev1.ConditionFalse,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionDegraded,
+		Status:            corev1.ConditionTrue,
+		Reason:            reason,
+		Message:           message,
+	})
+	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
+		LastHeartbeatTime: currentTime,
+		Type:              conditionsv1.ConditionUpgradeable,
+		Status:            corev1.ConditionUnknown,
 		Reason:            reason,
 		Message:           message,
 	})
