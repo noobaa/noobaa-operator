@@ -26,10 +26,102 @@ spec:
             submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
           type: string
         metadata:
+          description: Standard object metadata.
           type: object
         spec:
+          description: Specification of the desired behavior of the noobaa BucketClass.
+          properties:
+            placementPolicy:
+              description: PlacementPolicy specifies the placement policy for the
+                bucket class
+              properties:
+                tiers:
+                  description: Tiers is an ordered list of tiers to use. The model
+                    is a waterfall - push to first tier by default, and when no more
+                    space spill "cold" storage to next tier.
+                  items:
+                    properties:
+                      tier:
+                        description: Tier specifies a storage tier
+                        properties:
+                          mirrors:
+                            description: Mirrors is an unordered list of mirrors -
+                              all mirrors should eventually store all the data of
+                              the tier. The mirroring model is async so just a single
+                              mirror is required before the write can ack. The first
+                              mirror is selected according to locality optimizations
+                              of the client endpoint. The data is replicated to the
+                              rest of the mirrors in the background.
+                            items:
+                              properties:
+                                mirror:
+                                  description: Mirror specifies a mirror group
+                                  properties:
+                                    spread:
+                                      items:
+                                        type: string
+                                      type: array
+                                  required:
+                                  - spread
+                                  type: object
+                              required:
+                              - mirror
+                              type: object
+                            type: array
+                        required:
+                        - mirrors
+                        type: object
+                    required:
+                    - tier
+                    type: object
+                  type: array
+              required:
+              - tiers
+              type: object
+          required:
+          - placementPolicy
           type: object
         status:
+          description: Most recently observed status of the noobaa BackingStore.
+          properties:
+            conditions:
+              description: Conditions is a list of conditions related to operator
+                reconciliation +patchMergeKey=type +patchStrategy=merge
+              items:
+                properties:
+                  lastHeartbeatTime:
+                    format: date-time
+                    type: string
+                  lastTransitionTime:
+                    format: date-time
+                    type: string
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                  status:
+                    type: string
+                  type:
+                    type: string
+                required:
+                - type
+                - status
+                - lastHeartbeatTime
+                - lastTransitionTime
+                type: object
+              type: array
+            phase:
+              description: Phase is a simple, high-level summary of where the System
+                is in its lifecycle
+              type: string
+            relatedObjects:
+              description: RelatedObjects is a list of objects that are "interesting"
+                or related to this operator.
+              items:
+                type: object
+              type: array
+          required:
+          - phase
           type: object
   version: v1alpha1
   versions:

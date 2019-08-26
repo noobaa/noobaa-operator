@@ -1,7 +1,7 @@
 apiVersion: noobaa.io/v1alpha1
 kind: BucketClass
 metadata:
-  name: default-class
+  name: default
   labels:
     app: noobaa
 spec:
@@ -11,4 +11,4 @@ spec:
           mirrors:
             - mirror:
                 spread:
-                  - default-store
+                  - aws1

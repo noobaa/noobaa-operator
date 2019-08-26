@@ -1,6 +1,9 @@
 # source me to your dev shell
-export GOROOT="$(go env GOROOT)"
+
 export GO111MODULE=on
+export GOPROXY="https://proxy.golang.org"
+export GOROOT="$(go env GOROOT)"
+
 alias nb="build/_output/bin/noobaa-operator-local"
 
 if minikube status &> /dev/null

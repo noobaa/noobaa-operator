@@ -96,6 +96,9 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
 	r.Secret.Name = r.BackingStore.Spec.Secret.Name
 	r.Secret.Namespace = r.BackingStore.Spec.Secret.Namespace
+	if r.Secret.Namespace == "" {
+		r.Secret.Namespace = r.BackingStore.Namespace
+	}
 
 	util.KubeCheck(r.NooBaa)
 	util.KubeCheck(r.Secret)
@@ -213,6 +216,9 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 	}
 
 	if r.Secret.UID == "" {
+		if time.Since(r.BackingStore.CreationTimestamp.Time) < 5*time.Minute {
+			return fmt.Errorf("BackingStore Secret %q not found, but not rejecting the young as it might be in process", r.Secret.Name)
+		}
 		return util.NewPersistentError("MissingSecret",
 			fmt.Sprintf("BackingStore Secret %q not found or deleted", r.Secret.Name))
 	}
@@ -226,13 +232,13 @@ func (r *Reconciler) ReadSystemInfo() error {
 
 	sysClient, err := system.Connect()
 	if err != nil {
-		return nil
+		return err
 	}
 	r.NBClient = sysClient.NBClient
 
 	systemInfo, err := r.NBClient.ReadSystemAPI()
 	if err != nil {
-		return nil
+		return err
 	}
 	r.SystemInfo = &systemInfo
 
@@ -278,7 +284,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 	r.CreateCloudPoolParams = &nb.CreateCloudPoolParams{
 		Name:         r.BackingStore.Name,
 		Connection:   conn.Name,
-		TargetBucket: r.BackingStore.Spec.BucketName,
+		TargetBucket: r.BackingStore.Spec.S3Options.BucketName,
 	}
 
 	return nil
@@ -290,6 +296,10 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 
 	conn := &nb.AddExternalConnectionParams{
 		Name: r.BackingStore.Name,
+	}
+	s3Options := r.BackingStore.Spec.S3Options
+	if s3Options == nil {
+		s3Options = &nbv1.S3Options{}
 	}
 
 	// fix keys to handle the case that the secret holds lowercase keys
@@ -367,6 +377,7 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 		}
 		return err
 	}
+
 	switch res.Status {
 
 	case nb.ExternalConnectionSuccess:
@@ -385,11 +396,11 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	case nb.ExternalConnectionNotSupported:
 		return util.NewPersistentError(string(res.Status),
 			fmt.Sprintf("BackingStore %q invalid external connection %q", r.BackingStore.Name, res.Status))
+
 	case nb.ExternalConnectionTimeout:
 		fallthrough
 	case nb.ExternalConnectionUnknownFailure:
 		fallthrough
-
 	default:
 		return fmt.Errorf("CheckExternalConnection Status=%s Error=%s Message=%s",
 			res.Status, res.Error.Code, res.Error.Message)
@@ -486,9 +497,9 @@ func (r *Reconciler) ReconcileDeletion() error {
 
 // FinalizeDeletion removed the finalizer and updates in order to let the backing-store get reclaimed by kubernetes
 func (r *Reconciler) FinalizeDeletion() error {
-	util.RemoveFinalizer(r.BackingStore, nbv1.BackingStoreFinalizer)
+	util.RemoveFinalizer(r.BackingStore, nbv1.Finalizer)
 	if !util.KubeUpdate(r.BackingStore) {
-		return fmt.Errorf("BackingStore %q failed to remove finalizer %q", r.BackingStore.Name, nbv1.BackingStoreFinalizer)
+		return fmt.Errorf("BackingStore %q failed to remove finalizer %q", r.BackingStore.Name, nbv1.Finalizer)
 	}
 	return nil
 }

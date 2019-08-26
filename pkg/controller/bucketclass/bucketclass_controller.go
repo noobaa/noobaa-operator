@@ -2,6 +2,7 @@ package bucketclass
 
 import (
 	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/pkg/bucketclass"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -19,7 +20,12 @@ func Add(mgr manager.Manager) error {
 		MaxConcurrentReconciles: 1,
 		Reconciler: reconcile.Func(
 			func(req reconcile.Request) (reconcile.Result, error) {
-				return reconcile.Result{}, nil
+				return bucketclass.NewReconciler(
+					req.NamespacedName,
+					mgr.GetClient(),
+					mgr.GetScheme(),
+					mgr.GetRecorder("noobaa-operator"),
+				).Reconcile()
 			}),
 	})
 	if err != nil {
@@ -28,12 +34,19 @@ func Add(mgr manager.Manager) error {
 
 	// Watch for changes on resources to trigger reconcile
 
-	primaryHandler := &handler.EnqueueRequestForObject{}
-
-	err = c.Watch(&source.Kind{Type: &nbv1.BucketClass{}}, primaryHandler)
+	err = c.Watch(&source.Kind{Type: &nbv1.BucketClass{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
+
+	// err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, &handler.EnqueueRequestsFromMapFunc{
+	// 	ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+	// 		return nil
+	// 	}),
+	// })
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

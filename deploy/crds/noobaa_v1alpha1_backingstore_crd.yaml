@@ -8,7 +8,7 @@ spec:
     description: Type
     name: Type
     type: string
-  - JSONPath: .spec.bucketName
+  - JSONPath: .spec.s3Options.bucketName
     description: Bucket Name
     name: Bucket-Name
     type: string
@@ -42,14 +42,17 @@ spec:
             submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
           type: string
         metadata:
+          description: Standard object metadata.
           type: object
         spec:
+          description: Specification of the desired behavior of the noobaa BackingStore.
           properties:
-            bucketName:
-              type: string
             s3Options:
               description: S3Options specifies client options for the backing store
               properties:
+                bucketName:
+                  description: BucketName is the name of the target S3 bucket
+                  type: string
                 endpoint:
                   description: Endpoint is the S3 endpoint to use
                   type: string
@@ -68,19 +71,21 @@ spec:
                 sslDisabled:
                   description: SSLDisabled allows to disable SSL and use plain http
                   type: boolean
+              required:
+              - bucketName
               type: object
             secret:
               description: Secret refers to a secret that provides the credentials
               type: object
             type:
-              description: Type
+              description: Type is an enum of supported types
               type: string
           required:
           - type
-          - bucketName
           - secret
           type: object
         status:
+          description: Most recently observed status of the noobaa BackingStore.
           properties:
             conditions:
               description: Conditions is a list of conditions related to operator

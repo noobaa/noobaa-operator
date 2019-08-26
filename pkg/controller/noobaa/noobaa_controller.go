@@ -37,22 +37,21 @@ func Add(mgr manager.Manager) error {
 
 	// Watch for changes on resources to trigger reconcile
 
-	primaryHandler := &handler.EnqueueRequestForObject{}
-	secondaryHandler := &handler.EnqueueRequestForOwner{IsController: true, OwnerType: &nbv1.NooBaa{}}
+	ownerHandler := &handler.EnqueueRequestForOwner{IsController: true, OwnerType: &nbv1.NooBaa{}}
 
-	err = c.Watch(&source.Kind{Type: &nbv1.NooBaa{}}, primaryHandler)
+	err = c.Watch(&source.Kind{Type: &nbv1.NooBaa{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, secondaryHandler)
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, ownerHandler)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, secondaryHandler)
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, ownerHandler)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, secondaryHandler)
+	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, ownerHandler)
 	if err != nil {
 		return err
 	}

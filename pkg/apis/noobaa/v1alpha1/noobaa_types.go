@@ -227,3 +227,8 @@ type ServiceStatus struct {
 	// +optional
 	ExternalDNS []string `json:"externalDNS,omitempty"`
 }
+
+const (
+	// Finalizer is the name of the noobaa finalizer
+	Finalizer = "noobaa.io/finalizer"
+)

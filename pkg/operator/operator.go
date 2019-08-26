@@ -38,7 +38,7 @@ func CmdInstall() *cobra.Command {
 		Short: "Install noobaa-operator",
 		Run:   RunInstall,
 	}
-	cmd.Flags().Bool("rbac-only", false, "Install only the RBAC needed for local operator")
+	cmd.Flags().Bool("no-deploy", false, "Install only the needed resources but do not create the operator deployment")
 	return cmd
 }
 
@@ -92,8 +92,8 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	util.KubeCreateSkipExisting(c.ClusterRole)
 	util.KubeCreateSkipExisting(c.ClusterRoleBinding)
 	util.KubeCreateSkipExisting(c.StorageClass)
-	rbacOnly, _ := cmd.Flags().GetBool("rbac-only")
-	if !rbacOnly {
+	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
+	if !noDeploy {
 		util.KubeCreateSkipExisting(c.Deployment)
 	}
 }
@@ -101,7 +101,10 @@ func RunInstall(cmd *cobra.Command, args []string) {
 // RunUninstall runs a CLI command
 func RunUninstall(cmd *cobra.Command, args []string) {
 	c := LoadOperatorConf(cmd)
-	util.KubeDelete(c.Deployment)
+	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
+	if !noDeploy {
+		util.KubeDelete(c.Deployment)
+	}
 	util.KubeDelete(c.ClusterRoleBinding)
 	util.KubeDelete(c.ClusterRole)
 	util.KubeDelete(c.RoleBinding)
@@ -121,7 +124,10 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	util.KubeCheck(c.ClusterRole)
 	util.KubeCheck(c.ClusterRoleBinding)
 	util.KubeCheck(c.StorageClass)
-	util.KubeCheck(c.Deployment)
+	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
+	if !noDeploy {
+		util.KubeCheck(c.Deployment)
+	}
 }
 
 // RunYaml runs a CLI command
@@ -135,7 +141,10 @@ func RunYaml(cmd *cobra.Command, args []string) {
 	p.PrintObj(c.ClusterRole, os.Stdout)
 	p.PrintObj(c.ClusterRoleBinding, os.Stdout)
 	p.PrintObj(c.StorageClass, os.Stdout)
-	p.PrintObj(c.Deployment, os.Stdout)
+	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
+	if !noDeploy {
+		p.PrintObj(c.Deployment, os.Stdout)
+	}
 }
 
 // Conf struct holds all the objects needed to install the operator

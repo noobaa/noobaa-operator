@@ -14,43 +14,53 @@ func init() {
 	SchemeBuilder.Register(&BackingStore{}, &BackingStoreList{})
 }
 
-const (
-	// BackingStoreFinalizer is the name of the backing-store finalizer
-	BackingStoreFinalizer = "noobaa.io/finalizer"
-)
-
 // BackingStore is the Schema for the backingstores API
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type",description="Type"
-// +kubebuilder:printcolumn:name="Bucket-Name",type="string",JSONPath=".spec.bucketName",description="Bucket Name"
+// +kubebuilder:printcolumn:name="Bucket-Name",type="string",JSONPath=".spec.s3Options.bucketName",description="Bucket Name"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type BackingStore struct {
-	metav1.TypeMeta   `json:",inline"`
+
+	// Standard type metadata.
+	metav1.TypeMeta `json:",inline"`
+
+	// Standard object metadata.
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   BackingStoreSpec   `json:"spec,omitempty"`
+	// Specification of the desired behavior of the noobaa BackingStore.
+	// +optional
+	Spec BackingStoreSpec `json:"spec,omitempty"`
+
+	// Most recently observed status of the noobaa BackingStore.
+	// +optional
 	Status BackingStoreStatus `json:"status,omitempty"`
 }
 
 // BackingStoreList contains a list of BackingStore
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type BackingStoreList struct {
+
+	// Standard type metadata.
 	metav1.TypeMeta `json:",inline"`
+
+	// Standard list metadata.
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []BackingStore `json:"items"`
+
+	// Items is the list of BackingStores.
+	Items []BackingStore `json:"items"`
 }
 
 // BackingStoreSpec defines the desired state of BackingStore
 // +k8s:openapi-gen=true
 type BackingStoreSpec struct {
 
-	// Type
+	// Type is an enum of supported types
 	Type StoreType `json:"type"`
-
-	BucketName string `json:"bucketName"`
 
 	// Secret refers to a secret that provides the credentials
 	Secret corev1.SecretReference `json:"secret"`
@@ -60,24 +70,48 @@ type BackingStoreSpec struct {
 	S3Options *S3Options `json:"s3Options,omitempty"`
 }
 
+// BackingStoreStatus defines the observed state of BackingStore
+// +k8s:openapi-gen=true
+type BackingStoreStatus struct {
+
+	// Phase is a simple, high-level summary of where the System is in its lifecycle
+	Phase BackingStorePhase `json:"phase"`
+
+	// Conditions is a list of conditions related to operator reconciliation
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	// +optional
+	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
+
+	// RelatedObjects is a list of objects that are "interesting" or related to this operator.
+	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
+}
+
 // StoreType is the backing store type enum
 type StoreType string
 
 const (
+
 	// StoreTypeAWSS3 is used to connect to AWS S3
 	StoreTypeAWSS3 StoreType = "aws-s3"
-	// StoreTypeGoogleCloudStorage is used to connect to Google Cloud Storage
-	StoreTypeGoogleCloudStorage StoreType = "google-cloud-storage"
-	// StoreTypeAzureBlob is used to connect to Azure Blob
-	StoreTypeAzureBlob StoreType = "azure-blob"
+
 	// StoreTypeS3Compatible is used to connect to S3 compatible storage
 	StoreTypeS3Compatible StoreType = "s3-compatible"
+
+	// StoreTypeGoogleCloudStorage is used to connect to Google Cloud Storage
+	StoreTypeGoogleCloudStorage StoreType = "google-cloud-storage"
+
+	// StoreTypeAzureBlob is used to connect to Azure Blob
+	StoreTypeAzureBlob StoreType = "azure-blob"
+
 	// StoreTypePV is used to allocate storage by dynamically allocating PVs (using PVCs)
 	StoreTypePV StoreType = "pv"
 )
 
 // S3Options specifies client options for the backing store
 type S3Options struct {
+	// BucketName is the name of the target S3 bucket
+	BucketName string `json:"bucketName"`
 	// Region is the AWS region
 	// +optional
 	Region string `json:"region,omitempty"`
@@ -106,23 +140,6 @@ const (
 	S3SignatureVersionV2 S3SignatureVersion = "v2"
 )
 
-// BackingStoreStatus defines the observed state of BackingStore
-// +k8s:openapi-gen=true
-type BackingStoreStatus struct {
-
-	// Phase is a simple, high-level summary of where the System is in its lifecycle
-	Phase BackingStorePhase `json:"phase"`
-
-	// Conditions is a list of conditions related to operator reconciliation
-	// +patchMergeKey=type
-	// +patchStrategy=merge
-	// +optional
-	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
-
-	// RelatedObjects is a list of objects that are "interesting" or related to this operator.
-	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
-}
-
 // BackingStorePhase is a string enum type for system phases
 type BackingStorePhase string
 
@@ -131,7 +148,7 @@ const (
 
 	// BackingStorePhaseRejected means the spec has been rejected by the operator,
 	// this is most likely due to an incompatible configuration.
-	// Describe the noobaa system to see events.
+	// Use describe to see events.
 	BackingStorePhaseRejected BackingStorePhase = "Rejected"
 
 	// BackingStorePhaseVerifying means the operator is verifying the spec

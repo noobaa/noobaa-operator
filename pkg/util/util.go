@@ -16,6 +16,7 @@ import (
 	nbapis "github.com/noobaa/noobaa-operator/pkg/apis"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
+	operv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -46,6 +47,7 @@ func init() {
 	Panic(obv1.AddToScheme(scheme.Scheme))
 	Panic(monitoringv1.AddToScheme(scheme.Scheme))
 	Panic(cloudcredsv1.AddToScheme(scheme.Scheme))
+	Panic(operv1.AddToScheme(scheme.Scheme))
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)

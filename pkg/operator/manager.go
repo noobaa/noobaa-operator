@@ -17,7 +17,6 @@ import (
 	"github.com/noobaa/noobaa-operator/pkg/util"
 
 	"github.com/operator-framework/operator-sdk/pkg/leader"
-	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
@@ -70,11 +69,11 @@ func RunOperator(cmd *cobra.Command, args []string) {
 		return nil
 	}))
 
-	// Create Service object to expose the metrics port.
-	_, err = metrics.ExposeMetricsPort(util.Context(), metricsPort)
-	if err != nil {
-		log.Warnf("Failed ExposeMetricsPort: %s", err)
-	}
+	// // Create Service object to expose the metrics port.
+	// _, err = metrics.CreateMetricsService(util.Context(), config, metricsPort)
+	// if err != nil {
+	// 	log.Warnf("Failed ExposeMetricsPort: %s", err)
+	// }
 
 	// Start the manager
 	log.Info("Starting the Operator ...")

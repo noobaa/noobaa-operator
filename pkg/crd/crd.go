@@ -87,6 +87,7 @@ func CmdYaml() *cobra.Command {
 
 // Crds is the
 type Crds struct {
+	All               []*CRD
 	NooBaa            *CRD
 	BackingStore      *CRD
 	BucketClass       *CRD
@@ -96,32 +97,17 @@ type Crds struct {
 
 // RunCreate runs a CLI command
 func RunCreate(cmd *cobra.Command, args []string) {
-	crds := LoadCrds()
-	CreateCRD(crds.NooBaa)
-	CreateCRD(crds.BackingStore)
-	CreateCRD(crds.BucketClass)
-	CreateCRD(crds.ObjectBucket)
-	CreateCRD(crds.ObjectBucketClaim)
+	ForEachCRD(CreateCRD)
 }
 
 // RunDelete runs a CLI command
 func RunDelete(cmd *cobra.Command, args []string) {
-	crds := LoadCrds()
-	DeleteCRD(crds.NooBaa)
-	DeleteCRD(crds.BackingStore)
-	DeleteCRD(crds.BucketClass)
-	DeleteCRD(crds.ObjectBucket)
-	DeleteCRD(crds.ObjectBucketClaim)
+	ForEachCRD(DeleteCRD)
 }
 
 // RunStatus runs a CLI command
 func RunStatus(cmd *cobra.Command, args []string) {
-	crds := LoadCrds()
-	CheckCRD(crds.NooBaa)
-	CheckCRD(crds.BackingStore)
-	CheckCRD(crds.BucketClass)
-	CheckCRD(crds.ObjectBucket)
-	CheckCRD(crds.ObjectBucketClaim)
+	ForEachCRD(CheckCRD)
 }
 
 // RunWait runs a CLI command
@@ -132,13 +118,8 @@ func RunWait(cmd *cobra.Command, args []string) {
 
 // RunYaml dumps a combined yaml of all the CRDs from the bundled yamls
 func RunYaml(cmd *cobra.Command, args []string) {
-	crds := LoadCrds()
 	p := printers.YAMLPrinter{}
-	p.PrintObj(crds.NooBaa, os.Stdout)
-	p.PrintObj(crds.BackingStore, os.Stdout)
-	p.PrintObj(crds.BucketClass, os.Stdout)
-	p.PrintObj(crds.ObjectBucket, os.Stdout)
-	p.PrintObj(crds.ObjectBucketClaim, os.Stdout)
+	ForEachCRD(func(c *CRD) { p.PrintObj(c, os.Stdout) })
 }
 
 // LoadCrds loads the CRDs structures from the bundled yamls
@@ -146,14 +127,30 @@ func LoadCrds() *Crds {
 	o1 := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_crd_yaml)
 	o2 := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml)
 	o3 := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml)
-	o4 := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_ob_crd_yaml)
-	o5 := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_obc_crd_yaml)
-	return &Crds{
+	o4 := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_crd_yaml)
+	o5 := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucket_crd_yaml)
+	crds := &Crds{
 		NooBaa:            o1.(*CRD),
 		BackingStore:      o2.(*CRD),
 		BucketClass:       o3.(*CRD),
-		ObjectBucket:      o4.(*CRD),
-		ObjectBucketClaim: o5.(*CRD),
+		ObjectBucketClaim: o4.(*CRD),
+		ObjectBucket:      o5.(*CRD),
+	}
+	crds.All = []*CRD{
+		crds.NooBaa,
+		crds.BackingStore,
+		crds.BucketClass,
+		crds.ObjectBucketClaim,
+		crds.ObjectBucket,
+	}
+	return crds
+}
+
+// ForEachCRD iterates and calls fn for every CRD
+func ForEachCRD(fn func(*CRD)) {
+	crds := LoadCrds()
+	for _, c := range crds.All {
+		fn(c)
 	}
 }
 
@@ -184,12 +181,9 @@ func WaitAllReady() {
 	klient := util.KubeClient()
 	crds := LoadCrds()
 	intervalSec := time.Duration(3)
-	list := []*CRD{
-		crds.NooBaa, crds.BackingStore, crds.BucketClass,
-	}
 	util.Panic(wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
 		allReady := true
-		for _, crd := range list {
+		for _, crd := range crds.All {
 			err := klient.Get(util.Context(), client.ObjectKey{Name: crd.Name}, crd)
 			util.Panic(err)
 			ready, err := IsReady(crd)

@@ -6,4 +6,4 @@
 build-releases/
 
 # the output of `go build`
-noobaa-operator
+/noobaa-operator

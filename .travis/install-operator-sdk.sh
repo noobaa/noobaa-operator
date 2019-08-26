@@ -1,3 +1,4 @@
+#!/bin/bash
 SDK_VERSION="v0.10.0"
 SDK_RELEASE="https://github.com/operator-framework/operator-sdk/releases/download/${SDK_VERSION}/operator-sdk-${SDK_VERSION}-x86_64-linux-gnu"
 

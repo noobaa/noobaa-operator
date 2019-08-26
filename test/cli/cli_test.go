@@ -1,4 +1,4 @@
-package test
+package cli
 
 import (
 	"os/exec"
@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	CLIPath = "../build/_output/bin/noobaa-operator-local"
+	CLIPath = "../../build/_output/bin/noobaa-operator-local"
 )
 
 func TestNoArgs(t *testing.T) {

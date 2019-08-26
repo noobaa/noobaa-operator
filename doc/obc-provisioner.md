@@ -46,7 +46,6 @@ metadata:
 spec:
   generateBucketName: "my-bucket-"
   storageClassName: noobaa-default-class
-  SSL: false
 ```
 
 # Bucket Permissions and Sharing

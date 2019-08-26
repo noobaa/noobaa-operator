@@ -1,35 +1,30 @@
-language: go
-sudo: required
+os: linux
 dist: xenial
+sudo: required
 sevices:
   - docker
+language: go
 go:
-- 1.12.7
-
+  - 1.12.x
 env:
   global:
+    - GO111MODULE=on
+    - GOPROXY=https://proxy.golang.org
     - CHANGE_MINIKUBE_NONE_USER=true
     - MINIKUBE_WANTUPDATENOTIFICATION=false
     - MINIKUBE_WANTREPORTERRORPROMPT=false
     - MINIKUBE_HOME=$HOME
     - CHANGE_MINIKUBE_NONE_USER=true
     - KUBECONFIG=$HOME/.kube/config
-    - GO111MODULE=on
-    - CGO_ENABLED=0
-
-stages:
-  - name: build
-
-jobs:
-  include:
-    - stage: build
-      name: "Build and Test"
-      install:
-        - bash .travis/install-operator-sdk.sh
-        - bash .travis/install-python.sh
-        - bash .travis/install-minikube.sh
-      script:
-        - make build
-        - make gen-api-fail-if-dirty
-        - make test
-        - make test-integ
+install:
+  - bash .travis/install-tools.sh
+  - bash .travis/install-operator-sdk.sh
+  - bash .travis/install-python.sh
+  - bash .travis/install-minikube.sh
+script:
+  - make gen-api-fail-if-dirty
+  - make build
+  - make test
+  - make test-cli
+  - make test-olm
+  - make test-scorecard

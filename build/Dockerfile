@@ -4,6 +4,9 @@ ENV OPERATOR=/usr/local/bin/noobaa-operator \
     USER_UID=1001 \
     USER_NAME=noobaa-operator
 
+# tar is needed for kubectl cp
+RUN microdnf install tar
+
 # install operator binary
 COPY build/_output/bin/noobaa-operator ${OPERATOR}
 

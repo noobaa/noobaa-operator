@@ -19,17 +19,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	sigyaml "sigs.k8s.io/yaml"
 )
 
 // Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "backingstore",
-		Short: "Manage noobaa backing stores",
+		Short: "Manage backing stores",
 	}
 	cmd.AddCommand(
 		CmdCreate(),
 		CmdDelete(),
+		CmdStatus(),
 		CmdList(),
 		CmdReconcile(),
 	)
@@ -45,7 +47,7 @@ func CmdCreate() *cobra.Command {
 	}
 	cmd.Flags().String(
 		"type", "",
-		`Backing store type: 'aws-s3' or 'google-cloud-store' or 'azure-blob' or 's3-compatible'`,
+		`Backing store type: 'aws-s3' or 's3-compatible'`,
 	)
 	cmd.Flags().String(
 		"bucket-name", "",
@@ -76,6 +78,16 @@ func CmdDelete() *cobra.Command {
 		Use:   "delete <backing-store-name>",
 		Short: "Delete backing store",
 		Run:   RunDelete,
+	}
+	return cmd
+}
+
+// CmdStatus returns a CLI command
+func CmdStatus() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "status <backing-store-name>",
+		Short: "Status backing store",
+		Run:   RunStatus,
 	}
 	return cmd
 }
@@ -154,9 +166,14 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	secret.Data = nil
 
 	backStore.Spec.Type = typeVal
-	backStore.Spec.BucketName = bucketName
-	backStore.Spec.S3Options = &nbv1.S3Options{Endpoint: endpoint}
-	backStore.Spec.Secret = corev1.SecretReference{Name: secret.Name, Namespace: secret.Namespace}
+	backStore.Spec.S3Options = &nbv1.S3Options{
+		BucketName: bucketName,
+		Endpoint:   endpoint,
+	}
+	backStore.Spec.Secret = corev1.SecretReference{
+		Name:      secret.Name,
+		Namespace: secret.Namespace,
+	}
 
 	if accessKey == "" {
 		fmt.Printf("Enter Access Key: ")
@@ -178,13 +195,17 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	// Create backing store CR
 	util.Panic(controllerutil.SetControllerReference(sys, backStore, scheme.Scheme))
 	if !util.KubeCreateSkipExisting(backStore) {
-		log.Fatalf(`❌ Could not create backing-store %q in namespace %q (conflict)`, backStore.Name, backStore.Namespace)
+		log.Fatalf(`❌ Could not create BackingStore %q in Namespace %q (conflict)`, backStore.Name, backStore.Namespace)
 	}
 
 	// Create secret
 	util.Panic(controllerutil.SetControllerReference(backStore, secret, scheme.Scheme))
 	if !util.KubeCreateSkipExisting(secret) {
-		log.Fatalf(`❌ Could not create secret %q in namespace %q (conflict)`, secret.Name, secret.Namespace)
+		log.Fatalf(`❌ Could not create Secret %q in Namespace %q (conflict)`, secret.Name, secret.Namespace)
+	}
+
+	if WaitReady(backStore) {
+		RunStatus(cmd, args)
 	}
 }
 
@@ -203,8 +224,115 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	backStore.Namespace = options.Namespace
 
 	if !util.KubeDelete(backStore) {
-		log.Fatalf(`❌ Could not delete backing-store %q in namespace %q`,
+		log.Fatalf(`❌ Could not delete BackingStore %q in namespace %q`,
 			backStore.Name, backStore.Namespace)
+	}
+}
+
+// RunStatus runs a CLI command
+func RunStatus(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
+	}
+
+	o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+	secret := o.(*corev1.Secret)
+	o = util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml)
+	backStore := o.(*nbv1.BackingStore)
+
+	backStore.Name = args[0]
+	backStore.Namespace = options.Namespace
+
+	if !util.KubeCheck(backStore) {
+		log.Fatalf(`❌ Could not get BackingStore %q in namespace %q`,
+			backStore.Name, backStore.Namespace)
+	}
+
+	secret.Name = backStore.Spec.Secret.Name
+	secret.Namespace = backStore.Spec.Secret.Namespace
+	if secret.Namespace == "" {
+		secret.Namespace = backStore.Namespace
+	}
+
+	if !util.KubeCheck(secret) {
+		log.Errorf(`❌ Could not get Secret %q in namespace %q`,
+			secret.Name, secret.Namespace)
+	}
+
+	CheckPhase(backStore)
+
+	fmt.Println()
+	fmt.Println("# BackingStore spec:")
+	output, err := sigyaml.Marshal(backStore.Spec)
+	util.Panic(err)
+	fmt.Print(string(output))
+	fmt.Println()
+	fmt.Println("# Secret data:")
+	output, err = sigyaml.Marshal(secret.StringData)
+	util.Panic(err)
+	fmt.Print(string(output))
+	fmt.Println()
+}
+
+// WaitReady waits until the system phase changes to ready by the operator
+func WaitReady(backStore *nbv1.BackingStore) bool {
+	log := util.Logger()
+	klient := util.KubeClient()
+
+	intervalSec := time.Duration(3)
+
+	err := wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
+		err := klient.Get(util.Context(), util.ObjectKey(backStore), backStore)
+		if err != nil {
+			log.Printf("⏳ Failed to get BackingStore: %s", err)
+			return false, nil
+		}
+		CheckPhase(backStore)
+		if backStore.Status.Phase == nbv1.BackingStorePhaseRejected {
+			return false, fmt.Errorf("BackingStorePhaseRejected")
+		}
+		if backStore.Status.Phase != nbv1.BackingStorePhaseReady {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+// CheckPhase prints the phase and reason for it
+func CheckPhase(backStore *nbv1.BackingStore) {
+	log := util.Logger()
+
+	reason := "waiting..."
+	for _, c := range backStore.Status.Conditions {
+		if c.Type == "Available" {
+			reason = fmt.Sprintf("%s %s", c.Reason, c.Message)
+		}
+	}
+
+	switch backStore.Status.Phase {
+
+	case nbv1.BackingStorePhaseReady:
+		log.Printf("✅ BackingStore %q Phase is Ready", backStore.Name)
+
+	case nbv1.BackingStorePhaseRejected:
+		log.Errorf("❌ BackingStore %q Phase is %q: %s", backStore.Name, backStore.Status.Phase, reason)
+
+	case nbv1.BackingStorePhaseVerifying:
+		fallthrough
+	case nbv1.BackingStorePhaseConnecting:
+		fallthrough
+	case nbv1.BackingStorePhaseCreating:
+		fallthrough
+	case nbv1.BackingStorePhaseDeleting:
+		fallthrough
+	default:
+		log.Printf("⏳ BackingStore %q Phase is %q: %s", backStore.Name, backStore.Status.Phase, reason)
 	}
 }
 
@@ -223,7 +351,7 @@ func RunList(cmd *cobra.Command, args []string) {
 	table := (&util.PrintTable{}).AddRow("NAME", "TYPE", "BUCKET-NAME", "PHASE")
 	for i := range list.Items {
 		bs := &list.Items[i]
-		table.AddRow(bs.Name, string(bs.Spec.Type), bs.Spec.BucketName, string(bs.Status.Phase))
+		table.AddRow(bs.Name, string(bs.Spec.Type), bs.Spec.S3Options.BucketName, string(bs.Status.Phase))
 	}
 	fmt.Print(table.String())
 }
@@ -261,7 +389,7 @@ func ParseBackingStoreType(cmd *cobra.Command) nbv1.StoreType {
 	log := util.Logger()
 	s, _ := cmd.Flags().GetString("type")
 	if s == "" {
-		fmt.Printf("Enter BackingStore Type - 'aws-s3' or 'google-cloud-store' or 'azure-blob' or 's3-compatible': ")
+		fmt.Printf("Enter BackingStore Type - 'aws-s3' or 's3-compatible': ")
 		_, err := fmt.Scan(&s)
 		util.Panic(err)
 	}
