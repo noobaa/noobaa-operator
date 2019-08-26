@@ -1,0 +1,13 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noobaa-mgmt-service-monitor
+  labels:
+    app: noobaa
+spec:
+  endpoints:
+  - port: mgmt
+  namespaceSelector: {}
+  selector:
+    matchLabels:
+      app: noobaa

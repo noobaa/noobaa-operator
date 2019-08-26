@@ -11,6 +11,9 @@ rules:
   - noobaas
   - backingstores
   - bucketclasses
+  - noobaas/finalizers
+  - backingstores/finalizers
+  - bucketclasses/finalizers
   verbs:
   - '*'
 - apiGroups:
@@ -44,6 +47,13 @@ rules:
   - create
   - update
   - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - services/finalizers
+  verbs:
+  - update
 - apiGroups:
   - apps
   resourceNames:

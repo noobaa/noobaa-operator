@@ -68,6 +68,7 @@ type Reconciler struct {
 	CloudCreds          *cloudcredsv1.CredentialsRequest
 	DefaultBackingStore *nbv1.BackingStore
 	StorageClass        *storagev1.StorageClass
+	ServiceMonitor      *monitoringv1.ServiceMonitor
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -96,6 +97,7 @@ func NewReconciler(
 		CloudCreds:          util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
 		StorageClass:        util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
+		ServiceMonitor:      util.KubeObject(bundle.File_deploy_internal_service_monitor_yaml).(*monitoringv1.ServiceMonitor),
 	}
 
 	// Set Namespace
@@ -110,6 +112,7 @@ func NewReconciler(
 	r.CloudCreds.Namespace = r.Request.Namespace
 	r.CloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
 	r.DefaultBackingStore.Namespace = r.Request.Namespace
+	r.ServiceMonitor.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -125,6 +128,7 @@ func NewReconciler(
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	r.StorageClass.Provisioner = options.ObjectBucketProvisionerName()
 	r.StorageClass.Name = options.Namespace + "-storage-class"
+	r.ServiceMonitor.Name = options.Namespace + "-service-monitor"
 
 	return r
 }
@@ -142,6 +146,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.CloudCreds)
 	util.KubeCheck(r.DefaultBackingStore)
 	util.KubeCheck(r.StorageClass)
+	util.KubeCheck(r.ServiceMonitor)
 }
 
 // Reconcile reads that state of the cluster for a System object,
