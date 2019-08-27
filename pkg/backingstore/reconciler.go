@@ -372,7 +372,7 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 		fallthrough
 	case nb.ExternalConnectionNotSupported:
 		return util.NewPersistentError(string(res.Status),
-			fmt.Sprintf("BackingStore %q invalid external connection %q", r.Secret.Name, res.Status))
+			fmt.Sprintf("BackingStore %q invalid external connection %q", r.BackingStore.Name, res.Status))
 
 	case nb.ExternalConnectionTimeout:
 		fallthrough
