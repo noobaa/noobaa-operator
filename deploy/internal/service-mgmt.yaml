@@ -13,19 +13,15 @@ spec:
   selector:
     noobaa-mgmt: SYSNAME
   ports:
-    - port: 8080
+    - port: 80
       name: mgmt
-    - port: 8443
+      targetPort: 8080
+    - port: 443
       name: mgmt-https
+      targetPort: 8443
     - port: 8444
       name: md-https
     - port: 8445
       name: bg-https
     - port: 8446
       name: hosted-agents-https
-    - port: 80
-      targetPort: 6001
-      name: s3
-    - port: 443
-      targetPort: 6443
-      name: s3-https

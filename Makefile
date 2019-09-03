@@ -9,7 +9,7 @@ VERSION ?= $(shell go run cmd/version/main.go)
 IMAGE ?= noobaa/noobaa-operator:$(VERSION)
 REPO ?= github.com/noobaa/noobaa-operator
 
-GO ?= CGO_ENABLED=0 GO111MODULE=on go
+GO ?= CGO_ENABLED=0 GO111MODULE=on GOPROXY=https://proxy.golang.org go
 GO_LINUX ?= GOOS=linux GOARCH=amd64 $(GO)
 GO_LIST ?= ./cmd/... ./pkg/... ./test/... ./version/...
 GOHOSTOS ?= $(shell go env GOHOSTOS)
