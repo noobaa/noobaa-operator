@@ -20,6 +20,17 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		"noobaa operator started phase 2/4 - \"Creating\"",
 	)
 
+	if util.IsAWSPlatform() {
+		r.Logger.Info("this kubernetes cluster is deployed on AWS. attempt to get cloud credentials")
+		// the credentials that are created by cloud-credentials-operator sometimes take time
+		// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
+		// creating the credential request as early as possible to try and avoid it
+		_, err := r.EnsureCredentialsRequestAndGetBucketName(r.Logger)
+		if err != nil {
+			r.Logger.Errorf("failed to create CredentialsRequest. will retry in phase 4. error: %v", err)
+		}
+	}
+
 	r.SecretServer.StringData["jwt"] = util.RandomBase64(16)
 	r.SecretServer.StringData["server_secret"] = util.RandomHex(4)
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {

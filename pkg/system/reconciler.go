@@ -15,6 +15,7 @@ import (
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	semver "github.com/hashicorp/go-version"
+	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -55,14 +56,16 @@ type Reconciler struct {
 	Recorder record.EventRecorder
 	NBClient nb.Client
 
-	NooBaa         *nbv1.NooBaa
-	CoreApp        *appsv1.StatefulSet
-	ServiceMgmt    *corev1.Service
-	ServiceS3      *corev1.Service
-	SecretServer   *corev1.Secret
-	SecretOp       *corev1.Secret
-	SecretAdmin    *corev1.Secret
-	PrometheusRule *monitoringv1.PrometheusRule
+	NooBaa              *nbv1.NooBaa
+	CoreApp             *appsv1.StatefulSet
+	ServiceMgmt         *corev1.Service
+	ServiceS3           *corev1.Service
+	SecretServer        *corev1.Secret
+	SecretOp            *corev1.Secret
+	SecretAdmin         *corev1.Secret
+	PrometheusRule      *monitoringv1.PrometheusRule
+	CloudCreds          *cloudcredsv1.CredentialsRequest
+	DefaultBackingStore *nbv1.BackingStore
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -74,20 +77,22 @@ func NewReconciler(
 ) *Reconciler {
 
 	r := &Reconciler{
-		Request:        req,
-		Client:         client,
-		Scheme:         scheme,
-		Recorder:       recorder,
-		Ctx:            context.TODO(),
-		Logger:         logrus.WithField("sys", req.Namespace+"/"+req.Name),
-		NooBaa:         util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
-		CoreApp:        util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
-		ServiceMgmt:    util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
-		ServiceS3:      util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
-		SecretServer:   util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		SecretOp:       util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		SecretAdmin:    util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		PrometheusRule: util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
+		Request:             req,
+		Client:              client,
+		Scheme:              scheme,
+		Recorder:            recorder,
+		Ctx:                 context.TODO(),
+		Logger:              logrus.WithField("sys", req.Namespace+"/"+req.Name),
+		NooBaa:              util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
+		CoreApp:             util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
+		ServiceMgmt:         util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
+		ServiceS3:           util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
+		SecretServer:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretOp:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
+		CloudCreds:          util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
+		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
 	}
 
 	// Set Namespace
@@ -99,6 +104,9 @@ func NewReconciler(
 	r.SecretOp.Namespace = r.Request.Namespace
 	r.SecretAdmin.Namespace = r.Request.Namespace
 	r.PrometheusRule.Namespace = r.Request.Namespace
+	r.CloudCreds.Namespace = r.Request.Namespace
+	r.CloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
+	r.DefaultBackingStore.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -109,7 +117,9 @@ func NewReconciler(
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
 	r.PrometheusRule.Name = r.Request.Name + "-prometheus-rules"
-
+	r.CloudCreds.Name = r.Request.Name + "-cloud-creds"
+	r.CloudCreds.Spec.SecretRef.Name = r.Request.Name + "-cloud-creds-secret"
+	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	return r
 }
 
@@ -123,6 +133,8 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.SecretOp)
 	util.KubeCheck(r.SecretAdmin)
 	util.KubeCheck(r.PrometheusRule)
+	util.KubeCheck(r.CloudCreds)
+	util.KubeCheck(r.DefaultBackingStore)
 }
 
 // Reconcile reads that state of the cluster for a System object,

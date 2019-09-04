@@ -14,6 +14,7 @@ import (
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/pkg/apis"
+	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -44,6 +45,7 @@ func init() {
 	Panic(nbapis.AddToScheme(scheme.Scheme))
 	Panic(obv1.AddToScheme(scheme.Scheme))
 	Panic(monitoringv1.AddToScheme(scheme.Scheme))
+	Panic(cloudcredsv1.AddToScheme(scheme.Scheme))
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)
@@ -576,4 +578,24 @@ func SetErrorCondition(conditions *[]conditionsv1.Condition, reason string, mess
 		Reason:            reason,
 		Message:           message,
 	})
+}
+
+// IsAWSPlatform returns true if this cluster is running on AWS
+func IsAWSPlatform() bool {
+	nodesList := &corev1.NodeList{}
+	if ok := KubeList(nodesList, nil); !ok || len(nodesList.Items) == 0 {
+		Panic(fmt.Errorf("failed to list kubernetes nodes"))
+	}
+	isAWS := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "aws")
+	return isAWS
+}
+
+// GetAWSRegion parses the region from a node's name
+func GetAWSRegion() string {
+	nodesList := &corev1.NodeList{}
+	if ok := KubeList(nodesList, nil); !ok || len(nodesList.Items) == 0 {
+		Panic(fmt.Errorf("failed to list kubernetes nodes"))
+	}
+	region := strings.Split(nodesList.Items[0].Name, ".")[1]
+	return region
 }
