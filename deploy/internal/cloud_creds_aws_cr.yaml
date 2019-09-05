@@ -1,0 +1,26 @@
+apiVersion: cloudcredential.openshift.io/v1
+kind: CredentialsRequest
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: CRED-REQ-NAME
+spec:
+  secretRef:
+    name: CRED-SECRET-NAME
+    namespace: CRED-SECRET-NAMESPACE
+  providerSpec:
+    apiVersion: cloudcredential.openshift.io/v1
+    kind: AWSProviderSpec
+    statementEntries:
+      - effect: Allow
+        action:
+          - s3:*
+        resource: "arn:aws:s3:::BUCKET"
+      - effect: Allow
+        action:
+          - s3:*
+        resource: "arn:aws:s3:::BUCKET/*"
+      - effect: Allow
+        action:
+          - s3:ListAllMyBuckets
+        resource: "*"

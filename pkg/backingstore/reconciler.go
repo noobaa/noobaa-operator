@@ -292,6 +292,14 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		Name: r.BackingStore.Name,
 	}
 
+	// fix keys to handle the case that the secret holds lowercase keys
+	if r.Secret.StringData["AWS_ACCESS_KEY_ID"] == "" && r.Secret.StringData["aws_access_key_id"] != "" {
+		r.Secret.StringData["AWS_ACCESS_KEY_ID"] = r.Secret.StringData["aws_access_key_id"]
+	}
+	if r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] == "" && r.Secret.StringData["aws_secret_access_key"] != "" {
+		r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = r.Secret.StringData["aws_secret_access_key"]
+	}
+
 	switch r.BackingStore.Spec.Type {
 
 	case nbv1.StoreTypeAWSS3:
@@ -365,6 +373,10 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 		// good
 
 	case nb.ExternalConnectionInvalidCredentials:
+		if time.Since(r.BackingStore.CreationTimestamp.Time) < 5*time.Minute {
+			r.Logger.Infof("got invalid credentials. sometimes access keys take time to propagate inside AWS. requeuing for 5 minutes")
+			return fmt.Errorf("Got InvalidCredentials. requeue again")
+		}
 		fallthrough
 	case nb.ExternalConnectionInvalidEndpoint:
 		fallthrough
@@ -373,11 +385,11 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	case nb.ExternalConnectionNotSupported:
 		return util.NewPersistentError(string(res.Status),
 			fmt.Sprintf("BackingStore %q invalid external connection %q", r.BackingStore.Name, res.Status))
-
 	case nb.ExternalConnectionTimeout:
 		fallthrough
 	case nb.ExternalConnectionUnknownFailure:
 		fallthrough
+
 	default:
 		return fmt.Errorf("CheckExternalConnection Status=%s Error=%s Message=%s",
 			res.Status, res.Error.Code, res.Error.Message)
