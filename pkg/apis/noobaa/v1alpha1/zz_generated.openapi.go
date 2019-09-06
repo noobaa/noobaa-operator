@@ -45,17 +45,20 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStore(ref common.ReferenceCallback) 
 					},
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Description: "Standard object metadata.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
 						},
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreSpec"),
+							Description: "Specification of the desired behavior of the noobaa BackingStore.",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreStatus"),
+							Description: "Most recently observed status of the noobaa BackingStore.",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreStatus"),
 						},
 					},
 				},
@@ -74,15 +77,9 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref common.ReferenceCallba
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type",
+							Description: "Type is an enum of supported types",
 							Type:        []string{"string"},
 							Format:      "",
-						},
-					},
-					"bucketName": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
 						},
 					},
 					"secret": {
@@ -98,7 +95,7 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"type", "bucketName", "secret"},
+				Required: []string{"type", "secret"},
 			},
 		},
 		Dependencies: []string{
@@ -182,17 +179,20 @@ func schema_pkg_apis_noobaa_v1alpha1_BucketClass(ref common.ReferenceCallback) c
 					},
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Description: "Standard object metadata.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
 						},
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassSpec"),
+							Description: "Specification of the desired behavior of the noobaa BucketClass.",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassStatus"),
+							Description: "Most recently observed status of the noobaa BackingStore.",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassStatus"),
 						},
 					},
 				},
@@ -208,10 +208,19 @@ func schema_pkg_apis_noobaa_v1alpha1_BucketClassSpec(ref common.ReferenceCallbac
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "BucketClassSpec defines the desired state of BucketClass",
-				Properties:  map[string]spec.Schema{},
+				Properties: map[string]spec.Schema{
+					"placementPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PlacementPolicy specifies the placement policy for the bucket class",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.PlacementPolicy"),
+						},
+					},
+				},
+				Required: []string{"placementPolicy"},
 			},
 		},
-		Dependencies: []string{},
+		Dependencies: []string{
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.PlacementPolicy"},
 	}
 }
 
@@ -220,10 +229,52 @@ func schema_pkg_apis_noobaa_v1alpha1_BucketClassStatus(ref common.ReferenceCallb
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "BucketClassStatus defines the observed state of BucketClass",
-				Properties:  map[string]spec.Schema{},
+				Properties: map[string]spec.Schema{
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase is a simple, high-level summary of where the System is in its lifecycle",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"conditions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-patch-merge-key": "type",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions is a list of conditions related to operator reconciliation",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/openshift/custom-resource-status/conditions/v1.Condition"),
+									},
+								},
+							},
+						},
+					},
+					"relatedObjects": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RelatedObjects is a list of objects that are \"interesting\" or related to this operator.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.ObjectReference"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"phase"},
 			},
 		},
-		Dependencies: []string{},
+		Dependencies: []string{
+			"github.com/openshift/custom-resource-status/conditions/v1.Condition", "k8s.io/api/core/v1.ObjectReference"},
 	}
 }
 

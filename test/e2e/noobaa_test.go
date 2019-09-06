@@ -23,6 +23,10 @@ var (
 	cleanupTimeout       = time.Minute * 1
 )
 
+// NOTICE - This e2e test is currently not included in CI builds
+// it was running locally ok, but failed on TravisCI builds,
+// so for now I just disabled it.
+
 func TestNooBaa(t *testing.T) {
 	list := &nbv1.NooBaaList{}
 	err := framework.AddToFrameworkScheme(apis.AddToScheme, list)

@@ -3,11 +3,12 @@ package obc
 import (
 	"fmt"
 
-	"github.com/noobaa/noobaa-operator/pkg/options"
-
 	"github.com/noobaa/noobaa-operator/build/_output/bundle"
 	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/pkg/options"
 	"github.com/noobaa/noobaa-operator/pkg/util"
+
+	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -16,7 +17,7 @@ import (
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "obc",
-		Short: "Manage bucket claims",
+		Short: "Manage object bucket claims",
 	}
 	cmd.AddCommand(
 		CmdCreate(),
@@ -35,12 +36,10 @@ func CmdCreate() *cobra.Command {
 	}
 	cmd.Flags().Bool("exact", false,
 		"Request an exact bucketName instead of the default generateBucketName")
-	cmd.Flags().Bool("ssl", false,
-		"Request an SSL endpoint to be provisioned")
-	cmd.Flags().Bool("versioned", false,
-		"Request a versioned S3 bucket to be provisioned")
-	cmd.Flags().String("storage-class", options.Namespace+"-storage-class",
+	cmd.Flags().String("storage-class", "",
 		"Set storage-class to specify which provisioner to use")
+	cmd.Flags().String("bucket-class", "",
+		"Set bucket-class to specify for the bucket")
 	cmd.Flags().String("backing-store", "",
 		"Set backing-store to specify for the bucket")
 	return cmd
@@ -76,12 +75,15 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	name := args[0]
 
 	exact, _ := cmd.Flags().GetBool("exact")
-	ssl, _ := cmd.Flags().GetBool("ssl")
-	versioned, _ := cmd.Flags().GetBool("versioned")
 	storageClass, _ := cmd.Flags().GetString("storage-class")
+	bucketClass, _ := cmd.Flags().GetString("bucket-class")
 	backingStore, _ := cmd.Flags().GetString("backing-store")
 
-	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_obc_cr_yaml)
+	if storageClass == "" {
+		storageClass = options.Namespace + "-storage-class"
+	}
+
+	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml)
 	obc := o.(*nbv1.ObjectBucketClaim)
 	obc.Name = name
 	obc.Namespace = options.Namespace
@@ -93,14 +95,16 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		obc.Spec.GenerateBucketName = name
 	}
 	obc.Spec.StorageClassName = storageClass
-	obc.Spec.SSL = ssl
-	obc.Spec.Versioned = versioned
+	obc.Spec.BucketCannedACL = obv1.BucketCannedACLPrivate
+	obc.Spec.AdditionalConfig = map[string]string{}
 
+	if bucketClass != "" {
+		// TODO check that this backing store name exists...
+		obc.Spec.AdditionalConfig["bucketClass"] = bucketClass
+	}
 	if backingStore != "" {
 		// TODO check that this backing store name exists...
-		obc.Spec.AdditionalConfig = map[string]string{
-			"backingstore": backingStore,
-		}
+		obc.Spec.AdditionalConfig["backingstore"] = backingStore
 	}
 
 	if !util.KubeCreateSkipExisting(obc) {
@@ -116,7 +120,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		log.Fatalf(`Missing expected arguments: <bucket-name> %s`, cmd.UsageString())
 	}
 
-	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_obc_cr_yaml)
+	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml)
 	obc := o.(*nbv1.ObjectBucketClaim)
 	obc.Name = args[0]
 	obc.Namespace = options.Namespace

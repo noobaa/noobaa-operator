@@ -211,9 +211,9 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	// create backing store
 	r.DefaultBackingStore.Spec.Secret.Name = cloudCredsSecret.Name
 	r.DefaultBackingStore.Spec.Secret.Namespace = cloudCredsSecret.Namespace
-	r.DefaultBackingStore.Spec.BucketName = *bucketName
 	r.DefaultBackingStore.Spec.S3Options = &nbv1.S3Options{
-		Region: region,
+		BucketName: *bucketName,
+		Region:     region,
 	}
 	r.Own(r.DefaultBackingStore)
 	err = r.Client.Create(r.Ctx, r.DefaultBackingStore)

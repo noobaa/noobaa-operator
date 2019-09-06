@@ -4,6 +4,8 @@
 // To run the operator itself use the CLI command args: `operator run`.
 package main
 
+//go:generate make gen
+
 import (
 	"github.com/noobaa/noobaa-operator/pkg/cli"
 )

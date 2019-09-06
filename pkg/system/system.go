@@ -36,7 +36,7 @@ import (
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "system",
-		Short: "Manage noobaa systems (create delete etc.)",
+		Short: "Manage noobaa systems",
 	}
 	cmd.AddCommand(
 		CmdCreate(),
@@ -183,10 +183,10 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	util.KubeList(backingStores, &client.ListOptions{Namespace: options.Namespace})
 	for i := range backingStores.Items {
 		obj := &backingStores.Items[i]
-		util.RemoveFinalizer(obj, nbv1.BackingStoreFinalizer)
+		util.RemoveFinalizer(obj, nbv1.Finalizer)
 		if !util.KubeUpdate(obj) {
 			log.Errorf("BackingStore %q failed to remove finalizer %q",
-				obj.Name, nbv1.BackingStoreFinalizer)
+				obj.Name, nbv1.Finalizer)
 		}
 		util.KubeDelete(obj, client.GracePeriodSeconds(0))
 	}

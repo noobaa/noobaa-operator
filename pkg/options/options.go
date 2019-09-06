@@ -1,6 +1,7 @@
 package options
 
 import (
+	"github.com/noobaa/noobaa-operator/pkg/util"
 	"github.com/noobaa/noobaa-operator/version"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 
@@ -37,9 +38,6 @@ const (
 	// ContainerImage is the full default image url
 	ContainerImage = ContainerImageName + ":" + ContainerImageTag
 
-	// MongoImage is the default mongodb image url
-	MongoImage = "centos/mongodb-36-centos7"
-
 	// AdminAccountEmail is the default email used for admin account
 	AdminAccountEmail = "admin@noobaa.io"
 
@@ -51,11 +49,15 @@ const (
 // default is "noobaa" but in shared clusters (mainly for developers?)
 // this can be very confusing and cause unintentional overrides
 // so we may consider to use current namespace.
-var Namespace = "noobaa" //util.CurrentNamespace()
+var Namespace = "noobaa"
 
 // NooBaaImage is the container image url built from https://github.com/noobaa/noobaa-core
 // it can be overriden for testing or for different registry locations.
 var NooBaaImage = ContainerImage
+
+// MongoImage is the default mongodb image url
+// it can be overriden for testing or for different registry locations.
+var MongoImage = "centos/mongodb-36-centos7"
 
 // OperatorImage is the container image url built from https://github.com/noobaa/noobaa-operator
 // it can be overriden for testing or for different registry locations.
@@ -79,6 +81,9 @@ var FlagSet = pflag.NewFlagSet("noobaa", pflag.ContinueOnError)
 
 func init() {
 	ns, _ := k8sutil.GetWatchNamespace()
+	if ns == "" {
+		ns = util.CurrentNamespace()
+	}
 	if ns != "" {
 		Namespace = ns
 	}
@@ -93,6 +98,10 @@ func init() {
 	FlagSet.StringVar(
 		&NooBaaImage, "noobaa-image",
 		NooBaaImage, "NooBaa image",
+	)
+	FlagSet.StringVar(
+		&MongoImage, "mongo-image",
+		MongoImage, "MongoDB image",
 	)
 	FlagSet.StringVar(
 		&OperatorImage, "operator-image",

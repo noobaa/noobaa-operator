@@ -34,12 +34,19 @@ func Add(mgr manager.Manager) error {
 
 	// Watch for changes on resources to trigger reconcile
 
-	primaryHandler := &handler.EnqueueRequestForObject{}
-
-	err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, primaryHandler)
+	err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
+
+	// err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
+	// 	ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+	// 		return nil
+	// 	}),
+	// })
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

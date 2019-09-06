@@ -9,4 +9,5 @@ metadata:
 spec:
   type: aws-s3
   bucketName: noobaa-aws1
-  secretName: backing-store-secret-aws1
+  secret:
+    name: backing-store-secret-aws1

@@ -5,5 +5,3 @@ metadata:
 spec:
   storageClassName: noobaa-storage-class
   generateBucketName: noobaa-obc
-  SSL: false
-  versioned: false

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # exit immediately when a command fails
 set -e
 # only exit with zero if all commands of the pipeline exit successfully

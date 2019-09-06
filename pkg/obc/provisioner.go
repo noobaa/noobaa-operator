@@ -246,6 +246,9 @@ func NewBucketRequest(
 			},
 		}
 	} else {
+		if ob.Spec.Connection == nil || ob.Spec.Connection.Endpoint == nil {
+			return nil, fmt.Errorf("ObjectBucket has no connection/endpoint info %+v", ob)
+		}
 		bucketName = ob.Spec.Connection.Endpoint.BucketName
 		accountName = ob.Spec.AdditionalState["AccountName"]
 	}

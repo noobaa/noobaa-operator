@@ -12,11 +12,12 @@ For Mac
 ```
 brew install noobaa/noobaa/noobaa
 # or
-wget https://github.com/noobaa/noobaa-operator/releases/download/v1.1.0/noobaa-mac-v1.1.0;mv noobaa-mac-* noobaa;chmod +x noobaa
+wget https://github.com/noobaa/noobaa-operator/releases/download/v1.2.0/noobaa-mac-v1.2.0; mv noobaa-mac-* noobaa; chmod +x noobaa
 ```
+
 For Linux
 ```
-wget https://github.com/noobaa/noobaa-operator/releases/download/v1.1.0/noobaa-linux-v1.1.0;mv noobaa-linux-* noobaa;chmod +x noobaa
+wget https://github.com/noobaa/noobaa-operator/releases/download/v1.2.0/noobaa-linux-v1.2.0; mv noobaa-linux-* noobaa; chmod +x noobaa
 ```
 
 - Run: `./noobaa --help` for CLI usage
@@ -24,6 +25,7 @@ wget https://github.com/noobaa/noobaa-operator/releases/download/v1.1.0/noobaa-l
   The install output includes S3 service endpoint and credentials, as well as web management console address with credentials.
 - Getting this information is always available with: `./noobaa status`
 - Remove NooBaa deployment can be done with: `./noobaa uninstall`
+
 # Troubleshooting
 
 - The operator is running, but there is no noobaa-core-0 pod 
