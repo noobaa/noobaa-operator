@@ -114,6 +114,10 @@ func (r *Reconciler) SetDesiredCoreApp() {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
+	if r.NooBaa.Spec.Tolerations != nil {
+		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
+	}
+
 	for i := range r.CoreApp.Spec.VolumeClaimTemplates {
 		pvc := &r.CoreApp.Spec.VolumeClaimTemplates[i]
 		pvc.Spec.StorageClassName = r.NooBaa.Spec.StorageClassName

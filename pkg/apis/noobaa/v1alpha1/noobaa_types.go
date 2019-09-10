@@ -77,6 +77,10 @@ type NooBaaSpec struct {
 	// +optional
 	MongoResources *corev1.ResourceRequirements `json:"mongoResources,omitempty"`
 
+	// Tolerations (optional) passed through to noobaa's pods
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
 	// ImagePullSecret (optional) sets a pull secret for the system image
 	// +optional
 	ImagePullSecret *corev1.LocalObjectReference `json:"imagePullSecret,omitempty"`
