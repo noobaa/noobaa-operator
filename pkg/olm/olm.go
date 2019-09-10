@@ -138,7 +138,7 @@ func RunLocalUninstall(cmd *cobra.Command, args []string) {
 
 // RunCSVYaml runs a CLI command
 func RunCSVYaml(cmd *cobra.Command, args []string) {
-	fmt.Print(bundle.File_deploy_olm_catalog_package_noobaa_operator_v1_1_0_clusterserviceversion_yaml)
+	fmt.Print(bundle.File_deploy_olm_catalog_package_noobaa_operator_v1_1_1_clusterserviceversion_yaml)
 }
 
 // HubConf keeps the operatorhub yaml objects

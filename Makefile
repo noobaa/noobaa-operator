@@ -51,6 +51,8 @@ $(BUNDLE)/deploy.go: pkg/bundle/bundle.go $(shell find deploy/ -type f)
 	$(GO) run pkg/bundle/bundle.go deploy/ $(BUNDLE)/deploy.go
 
 vendor:
+	mkdir -p $(BUNDLE)
+	echo "package bundle" > $(BUNDLE)/empty.go
 	$(GO) mod vendor
 .PHONY: vendor
 
