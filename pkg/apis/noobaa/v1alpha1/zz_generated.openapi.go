@@ -374,6 +374,12 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref common.ReferenceCallback) co
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
 					},
+					"dbVolumeResources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DBVolumeResources (optional) overrides the default PVC resource requirements for the database volume (mongo). Updates to this value are supported only for increasing the size, and only if the storage class specifies `allowVolumeExpansion: true`.",
+							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+						},
+					},
 					"tolerations": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Tolerations (optional) passed through to noobaa's pods",

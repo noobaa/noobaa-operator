@@ -71,6 +71,9 @@ var StorageClassName = ""
 // which is needed when using a private container registry.
 var ImagePullSecret = ""
 
+// DBVolumeSizeGB can be used to override the default database volume size
+var DBVolumeSizeGB = 0
+
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
 	return Namespace + ".noobaa.io"
@@ -115,5 +118,9 @@ func init() {
 	FlagSet.StringVar(
 		&ImagePullSecret, "image-pull-secret",
 		ImagePullSecret, "Image pull secret (must be in same namespace)",
+	)
+	FlagSet.IntVar(
+		&DBVolumeSizeGB, "db-volume-size-gb",
+		DBVolumeSizeGB, "The database volume size in GB",
 	)
 }

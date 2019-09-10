@@ -115,6 +115,9 @@ func (r *Reconciler) SetDesiredCoreApp() {
 	for i := range r.CoreApp.Spec.VolumeClaimTemplates {
 		pvc := &r.CoreApp.Spec.VolumeClaimTemplates[i]
 		pvc.Spec.StorageClassName = r.NooBaa.Spec.StorageClassName
+		if pvc.Name == "db" && r.NooBaa.Spec.DBVolumeResources != nil {
+			pvc.Spec.Resources = *r.NooBaa.Spec.DBVolumeResources
+		}
 		// unsetting BlockOwnerDeletion to acoid error when trying to own pvc:
 		// "cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
 		r.Own(pvc)
