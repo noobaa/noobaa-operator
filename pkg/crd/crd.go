@@ -119,7 +119,7 @@ func RunWait(cmd *cobra.Command, args []string) {
 // RunYaml dumps a combined yaml of all the CRDs from the bundled yamls
 func RunYaml(cmd *cobra.Command, args []string) {
 	p := printers.YAMLPrinter{}
-	ForEachCRD(func(c *CRD) { p.PrintObj(c, os.Stdout) })
+	ForEachCRD(func(c *CRD) { util.Panic(p.PrintObj(c, os.Stdout)) })
 }
 
 // LoadCrds loads the CRDs structures from the bundled yamls

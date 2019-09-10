@@ -38,7 +38,7 @@ func TestOptions(t *testing.T) {
 }
 
 func RunCLI(t *testing.T, args ...string) string {
-	cmd := exec.Command(CLIPath, args...)
+	cmd := exec.Command(CLIPath, args...) // #nosec
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Error(err)

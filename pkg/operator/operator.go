@@ -130,15 +130,15 @@ func RunStatus(cmd *cobra.Command, args []string) {
 func RunYaml(cmd *cobra.Command, args []string) {
 	c := LoadOperatorConf(cmd)
 	p := printers.YAMLPrinter{}
-	p.PrintObj(c.NS, os.Stdout)
-	p.PrintObj(c.SA, os.Stdout)
-	p.PrintObj(c.Role, os.Stdout)
-	p.PrintObj(c.RoleBinding, os.Stdout)
-	p.PrintObj(c.ClusterRole, os.Stdout)
-	p.PrintObj(c.ClusterRoleBinding, os.Stdout)
+	util.Panic(p.PrintObj(c.NS, os.Stdout))
+	util.Panic(p.PrintObj(c.SA, os.Stdout))
+	util.Panic(p.PrintObj(c.Role, os.Stdout))
+	util.Panic(p.PrintObj(c.RoleBinding, os.Stdout))
+	util.Panic(p.PrintObj(c.ClusterRole, os.Stdout))
+	util.Panic(p.PrintObj(c.ClusterRoleBinding, os.Stdout))
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
-		p.PrintObj(c.Deployment, os.Stdout)
+		util.Panic(p.PrintObj(c.Deployment, os.Stdout))
 	}
 }
 

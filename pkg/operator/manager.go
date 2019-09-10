@@ -63,11 +63,11 @@ func RunOperator(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed AddToManager: %s", err)
 	}
 
-	mgr.Add(manager.RunnableFunc(func(stopChan <-chan struct{}) error {
+	util.Panic(mgr.Add(manager.RunnableFunc(func(stopChan <-chan struct{}) error {
 		system.RunOperatorCreate(cmd, args)
 		<-stopChan
 		return nil
-	}))
+	})))
 
 	// // Create Service object to expose the metrics port.
 	// _, err = metrics.CreateMetricsService(util.Context(), config, metricsPort)

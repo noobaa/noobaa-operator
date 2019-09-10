@@ -55,7 +55,7 @@ func (m *FastRESTMapper) Discover() error {
 			VersionedResources: make(map[string][]metav1.APIResource),
 		}
 		grs = append(grs, gr)
-		wg.Start(func() { m.DiscoverGroup(gr) })
+		wg.Start(func() { LogError(m.DiscoverGroup(gr)) })
 	}
 	wg.Wait()
 	logrus.Tracef("Filtered %d/%d", filterCount, totalCount)
@@ -80,7 +80,7 @@ func (m *FastRESTMapper) DiscoverGroup(gr *restmapper.APIGroupResources) error {
 // DiscoverOnError check if the error is NoMatchError and calls discover
 func (m *FastRESTMapper) DiscoverOnError(err error) bool {
 	if meta.IsNoMatchError(err) {
-		m.Discover()
+		LogError(m.Discover())
 		return true
 	}
 	return false

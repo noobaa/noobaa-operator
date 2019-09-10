@@ -207,7 +207,7 @@ func RunCSV(cmd *cobra.Command, args []string) {
 	})
 
 	p := printers.YAMLPrinter{}
-	p.PrintObj(csv, os.Stdout)
+	util.Panic(p.PrintObj(csv, os.Stdout))
 }
 
 // RunPackage runs a CLI command
