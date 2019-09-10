@@ -55,9 +55,9 @@ var Namespace = "noobaa"
 // it can be overriden for testing or for different registry locations.
 var NooBaaImage = ContainerImage
 
-// MongoImage is the default mongodb image url
+// DBImage is the default db image url
 // it can be overriden for testing or for different registry locations.
-var MongoImage = "centos/mongodb-36-centos7"
+var DBImage = "centos/mongodb-36-centos7"
 
 // OperatorImage is the container image url built from https://github.com/noobaa/noobaa-operator
 // it can be overriden for testing or for different registry locations.
@@ -71,9 +71,14 @@ var StorageClassName = ""
 // which is needed when using a private container registry.
 var ImagePullSecret = ""
 
+// SubDomainNS returns a unique subdomain for the namespace
+func SubDomainNS() string {
+	return Namespace + ".noobaa.io"
+}
+
 // ObjectBucketProvisionerName returns the provisioner name to be used in storage classes for OB/OBC
 func ObjectBucketProvisionerName() string {
-	return "noobaa.io/" + Namespace + ".bucket"
+	return SubDomainNS() + "/obc"
 }
 
 // FlagSet defines the
@@ -100,8 +105,8 @@ func init() {
 		NooBaaImage, "NooBaa image",
 	)
 	FlagSet.StringVar(
-		&MongoImage, "mongo-image",
-		MongoImage, "MongoDB image",
+		&DBImage, "db-image",
+		DBImage, "DB image",
 	)
 	FlagSet.StringVar(
 		&OperatorImage, "operator-image",

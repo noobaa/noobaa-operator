@@ -2,7 +2,10 @@ package backingstore
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/url"
+	"regexp"
 	"time"
 
 	"github.com/noobaa/noobaa-operator/build/_output/bundle"
@@ -67,12 +70,14 @@ func NewReconciler(
 	// Set Namespace
 	r.BackingStore.Namespace = r.Request.Namespace
 	r.NooBaa.Namespace = r.Request.Namespace
-	r.Secret.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.BackingStore.Name = r.Request.Name
 	r.NooBaa.Name = options.SystemName
-	r.Secret.Name = "backing-store-secret-" + r.Request.Name
+
+	// Set secret names to empty
+	r.Secret.Namespace = ""
+	r.Secret.Name = ""
 
 	return r
 }
@@ -94,14 +99,17 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
-	r.Secret.Name = r.BackingStore.Spec.Secret.Name
-	r.Secret.Namespace = r.BackingStore.Spec.Secret.Namespace
-	if r.Secret.Namespace == "" {
-		r.Secret.Namespace = r.BackingStore.Namespace
-	}
-
 	util.KubeCheck(r.NooBaa)
-	util.KubeCheck(r.Secret)
+
+	secretRef := GetBackingStoreSecret(r.BackingStore)
+	if secretRef != nil {
+		r.Secret.Name = secretRef.Name
+		r.Secret.Namespace = secretRef.Namespace
+		if r.Secret.Namespace == "" {
+			r.Secret.Namespace = r.BackingStore.Namespace
+		}
+		util.KubeCheck(r.Secret)
+	}
 
 	var err error
 	if r.BackingStore.DeletionTimestamp != nil {
@@ -215,7 +223,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			fmt.Sprintf("NooBaa system %q not found or deleted", r.NooBaa.Name))
 	}
 
-	if r.Secret.UID == "" {
+	if r.Secret.Name != "" && r.Secret.UID == "" {
 		if time.Since(r.BackingStore.CreationTimestamp.Time) < 5*time.Minute {
 			return fmt.Errorf("BackingStore Secret %q not found, but not rejecting the young as it might be in process", r.Secret.Name)
 		}
@@ -242,6 +250,10 @@ func (r *Reconciler) ReadSystemInfo() error {
 	}
 	r.SystemInfo = &systemInfo
 
+	if r.BackingStore.DeletionTimestamp != nil {
+		return nil
+	}
+
 	conn, err := r.MakeExternalConnectionParams()
 	if err != nil {
 		return err
@@ -259,7 +271,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 				r.PoolInfo = p
 			} else {
 				// TODO pool exists but connection mismatch
-				r.Logger.Errorf("pool exists but connection mismatch %+v pool %+v %+v", conn, p, p.CloudInfo)
+				r.Logger.Warnf("using existing pool but connection mismatch %+v pool %+v %+v", conn, p, p.CloudInfo)
 				r.PoolInfo = p
 			}
 		}
@@ -284,7 +296,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 	r.CreateCloudPoolParams = &nb.CreateCloudPoolParams{
 		Name:         r.BackingStore.Name,
 		Connection:   conn.Name,
-		TargetBucket: r.BackingStore.Spec.S3Options.BucketName,
+		TargetBucket: GetBackingStoreTargetBucket(r.BackingStore),
 	}
 
 	return nil
@@ -296,10 +308,6 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 
 	conn := &nb.AddExternalConnectionParams{
 		Name: r.BackingStore.Name,
-	}
-	s3Options := r.BackingStore.Spec.S3Options
-	if s3Options == nil {
-		s3Options = &nbv1.S3Options{}
 	}
 
 	// fix keys to handle the case that the secret holds lowercase keys
@@ -314,42 +322,93 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 
 	case nbv1.StoreTypeAWSS3:
 		conn.EndpointType = nb.EndpointTypeAws
-		conn.Endpoint = r.BackingStore.Spec.S3Options.Endpoint
-		proto := "https"
-		if r.BackingStore.Spec.S3Options.SSLDisabled {
-			proto = "http"
-		}
-		if conn.Endpoint == "" && r.BackingStore.Spec.S3Options.Region != "" {
-			conn.Endpoint = fmt.Sprintf("%s://s3.%s.amazonaws.com", proto, r.BackingStore.Spec.S3Options.Region)
-		}
-		if conn.Endpoint == "" {
-			conn.Endpoint = fmt.Sprintf("%s://s3.amazonaws.com", proto)
-		}
 		conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
 		conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+		awsS3 := r.BackingStore.Spec.AWSS3
+		u := url.URL{
+			Scheme: "https",
+			Host:   "s3.amazonaws.com",
+		}
+		if awsS3.SSLDisabled {
+			u.Scheme = "http"
+		}
+		if awsS3.Region != "" {
+			u.Host = fmt.Sprintf("s3.%s.amazonaws.com", awsS3.Region)
+		}
+		conn.Endpoint = u.String()
 
 	case nbv1.StoreTypeS3Compatible:
 		conn.EndpointType = nb.EndpointTypeS3Compat
-		conn.Endpoint = r.BackingStore.Spec.S3Options.Endpoint
 		conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
 		conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
-		// conn.AuthMethod =
+		s3Compatible := r.BackingStore.Spec.S3Compatible
+		if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV4 {
+			conn.AuthMethod = "AWS_V4"
+		} else if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV2 {
+			conn.AuthMethod = "AWS_V2"
+		} else if s3Compatible.SignatureVersion != "" {
+			return nil, util.NewPersistentError("InvalidSignatureVersion",
+				fmt.Sprintf("Invalid s3 signature version %q for backing store %q",
+					s3Compatible.SignatureVersion, r.BackingStore.Name))
+		}
+		if s3Compatible.Endpoint == "" {
+			u := url.URL{
+				Scheme: "https",
+				Host:   fmt.Sprintf("127.0.0.1:6443"),
+			}
+			// if s3Compatible.SSLDisabled {
+			// 	u.Scheme = "http"
+			// 	u.Host = fmt.Sprintf("127.0.0.1:6001")
+			// }
+			conn.Endpoint = u.String()
+		} else {
+			match, err := regexp.MatchString(`^\w+://`, s3Compatible.Endpoint)
+			if err != nil {
+				return nil, util.NewPersistentError("InvalidEndpoint",
+					fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
+			}
+			if !match {
+				s3Compatible.Endpoint = "https://" + s3Compatible.Endpoint
+				// if s3Options.SSLDisabled {
+				// 	u.Scheme = "http"
+				// }
+			}
+			u, err := url.Parse(s3Compatible.Endpoint)
+			if err != nil {
+				return nil, util.NewPersistentError("InvalidEndpoint",
+					fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
+			}
+			if u.Scheme == "" {
+				u.Scheme = "https"
+				// if s3Options.SSLDisabled {
+				// 	u.Scheme = "http"
+				// }
+			}
+			conn.Endpoint = u.String()
+		}
 
 	case nbv1.StoreTypeAzureBlob:
-		return nil, util.NewPersistentError("NotYetImplemented",
-			fmt.Sprintf("Not yet implemented backing store type %q", r.BackingStore.Spec.Type))
-		// conn.EndpointType = nb.EndpointTypeAzure
-		// conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
-		// conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+		conn.EndpointType = nb.EndpointTypeAzure
+		conn.Endpoint = "https://blob.core.windows.net"
+		conn.Identity = r.Secret.StringData["AccountName"]
+		conn.Secret = r.Secret.StringData["AccountKey"]
 
 	case nbv1.StoreTypeGoogleCloudStorage:
-		return nil, util.NewPersistentError("NotYetImplemented",
-			fmt.Sprintf("Not yet implemented backing store type %q", r.BackingStore.Spec.Type))
-		// conn.EndpointType = nb.EndpointTypeGoogle
-		// conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
-		// conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+		conn.EndpointType = nb.EndpointTypeGoogle
+		conn.Endpoint = "https://www.googleapis.com"
+		privateKeyJSON := r.Secret.StringData["GoogleServiceAccountPrivateKeyJson"]
+		privateKey := &struct {
+			ID string `json:"private_key_id"`
+		}{}
+		err := json.Unmarshal([]byte(privateKeyJSON), privateKey)
+		if err != nil {
+			return nil, util.NewPersistentError("InvalidGoogleSecret",
+				fmt.Sprintf("Invalid secret for google type %q expected JSON in data.GoogleServiceAccountPrivateKeyJson", r.Secret.Name))
+		}
+		conn.Identity = privateKey.ID
+		conn.Secret = privateKeyJSON
 
-	case nbv1.StoreTypePV:
+	case nbv1.StoreTypePVPool:
 		return nil, util.NewPersistentError("NotYetImplemented",
 			fmt.Sprintf("Not yet implemented backing store type %q", r.BackingStore.Spec.Type))
 
@@ -488,7 +547,14 @@ func (r *Reconciler) ReconcileDeletion() error {
 		// TODO we cannot assume we are the only one using this connection...
 		err := r.NBClient.DeleteExternalConnectionAPI(nb.DeleteExternalConnectionParams{Name: r.ExternalConnectionInfo.Name})
 		if err != nil {
-			return err
+			if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
+				if rpcErr.RPCCode != "IN_USE" {
+					return err
+				}
+				r.Logger.Warnf("DeleteExternalConnection cannot complete because it is IN_USE %q", r.ExternalConnectionInfo.Name)
+			} else {
+				return err
+			}
 		}
 	}
 

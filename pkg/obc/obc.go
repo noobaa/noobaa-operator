@@ -8,7 +8,6 @@ import (
 	"github.com/noobaa/noobaa-operator/pkg/options"
 	"github.com/noobaa/noobaa-operator/pkg/util"
 
-	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -24,6 +23,8 @@ func Cmd() *cobra.Command {
 		CmdDelete(),
 		CmdList(),
 	)
+	cmd.PersistentFlags().String("app-namespace", "",
+		"Set the namespace of the application where the OBC should be created")
 	return cmd
 }
 
@@ -36,12 +37,8 @@ func CmdCreate() *cobra.Command {
 	}
 	cmd.Flags().Bool("exact", false,
 		"Request an exact bucketName instead of the default generateBucketName")
-	cmd.Flags().String("storage-class", "",
-		"Set storage-class to specify which provisioner to use")
-	cmd.Flags().String("bucket-class", "",
-		"Set bucket-class to specify for the bucket")
-	cmd.Flags().String("backing-store", "",
-		"Set backing-store to specify for the bucket")
+	cmd.Flags().String("bucketclass", "",
+		"Set bucket class to specify the bucket policy")
 	return cmd
 }
 
@@ -74,19 +71,18 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 	name := args[0]
 
+	appNamespace, _ := cmd.Flags().GetString("app-namespace")
 	exact, _ := cmd.Flags().GetBool("exact")
-	storageClass, _ := cmd.Flags().GetString("storage-class")
-	bucketClass, _ := cmd.Flags().GetString("bucket-class")
-	backingStore, _ := cmd.Flags().GetString("backing-store")
+	bucketClassName, _ := cmd.Flags().GetString("bucketclass")
 
-	if storageClass == "" {
-		storageClass = options.Namespace + "-storage-class"
+	if appNamespace == "" {
+		appNamespace = options.Namespace
 	}
 
 	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml)
 	obc := o.(*nbv1.ObjectBucketClaim)
 	obc.Name = name
-	obc.Namespace = options.Namespace
+	obc.Namespace = appNamespace
 	if exact {
 		obc.Spec.BucketName = name
 		obc.Spec.GenerateBucketName = ""
@@ -94,17 +90,22 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		obc.Spec.BucketName = ""
 		obc.Spec.GenerateBucketName = name
 	}
-	obc.Spec.StorageClassName = storageClass
-	obc.Spec.BucketCannedACL = obv1.BucketCannedACLPrivate
+	obc.Spec.StorageClassName = options.SubDomainNS()
 	obc.Spec.AdditionalConfig = map[string]string{}
 
-	if bucketClass != "" {
-		// TODO check that this backing store name exists...
-		obc.Spec.AdditionalConfig["bucketClass"] = bucketClass
-	}
-	if backingStore != "" {
-		// TODO check that this backing store name exists...
-		obc.Spec.AdditionalConfig["backingstore"] = backingStore
+	if bucketClassName != "" {
+		bucketClass := &nbv1.BucketClass{
+			TypeMeta: metav1.TypeMeta{Kind: "BucketClass"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      bucketClassName,
+				Namespace: options.Namespace,
+			},
+		}
+		if !util.KubeCheck(bucketClass) {
+			log.Fatalf(`❌ Could not get BucketClass %q in namespace %q`,
+				bucketClass.Name, bucketClass.Namespace)
+		}
+		obc.Spec.AdditionalConfig["bucketclass"] = bucketClassName
 	}
 
 	if !util.KubeCreateSkipExisting(obc) {
@@ -148,6 +149,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		"NAME",
 		"BUCKET-NAME",
 		"STORAGE-CLASS",
+		"BUCKET-CLASS",
 		"PHASE",
 	)
 	for i := range list.Items {
@@ -157,6 +159,7 @@ func RunList(cmd *cobra.Command, args []string) {
 			obc.Name,
 			obc.Spec.BucketName,
 			obc.Spec.StorageClassName,
+			obc.Spec.AdditionalConfig["bucketclass"],
 			string(obc.Status.Phase),
 		)
 	}

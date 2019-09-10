@@ -19,7 +19,6 @@ func init() {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type",description="Type"
-// +kubebuilder:printcolumn:name="Bucket-Name",type="string",JSONPath=".spec.s3Options.bucketName",description="Bucket Name"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type BackingStore struct {
@@ -62,19 +61,32 @@ type BackingStoreSpec struct {
 	// Type is an enum of supported types
 	Type StoreType `json:"type"`
 
-	// Secret refers to a secret that provides the credentials
-	Secret corev1.SecretReference `json:"secret"`
-
-	// S3Options specifies client options for the backing store
+	// AWSS3Spec specifies a backing store of type aws-s3
 	// +optional
-	S3Options *S3Options `json:"s3Options,omitempty"`
+	AWSS3 *AWSS3Spec `json:"awsS3,omitempty"`
+
+	// S3Compatible specifies a backing store of type s3-compatible
+	// +optional
+	S3Compatible *S3CompatibleSpec `json:"s3Compatible,omitempty"`
+
+	// AzureBlob specifies a backing store of type azure-blob
+	// +optional
+	AzureBlob *AzureBlobSpec `json:"azureBlob,omitempty"`
+
+	// GoogleCloudStorage specifies a backing store of type google-cloud-storage
+	// +optional
+	GoogleCloudStorage *GoogleCloudStorageSpec `json:"googleCloudStorage,omitempty"`
+
+	// PVPool specifies a backing store of type pv-pool
+	// +optional
+	PVPool *PVPoolSpec `json:"pvPool,omitempty"`
 }
 
 // BackingStoreStatus defines the observed state of BackingStore
 // +k8s:openapi-gen=true
 type BackingStoreStatus struct {
 
-	// Phase is a simple, high-level summary of where the System is in its lifecycle
+	// Phase is a simple, high-level summary of where the backing store is in its lifecycle
 	Phase BackingStorePhase `json:"phase"`
 
 	// Conditions is a list of conditions related to operator reconciliation
@@ -83,7 +95,7 @@ type BackingStoreStatus struct {
 	// +optional
 	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
 
-	// RelatedObjects is a list of objects that are "interesting" or related to this operator.
+	// RelatedObjects is a list of objects related to this operator.
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 }
 
@@ -91,7 +103,6 @@ type BackingStoreStatus struct {
 type StoreType string
 
 const (
-
 	// StoreTypeAWSS3 is used to connect to AWS S3
 	StoreTypeAWSS3 StoreType = "aws-s3"
 
@@ -104,30 +115,80 @@ const (
 	// StoreTypeAzureBlob is used to connect to Azure Blob
 	StoreTypeAzureBlob StoreType = "azure-blob"
 
-	// StoreTypePV is used to allocate storage by dynamically allocating PVs (using PVCs)
-	StoreTypePV StoreType = "pv"
+	// StoreTypePVPool is used to allocate storage by dynamically allocating PVs (using PVCs)
+	StoreTypePVPool StoreType = "pv-pool"
 )
 
-// S3Options specifies client options for the backing store
-type S3Options struct {
-	// BucketName is the name of the target S3 bucket
-	BucketName string `json:"bucketName"`
+// AWSS3Spec specifies a backing store of type aws-s3
+type AWSS3Spec struct {
+
+	// TargetBucket is the name of the target S3 bucket
+	TargetBucket string `json:"targetBucket"`
+
+	// Secret refers to a secret that provides the credentials
+	// The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+	Secret corev1.SecretReference `json:"secret"`
+
 	// Region is the AWS region
 	// +optional
 	Region string `json:"region,omitempty"`
-	// Endpoint is the S3 endpoint to use
-	// +optional
-	Endpoint string `json:"endpoint,omitempty"`
+
 	// SSLDisabled allows to disable SSL and use plain http
 	// +optional
 	SSLDisabled bool `json:"sslDisabled,omitempty"`
-	// S3ForcePathStyle forces the client to send the bucket name in the path
-	// aka path-style rather than as a subdomain of the endpoint.
-	// +optional
-	S3ForcePathStyle bool `json:"s3ForcePathStyle,omitempty"`
+}
+
+// S3CompatibleSpec specifies a backing store of type s3-compatible
+type S3CompatibleSpec struct {
+
+	// TargetBucket is the name of the target S3 bucket
+	TargetBucket string `json:"targetBucket"`
+
+	// Secret refers to a secret that provides the credentials
+	// The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+	Secret corev1.SecretReference `json:"secret"`
+
+	// Endpoint is the S3 compatible endpoint: http(s)://host:port
+	Endpoint string `json:"endpoint"`
+
 	// SignatureVersion specifies the client signature version to use when signing requests.
 	// +optional
 	SignatureVersion S3SignatureVersion `json:"signatureVersion,omitempty"`
+}
+
+// AzureBlobSpec specifies a backing store of type azure-blob
+type AzureBlobSpec struct {
+
+	// TargetBlobContainer is the name of the target Azure Blob container
+	TargetBlobContainer string `json:"targetBlobContainer"`
+
+	// Secret refers to a secret that provides the credentials
+	// The secret should define AccountName and AccountKey as provided by Azure Blob.
+	Secret corev1.SecretReference `json:"secret"`
+}
+
+// GoogleCloudStorageSpec specifies a backing store of type google-cloud-storage
+type GoogleCloudStorageSpec struct {
+
+	// TargetBucket is the name of the target S3 bucket
+	TargetBucket string `json:"targetBucket"`
+
+	// Secret refers to a secret that provides the credentials
+	// The secret should define GoogleServiceAccountPrivateKeyJson containing the entire json string as provided by Google.
+	Secret corev1.SecretReference `json:"secret"`
+}
+
+// PVPoolSpec specifies a backing store of type pv-pool
+type PVPoolSpec struct {
+
+	// StorageClass is the name of the storage class to use for the PV's
+	StorageClass string `json:"storageClass,omitempty"`
+
+	// NumVolumes is the number of volumes to allocate
+	NumVolumes int `json:"numVolumes"`
+
+	// VolumeResources represents the minimum resources each volume should have.
+	VolumeResources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // S3SignatureVersion specifies the client signature version to use when signing requests.
@@ -140,7 +201,7 @@ const (
 	S3SignatureVersionV2 S3SignatureVersion = "v2"
 )
 
-// BackingStorePhase is a string enum type for system phases
+// BackingStorePhase is a string enum type for backing store reconcile phases
 type BackingStorePhase string
 
 // These are the valid phases:

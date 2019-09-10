@@ -175,29 +175,31 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			fmt.Sprintf("NooBaa system %q not found or deleted", r.NooBaa.Name))
 	}
 
+	numTiers := len(r.BucketClass.Spec.PlacementPolicy.Tiers)
+	if numTiers != 1 && numTiers != 2 {
+		return util.NewPersistentError("UnsupportedNumberOfTiers",
+			"BucketClass supports only 1 or 2 tiers")
+	}
 	for i := range r.BucketClass.Spec.PlacementPolicy.Tiers {
 		tier := &r.BucketClass.Spec.PlacementPolicy.Tiers[i]
-		for j := range tier.Tier.Mirrors {
-			mirror := &tier.Tier.Mirrors[j]
-			for _, backingStoreName := range mirror.Mirror.Spread {
-				backStore := &nbv1.BackingStore{
-					TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      backingStoreName,
-						Namespace: r.NooBaa.Namespace,
-					},
-				}
-				if !util.KubeCheck(backStore) {
-					return util.NewPersistentError("MissingBackingStore",
-						fmt.Sprintf("NooBaa BackingStore %q not found or deleted", backingStoreName))
-				}
-				if backStore.Status.Phase == nbv1.BackingStorePhaseRejected {
-					return util.NewPersistentError("RejectedBackingStore",
-						fmt.Sprintf("NooBaa BackingStore %q is in rejected phase", backingStoreName))
-				}
-				if backStore.Status.Phase != nbv1.BackingStorePhaseReady {
-					return fmt.Errorf("NooBaa BackingStore %q is not yet ready", backingStoreName)
-				}
+		for _, backingStoreName := range tier.BackingStores {
+			backStore := &nbv1.BackingStore{
+				TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      backingStoreName,
+					Namespace: r.NooBaa.Namespace,
+				},
+			}
+			if !util.KubeCheck(backStore) {
+				return util.NewPersistentError("MissingBackingStore",
+					fmt.Sprintf("NooBaa BackingStore %q not found or deleted", backingStoreName))
+			}
+			if backStore.Status.Phase == nbv1.BackingStorePhaseRejected {
+				return util.NewPersistentError("RejectedBackingStore",
+					fmt.Sprintf("NooBaa BackingStore %q is in rejected phase", backingStoreName))
+			}
+			if backStore.Status.Phase != nbv1.BackingStorePhaseReady {
+				return fmt.Errorf("NooBaa BackingStore %q is not yet ready", backingStoreName)
 			}
 		}
 	}

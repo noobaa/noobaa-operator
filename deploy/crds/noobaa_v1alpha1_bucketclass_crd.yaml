@@ -3,6 +3,18 @@ kind: CustomResourceDefinition
 metadata:
   name: bucketclasses.noobaa.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.placementPolicy
+    description: Placement
+    name: Placement
+    type: string
+  - JSONPath: .status.phase
+    description: Phase
+    name: Phase
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: noobaa.io
   names:
     kind: BucketClass
@@ -41,38 +53,16 @@ spec:
                     space spill "cold" storage to next tier.
                   items:
                     properties:
-                      tier:
-                        description: Tier specifies a storage tier
-                        properties:
-                          mirrors:
-                            description: Mirrors is an unordered list of mirrors -
-                              all mirrors should eventually store all the data of
-                              the tier. The mirroring model is async so just a single
-                              mirror is required before the write can ack. The first
-                              mirror is selected according to locality optimizations
-                              of the client endpoint. The data is replicated to the
-                              rest of the mirrors in the background.
-                            items:
-                              properties:
-                                mirror:
-                                  description: Mirror specifies a mirror group
-                                  properties:
-                                    spread:
-                                      items:
-                                        type: string
-                                      type: array
-                                  required:
-                                  - spread
-                                  type: object
-                              required:
-                              - mirror
-                              type: object
-                            type: array
-                        required:
-                        - mirrors
-                        type: object
-                    required:
-                    - tier
+                      backingStores:
+                        description: BackingStores is an unordered list of backing
+                          store names. The meaning of the list depends on the placement.
+                        items:
+                          type: string
+                        type: array
+                      placement:
+                        description: Placement specifies the type of placement for
+                          the tier If empty it should have a single backing store.
+                        type: string
                     type: object
                   type: array
               required:
@@ -115,8 +105,7 @@ spec:
                 is in its lifecycle
               type: string
             relatedObjects:
-              description: RelatedObjects is a list of objects that are "interesting"
-                or related to this operator.
+              description: RelatedObjects is a list of objects related to this operator.
               items:
                 type: object
               type: array

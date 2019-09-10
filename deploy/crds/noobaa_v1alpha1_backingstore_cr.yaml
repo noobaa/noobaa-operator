@@ -8,6 +8,7 @@ metadata:
     - noobaa.io/finalizer
 spec:
   type: aws-s3
-  bucketName: noobaa-aws1
-  secret:
-    name: backing-store-secret-aws1
+  awsS3:
+    targetBucket: noobaa-aws1
+    secret:
+      name: backing-store-secret-aws1

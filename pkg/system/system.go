@@ -20,7 +20,6 @@ import (
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -119,9 +118,9 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 		image := options.NooBaaImage
 		sys.Spec.Image = &image
 	}
-	if options.MongoImage != "" {
-		mongoImage := options.MongoImage
-		sys.Spec.MongoImage = &mongoImage
+	if options.DBImage != "" {
+		dbImage := options.DBImage
+		sys.Spec.DBImage = &dbImage
 	}
 	if options.ImagePullSecret != "" {
 		sys.Spec.ImagePullSecret = &corev1.LocalObjectReference{Name: options.ImagePullSecret}
@@ -195,67 +194,57 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		util.KubeDelete(obj, client.GracePeriodSeconds(0))
 	}
 
-	provisionerName := options.ObjectBucketProvisionerName()
-	secrets := &corev1.SecretList{}
-	configMaps := &corev1.ConfigMapList{}
-	storageClasses := &storagev1.StorageClassList{}
-	objectBuckets := &nbv1.ObjectBucketList{}
 	objectBucketClaims := &nbv1.ObjectBucketClaimList{}
-	util.KubeList(secrets, nil)
-	util.KubeList(configMaps, nil)
-	util.KubeList(storageClasses, nil)
-	util.KubeList(objectBuckets, nil)
-	util.KubeList(objectBucketClaims, nil)
-	scMap := map[string]*storagev1.StorageClass{}
-	for i := range storageClasses.Items {
-		sc := &storageClasses.Items[i]
-		scMap[sc.Name] = sc
-	}
+	objectBuckets := &nbv1.ObjectBucketList{}
+	configMaps := &corev1.ConfigMapList{}
+	secrets := &corev1.SecretList{}
+	obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
+
+	util.KubeList(objectBucketClaims, &client.ListOptions{LabelSelector: obcSelector})
+	util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
+	util.KubeList(configMaps, &client.ListOptions{LabelSelector: obcSelector})
+	util.KubeList(secrets, &client.ListOptions{LabelSelector: obcSelector})
+
 	for i := range objectBucketClaims.Items {
 		obj := &objectBucketClaims.Items[i]
-		sc := scMap[obj.Spec.StorageClassName]
-		if sc == nil || sc.Provisioner == provisionerName {
-			log.Warnf("ObjectBucketClaim %q removing without grace", obj.Name)
-			util.RemoveFinalizer(obj, nbv1.ObjectBucketFinalizer)
-			if !util.KubeUpdate(obj) {
-				log.Errorf("ObjectBucketClaim %q failed to remove finalizer %q",
-					obj.Name, nbv1.ObjectBucketFinalizer)
-			}
-			util.KubeDelete(obj, client.GracePeriodSeconds(0))
+		log.Warnf("ObjectBucketClaim %q removing without grace", obj.Name)
+		util.RemoveFinalizer(obj, nbv1.ObjectBucketFinalizer)
+		if !util.KubeUpdate(obj) {
+			log.Errorf("ObjectBucketClaim %q failed to remove finalizer %q",
+				obj.Name, nbv1.ObjectBucketFinalizer)
 		}
+		util.KubeDelete(obj, client.GracePeriodSeconds(0))
 	}
 	for i := range objectBuckets.Items {
 		obj := &objectBuckets.Items[i]
-		sc := scMap[obj.Spec.StorageClassName]
-		nameMatches := strings.HasPrefix(obj.Name, "obc-noobaa")
-		if (sc == nil || sc.Provisioner == provisionerName) && nameMatches {
-			log.Warnf("ObjectBucket %q removing without grace", obj.Name)
-			util.RemoveFinalizer(obj, nbv1.ObjectBucketFinalizer)
-			if !util.KubeUpdate(obj) {
-				log.Errorf("ObjectBucket %q failed to remove finalizer %q",
-					obj.Name, nbv1.ObjectBucketFinalizer)
-			}
-			util.KubeDelete(obj, client.GracePeriodSeconds(0))
+		log.Warnf("ObjectBucket %q removing without grace", obj.Name)
+		util.RemoveFinalizer(obj, nbv1.ObjectBucketFinalizer)
+		if !util.KubeUpdate(obj) {
+			log.Errorf("ObjectBucket %q failed to remove finalizer %q",
+				obj.Name, nbv1.ObjectBucketFinalizer)
 		}
+		util.KubeDelete(obj, client.GracePeriodSeconds(0))
 	}
-
-	// TODO We can't identify our secrets and config maps -
-	// waiting for https://github.com/kube-object-storage/lib-bucket-provisioner/issues/133
-
-	// for i := range secrets.Items {
-	// 	obj := &secrets.Items[i]
-	// 	if len(obj.OwnerReferences) == 1 && obj.OwnerReferences[0].Kind == "ObjectBucketClaim" {
-	// 		log.Warnf("Secret %q removing without grace", obj.Name)
-	// 		util.KubeDelete(obj, client.GracePeriodSeconds(0))
-	// 	}
-	// }
-	// for i := range configMaps.Items {
-	// 	obj := &configMaps.Items[i]
-	// 	if len(obj.OwnerReferences) == 1 && obj.OwnerReferences[0].Kind == "ObjectBucketClaim" {
-	// 		log.Warnf("ConfigMap %q removing without grace", obj.Name)
-	// 		util.KubeDelete(obj, client.GracePeriodSeconds(0))
-	// 	}
-	// }
+	for i := range configMaps.Items {
+		obj := &configMaps.Items[i]
+		log.Warnf("ConfigMap %q removing without grace", obj.Name)
+		util.RemoveFinalizer(obj, nbv1.ObjectBucketFinalizer)
+		if !util.KubeUpdate(obj) {
+			log.Errorf("ObjectBucket %q failed to remove finalizer %q",
+				obj.Name, nbv1.ObjectBucketFinalizer)
+		}
+		util.KubeDelete(obj, client.GracePeriodSeconds(0))
+	}
+	for i := range secrets.Items {
+		obj := &secrets.Items[i]
+		log.Warnf("Secret %q removing without grace", obj.Name)
+		util.RemoveFinalizer(obj, nbv1.ObjectBucketFinalizer)
+		if !util.KubeUpdate(obj) {
+			log.Errorf("ObjectBucket %q failed to remove finalizer %q",
+				obj.Name, nbv1.ObjectBucketFinalizer)
+		}
+		util.KubeDelete(obj, client.GracePeriodSeconds(0))
+	}
 }
 
 // RunList runs a CLI command
@@ -274,10 +263,10 @@ func RunList(cmd *cobra.Command, args []string) {
 	table := (&util.PrintTable{}).AddRow(
 		"NAMESPACE",
 		"NAME",
-		"PHASE",
 		"MGMT-ENDPOINTS",
 		"S3-ENDPOINTS",
 		"IMAGE",
+		"PHASE",
 		"AGE",
 	)
 	for i := range list.Items {
@@ -285,11 +274,11 @@ func RunList(cmd *cobra.Command, args []string) {
 		table.AddRow(
 			s.Namespace,
 			s.Name,
-			string(s.Status.Phase),
 			fmt.Sprint(s.Status.Services.ServiceMgmt.NodePorts),
 			fmt.Sprint(s.Status.Services.ServiceS3.NodePorts),
 			s.Status.ActualImage,
-			since(s.ObjectMeta.CreationTimestamp.Time),
+			string(s.Status.Phase),
+			time.Since(s.CreationTimestamp.Time).Round(time.Second).String(),
 		)
 	}
 	fmt.Print(table.String())
@@ -327,70 +316,72 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 	// sys := cli.LoadSystemDefaults()
 	// util.KubeCheck(cli.Client, sys)
-	if r.NooBaa.Status.Phase == nbv1.SystemPhaseReady {
-		log.Printf("✅ System Phase is %q\n", r.NooBaa.Status.Phase)
-		secretRef := r.NooBaa.Status.Accounts.Admin.SecretRef
-		secret := &corev1.Secret{
-			TypeMeta: metav1.TypeMeta{Kind: "Secret"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      secretRef.Name,
-				Namespace: secretRef.Namespace,
-			},
-		}
-		util.KubeCheck(secret)
 
-		log.Println("")
-		log.Println("#------------------#")
-		log.Println("#- Mgmt Addresses -#")
-		log.Println("#------------------#")
-		log.Println("")
-
-		log.Println("ExternalDNS :", r.NooBaa.Status.Services.ServiceMgmt.ExternalDNS)
-		log.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceMgmt.ExternalIP)
-		log.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceMgmt.NodePorts)
-		log.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceMgmt.InternalDNS)
-		log.Println("InternalIP  :", r.NooBaa.Status.Services.ServiceMgmt.InternalIP)
-		log.Println("PodPorts    :", r.NooBaa.Status.Services.ServiceMgmt.PodPorts)
-
-		log.Println("")
-		log.Println("#--------------------#")
-		log.Println("#- Mgmt Credentials -#")
-		log.Println("#--------------------#")
-		log.Println("")
-		for key, value := range secret.StringData {
-			if !strings.HasPrefix(key, "AWS") {
-				log.Printf("%s: %s\n", key, value)
-			}
-		}
-
-		log.Println("")
-		log.Println("#----------------#")
-		log.Println("#- S3 Addresses -#")
-		log.Println("#----------------#")
-		log.Println("")
-
-		log.Println("ExternalDNS :", r.NooBaa.Status.Services.ServiceS3.ExternalDNS)
-		log.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceS3.ExternalIP)
-		log.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceS3.NodePorts)
-		log.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceS3.InternalDNS)
-		log.Println("InternalIP  :", r.NooBaa.Status.Services.ServiceS3.InternalIP)
-		log.Println("PodPorts    :", r.NooBaa.Status.Services.ServiceS3.PodPorts)
-
-		log.Println("")
-		log.Println("#------------------#")
-		log.Println("#- S3 Credentials -#")
-		log.Println("#------------------#")
-		log.Println("")
-		for key, value := range secret.StringData {
-			if strings.HasPrefix(key, "AWS") {
-				log.Printf("%s: %s\n", key, value)
-			}
-		}
-		log.Println("")
-	} else {
+	if r.NooBaa.Status.Phase != nbv1.SystemPhaseReady {
 		log.Printf("❌ System Phase is %q\n", r.NooBaa.Status.Phase)
 		util.IgnoreError(CheckWaitingFor(r.NooBaa))
+		return
 	}
+
+	log.Printf("✅ System Phase is %q\n", r.NooBaa.Status.Phase)
+	secretRef := r.NooBaa.Status.Accounts.Admin.SecretRef
+	secret := &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{Kind: "Secret"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretRef.Name,
+			Namespace: secretRef.Namespace,
+		},
+	}
+	util.KubeCheck(secret)
+
+	fmt.Println("")
+	fmt.Println("#------------------#")
+	fmt.Println("#- Mgmt Addresses -#")
+	fmt.Println("#------------------#")
+	fmt.Println("")
+
+	fmt.Println("ExternalDNS :", r.NooBaa.Status.Services.ServiceMgmt.ExternalDNS)
+	fmt.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceMgmt.ExternalIP)
+	fmt.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceMgmt.NodePorts)
+	fmt.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceMgmt.InternalDNS)
+	fmt.Println("InternalIP  :", r.NooBaa.Status.Services.ServiceMgmt.InternalIP)
+	fmt.Println("PodPorts    :", r.NooBaa.Status.Services.ServiceMgmt.PodPorts)
+
+	fmt.Println("")
+	fmt.Println("#--------------------#")
+	fmt.Println("#- Mgmt Credentials -#")
+	fmt.Println("#--------------------#")
+	fmt.Println("")
+	for key, value := range secret.StringData {
+		if !strings.HasPrefix(key, "AWS") {
+			fmt.Printf("%s: %s\n", key, value)
+		}
+	}
+
+	fmt.Println("")
+	fmt.Println("#----------------#")
+	fmt.Println("#- S3 Addresses -#")
+	fmt.Println("#----------------#")
+	fmt.Println("")
+
+	fmt.Println("ExternalDNS :", r.NooBaa.Status.Services.ServiceS3.ExternalDNS)
+	fmt.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceS3.ExternalIP)
+	fmt.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceS3.NodePorts)
+	fmt.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceS3.InternalDNS)
+	fmt.Println("InternalIP  :", r.NooBaa.Status.Services.ServiceS3.InternalIP)
+	fmt.Println("PodPorts    :", r.NooBaa.Status.Services.ServiceS3.PodPorts)
+
+	fmt.Println("")
+	fmt.Println("#------------------#")
+	fmt.Println("#- S3 Credentials -#")
+	fmt.Println("#------------------#")
+	fmt.Println("")
+	for key, value := range secret.StringData {
+		if strings.HasPrefix(key, "AWS") {
+			fmt.Printf("%s: %s\n", key, value)
+		}
+	}
+	fmt.Println("")
 }
 
 // RunReconcile runs a CLI command
@@ -516,12 +507,14 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 		coreApp)
 
 	if errors.IsNotFound(coreAppErr) {
-		log.Printf(`❌ StatefulSet %q is missing.`, coreAppName)
-		return coreAppErr
+		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not found yet`,
+			sys.Status.Phase, coreAppName)
+		return nil
 	}
 	if coreAppErr != nil {
-		log.Printf(`❌ StatefulSet %q unknown error in Get(): %s`, coreAppName, coreAppErr)
-		return coreAppErr
+		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not found yet (error): %s`,
+			sys.Status.Phase, coreAppName, coreAppErr)
+		return nil
 	}
 	desiredReplicas = int32(1)
 	if coreApp.Spec.Replicas != nil {
@@ -649,8 +642,4 @@ func Connect() (*Client, error) {
 		NBClient: nbClient,
 		S3Client: s3.New(s3Session),
 	}, nil
-}
-
-func since(t time.Time) string {
-	return time.Since(t).Round(time.Second).String()
 }

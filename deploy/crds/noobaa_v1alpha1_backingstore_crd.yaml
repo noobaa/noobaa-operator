@@ -8,10 +8,6 @@ spec:
     description: Type
     name: Type
     type: string
-  - JSONPath: .spec.s3Options.bucketName
-    description: Bucket Name
-    name: Bucket-Name
-    type: string
   - JSONPath: .status.phase
     description: Phase
     name: Phase
@@ -47,42 +43,102 @@ spec:
         spec:
           description: Specification of the desired behavior of the noobaa BackingStore.
           properties:
-            s3Options:
-              description: S3Options specifies client options for the backing store
+            awsS3:
+              description: AWSS3Spec specifies a backing store of type aws-s3
               properties:
-                bucketName:
-                  description: BucketName is the name of the target S3 bucket
-                  type: string
-                endpoint:
-                  description: Endpoint is the S3 endpoint to use
-                  type: string
                 region:
                   description: Region is the AWS region
                   type: string
-                s3ForcePathStyle:
-                  description: S3ForcePathStyle forces the client to send the bucket
-                    name in the path aka path-style rather than as a subdomain of
-                    the endpoint.
+                secret:
+                  description: Secret refers to a secret that provides the credentials
+                    The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                  type: object
+                sslDisabled:
+                  description: SSLDisabled allows to disable SSL and use plain http
                   type: boolean
+                targetBucket:
+                  description: TargetBucket is the name of the target S3 bucket
+                  type: string
+              required:
+              - targetBucket
+              - secret
+              type: object
+            azureBlob:
+              description: AzureBlob specifies a backing store of type azure-blob
+              properties:
+                secret:
+                  description: Secret refers to a secret that provides the credentials
+                    The secret should define AccountName and AccountKey as provided
+                    by Azure Blob.
+                  type: object
+                targetBlobContainer:
+                  description: TargetBlobContainer is the name of the target Azure
+                    Blob container
+                  type: string
+              required:
+              - targetBlobContainer
+              - secret
+              type: object
+            googleCloudStorage:
+              description: GoogleCloudStorage specifies a backing store of type google-cloud-storage
+              properties:
+                secret:
+                  description: Secret refers to a secret that provides the credentials
+                    The secret should define GoogleServiceAccountPrivateKeyJson containing
+                    the entire json string as provided by Google.
+                  type: object
+                targetBucket:
+                  description: TargetBucket is the name of the target S3 bucket
+                  type: string
+              required:
+              - targetBucket
+              - secret
+              type: object
+            pvPool:
+              description: PVPool specifies a backing store of type pv-pool
+              properties:
+                numVolumes:
+                  description: NumVolumes is the number of volumes to allocate
+                  format: int64
+                  type: integer
+                resources:
+                  description: VolumeResources represents the minimum resources each
+                    volume should have.
+                  type: object
+                storageClass:
+                  description: StorageClass is the name of the storage class to use
+                    for the PV's
+                  type: string
+              required:
+              - numVolumes
+              type: object
+            s3Compatible:
+              description: S3Compatible specifies a backing store of type s3-compatible
+              properties:
+                endpoint:
+                  description: 'Endpoint is the S3 compatible endpoint: http(s)://host:port'
+                  type: string
+                secret:
+                  description: Secret refers to a secret that provides the credentials
+                    The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                  type: object
                 signatureVersion:
                   description: SignatureVersion specifies the client signature version
                     to use when signing requests.
                   type: string
-                sslDisabled:
-                  description: SSLDisabled allows to disable SSL and use plain http
-                  type: boolean
+                targetBucket:
+                  description: TargetBucket is the name of the target S3 bucket
+                  type: string
               required:
-              - bucketName
-              type: object
-            secret:
-              description: Secret refers to a secret that provides the credentials
+              - targetBucket
+              - secret
+              - endpoint
               type: object
             type:
               description: Type is an enum of supported types
               type: string
           required:
           - type
-          - secret
           type: object
         status:
           description: Most recently observed status of the noobaa BackingStore.
@@ -114,12 +170,11 @@ spec:
                 type: object
               type: array
             phase:
-              description: Phase is a simple, high-level summary of where the System
-                is in its lifecycle
+              description: Phase is a simple, high-level summary of where the backing
+                store is in its lifecycle
               type: string
             relatedObjects:
-              description: RelatedObjects is a list of objects that are "interesting"
-                or related to this operator.
+              description: RelatedObjects is a list of objects related to this operator.
               items:
                 type: object
               type: array

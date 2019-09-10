@@ -25,6 +25,18 @@ spec:
     description: StorageClass
     name: Storage-Class
     type: string
+  - JSONPath: .spec.claimRef.namespace
+    description: ClaimNamespace
+    name: Claim-Namespace
+    type: string
+  - JSONPath: .spec.claimRef.name
+    description: ClaimName
+    name: Claim-Name
+    type: string
+  - JSONPath: .spec.reclaimPolicy
+    description: ReclaimPolicy
+    name: Reclaim-Policy
+    type: string
   - JSONPath: .status.phase
     description: Phase
     name: Phase
@@ -49,7 +61,7 @@ spec:
           description: Standard object metadata.
           type: object
         spec:
-          description: Specification of the desired behavior of the noobaa system.
+          description: Specification of the desired behavior of the bucket.
           properties:
             storageClassName:
               description: StorageClass names the StorageClass object representing the 
@@ -84,9 +96,6 @@ spec:
                 subRegion:
                   description: Bucket sub-region
                   type: string
-                ssl:
-                  description: SSL whether connection to the bucket requires SSL Authentication or not
-                  type: boolean
                 additionalConfig:
                   description: AdditionalConfig gives providers a location to set
                     proprietary config values (tenant, namespace, etc)
@@ -104,21 +113,14 @@ spec:
             - storageClassName
           type: object
         status:
-          description: Most recently observed status of the noobaa system.
+          description: Most recently observed status of the bucket.
           properties:
             phase:
               description: ObjectBucketStatusPhase is set by the controller to save the 
                 state of the provisioning process
               enum:
-                - "bound"
-                - "released"
-                - "failed"
-              type: string
-            conditions:
-              description: ConditionsStatus
-              enum:
-                - "True"
-                - "False"
-                - "Unknown"
+                - "Bound"
+                - "Released"
+                - "Failed"
               type: string
           type: object

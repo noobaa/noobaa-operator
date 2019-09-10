@@ -1,12 +1,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: noobaa-operator
+  name: noobaa.noobaa.io
 subjects:
   - kind: ServiceAccount
-    name: noobaa-operator
+    name: noobaa
     namespace: noobaa
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: noobaa-operator
+  name: noobaa.noobaa.io

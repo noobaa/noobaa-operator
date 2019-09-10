@@ -19,7 +19,7 @@ metadata:
             "name": "noobaa",
             "namespace": "my-noobaa-operator"
           },
-          "spec":{}
+          "spec": {}
         },
         {
           "apiVersion": "noobaa.io/v1alpha1",

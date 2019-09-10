@@ -37,6 +37,9 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileDefaultBackingStore(); err != nil {
 		return err
 	}
+	if err := r.ReconcileDefaultBucketClass(); err != nil {
+		return err
+	}
 	if err := r.ReconcileStorageClass(); err != nil {
 		return err
 	}
@@ -55,25 +58,6 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 		} else {
 			return err
 		}
-	}
-
-	return nil
-}
-
-// ReconcileStorageClass reconciles default storage class for the system
-func (r *Reconciler) ReconcileStorageClass() error {
-	util.KubeCheck(r.StorageClass)
-
-	if r.StorageClass.UID != "" {
-		return nil
-	}
-
-	// getting error when trying to own storage class:
-	// 		"cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
-	// r.Own(r.StorageClass)
-	err := r.Client.Create(r.Ctx, r.StorageClass)
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -224,7 +208,7 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	}
 	S3Client := s3.New(s3Session)
 
-	bucketName := r.DefaultBackingStore.Spec.S3Options.BucketName
+	bucketName := r.DefaultBackingStore.Spec.AWSS3.TargetBucket
 	log.Infof("creating bucket %s", bucketName)
 	createBucketOutout, err := S3Client.CreateBucket(&s3.CreateBucketInput{Bucket: &bucketName})
 	if err != nil {
@@ -240,14 +224,65 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	}
 
 	// create backing store
-	r.DefaultBackingStore.Spec.Secret.Name = cloudCredsSecret.Name
-	r.DefaultBackingStore.Spec.Secret.Namespace = cloudCredsSecret.Namespace
-	r.DefaultBackingStore.Spec.S3Options.Region = region
+	r.DefaultBackingStore.Spec.AWSS3.Secret.Name = cloudCredsSecret.Name
+	r.DefaultBackingStore.Spec.AWSS3.Secret.Namespace = cloudCredsSecret.Namespace
+	r.DefaultBackingStore.Spec.AWSS3.Region = region
 	r.Own(r.DefaultBackingStore)
 	err = r.Client.Create(r.Ctx, r.DefaultBackingStore)
 	if err != nil {
 		log.Errorf("got error on DefaultBackingStore creation. error: %v", err)
 		return err
 	}
+	return nil
+}
+
+// ReconcileDefaultBucketClass creates the default bucket class
+func (r *Reconciler) ReconcileDefaultBucketClass() error {
+
+	util.KubeCheck(r.DefaultBucketClass)
+	if r.DefaultBucketClass.UID != "" {
+		return nil
+	}
+
+	r.DefaultBucketClass.Spec.PlacementPolicy = nbv1.PlacementPolicy{
+		Tiers: []nbv1.Tier{{
+			BackingStores: []nbv1.BackingStoreName{
+				r.DefaultBackingStore.Name,
+			},
+		}},
+	}
+
+	r.Own(r.DefaultBucketClass)
+
+	err := r.Client.Create(r.Ctx, r.DefaultBucketClass)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ReconcileStorageClass reconciles default storage class for the system
+func (r *Reconciler) ReconcileStorageClass() error {
+
+	util.KubeCheck(r.StorageClass)
+	if r.StorageClass.UID != "" {
+		return nil
+	}
+
+	r.StorageClass.Parameters = map[string]string{
+		"bucketclass": r.DefaultBucketClass.Name,
+	}
+
+	// unsetting BlockOwnerDeletion to acoid error when trying to own storage class:
+	// "cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
+	r.Own(r.StorageClass)
+	r.StorageClass.OwnerReferences[0].BlockOwnerDeletion = nil
+
+	err := r.Client.Create(r.Ctx, r.StorageClass)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

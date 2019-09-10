@@ -19,10 +19,10 @@ func init() {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=nb
-// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
-// +kubebuilder:printcolumn:name="Mgmt-Endpoints",type="string",JSONPath=".status.services.serviceMgmt.nodePorts",description="Mgmt Endpoints"
+// +kubebuilder:printcolumn:name="Mgmt-Endpoints",type="string",JSONPath=".status.services.serviceMgmt.nodePorts",description="Management Endpoints"
 // +kubebuilder:printcolumn:name="S3-Endpoints",type="string",JSONPath=".status.services.serviceS3.nodePorts",description="S3 Endpoints"
 // +kubebuilder:printcolumn:name="Image",type="string",JSONPath=".status.actualImage",description="Actual Image"
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type NooBaa struct {
 
@@ -65,17 +65,17 @@ type NooBaaSpec struct {
 	// +optional
 	Image *string `json:"image,omitempty"`
 
-	// MongoImage (optional) overrides the default image for the mongodb container
+	// DBImage (optional) overrides the default image for the db container
 	// +optional
-	MongoImage *string `json:"mongoImage,omitempty"`
+	DBImage *string `json:"dbImage,omitempty"`
 
 	// CoreResources (optional) overrides the default resource requirements for the server container
 	// +optional
 	CoreResources *corev1.ResourceRequirements `json:"coreResources,omitempty"`
 
-	// MongoResources (optional) overrides the default resource requirements for the mongodb container
+	// DBResources (optional) overrides the default resource requirements for the db container
 	// +optional
-	MongoResources *corev1.ResourceRequirements `json:"mongoResources,omitempty"`
+	DBResources *corev1.ResourceRequirements `json:"dbResources,omitempty"`
 
 	// Tolerations (optional) passed through to noobaa's pods
 	// +optional
@@ -110,7 +110,7 @@ type NooBaaStatus struct {
 	// +optional
 	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
 
-	// RelatedObjects is a list of objects that are "interesting" or related to this operator.
+	// RelatedObjects is a list of objects related to this operator.
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 
 	// ActualImage is set to report which image the operator is using
@@ -193,16 +193,16 @@ type UserStatus struct {
 // ServiceStatus is the status info and network addresses of a service
 type ServiceStatus struct {
 
-	// NodePorts are the most basic network available
-	// it uses the networks available on the hosts of kubernetes nodes.
+	// NodePorts are the most basic network available.
+	// NodePorts use the networks available on the hosts of kubernetes nodes.
 	// This generally works from within a pod, and from the internal
 	// network of the nodes, but may fail from public network.
 	// https://kubernetes.io/docs/concepts/services-networking/service/#nodeport
 	// +optional
 	NodePorts []string `json:"nodePorts,omitempty"`
 
-	// PodPorts are the second most basic network address
-	// every pod has an IP in the cluster and the pods network is a mesh
+	// PodPorts are the second most basic network address.
+	// Every pod has an IP in the cluster and the pods network is a mesh
 	// so the operator running inside a pod in the cluster can use this address.
 	// Note: pod IPs are not guaranteed to persist over restarts, so should be rediscovered.
 	// Note2: when running the operator outside of the cluster, pod IP is not accessible.

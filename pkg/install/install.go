@@ -1,7 +1,12 @@
 package install
 
 import (
+	"fmt"
+
+	"github.com/noobaa/noobaa-operator/pkg/backingstore"
+	"github.com/noobaa/noobaa-operator/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/pkg/crd"
+	"github.com/noobaa/noobaa-operator/pkg/obc"
 	"github.com/noobaa/noobaa-operator/pkg/operator"
 	"github.com/noobaa/noobaa-operator/pkg/options"
 	"github.com/noobaa/noobaa-operator/pkg/system"
@@ -99,4 +104,25 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	log.Printf("")
 	log.Printf("System Status:")
 	system.RunStatus(cmd, args)
+
+	fmt.Println("#------------------#")
+	fmt.Println("#- Backing Stores -#")
+	fmt.Println("#------------------#")
+	fmt.Println("")
+	backingstore.RunList(cmd, args)
+	fmt.Println("")
+
+	fmt.Println("#------------------#")
+	fmt.Println("#- Bucket Classes -#")
+	fmt.Println("#------------------#")
+	fmt.Println("")
+	bucketclass.RunList(cmd, args)
+	fmt.Println("")
+
+	fmt.Println("#-----------------#")
+	fmt.Println("#- Bucket Claims -#")
+	fmt.Println("#-----------------#")
+	fmt.Println("")
+	obc.RunList(cmd, args)
+	fmt.Println("")
 }

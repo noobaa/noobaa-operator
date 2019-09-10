@@ -170,11 +170,15 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.Role.Namespace = options.Namespace
 	c.RoleBinding.Namespace = options.Namespace
 	c.ClusterRole.Namespace = options.Namespace
-	c.ClusterRoleBinding.Name = c.ClusterRoleBinding.Name + "-" + options.Namespace
+	c.Deployment.Namespace = options.Namespace
+
+	c.ClusterRole.Name = options.SubDomainNS()
+	c.ClusterRoleBinding.Name = c.ClusterRole.Name
+	c.ClusterRoleBinding.RoleRef.Name = c.ClusterRole.Name
 	for i := range c.ClusterRoleBinding.Subjects {
 		c.ClusterRoleBinding.Subjects[i].Namespace = options.Namespace
 	}
-	c.Deployment.Namespace = options.Namespace
+
 	c.Deployment.Spec.Template.Spec.Containers[0].Image = options.OperatorImage
 	if options.ImagePullSecret != "" {
 		c.Deployment.Spec.Template.Spec.ImagePullSecrets =
