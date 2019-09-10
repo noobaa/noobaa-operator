@@ -512,12 +512,14 @@ func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 		coreApp)
 
 	if errors.IsNotFound(coreAppErr) {
-		log.Printf(`❌ StatefulSet %q is missing.`, coreAppName)
-		return false, coreAppErr
+		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not found yet`,
+			sys.Status.Phase, coreAppName)
+		return false, nil
 	}
 	if coreAppErr != nil {
-		log.Printf(`❌ StatefulSet %q unknown error in Get(): %s`, coreAppName, coreAppErr)
-		return false, coreAppErr
+		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not found yet (error): %s`,
+			sys.Status.Phase, coreAppName, coreAppErr)
+		return false, nil
 	}
 	desiredReplicas = int32(1)
 	if coreApp.Spec.Replicas != nil {
