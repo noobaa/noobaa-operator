@@ -594,10 +594,34 @@ func IsAWSPlatform() bool {
 
 // GetAWSRegion parses the region from a node's name
 func GetAWSRegion() string {
+	var validAWSRegions = map[string]bool{
+		"us-east-1":      true,
+		"us-east-2":      true,
+		"us-west-1":      true,
+		"us-west-2":      true,
+		"ca-central-1":   true,
+		"eu-central-1":   true,
+		"eu-west-1":      true,
+		"eu-west-2":      true,
+		"eu-west-3":      true,
+		"eu-north-1":     true,
+		"ap-east-1":      true,
+		"ap-northeast-1": true,
+		"ap-northeast-2": true,
+		"ap-northeast-3": true,
+		"ap-southeast-1": true,
+		"ap-southeast-2": true,
+		"ap-south-1":     true,
+		"me-south-1":     true,
+		"sa-east-1":      true,
+	}
 	nodesList := &corev1.NodeList{}
 	if ok := KubeList(nodesList, nil); !ok || len(nodesList.Items) == 0 {
 		Panic(fmt.Errorf("failed to list kubernetes nodes"))
 	}
-	region := strings.Split(nodesList.Items[0].Name, ".")[1]
-	return region
+	nameSplit := strings.Split(nodesList.Items[0].Name, ".")
+	if len(nameSplit) < 2 || !validAWSRegions[nameSplit[1]] {
+		Panic(fmt.Errorf("failed to parse AWS region from node name %s", nodesList.Items[0].Name))
+	}
+	return nameSplit[1]
 }

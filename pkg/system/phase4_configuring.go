@@ -2,22 +2,16 @@ package system
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/google/uuid"
 	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/pkg/nb"
 	"github.com/noobaa/noobaa-operator/pkg/options"
 	"github.com/noobaa/noobaa-operator/pkg/util"
-	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
-	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -143,7 +137,6 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	log := r.Logger.WithField("func", "ReconcileDefaultBackingStore")
 
 	util.KubeCheck(r.DefaultBackingStore)
-
 	// backing store already exists - we can skip
 	// TODO: check if there are any changes to reconcile
 	if r.DefaultBackingStore.UID != "" {
@@ -151,18 +144,8 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		return nil
 	}
 
-	if !util.IsAWSPlatform() {
-		log.Info("this kubernetes cluster is not deployed on AWS. skipping ReconcileCloudCredentials")
-		return nil
-	}
-
-	log.Info("this kubernetes cluster is deployed on AWS. attempt to get cloud credentials")
-	bucketName, err := r.EnsureCredentialsRequestAndGetBucketName(log)
-	if err != nil {
-		return err
-	}
-	if bucketName == nil {
-		log.Info("CredentialsRequest CRD is not found. skip getting cloud credentials")
+	if r.CloudCreds.UID == "" {
+		log.Info("CredentialsRequest was not created. probably not supported. skipping ReconcileCloudCredentials")
 		return nil
 	}
 
@@ -176,6 +159,8 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 
 	util.KubeCheck(cloudCredsSecret)
 	if cloudCredsSecret.UID == "" {
+		// TODO: we need to figure out why secret is not created, and react accordingly
+		// e.g. maybe we are running on azure but our CredentialsRequest is for AWS
 		log.Infof("Secret %s was not created yet by cloud-credentials operator. retry on next reconcile..", r.CloudCreds.Spec.SecretRef.Name)
 		return fmt.Errorf("cloud credentials secret is not ready yet")
 	}
@@ -199,22 +184,25 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	}
 	S3Client := s3.New(s3Session)
 
-	log.Infof("creating bucket %s", *bucketName)
-	createBucketOutout, err := S3Client.CreateBucket(&s3.CreateBucketInput{Bucket: bucketName})
+	bucketName := r.DefaultBackingStore.Spec.S3Options.BucketName
+	log.Infof("creating bucket %s", bucketName)
+	createBucketOutout, err := S3Client.CreateBucket(&s3.CreateBucketInput{Bucket: &bucketName})
 	if err != nil {
-		log.Errorf("got error when trying to create bucket %s. error: %v", *bucketName, err)
-		return err
+		awsErr, isAwsErr := err.(awserr.Error)
+		if isAwsErr && awsErr.Code() == s3.ErrCodeBucketAlreadyOwnedByYou {
+			log.Infof("bucket was already created. continuing")
+		} else {
+			log.Errorf("got error when trying to create bucket %s. error: %v", bucketName, err)
+			return err
+		}
+	} else {
+		log.Infof("Successfully created bucket %s. result = %v", bucketName, createBucketOutout)
 	}
-
-	log.Infof("Successfully created bucket %s. result = %v", *bucketName, createBucketOutout)
 
 	// create backing store
 	r.DefaultBackingStore.Spec.Secret.Name = cloudCredsSecret.Name
 	r.DefaultBackingStore.Spec.Secret.Namespace = cloudCredsSecret.Namespace
-	r.DefaultBackingStore.Spec.S3Options = &nbv1.S3Options{
-		BucketName: *bucketName,
-		Region:     region,
-	}
+	r.DefaultBackingStore.Spec.S3Options.Region = region
 	r.Own(r.DefaultBackingStore)
 	err = r.Client.Create(r.Ctx, r.DefaultBackingStore)
 	if err != nil {
@@ -222,65 +210,4 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		return err
 	}
 	return nil
-}
-
-// EnsureCredentialsRequestAndGetBucketName creates a CredentialsRequest resource if neccesary and returns
-// the bucket name allowed for the credentials. nil is returned if cloud credentials are not supported
-func (r *Reconciler) EnsureCredentialsRequestAndGetBucketName(log *logrus.Entry) (*string, error) {
-	var bucketName string
-	err := r.Client.Get(r.Ctx, util.ObjectKey(r.CloudCreds), r.CloudCreds)
-	if err == nil {
-		// credential request alread exist. get the bucket name
-		codec, err := cloudcredsv1.NewCodec()
-		if err != nil {
-			log.Error("error creating codec for cloud credentials providerSpec")
-			return nil, err
-		}
-		awsProviderSpec := &cloudcredsv1.AWSProviderSpec{}
-		err = codec.DecodeProviderSpec(r.CloudCreds.Spec.ProviderSpec, awsProviderSpec)
-		if err != nil {
-			log.Error("error decoding providerSpec from cloud credentials request")
-			return nil, err
-		}
-		bucketName = strings.TrimPrefix(awsProviderSpec.StatementEntries[0].Resource, "arn:aws:s3:::")
-		log.Infof("found existing credential request for bucket %s", bucketName)
-		return &bucketName, nil
-	}
-	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
-		// cloud credentials crd is missing. skip this stage
-		return nil, nil
-	}
-	if errors.IsNotFound(err) {
-		// credential request does not exist. create one
-		log.Info("Creating CredentialsRequest resource")
-		bucketName = "noobaa-backing-store-" + uuid.New().String()
-		codec, err := cloudcredsv1.NewCodec()
-		if err != nil {
-			log.Error("error creating codec for cloud credentials providerSpec")
-			return nil, err
-		}
-		awsProviderSpec := &cloudcredsv1.AWSProviderSpec{}
-		err = codec.DecodeProviderSpec(r.CloudCreds.Spec.ProviderSpec, awsProviderSpec)
-		if err != nil {
-			log.Error("error decoding providerSpec from cloud credentials request")
-			return nil, err
-		}
-		// fix creds request according to bucket name
-		awsProviderSpec.StatementEntries[0].Resource = "arn:aws:s3:::" + bucketName
-		awsProviderSpec.StatementEntries[1].Resource = "arn:aws:s3:::" + bucketName + "/*"
-		updatedProviderSpec, err := codec.EncodeProviderSpec(awsProviderSpec)
-		if err != nil {
-			log.Error("error encoding providerSpec for cloud credentials request")
-			return nil, err
-		}
-		r.CloudCreds.Spec.ProviderSpec = updatedProviderSpec
-		r.Own(r.CloudCreds)
-		err = r.Client.Create(r.Ctx, r.CloudCreds)
-		if err != nil {
-			log.Errorf("got error when trying to create credentials request for bucket %s. %v", bucketName, err)
-			return nil, err
-		}
-		return &bucketName, nil
-	}
-	return nil, err
 }
