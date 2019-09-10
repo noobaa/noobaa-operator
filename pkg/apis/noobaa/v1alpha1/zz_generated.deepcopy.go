@@ -325,6 +325,11 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.DBVolumeResources != nil {
+		in, out := &in.DBVolumeResources, &out.DBVolumeResources
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

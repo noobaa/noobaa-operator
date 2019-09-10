@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -125,6 +126,13 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	if options.StorageClassName != "" {
 		sc := options.StorageClassName
 		sys.Spec.StorageClassName = &sc
+	}
+	if options.DBVolumeSizeGB != 0 {
+		sys.Spec.DBVolumeResources = &corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceStorage: *resource.NewScaledQuantity(int64(options.DBVolumeSizeGB), resource.Giga),
+			},
+		}
 	}
 	return sys
 }
@@ -512,12 +520,14 @@ func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 		coreApp)
 
 	if errors.IsNotFound(coreAppErr) {
-		log.Printf(`❌ StatefulSet %q is missing.`, coreAppName)
-		return false, coreAppErr
+		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not found yet`,
+			sys.Status.Phase, coreAppName)
+		return false, nil
 	}
 	if coreAppErr != nil {
-		log.Printf(`❌ StatefulSet %q unknown error in Get(): %s`, coreAppName, coreAppErr)
-		return false, coreAppErr
+		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not found yet (error): %s`,
+			sys.Status.Phase, coreAppName, coreAppErr)
+		return false, nil
 	}
 	desiredReplicas = int32(1)
 	if coreApp.Spec.Replicas != nil {
