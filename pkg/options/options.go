@@ -69,6 +69,9 @@ var StorageClassName = ""
 // which is needed when using a private container registry.
 var ImagePullSecret = ""
 
+// DBVolumeSizeGB can be used to override the default database volume size
+var DBVolumeSizeGB = 0
+
 // ObjectBucketProvisionerName returns the provisioner name to be used in storage classes for OB/OBC
 func ObjectBucketProvisionerName() string {
 	return "noobaa.io/" + Namespace + ".bucket"
@@ -101,5 +104,9 @@ func init() {
 	FlagSet.StringVar(
 		&ImagePullSecret, "image-pull-secret",
 		ImagePullSecret, "Image pull secret (must be in same namespace)",
+	)
+	FlagSet.IntVar(
+		&DBVolumeSizeGB, "db-volume-size-gb",
+		DBVolumeSizeGB, "The database volume size in GB",
 	)
 }

@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -125,6 +126,13 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	if options.StorageClassName != "" {
 		sc := options.StorageClassName
 		sys.Spec.StorageClassName = &sc
+	}
+	if options.DBVolumeSizeGB != 0 {
+		sys.Spec.DBVolumeResources = &corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceStorage: *resource.NewScaledQuantity(int64(options.DBVolumeSizeGB), resource.Giga),
+			},
+		}
 	}
 	return sys
 }

@@ -106,6 +106,9 @@ func (r *Reconciler) SetDesiredCoreApp() {
 	for i := range r.CoreApp.Spec.VolumeClaimTemplates {
 		pvc := &r.CoreApp.Spec.VolumeClaimTemplates[i]
 		pvc.Spec.StorageClassName = r.NooBaa.Spec.StorageClassName
+		if pvc.Name == "mongo-datadir" && r.NooBaa.Spec.DBVolumeResources != nil {
+			pvc.Spec.Resources = *r.NooBaa.Spec.DBVolumeResources
+		}
 
 		// TODO we want to own the PVC's by NooBaa system but get errors on openshift:
 		//   Warning  FailedCreate  56s  statefulset-controller
