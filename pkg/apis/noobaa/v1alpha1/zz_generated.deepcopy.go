@@ -366,6 +366,13 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 		*out = new(corev1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Tolerations != nil {
+		in, out := &in.Tolerations, &out.Tolerations
+		*out = make([]corev1.Toleration, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.ImagePullSecret != nil {
 		in, out := &in.ImagePullSecret, &out.ImagePullSecret
 		*out = new(corev1.LocalObjectReference)

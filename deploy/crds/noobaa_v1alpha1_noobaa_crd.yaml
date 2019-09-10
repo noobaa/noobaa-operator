@@ -79,6 +79,11 @@ spec:
                 stores its database which contains system config, buckets, objects
                 meta-data and mapping file parts to storage locations.
               type: string
+            tolerations:
+              description: Tolerations (optional) passed through to noobaa's pods
+              items:
+                type: object
+              type: array
           type: object
         status:
           description: Most recently observed status of the noobaa system.
