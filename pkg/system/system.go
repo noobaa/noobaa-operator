@@ -119,6 +119,10 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 		image := options.NooBaaImage
 		sys.Spec.Image = &image
 	}
+	if options.MongoImage != "" {
+		mongoImage := options.MongoImage
+		sys.Spec.MongoImage = &mongoImage
+	}
 	if options.ImagePullSecret != "" {
 		sys.Spec.ImagePullSecret = &corev1.LocalObjectReference{Name: options.ImagePullSecret}
 	}
