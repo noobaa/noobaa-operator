@@ -11,7 +11,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/cli-runtime/pkg/printers"
 )
 
@@ -91,7 +90,6 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	util.KubeCreateSkipExisting(c.RoleBinding)
 	util.KubeCreateSkipExisting(c.ClusterRole)
 	util.KubeCreateSkipExisting(c.ClusterRoleBinding)
-	util.KubeCreateSkipExisting(c.StorageClass)
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		util.KubeCreateSkipExisting(c.Deployment)
@@ -110,7 +108,6 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	util.KubeDelete(c.RoleBinding)
 	util.KubeDelete(c.Role)
 	util.KubeDelete(c.SA)
-	util.KubeDelete(c.StorageClass)
 	util.KubeDelete(c.NS)
 }
 
@@ -123,7 +120,6 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	util.KubeCheck(c.RoleBinding)
 	util.KubeCheck(c.ClusterRole)
 	util.KubeCheck(c.ClusterRoleBinding)
-	util.KubeCheck(c.StorageClass)
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		util.KubeCheck(c.Deployment)
@@ -140,7 +136,6 @@ func RunYaml(cmd *cobra.Command, args []string) {
 	p.PrintObj(c.RoleBinding, os.Stdout)
 	p.PrintObj(c.ClusterRole, os.Stdout)
 	p.PrintObj(c.ClusterRoleBinding, os.Stdout)
-	p.PrintObj(c.StorageClass, os.Stdout)
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		p.PrintObj(c.Deployment, os.Stdout)
@@ -155,7 +150,6 @@ type Conf struct {
 	RoleBinding        *rbacv1.RoleBinding
 	ClusterRole        *rbacv1.ClusterRole
 	ClusterRoleBinding *rbacv1.ClusterRoleBinding
-	StorageClass       *storagev1.StorageClass
 	Deployment         *appsv1.Deployment
 }
 
@@ -169,11 +163,8 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.RoleBinding = util.KubeObject(bundle.File_deploy_role_binding_yaml).(*rbacv1.RoleBinding)
 	c.ClusterRole = util.KubeObject(bundle.File_deploy_cluster_role_yaml).(*rbacv1.ClusterRole)
 	c.ClusterRoleBinding = util.KubeObject(bundle.File_deploy_cluster_role_binding_yaml).(*rbacv1.ClusterRoleBinding)
-	c.StorageClass = util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass)
 	c.Deployment = util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
 
-	c.StorageClass.Provisioner = options.ObjectBucketProvisionerName()
-	c.StorageClass.Name = options.Namespace + "-storage-class"
 	c.NS.Name = options.Namespace
 	c.SA.Namespace = options.Namespace
 	c.Role.Namespace = options.Namespace

@@ -35,6 +35,28 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileDefaultBackingStore(); err != nil {
 		return err
 	}
+	if err := r.ReconcileStorageClass(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ReconcileStorageClass reconciles default storage class for the system
+func (r *Reconciler) ReconcileStorageClass() error {
+	util.KubeCheck(r.StorageClass)
+
+	if r.StorageClass.UID != "" {
+		return nil
+	}
+
+	// getting error when trying to own storage class: 
+	// 		"cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
+	// r.Own(r.StorageClass)
+	err := r.Client.Create(r.Ctx, r.StorageClass)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
