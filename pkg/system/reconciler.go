@@ -19,6 +19,7 @@ import (
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -66,6 +67,7 @@ type Reconciler struct {
 	PrometheusRule      *monitoringv1.PrometheusRule
 	CloudCreds          *cloudcredsv1.CredentialsRequest
 	DefaultBackingStore *nbv1.BackingStore
+	StorageClass        *storagev1.StorageClass
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -93,6 +95,7 @@ func NewReconciler(
 		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		CloudCreds:          util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
+		StorageClass:        util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
 	}
 
 	// Set Namespace
@@ -120,6 +123,9 @@ func NewReconciler(
 	r.CloudCreds.Name = r.Request.Name + "-cloud-creds"
 	r.CloudCreds.Spec.SecretRef.Name = r.Request.Name + "-cloud-creds-secret"
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
+	r.StorageClass.Provisioner = options.ObjectBucketProvisionerName()
+	r.StorageClass.Name = options.Namespace + "-storage-class"
+
 	return r
 }
 
@@ -135,6 +141,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.PrometheusRule)
 	util.KubeCheck(r.CloudCreds)
 	util.KubeCheck(r.DefaultBackingStore)
+	util.KubeCheck(r.StorageClass)
 }
 
 // Reconcile reads that state of the cluster for a System object,

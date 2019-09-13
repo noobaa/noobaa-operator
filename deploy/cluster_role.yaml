@@ -33,6 +33,7 @@ rules:
       - get
       - list
       - watch
+      - create
   - apiGroups:
       - objectbucket.io
     resources:

@@ -7,3 +7,6 @@ build-releases/
 
 # the output of `go build`
 /noobaa-operator
+
+# visual studio code intellisense configuration
+.vscode/
