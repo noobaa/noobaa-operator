@@ -21,7 +21,7 @@ func Cmd() *cobra.Command {
 
 // RunOptions runs a CLI command
 func RunOptions(cmd *cobra.Command, args []string) {
-	cmd.Usage()
+	util.IgnoreError(cmd.Usage())
 }
 
 const (

@@ -299,7 +299,7 @@ func RunList(cmd *cobra.Command, args []string) {
 func RunYaml(cmd *cobra.Command, args []string) {
 	sys := LoadSystemDefaults()
 	p := printers.YAMLPrinter{}
-	p.PrintObj(sys, os.Stdout)
+	util.Panic(p.PrintObj(sys, os.Stdout))
 }
 
 // RunStatus runs a CLI command
@@ -389,7 +389,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		log.Println("")
 	} else {
 		log.Printf("❌ System Phase is %q\n", r.NooBaa.Status.Phase)
-		CheckWaitingFor(r.NooBaa)
+		util.IgnoreError(CheckWaitingFor(r.NooBaa))
 	}
 }
 
@@ -437,7 +437,7 @@ func WaitReady() bool {
 			return false, fmt.Errorf("SystemPhaseRejected")
 		}
 		if sys.Status.Phase != nbv1.SystemPhaseReady {
-			return CheckWaitingFor(sys)
+			return false, CheckWaitingFor(sys)
 		}
 		log.Printf("✅ System Phase is %q.\n", sys.Status.Phase)
 		return true, nil
@@ -450,7 +450,7 @@ func WaitReady() bool {
 
 // CheckWaitingFor checks what the system deployment is waiting for in order to become ready
 // in order to help the user troubleshoot common deployment issues.
-func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
+func CheckWaitingFor(sys *nbv1.NooBaa) error {
 	log := util.Logger()
 	klient := util.KubeClient()
 
@@ -462,11 +462,11 @@ func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 
 	if errors.IsNotFound(operAppErr) {
 		log.Printf(`❌ Deployment %q is missing.`, operAppName)
-		return false, operAppErr
+		return operAppErr
 	}
 	if operAppErr != nil {
 		log.Printf(`❌ Deployment %q unknown error in Get(): %s`, operAppName, operAppErr)
-		return false, operAppErr
+		return operAppErr
 	}
 	desiredReplicas := int32(1)
 	if operApp.Spec.Replicas != nil {
@@ -479,7 +479,7 @@ func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 			operAppName,
 			operApp.Status.ReadyReplicas,
 			desiredReplicas)
-		return false, nil
+		return nil
 	}
 
 	operPodList := &corev1.PodList{}
@@ -489,23 +489,23 @@ func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 		operPodList)
 
 	if operPodErr != nil {
-		return false, operPodErr
+		return operPodErr
 	}
 	if len(operPodList.Items) != int(desiredReplicas) {
-		return false, fmt.Errorf("Can't find the operator pods")
+		return fmt.Errorf("Can't find the operator pods")
 	}
 	operPod := &operPodList.Items[0]
 	if operPod.Status.Phase != corev1.PodRunning {
 		log.Printf(`⏳ System Phase is %q. Pod %q is not yet ready: %s`,
 			sys.Status.Phase, operPod.Name, util.GetPodStatusLine(operPod))
-		return false, nil
+		return nil
 	}
 	for i := range operPod.Status.ContainerStatuses {
 		c := &operPod.Status.ContainerStatuses[i]
 		if !c.Ready {
 			log.Printf(`⏳ System Phase is %q. Container %q is not yet ready: %s`,
 				sys.Status.Phase, c.Name, util.GetContainerStatusLine(c))
-			return false, nil
+			return nil
 		}
 	}
 
@@ -517,11 +517,11 @@ func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 
 	if errors.IsNotFound(coreAppErr) {
 		log.Printf(`❌ StatefulSet %q is missing.`, coreAppName)
-		return false, coreAppErr
+		return coreAppErr
 	}
 	if coreAppErr != nil {
 		log.Printf(`❌ StatefulSet %q unknown error in Get(): %s`, coreAppName, coreAppErr)
-		return false, coreAppErr
+		return coreAppErr
 	}
 	desiredReplicas = int32(1)
 	if coreApp.Spec.Replicas != nil {
@@ -534,7 +534,7 @@ func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 			coreAppName,
 			coreApp.Status.ReadyReplicas,
 			desiredReplicas)
-		return false, nil
+		return nil
 	}
 
 	corePodList := &corev1.PodList{}
@@ -544,28 +544,28 @@ func CheckWaitingFor(sys *nbv1.NooBaa) (bool, error) {
 		corePodList)
 
 	if corePodErr != nil {
-		return false, corePodErr
+		return corePodErr
 	}
 	if len(corePodList.Items) != int(desiredReplicas) {
-		return false, fmt.Errorf("Can't find the core pods")
+		return fmt.Errorf("Can't find the core pods")
 	}
 	corePod := &corePodList.Items[0]
 	if corePod.Status.Phase != corev1.PodRunning {
 		log.Printf(`⏳ System Phase is %q. Pod %q is not yet ready: %s`,
 			sys.Status.Phase, corePod.Name, util.GetPodStatusLine(corePod))
-		return false, nil
+		return nil
 	}
 	for i := range corePod.Status.ContainerStatuses {
 		c := &corePod.Status.ContainerStatuses[i]
 		if !c.Ready {
 			log.Printf(`⏳ System Phase is %q. Container %q is not yet ready: %s`,
 				sys.Status.Phase, c.Name, util.GetContainerStatusLine(c))
-			return false, nil
+			return nil
 		}
 	}
 
 	log.Printf(`⏳ System Phase is %q. Waiting for phase ready ...`, sys.Status.Phase)
-	return false, nil
+	return nil
 }
 
 // Client is the system client for making mgmt or s3 calls (with operator/admin credentials)

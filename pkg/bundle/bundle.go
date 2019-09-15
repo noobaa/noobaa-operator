@@ -44,7 +44,7 @@ func main() {
 				return nil
 			}
 			name := compiledNameRE.ReplaceAllString(path, "_")
-			bytes, err := ioutil.ReadFile(path)
+			bytes, err := ioutil.ReadFile(filepath.Clean(path))
 			fatal(err)
 			sha256Bytes := sha256.Sum256(bytes)
 			sha256Hex := hex.EncodeToString(sha256Bytes[:])

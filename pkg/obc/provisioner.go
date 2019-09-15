@@ -67,7 +67,7 @@ func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder recor
 	log.Info("running noobaa provisioner ", provisionerName)
 	stopChan := make(chan struct{})
 	go func() {
-		libProv.Run(stopChan)
+		util.Panic(libProv.Run(stopChan))
 	}()
 
 	return nil

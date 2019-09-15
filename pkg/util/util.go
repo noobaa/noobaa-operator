@@ -370,6 +370,19 @@ func Panic(err error) {
 	}
 }
 
+// LogError prints the error to the log and continue
+func LogError(err error) {
+	if err != nil {
+		log.Errorf("Error dicovered: %s", err)
+	}
+}
+
+// IgnoreError do nothing if err is not nil
+func IgnoreError(err error) {
+	if err != nil {
+	}
+}
+
 // InitLogger initializes the logrus logger with defaults
 func InitLogger() {
 	logrus.SetLevel(logrus.DebugLevel)
