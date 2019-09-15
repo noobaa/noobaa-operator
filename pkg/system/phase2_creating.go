@@ -49,14 +49,6 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		return err
 	}
 
-	if err := r.ReconcileObject(r.PrometheusRule, nil); err != nil {
-		if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
-			r.Logger.Printf("No PrometheusRule CRD existing, skip creating PrometheusRules\n")
-		} else {
-			return err
-		}
-	}
-
 	return nil
 }
 

@@ -8,7 +8,9 @@ import (
 	"github.com/noobaa/noobaa-operator/pkg/options"
 	"github.com/noobaa/noobaa-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -39,6 +41,22 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 		return err
 	}
 
+	if err := r.ReconcileObject(r.PrometheusRule, nil); err != nil {
+		if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+			r.Logger.Printf("No PrometheusRule CRD existing, skip creating PrometheusRules\n")
+		} else {
+			return err
+		}
+	}
+
+	if err := r.ReconcileObject(r.ServiceMonitor, nil); err != nil {
+		if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+			r.Logger.Printf("No ServiceMonitor CRD existing, skip creating ServiceMonitor\n")
+		} else {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -50,7 +68,7 @@ func (r *Reconciler) ReconcileStorageClass() error {
 		return nil
 	}
 
-	// getting error when trying to own storage class: 
+	// getting error when trying to own storage class:
 	// 		"cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
 	// r.Own(r.StorageClass)
 	err := r.Client.Create(r.Ctx, r.StorageClass)
