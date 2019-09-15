@@ -325,14 +325,24 @@ func (r *BucketRequest) CreateAccount() error {
 		return err
 	}
 
+	var accessKeys nb.S3AccessKeys
+	// if we didn't get the access keys in the create_account reply we might be talking to an older noobaa version (prior to 5.1)
+	// in that case try to get it using read account
 	if len(accountInfo.AccessKeys) == 0 {
-		return fmt.Errorf("Create account did not return access keys")
+		log.Info("CreateAccountAPI did not return access keys. calling ReadAccountAPI to get keys..")
+		readAccountReply, err := r.SysClient.NBClient.ReadAccountAPI(nb.ReadAccountParams{Email: r.AccountName})
+		if err != nil {
+			return err
+		}
+		accessKeys = readAccountReply.AccessKeys[0]
+	} else {
+		accessKeys = accountInfo.AccessKeys[0]
 	}
 
 	r.OB.Spec.Authentication = &nbv1.ObjectBucketAuthentication{
 		AccessKeys: &nbv1.ObjectBucketAccessKeys{
-			AccessKeyID:     accountInfo.AccessKeys[0].AccessKey,
-			SecretAccessKey: accountInfo.AccessKeys[0].SecretKey,
+			AccessKeyID:     accessKeys.AccessKey,
+			SecretAccessKey: accessKeys.SecretKey,
 		},
 	}
 
