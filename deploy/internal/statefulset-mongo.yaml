@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: SYSNAME-core
+  labels:
+    app: noobaa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      noobaa-db: SYSNAME
+  serviceName: SYSNAME-mgmt
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: noobaa
+        noobaa-db: SYSNAME
+    spec:
+      serviceAccountName: noobaa-operator # TODO do we use the same SA?
+      initContainers:
+        - name: init-mongo
+          image: NOOBAA_IMAGE
+          imagePullPolicy: IfNotPresent
+          command:
+            - "/noobaa_init_files/noobaa_init.sh"
+            - "init_mongo"
+          volumeMounts:
+            - mountPath: /mongo_data
+              name: mongo-datadir
+      containers:
+        - name: mongodb
+          image: MONGO_IMAGE
+          imagePullPolicy: IfNotPresent
+          command:
+            [
+              "/bin/bash",
+              "-c",
+              "/opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1",
+            ]
+          readinessProbe:
+            # https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+            # ready when mongo port is open
+            tcpSocket:
+              port: 27017
+            timeoutSeconds: 5
+          resources:
+            # https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "8Gi"
+          volumeMounts:
+            - mountPath: /data
+              name: mongo-datadir
+  volumeClaimTemplates:
+    # this will provision a dynamic persistent volume (volume is automatically provisioned by a provisioner)
+    # in minikube it is provisioned as hostPath volume under hosts /tmp which is not persistent between
+    # minikube restarts. if we want it to be persistent between restarts we need to statically provision a
+    # volume according to this https://kubernetes.io/docs/setup/minikube/#persistent-volumes
+    - metadata:
+        name: mongo-datadir
+        labels:
+          app: noobaa
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi

@@ -38,7 +38,9 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
 		return err
 	}
-
+	if err := r.ReconcileNoobaaDB(); err != nil {
+		return err
+	}
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}
@@ -52,6 +54,21 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	return nil
 }
 
+// ReconcileNoobaaDB reconciles NoobaaDB statefulset
+func (r *Reconciler) ReconcileNoobaaDB() error {
+	if err := r.ReconcileObject(r.NoobaaDB, r.SetDesiredNoobaaDB); err != nil {
+		return err
+	}
+	// check if mongoDB is ready. if not return error
+	if !util.KubeCheck(r.NoobaaDBPod) {
+		return fmt.Errorf("phase2: mongoPod does not exist yet")
+	}
+	if r.NoobaaDBPod.Status.ContainerStatuses == nil || !r.NoobaaDBPod.Status.ContainerStatuses[0].Ready {
+		return fmt.Errorf("phase2: mongoPod %v is not ready yet", r.NoobaaDBPod.Name)
+	}
+	return nil
+}
+
 // SetDesiredServiceMgmt updates the ServiceMgmt as desired for reconciling
 func (r *Reconciler) SetDesiredServiceMgmt() {
 	r.ServiceMgmt.Spec.Selector["noobaa-mgmt"] = r.Request.Name
@@ -60,6 +77,59 @@ func (r *Reconciler) SetDesiredServiceMgmt() {
 // SetDesiredServiceS3 updates the ServiceS3 as desired for reconciling
 func (r *Reconciler) SetDesiredServiceS3() {
 	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
+}
+
+// SetDesiredNoobaaDB updates the NoobaaDB as desired for reconciling
+func (r *Reconciler) SetDesiredNoobaaDB() {
+	r.NoobaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
+	r.NoobaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
+	r.NoobaaDB.Spec.ServiceName = r.ServiceMgmt.Name
+
+	podSpec := &r.NoobaaDB.Spec.Template.Spec
+	podSpec.ServiceAccountName = "noobaa-operator" // TODO do we use the same SA?
+	for i := range podSpec.InitContainers {
+		c := &podSpec.InitContainers[i]
+		if c.Name == "init-mongo" {
+			c.Image = r.NooBaa.Status.ActualImage
+		}
+	}
+	for i := range podSpec.Containers {
+		c := &podSpec.Containers[i]
+		if c.Name == "mongodb" {
+			if r.NooBaa.Spec.MongoImage == nil {
+				c.Image = options.MongoImage
+			} else {
+				c.Image = *r.NooBaa.Spec.MongoImage
+			}
+			if r.NooBaa.Spec.MongoResources != nil {
+				c.Resources = *r.NooBaa.Spec.MongoResources
+			}
+		}
+	}
+	if r.NooBaa.Spec.ImagePullSecret == nil {
+		podSpec.ImagePullSecrets =
+			[]corev1.LocalObjectReference{}
+	} else {
+		podSpec.ImagePullSecrets =
+			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
+	}
+	if r.NooBaa.Spec.Tolerations != nil {
+		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
+	}
+	for i := range r.NoobaaDB.Spec.VolumeClaimTemplates {
+		pvc := &r.NoobaaDB.Spec.VolumeClaimTemplates[i]
+		pvc.Spec.StorageClassName = r.NooBaa.Spec.StorageClassName
+
+		// TODO we want to own the PVC's by NooBaa system but get errors on openshift:
+		//   Warning  FailedCreate  56s  statefulset-controller
+		//   create Pod noobaa-core-0 in StatefulSet noobaa-core failed error:
+		//   Failed to create PVC mongo-datadir-noobaa-core-0:
+		//   persistentvolumeclaims "mongo-datadir-noobaa-core-0" is forbidden:
+		//   cannot set blockOwnerDeletion if an ownerReference refers to a resource
+		//   you can't set finalizers on: , <nil>, ...
+
+		// r.Own(pvc)
+	}
 }
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
@@ -85,6 +155,9 @@ func (r *Reconciler) SetDesiredCoreApp() {
 			for j := range c.Env {
 				if c.Env[j].Name == "AGENT_PROFILE" {
 					c.Env[j].Value = fmt.Sprintf(`{ "image": "%s" }`, r.NooBaa.Status.ActualImage)
+				}
+				if c.Env[j].Name == "MONGODB_URL" {
+					c.Env[j].Value = "mongodb://" + r.NoobaaDBPod.Status.PodIP + "/nbcore"
 				}
 			}
 			if r.NooBaa.Spec.CoreResources != nil {

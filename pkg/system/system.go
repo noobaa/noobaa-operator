@@ -181,7 +181,19 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		}
 		util.KubeDelete(pvc)
 	}
-
+	// NoobaaDB
+	noobaaDB := util.KubeObject(bundle.File_deploy_internal_statefulset_mongo_yaml).(*appsv1.StatefulSet)
+	for i := range noobaaDB.Spec.VolumeClaimTemplates {
+		t := &noobaaDB.Spec.VolumeClaimTemplates[i]
+		pvc := &corev1.PersistentVolumeClaim{
+			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      t.Name + "-" + options.SystemName + "-db-0",
+				Namespace: options.Namespace,
+			},
+		}
+		util.KubeDelete(pvc)
+	}
 	backingStores := &nbv1.BackingStoreList{}
 	util.KubeList(backingStores, &client.ListOptions{Namespace: options.Namespace})
 	for i := range backingStores.Items {
@@ -314,6 +326,18 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		util.KubeCheck(pvc)
 	}
 
+	// NobbaaDB
+	for i := range r.NoobaaDB.Spec.VolumeClaimTemplates {
+		t := &r.NoobaaDB.Spec.VolumeClaimTemplates[i]
+		pvc := &corev1.PersistentVolumeClaim{
+			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      t.Name + "-" + options.SystemName + "-db-0",
+				Namespace: options.Namespace,
+			},
+		}
+		util.KubeCheck(pvc)
+	}
 	// sys := cli.LoadSystemDefaults()
 	// util.KubeCheck(cli.Client, sys)
 
@@ -500,6 +524,35 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 		}
 	}
 
+	// NoobaaDB
+	noobaaDB := &appsv1.StatefulSet{}
+	noobaaDBName := sys.Name + "-db"
+	noobaaDBErr := klient.Get(util.Context(),
+		client.ObjectKey{Namespace: sys.Namespace, Name: noobaaDBName},
+		noobaaDB)
+
+	if errors.IsNotFound(noobaaDBErr) {
+		log.Printf(`❌ StatefulSet %q is missing.`, noobaaDBName)
+		return noobaaDBErr
+	}
+	if noobaaDBErr != nil {
+		log.Printf(`❌ StatefulSet %q unknown error in Get(): %s`, noobaaDBName, noobaaDBErr)
+		return noobaaDBErr
+	}
+	desiredReplicas = int32(1)
+	if noobaaDB.Spec.Replicas != nil {
+		desiredReplicas = *noobaaDB.Spec.Replicas
+	}
+	if noobaaDB.Status.Replicas != desiredReplicas {
+		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not yet ready:`+
+			` ReadyReplicas %d/%d`,
+			sys.Status.Phase,
+			noobaaDBName,
+			noobaaDB.Status.ReadyReplicas,
+			desiredReplicas)
+		return nil
+	}
+
 	coreApp := &appsv1.StatefulSet{}
 	coreAppName := sys.Name + "-core"
 	coreAppErr := klient.Get(util.Context(),
@@ -530,6 +583,7 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 		return nil
 	}
 
+	//
 	corePodList := &corev1.PodList{}
 	corePodSelector, _ := labels.Parse("noobaa-core=" + sys.Name)
 	corePodErr := klient.List(util.Context(),

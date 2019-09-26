@@ -59,6 +59,8 @@ type Reconciler struct {
 
 	NooBaa              *nbv1.NooBaa
 	CoreApp             *appsv1.StatefulSet
+	NoobaaDB            *appsv1.StatefulSet
+	NoobaaDBPod         *corev1.Pod
 	ServiceMgmt         *corev1.Service
 	ServiceS3           *corev1.Service
 	SecretServer        *corev1.Secret
@@ -89,6 +91,8 @@ func NewReconciler(
 		Logger:              logrus.WithField("sys", req.Namespace+"/"+req.Name),
 		NooBaa:              util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		CoreApp:             util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
+		NoobaaDB:            util.KubeObject(bundle.File_deploy_internal_statefulset_mongo_yaml).(*appsv1.StatefulSet),
+		NoobaaDBPod:         &corev1.Pod{},
 		ServiceMgmt:         util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
 		ServiceS3:           util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
 		SecretServer:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
@@ -105,6 +109,8 @@ func NewReconciler(
 	// Set Namespace
 	r.NooBaa.Namespace = r.Request.Namespace
 	r.CoreApp.Namespace = r.Request.Namespace
+	r.NoobaaDB.Namespace = r.Request.Namespace
+	r.NoobaaDBPod.Namespace = r.Request.Namespace
 	r.ServiceMgmt.Namespace = r.Request.Namespace
 	r.ServiceS3.Namespace = r.Request.Namespace
 	r.SecretServer.Namespace = r.Request.Namespace
@@ -120,6 +126,8 @@ func NewReconciler(
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
 	r.CoreApp.Name = r.Request.Name + "-core"
+	r.NoobaaDB.Name = r.Request.Name + "-db"
+	r.NoobaaDBPod.Name = r.Request.Name + "-db-0"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
 	r.ServiceS3.Name = "s3"
 	r.SecretServer.Name = r.Request.Name + "-server"
@@ -143,6 +151,8 @@ func NewReconciler(
 func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.NooBaa)
 	util.KubeCheck(r.CoreApp)
+	util.KubeCheck(r.NoobaaDB)
+	util.KubeCheck(r.NoobaaDBPod)
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
 	util.KubeCheck(r.SecretServer)
