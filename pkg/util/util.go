@@ -679,7 +679,8 @@ func GetAWSRegion() string {
 	return nameSplit[1]
 }
 
-func ReadCommandFlagString(cmd *cobra.Command, flag string) string {
+// GetFlagStringOrPrompt returns flag value but if empty will promtp to read from stdin
+func GetFlagStringOrPrompt(cmd *cobra.Command, flag string) string {
 	str, _ := cmd.Flags().GetString(flag)
 	if str != "" {
 		return str
@@ -693,7 +694,10 @@ func ReadCommandFlagString(cmd *cobra.Command, flag string) string {
 	return ""
 }
 
-func ReadCommandFlagSecret(cmd *cobra.Command, flag string) string {
+// GetFlagStringOrPromptPassword is like GetFlagStringOrPrompt
+// but does not show the input characters on the terminal
+// to avoid leaking secret data in shell history
+func GetFlagStringOrPromptPassword(cmd *cobra.Command, flag string) string {
 	str, _ := cmd.Flags().GetString(flag)
 	if str != "" {
 		return str
