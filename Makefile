@@ -46,9 +46,13 @@ image: gen
 	@echo "✅ image"
 .PHONY: image
 
+<<<<<<< HEAD
 vendor:
 	mkdir -p $(BUNDLE)
 	echo "package bundle" > $(BUNDLE)/tmp.go
+=======
+vendor: $(BUNDLE)/deploy.go
+>>>>>>> 0c25c5d... added deploy.go dependency for vendor
 	go mod vendor
 	@echo "✅ vendor"
 .PHONY: vendor
