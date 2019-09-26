@@ -262,9 +262,9 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 // RunCreateAWSS3 runs a CLI command
 func RunCreateAWSS3(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.StoreTypeAWSS3, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
-		targetBucket := util.ReadCommandFlagString(cmd, "target-bucket")
-		accessKey := util.ReadCommandFlagSecret(cmd, "access-key")
-		secretKey := util.ReadCommandFlagSecret(cmd, "secret-key")
+		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
+		accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
+		secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
 		region, _ := cmd.Flags().GetString("region")
 		secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
 		secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
@@ -282,9 +282,9 @@ func RunCreateAWSS3(cmd *cobra.Command, args []string) {
 // RunCreateS3Compatible runs a CLI command
 func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.StoreTypeS3Compatible, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
-		targetBucket := util.ReadCommandFlagString(cmd, "target-bucket")
-		accessKey := util.ReadCommandFlagSecret(cmd, "access-key")
-		secretKey := util.ReadCommandFlagSecret(cmd, "secret-key")
+		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
+		accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
+		secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
 		endpoint, _ := cmd.Flags().GetString("endpoint")
 		sigVer, _ := cmd.Flags().GetString("signature-version")
 		secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
@@ -304,9 +304,9 @@ func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 // RunCreateAzureBlob runs a CLI command
 func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.StoreTypeAzureBlob, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
-		targetBlobContainer := util.ReadCommandFlagString(cmd, "target-blob-container")
-		accountName := util.ReadCommandFlagSecret(cmd, "account-name")
-		accountKey := util.ReadCommandFlagSecret(cmd, "account-key")
+		targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
+		accountName := util.GetFlagStringOrPromptPassword(cmd, "account-name")
+		accountKey := util.GetFlagStringOrPromptPassword(cmd, "account-key")
 		secret.StringData["AccountName"] = accountName
 		secret.StringData["AccountKey"] = accountKey
 		backStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
@@ -323,8 +323,8 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 	createCommon(cmd, args, nbv1.StoreTypeGoogleCloudStorage, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
-		targetBucket := util.ReadCommandFlagString(cmd, "target-bucket")
-		privateKeyJSONFile := util.ReadCommandFlagString(cmd, "private-key-json-file")
+		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
+		privateKeyJSONFile := util.GetFlagStringOrPrompt(cmd, "private-key-json-file")
 		bytes, err := ioutil.ReadFile(privateKeyJSONFile)
 		if err != nil {
 			log.Fatalf("Failed to read file %q: %v", privateKeyJSONFile, err)
