@@ -21,7 +21,7 @@ replace (
 require (
 	github.com/aws/aws-sdk-go v1.23.8
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/coreos/prometheus-operator v0.31.1
+	github.com/coreos/prometheus-operator v0.29.0
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/go-openapi/spec v0.19.2
 	github.com/google/uuid v1.1.1
