@@ -21,11 +21,11 @@ Example:
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: noobaa-default-class
-provisioner: noobaa.io/bucket
+  name: noobaa.noobaa.io
+provisioner: noobaa.noobaa.io/obc
+reclaimPolicy: Delete
 parameters:
-  reclaimPolicy: Delete
-  backingStore: noobaa-aws-resource
+  bucketclass: noobaa-default-bucket-class
 ```
 
 # OBC
@@ -45,7 +45,7 @@ metadata:
   name: my-bucket-claim
 spec:
   generateBucketName: "my-bucket-"
-  storageClassName: noobaa-default-class
+  storageClassName: noobaa.noobaa.io
 ```
 
 # Bucket Permissions and Sharing

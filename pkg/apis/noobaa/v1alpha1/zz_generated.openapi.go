@@ -82,24 +82,42 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
-					"secret": {
+					"awsS3": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Secret refers to a secret that provides the credentials",
-							Ref:         ref("k8s.io/api/core/v1.SecretReference"),
+							Description: "AWSS3Spec specifies a backing store of type aws-s3",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AWSS3Spec"),
 						},
 					},
-					"s3Options": {
+					"s3Compatible": {
 						SchemaProps: spec.SchemaProps{
-							Description: "S3Options specifies client options for the backing store",
-							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.S3Options"),
+							Description: "S3Compatible specifies a backing store of type s3-compatible",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.S3CompatibleSpec"),
+						},
+					},
+					"azureBlob": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AzureBlob specifies a backing store of type azure-blob",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AzureBlobSpec"),
+						},
+					},
+					"googleCloudStorage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "GoogleCloudStorage specifies a backing store of type google-cloud-storage",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.GoogleCloudStorageSpec"),
+						},
+					},
+					"pvPool": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PVPool specifies a backing store of type pv-pool",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.PVPoolSpec"),
 						},
 					},
 				},
-				Required: []string{"type", "secret"},
+				Required: []string{"type"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.S3Options", "k8s.io/api/core/v1.SecretReference"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AWSS3Spec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AzureBlobSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.GoogleCloudStorageSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.PVPoolSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.S3CompatibleSpec"},
 	}
 }
 
@@ -111,7 +129,7 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreStatus(ref common.ReferenceCall
 				Properties: map[string]spec.Schema{
 					"phase": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Phase is a simple, high-level summary of where the System is in its lifecycle",
+							Description: "Phase is a simple, high-level summary of where the backing store is in its lifecycle",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -137,7 +155,7 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreStatus(ref common.ReferenceCall
 					},
 					"relatedObjects": {
 						SchemaProps: spec.SchemaProps{
-							Description: "RelatedObjects is a list of objects that are \"interesting\" or related to this operator.",
+							Description: "RelatedObjects is a list of objects related to this operator.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -258,7 +276,7 @@ func schema_pkg_apis_noobaa_v1alpha1_BucketClassStatus(ref common.ReferenceCallb
 					},
 					"relatedObjects": {
 						SchemaProps: spec.SchemaProps{
-							Description: "RelatedObjects is a list of objects that are \"interesting\" or related to this operator.",
+							Description: "RelatedObjects is a list of objects related to this operator.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -337,9 +355,9 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
-					"mongoImage": {
+					"dbImage": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MongoImage (optional) overrides the default image for the mongodb container",
+							Description: "DBImage (optional) overrides the default image for the db container",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -350,9 +368,9 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref common.ReferenceCallback) co
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
 					},
-					"mongoResources": {
+					"dbResources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MongoResources (optional) overrides the default resource requirements for the mongodb container",
+							Description: "DBResources (optional) overrides the default resource requirements for the db container",
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
 					},
@@ -431,7 +449,7 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaStatus(ref common.ReferenceCallback) 
 					},
 					"relatedObjects": {
 						SchemaProps: spec.SchemaProps{
-							Description: "RelatedObjects is a list of objects that are \"interesting\" or related to this operator.",
+							Description: "RelatedObjects is a list of objects related to this operator.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

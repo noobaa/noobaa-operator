@@ -17,6 +17,9 @@ func init() {
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Placement",type="string",JSONPath=".spec.placementPolicy",description="Placement"
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type BucketClass struct {
 
 	// Standard type metadata.
@@ -70,7 +73,7 @@ type BucketClassStatus struct {
 	// +optional
 	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
 
-	// RelatedObjects is a list of objects that are "interesting" or related to this operator.
+	// RelatedObjects is a list of objects related to this operator.
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 }
 
@@ -80,40 +83,42 @@ type PlacementPolicy struct {
 	// Tiers is an ordered list of tiers to use.
 	// The model is a waterfall - push to first tier by default,
 	// and when no more space spill "cold" storage to next tier.
-	Tiers []TierItem `json:"tiers"`
-}
-
-// TierItem specifies a storage tier
-type TierItem struct {
-
-	// Tier specifies a storage tier
-	Tier Tier `json:"tier"`
+	Tiers []Tier `json:"tiers"`
 }
 
 // Tier specifies a storage tier
 type Tier struct {
 
-	// Mirrors is an unordered list of mirrors - all mirrors should eventually store all the data of the tier.
+	// Placement specifies the type of placement for the tier
+	// If empty it should have a single backing store.
+	Placement TierPlacement `json:"placement,omitempty"`
+
+	// BackingStores is an unordered list of backing store names.
+	// The meaning of the list depends on the placement.
+	BackingStores []BackingStoreName `json:"backingStores,omitempty"`
+}
+
+// TierPlacement is a string enum type for tier placement
+type TierPlacement string
+
+// These are the valid placement values:
+const (
+
+	// TierPlacementSingle stores the data on a single backing store.
+	TierPlacementSingle TierPlacement = ""
+
+	// TierPlacementMirror requires 2 or more backing store.
+	// All mirrors should eventually store all the data of the tier.
 	// The mirroring model is async so just a single mirror is required before the write can ack.
 	// The first mirror is selected according to locality optimizations of the client endpoint.
 	// The data is replicated to the rest of the mirrors in the background.
-	Mirrors []MirrorItem `json:"mirrors"`
-}
+	TierPlacementMirror TierPlacement = "Mirror"
 
-// MirrorItem specifies a mirror item in a tier
-type MirrorItem struct {
-
-	// Mirror specifies a mirror group
-	Mirror Mirror `json:"mirror"`
-}
-
-// Mirror is a single mirror group storage target,
-// which can aggregate multiple backing stores in a "spread" model.
-// The spread model means that just one of the stores is selected,
-// with no particular policy, based on internal optimizations and available space.
-type Mirror struct {
-	Spread []BackingStoreName `json:"spread"`
-}
+	// TierPlacementSpread requires 2 or more backing store.
+	// The data is spread over the backing stores without any specific preference.
+	// The spread is a simple aggregate of those backing stores capacity.
+	TierPlacementSpread TierPlacement = "Spread"
+)
 
 // BackingStoreName is just a name-reference to a BackingStore
 type BackingStoreName = string

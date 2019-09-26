@@ -1,0 +1,18 @@
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucket
+metadata:
+  name: my-obc
+spec:
+  storageClassName: object-bucket-class
+  reclaimPolicy: Delete
+  claimRef:
+    name: my-obc
+    namespace: my-app
+  endpoint:
+    bucketHost: xxx
+    bucketPort: 80
+    bucketName: my-obc-1234-5678-1234-5678
+    region: xxx
+    subRegion: xxx
+    additionalConfig: {}
+  additionalState: {}

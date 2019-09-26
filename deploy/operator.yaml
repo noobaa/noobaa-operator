@@ -13,7 +13,7 @@ spec:
         app: noobaa
         noobaa-operator: deployment
     spec:
-      serviceAccountName: noobaa-operator
+      serviceAccountName: noobaa
       containers:
         - name: noobaa-operator
           image: noobaa/noobaa-operator:1.2.0

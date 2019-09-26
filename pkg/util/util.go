@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/ssh/terminal"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
@@ -18,6 +19,7 @@ import (
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	operv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -203,7 +205,18 @@ func KubeDelete(obj runtime.Object, opts ...client.DeleteOptionFunc) bool {
 	deleted := false
 	conflicted := false
 
-	err := wait.PollImmediateInfinite(time.Second, func() (bool, error) {
+	err := klient.Delete(ctx, obj, opts...)
+	if err == nil {
+		deleted = true
+		log.Printf("🗑️  Deleting: %s %q\n", gvk.Kind, objKey.Name)
+	} else if errors.IsConflict(err) {
+		conflicted = true
+		log.Printf("🗑️  Conflict (OK): %s %q: %s\n", gvk.Kind, objKey.Name, err)
+	}
+
+	time.Sleep(10 * time.Millisecond)
+
+	err = wait.PollImmediateInfinite(time.Second, func() (bool, error) {
 		err := klient.Delete(ctx, obj, opts...)
 		if err == nil {
 			if !deleted {
@@ -276,6 +289,33 @@ func KubeCheck(obj runtime.Object) bool {
 	}
 	if errors.IsNotFound(err) {
 		log.Printf("❌ Not Found: %s %q\n", gvk.Kind, objKey.Name)
+		return false
+	}
+	if errors.IsConflict(err) {
+		log.Printf("❌ Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		return false
+	}
+	Panic(err)
+	return false
+}
+
+// KubeCheckOptional checks if the object exists and reports the object status.
+// It detects the situation of a missing CRD and reports it as an optional feature.
+func KubeCheckOptional(obj runtime.Object) bool {
+	klient := KubeClient()
+	objKey := ObjectKey(obj)
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	err := klient.Get(ctx, objKey, obj)
+	if err == nil {
+		log.Printf("✅ Exists: %s %q\n", gvk.Kind, objKey.Name)
+		return true
+	}
+	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+		log.Printf("🌚 CRD Unavailable (Optional Feature): %s %q\n", gvk.Kind, objKey.Name)
+		return false
+	}
+	if errors.IsNotFound(err) {
+		log.Printf("🌚 Not Found (Optional Feature): %s %q\n", gvk.Kind, objKey.Name)
 		return false
 	}
 	if errors.IsConflict(err) {
@@ -637,4 +677,31 @@ func GetAWSRegion() string {
 		Panic(fmt.Errorf("failed to parse AWS region from node name %s", nodesList.Items[0].Name))
 	}
 	return nameSplit[1]
+}
+
+func ReadCommandFlagString(cmd *cobra.Command, flag string) string {
+	str, _ := cmd.Flags().GetString(flag)
+	if str != "" {
+		return str
+	}
+	fmt.Printf("Enter %s: ", flag)
+	_, err := fmt.Scan(&str)
+	Panic(err)
+	if str == "" {
+		log.Fatalf(`❌ Missing %s %s`, flag, cmd.UsageString())
+	}
+	return ""
+}
+
+func ReadCommandFlagSecret(cmd *cobra.Command, flag string) string {
+	str, _ := cmd.Flags().GetString(flag)
+	if str != "" {
+		return str
+	}
+	fmt.Printf("Enter %s: ", flag)
+	bytes, err := terminal.ReadPassword(0)
+	Panic(err)
+	str = string(bytes)
+	fmt.Printf("[got %d characters]\n", len(str))
+	return str
 }

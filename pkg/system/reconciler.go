@@ -64,10 +64,11 @@ type Reconciler struct {
 	SecretServer        *corev1.Secret
 	SecretOp            *corev1.Secret
 	SecretAdmin         *corev1.Secret
-	PrometheusRule      *monitoringv1.PrometheusRule
 	CloudCreds          *cloudcredsv1.CredentialsRequest
 	DefaultBackingStore *nbv1.BackingStore
+	DefaultBucketClass  *nbv1.BucketClass
 	StorageClass        *storagev1.StorageClass
+	PrometheusRule      *monitoringv1.PrometheusRule
 	ServiceMonitor      *monitoringv1.ServiceMonitor
 }
 
@@ -93,10 +94,11 @@ func NewReconciler(
 		SecretServer:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretOp:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		CloudCreds:          util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
+		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
 		StorageClass:        util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
+		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		ServiceMonitor:      util.KubeObject(bundle.File_deploy_internal_service_monitor_yaml).(*monitoringv1.ServiceMonitor),
 	}
 
@@ -108,10 +110,11 @@ func NewReconciler(
 	r.SecretServer.Namespace = r.Request.Namespace
 	r.SecretOp.Namespace = r.Request.Namespace
 	r.SecretAdmin.Namespace = r.Request.Namespace
-	r.PrometheusRule.Namespace = r.Request.Namespace
 	r.CloudCreds.Namespace = r.Request.Namespace
 	r.CloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
 	r.DefaultBackingStore.Namespace = r.Request.Namespace
+	r.DefaultBucketClass.Namespace = r.Request.Namespace
+	r.PrometheusRule.Namespace = r.Request.Namespace
 	r.ServiceMonitor.Namespace = r.Request.Namespace
 
 	// Set Names
@@ -122,13 +125,16 @@ func NewReconciler(
 	r.SecretServer.Name = r.Request.Name + "-server"
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
-	r.PrometheusRule.Name = r.Request.Name + "-prometheus-rules"
 	r.CloudCreds.Name = r.Request.Name + "-cloud-creds"
 	r.CloudCreds.Spec.SecretRef.Name = r.Request.Name + "-cloud-creds-secret"
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
+	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"
+	r.PrometheusRule.Name = r.Request.Name + "-prometheus-rules"
+	r.ServiceMonitor.Name = r.Request.Name + "-service-monitor"
+
+	// Since StorageClass is global we set the name and provisioner to have unique global name
+	r.StorageClass.Name = options.SubDomainNS()
 	r.StorageClass.Provisioner = options.ObjectBucketProvisionerName()
-	r.StorageClass.Name = options.Namespace + "-storage-class"
-	r.ServiceMonitor.Name = options.Namespace + "-service-monitor"
 
 	return r
 }
@@ -142,11 +148,12 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.SecretServer)
 	util.KubeCheck(r.SecretOp)
 	util.KubeCheck(r.SecretAdmin)
-	util.KubeCheck(r.PrometheusRule)
-	util.KubeCheck(r.CloudCreds)
-	util.KubeCheck(r.DefaultBackingStore)
 	util.KubeCheck(r.StorageClass)
-	util.KubeCheck(r.ServiceMonitor)
+	util.KubeCheck(r.DefaultBucketClass)
+	util.KubeCheckOptional(r.DefaultBackingStore)
+	util.KubeCheckOptional(r.CloudCreds)
+	util.KubeCheckOptional(r.PrometheusRule)
+	util.KubeCheckOptional(r.ServiceMonitor)
 }
 
 // Reconcile reads that state of the cluster for a System object,

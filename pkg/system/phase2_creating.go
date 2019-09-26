@@ -71,16 +71,16 @@ func (r *Reconciler) SetDesiredCoreApp() {
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
 
 	podSpec := &r.CoreApp.Spec.Template.Spec
-	podSpec.ServiceAccountName = "noobaa-operator" // TODO do we use the same SA?
+	podSpec.ServiceAccountName = "noobaa"
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
-		if c.Name == "init-mongo" {
+		if c.Name == "init" {
 			c.Image = r.NooBaa.Status.ActualImage
 		}
 	}
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
-		if c.Name == "noobaa-server" {
+		if c.Name == "core" {
 			c.Image = r.NooBaa.Status.ActualImage
 			for j := range c.Env {
 				if c.Env[j].Name == "AGENT_PROFILE" {
@@ -90,14 +90,14 @@ func (r *Reconciler) SetDesiredCoreApp() {
 			if r.NooBaa.Spec.CoreResources != nil {
 				c.Resources = *r.NooBaa.Spec.CoreResources
 			}
-		} else if c.Name == "mongodb" {
-			if r.NooBaa.Spec.MongoImage == nil {
-				c.Image = options.MongoImage
+		} else if c.Name == "db" {
+			if r.NooBaa.Spec.DBImage == nil {
+				c.Image = options.DBImage
 			} else {
-				c.Image = *r.NooBaa.Spec.MongoImage
+				c.Image = *r.NooBaa.Spec.DBImage
 			}
-			if r.NooBaa.Spec.MongoResources != nil {
-				c.Resources = *r.NooBaa.Spec.MongoResources
+			if r.NooBaa.Spec.DBResources != nil {
+				c.Resources = *r.NooBaa.Spec.DBResources
 			}
 		}
 	}
@@ -115,16 +115,10 @@ func (r *Reconciler) SetDesiredCoreApp() {
 	for i := range r.CoreApp.Spec.VolumeClaimTemplates {
 		pvc := &r.CoreApp.Spec.VolumeClaimTemplates[i]
 		pvc.Spec.StorageClassName = r.NooBaa.Spec.StorageClassName
-
-		// TODO we want to own the PVC's by NooBaa system but get errors on openshift:
-		//   Warning  FailedCreate  56s  statefulset-controller
-		//   create Pod noobaa-core-0 in StatefulSet noobaa-core failed error:
-		//   Failed to create PVC mongo-datadir-noobaa-core-0:
-		//   persistentvolumeclaims "mongo-datadir-noobaa-core-0" is forbidden:
-		//   cannot set blockOwnerDeletion if an ownerReference refers to a resource
-		//   you can't set finalizers on: , <nil>, ...
-
-		// r.Own(pvc)
+		// unsetting BlockOwnerDeletion to acoid error when trying to own pvc:
+		// "cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
+		r.Own(pvc)
+		pvc.OwnerReferences[0].BlockOwnerDeletion = nil
 	}
 }
 
@@ -148,8 +142,8 @@ func (r *Reconciler) ReconcileCredentialsRequest() error {
 		}
 		bucketName = strings.TrimPrefix(awsProviderSpec.StatementEntries[0].Resource, "arn:aws:s3:::")
 		r.Logger.Infof("found existing credential request for bucket %s", bucketName)
-		r.DefaultBackingStore.Spec.S3Options = &nbv1.S3Options{
-			BucketName: bucketName,
+		r.DefaultBackingStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
+			TargetBucket: bucketName,
 		}
 		return nil
 	}
@@ -187,8 +181,8 @@ func (r *Reconciler) ReconcileCredentialsRequest() error {
 			r.Logger.Errorf("got error when trying to create credentials request for bucket %s. %v", bucketName, err)
 			return err
 		}
-		r.DefaultBackingStore.Spec.S3Options = &nbv1.S3Options{
-			BucketName: bucketName,
+		r.DefaultBackingStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
+			TargetBucket: bucketName,
 		}
 		return nil
 	}

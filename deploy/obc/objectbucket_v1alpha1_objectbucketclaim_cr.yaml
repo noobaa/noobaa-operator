@@ -1,7 +1,9 @@
 apiVersion: objectbucket.io/v1alpha1
 kind: ObjectBucketClaim
 metadata:
-  name: noobaa-obc
+  name: my-obc
+  namespace: my-app
 spec:
-  storageClassName: noobaa-storage-class
-  generateBucketName: noobaa-obc
+  storageClassName: object-bucket-class
+  generateBucketName: my-obc
+  additionalConfig: {}

@@ -13,6 +13,9 @@ import (
 // APIGroupFilterFunc is a filtering function to limit the amount of server groups we load
 type APIGroupFilterFunc func(*metav1.APIGroup) bool
 
+// NoGroupFilter is a filtering function that includes all the server groups
+func NoGroupFilter(*metav1.APIGroup) bool { return true }
+
 // FastRESTMapper loads the mapper data from the server with filter and concurrency
 // and rediscovers the mapping on meta.NoKindMatchError errors
 // See https://github.com/kubernetes-sigs/controller-runtime/issues/537
@@ -24,6 +27,9 @@ type FastRESTMapper struct {
 
 // NewFastRESTMapper initializes a FastRESTMapper
 func NewFastRESTMapper(dc discovery.DiscoveryInterface, filter APIGroupFilterFunc) meta.RESTMapper {
+	if filter == nil {
+		filter = NoGroupFilter
+	}
 	return &FastRESTMapper{
 		Discovery: dc,
 		Filter:    filter,

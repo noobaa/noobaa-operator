@@ -6,6 +6,6 @@ metadata:
 spec:
   type: appregistry
   endpoint: https://quay.io/cnr
-  # registryNamespace: noobaa
+  registryNamespace: noobaa
   displayName: "NooBaa Operator"
   publisher: "NooBaa"

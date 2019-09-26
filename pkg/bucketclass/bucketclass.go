@@ -43,8 +43,10 @@ func CmdCreate() *cobra.Command {
 		Short: "Create bucket class",
 		Run:   RunCreate,
 	}
-	cmd.Flags().StringArray("backing-store", nil,
-		"Set backing-store to specify for the bucket")
+	cmd.Flags().String("placement", "",
+		"Set first tier placement policy - Mirror | Spread | \"\" (empty defaults to single backing store)")
+	cmd.Flags().StringSlice("backingstores", nil,
+		"Set first tier backing stores (use commas or multiple flags)")
 	return cmd
 }
 
@@ -98,7 +100,11 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 	name := args[0]
 
-	backingStoreNames, _ := cmd.Flags().GetStringArray("backing-store")
+	placement, _ := cmd.Flags().GetString("placement")
+	backingStores, _ := cmd.Flags().GetStringSlice("backingstores")
+	if len(backingStores) == 0 {
+		log.Fatalf(`❌ Must provide at least one backing store`)
+	}
 
 	// Check and get system
 	o := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml)
@@ -110,6 +116,8 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	bucketClass := o.(*nbv1.BucketClass)
 	bucketClass.Name = name
 	bucketClass.Namespace = options.Namespace
+	bucketClass.Spec.PlacementPolicy.Tiers[0].Placement = nbv1.TierPlacement(placement)
+	bucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores = backingStores
 
 	if !util.KubeCheck(sys) {
 		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
@@ -121,8 +129,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 
 	// check that backing stores exists
-	bucketClass.Spec.PlacementPolicy.Tiers[0].Tier.Mirrors = []nbv1.MirrorItem{}
-	for _, name := range backingStoreNames {
+	for _, name := range backingStores {
 		backStore := &nbv1.BackingStore{
 			TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
 			ObjectMeta: metav1.ObjectMeta{
@@ -134,13 +141,6 @@ func RunCreate(cmd *cobra.Command, args []string) {
 			log.Fatalf(`❌ Could not get BackingStore %q in namespace %q`,
 				backStore.Name, backStore.Namespace)
 		}
-		bucketClass.Spec.PlacementPolicy.Tiers[0].Tier.Mirrors = append(
-			bucketClass.Spec.PlacementPolicy.Tiers[0].Tier.Mirrors,
-			nbv1.MirrorItem{Mirror: nbv1.Mirror{Spread: []nbv1.BackingStoreName{name}}},
-		)
-	}
-	if len(bucketClass.Spec.PlacementPolicy.Tiers[0].Tier.Mirrors) == 0 {
-		log.Fatalf(`❌ Must provide at least one backing store`)
 	}
 
 	// Create bucket class CR
@@ -271,10 +271,20 @@ func RunList(cmd *cobra.Command, args []string) {
 		fmt.Printf("No bucket classes found.\n")
 		return
 	}
-	table := (&util.PrintTable{}).AddRow("NAME", "PLACEMENT", "PHASE")
+	table := (&util.PrintTable{}).AddRow(
+		"NAME",
+		"PLACEMENT",
+		"PHASE",
+		"AGE",
+	)
 	for i := range list.Items {
 		bc := &list.Items[i]
-		table.AddRow(bc.Name, fmt.Sprintf("%+v", bc.Spec.PlacementPolicy), string(bc.Status.Phase))
+		table.AddRow(
+			bc.Name,
+			fmt.Sprintf("%+v", bc.Spec.PlacementPolicy),
+			string(bc.Status.Phase),
+			time.Since(bc.CreationTimestamp.Time).Round(time.Second).String(),
+		)
 	}
 	fmt.Print(table.String())
 }

@@ -7,8 +7,5 @@ metadata:
 spec:
   placementPolicy:
     tiers:
-      - tier:
-          mirrors:
-            - mirror:
-                spread:
-                  - aws1
+    - backingStores:
+      - aws1

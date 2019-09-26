@@ -9,6 +9,7 @@ type Client interface {
 	ReadAuthAPI() (ReadAuthReply, error)
 	ReadAccountAPI(ReadAccountParams) (AccountInfo, error)
 	ReadSystemAPI() (SystemInfo, error)
+	ReadBucketAPI(ReadBucketParams) (BucketInfo, error)
 
 	ListAccountsAPI() (ListAccountsReply, error)
 	ListBucketsAPI() (ListBucketsReply, error)
@@ -139,6 +140,11 @@ type ReadAuthReply struct {
 // ReadAccountParams is the params to account_api.read_account()
 type ReadAccountParams struct {
 	Email string `json:"email"`
+}
+
+// ReadBucketParams is the params to bucket_api.read_bucket()
+type ReadBucketParams struct {
+	Name string `json:"name"`
 }
 
 // ListAccountsReply is the reply to account_api.list_accounts()
@@ -415,6 +421,17 @@ func (c *RPCClient) ReadSystemAPI() (SystemInfo, error) {
 	res := &struct {
 		RPCResponse `json:",inline"`
 		Reply       SystemInfo `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
+}
+
+// ReadBucketAPI calls bucket_api.read_bucket()
+func (c *RPCClient) ReadBucketAPI(params ReadBucketParams) (BucketInfo, error) {
+	req := &RPCRequest{API: "bucket_api", Method: "read_bucket", Params: params}
+	res := &struct {
+		RPCResponse `json:",inline"`
+		Reply       BucketInfo `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err

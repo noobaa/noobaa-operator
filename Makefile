@@ -47,6 +47,8 @@ image: gen
 .PHONY: image
 
 vendor:
+	mkdir -p $(BUNDLE)
+	echo "package bundle" > $(BUNDLE)/tmp.go
 	go mod vendor
 	@echo "✅ vendor"
 .PHONY: vendor
@@ -134,7 +136,7 @@ test-cli:
 	@echo "✅ test-cli"
 .PHONY: test-cli
 
-test-olm: gen-olm
+test-csv: gen-olm
 	operator-sdk alpha olm install || exit 0
 	kubectl create ns my-noobaa-operator || exit 0
 	operator-sdk up local --operator-flags "crd create -n my-noobaa-operator"
@@ -143,6 +145,11 @@ test-olm: gen-olm
 	kubectl apply -f $(OLM)/noobaa-operator.v$(VERSION).clusterserviceversion.yaml
 	sleep 30
 	kubectl wait pod -n my-noobaa-operator -l noobaa-operator=deployment --for condition=ready
+	@echo "✅ test-csv"
+.PHONY: test-csv
+
+test-olm: gen-olm
+	./test/test-olm.sh
 	@echo "✅ test-olm"
 .PHONY: test-olm
 
