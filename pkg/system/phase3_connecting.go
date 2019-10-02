@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"strings"
 
-	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/pkg/nb"
+	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"

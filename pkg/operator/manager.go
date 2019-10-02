@@ -3,18 +3,18 @@ package operator
 import (
 	"fmt"
 
-	"github.com/noobaa/noobaa-operator/pkg/options"
-	"github.com/noobaa/noobaa-operator/pkg/system"
-	"github.com/noobaa/noobaa-operator/pkg/version"
+	"github.com/noobaa/noobaa-operator/v2/pkg/options"
+	"github.com/noobaa/noobaa-operator/v2/pkg/system"
+	"github.com/noobaa/noobaa-operator/v2/pkg/version"
 
 	"github.com/spf13/cobra"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"github.com/noobaa/noobaa-operator/pkg/apis"
-	"github.com/noobaa/noobaa-operator/pkg/controller"
-	"github.com/noobaa/noobaa-operator/pkg/util"
+	"github.com/noobaa/noobaa-operator/v2/pkg/apis"
+	"github.com/noobaa/noobaa-operator/v2/pkg/controller"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"sigs.k8s.io/controller-runtime/pkg/manager"

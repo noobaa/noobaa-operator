@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"time"
 
-	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/pkg/nb"
-	"github.com/noobaa/noobaa-operator/pkg/options"
-	"github.com/noobaa/noobaa-operator/pkg/system"
-	"github.com/noobaa/noobaa-operator/pkg/util"
+	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v2/pkg/options"
+	"github.com/noobaa/noobaa-operator/v2/pkg/system"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
 	"github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner"
 	obAPI "github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner/api"

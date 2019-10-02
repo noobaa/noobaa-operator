@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/noobaa/noobaa-operator/build/_output/bundle"
-	"github.com/noobaa/noobaa-operator/pkg/util"
+	"github.com/noobaa/noobaa-operator/v2/build/_output/bundle"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"

@@ -7,8 +7,8 @@ package main
 //go:generate make gen
 
 import (
-	"github.com/noobaa/noobaa-operator/pkg/cli"
-	"github.com/noobaa/noobaa-operator/pkg/util"
+	"github.com/noobaa/noobaa-operator/v2/pkg/cli"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 )
 
 func main() {

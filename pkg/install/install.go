@@ -3,15 +3,15 @@ package install
 import (
 	"fmt"
 
-	"github.com/noobaa/noobaa-operator/pkg/backingstore"
-	"github.com/noobaa/noobaa-operator/pkg/bucketclass"
-	"github.com/noobaa/noobaa-operator/pkg/crd"
-	"github.com/noobaa/noobaa-operator/pkg/obc"
-	"github.com/noobaa/noobaa-operator/pkg/operator"
-	"github.com/noobaa/noobaa-operator/pkg/options"
-	"github.com/noobaa/noobaa-operator/pkg/system"
-	"github.com/noobaa/noobaa-operator/pkg/util"
-	"github.com/noobaa/noobaa-operator/pkg/version"
+	"github.com/noobaa/noobaa-operator/v2/pkg/backingstore"
+	"github.com/noobaa/noobaa-operator/v2/pkg/bucketclass"
+	"github.com/noobaa/noobaa-operator/v2/pkg/crd"
+	"github.com/noobaa/noobaa-operator/v2/pkg/obc"
+	"github.com/noobaa/noobaa-operator/v2/pkg/operator"
+	"github.com/noobaa/noobaa-operator/v2/pkg/options"
+	"github.com/noobaa/noobaa-operator/v2/pkg/system"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	"github.com/noobaa/noobaa-operator/v2/pkg/version"
 	"github.com/spf13/cobra"
 )
 

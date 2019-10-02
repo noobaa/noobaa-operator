@@ -5,9 +5,9 @@ import (
 
 	dockerref "github.com/docker/distribution/reference"
 	semver "github.com/hashicorp/go-version"
-	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/pkg/options"
-	"github.com/noobaa/noobaa-operator/pkg/util"
+	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v2/pkg/options"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 )
 
