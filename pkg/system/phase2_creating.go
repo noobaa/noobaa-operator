@@ -125,6 +125,10 @@ func (r *Reconciler) SetDesiredCoreApp() {
 // ReconcileCredentialsRequest creates a CredentialsRequest resource if neccesary and returns
 // the bucket name allowed for the credentials. nil is returned if cloud credentials are not supported
 func (r *Reconciler) ReconcileCredentialsRequest() error {
+	if !util.IsAWSPlatform() {
+		r.Logger.Info("not running in AWS. skipping ReconcileCredentialsRequest")
+		return nil
+	}
 	var bucketName string
 	err := r.Client.Get(r.Ctx, util.ObjectKey(r.CloudCreds), r.CloudCreds)
 	if err == nil {
