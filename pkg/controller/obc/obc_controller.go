@@ -1,7 +1,7 @@
 package obc
 
 import (
-	"github.com/noobaa/noobaa-operator/pkg/obc"
+	"github.com/noobaa/noobaa-operator/v2/pkg/obc"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 

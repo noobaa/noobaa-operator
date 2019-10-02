@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/pkg/options"
-	"github.com/noobaa/noobaa-operator/pkg/util"
+	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v2/pkg/options"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

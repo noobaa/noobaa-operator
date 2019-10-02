@@ -1,9 +1,9 @@
 package version
 
 import (
-	"github.com/noobaa/noobaa-operator/pkg/options"
-	"github.com/noobaa/noobaa-operator/pkg/util"
-	"github.com/noobaa/noobaa-operator/version"
+	"github.com/noobaa/noobaa-operator/v2/pkg/options"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	"github.com/noobaa/noobaa-operator/v2/version"
 
 	"github.com/spf13/cobra"
 )

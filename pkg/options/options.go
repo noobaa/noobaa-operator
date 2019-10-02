@@ -1,8 +1,8 @@
 package options
 
 import (
-	"github.com/noobaa/noobaa-operator/pkg/util"
-	"github.com/noobaa/noobaa-operator/version"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	"github.com/noobaa/noobaa-operator/v2/version"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 
 	"github.com/spf13/cobra"

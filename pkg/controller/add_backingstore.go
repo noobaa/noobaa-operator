@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/noobaa/noobaa-operator/pkg/controller/backingstore"
+	"github.com/noobaa/noobaa-operator/v2/pkg/controller/backingstore"
 )
 
 func init() {

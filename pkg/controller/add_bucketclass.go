@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/noobaa/noobaa-operator/pkg/controller/bucketclass"
+	"github.com/noobaa/noobaa-operator/v2/pkg/controller/bucketclass"
 )
 
 func init() {

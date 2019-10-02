@@ -3,9 +3,9 @@ package operator
 import (
 	"os"
 
-	"github.com/noobaa/noobaa-operator/build/_output/bundle"
-	"github.com/noobaa/noobaa-operator/pkg/options"
-	"github.com/noobaa/noobaa-operator/pkg/util"
+	"github.com/noobaa/noobaa-operator/v2/build/_output/bundle"
+	"github.com/noobaa/noobaa-operator/v2/pkg/options"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"

@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/noobaa/noobaa-operator/build/_output/bundle"
-	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/pkg/nb"
-	"github.com/noobaa/noobaa-operator/pkg/options"
-	"github.com/noobaa/noobaa-operator/pkg/util"
+	"github.com/noobaa/noobaa-operator/v2/build/_output/bundle"
+	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v2/pkg/options"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"

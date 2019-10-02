@@ -269,8 +269,6 @@ github.com/kr/pty v1.1.4/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/pty v1.1.5/go.mod h1:9r2w37qlBe7rQ6e1fg1S/9xpWHSnaqNdHD3WcMdbPDA=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20190906025700-dee074db3b4e h1:3qcJS0IFH9b/Qm+1kWEG+J555dtY0uANuBA3Zsnyp4I=
-github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20190906025700-dee074db3b4e/go.mod h1:OQoISh/kcO8xXO98frby5NcA0W4YxvdrWcn0o/mMe5Q=
 github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20190924175516-f3ba69cc601e h1:imOTeho0WZLJFTy2eKtBfSftVgK/KmodbB+eECTEuMM=
 github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20190924175516-f3ba69cc601e/go.mod h1:OQoISh/kcO8xXO98frby5NcA0W4YxvdrWcn0o/mMe5Q=
 github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de/go.mod h1:zAbeS9B/r2mtpb6U+EI2rYA5OAXxsYw6wTamcNW+zcE=
@@ -321,7 +319,6 @@ github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6
 github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c/go.mod h1:iPn+uhIe7nkP5BMHe2QnbLtg5m/AIQ1xvz9s3cig5ss=
 github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd h1:f4iCK/2jMLxqMPuClrSjw7C3O7KnDQVC2NZEtiZCtzs=
 github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd/go.mod h1:5FN5ZOa6szVg6C3kB6PbSL6VHAbX5+HpLvGZhUCJmKs=
-github.com/openshift/custom-resource-status v0.0.0-20190822192428-e62f2f3b79f3 h1:XuAys09+XqT5/FjdR23G/UtbBLII89dFe9XIi73EKIQ=
 github.com/openshift/origin v0.0.0-20160503220234-8f127d736703/go.mod h1:0Rox5r9C8aQn6j1oAOQ0c1uC86mYbUFObzjBRvUKHII=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/openzipkin/zipkin-go v0.1.3/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=

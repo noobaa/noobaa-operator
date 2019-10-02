@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/noobaa/noobaa-operator/version"
+	"github.com/noobaa/noobaa-operator/v2/version"
 )
 
 const (

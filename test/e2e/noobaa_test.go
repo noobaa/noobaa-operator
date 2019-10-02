@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	apis "github.com/noobaa/noobaa-operator/pkg/apis"
-	nbv1 "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1"
+	apis "github.com/noobaa/noobaa-operator/v2/pkg/apis"
+	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	"k8s.io/apimachinery/pkg/api/errors"
