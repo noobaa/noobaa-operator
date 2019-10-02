@@ -114,19 +114,19 @@ spec:
         description: A NooBaa system is approaching its capacity, usage is more than
           95%
         message: A NooBaa System Is Approaching Its Capacity
-        severity_level: warning
+        severity_level: critical
         storage_type: NooBaa
       expr: |
         NooBaa_system_capacity > 95
       labels:
-        severity: warning
+        severity: critical
     - alert: NooBaaSystemCapacityWarning100
       annotations:
         description: A NooBaa system approached its capacity, usage is at 100%
         message: A NooBaa System Approached Its Capacity
-        severity_level: warning
+        severity_level: critical
         storage_type: NooBaa
       expr: |
         NooBaa_system_capacity == 100
       labels:
-        severity: warning
+        severity: critical
