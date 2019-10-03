@@ -119,16 +119,12 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 		image := options.NooBaaImage
 		sys.Spec.Image = &image
 	}
-	if options.DBImage != "" {
-		dbImage := options.DBImage
-		sys.Spec.DBImage = &dbImage
-	}
 	if options.ImagePullSecret != "" {
 		sys.Spec.ImagePullSecret = &corev1.LocalObjectReference{Name: options.ImagePullSecret}
 	}
-	if options.StorageClassName != "" {
-		sc := options.StorageClassName
-		sys.Spec.StorageClassName = &sc
+	if options.DBImage != "" {
+		dbImage := options.DBImage
+		sys.Spec.DBImage = &dbImage
 	}
 	if options.DBVolumeSizeGB != 0 {
 		sys.Spec.DBVolumeResources = &corev1.ResourceRequirements{
@@ -136,6 +132,14 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 				corev1.ResourceStorage: *resource.NewScaledQuantity(int64(options.DBVolumeSizeGB), resource.Giga),
 			},
 		}
+	}
+	if options.DBStorageClass != "" {
+		sc := options.DBStorageClass
+		sys.Spec.DBStorageClass = &sc
+	}
+	if options.PVPoolDefaultStorageClass != "" {
+		sc := options.PVPoolDefaultStorageClass
+		sys.Spec.PVPoolDefaultStorageClass = &sc
 	}
 	return sys
 }

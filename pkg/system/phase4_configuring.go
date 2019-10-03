@@ -40,7 +40,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileDefaultBucketClass(); err != nil {
 		return err
 	}
-	if err := r.ReconcileStorageClass(); err != nil {
+	if err := r.ReconcileOBCStorageClass(); err != nil {
 		return err
 	}
 
@@ -262,24 +262,24 @@ func (r *Reconciler) ReconcileDefaultBucketClass() error {
 	return nil
 }
 
-// ReconcileStorageClass reconciles default storage class for the system
-func (r *Reconciler) ReconcileStorageClass() error {
+// ReconcileOBCStorageClass reconciles default OBC storage class for the system
+func (r *Reconciler) ReconcileOBCStorageClass() error {
 
-	util.KubeCheck(r.StorageClass)
-	if r.StorageClass.UID != "" {
+	util.KubeCheck(r.OBCStorageClass)
+	if r.OBCStorageClass.UID != "" {
 		return nil
 	}
 
-	r.StorageClass.Parameters = map[string]string{
+	r.OBCStorageClass.Parameters = map[string]string{
 		"bucketclass": r.DefaultBucketClass.Name,
 	}
 
 	// unsetting BlockOwnerDeletion to acoid error when trying to own storage class:
 	// "cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
-	r.Own(r.StorageClass)
-	r.StorageClass.OwnerReferences[0].BlockOwnerDeletion = nil
+	r.Own(r.OBCStorageClass)
+	r.OBCStorageClass.OwnerReferences[0].BlockOwnerDeletion = nil
 
-	err := r.Client.Create(r.Ctx, r.StorageClass)
+	err := r.Client.Create(r.Ctx, r.OBCStorageClass)
 	if err != nil {
 		return err
 	}

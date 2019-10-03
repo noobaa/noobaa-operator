@@ -67,7 +67,7 @@ type Reconciler struct {
 	CloudCreds          *cloudcredsv1.CredentialsRequest
 	DefaultBackingStore *nbv1.BackingStore
 	DefaultBucketClass  *nbv1.BucketClass
-	StorageClass        *storagev1.StorageClass
+	OBCStorageClass     *storagev1.StorageClass
 	PrometheusRule      *monitoringv1.PrometheusRule
 	ServiceMonitor      *monitoringv1.ServiceMonitor
 }
@@ -97,7 +97,7 @@ func NewReconciler(
 		CloudCreds:          util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
 		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
-		StorageClass:        util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
+		OBCStorageClass:     util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
 		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		ServiceMonitor:      util.KubeObject(bundle.File_deploy_internal_service_monitor_yaml).(*monitoringv1.ServiceMonitor),
 	}
@@ -133,8 +133,8 @@ func NewReconciler(
 	r.ServiceMonitor.Name = r.Request.Name + "-service-monitor"
 
 	// Since StorageClass is global we set the name and provisioner to have unique global name
-	r.StorageClass.Name = options.SubDomainNS()
-	r.StorageClass.Provisioner = options.ObjectBucketProvisionerName()
+	r.OBCStorageClass.Name = options.SubDomainNS()
+	r.OBCStorageClass.Provisioner = options.ObjectBucketProvisionerName()
 
 	return r
 }
@@ -148,7 +148,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.SecretServer)
 	util.KubeCheck(r.SecretOp)
 	util.KubeCheck(r.SecretAdmin)
-	util.KubeCheck(r.StorageClass)
+	util.KubeCheck(r.OBCStorageClass)
 	util.KubeCheck(r.DefaultBucketClass)
 	util.KubeCheckOptional(r.DefaultBackingStore)
 	util.KubeCheckOptional(r.CloudCreds)

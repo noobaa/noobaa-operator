@@ -77,11 +77,28 @@ type NooBaaSpec struct {
 	// +optional
 	DBResources *corev1.ResourceRequirements `json:"dbResources,omitempty"`
 
-	// DBVolumeResources (optional) overrides the default PVC resource requirements for the database volume (mongo).
-	// Updates to this value are supported only for increasing the size,
-	// and only if the storage class specifies `allowVolumeExpansion: true`.
+	// DBVolumeResources (optional) overrides the default PVC resource requirements for the database volume.
+	// For the time being this field is immutable and can only be set on system creation.
+	// This is because volume size updates are only supported for increasing the size,
+	// and only if the storage class specifies `allowVolumeExpansion: true`,
+	// +immutable
 	// +optional
 	DBVolumeResources *corev1.ResourceRequirements `json:"dbVolumeResources,omitempty"`
+
+	// DBStorageClass (optional) overrides the default cluster StorageClass for the database volume.
+	// For the time being this field is immutable and can only be set on system creation.
+	// This affects where the system stores its database which contains system config,
+	// buckets, objects meta-data and mapping file parts to storage locations.
+	// +immutable
+	// +optional
+	DBStorageClass *string `json:"dbStorageClass,omitempty"`
+
+	// PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes.
+	// This affects where the system stores data chunks (encrypted).
+	// Updates to this field will only affect new pv-pools,
+	// but updates to existing pools are not supported by the operator.
+	// +optional
+	PVPoolDefaultStorageClass *string `json:"pvPoolDefaultStorageClass,omitempty"`
 
 	// Tolerations (optional) passed through to noobaa's pods
 	// +optional
@@ -90,13 +107,6 @@ type NooBaaSpec struct {
 	// ImagePullSecret (optional) sets a pull secret for the system image
 	// +optional
 	ImagePullSecret *corev1.LocalObjectReference `json:"imagePullSecret,omitempty"`
-
-	// StorageClassName (optional) overrides the default StorageClass
-	// for the PVC that the operator creates, this affects where the
-	// system stores its database which contains system config,
-	// buckets, objects meta-data and mapping file parts to storage locations.
-	// +optional
-	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
 // NooBaaStatus defines the observed state of System
