@@ -254,7 +254,16 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 		log.Fatalf(`❌ Could not create Secret %q in Namespace %q (conflict)`, secret.Name, secret.Namespace)
 	}
 
+	log.Printf("")
+	log.Printf("NOTE:")
+	log.Printf("  - This command has finished applying changes to the cluster.")
+	log.Printf("  - From now on, it only loops and reads the status, to monitor the operator work.")
+	log.Printf("  - You may Ctrl-C at any time to stop the loop and watch it manually.")
+	log.Printf("")
+	log.Printf("BackingStore Wait Ready:")
 	if WaitReady(backStore) {
+		log.Printf("")
+		log.Printf("")
 		RunStatus(cmd, args)
 	}
 }

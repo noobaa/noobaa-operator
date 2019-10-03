@@ -446,8 +446,8 @@ func CurrentNamespace() string {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	configOverrides := &clientcmd.ConfigOverrides{}
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
-	ns, _, err := kubeConfig.Namespace()
-	Panic(err)
+	ns, _, _ := kubeConfig.Namespace()
+	// ignoring errors and just return empty string if config is missing or invalid
 	return ns
 }
 

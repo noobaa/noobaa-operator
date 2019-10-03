@@ -65,6 +65,12 @@ spec:
               description: DBResources (optional) overrides the default resource requirements
                 for the db container
               type: object
+            dbVolumeResources:
+              description: 'DBVolumeResources (optional) overrides the default PVC
+                resource requirements for the database volume (mongo). Updates to
+                this value are supported only for increasing the size, and only if
+                the storage class specifies `allowVolumeExpansion: true`.'
+              type: object
             image:
               description: Image (optional) overrides the default image for the server
                 container

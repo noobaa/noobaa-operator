@@ -77,6 +77,12 @@ type NooBaaSpec struct {
 	// +optional
 	DBResources *corev1.ResourceRequirements `json:"dbResources,omitempty"`
 
+	// DBVolumeResources (optional) overrides the default PVC resource requirements for the database volume (mongo).
+	// Updates to this value are supported only for increasing the size,
+	// and only if the storage class specifies `allowVolumeExpansion: true`.
+	// +optional
+	DBVolumeResources *corev1.ResourceRequirements `json:"dbVolumeResources,omitempty"`
+
 	// Tolerations (optional) passed through to noobaa's pods
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`

@@ -2,6 +2,7 @@ package operator
 
 import (
 	"os"
+	"strings"
 
 	"github.com/noobaa/noobaa-operator/v2/build/_output/bundle"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
@@ -48,6 +49,7 @@ func CmdUninstall() *cobra.Command {
 		Short: "Uninstall noobaa-operator",
 		Run:   RunUninstall,
 	}
+	cmd.Flags().Bool("cleanup", false, "Enable deletion of the Namespace")
 	return cmd
 }
 
@@ -108,7 +110,24 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	util.KubeDelete(c.RoleBinding)
 	util.KubeDelete(c.Role)
 	util.KubeDelete(c.SA)
-	util.KubeDelete(c.NS)
+
+	cleanup, _ := cmd.Flags().GetBool("cleanup")
+	reservedNS := c.NS.Name == "default" ||
+		strings.HasPrefix(c.NS.Name, "openshift-") ||
+		strings.HasPrefix(c.NS.Name, "kubernetes-") ||
+		strings.HasPrefix(c.NS.Name, "kube-")
+	if reservedNS {
+		log.Printf("Namespace Delete: disabled for reserved namespace")
+		log.Printf("Namespace Status:")
+		util.KubeCheck(c.NS)
+	} else if !cleanup {
+		log.Printf("Namespace Delete: currently disabled (enable with \"--cleanup\")")
+		log.Printf("Namespace Status:")
+		util.KubeCheck(c.NS)
+	} else {
+		log.Printf("Namespace Delete:")
+		util.KubeDelete(c.NS)
+	}
 }
 
 // RunStatus runs a CLI command

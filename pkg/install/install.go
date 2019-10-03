@@ -32,7 +32,7 @@ func CmdUninstall() *cobra.Command {
 		Short: "Uninstall the operator and delete the system",
 		Run:   RunUninstall,
 	}
-	cmd.Flags().Bool("crd", false, "Enable deletion of CRD's")
+	cmd.Flags().Bool("cleanup", false, "Enable deletion of Namespace and CRD's")
 	return cmd
 }
 
@@ -61,8 +61,15 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	log.Printf("System Create:")
 	system.RunCreate(cmd, args)
 	log.Printf("")
-	log.Printf("System Wait:")
+	log.Printf("NOTE:")
+	log.Printf("  - This command has finished applying changes to the cluster.")
+	log.Printf("  - From now on, it only loops and reads the status, to monitor the operator work.")
+	log.Printf("  - You may Ctrl-C at any time to stop the loop and watch it manually.")
+	log.Printf("")
+	log.Printf("System Wait Ready:")
 	if system.WaitReady() {
+		log.Printf("")
+		log.Printf("")
 		RunStatus(cmd, args)
 	}
 }
@@ -79,12 +86,12 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	log.Printf("Operator Delete:")
 	operator.RunUninstall(cmd, args)
 	log.Printf("")
-	crdDelete, _ := cmd.Flags().GetBool("crd")
-	if crdDelete {
+	cleanup, _ := cmd.Flags().GetBool("cleanup")
+	if cleanup {
 		log.Printf("CRD Delete:")
 		crd.RunDelete(cmd, args)
 	} else {
-		log.Printf("CRD Delete: currently disabled (enable with \"--crd\")")
+		log.Printf("CRD Delete: currently disabled (enable with \"--cleanup\")")
 		log.Printf("CRD Status:")
 		crd.RunStatus(cmd, args)
 	}
