@@ -51,6 +51,10 @@ const (
 // so we may consider to use current namespace.
 var Namespace = "noobaa"
 
+// OperatorImage is the container image url built from https://github.com/noobaa/noobaa-operator
+// it can be overriden for testing or for different registry locations.
+var OperatorImage = "noobaa/noobaa-operator:" + version.Version
+
 // NooBaaImage is the container image url built from https://github.com/noobaa/noobaa-core
 // it can be overriden for testing or for different registry locations.
 var NooBaaImage = ContainerImage
@@ -59,20 +63,20 @@ var NooBaaImage = ContainerImage
 // it can be overriden for testing or for different registry locations.
 var DBImage = "centos/mongodb-36-centos7"
 
-// OperatorImage is the container image url built from https://github.com/noobaa/noobaa-operator
-// it can be overriden for testing or for different registry locations.
-var OperatorImage = "noobaa/noobaa-operator:" + version.Version
+// DBVolumeSizeGB can be used to override the default database volume size
+var DBVolumeSizeGB = 0
 
-// StorageClassName is used for PVC's allocation for the noobaa server data
+// DBStorageClass is used for PVC's allocation for the noobaa server data
 // it can be overriden for testing or for different PV providers.
-var StorageClassName = ""
+var DBStorageClass = ""
+
+// PVPoolDefaultStorageClass is used for PVC's allocation for the noobaa server data
+// it can be overriden for testing or for different PV providers.
+var PVPoolDefaultStorageClass = ""
 
 // ImagePullSecret is optionally used to authenticate when pulling the container images
 // which is needed when using a private container registry.
 var ImagePullSecret = ""
-
-// DBVolumeSizeGB can be used to override the default database volume size
-var DBVolumeSizeGB = 0
 
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
@@ -100,8 +104,8 @@ func init() {
 		Namespace, "Target namespace",
 	)
 	FlagSet.StringVar(
-		&StorageClassName, "storage-class",
-		StorageClassName, "Storage class name",
+		&OperatorImage, "operator-image",
+		OperatorImage, "Operator image",
 	)
 	FlagSet.StringVar(
 		&NooBaaImage, "noobaa-image",
@@ -109,18 +113,22 @@ func init() {
 	)
 	FlagSet.StringVar(
 		&DBImage, "db-image",
-		DBImage, "DB image",
-	)
-	FlagSet.StringVar(
-		&OperatorImage, "operator-image",
-		OperatorImage, "Operator image",
-	)
-	FlagSet.StringVar(
-		&ImagePullSecret, "image-pull-secret",
-		ImagePullSecret, "Image pull secret (must be in same namespace)",
+		DBImage, "The database container image",
 	)
 	FlagSet.IntVar(
 		&DBVolumeSizeGB, "db-volume-size-gb",
 		DBVolumeSizeGB, "The database volume size in GB",
+	)
+	FlagSet.StringVar(
+		&DBStorageClass, "db-storage-class",
+		DBStorageClass, "The database volume storage class name",
+	)
+	FlagSet.StringVar(
+		&PVPoolDefaultStorageClass, "pv-pool-default-storage-class",
+		PVPoolDefaultStorageClass, "The default storage class name for BackingStores of type pv-pool",
+	)
+	FlagSet.StringVar(
+		&ImagePullSecret, "image-pull-secret",
+		ImagePullSecret, "Image pull secret (must be in same namespace)",
 	)
 }

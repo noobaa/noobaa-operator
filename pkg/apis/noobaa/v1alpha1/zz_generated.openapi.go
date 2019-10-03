@@ -376,8 +376,22 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref common.ReferenceCallback) co
 					},
 					"dbVolumeResources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DBVolumeResources (optional) overrides the default PVC resource requirements for the database volume (mongo). Updates to this value are supported only for increasing the size, and only if the storage class specifies `allowVolumeExpansion: true`.",
+							Description: "DBVolumeResources (optional) overrides the default PVC resource requirements for the database volume. For the time being this field is immutable and can only be set on system creation. This is because volume size updates are only supported for increasing the size, and only if the storage class specifies `allowVolumeExpansion: true`,",
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+						},
+					},
+					"dbStorageClass": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DBStorageClass (optional) overrides the default cluster StorageClass for the database volume. For the time being this field is immutable and can only be set on system creation. This affects where the system stores its database which contains system config, buckets, objects meta-data and mapping file parts to storage locations.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"pvPoolDefaultStorageClass": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes. This affects where the system stores data chunks (encrypted). Updates to this field will only affect new pv-pools, but updates to existing pools are not supported by the operator.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"tolerations": {
@@ -397,13 +411,6 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref common.ReferenceCallback) co
 						SchemaProps: spec.SchemaProps{
 							Description: "ImagePullSecret (optional) sets a pull secret for the system image",
 							Ref:         ref("k8s.io/api/core/v1.LocalObjectReference"),
-						},
-					},
-					"storageClassName": {
-						SchemaProps: spec.SchemaProps{
-							Description: "StorageClassName (optional) overrides the default StorageClass for the PVC that the operator creates, this affects where the system stores its database which contains system config, buckets, objects meta-data and mapping file parts to storage locations.",
-							Type:        []string{"string"},
-							Format:      "",
 						},
 					},
 				},

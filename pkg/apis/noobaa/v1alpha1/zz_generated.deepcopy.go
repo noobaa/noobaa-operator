@@ -403,6 +403,16 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 		*out = new(corev1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DBStorageClass != nil {
+		in, out := &in.DBStorageClass, &out.DBStorageClass
+		*out = new(string)
+		**out = **in
+	}
+	if in.PVPoolDefaultStorageClass != nil {
+		in, out := &in.PVPoolDefaultStorageClass, &out.PVPoolDefaultStorageClass
+		*out = new(string)
+		**out = **in
+	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
 		*out = make([]corev1.Toleration, len(*in))
@@ -413,11 +423,6 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 	if in.ImagePullSecret != nil {
 		in, out := &in.ImagePullSecret, &out.ImagePullSecret
 		*out = new(corev1.LocalObjectReference)
-		**out = **in
-	}
-	if in.StorageClassName != nil {
-		in, out := &in.StorageClassName, &out.StorageClassName
-		*out = new(string)
 		**out = **in
 	}
 	return

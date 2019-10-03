@@ -1,7 +1,8 @@
 package system
 
 import (
-	"fmt"
+	"encoding/json"
+	"reflect"
 	"strings"
 
 	"github.com/google/uuid"
@@ -74,23 +75,28 @@ func (r *Reconciler) SetDesiredCoreApp() {
 	podSpec.ServiceAccountName = "noobaa"
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
-		if c.Name == "init" {
+		switch c.Name {
+		case "init":
 			c.Image = r.NooBaa.Status.ActualImage
 		}
 	}
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
-		if c.Name == "core" {
+		switch c.Name {
+		case "core":
 			c.Image = r.NooBaa.Status.ActualImage
 			for j := range c.Env {
-				if c.Env[j].Name == "AGENT_PROFILE" {
-					c.Env[j].Value = fmt.Sprintf(`{ "image": "%s" }`, r.NooBaa.Status.ActualImage)
+				switch c.Env[j].Name {
+				// case "ENDPOINT_FORKS_NUMBER":
+				// 	c.Env[j].Value = "1" // TODO recalculate
+				case "AGENT_PROFILE":
+					c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
 				}
 			}
 			if r.NooBaa.Spec.CoreResources != nil {
 				c.Resources = *r.NooBaa.Spec.CoreResources
 			}
-		} else if c.Name == "db" {
+		case "db":
 			if r.NooBaa.Spec.DBImage == nil {
 				c.Image = options.DBImage
 			} else {
@@ -112,16 +118,53 @@ func (r *Reconciler) SetDesiredCoreApp() {
 		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
 	}
 
-	for i := range r.CoreApp.Spec.VolumeClaimTemplates {
-		pvc := &r.CoreApp.Spec.VolumeClaimTemplates[i]
-		pvc.Spec.StorageClassName = r.NooBaa.Spec.StorageClassName
-		if pvc.Name == "db" && r.NooBaa.Spec.DBVolumeResources != nil {
-			pvc.Spec.Resources = *r.NooBaa.Spec.DBVolumeResources
+	if r.CoreApp.UID == "" {
+		for i := range r.CoreApp.Spec.VolumeClaimTemplates {
+			pvc := &r.CoreApp.Spec.VolumeClaimTemplates[i]
+			r.Own(pvc)
+			// unsetting BlockOwnerDeletion to acoid error when trying to own pvc:
+			// "cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
+			pvc.OwnerReferences[0].BlockOwnerDeletion = nil
+			switch pvc.Name {
+			case "db":
+				if r.NooBaa.Spec.DBStorageClass != nil {
+					pvc.Spec.StorageClassName = r.NooBaa.Spec.DBStorageClass
+				}
+				if r.NooBaa.Spec.DBVolumeResources != nil {
+					pvc.Spec.Resources = *r.NooBaa.Spec.DBVolumeResources
+				}
+			}
 		}
-		// unsetting BlockOwnerDeletion to acoid error when trying to own pvc:
-		// "cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
-		r.Own(pvc)
-		pvc.OwnerReferences[0].BlockOwnerDeletion = nil
+	} else {
+		// when already exists we check that there is no update requested to the volumes
+		// otherwise we report that volume update is unsupported
+		for i := range r.CoreApp.Spec.VolumeClaimTemplates {
+			pvc := &r.CoreApp.Spec.VolumeClaimTemplates[i]
+			switch pvc.Name {
+			case "db":
+				currentClass := ""
+				desiredClass := ""
+				if pvc.Spec.StorageClassName != nil {
+					currentClass = *pvc.Spec.StorageClassName
+				}
+				if r.NooBaa.Spec.DBStorageClass != nil {
+					desiredClass = *r.NooBaa.Spec.DBStorageClass
+				}
+				if desiredClass != currentClass {
+					r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBStorageClassIsImmutable",
+						"spec.dbStorageClass is immutable and cannot be updated for volume %q in existing %s %q"+
+							" since it requires volume recreate and migrate which is unsupported by the operator",
+						pvc.Name, r.CoreApp.TypeMeta.Kind, r.CoreApp.Name)
+				}
+				if r.NooBaa.Spec.DBVolumeResources != nil &&
+					!reflect.DeepEqual(pvc.Spec.Resources, *r.NooBaa.Spec.DBVolumeResources) {
+					r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBVolumeResourcesIsImmutable",
+						"spec.dbVolumeResources is immutable and cannot be updated for volume %q in existing %s %q"+
+							" since it requires volume recreate and migrate which is unsupported by the operator",
+						pvc.Name, r.CoreApp.TypeMeta.Kind, r.CoreApp.Name)
+				}
+			}
+		}
 	}
 }
 
@@ -194,4 +237,22 @@ func (r *Reconciler) ReconcileCredentialsRequest() error {
 		return nil
 	}
 	return err
+}
+
+// SetDesiredAgentProfile updates the value of the AGENT_PROFILE env
+func (r *Reconciler) SetDesiredAgentProfile(profileString string) string {
+	agentProfile := map[string]interface{}{}
+	err := json.Unmarshal([]byte(profileString), &agentProfile)
+	if err != nil {
+		r.Logger.Infof("SetDesiredAgentProfile: ignore non-json AGENT_PROFILE value %q: %v", profileString, err)
+	}
+	agentProfile["image"] = r.NooBaa.Status.ActualImage
+	if r.NooBaa.Spec.PVPoolDefaultStorageClass != nil {
+		agentProfile["storage_class"] = *r.NooBaa.Spec.PVPoolDefaultStorageClass
+	} else {
+		delete(agentProfile, "storage_class")
+	}
+	profileBytes, err := json.Marshal(agentProfile)
+	util.Panic(err)
+	return string(profileBytes)
 }
