@@ -3,6 +3,7 @@ package cli
 import (
 	"flag"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/noobaa/noobaa-operator/v2/pkg/backingstore"
@@ -45,6 +46,14 @@ const ASCIILogo2 = `
 #                       # 
 #      N O O B A A      # 
 `
+
+//Run runs
+func Run() {
+	err := Cmd().Execute()
+	if err != nil {
+		os.Exit(1)
+	}
+}
 
 // Cmd returns a CLI command
 func Cmd() *cobra.Command {
