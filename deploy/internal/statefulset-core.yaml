@@ -93,6 +93,10 @@ spec:
               key: server_secret
         - name: AGENT_PROFILE
           value: VALUE_AGENT_PROFILE
+        - name: ENDPOINT_FORKS_NUMBER
+          value: "1" 
+        - name: DISABLE_DEV_RANDOM_SEED
+          value: "true"
         - name: OAUTH_AUTHORIZATION_ENDPOINT
           valueFrom:
             configMapKeyRef:
