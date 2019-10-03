@@ -182,7 +182,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		util.KubeDelete(pvc)
 	}
 	// NoobaaDB
-	noobaaDB := util.KubeObject(bundle.File_deploy_internal_statefulset_mongo_yaml).(*appsv1.StatefulSet)
+	noobaaDB := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
 	for i := range noobaaDB.Spec.VolumeClaimTemplates {
 		t := &noobaaDB.Spec.VolumeClaimTemplates[i]
 		pvc := &corev1.PersistentVolumeClaim{
@@ -311,6 +311,18 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	sysKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
 	r := NewReconciler(sysKey, klient, scheme.Scheme, nil)
 	r.CheckAll()
+	// NobbaaDB
+	for i := range r.NoobaaDB.Spec.VolumeClaimTemplates {
+		t := &r.NoobaaDB.Spec.VolumeClaimTemplates[i]
+		pvc := &corev1.PersistentVolumeClaim{
+			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      t.Name + "-" + options.SystemName + "-db-0",
+				Namespace: options.Namespace,
+			},
+		}
+		util.KubeCheck(pvc)
+	}
 
 	// TEMPORARY ? check PVCs here because we couldn't own them in openshift
 	// See https://github.com/noobaa/noobaa-operator/issues/12
@@ -326,86 +338,75 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		util.KubeCheck(pvc)
 	}
 
-	// NobbaaDB
-	for i := range r.NoobaaDB.Spec.VolumeClaimTemplates {
-		t := &r.NoobaaDB.Spec.VolumeClaimTemplates[i]
-		pvc := &corev1.PersistentVolumeClaim{
-			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      t.Name + "-" + options.SystemName + "-db-0",
-				Namespace: options.Namespace,
-			},
-		}
-		util.KubeCheck(pvc)
-	}
 	// sys := cli.LoadSystemDefaults()
 	// util.KubeCheck(cli.Client, sys)
+	if r.NooBaa.Status.Phase == nbv1.SystemPhaseReady {
 
-	if r.NooBaa.Status.Phase != nbv1.SystemPhaseReady {
+		log.Printf("✅ System Phase is %q\n", r.NooBaa.Status.Phase)
+		secretRef := r.NooBaa.Status.Accounts.Admin.SecretRef
+		secret := &corev1.Secret{
+			TypeMeta: metav1.TypeMeta{Kind: "Secret"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      secretRef.Name,
+				Namespace: secretRef.Namespace,
+			},
+		}
+		util.KubeCheck(secret)
+
+		fmt.Println("")
+		fmt.Println("#------------------#")
+		fmt.Println("#- Mgmt Addresses -#")
+		fmt.Println("#------------------#")
+		fmt.Println("")
+
+		fmt.Println("ExternalDNS :", r.NooBaa.Status.Services.ServiceMgmt.ExternalDNS)
+		fmt.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceMgmt.ExternalIP)
+		fmt.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceMgmt.NodePorts)
+		fmt.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceMgmt.InternalDNS)
+		fmt.Println("InternalIP  :", r.NooBaa.Status.Services.ServiceMgmt.InternalIP)
+		fmt.Println("PodPorts    :", r.NooBaa.Status.Services.ServiceMgmt.PodPorts)
+
+		fmt.Println("")
+		fmt.Println("#--------------------#")
+		fmt.Println("#- Mgmt Credentials -#")
+		fmt.Println("#--------------------#")
+		fmt.Println("")
+		for key, value := range secret.StringData {
+			if !strings.HasPrefix(key, "AWS") {
+				fmt.Printf("%s: %s\n", key, value)
+			}
+		}
+
+		fmt.Println("")
+		fmt.Println("#----------------#")
+		fmt.Println("#- S3 Addresses -#")
+		fmt.Println("#----------------#")
+		fmt.Println("")
+
+		fmt.Println("ExternalDNS :", r.NooBaa.Status.Services.ServiceS3.ExternalDNS)
+		fmt.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceS3.ExternalIP)
+		fmt.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceS3.NodePorts)
+		fmt.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceS3.InternalDNS)
+		fmt.Println("InternalIP  :", r.NooBaa.Status.Services.ServiceS3.InternalIP)
+		fmt.Println("PodPorts    :", r.NooBaa.Status.Services.ServiceS3.PodPorts)
+
+		fmt.Println("")
+		fmt.Println("#------------------#")
+		fmt.Println("#- S3 Credentials -#")
+		fmt.Println("#------------------#")
+		fmt.Println("")
+		for key, value := range secret.StringData {
+			if strings.HasPrefix(key, "AWS") {
+				fmt.Printf("%s: %s\n", key, value)
+			}
+		}
+		fmt.Println("")
+	} else {
 		log.Printf("❌ System Phase is %q\n", r.NooBaa.Status.Phase)
 		util.IgnoreError(CheckWaitingFor(r.NooBaa))
-		return
+		//return
 	}
 
-	log.Printf("✅ System Phase is %q\n", r.NooBaa.Status.Phase)
-	secretRef := r.NooBaa.Status.Accounts.Admin.SecretRef
-	secret := &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{Kind: "Secret"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretRef.Name,
-			Namespace: secretRef.Namespace,
-		},
-	}
-	util.KubeCheck(secret)
-
-	fmt.Println("")
-	fmt.Println("#------------------#")
-	fmt.Println("#- Mgmt Addresses -#")
-	fmt.Println("#------------------#")
-	fmt.Println("")
-
-	fmt.Println("ExternalDNS :", r.NooBaa.Status.Services.ServiceMgmt.ExternalDNS)
-	fmt.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceMgmt.ExternalIP)
-	fmt.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceMgmt.NodePorts)
-	fmt.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceMgmt.InternalDNS)
-	fmt.Println("InternalIP  :", r.NooBaa.Status.Services.ServiceMgmt.InternalIP)
-	fmt.Println("PodPorts    :", r.NooBaa.Status.Services.ServiceMgmt.PodPorts)
-
-	fmt.Println("")
-	fmt.Println("#--------------------#")
-	fmt.Println("#- Mgmt Credentials -#")
-	fmt.Println("#--------------------#")
-	fmt.Println("")
-	for key, value := range secret.StringData {
-		if !strings.HasPrefix(key, "AWS") {
-			fmt.Printf("%s: %s\n", key, value)
-		}
-	}
-
-	fmt.Println("")
-	fmt.Println("#----------------#")
-	fmt.Println("#- S3 Addresses -#")
-	fmt.Println("#----------------#")
-	fmt.Println("")
-
-	fmt.Println("ExternalDNS :", r.NooBaa.Status.Services.ServiceS3.ExternalDNS)
-	fmt.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceS3.ExternalIP)
-	fmt.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceS3.NodePorts)
-	fmt.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceS3.InternalDNS)
-	fmt.Println("InternalIP  :", r.NooBaa.Status.Services.ServiceS3.InternalIP)
-	fmt.Println("PodPorts    :", r.NooBaa.Status.Services.ServiceS3.PodPorts)
-
-	fmt.Println("")
-	fmt.Println("#------------------#")
-	fmt.Println("#- S3 Credentials -#")
-	fmt.Println("#------------------#")
-	fmt.Println("")
-	for key, value := range secret.StringData {
-		if strings.HasPrefix(key, "AWS") {
-			fmt.Printf("%s: %s\n", key, value)
-		}
-	}
-	fmt.Println("")
 }
 
 // RunReconcile runs a CLI command
@@ -532,12 +533,14 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 		noobaaDB)
 
 	if errors.IsNotFound(noobaaDBErr) {
-		log.Printf(`❌ StatefulSet %q is missing.`, noobaaDBName)
-		return noobaaDBErr
+		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not found yet`,
+			sys.Status.Phase, noobaaDBName)
+		return nil
 	}
 	if noobaaDBErr != nil {
-		log.Printf(`❌ StatefulSet %q unknown error in Get(): %s`, noobaaDBName, noobaaDBErr)
-		return noobaaDBErr
+		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not found yet (error): %s`,
+			sys.Status.Phase, noobaaDBName, noobaaDBErr)
+		return nil
 	}
 	desiredReplicas = int32(1)
 	if noobaaDB.Spec.Replicas != nil {
@@ -583,7 +586,6 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 		return nil
 	}
 
-	//
 	corePodList := &corev1.PodList{}
 	corePodSelector, _ := labels.Parse("noobaa-core=" + sys.Name)
 	corePodErr := klient.List(util.Context(),

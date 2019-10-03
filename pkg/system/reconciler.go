@@ -91,7 +91,7 @@ func NewReconciler(
 		Logger:              logrus.WithField("sys", req.Namespace+"/"+req.Name),
 		NooBaa:              util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		CoreApp:             util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
-		NoobaaDB:            util.KubeObject(bundle.File_deploy_internal_statefulset_mongo_yaml).(*appsv1.StatefulSet),
+		NoobaaDB:            util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet),
 		NoobaaDBPod:         &corev1.Pod{},
 		ServiceMgmt:         util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
 		ServiceS3:           util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),

@@ -12,17 +12,6 @@ spec:
   serviceName: noobaa-mgmt
   updateStrategy:
     type: RollingUpdate
-  volumeClaimTemplates:
-    - metadata:
-        name: db
-        labels:
-          app: noobaa
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 50Gi
   template:
     metadata:
       labels:
@@ -35,19 +24,6 @@ spec:
       volumes:
         - name: logs
           emptyDir: {}
-      initContainers:
-        #----------------#
-        # INIT CONTAINER #
-        #----------------#
-        - name: init
-          image: NOOBAA_CORE_IMAGE
-          imagePullPolicy: IfNotPresent
-          command:
-            - /noobaa_init_files/noobaa_init.sh
-            - init_mongo
-          volumeMounts:
-            - name: db
-              mountPath: /mongo_data
       containers:
         #----------------#
         # CORE CONTAINER #
@@ -79,6 +55,8 @@ spec:
             - containerPort: 8446
             - containerPort: 60100
           env:
+            - name: MONGODB_URL
+              value: "mongodb://127.0.0.1/nbcore"
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
             - name: JWT_SECRET
@@ -107,23 +85,3 @@ spec:
                   optional: true
             - name: container_dbg
               value: "" # replacing the empty value with any value will set the container to dbg mode
-        #--------------------#
-        # DATABASE CONTAINER #
-        #--------------------#
-        - name: db
-          image: NOOBAA_DB_IMAGE
-          imagePullPolicy: IfNotPresent
-          command:
-            - bash
-            - -c
-            - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip 127.0.0.1 --dbpath /data/mongo/cluster/shard1
-          resources:
-            requests:
-              cpu: "500m"
-              memory: "1Gi"
-            limits:
-              cpu: "4"
-              memory: "16Gi"
-          volumeMounts:
-            - name: db
-              mountPath: /data

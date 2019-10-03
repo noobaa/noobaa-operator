@@ -86,26 +86,27 @@ func (r *Reconciler) SetDesiredNoobaaDB() {
 	r.NoobaaDB.Spec.ServiceName = r.ServiceMgmt.Name
 
 	podSpec := &r.NoobaaDB.Spec.Template.Spec
-	podSpec.ServiceAccountName = "noobaa-operator" // TODO do we use the same SA?
+	podSpec.ServiceAccountName = "noobaa"
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
-		if c.Name == "init-mongo" {
+		if c.Name == "init" {
 			c.Image = r.NooBaa.Status.ActualImage
 		}
 	}
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
-		if c.Name == "mongodb" {
-			if r.NooBaa.Spec.MongoImage == nil {
-				c.Image = options.MongoImage
+		if c.Name == "db" {
+			if r.NooBaa.Spec.DBImage == nil {
+				c.Image = options.DBImage
 			} else {
-				c.Image = *r.NooBaa.Spec.MongoImage
+				c.Image = *r.NooBaa.Spec.DBImage
 			}
-			if r.NooBaa.Spec.MongoResources != nil {
-				c.Resources = *r.NooBaa.Spec.MongoResources
+			if r.NooBaa.Spec.DBResources != nil {
+				c.Resources = *r.NooBaa.Spec.DBResources
 			}
 		}
 	}
+
 	if r.NooBaa.Spec.ImagePullSecret == nil {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{}
@@ -116,19 +117,14 @@ func (r *Reconciler) SetDesiredNoobaaDB() {
 	if r.NooBaa.Spec.Tolerations != nil {
 		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
 	}
+
 	for i := range r.NoobaaDB.Spec.VolumeClaimTemplates {
 		pvc := &r.NoobaaDB.Spec.VolumeClaimTemplates[i]
 		pvc.Spec.StorageClassName = r.NooBaa.Spec.StorageClassName
-
-		// TODO we want to own the PVC's by NooBaa system but get errors on openshift:
-		//   Warning  FailedCreate  56s  statefulset-controller
-		//   create Pod noobaa-core-0 in StatefulSet noobaa-core failed error:
-		//   Failed to create PVC mongo-datadir-noobaa-core-0:
-		//   persistentvolumeclaims "mongo-datadir-noobaa-core-0" is forbidden:
-		//   cannot set blockOwnerDeletion if an ownerReference refers to a resource
-		//   you can't set finalizers on: , <nil>, ...
-
-		// r.Own(pvc)
+		// unsetting BlockOwnerDeletion to acoid error when trying to own pvc:
+		// "cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
+		r.Own(pvc)
+		pvc.OwnerReferences[0].BlockOwnerDeletion = nil
 	}
 }
 
@@ -142,12 +138,7 @@ func (r *Reconciler) SetDesiredCoreApp() {
 
 	podSpec := &r.CoreApp.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa"
-	for i := range podSpec.InitContainers {
-		c := &podSpec.InitContainers[i]
-		if c.Name == "init" {
-			c.Image = r.NooBaa.Status.ActualImage
-		}
-	}
+
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
 		if c.Name == "core" {
@@ -162,15 +153,6 @@ func (r *Reconciler) SetDesiredCoreApp() {
 			}
 			if r.NooBaa.Spec.CoreResources != nil {
 				c.Resources = *r.NooBaa.Spec.CoreResources
-			}
-		} else if c.Name == "db" {
-			if r.NooBaa.Spec.DBImage == nil {
-				c.Image = options.DBImage
-			} else {
-				c.Image = *r.NooBaa.Spec.DBImage
-			}
-			if r.NooBaa.Spec.DBResources != nil {
-				c.Resources = *r.NooBaa.Spec.DBResources
 			}
 		}
 	}
