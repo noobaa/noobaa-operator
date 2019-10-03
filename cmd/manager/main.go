@@ -8,9 +8,8 @@ package main
 
 import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/cli"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 )
 
 func main() {
-	util.IgnoreError(cli.Cmd().Execute())
+	cli.Run()
 }
