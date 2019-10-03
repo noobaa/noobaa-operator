@@ -63,6 +63,16 @@ clean:
 	@echo "✅ clean"
 .PHONY: clean
 
+release:
+	docker push $(IMAGE)
+	@echo "✅ docker push"
+	mkdir -p build-releases
+	cp build/_output/bin/noobaa-operator build-releases/noobaa-linux-v$(VERSION)
+	@echo "✅ build-releases/noobaa-linux-v$(VERSION)"
+	cp build/_output/bin/noobaa-operator-local build-releases/noobaa-mac-v$(VERSION)
+	@echo "✅ build-releases/noobaa-mac-v$(VERSION)"
+.PHONY: release
+
 
 #------------#
 #- Generate -#
