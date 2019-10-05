@@ -7,8 +7,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/noobaa/noobaa-operator/v2/build/_output/bundle"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"

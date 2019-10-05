@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/noobaa/noobaa-operator/v2/build/_output/bundle"
+	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 

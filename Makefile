@@ -21,7 +21,6 @@ OUTPUT ?= build/_output
 BIN ?= $(OUTPUT)/bin
 OLM ?= $(OUTPUT)/olm
 VENV ?= $(OUTPUT)/venv
-BUNDLE ?= $(OUTPUT)/bundle
 
 
 #------------#
@@ -47,8 +46,7 @@ image: gen
 .PHONY: image
 
 vendor:
-	mkdir -p $(BUNDLE)
-	echo "package bundle" > $(BUNDLE)/tmp.go
+	go mod tidy
 	go mod vendor
 	@echo "✅ vendor"
 .PHONY: vendor
@@ -78,13 +76,13 @@ release:
 #- Generate -#
 #------------#
 
-gen: vendor $(BUNDLE)/deploy.go
+gen: vendor pkg/bundle/deploy.go
 	@echo "✅ gen"
 .PHONY: gen
 
-$(BUNDLE)/deploy.go: pkg/bundle/bundle.go $(shell find deploy/ -type f)
-	mkdir -p $(BUNDLE)
-	go run pkg/bundle/bundle.go deploy/ $(BUNDLE)/deploy.go
+pkg/bundle/deploy.go: pkg/bundler/bundler.go $(shell find deploy/ -type f)
+	mkdir -p pkg/bundle
+	go run pkg/bundler/bundler.go deploy/ pkg/bundle/deploy.go
 
 gen-api: gen
 	$(TIME) operator-sdk generate k8s

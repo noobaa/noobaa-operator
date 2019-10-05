@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/noobaa/noobaa-operator/v2/build/_output/bundle"
+	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
