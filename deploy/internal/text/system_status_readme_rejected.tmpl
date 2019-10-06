@@ -8,3 +8,6 @@
 		kubectl -n {{.NooBaa.Namespace}} get events --sort-by=metadata.creationTimestamp
 
 	In order to retry, edit the system spec and the operator is watching and will be notified.
+
+	NooBaa Core Version:     {{.CoreVersion}}
+	NooBaa Operator Version: {{.OperatorVersion}}

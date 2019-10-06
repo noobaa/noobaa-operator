@@ -10,3 +10,6 @@
 	You can wait for a specific condition with:
 
 		kubectl -n {{.NooBaa.Namespace}} wait noobaa/noobaa --for condition=available --timeout -1s
+
+	NooBaa Core Version:     {{.CoreVersion}}
+	NooBaa Operator Version: {{.OperatorVersion}}

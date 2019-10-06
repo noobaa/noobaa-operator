@@ -40,8 +40,6 @@ func (r *Reconciler) ReconcilePhaseConnecting() error {
 		NodeIP:      mgmtURL.Hostname(),
 	})
 
-	r.NBClient.SetAuthToken(r.SecretOp.StringData["auth_token"])
-
 	// Check that the server is indeed serving the API already
 	// we use the read_auth call here because it's an API that always answers
 	// even when auth_token is empty.

@@ -60,6 +60,10 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 		}
 	}
 
+	if err := r.ReconileReadSystem(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -70,6 +74,7 @@ func (r *Reconciler) ReconcileSecretOp() error {
 	util.KubeCheck(r.SecretOp)
 
 	if r.SecretOp.StringData["auth_token"] != "" {
+		r.NBClient.SetAuthToken(r.SecretOp.StringData["auth_token"])
 		return nil
 	}
 
@@ -284,5 +289,19 @@ func (r *Reconciler) ReconcileOBCStorageClass() error {
 		return err
 	}
 
+	return nil
+}
+
+// ReconileReadSystem calls read_system on noobaa server and stores the result
+func (r *Reconciler) ReconileReadSystem() error {
+	// update noobaa-core version in reconciler struct
+	systemInfo, err := r.NBClient.ReadSystemAPI()
+	if err != nil {
+		r.Logger.Errorf("failed to read system info: %v", err)
+		return err
+	}
+	r.SystemInfo = &systemInfo
+	r.Logger.Infof("updating noobaa-core version to %s", systemInfo.Version)
+	r.CoreVersion = systemInfo.Version
 	return nil
 }
