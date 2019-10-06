@@ -192,7 +192,7 @@ func NewBucketRequest(
 	bucketOptions *obAPI.BucketOptions,
 ) (*BucketRequest, error) {
 
-	sysClient, err := system.Connect()
+	sysClient, err := system.Connect(false)
 	if err != nil {
 		return nil, err
 	}

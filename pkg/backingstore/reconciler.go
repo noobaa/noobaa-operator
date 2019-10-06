@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/noobaa/noobaa-operator/v2/build/_output/bundle"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/system"
@@ -238,7 +238,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 // and prepares the structures to reconcile
 func (r *Reconciler) ReadSystemInfo() error {
 
-	sysClient, err := system.Connect()
+	sysClient, err := system.Connect(false)
 	if err != nil {
 		return err
 	}
