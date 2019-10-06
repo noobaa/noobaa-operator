@@ -307,19 +307,19 @@ func KubeCheckOptional(obj runtime.Object) bool {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	err := klient.Get(ctx, objKey, obj)
 	if err == nil {
-		log.Printf("✅ Exists: %s %q\n", gvk.Kind, objKey.Name)
+		log.Printf("✅ (Optional) Exists: %s %q\n", gvk.Kind, objKey.Name)
 		return true
 	}
 	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
-		log.Printf("🌚 CRD Unavailable (Optional Feature): %s %q\n", gvk.Kind, objKey.Name)
+		log.Printf("⬛ (Optional) CRD Unavailable: %s %q\n", gvk.Kind, objKey.Name)
 		return false
 	}
 	if errors.IsNotFound(err) {
-		log.Printf("🌚 Not Found (Optional Feature): %s %q\n", gvk.Kind, objKey.Name)
+		log.Printf("⬛ (Optional) Not Found: %s %q\n", gvk.Kind, objKey.Name)
 		return false
 	}
 	if errors.IsConflict(err) {
-		log.Printf("❌ Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		log.Printf("❌ (Optional) Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
 		return false
 	}
 	Panic(err)
