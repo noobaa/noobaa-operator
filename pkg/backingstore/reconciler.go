@@ -238,7 +238,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 // and prepares the structures to reconcile
 func (r *Reconciler) ReadSystemInfo() error {
 
-	sysClient, err := system.Connect()
+	sysClient, err := system.Connect(false)
 	if err != nil {
 		return err
 	}

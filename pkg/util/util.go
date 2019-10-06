@@ -62,17 +62,6 @@ func KubeConfig() *rest.Config {
 	return lazyConfig
 }
 
-// KubeRest returns a configured kubernetes REST client
-func KubeRest() *rest.RESTClient {
-	if lazyRest == nil {
-		var err error
-		config := KubeConfig()
-		lazyRest, err = rest.RESTClientFor(config)
-		Panic(err)
-	}
-	return lazyRest
-}
-
 // MapperProvider creates RESTMapper
 func MapperProvider(config *rest.Config) (meta.RESTMapper, error) {
 	return meta.NewLazyRESTMapperLoader(func() (meta.RESTMapper, error) {

@@ -582,7 +582,7 @@ type Client struct {
 
 // GetNBClient returns an api client
 func GetNBClient() nb.Client {
-	c, err := Connect()
+	c, err := Connect(true)
 	if err != nil {
 		util.Logger().Fatalf("❌ %s", err)
 	}
@@ -592,7 +592,7 @@ func GetNBClient() nb.Client {
 // Connect loads the mgmt and S3 api details from the system.
 // It gets the endpoint address and token from the system status and secret that the
 // operator creates for the system.
-func Connect() (*Client, error) {
+func Connect(usePortForwarding bool) (*Client, error) {
 
 	klient := util.KubeClient()
 	sysObjKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
@@ -629,10 +629,25 @@ func Connect() (*Client, error) {
 	// 	return nil, fmt.Errorf("failed to parse s3 endpoint %q. got error: %v", s3NodePort, err)
 	// }
 
-	nbClient := nb.NewClient(&nb.APIRouterNodePort{
-		ServiceMgmt: r.ServiceMgmt,
-		NodeIP:      mgmtURL.Hostname(),
-	})
+	var nbClient nb.Client
+
+	if usePortForwarding {
+		router := &nb.APIRouterPortForward{
+			ServiceMgmt:  r.ServiceMgmt,
+			PodNamespace: r.NooBaa.Namespace,
+			PodName:      r.NooBaa.Name + "-core-0",
+		}
+		err = router.Start()
+		if err != nil {
+			return nil, err
+		}
+		nbClient = nb.NewClient(router)
+	} else {
+		nbClient = nb.NewClient(&nb.APIRouterNodePort{
+			ServiceMgmt: r.ServiceMgmt,
+			NodeIP:      mgmtURL.Hostname(),
+		})
+	}
 	nbClient.SetAuthToken(authToken)
 
 	s3Config := &aws.Config{
