@@ -44,6 +44,7 @@ type SystemInfo struct {
 	Accounts []AccountInfo `json:"accounts"`
 	Buckets  []BucketInfo  `json:"buckets"`
 	Pools    []PoolInfo    `json:"pools"`
+	Version  string        `json:"version"`
 	// TODO SystemInfo struct is partial ...
 }
 

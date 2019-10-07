@@ -12,6 +12,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	"github.com/noobaa/noobaa-operator/v2/version"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	semver "github.com/hashicorp/go-version"
@@ -49,13 +50,15 @@ var (
 
 // Reconciler is the context for loading or reconciling a noobaa system
 type Reconciler struct {
-	Request  types.NamespacedName
-	Client   client.Client
-	Scheme   *runtime.Scheme
-	Ctx      context.Context
-	Logger   *logrus.Entry
-	Recorder record.EventRecorder
-	NBClient nb.Client
+	Request         types.NamespacedName
+	Client          client.Client
+	Scheme          *runtime.Scheme
+	Ctx             context.Context
+	Logger          *logrus.Entry
+	Recorder        record.EventRecorder
+	NBClient        nb.Client
+	CoreVersion     string
+	OperatorVersion string
 
 	NooBaa              *nbv1.NooBaa
 	CoreApp             *appsv1.StatefulSet
@@ -70,6 +73,7 @@ type Reconciler struct {
 	OBCStorageClass     *storagev1.StorageClass
 	PrometheusRule      *monitoringv1.PrometheusRule
 	ServiceMonitor      *monitoringv1.ServiceMonitor
+	SystemInfo          *nb.SystemInfo
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -85,6 +89,8 @@ func NewReconciler(
 		Client:              client,
 		Scheme:              scheme,
 		Recorder:            recorder,
+		OperatorVersion:     version.Version,
+		CoreVersion:         options.ContainerImageTag,
 		Ctx:                 context.TODO(),
 		Logger:              logrus.WithField("sys", req.Namespace+"/"+req.Name),
 		NooBaa:              util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
