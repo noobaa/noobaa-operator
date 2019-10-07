@@ -1,6 +1,6 @@
 package bundle
 
-const Version = "2.0.1"
+const Version = "2.0.2-rc1"
 
 const Sha256_deploy_cluster_role_yaml = "f719ff8e0015a73d4e6ff322d2b30efa1cc89fcb3f856c06a5910785cb9e8dd8"
 
@@ -974,7 +974,7 @@ spec:
       name: s3-https
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "0b4bff7401117dda9ee9b945080750b121ffa7ed883702e2fe09266d9f086437"
+const Sha256_deploy_internal_statefulset_core_yaml = "1f9a19c4b334c3ef2854c8317d62ebbf49aba52f8221c8a434c5b1d808c9be2e"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -1071,24 +1071,32 @@ spec:
               key: server_secret
         - name: AGENT_PROFILE
           value: VALUE_AGENT_PROFILE
-        - name: ENDPOINT_FORKS_NUMBER
-          value: "1" 
         - name: DISABLE_DEV_RANDOM_SEED
           value: "true"
         - name: OAUTH_AUTHORIZATION_ENDPOINT
-          valueFrom:
-            configMapKeyRef:
-              name: noobaa-config-map
-              key: oauth_authorization_endpoint
-              optional: true
+          value: ""
         - name: OAUTH_TOKEN_ENDPOINT
-          valueFrom:
-            configMapKeyRef:
-              name: noobaa-config-map
-              key: oauth_token_endpoint
-              optional: true
+          value: ""
         - name: container_dbg
-          value: "" # replacing the empty value with any value will set the container to dbg mode
+          value: "" # any non-empty value will set the container to dbg mode
+        - name: CONTAINER_CPU_REQUEST
+          valueFrom:
+            resourceFieldRef:
+              resource: requests.cpu
+        - name: CONTAINER_MEM_REQUEST
+          valueFrom:
+            resourceFieldRef:
+              resource: requests.memory
+        - name: CONTAINER_CPU_LIMIT
+          valueFrom:
+            resourceFieldRef:
+              resource: limits.cpu
+        - name: CONTAINER_MEM_LIMIT
+          valueFrom:
+            resourceFieldRef:
+              resource: limits.memory
+        # - name: ENDPOINT_FORKS_NUMBER
+        #   value: "1"
 #--------------------#
 # DATABASE CONTAINER #
 #--------------------#
@@ -1714,7 +1722,7 @@ spec:
   sourceNamespace: marketplace
 `
 
-const Sha256_deploy_operator_yaml = "1e4f20f74f1a3e1e4741c2a066b04246907561f780b1d2566c50601ca3be0635"
+const Sha256_deploy_operator_yaml = "cca96157c1b8890cf472e7fadec04d3fb70b98741c25826d74fb6b1abd8f916a"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1734,7 +1742,7 @@ spec:
       serviceAccountName: noobaa
       containers:
         - name: noobaa-operator
-          image: noobaa/noobaa-operator:2.0.1
+          image: noobaa/noobaa-operator:2.0.2-rc1
           imagePullPolicy: IfNotPresent
           resources:
             limits:
