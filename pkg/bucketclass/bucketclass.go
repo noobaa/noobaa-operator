@@ -150,10 +150,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 
 	log.Printf("")
-	log.Printf("NOTE:")
-	log.Printf("  - This command has finished applying changes to the cluster.")
-	log.Printf("  - From now on, it only loops and reads the status, to monitor the operator work.")
-	log.Printf("  - You may Ctrl-C at any time to stop the loop and watch it manually.")
+	util.PrintThisNoteWhenFinishedApplyingAndStartWaitLoop()
 	log.Printf("")
 	log.Printf("BucketClass Wait Ready:")
 	if WaitReady(bucketClass) {

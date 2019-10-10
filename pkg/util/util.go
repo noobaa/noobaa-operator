@@ -701,3 +701,12 @@ func GetFlagStringOrPromptPassword(cmd *cobra.Command, flag string) string {
 	fmt.Printf("[got %d characters]\n", len(str))
 	return str
 }
+
+// PrintThisNoteWhenFinishedApplyingAndStartWaitLoop is a common log task
+func PrintThisNoteWhenFinishedApplyingAndStartWaitLoop() {
+	log := Logger()
+	log.Printf("NOTE:")
+	log.Printf("  - This command has finished applying changes to the cluster.")
+	log.Printf("  - From now on, it only loops and reads the status, to monitor the operator work.")
+	log.Printf("  - You may Ctrl-C at any time to stop the loop and watch it manually.")
+}
