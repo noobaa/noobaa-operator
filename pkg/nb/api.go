@@ -21,7 +21,7 @@ type Client interface {
 	CreateHostsPoolAPI(CreateHostsPoolParams) error
 	CreateCloudPoolAPI(CreateCloudPoolParams) error
 	CreateTierAPI(CreateTierParams) error
-	CreateTieringPolicyAPI(CreateTieringPolicyParams) error
+	CreateTieringPolicyAPI(TieringPolicyInfo) error
 
 	DeleteBucketAPI(DeleteBucketParams) error
 	DeleteAccountAPI(DeleteAccountParams) error
@@ -45,6 +45,7 @@ type SystemInfo struct {
 	Accounts []AccountInfo `json:"accounts"`
 	Buckets  []BucketInfo  `json:"buckets"`
 	Pools    []PoolInfo    `json:"pools"`
+	Tiers    []TierInfo    `json:"tiers"`
 	Version  string        `json:"version"`
 	// TODO SystemInfo struct is partial ...
 }
@@ -80,9 +81,59 @@ type AccountInfo struct {
 
 // BucketInfo is a struct of bucket info returned by the API
 type BucketInfo struct {
-	Name string `json:"name"`
+	Name        string             `json:"name"`
+	BucketType  string             `json:"bucket_type"`
+	Mode        string             `json:"mode"`
+	Undeletable string             `json:"undeletable"`
+	BucketClaim *BucketClaimInfo   `json:"bucket_claim,omitempty"`
+	Tiering     *TieringPolicyInfo `json:"tiering,omitempty"`
 	// TODO BucketInfo struct is partial ...
 }
+
+// TieringPolicyInfo is the information of a tiering policy
+type TieringPolicyInfo struct {
+	Name             string            `json:"name"`
+	Tiers            []TierItem        `json:"tiers"`
+	ChunkSplitConfig *ChunkSplitConfig `json:"chunk_split_config,omitempty"`
+	DataCapacity     *StorageInfo      `json:"data,omitempty"`
+	StorageCapacity  *StorageInfo      `json:"storage,omitempty"`
+}
+
+// TierInfo is the information of a tier
+type TierInfo struct {
+	Name             string            `json:"name"`
+	DataPlacement    string            `json:"data_placement,omitempty"`
+	AttachedPools    []string          `json:"attached_pools,omitempty"`
+	ChunkCoderConfig *ChunkCoderConfig `json:"chunk_coder_config,omitempty"`
+	DataCapacity     *StorageInfo      `json:"data,omitempty"`
+	StorageCapacity  *StorageInfo      `json:"storage,omitempty"`
+}
+
+// StorageInfo contains storage capacity information with specific break down
+type StorageInfo struct {
+	Total           *BigInt `json:"total,omitempty"`
+	Free            *BigInt `json:"free,omitempty"`
+	UnavailableFree *BigInt `json:"unavailable_free,omitempty"`
+	UnavailableUsed *BigInt `json:"unavailable_used,omitempty"`
+	Used            *BigInt `json:"used,omitempty"`
+	UsedOther       *BigInt `json:"used_other,omitempty"`
+	UsedReduced     *BigInt `json:"used_reduced,omitempty"`
+	Alloc           *BigInt `json:"alloc,omitempty"`
+	Limit           *BigInt `json:"limit,omitempty"`
+	Reserved        *BigInt `json:"reserved,omitempty"`
+	Real            *BigInt `json:"real,omitempty"`
+}
+
+// BigInt is an api type to handle large integers that cannot be represented by JSON
+type BigInt int64
+
+// TODO need to write custom marshalling because the json schema is oneOf integer or {n,peta}
+// func (n BigInt) MarshalJSON() ([]byte, error) {
+// 	return nil, nil
+// }
+// func (n *BigInt) UnmarshalJSON(data []byte) error {
+// 	return nil
+// }
 
 // PoolInfo is a struct of pool info returned by the API
 type PoolInfo struct {
@@ -189,8 +240,15 @@ type CreateSystemReply struct {
 
 // CreateBucketParams is the params of bucket_api.create_bucket()
 type CreateBucketParams struct {
-	Name    string `json:"name"`
-	Tiering string `json:"tiering,omitempty"`
+	Name        string           `json:"name"`
+	Tiering     string           `json:"tiering,omitempty"`
+	BucketClaim *BucketClaimInfo `json:"bucket_claim,omitempty"`
+}
+
+// BucketClaimInfo is the params of bucket_api.create_bucket()
+type BucketClaimInfo struct {
+	BucketClass string `json:"bucket_class,omitempty"`
+	Namespace   string `json:"namespace,omitempty"`
 }
 
 // AccountAllowedBuckets is part of CreateAccountParams
@@ -239,13 +297,6 @@ type CreateTierParams struct {
 	ChunkCoderConfig *ChunkCoderConfig `json:"chunk_coder_config,omitempty"`
 }
 
-// CreateTieringPolicyParams is the reply of tiering_policy_api.create_policy()
-type CreateTieringPolicyParams struct {
-	Name             string            `json:"name"`
-	Tiers            []TierItem        `json:"tiers"`
-	ChunkSplitConfig *ChunkSplitConfig `json:"chunk_split_config,omitempty"`
-}
-
 // ChunkCoderConfig defines a storage coding configuration
 type ChunkCoderConfig struct {
 	DigestType     *string `json:"digest_type,omitempty"`
@@ -274,6 +325,7 @@ type ChunkSplitConfig struct {
 type TierItem struct {
 	Order int64  `json:"order"`
 	Tier  string `json:"tier"`
+	Mode  string `json:"mode,omitempty"`
 }
 
 // DeleteBucketParams is the params of bucket_api.delete_bucket()
@@ -528,7 +580,7 @@ func (c *RPCClient) CreateTierAPI(params CreateTierParams) error {
 }
 
 // CreateTieringPolicyAPI calls tiering_policy_api.create_policy()
-func (c *RPCClient) CreateTieringPolicyAPI(params CreateTieringPolicyParams) error {
+func (c *RPCClient) CreateTieringPolicyAPI(params TieringPolicyInfo) error {
 	req := &RPCRequest{API: "tiering_policy_api", Method: "create_policy", Params: params}
 	res := &RPCResponse{}
 	return c.Call(req, res)
