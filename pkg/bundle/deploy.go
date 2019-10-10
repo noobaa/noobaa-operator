@@ -1780,7 +1780,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "11b92df609b86787c9fea9d6c4fb37e3d2a71295c2bb4f669dfdd3d9a8634508"
+const Sha256_deploy_role_yaml = "c505b808b24f44248bb52f96464e89ac839ee2968daa84167155091206e4ce97"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -1809,6 +1809,14 @@ rules:
   - events
   - configmaps
   - secrets
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  resourceNames:
+    - noobaa
   verbs:
   - '*'
 - apiGroups:

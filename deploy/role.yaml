@@ -28,6 +28,14 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  resourceNames:
+    - noobaa
+  verbs:
+  - '*'
+- apiGroups:
   - apps
   resources:
   - deployments
