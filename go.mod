@@ -16,6 +16,7 @@ require (
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
 	github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190605231540-b8a4faf68e36 // 0.11.0
 	github.com/operator-framework/operator-sdk v0.10.0
+	github.com/rook/rook v1.1.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3

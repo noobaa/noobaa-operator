@@ -71,3 +71,21 @@ rules:
   - update
   - list
   - watch
+- apiGroups:
+  - ceph.rook.io
+  resources:
+  - cephobjectstores
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ceph.rook.io
+  resources:
+  - cephobjectstoreusers
+  verbs:
+  - get
+  - create
+  - update
+  - list
+  - watch

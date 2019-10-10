@@ -7,10 +7,12 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -173,17 +175,23 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		return nil
 	}
 
-	if r.CloudCreds.UID == "" {
-		log.Info("CredentialsRequest was not created. probably not supported. skipping ReconcileCloudCredentials")
-		return nil
-	}
-
 	// after we have cloud credential request, wait for credentials secret
 	cloudCredsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      r.CloudCreds.Spec.SecretRef.Name,
 			Namespace: r.CloudCreds.Spec.SecretRef.Namespace,
 		},
+	}
+
+	if r.CloudCreds.UID == "" {
+		log.Info("CredentialsRequest was not created. probably not supported. skipping ReconcileCloudCredentials")
+		// err := reconcileCephObjecetStoreUser()
+		// if err != nil {
+		// 	return err
+		// }
+		// // change secret name to ceph objectstore user name
+		// cloudCredsSecret.ObjectMeta.Name = r.CephObjectstoreUser.ObjectMeta.Name
+		return nil
 	}
 
 	util.KubeCheck(cloudCredsSecret)
@@ -238,6 +246,35 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		log.Errorf("got error on DefaultBackingStore creation. error: %v", err)
 		return err
 	}
+	return nil
+}
+
+func (r *Reconciler) reconcileCephObjecetStoreUser() error {
+	util.KubeCheck(r.CephObjectstoreUser)
+	if r.CephObjectstoreUser.UID != "" {
+		// already exists
+		return nil
+	}
+	// list ceph objectstores and pick the first one
+	cephObjectStoresList := &cephv1.CephObjectStoreList{}
+	if !util.KubeList(cephObjectStoresList, &client.ListOptions{Namespace: options.Namespace}) {
+		return fmt.Errorf("failed to list ceph objectstores")
+	}
+	if len(cephObjectStoresList.Items) == 0 {
+		// no object stores
+		return nil
+	}
+	// for now take the first one. need to decide what to do if multiple objectstores in one namespace
+	storeName := cephObjectStoresList.Items[0].ObjectMeta.Name
+	r.CephObjectstoreUser.Spec.Store = storeName
+
+	// create ceph objectstore user
+	err := r.Client.Create(r.Ctx, r.CephObjectstoreUser)
+	if err != nil {
+		r.Logger.Errorf("got error on CephObjectstoreUser creation. error: %v", err)
+		return err
+	}
+
 	return nil
 }
 

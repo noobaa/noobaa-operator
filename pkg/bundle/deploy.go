@@ -728,6 +728,17 @@ spec:
     storage: true
 `
 
+const Sha256_deploy_internal_ceph_objectstore_user_yaml = "9b60853f585d771e484854e34fc59adf56a6edb6acb1315eb2ea02b59d213755"
+
+const File_deploy_internal_ceph_objectstore_user_yaml = `apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: CEPH_OBJ_USER_NAME
+spec:
+  store: STORE_NAME
+  displayName: my display name
+`
+
 const Sha256_deploy_internal_cloud_creds_aws_cr_yaml = "8e4159bc3470c135b611b6d9f4338612be0e6ea381d5061cc79e84a7eec0ab6a"
 
 const File_deploy_internal_cloud_creds_aws_cr_yaml = `apiVersion: cloudcredential.openshift.io/v1
@@ -1119,7 +1130,7 @@ spec:
           mountPath: /data
 `
 
-const Sha256_deploy_internal_text_system_status_readme_progress_tmpl = "57be05bce16a38083799e1d559b4a418ea61148e98248deecea891459b8fdb7d"
+const Sha256_deploy_internal_text_system_status_readme_progress_tmpl = "d26aa1028e4a235018cc46e00392d3209d3e09e8320f3692be6346a9cfdf289a"
 
 const File_deploy_internal_text_system_status_readme_progress_tmpl = `
 
@@ -1133,14 +1144,19 @@ const File_deploy_internal_text_system_status_readme_progress_tmpl = `
 	You can wait for a specific condition with:
 
 		kubectl -n {{.NooBaa.Namespace}} wait noobaa/noobaa --for condition=available --timeout -1s
+
+	NooBaa Core Version:     {{.CoreVersion}}
+	NooBaa Operator Version: {{.OperatorVersion}}
 `
 
-const Sha256_deploy_internal_text_system_status_readme_ready_tmpl = "1c28f7e0548ab5f128b514738d049061e26aded743194297457a356b5a611cd9"
+const Sha256_deploy_internal_text_system_status_readme_ready_tmpl = "d2d8a51e85e4d75ee15f70b4e0baaf514149ae1a3678475a057a5ce04c6a0157"
 
 const File_deploy_internal_text_system_status_readme_ready_tmpl = `
 
 	Welcome to NooBaa!
 	-----------------
+	NooBaa Core Version:     {{.CoreVersion}}
+	NooBaa Operator Version: {{.OperatorVersion}}
 
 	Lets get started:
 
@@ -1165,7 +1181,7 @@ const File_deploy_internal_text_system_status_readme_ready_tmpl = `
 
 `
 
-const Sha256_deploy_internal_text_system_status_readme_rejected_tmpl = "2f1f771446dab18d71c23e79baeb6ab02cf1773f6881c6d1ab8797d434b78044"
+const Sha256_deploy_internal_text_system_status_readme_rejected_tmpl = "32d46b0a1eadbe10501b2b3a6529503c76c0c77e25464f56f4ee9fd9115100c4"
 
 const File_deploy_internal_text_system_status_readme_rejected_tmpl = `
 	ERROR: NooBaa operator cannot reconcile this system spec.
@@ -1177,6 +1193,9 @@ const File_deploy_internal_text_system_status_readme_rejected_tmpl = `
 		kubectl -n {{.NooBaa.Namespace}} get events --sort-by=metadata.creationTimestamp
 
 	In order to retry, edit the system spec and the operator is watching and will be notified.
+
+	NooBaa Core Version:     {{.CoreVersion}}
+	NooBaa Operator Version: {{.OperatorVersion}}
 `
 
 const Sha256_deploy_namespace_yaml = "303398323535d7f8229cb1a5378ad019cf4fa7930891688e3eea55c77e7bf69a"
@@ -1761,7 +1780,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "363502fb9e7745c5568256ee6ab8e02441232deed40ed73753a529fd66338cd9"
+const Sha256_deploy_role_yaml = "11b92df609b86787c9fea9d6c4fb37e3d2a71295c2bb4f669dfdd3d9a8634508"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -1830,6 +1849,24 @@ rules:
   - cloudcredential.openshift.io
   resources:
   - credentialsrequests
+  verbs:
+  - get
+  - create
+  - update
+  - list
+  - watch
+- apiGroups:
+  - ceph.rook.io
+  resources:
+  - cephobjectstores
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ceph.rook.io
+  resources:
+  - cephobjectstoreusers
   verbs:
   - get
   - create

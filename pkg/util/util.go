@@ -18,6 +18,7 @@ import (
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	operv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
+	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -50,6 +51,7 @@ func init() {
 	Panic(monitoringv1.AddToScheme(scheme.Scheme))
 	Panic(cloudcredsv1.AddToScheme(scheme.Scheme))
 	Panic(operv1.AddToScheme(scheme.Scheme))
+	Panic(cephv1.AddToScheme(scheme.Scheme))
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)
@@ -77,6 +79,7 @@ func MapperProvider(config *rest.Config) (meta.RESTMapper, error) {
 				g.Name == "operator.openshift.io" ||
 				g.Name == "cloudcredential.openshift.io" ||
 				g.Name == "monitoring.coreos.com" ||
+				g.Name == "ceph.rook.io" ||
 				strings.HasSuffix(g.Name, ".k8s.io") {
 				return true
 			}
