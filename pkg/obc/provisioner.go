@@ -179,6 +179,7 @@ func (p *Provisioner) Revoke(ob *nbv1.ObjectBucket) error {
 type BucketRequest struct {
 	Provisioner *Provisioner
 	OB          *nbv1.ObjectBucket
+	OBC         *nbv1.ObjectBucketClaim
 	BucketName  string
 	AccountName string
 	SysClient   *system.Client
@@ -210,6 +211,7 @@ func NewBucketRequest(
 	r := &BucketRequest{
 		Provisioner: p,
 		OB:          ob,
+		OBC:         bucketOptions.ObjectBucketClaim,
 		SysClient:   sysClient,
 	}
 
@@ -255,8 +257,9 @@ func NewBucketRequest(
 						AdditionalConfigData: map[string]string{},
 					},
 					AdditionalState: map[string]string{
-						"account":     r.AccountName, // needed for delete flow
-						"bucketclass": bucketClassName,
+						"account":               r.AccountName, // needed for delete flow
+						"bucketclass":           bucketClassName,
+						"bucketclassgeneration": fmt.Sprintf("%d", r.BucketClass.Generation),
 					},
 				},
 			},
@@ -313,7 +316,7 @@ func (r *BucketRequest) CreateBucket() error {
 		}
 	}
 
-	err = r.SysClient.NBClient.CreateTieringPolicyAPI(nb.CreateTieringPolicyParams{
+	err = r.SysClient.NBClient.CreateTieringPolicyAPI(nb.TieringPolicyInfo{
 		Name:  tierName,
 		Tiers: tiers,
 	})
@@ -324,6 +327,10 @@ func (r *BucketRequest) CreateBucket() error {
 	err = r.SysClient.NBClient.CreateBucketAPI(nb.CreateBucketParams{
 		Name:    r.BucketName,
 		Tiering: tierName,
+		BucketClaim: &nb.BucketClaimInfo{
+			BucketClass: r.BucketClass.Name,
+			Namespace:   r.OBC.Namespace,
+		},
 	})
 	if err != nil {
 		if nbErr, ok := err.(*nb.RPCError); ok {

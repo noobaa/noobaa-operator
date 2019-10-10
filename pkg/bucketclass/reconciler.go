@@ -9,11 +9,13 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
+	"github.com/noobaa/noobaa-operator/v2/pkg/system"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -124,6 +126,9 @@ func (r *Reconciler) ReconcilePhases() error {
 	if err := r.ReconcilePhaseVerifying(); err != nil {
 		return err
 	}
+	if err := r.ReconcilePhaseConfiguring(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -167,7 +172,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 	r.SetPhase(
 		nbv1.BucketClassPhaseVerifying,
 		"BucketClassPhaseVerifying",
-		"noobaa operator started phase 1/3 - \"Verifying\"",
+		"noobaa operator started phase 1/2 - \"Verifying\"",
 	)
 
 	if r.NooBaa.UID == "" {
@@ -203,6 +208,62 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			}
 		}
 	}
+
+	return nil
+}
+
+// ReconcilePhaseConfiguring updates existing buckets to match the changes in bucket class
+func (r *Reconciler) ReconcilePhaseConfiguring() error {
+
+	r.SetPhase(
+		nbv1.BucketClassPhaseConfiguring,
+		"BucketClassPhaseConfiguring",
+		"noobaa operator started phase 2/2 - \"Configuring\"",
+	)
+
+	objectBuckets := &nbv1.ObjectBucketList{}
+	obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
+	util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
+
+	var bucketNames []string
+	for i := range objectBuckets.Items {
+		ob := &objectBuckets.Items[i]
+		bucketClass := ob.Spec.AdditionalState["bucketclass"]
+		bucketClassGeneration := ob.Spec.AdditionalState["bucketclassgeneration"]
+		bucketName := ob.Spec.Endpoint.BucketName
+		if bucketClass != r.BucketClass.Name {
+			continue
+		}
+		if bucketClassGeneration == fmt.Sprintf("%d", r.BucketClass.Generation) {
+			continue
+		}
+		bucketNames = append(bucketNames, bucketName)
+	}
+
+	if len(bucketNames) == 0 {
+		return nil
+	}
+
+	sysClient, err := system.Connect(false)
+	if err != nil {
+		return err
+	}
+	r.NBClient = sysClient.NBClient
+
+	systemInfo, err := r.NBClient.ReadSystemAPI()
+	if err != nil {
+		return err
+	}
+	r.SystemInfo = &systemInfo
+
+	// TODO ReconcileTieringPolicy
+	// for i := range r.SystemInfo.Buckets {
+	// 	bucket := &r.SystemInfo.Buckets[i]
+	// 	tiering := bucket.Tiering
+	// 	for j := range tiering.Tiers {
+	// 		tierName := &tiering.Tiers[j].Tier
+	// 	}
+	// }
 
 	return nil
 }

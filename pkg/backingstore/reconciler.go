@@ -149,27 +149,10 @@ func (r *Reconciler) ReconcilePhases() error {
 	if err := r.ReconcilePhaseVerifying(); err != nil {
 		return err
 	}
-
-	r.SetPhase(
-		nbv1.BackingStorePhaseConnecting,
-		"BackingStorePhaseConnecting",
-		"noobaa operator started phase 2/3 - \"Connecting\"",
-	)
-
-	if err := r.ReadSystemInfo(); err != nil {
+	if err := r.ReconcilePhaseConnecting(); err != nil {
 		return err
 	}
-
-	r.SetPhase(
-		nbv1.BackingStorePhaseCreating,
-		"BackingStorePhaseCreating",
-		"noobaa operator started phase 3/3 - \"Creating\"",
-	)
-
-	if err := r.ReconcileExternalConnection(); err != nil {
-		return err
-	}
-	if err := r.ReconcilePool(); err != nil {
+	if err := r.ReconcilePhaseCreating(); err != nil {
 		return err
 	}
 
@@ -231,6 +214,123 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			fmt.Sprintf("BackingStore Secret %q not found or deleted", r.Secret.Name))
 	}
 
+	return nil
+}
+
+// ReconcilePhaseConnecting checks that we have the system and secret needed to reconcile
+func (r *Reconciler) ReconcilePhaseConnecting() error {
+
+	r.SetPhase(
+		nbv1.BackingStorePhaseConnecting,
+		"BackingStorePhaseConnecting",
+		"noobaa operator started phase 2/3 - \"Connecting\"",
+	)
+
+	if err := r.ReadSystemInfo(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ReconcilePhaseCreating checks that we have the system and secret needed to reconcile
+func (r *Reconciler) ReconcilePhaseCreating() error {
+
+	r.SetPhase(
+		nbv1.BackingStorePhaseCreating,
+		"BackingStorePhaseCreating",
+		"noobaa operator started phase 3/3 - \"Creating\"",
+	)
+
+	if err := r.ReconcileExternalConnection(); err != nil {
+		return err
+	}
+	if err := r.ReconcilePool(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ReconcileDeletion handles the deletion of a backing-store using the noobaa api
+func (r *Reconciler) ReconcileDeletion() error {
+
+	// Set the phase to let users know the operator has noticed the deletion request
+	if r.BackingStore.Status.Phase != nbv1.BackingStorePhaseDeleting {
+		r.SetPhase(
+			nbv1.BackingStorePhaseDeleting,
+			"BackingStorePhaseDeleting",
+			"noobaa operator started deletion",
+		)
+		r.UpdateStatus()
+	}
+
+	if r.NooBaa.UID == "" {
+		r.Logger.Infof("BackingStore %q remove finalizer because NooBaa system is already deleted", r.BackingStore.Name)
+		return r.FinalizeDeletion()
+	}
+
+	if err := r.ReadSystemInfo(); err != nil {
+		return err
+	}
+
+	if r.PoolInfo != nil {
+		internalPoolName := ""
+		for i := range r.SystemInfo.Pools {
+			pool := &r.SystemInfo.Pools[i]
+			if pool.ResourceType == "INTERNAL" {
+				internalPoolName = pool.Name
+				break
+			}
+		}
+		for i := range r.SystemInfo.Accounts {
+			account := &r.SystemInfo.Accounts[i]
+			if account.DefaultPool == r.PoolInfo.Name {
+				allowedBuckets := account.AllowedBuckets
+				if allowedBuckets.PermissionList == nil {
+					allowedBuckets.PermissionList = []string{}
+				}
+				err := r.NBClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
+					Email:        account.Email,
+					S3Access:     account.HasS3Access,
+					DefaultPool:  &internalPoolName,
+					AllowBuckets: &allowedBuckets,
+				})
+				if err != nil {
+					return err
+				}
+			}
+		}
+		err := r.NBClient.DeletePoolAPI(nb.DeletePoolParams{Name: r.PoolInfo.Name})
+		if err != nil {
+			return err
+		}
+	}
+
+	if r.ExternalConnectionInfo != nil {
+		// TODO we cannot assume we are the only one using this connection...
+		err := r.NBClient.DeleteExternalConnectionAPI(nb.DeleteExternalConnectionParams{Name: r.ExternalConnectionInfo.Name})
+		if err != nil {
+			if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
+				if rpcErr.RPCCode != "IN_USE" {
+					return err
+				}
+				r.Logger.Warnf("DeleteExternalConnection cannot complete because it is IN_USE %q", r.ExternalConnectionInfo.Name)
+			} else {
+				return err
+			}
+		}
+	}
+
+	return r.FinalizeDeletion()
+}
+
+// FinalizeDeletion removed the finalizer and updates in order to let the backing-store get reclaimed by kubernetes
+func (r *Reconciler) FinalizeDeletion() error {
+	util.RemoveFinalizer(r.BackingStore, nbv1.Finalizer)
+	if !util.KubeUpdate(r.BackingStore) {
+		return fmt.Errorf("BackingStore %q failed to remove finalizer %q", r.BackingStore.Name, nbv1.Finalizer)
+	}
 	return nil
 }
 
@@ -485,87 +585,12 @@ func (r *Reconciler) ReconcilePool() error {
 		return err
 	}
 
-	return nil
-}
-
-// ReconcileDeletion handles the deletion of a backing-store using the noobaa api
-func (r *Reconciler) ReconcileDeletion() error {
-
-	// Set the phase to let users know the operator has noticed the deletion request
-	if r.BackingStore.Status.Phase != nbv1.BackingStorePhaseDeleting {
-		r.SetPhase(
-			nbv1.BackingStorePhaseDeleting,
-			"BackingStorePhaseDeleting",
-			"noobaa operator started deletion",
-		)
-		r.UpdateStatus()
-	}
-
-	if r.NooBaa.UID == "" {
-		r.Logger.Infof("BackingStore %q remove finalizer because NooBaa system is already deleted", r.BackingStore.Name)
-		return r.FinalizeDeletion()
-	}
-
-	if err := r.ReadSystemInfo(); err != nil {
+	err = r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultPoolParams{
+		PoolName: r.CreateCloudPoolParams.Name,
+	})
+	if err != nil {
 		return err
 	}
 
-	if r.PoolInfo != nil {
-		internalPoolName := ""
-		for i := range r.SystemInfo.Pools {
-			pool := &r.SystemInfo.Pools[i]
-			if pool.ResourceType == "INTERNAL" {
-				internalPoolName = pool.Name
-				break
-			}
-		}
-		for i := range r.SystemInfo.Accounts {
-			account := &r.SystemInfo.Accounts[i]
-			if account.DefaultPool == r.PoolInfo.Name {
-				allowedBuckets := account.AllowedBuckets
-				if allowedBuckets.PermissionList == nil {
-					allowedBuckets.PermissionList = []string{}
-				}
-				err := r.NBClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
-					Email:        account.Email,
-					S3Access:     account.HasS3Access,
-					DefaultPool:  &internalPoolName,
-					AllowBuckets: &allowedBuckets,
-				})
-				if err != nil {
-					return err
-				}
-			}
-		}
-		err := r.NBClient.DeletePoolAPI(nb.DeletePoolParams{Name: r.PoolInfo.Name})
-		if err != nil {
-			return err
-		}
-	}
-
-	if r.ExternalConnectionInfo != nil {
-		// TODO we cannot assume we are the only one using this connection...
-		err := r.NBClient.DeleteExternalConnectionAPI(nb.DeleteExternalConnectionParams{Name: r.ExternalConnectionInfo.Name})
-		if err != nil {
-			if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
-				if rpcErr.RPCCode != "IN_USE" {
-					return err
-				}
-				r.Logger.Warnf("DeleteExternalConnection cannot complete because it is IN_USE %q", r.ExternalConnectionInfo.Name)
-			} else {
-				return err
-			}
-		}
-	}
-
-	return r.FinalizeDeletion()
-}
-
-// FinalizeDeletion removed the finalizer and updates in order to let the backing-store get reclaimed by kubernetes
-func (r *Reconciler) FinalizeDeletion() error {
-	util.RemoveFinalizer(r.BackingStore, nbv1.Finalizer)
-	if !util.KubeUpdate(r.BackingStore) {
-		return fmt.Errorf("BackingStore %q failed to remove finalizer %q", r.BackingStore.Name, nbv1.Finalizer)
-	}
 	return nil
 }

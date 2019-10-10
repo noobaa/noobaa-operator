@@ -1,6 +1,6 @@
 package bundle
 
-const Version = "2.0.2-rc1"
+const Version = "2.0.2"
 
 const Sha256_deploy_cluster_role_yaml = "f719ff8e0015a73d4e6ff322d2b30efa1cc89fcb3f856c06a5910785cb9e8dd8"
 
@@ -1741,7 +1741,7 @@ spec:
   sourceNamespace: marketplace
 `
 
-const Sha256_deploy_operator_yaml = "cca96157c1b8890cf472e7fadec04d3fb70b98741c25826d74fb6b1abd8f916a"
+const Sha256_deploy_operator_yaml = "ffc307ad6c1a4f0c5c6e23d821eaf811f7fd0026eaa1815b049bb367503fabfa"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1761,7 +1761,7 @@ spec:
       serviceAccountName: noobaa
       containers:
         - name: noobaa-operator
-          image: noobaa/noobaa-operator:2.0.2-rc1
+          image: noobaa/noobaa-operator:2.0.2
           imagePullPolicy: IfNotPresent
           resources:
             limits:
@@ -1780,7 +1780,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "11b92df609b86787c9fea9d6c4fb37e3d2a71295c2bb4f669dfdd3d9a8634508"
+const Sha256_deploy_role_yaml = "c505b808b24f44248bb52f96464e89ac839ee2968daa84167155091206e4ce97"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -1809,6 +1809,14 @@ rules:
   - events
   - configmaps
   - secrets
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  resourceNames:
+    - noobaa
   verbs:
   - '*'
 - apiGroups:

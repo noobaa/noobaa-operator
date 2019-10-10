@@ -137,6 +137,9 @@ const (
 	// BucketClassPhaseVerifying means the operator is verifying the spec
 	BucketClassPhaseVerifying BucketClassPhase = "Verifying"
 
+	// BucketClassPhaseConfiguring means the operator is configuring the buckets as requested
+	BucketClassPhaseConfiguring BucketClassPhase = "Configuring"
+
 	// BucketClassPhaseReady means the noobaa system has been created and ready to serve.
 	BucketClassPhaseReady BucketClassPhase = "Ready"
 
