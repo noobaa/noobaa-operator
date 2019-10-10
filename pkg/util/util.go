@@ -683,7 +683,7 @@ func GetFlagStringOrPrompt(cmd *cobra.Command, flag string) string {
 	if str == "" {
 		log.Fatalf(`❌ Missing %s %s`, flag, cmd.UsageString())
 	}
-	return ""
+	return str
 }
 
 // GetFlagStringOrPromptPassword is like GetFlagStringOrPrompt
