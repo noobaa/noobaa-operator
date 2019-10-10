@@ -17,6 +17,7 @@ import (
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	semver "github.com/hashicorp/go-version"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
+	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -74,6 +75,7 @@ type Reconciler struct {
 	PrometheusRule      *monitoringv1.PrometheusRule
 	ServiceMonitor      *monitoringv1.ServiceMonitor
 	SystemInfo          *nb.SystemInfo
+	CephObjectstoreUser *cephv1.CephObjectStoreUser
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -106,6 +108,7 @@ func NewReconciler(
 		OBCStorageClass:     util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
 		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		ServiceMonitor:      util.KubeObject(bundle.File_deploy_internal_service_monitor_yaml).(*monitoringv1.ServiceMonitor),
+		CephObjectstoreUser: util.KubeObject(bundle.File_deploy_internal_ceph_objectstore_user_yaml).(*cephv1.CephObjectStoreUser),
 	}
 
 	// Set Namespace
@@ -122,6 +125,7 @@ func NewReconciler(
 	r.DefaultBucketClass.Namespace = r.Request.Namespace
 	r.PrometheusRule.Namespace = r.Request.Namespace
 	r.ServiceMonitor.Namespace = r.Request.Namespace
+	r.CephObjectstoreUser.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -133,6 +137,7 @@ func NewReconciler(
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
 	r.CloudCreds.Name = r.Request.Name + "-cloud-creds"
 	r.CloudCreds.Spec.SecretRef.Name = r.Request.Name + "-cloud-creds-secret"
+	r.CephObjectstoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"
 	r.PrometheusRule.Name = r.Request.Name + "-prometheus-rules"
