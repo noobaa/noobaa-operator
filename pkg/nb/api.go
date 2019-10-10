@@ -28,6 +28,7 @@ type Client interface {
 	DeletePoolAPI(DeletePoolParams) error
 
 	UpdateAccountS3Access(UpdateAccountS3AccessParams) error
+	UpdateAllBucketsDefaultPool(UpdateDefaultPoolParams) error
 
 	AddExternalConnectionAPI(AddExternalConnectionParams) error
 	CheckExternalConnectionAPI(AddExternalConnectionParams) (CheckExternalConnectionReply, error)
@@ -299,6 +300,11 @@ type UpdateAccountS3AccessParams struct {
 	AllowBuckets        *AllowedBuckets `json:"allowed_buckets,omitempty"`
 }
 
+// UpdateDefaultPoolParams is the params of bucket_api.update_all_buckets_default_pool()
+type UpdateDefaultPoolParams struct {
+	PoolName string `json:"pool_name"`
+}
+
 // AllowedBuckets is a struct for setting which buckets an account can access
 type AllowedBuckets struct {
 	FullPermission bool     `json:"full_permission"`
@@ -552,6 +558,13 @@ func (c *RPCClient) DeletePoolAPI(params DeletePoolParams) error {
 // UpdateAccountS3Access calls account_api.update_account_s3_access()
 func (c *RPCClient) UpdateAccountS3Access(params UpdateAccountS3AccessParams) error {
 	req := &RPCRequest{API: "account_api", Method: "update_account_s3_access", Params: params}
+	res := &RPCResponse{}
+	return c.Call(req, res)
+}
+
+// UpdateAllBucketsDefaultPool calls bucket_api.update_all_buckets_default_pool()
+func (c *RPCClient) UpdateAllBucketsDefaultPool(params UpdateDefaultPoolParams) error {
+	req := &RPCRequest{API: "bucket_api", Method: "update_all_buckets_default_pool", Params: params}
 	res := &RPCResponse{}
 	return c.Call(req, res)
 }
