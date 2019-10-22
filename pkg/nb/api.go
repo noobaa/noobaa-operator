@@ -1,6 +1,10 @@
 // Package nb makes client API calls to noobaa servers.
 package nb
 
+import (
+	"encoding/json"
+)
+
 // Client is the interface providing typed noobaa API calls
 type Client interface {
 	SetAuthToken(token string)
@@ -124,16 +128,33 @@ type StorageInfo struct {
 	Real            *BigInt `json:"real,omitempty"`
 }
 
-// BigInt is an api type to handle large integers that cannot be represented by JSON
-type BigInt int64
+// BigInt is an api type to handle large integers that cannot be represented by JSON which is limited to 53 bits (less than 8 PB)
+type BigInt struct {
+	N    int64 `json:"n"`
+	Peta int64 `json:"peta"`
+}
 
-// TODO need to write custom marshalling because the json schema is oneOf integer or {n,peta}
-// func (n BigInt) MarshalJSON() ([]byte, error) {
-// 	return nil, nil
-// }
-// func (n *BigInt) UnmarshalJSON(data []byte) error {
-// 	return nil
-// }
+// MarshalJSON is custom marshalling because the json schema is oneOf integer or {n,peta}
+func (n BigInt) MarshalJSON() ([]byte, error) {
+	if n.Peta == 0 {
+		return json.Marshal(n.N)
+	}
+	type bigint BigInt
+	return json.Marshal(bigint(n))
+}
+
+// UnmarshalJSON is custom unmarshalling because the json schema is oneOf integer or {n,peta}
+func (n *BigInt) UnmarshalJSON(data []byte) error {
+	var i int64
+	err := json.Unmarshal(data, &i)
+	if err == nil {
+		n.N = i
+		n.Peta = 0
+		return nil
+	}
+	type bigint BigInt
+	return json.Unmarshal(data, (*bigint)(n))
+}
 
 // PoolInfo is a struct of pool info returned by the API
 type PoolInfo struct {
