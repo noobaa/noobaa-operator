@@ -638,37 +638,45 @@ func IsAWSPlatform() bool {
 }
 
 // GetAWSRegion parses the region from a node's name
-func GetAWSRegion() string {
-	var validAWSRegions = map[string]bool{
-		"us-east-1":      true,
-		"us-east-2":      true,
-		"us-west-1":      true,
-		"us-west-2":      true,
-		"ca-central-1":   true,
-		"eu-central-1":   true,
-		"eu-west-1":      true,
-		"eu-west-2":      true,
-		"eu-west-3":      true,
-		"eu-north-1":     true,
-		"ap-east-1":      true,
-		"ap-northeast-1": true,
-		"ap-northeast-2": true,
-		"ap-northeast-3": true,
-		"ap-southeast-1": true,
-		"ap-southeast-2": true,
-		"ap-south-1":     true,
-		"me-south-1":     true,
-		"sa-east-1":      true,
+func GetAWSRegion() (string, error) {
+	// parse the node name to get AWS region according to this: 
+	// https://docs.aws.amazon.com/en_pv/vpc/latest/userguide/vpc-dns.html#vpc-dns-hostnames
+	var mapValidAWSRegions = map[string]string{
+		"compute-1":      "us-east-1",
+		"ec2":            "us-east-1",
+		"us-east-1":      "us-east-1",
+		"us-east-2":      "us-east-2",
+		"us-west-1":      "us-west-1",
+		"us-west-2":      "us-west-2",
+		"ca-central-1":   "ca-central-1",
+		"eu-central-1":   "eu-central-1",
+		"eu-west-1":      "eu-west-1",
+		"eu-west-2":      "eu-west-2",
+		"eu-west-3":      "eu-west-3",
+		"eu-north-1":     "eu-north-1",
+		"ap-east-1":      "ap-east-1",
+		"ap-northeast-1": "ap-northeast-1",
+		"ap-northeast-2": "ap-northeast-2",
+		"ap-northeast-3": "ap-northeast-3",
+		"ap-southeast-1": "ap-southeast-1",
+		"ap-southeast-2": "ap-southeast-2",
+		"ap-south-1":     "ap-south-1",
+		"me-south-1":     "me-south-1",
+		"sa-east-1":      "sa-east-1",
 	}
 	nodesList := &corev1.NodeList{}
 	if ok := KubeList(nodesList, nil); !ok || len(nodesList.Items) == 0 {
-		Panic(fmt.Errorf("failed to list kubernetes nodes"))
+		return "", fmt.Errorf("Failed to list kubernetes nodes")
 	}
 	nameSplit := strings.Split(nodesList.Items[0].Name, ".")
-	if len(nameSplit) < 2 || !validAWSRegions[nameSplit[1]] {
-		Panic(fmt.Errorf("failed to parse AWS region from node name %s", nodesList.Items[0].Name))
+	if len(nameSplit) < 2 {
+		return "", fmt.Errorf("Unexpected node name format: %q", nodesList.Items[0].Name)
 	}
-	return nameSplit[1]
+	awsRegion := mapValidAWSRegions[nameSplit[1]]
+	if awsRegion == "" {
+		return "", fmt.Errorf("The parsed AWS region is invalid: %q", awsRegion)
+	}
+	return awsRegion, nil
 }
 
 // GetFlagStringOrPrompt returns flag value but if empty will promtp to read from stdin
