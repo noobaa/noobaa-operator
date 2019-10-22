@@ -205,7 +205,12 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	log.Infof("Secret %s was created succesfully by cloud-credentials operator", r.CloudCreds.Spec.SecretRef.Name)
 
 	// create the acutual S3 bucket
-	region := util.GetAWSRegion()
+	region, err := util.GetAWSRegion()
+	if err != nil {
+		r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DefaultBackingStoreFailure",
+			"Failed to get AWSRegion. using	 us-east-1 as the default region. %q", err)
+		region = "us-east-1"
+	}
 	r.Logger.Infof("identified aws region %s", region)
 	s3Config := &aws.Config{
 		Credentials: credentials.NewStaticCredentials(
