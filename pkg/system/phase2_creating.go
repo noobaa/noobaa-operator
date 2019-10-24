@@ -46,6 +46,12 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	if err := r.ReconcileObject(r.ServiceS3, r.SetDesiredServiceS3); err != nil {
 		return err
 	}
+	if err := r.ReconcileObjectOptional(r.RouteMgmt, nil); err != nil {
+		return err
+	}
+	if err := r.ReconcileObjectOptional(r.RouteS3, nil); err != nil {
+		return err
+	}
 
 	return nil
 }

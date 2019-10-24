@@ -97,3 +97,14 @@ rules:
   - update
   - list
   - watch
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  - create
+  - update
+  - list
+  - watch
+

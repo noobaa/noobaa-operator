@@ -35,6 +35,14 @@ spec:
       volumes:
       - name: logs
         emptyDir: {}
+      - name: mgmt-secret
+        secret:
+          secretName: noobaa-mgmt-serving-cert
+          optional: true
+      - name: s3-secret
+        secret:
+          secretName: noobaa-s3-serving-cert
+          optional: true
       initContainers:
 #----------------#
 # INIT CONTAINER #
@@ -58,6 +66,12 @@ spec:
         volumeMounts:
         - name: logs
           mountPath: /log
+        - name: mgmt-secret
+          mountPath: /etc/mgmt-secret
+          readOnly: true
+        - name: s3-secret
+          mountPath: /etc/s3-secret
+          readOnly: true
         readinessProbe:
           tcpSocket:
             port: 6001 # ready when s3 port is open
