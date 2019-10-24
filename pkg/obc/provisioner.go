@@ -211,22 +211,22 @@ func NewBucketRequest(
 	r := &BucketRequest{
 		Provisioner: p,
 		OB:          ob,
-		OBC:         bucketOptions.ObjectBucketClaim,
 		SysClient:   sysClient,
 	}
 
 	if r.OB == nil {
+		r.OBC = bucketOptions.ObjectBucketClaim
 		r.BucketName = bucketOptions.BucketName
 		r.AccountName = fmt.Sprintf("obc-account.%s.%x@noobaa.io", r.BucketName, time.Now().Unix())
 
-		bucketClassName := bucketOptions.ObjectBucketClaim.Spec.AdditionalConfig["bucketclass"]
+		bucketClassName := r.OBC.Spec.AdditionalConfig["bucketclass"]
 		if bucketClassName == "" {
 			bucketClassName = bucketOptions.Parameters["bucketclass"]
 		}
 		if bucketClassName == "" {
 			return nil, fmt.Errorf("failed to find bucket class in OBC %s or storage class %s",
-				bucketOptions.ObjectBucketClaim.Name,
-				bucketOptions.ObjectBucketClaim.Spec.StorageClassName,
+				r.OBC.Name,
+				r.OBC.Spec.StorageClassName,
 			)
 		}
 
@@ -239,12 +239,12 @@ func NewBucketRequest(
 		}
 		if !util.KubeCheck(r.BucketClass) {
 			msg := fmt.Sprintf("BucketClass %q not found in provisioner namespace %q", bucketClassName, p.Namespace)
-			p.recorder.Event(bucketOptions.ObjectBucketClaim, "Warning", "MissingBucketClass", msg)
+			p.recorder.Event(r.OBC, "Warning", "MissingBucketClass", msg)
 			return nil, fmt.Errorf(msg)
 		}
 		if r.BucketClass.Status.Phase != nbv1.BucketClassPhaseReady {
 			msg := fmt.Sprintf("BucketClass %q is not ready", bucketClassName)
-			p.recorder.Event(bucketOptions.ObjectBucketClaim, "Warning", "BucketClassNotReady", msg)
+			p.recorder.Event(r.OBC, "Warning", "BucketClassNotReady", msg)
 			return nil, fmt.Errorf(msg)
 		}
 		r.OB = &nbv1.ObjectBucket{
@@ -253,7 +253,7 @@ func NewBucketRequest(
 					Endpoint: &nbv1.ObjectBucketEndpoint{
 						BucketHost:           s3Hostname,
 						BucketPort:           s3Port,
-						BucketName:           bucketOptions.BucketName,
+						BucketName:           r.BucketName,
 						AdditionalConfigData: map[string]string{},
 					},
 					AdditionalState: map[string]string{
