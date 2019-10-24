@@ -410,13 +410,7 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		Name: r.BackingStore.Name,
 	}
 
-	// fix keys to handle the case that the secret holds lowercase keys
-	if r.Secret.StringData["AWS_ACCESS_KEY_ID"] == "" && r.Secret.StringData["aws_access_key_id"] != "" {
-		r.Secret.StringData["AWS_ACCESS_KEY_ID"] = r.Secret.StringData["aws_access_key_id"]
-	}
-	if r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] == "" && r.Secret.StringData["aws_secret_access_key"] != "" {
-		r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = r.Secret.StringData["aws_secret_access_key"]
-	}
+	r.fixAlternateKeysNames()
 
 	switch r.BackingStore.Spec.Type {
 
@@ -518,6 +512,30 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 	}
 
 	return conn, nil
+}
+
+func (r *Reconciler) fixAlternateKeysNames() {
+
+	alternateAccessKeyNames := []string{"aws_access_key_id", "AccessKey"}
+	alternateSecretKeyNames := []string{"aws_secret_access_key", "SecretKey"}
+
+	if r.Secret.StringData["AWS_ACCESS_KEY_ID"] == "" {
+		for _, key := range alternateAccessKeyNames {
+			if r.Secret.StringData[key] != "" {
+				r.Secret.StringData["AWS_ACCESS_KEY_ID"] = r.Secret.StringData[key]
+				break
+			}
+		}
+	}
+
+	if r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] == "" {
+		for _, key := range alternateSecretKeyNames {
+			if r.Secret.StringData[key] != "" {
+				r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = r.Secret.StringData[key]
+				break
+			}
+		}
+	}
 }
 
 // ReconcileExternalConnection handles the external connection using noobaa api

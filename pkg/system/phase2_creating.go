@@ -10,10 +10,12 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
+	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ReconcilePhaseCreating runs the reconcile phase
@@ -28,7 +30,7 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	// the credentials that are created by cloud-credentials-operator sometimes take time
 	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
 	// creating the credential request as early as possible to try and avoid it
-	err := r.ReconcileCredentialsRequest()
+	err := r.ReconcileBackingStoreCredentials()
 	if err != nil {
 		r.Logger.Errorf("failed to create CredentialsRequest. will retry in phase 4. error: %v", err)
 		return err
@@ -168,13 +170,56 @@ func (r *Reconciler) SetDesiredCoreApp() {
 	}
 }
 
-// ReconcileCredentialsRequest creates a CredentialsRequest resource if neccesary and returns
+// ReconcileBackingStoreCredentials creates a CredentialsRequest resource if neccesary and returns
 // the bucket name allowed for the credentials. nil is returned if cloud credentials are not supported
-func (r *Reconciler) ReconcileCredentialsRequest() error {
-	if !util.IsAWSPlatform() {
-		r.Logger.Info("not running in AWS. skipping ReconcileCredentialsRequest")
+func (r *Reconciler) ReconcileBackingStoreCredentials() error {
+	if util.IsAWSPlatform() {
+		return r.ReconcileAWSCredentials()
+	}
+	return r.ReconcileRGWCredentials()
+
+}
+
+// ReconcileRGWCredentials creates a ceph objectstore user if a ceph objectstore exists in the same namespace
+func (r *Reconciler) ReconcileRGWCredentials() error {
+	r.Logger.Info("Not running in AWS. will attempt to create a ceph objectstore user")
+	util.KubeCheck(r.CephObjectstoreUser)
+	if r.CephObjectstoreUser.UID != "" {
 		return nil
 	}
+
+	// create user if not already exists
+	// list ceph objectstores and pick the first one
+	cephObjectStoresList := &cephv1.CephObjectStoreList{}
+	if !util.KubeList(cephObjectStoresList, &client.ListOptions{Namespace: options.Namespace}) {
+		r.Logger.Warn("failed to list ceph objectstore to use as backing store")
+		// no object stores
+		return nil
+	}
+	if len(cephObjectStoresList.Items) == 0 {
+		r.Logger.Warn("did not find any ceph objectstore to use as backing store")
+		// no object stores
+		return nil
+	}
+	r.Logger.Infof("found %d ceph objectstores: %v", len(cephObjectStoresList.Items), cephObjectStoresList.Items)
+	// for now take the first one. need to decide what to do if multiple objectstores in one namespace
+	storeName := cephObjectStoresList.Items[0].ObjectMeta.Name
+	r.Logger.Infof("using objectstore %q as a default backing store", storeName)
+	r.CephObjectstoreUser.Spec.Store = storeName
+
+	r.Own(r.CephObjectstoreUser)
+	// create ceph objectstore user
+	err := r.Client.Create(r.Ctx, r.CephObjectstoreUser)
+	if err != nil {
+		r.Logger.Errorf("got error on CephObjectstoreUser creation. error: %v", err)
+		return err
+	}
+	return nil
+}
+
+// ReconcileAWSCredentials creates a CredentialsRequest resource if cloud credentials operator is available
+func (r *Reconciler) ReconcileAWSCredentials() error {
+	r.Logger.Info("Running in AWS. will create a CredentialsRequest resource")
 	var bucketName string
 	err := r.Client.Get(r.Ctx, util.ObjectKey(r.CloudCreds), r.CloudCreds)
 	if err == nil {

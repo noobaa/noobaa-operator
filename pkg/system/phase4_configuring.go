@@ -3,16 +3,15 @@ package system
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
-	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -175,6 +174,30 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		return nil
 	}
 
+	if r.CephObjectstoreUser.UID != "" {
+		log.Infof("CephObjectstoreUser %q created.  creating default backing store on ceph objectstore", r.CephObjectstoreUser.Name)
+		if err := r.prepareCephBackingStore(); err != nil {
+			return err
+		}
+	} else if r.CloudCreds.UID != "" {
+		log.Infof("CredentialsRequest %q created.  creating default backing store on ceph objectstore", r.CloudCreds.Name)
+		if err := r.prepareAWSBackingStore(); err != nil {
+			return err
+		}
+	} else {
+
+		return nil
+	}
+
+	r.Own(r.DefaultBackingStore)
+	if err := r.Client.Create(r.Ctx, r.DefaultBackingStore); err != nil {
+		log.Errorf("got error on DefaultBackingStore creation. error: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) prepareAWSBackingStore() error {
 	// after we have cloud credential request, wait for credentials secret
 	cloudCredsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -183,26 +206,14 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		},
 	}
 
-	if r.CloudCreds.UID == "" {
-		log.Info("CredentialsRequest was not created. probably not supported. skipping ReconcileCloudCredentials")
-		// err := reconcileCephObjecetStoreUser()
-		// if err != nil {
-		// 	return err
-		// }
-		// // change secret name to ceph objectstore user name
-		// cloudCredsSecret.ObjectMeta.Name = r.CephObjectstoreUser.ObjectMeta.Name
-		return nil
-	}
-
 	util.KubeCheck(cloudCredsSecret)
 	if cloudCredsSecret.UID == "" {
 		// TODO: we need to figure out why secret is not created, and react accordingly
 		// e.g. maybe we are running on azure but our CredentialsRequest is for AWS
-		log.Infof("Secret %s was not created yet by cloud-credentials operator. retry on next reconcile..", r.CloudCreds.Spec.SecretRef.Name)
-		return fmt.Errorf("cloud credentials secret is not ready yet")
+		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.CloudCreds.Spec.SecretRef.Name)
+		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.CloudCreds.Spec.SecretRef.Name)
 	}
-
-	log.Infof("Secret %s was created succesfully by cloud-credentials operator", r.CloudCreds.Spec.SecretRef.Name)
+	r.Logger.Infof("Secret %s was created succesfully by cloud-credentials operator", r.CloudCreds.Spec.SecretRef.Name)
 
 	// create the acutual S3 bucket
 	region, err := util.GetAWSRegion()
@@ -220,66 +231,66 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		),
 		Region: &region,
 	}
-	s3Session, err := session.NewSession(s3Config)
-	if err != nil {
-		return err
-	}
-	S3Client := s3.New(s3Session)
 
 	bucketName := r.DefaultBackingStore.Spec.AWSS3.TargetBucket
-	log.Infof("creating bucket %s", bucketName)
-	createBucketOutout, err := S3Client.CreateBucket(&s3.CreateBucketInput{Bucket: &bucketName})
-	if err != nil {
-		awsErr, isAwsErr := err.(awserr.Error)
-		if isAwsErr && awsErr.Code() == s3.ErrCodeBucketAlreadyOwnedByYou {
-			log.Infof("bucket was already created. continuing")
-		} else {
-			log.Errorf("got error when trying to create bucket %s. error: %v", bucketName, err)
-			return err
-		}
-	} else {
-		log.Infof("Successfully created bucket %s. result = %v", bucketName, createBucketOutout)
+	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
+		return err
 	}
 
 	// create backing store
+	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeAWSS3
 	r.DefaultBackingStore.Spec.AWSS3.Secret.Name = cloudCredsSecret.Name
 	r.DefaultBackingStore.Spec.AWSS3.Secret.Namespace = cloudCredsSecret.Namespace
 	r.DefaultBackingStore.Spec.AWSS3.Region = region
-	r.Own(r.DefaultBackingStore)
-	err = r.Client.Create(r.Ctx, r.DefaultBackingStore)
-	if err != nil {
-		log.Errorf("got error on DefaultBackingStore creation. error: %v", err)
-		return err
-	}
 	return nil
 }
 
-func (r *Reconciler) reconcileCephObjecetStoreUser() error {
-	util.KubeCheck(r.CephObjectstoreUser)
-	if r.CephObjectstoreUser.UID != "" {
-		// already exists
-		return nil
-	}
-	// list ceph objectstores and pick the first one
-	cephObjectStoresList := &cephv1.CephObjectStoreList{}
-	if !util.KubeList(cephObjectStoresList, &client.ListOptions{Namespace: options.Namespace}) {
-		return fmt.Errorf("failed to list ceph objectstores")
-	}
-	if len(cephObjectStoresList.Items) == 0 {
-		// no object stores
-		return nil
-	}
-	// for now take the first one. need to decide what to do if multiple objectstores in one namespace
-	storeName := cephObjectStoresList.Items[0].ObjectMeta.Name
-	r.CephObjectstoreUser.Spec.Store = storeName
+func (r *Reconciler) prepareCephBackingStore() error {
 
-	// create ceph objectstore user
-	err := r.Client.Create(r.Ctx, r.CephObjectstoreUser)
-	if err != nil {
-		r.Logger.Errorf("got error on CephObjectstoreUser creation. error: %v", err)
+	secretName := "rook-ceph-object-user-" + r.CephObjectstoreUser.Spec.Store + "-" + r.CephObjectstoreUser.Name
+
+	// get access\secret keys from user secret
+	cephObjectUserSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: options.Namespace,
+		},
+	}
+
+	util.KubeCheck(cephObjectUserSecret)
+	if cephObjectUserSecret.UID == "" {
+		// TODO: we need to figure out why secret is not created, and react accordingly
+		// e.g. maybe we are running on azure but our CredentialsRequest is for AWS
+		r.Logger.Infof("Ceph object user secret %q was not created yet. retry on next reconcile..", secretName)
+		return fmt.Errorf("Ceph object user secret %q is not ready yet", secretName)
+	}
+
+	endpoint := "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ":80"
+	region := "us-east-1"
+	forcePathStyle := true
+	s3Config := &aws.Config{
+		Credentials: credentials.NewStaticCredentials(
+			cephObjectUserSecret.StringData["AccessKey"],
+			cephObjectUserSecret.StringData["SecretKey"],
+			"",
+		),
+		Endpoint:         &endpoint,
+		Region:           &region,
+		S3ForcePathStyle: &forcePathStyle,
+	}
+	bucketName := "noobaa-backing-store-" + uuid.New().String()
+	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
 		return err
 	}
 
+	// create backing store
+	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeS3Compatible
+	r.DefaultBackingStore.Spec.S3Compatible = &nbv1.S3CompatibleSpec{
+		Secret:           corev1.SecretReference{Name: secretName, Namespace: options.Namespace},
+		TargetBucket:     bucketName,
+		Endpoint:         endpoint,
+		SignatureVersion: nbv1.S3SignatureVersionV4,
+	}
 	return nil
 }
 
@@ -331,6 +342,29 @@ func (r *Reconciler) ReconcileOBCStorageClass() error {
 		return err
 	}
 
+	return nil
+}
+
+func (r *Reconciler) createS3BucketForBackingStore(s3Config *aws.Config, bucketName string) error {
+	s3Session, err := session.NewSession(s3Config)
+	if err != nil {
+		return err
+	}
+	S3Client := s3.New(s3Session)
+
+	r.Logger.Infof("creating bucket %s", bucketName)
+	createBucketOutout, err := S3Client.CreateBucket(&s3.CreateBucketInput{Bucket: &bucketName})
+	if err != nil {
+		awsErr, isAwsErr := err.(awserr.Error)
+		if isAwsErr && awsErr.Code() == s3.ErrCodeBucketAlreadyOwnedByYou {
+			r.Logger.Infof("bucket was already created. continuing")
+		} else {
+			r.Logger.Errorf("got error when trying to create bucket %s. error: %v", bucketName, err)
+			return err
+		}
+	} else {
+		r.Logger.Infof("Successfully created bucket %s. result = %v", bucketName, createBucketOutout)
+	}
 	return nil
 }
 
