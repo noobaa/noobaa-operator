@@ -12,12 +12,12 @@ For Mac
 ```
 brew install noobaa/noobaa/noobaa
 # or
-wget https://github.com/noobaa/noobaa-operator/releases/download/v2.0.3/noobaa-mac-v2.0.3; mv noobaa-mac-* noobaa; chmod +x noobaa
+wget https://github.com/noobaa/noobaa-operator/releases/download/v2.0.4/noobaa-mac-v2.0.4; mv noobaa-mac-* noobaa; chmod +x noobaa
 ```
 
 For Linux
 ```
-wget https://github.com/noobaa/noobaa-operator/releases/download/v2.0.3/noobaa-linux-v2.0.3; mv noobaa-linux-* noobaa; chmod +x noobaa
+wget https://github.com/noobaa/noobaa-operator/releases/download/v2.0.4/noobaa-linux-v2.0.4; mv noobaa-linux-* noobaa; chmod +x noobaa
 ```
 
 - Run: `./noobaa --help` for CLI usage
