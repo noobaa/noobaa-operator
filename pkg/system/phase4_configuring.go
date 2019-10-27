@@ -9,9 +9,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -44,24 +42,13 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileOBCStorageClass(); err != nil {
 		return err
 	}
-
-	if err := r.ReconcileObject(r.PrometheusRule, nil); err != nil {
-		if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
-			r.Logger.Printf("No PrometheusRule CRD existing, skip creating PrometheusRules\n")
-		} else {
-			return err
-		}
+	if err := r.ReconcileObjectOptional(r.PrometheusRule, nil); err != nil {
+		return err
 	}
-
-	if err := r.ReconcileObject(r.ServiceMonitor, nil); err != nil {
-		if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
-			r.Logger.Printf("No ServiceMonitor CRD existing, skip creating ServiceMonitor\n")
-		} else {
-			return err
-		}
+	if err := r.ReconcileObjectOptional(r.ServiceMonitor, nil); err != nil {
+		return err
 	}
-
-	if err := r.ReconileReadSystem(); err != nil {
+	if err := r.ReconcileReadSystem(); err != nil {
 		return err
 	}
 
@@ -126,6 +113,8 @@ func (r *Reconciler) ReconcileSecretAdmin() error {
 
 	// already exists - we can skip
 	if r.SecretAdmin.UID != "" {
+		r.NooBaa.Status.Accounts.Admin.SecretRef.Name = r.SecretAdmin.Name
+		r.NooBaa.Status.Accounts.Admin.SecretRef.Namespace = r.SecretAdmin.Namespace
 		return nil
 	}
 
@@ -368,8 +357,8 @@ func (r *Reconciler) createS3BucketForBackingStore(s3Config *aws.Config, bucketN
 	return nil
 }
 
-// ReconileReadSystem calls read_system on noobaa server and stores the result
-func (r *Reconciler) ReconileReadSystem() error {
+// ReconcileReadSystem calls read_system on noobaa server and stores the result
+func (r *Reconciler) ReconcileReadSystem() error {
 	// update noobaa-core version in reconciler struct
 	systemInfo, err := r.NBClient.ReadSystemAPI()
 	if err != nil {

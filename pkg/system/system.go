@@ -336,14 +336,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	}
 
 	log.Printf("✅ System Phase is %q\n", r.NooBaa.Status.Phase)
-	secretRef := r.NooBaa.Status.Accounts.Admin.SecretRef
-	secret := &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{Kind: "Secret"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretRef.Name,
-			Namespace: secretRef.Namespace,
-		},
-	}
+	secret := r.SecretAdmin.DeepCopy()
 	util.KubeCheck(secret)
 
 	fmt.Println("")
