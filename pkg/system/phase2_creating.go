@@ -30,18 +30,13 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	// the credentials that are created by cloud-credentials-operator sometimes take time
 	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
 	// creating the credential request as early as possible to try and avoid it
-	err := r.ReconcileBackingStoreCredentials()
-	if err != nil {
+	if err := r.ReconcileBackingStoreCredentials(); err != nil {
 		r.Logger.Errorf("failed to create CredentialsRequest. will retry in phase 4. error: %v", err)
 		return err
 	}
-
-	r.SecretServer.StringData["jwt"] = util.RandomBase64(16)
-	r.SecretServer.StringData["server_secret"] = util.RandomHex(4)
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
 		return err
 	}
-
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}

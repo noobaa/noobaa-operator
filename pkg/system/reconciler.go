@@ -147,6 +147,9 @@ func NewReconciler(
 	r.OBCStorageClass.Name = options.SubDomainNS()
 	r.OBCStorageClass.Provisioner = options.ObjectBucketProvisionerName()
 
+	r.SecretServer.StringData["jwt"] = util.RandomBase64(16)
+	r.SecretServer.StringData["server_secret"] = util.RandomHex(4)
+
 	return r
 }
 
@@ -292,7 +295,17 @@ func (r *Reconciler) UpdateStatus() {
 // desiredFunc can be passed to modify the object before create/update.
 // Currently we ignore enforcing a desired state, but it might be needed on upgrades.
 func (r *Reconciler) ReconcileObject(obj runtime.Object, desiredFunc func()) error {
+	return r.reconcileObject(obj, desiredFunc, false)
+}
 
+// ReconcileObjectOptional is like ReconcileObject but also ignores if the CRD is missing
+func (r *Reconciler) ReconcileObjectOptional(obj runtime.Object, desiredFunc func()) error {
+	return r.reconcileObject(obj, desiredFunc, true)
+}
+
+func (r *Reconciler) reconcileObject(obj runtime.Object, desiredFunc func(), optionalCRD bool) error {
+
+	gvk := obj.GetObjectKind().GroupVersionKind()
 	objMeta, _ := meta.Accessor(obj)
 	r.Own(objMeta)
 
@@ -306,11 +319,15 @@ func (r *Reconciler) ReconcileObject(obj runtime.Object, desiredFunc func()) err
 		},
 	)
 	if err != nil {
-		r.Logger.Errorf("ReconcileObject: Error %v obj %s", err, objMeta.GetSelfLink())
+		if optionalCRD && (meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err)) {
+			r.Logger.Printf("ReconcileObject: (Optional) CRD Unavailable: %s %s\n", gvk.Kind, objMeta.GetSelfLink())
+			return nil
+		}
+		r.Logger.Errorf("ReconcileObject: Error %s %s %v", gvk.Kind, objMeta.GetSelfLink(), err)
 		return err
 	}
 
-	r.Logger.Infof("ReconcileObject: Done - %s %s", op, objMeta.GetSelfLink())
+	r.Logger.Infof("ReconcileObject: Done - %s %s %s", op, gvk.Kind, objMeta.GetSelfLink())
 	return nil
 }
 
