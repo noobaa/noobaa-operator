@@ -8,7 +8,6 @@ import (
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // ReconcilePhaseVerifying runs the reconcile verify phase
@@ -84,17 +83,9 @@ func (r *Reconciler) CheckSystemCR() error {
 			}
 		} else {
 			log.Infof("Using custom image %q contraints %q", imageRef.String(), ContainerImageConstraint.String())
-			if r.Recorder != nil {
-				r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
-					"CustomImage", `Custom image version requested %q, I hope you know what you're doing ...`, imageRef)
-			}
 		}
 	} else {
 		log.Infof("Using custom image name %q the default is %q", imageRef.String(), options.ContainerImageName)
-		if r.Recorder != nil {
-			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
-				"CustomImage", `Custom image requested %q, I hope you know what you're doing ...`, imageRef)
-		}
 	}
 
 	// Set ActualImage to be updated in the noobaa status

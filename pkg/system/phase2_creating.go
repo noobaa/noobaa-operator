@@ -70,6 +70,7 @@ func (r *Reconciler) SetDesiredCoreApp() {
 
 	podSpec := &r.CoreApp.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa"
+	coreImageChanged := false
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
 		switch c.Name {
@@ -81,7 +82,10 @@ func (r *Reconciler) SetDesiredCoreApp() {
 		c := &podSpec.Containers[i]
 		switch c.Name {
 		case "core":
-			c.Image = r.NooBaa.Status.ActualImage
+			if c.Image != r.NooBaa.Status.ActualImage {
+				coreImageChanged = true
+				c.Image = r.NooBaa.Status.ActualImage
+			}
 			for j := range c.Env {
 				switch c.Env[j].Name {
 				// case "ENDPOINT_FORKS_NUMBER":
@@ -132,6 +136,12 @@ func (r *Reconciler) SetDesiredCoreApp() {
 				}
 			}
 		}
+
+		// generate info event for the first creation of noobaa
+		if r.Recorder != nil {
+			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
+				"NooBaaImage", `Using NooBaa image %q for the creation of %q`, r.NooBaa.Status.ActualImage, r.NooBaa.Name)
+		}
 	} else {
 		// when already exists we check that there is no update requested to the volumes
 		// otherwise we report that volume update is unsupported
@@ -162,6 +172,15 @@ func (r *Reconciler) SetDesiredCoreApp() {
 				}
 			}
 		}
+
+		if coreImageChanged {
+			// generate info event for the first creation of noobaa
+			if r.Recorder != nil {
+				r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
+					"NooBaaImage", `Updating NooBaa image to %q for %q`, r.NooBaa.Status.ActualImage, r.NooBaa.Name)
+			}
+		}
+
 	}
 }
 
