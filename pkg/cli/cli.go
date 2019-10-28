@@ -11,6 +11,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/bucket"
 	"github.com/noobaa/noobaa-operator/v2/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v2/pkg/crd"
+	"github.com/noobaa/noobaa-operator/v2/pkg/diagnose"
 	"github.com/noobaa/noobaa-operator/v2/pkg/install"
 	"github.com/noobaa/noobaa-operator/v2/pkg/obc"
 	"github.com/noobaa/noobaa-operator/v2/pkg/olm"
@@ -111,6 +112,7 @@ Load noobaa completion to bash:
 			backingstore.Cmd(),
 			bucketclass.Cmd(),
 			obc.Cmd(),
+			diagnose.Cmd(),
 		},
 	}, {
 		Message: "Advanced:",
