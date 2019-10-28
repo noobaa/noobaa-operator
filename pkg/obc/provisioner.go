@@ -420,7 +420,7 @@ func (r *BucketRequest) DeleteBucket() error {
 
 	log := r.Provisioner.Logger
 	log.Infof("deleting bucket %q", r.BucketName)
-	err := r.SysClient.NBClient.DeleteBucketAPI(nb.DeleteBucketParams{Name: r.BucketName})
+	err := r.SysClient.NBClient.DeleteBucketAndObjectsAPI(nb.DeleteBucketParams{Name: r.BucketName})
 
 	if err != nil {
 		if nbErr, ok := err.(*nb.RPCError); ok && nbErr.RPCCode == "NO_SUCH_BUCKET" {

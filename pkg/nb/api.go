@@ -28,6 +28,7 @@ type Client interface {
 	CreateTieringPolicyAPI(TieringPolicyInfo) error
 
 	DeleteBucketAPI(DeleteBucketParams) error
+	DeleteBucketAndObjectsAPI(DeleteBucketParams) error
 	DeleteAccountAPI(DeleteAccountParams) error
 	DeletePoolAPI(DeletePoolParams) error
 
@@ -610,6 +611,13 @@ func (c *RPCClient) CreateTieringPolicyAPI(params TieringPolicyInfo) error {
 // DeleteBucketAPI calls bucket_api.delete_bucket()
 func (c *RPCClient) DeleteBucketAPI(params DeleteBucketParams) error {
 	req := &RPCRequest{API: "bucket_api", Method: "delete_bucket", Params: params}
+	res := &RPCResponse{}
+	return c.Call(req, res)
+}
+
+// DeleteBucketAndObjectsAPI calls bucket_api.delete_bucket()
+func (c *RPCClient) DeleteBucketAndObjectsAPI(params DeleteBucketParams) error {
+	req := &RPCRequest{API: "bucket_api", Method: "delete_bucket_and_objects", Params: params}
 	res := &RPCResponse{}
 	return c.Call(req, res)
 }
