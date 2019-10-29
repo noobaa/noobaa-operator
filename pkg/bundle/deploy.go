@@ -301,7 +301,7 @@ spec:
       - aws1
 `
 
-const Sha256_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml = "2362aac8610c170155687a2d11ba08bca30c7040a7e16c1228ccd94e6c3b7bec"
+const Sha256_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml = "1c4ce07b125471ac44b881522aa0b78dbc5978dc679199f8b87e1f0289999f65"
 
 const File_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -367,6 +367,9 @@ spec:
                       placement:
                         description: Placement specifies the type of placement for
                           the tier If empty it should have a single backing store.
+                        enum:
+                        - Spread
+                        - Mirror
                         type: string
                     type: object
                   type: array

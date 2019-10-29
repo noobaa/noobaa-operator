@@ -101,6 +101,9 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	name := args[0]
 
 	placement, _ := cmd.Flags().GetString("placement")
+	if placement != "" && placement != "Spread" && placement != "Mirror" {
+		log.Fatalf(`❌ Must provide valid placement: Mirror | Spread | ""`)
+	}
 	backingStores, _ := cmd.Flags().GetStringSlice("backingstores")
 	if len(backingStores) == 0 {
 		log.Fatalf(`❌ Must provide at least one backing store`)
