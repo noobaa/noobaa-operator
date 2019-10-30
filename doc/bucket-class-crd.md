@@ -5,8 +5,13 @@ NooBaaBucket CRD represents a class for buckets that defines policies for data p
 
 Data placement capabilities are built as a multi-layer structure, here are the layers bottom-up:
 - Spread Layer - list of backing-stores, aggregates the storage of multiple stores.
-- Mirroring Layer - list of spread-layers, async-mirroring to all mirrors, with locality optimization.
+- Mirroring Layer - list of spread-layers, async-mirroring to all mirrors, with locality optimization (will allocate on the closest region to the source endpoint), mirroring requires at least two backing-stores.
 - Tiering Layer - list of mirroring-layers, push cold data to next tier.
+
+Constraints:
+A backing-store name may appear in more than one bucket-class but may not appear more than once in a single bucket-class.
+The operator cli currently only supports a single tier placement-policy for a bucket-class. 
+YAML must be used to create a bucket-class with a placement-policy that has multiple tiers.
 
 For more information on using bucket-classes from S3 see [S3 Account](s3-account.md).
 
@@ -35,40 +40,139 @@ metadata:
 spec:
   ...
 status:
-  health: OK
-  buckets: 31
-  issues: []
+  conditions:
+  - lastHeartbeatTime: "2019-11-05T13:50:50Z"
+    lastTransitionTime: "2019-11-07T07:03:58Z"
+    message: noobaa operator completed reconcile - bucket class is ready
+    reason: BucketClassPhaseReady
+    status: "True"
+    type: Available
+  - lastHeartbeatTime: "2019-11-05T13:50:50Z"
+    lastTransitionTime: "2019-11-07T07:03:58Z"
+    message: noobaa operator completed reconcile - bucket class is ready
+    reason: BucketClassPhaseReady
+    status: "False"
+    type: Progressing
+  - lastHeartbeatTime: "2019-11-05T13:50:50Z"
+    lastTransitionTime: "2019-11-05T13:50:50Z"
+    message: noobaa operator completed reconcile - bucket class is ready
+    reason: BucketClassPhaseReady
+    status: "False"
+    type: Degraded
+  - lastHeartbeatTime: "2019-11-05T13:50:50Z"
+    lastTransitionTime: "2019-11-07T07:03:58Z"
+    message: noobaa operator completed reconcile - bucket class is ready
+    reason: BucketClassPhaseReady
+    status: "True"
+    type: Upgradeable
+  phase: Ready
 ```
 
-# Delete
 
-Deleting a bucket-class should not be possible as long as there are buckets referring to it.
-Since CRD's do not offer this level of control, the operator will use the `finalizer` pattern as explained in the link below, and set a finalizer on every bucket-class to mark that external cleanup is needed before it can be delete:
+# Example
 
-https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#finalizers
+Here are some examples of the cli/YAML usage and BucketClass CRs for the different bucket-class configurations:
 
-The status of the bucket-class will show the remaining buckets that prevent if from being deleted:
-
+Single tier, single backing-store, placement Spread:
+```shell
+noobaa -n noobaa bucketclass create bc --backingstores bs --placement Spread
+```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
 kind: BucketClass
 metadata:
-  name: noobaa-default-class
+  labels:
+    app: noobaa
+  name: bc
   namespace: noobaa
-  finalizers:
-    - finalizer.noobaa.io
 spec:
-  ...
-status:
-  health: WARNING
-  buckets: 3
-  issues:
-    - title: Bucket-class "noobaa-default-class" - Cannot remove `finalizer.noobaa.io` to complete deletion while it has buckets
-      buckets:
-        - bucket1
-        - bucket2
-        - bucket3
-      createTime: "2019-06-04T13:05:35.473Z"
-      lastTime: "2019-06-04T13:05:35.473Z"
-      troubleshooting: "https://github.com/noobaa/noobaa-core/wiki/Bucket-class-finalizer-troubleshooting"
+  placementPolicy:
+    tiers:
+    - backingStores:
+      - bs
+      placement: Spread
+```
+
+Single tier, two backing-stores, placement Spread:
+```shell
+noobaa -n noobaa bucketclass create bc --backingstores bs1,bs2 --placement Spread
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BucketClass
+metadata:
+  labels:
+    app: noobaa
+  name: bc
+  namespace: noobaa
+spec:
+  placementPolicy:
+    tiers:
+    - backingStores:
+      - bs1
+      - bs2
+      placement: Spread
+```
+
+Single tier, two backing-store, placement Mirror:
+```shell
+noobaa -n noobaa bucketclass create bc --backingstores bs1,bs2 --placement Mirror
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BucketClass
+metadata:
+  labels:
+    app: noobaa
+  name: bc
+  namespace: noobaa
+spec:
+  placementPolicy:
+    tiers:
+    - backingStores:
+      - bs1
+      - bs2
+      placement: Mirror
+```
+
+Two tiers (not yet supported via operator cli), single backing-store per tier, placement Spread in tiers:
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BucketClass
+metadata:
+  labels:
+    app: noobaa
+  name: bc
+  namespace: noobaa
+spec:
+  placementPolicy:
+    tiers:
+    - backingStores:
+      - bs1
+      placement: Spread
+    - backingStores:
+      - bs2
+      placement: Spread
+```
+
+Two tiers (not yet supported via operator cli), two backing-store per tier, placement Spread in first tier and Mirror in second tier:
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BucketClass
+metadata:
+  labels:
+    app: noobaa
+  name: bc
+  namespace: noobaa
+spec:
+  placementPolicy:
+    tiers:
+    - backingStores:
+      - bs1
+      - bs2
+      placement: Spread
+    - backingStores:
+      - bs3
+      - bs4
+      placement: Mirror
 ```
