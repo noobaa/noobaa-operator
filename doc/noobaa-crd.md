@@ -55,20 +55,39 @@ metadata:
 spec:
     # ...
 status:
-
-  health:
-    backingStores: OK
-    bucketClasses: OK
-    buckets: OK
-    accounts: OK
-    issues: []
-
-  counters:
-    backingStores: 2
-    bucketClasses: 3
-    buckets: 33
-    accounts: 3
-  
+  accounts:
+    admin:
+      secretRef:
+        name: noobaa-admin
+        namespace: noobaa
+  actualImage: noobaa/noobaa-core:5
+  conditions:
+  - lastHeartbeatTime: "2019-11-05T13:50:20Z"
+    lastTransitionTime: "2019-11-06T07:03:48Z"
+    message: noobaa operator completed reconcile - system is ready
+    reason: SystemPhaseReady
+    status: "True"
+    type: Available
+  - lastHeartbeatTime: "2019-11-05T13:50:20Z"
+    lastTransitionTime: "2019-11-06T07:03:48Z"
+    message: noobaa operator completed reconcile - system is ready
+    reason: SystemPhaseReady
+    status: "False"
+    type: Progressing
+  - lastHeartbeatTime: "2019-11-05T13:50:20Z"
+    lastTransitionTime: "2019-11-05T13:50:20Z"
+    message: noobaa operator completed reconcile - system is ready
+    reason: SystemPhaseReady
+    status: "False"
+    type: Degraded
+  - lastHeartbeatTime: "2019-11-05T13:50:20Z"
+    lastTransitionTime: "2019-11-06T07:03:48Z"
+    message: noobaa operator completed reconcile - system is ready
+    reason: SystemPhaseReady
+    status: "True"
+    type: Upgradeable
+  observedGeneration: 1
+  phase: Ready
   readme: |
 
 Welcome to NooBaa
@@ -90,21 +109,34 @@ Management
 - ClusterIP address     : https://noobaa-mgmt.noobaa:8443
 - Node port address     : http://192.168.99.100:30785
 - Port forwarding       : kubectl port-forward -n noobaa service/noobaa-mgmt 11443:8443 # then open https://localhost:11443
-```
 
-Example health status when there is an issue with the availability of a backing-store:
-```yaml
-status:
-  health:
-    backingStores: WARNING
-    bucketClasses: OK
-    buckets: OK
-    accounts: OK
-    issues:
-      - title: backingStore "aws" is not accessible
-        createTime: "2019-06-04T13:05:35.473Z"
-        lastTime: "2019-06-04T13:05:35.473Z"
-```
+
+  services:
+    serviceMgmt:
+      externalDNS:
+      - https://noobaa-mgmt-noobaa.apps.noobaa.noobaa.org
+      - https://noobaa.us-east-2.elb.amazonaws.com:443
+      internalDNS:
+      - https://noobaa-mgmt.noobaa:443
+      internalIP:
+      - https://1.1.1.1:443
+      nodePorts:
+      - https://1.1.1.1:31433
+      podPorts:
+      - https://1.1.1.1:8443
+    serviceS3:
+      externalDNS:
+      - https://s3-noobaa.apps.noobaa.noobaa.org
+      - https://noobaa.us-east-2.elb.amazonaws.com:443
+      internalDNS:
+      - https://s3.noobaa:443
+      internalIP:
+      - https://1.1.1.1:443
+      nodePorts:
+      - https://1.1.1.1:32367
+      podPorts:
+      - https://1.1.1.1:6443
+  ```
 
 
 # Delete
