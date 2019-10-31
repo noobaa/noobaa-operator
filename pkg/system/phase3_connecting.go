@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	routev1 "github.com/openshift/api/route/v1"
 )
 
 // ReconcilePhaseConnecting runs the reconcile phase
@@ -21,8 +22,8 @@ func (r *Reconciler) ReconcilePhaseConnecting() error {
 		"noobaa operator started phase 3/4 - \"Connecting\"",
 	)
 
-	r.CheckServiceStatus(r.ServiceMgmt, &r.NooBaa.Status.Services.ServiceMgmt, "mgmt-https")
-	r.CheckServiceStatus(r.ServiceS3, &r.NooBaa.Status.Services.ServiceS3, "s3-https")
+	r.CheckServiceStatus(r.ServiceMgmt, r.RouteMgmt, &r.NooBaa.Status.Services.ServiceMgmt, "mgmt-https")
+	r.CheckServiceStatus(r.ServiceS3, r.RouteS3, &r.NooBaa.Status.Services.ServiceS3, "s3-https")
 
 	// initialize the noobaa client for making calls to the server.
 	if len(r.NooBaa.Status.Services.ServiceMgmt.NodePorts) == 0 {
@@ -59,7 +60,7 @@ func (r *Reconciler) ReconcilePhaseConnecting() error {
 }
 
 // CheckServiceStatus populates the status of a service by detecting all of its addresses
-func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, status *nbv1.ServiceStatus, portName string) {
+func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, route *routev1.Route, status *nbv1.ServiceStatus, portName string) {
 
 	log := r.Logger.WithField("func", "CheckServiceStatus").WithField("service", srv.Name)
 	*status = nbv1.ServiceStatus{}
@@ -105,6 +106,14 @@ func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, status *nbv1.Servic
 		status.InternalDNS = append(
 			status.InternalDNS,
 			fmt.Sprintf("%s://%s.%s:%d", proto, srv.Name, srv.Namespace, servicePort.Port),
+		)
+	}
+
+	// Routes IP:Port (of the service) {
+	if route.Spec.Host != "" {
+		status.ExternalDNS = append(
+			status.ExternalDNS,
+			fmt.Sprintf("%s://%s", proto, route.Spec.Host),
 		)
 	}
 

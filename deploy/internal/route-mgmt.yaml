@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: noobaa
+  name: noobaa-mgmt
+spec:
+  port:
+    targetPort: mgmt-https
+  tls:
+    termination: reencrypt
+  to:
+    kind: Service
+    name: noobaa-mgmt
+    weight: 100
+  wildcardPolicy: None

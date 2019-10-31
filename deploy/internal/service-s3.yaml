@@ -4,6 +4,8 @@ metadata:
   name: s3
   labels:
     app: noobaa
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: 'noobaa-s3-serving-cert'
 spec:
   type: LoadBalancer
   selector:

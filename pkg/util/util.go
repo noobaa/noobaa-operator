@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	routev1 "github.com/openshift/api/route/v1"
 )
 
 var (
@@ -52,6 +53,7 @@ func init() {
 	Panic(cloudcredsv1.AddToScheme(scheme.Scheme))
 	Panic(operv1.AddToScheme(scheme.Scheme))
 	Panic(cephv1.AddToScheme(scheme.Scheme))
+	Panic(routev1.AddToScheme(scheme.Scheme))
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)
@@ -77,6 +79,7 @@ func MapperProvider(config *rest.Config) (meta.RESTMapper, error) {
 				g.Name == "noobaa.io" ||
 				g.Name == "objectbucket.io" ||
 				g.Name == "operator.openshift.io" ||
+				g.Name == "route.openshift.io" ||
 				g.Name == "cloudcredential.openshift.io" ||
 				g.Name == "monitoring.coreos.com" ||
 				g.Name == "ceph.rook.io" ||
@@ -639,7 +642,7 @@ func IsAWSPlatform() bool {
 
 // GetAWSRegion parses the region from a node's name
 func GetAWSRegion() (string, error) {
-	// parse the node name to get AWS region according to this: 
+	// parse the node name to get AWS region according to this:
 	// https://docs.aws.amazon.com/en_pv/vpc/latest/userguide/vpc-dns.html#vpc-dns-hostnames
 	var mapValidAWSRegions = map[string]string{
 		"compute-1":      "us-east-1",

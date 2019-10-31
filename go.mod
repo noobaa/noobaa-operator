@@ -12,6 +12,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/go-version v1.2.0
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20190924175516-f3ba69cc601e
+	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
 	github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190605231540-b8a4faf68e36 // 0.11.0

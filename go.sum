@@ -350,6 +350,7 @@ github.com/onsi/gomega v1.7.0 h1:XPnZz8VVBHjVsy1vzJmRwIcSwiUO+JFfrv/xGiigmME=
 github.com/onsi/gomega v1.7.0/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
 github.com/opencontainers/go-digest v1.0.0-rc1 h1:WzifXhOVOEOuFYOJAW6aQqW0TooG2iki3E3Ii+WN7gQ=
 github.com/opencontainers/go-digest v1.0.0-rc1/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
+github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible h1:q2JBuObKafI7B4Eli6eLd+2T5JsU9ioWZ82zQwyjJPg=
 github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible/go.mod h1:dh9o4Fs58gpFXGSYfnVxGR9PnV53I8TW84pQaJDdGiY=
 github.com/openshift/client-go v0.0.0-20190401163519-84c2b942258a/go.mod h1:6rzn+JTr7+WYS2E1TExP4gByoABxMznR6y2SnUIkmxk=
 github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c h1:0WFbd1aDMdmpfpcdBOn5Ps5WSzYAJKRS95Iqum9DcJc=

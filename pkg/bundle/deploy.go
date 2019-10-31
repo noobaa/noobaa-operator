@@ -905,6 +905,46 @@ spec:
         severity: critical
 `
 
+const Sha256_deploy_internal_route_mgmt_yaml = "009b63d885a54d3d17f3fa5c8e52ec1de91f4a07463f59a2901757d8a2af414d"
+
+const File_deploy_internal_route_mgmt_yaml = `apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: noobaa
+  name: SYSNAME-mgmt
+spec:
+  port:
+    targetPort: mgmt-https
+  tls:
+    termination: reencrypt
+  to:
+    kind: Service
+    name: SYSNAME-mgmt
+    weight: 100
+  wildcardPolicy: None
+`
+
+const Sha256_deploy_internal_route_s3_yaml = "16789c6b4fa6e6e05661488eb1312fd9ca0d161c3dfc19433515025303bd398a"
+
+const File_deploy_internal_route_s3_yaml = `apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: noobaa
+  name: SYSNAME-s3
+spec:
+  port:
+    targetPort: s3-https
+  tls:
+    termination: reencrypt
+  to:
+    kind: Service
+    name: SYSNAME-s3
+    weight: 100
+  wildcardPolicy: None
+`
+
 const Sha256_deploy_internal_secret_empty_yaml = "d63aaeaf7f9c7c1421fcc138ee2f31d2461de0dec2f68120bc9cce367d4d4186"
 
 const File_deploy_internal_secret_empty_yaml = `apiVersion: v1
@@ -916,7 +956,7 @@ type: Opaque
 data: {}
 `
 
-const Sha256_deploy_internal_service_mgmt_yaml = "14afee25800613df32344779addc74507951fbc2a31f639cfc190a0e56a5f29e"
+const Sha256_deploy_internal_service_mgmt_yaml = "332658e2a61828d7dfa406ebc1a65b4bc1e5dcec3c27a6f476f10b53f41d7107"
 
 const File_deploy_internal_service_mgmt_yaml = `apiVersion: v1
 kind: Service
@@ -928,6 +968,7 @@ metadata:
     prometheus.io/scrape: "true"
     prometheus.io/scheme: http
     prometheus.io/port: "8080"
+    service.beta.openshift.io/serving-cert-secret-name: "noobaa-mgmt-serving-cert"
 spec:
   type: LoadBalancer
   selector:
@@ -964,7 +1005,7 @@ spec:
       app: noobaa
 `
 
-const Sha256_deploy_internal_service_s3_yaml = "bfd8c420ca27482a996a9adfa0c8890fdd596850a3dbfd8c10d3ebaae1b5cc89"
+const Sha256_deploy_internal_service_s3_yaml = "220a8196a5937ca7763bcedf3ea42e9ed6dd99cbfc38dd428a884d2712a7a3bd"
 
 const File_deploy_internal_service_s3_yaml = `apiVersion: v1
 kind: Service
@@ -972,6 +1013,8 @@ metadata:
   name: s3
   labels:
     app: noobaa
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: 'noobaa-s3-serving-cert'
 spec:
   type: LoadBalancer
   selector:
@@ -985,7 +1028,7 @@ spec:
       name: s3-https
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "1f9a19c4b334c3ef2854c8317d62ebbf49aba52f8221c8a434c5b1d808c9be2e"
+const Sha256_deploy_internal_statefulset_core_yaml = "660d5e608ea94afe048dfbdcf8b9cf705d40b42e2172287f02f989bb8273f8e8"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -1024,6 +1067,12 @@ spec:
       volumes:
       - name: logs
         emptyDir: {}
+      - name: mgmt-secret
+        secret:
+          secretName: noobaa-mgmt-serving-cert
+      - name: s3-secret
+        secret:
+          secretName: noobaa-s3-serving-cert
       initContainers:
 #----------------#
 # INIT CONTAINER #
@@ -1047,6 +1096,12 @@ spec:
         volumeMounts:
         - name: logs
           mountPath: /log
+        - name: mgmt-secret
+          mountPath: /etc/mgmt-secret
+          readOnly: true
+        - name: s3-secret
+          mountPath: /etc/s3-secret
+          readOnly: true
         readinessProbe:
           tcpSocket:
             port: 6001 # ready when s3 port is open
@@ -1780,7 +1835,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "c505b808b24f44248bb52f96464e89ac839ee2968daa84167155091206e4ce97"
+const Sha256_deploy_role_yaml = "26c988090a0b9e2b50e2ffc225476534c3916d75ecb4d67e434a514eab52824c"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -1881,6 +1936,17 @@ rules:
   - update
   - list
   - watch
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  - create
+  - update
+  - list
+  - watch
+
 `
 
 const Sha256_deploy_role_binding_yaml = "59a2627156ed3db9cd1a4d9c47e8c1044279c65e84d79c525e51274329cb16ff"

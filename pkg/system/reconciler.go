@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	routev1 "github.com/openshift/api/route/v1"
 )
 
 var (
@@ -76,6 +77,8 @@ type Reconciler struct {
 	ServiceMonitor      *monitoringv1.ServiceMonitor
 	SystemInfo          *nb.SystemInfo
 	CephObjectstoreUser *cephv1.CephObjectStoreUser
+	RouteMgmt           *routev1.Route
+	RouteS3             *routev1.Route
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -109,6 +112,8 @@ func NewReconciler(
 		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		ServiceMonitor:      util.KubeObject(bundle.File_deploy_internal_service_monitor_yaml).(*monitoringv1.ServiceMonitor),
 		CephObjectstoreUser: util.KubeObject(bundle.File_deploy_internal_ceph_objectstore_user_yaml).(*cephv1.CephObjectStoreUser),
+		RouteMgmt:           util.KubeObject(bundle.File_deploy_internal_route_mgmt_yaml).(*routev1.Route),
+		RouteS3:             util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
 	}
 
 	// Set Namespace
@@ -126,6 +131,8 @@ func NewReconciler(
 	r.PrometheusRule.Namespace = r.Request.Namespace
 	r.ServiceMonitor.Namespace = r.Request.Namespace
 	r.CephObjectstoreUser.Namespace = r.Request.Namespace
+	r.RouteMgmt.Namespace = r.Request.Namespace
+	r.RouteS3.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -142,6 +149,12 @@ func NewReconciler(
 	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"
 	r.PrometheusRule.Name = r.Request.Name + "-prometheus-rules"
 	r.ServiceMonitor.Name = r.Request.Name + "-service-monitor"
+	r.RouteMgmt.Name = r.ServiceMgmt.Name
+	r.RouteS3.Name = r.ServiceS3.Name
+
+	// Set the target service for routes.
+	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name
+	r.RouteS3.Spec.To.Name = r.ServiceS3.Name
 
 	// Since StorageClass is global we set the name and provisioner to have unique global name
 	r.OBCStorageClass.Name = options.SubDomainNS()
@@ -168,6 +181,8 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheckOptional(r.CloudCreds)
 	util.KubeCheckOptional(r.PrometheusRule)
 	util.KubeCheckOptional(r.ServiceMonitor)
+	util.KubeCheckOptional(r.RouteMgmt)
+	util.KubeCheckOptional(r.RouteS3)
 }
 
 // Reconcile reads that state of the cluster for a System object,
@@ -267,12 +282,12 @@ func (r *Reconciler) SetReadme(t *template.Template) {
 	if err != nil {
 		r.Logger.Errorf("SetReadme: Error in readme template %s: %v", t.Name(), err)
 		readme := `
-	
+
 	ERROR: readme template %q failed: %v
 
 	This is a problem in the noobaa operator code -
 	Please report it to https://github.com/noobaa/noobaa-operator/issues
-	
+
 `
 		r.NooBaa.Status.Readme = fmt.Sprintf(readme, t.Name(), err)
 		return
