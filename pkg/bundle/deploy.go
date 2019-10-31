@@ -905,14 +905,14 @@ spec:
         severity: critical
 `
 
-const Sha256_deploy_internal_route_mgmt_yaml = "009b63d885a54d3d17f3fa5c8e52ec1de91f4a07463f59a2901757d8a2af414d"
+const Sha256_deploy_internal_route_mgmt_yaml = "52dacfdd2f8f4ddfe56948573ae69277096d971c9274f9afb1046871ed7f9c28"
 
 const File_deploy_internal_route_mgmt_yaml = `apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   labels:
     app: noobaa
-  name: SYSNAME-mgmt
+  name: noobaa-mgmt
 spec:
   port:
     targetPort: mgmt-https
@@ -920,19 +920,19 @@ spec:
     termination: reencrypt
   to:
     kind: Service
-    name: SYSNAME-mgmt
+    name: noobaa-mgmt
     weight: 100
   wildcardPolicy: None
 `
 
-const Sha256_deploy_internal_route_s3_yaml = "16789c6b4fa6e6e05661488eb1312fd9ca0d161c3dfc19433515025303bd398a"
+const Sha256_deploy_internal_route_s3_yaml = "e5d832cf3912c648ab4b799ded80a70eaec9fc13d6181726d934af99f71a6686"
 
 const File_deploy_internal_route_s3_yaml = `apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   labels:
     app: noobaa
-  name: SYSNAME-s3
+  name: s3
 spec:
   port:
     targetPort: s3-https
@@ -940,7 +940,7 @@ spec:
     termination: reencrypt
   to:
     kind: Service
-    name: SYSNAME-s3
+    name: s3
     weight: 100
   wildcardPolicy: None
 `
@@ -956,7 +956,7 @@ type: Opaque
 data: {}
 `
 
-const Sha256_deploy_internal_service_mgmt_yaml = "332658e2a61828d7dfa406ebc1a65b4bc1e5dcec3c27a6f476f10b53f41d7107"
+const Sha256_deploy_internal_service_mgmt_yaml = "528fb9ccd535776579e59dc5ae60602d0679ce9c6c59c7d5d5a22526fe79131d"
 
 const File_deploy_internal_service_mgmt_yaml = `apiVersion: v1
 kind: Service
@@ -968,7 +968,7 @@ metadata:
     prometheus.io/scrape: "true"
     prometheus.io/scheme: http
     prometheus.io/port: "8080"
-    service.beta.openshift.io/serving-cert-secret-name: "noobaa-mgmt-serving-cert"
+    service.beta.openshift.io/serving-cert-secret-name: noobaa-mgmt-serving-cert
 spec:
   type: LoadBalancer
   selector:
@@ -1028,7 +1028,7 @@ spec:
       name: s3-https
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "660d5e608ea94afe048dfbdcf8b9cf705d40b42e2172287f02f989bb8273f8e8"
+const Sha256_deploy_internal_statefulset_core_yaml = "97cb70ec5b66a8fec8225a441a84948368513e5db515320f8f3fcf8ed0bd01b1"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -1070,9 +1070,11 @@ spec:
       - name: mgmt-secret
         secret:
           secretName: noobaa-mgmt-serving-cert
+          optional: true
       - name: s3-secret
         secret:
           secretName: noobaa-s3-serving-cert
+          optional: true
       initContainers:
 #----------------#
 # INIT CONTAINER #
