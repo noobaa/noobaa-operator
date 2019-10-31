@@ -35,12 +35,12 @@ build: cli image gen-olm
 	@echo "✅ build"
 .PHONY: build
 
-cli: gen
+cli: operator-sdk gen
 	operator-sdk up local --operator-flags "version"
 	@echo "✅ cli"
 .PHONY: cli
 
-image: gen
+image: operator-sdk gen
 	operator-sdk build $(IMAGE)
 	@echo "✅ image"
 .PHONY: image
@@ -51,7 +51,7 @@ vendor:
 	@echo "✅ vendor"
 .PHONY: vendor
 
-run: gen
+run: operator-sdk gen
 	operator-sdk up local --operator-flags "operator run"
 .PHONY: run
 
@@ -71,6 +71,11 @@ release:
 	@echo "✅ build-releases/noobaa-mac-v$(VERSION)"
 .PHONY: release
 
+operator-sdk:
+	@echo "checking operator-sdk version"
+	operator-sdk version | grep -q "operator-sdk version: v0.10.1, commit: 872e7d997486bb587660fc8d6226eaab8b5c1087"
+	@echo "✅ operator-sdk"
+.PHONY: operator-sdk
 
 #------------#
 #- Generate -#
@@ -84,7 +89,7 @@ pkg/bundle/deploy.go: pkg/bundler/bundler.go $(shell find deploy/ -type f)
 	mkdir -p pkg/bundle
 	go run pkg/bundler/bundler.go deploy/ pkg/bundle/deploy.go
 
-gen-api: gen
+gen-api: operator-sdk gen
 	$(TIME) operator-sdk generate k8s
 	$(TIME) operator-sdk generate openapi
 	@echo "✅ gen-api"
@@ -98,7 +103,7 @@ gen-api-fail-if-dirty: gen-api
 	)
 .PHONY: gen-api-fail-if-dirty
 
-gen-olm: gen
+gen-olm: operator-sdk gen
 	rm -rf $(OLM)
 	mkdir -p $(OLM)
 	cp deploy/crds/*_crd.yaml $(OLM)/
@@ -144,7 +149,7 @@ test-cli:
 	@echo "✅ test-cli"
 .PHONY: test-cli
 
-test-csv: gen-olm
+test-csv: operator-sdk gen-olm
 	operator-sdk alpha olm install || exit 0
 	kubectl create ns my-noobaa-operator || exit 0
 	operator-sdk up local --operator-flags "crd create -n my-noobaa-operator"
@@ -156,12 +161,12 @@ test-csv: gen-olm
 	@echo "✅ test-csv"
 .PHONY: test-csv
 
-test-olm: gen-olm
+test-olm: operator-sdk gen-olm
 	./test/test-olm.sh
 	@echo "✅ test-olm"
 .PHONY: test-olm
 
-test-scorecard: $(OUTPUT)/olm-global-manifest.yaml gen-olm
+test-scorecard: operator-sdk $(OUTPUT)/olm-global-manifest.yaml gen-olm
 	kubectl create ns noobaa-scorecard || exit 0
 	$(TIME) operator-sdk scorecard --verbose \
 		--csv-path $(OLM)/noobaa-operator.v$(VERSION).clusterserviceversion.yaml \
@@ -174,7 +179,7 @@ test-scorecard: $(OUTPUT)/olm-global-manifest.yaml gen-olm
 	@echo "✅ test-scorecard"
 .PHONY: test-scorecard
 
-$(OUTPUT)/olm-global-manifest.yaml: gen
+$(OUTPUT)/olm-global-manifest.yaml: operator-sdk gen
 	operator-sdk up local --operator-flags "crd yaml" > $(OUTPUT)/olm-global-manifest.yaml
 	echo "---" >> $(OUTPUT)/olm-global-manifest.yaml
 	cat deploy/cluster_role.yaml >> $(OUTPUT)/olm-global-manifest.yaml

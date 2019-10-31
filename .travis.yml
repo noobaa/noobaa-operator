@@ -22,7 +22,7 @@ install:
   - bash .travis/install-python.sh
   - bash .travis/install-minikube.sh
 script:
-  - make gen-api-fail-if-dirty
+  - make gen-api-fail-if-dirty --always-make
   - make build
   - make test
   - make test-cli

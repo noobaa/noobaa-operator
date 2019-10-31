@@ -15,8 +15,8 @@ set -x
 # socat is needed for port forwarding
 sudo apt-get update && sudo apt-get install socat
 
-export MINIKUBE_VERSION=v1.4.0
-export KUBERNETES_VERSION=v1.15.0
+export MINIKUBE_VERSION=v1.5.1
+export KUBERNETES_VERSION=v1.16.2
 
 sudo mount --make-rshared /
 sudo mount --make-rshared /proc
