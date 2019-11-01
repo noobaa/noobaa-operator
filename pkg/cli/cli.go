@@ -2,6 +2,7 @@ package cli
 
 import (
 	"flag"
+	"fmt"
 	"math/rand"
 	"os"
 	"time"
@@ -68,15 +69,34 @@ func Cmd() *cobra.Command {
 	}
 
 	// Root command
-	cmd := &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use:   "noobaa",
 		Short: logo,
 	}
 
-	cmd.PersistentFlags().AddFlagSet(options.FlagSet)
-	cmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
+	rootCmd.PersistentFlags().AddFlagSet(options.FlagSet)
+	rootCmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
-	cmdOptions := options.Cmd()
+	optionsCmd := options.Cmd()
+
+	completionCmd := &cobra.Command{
+		Use:   "completion",
+		Short: "Generates bash completion scripts",
+		Long: fmt.Sprintf(`
+Load noobaa completion to bash:
+(add to your ~/.bashrc and ~/.bash_profile to auto load)
+
+. <(%s completion)
+`, rootCmd.Name()),
+		Run: func(cmd *cobra.Command, args []string) {
+			alias, _ := cmd.Flags().GetString("alias")
+			if alias != "" {
+				rootCmd.Use = alias
+			}
+			rootCmd.GenBashCompletion(os.Stdout)
+		},
+	}
+	completionCmd.Flags().String("alias", "", "Custom alias name to generate the completion for")
 
 	groups := templates.CommandGroups{{
 		Message: "Install:",
@@ -104,15 +124,16 @@ func Cmd() *cobra.Command {
 		},
 	}}
 
-	groups.Add(cmd)
+	groups.Add(rootCmd)
 
-	cmd.AddCommand(
+	rootCmd.AddCommand(
 		version.Cmd(),
-		cmdOptions,
+		optionsCmd,
+		completionCmd,
 	)
 
-	templates.ActsAsRootCommand(cmd, []string{}, groups...)
-	templates.UseOptionsTemplates(cmdOptions)
+	templates.ActsAsRootCommand(rootCmd, []string{}, groups...)
+	templates.UseOptionsTemplates(optionsCmd)
 
-	return cmd
+	return rootCmd
 }
