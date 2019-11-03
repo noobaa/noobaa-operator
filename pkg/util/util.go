@@ -3,9 +3,13 @@ package util
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"strings"
 	"time"
 
@@ -15,6 +19,7 @@ import (
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/v2/pkg/apis"
+	routev1 "github.com/openshift/api/route/v1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	operv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
@@ -34,8 +39,15 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	routev1 "github.com/openshift/api/route/v1"
 )
+
+const oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
+
+// Holds OAuth2 endpoints information.
+type OAuth2Endpoints struct {
+	AuthorizationEndpoint string `json:"authorization_endpoint"`
+	TokenEndpoint         string `json:"token_endpoint"`
+}
 
 var (
 	ctx        = context.TODO()
@@ -720,4 +732,31 @@ func PrintThisNoteWhenFinishedApplyingAndStartWaitLoop() {
 	log.Printf("  - This command has finished applying changes to the cluster.")
 	log.Printf("  - From now on, it only loops and reads the status, to monitor the operator work.")
 	log.Printf("  - You may Ctrl-C at any time to stop the loop and watch it manually.")
+}
+
+func DiscoverOAuthEndpoints() (*OAuth2Endpoints, error) {
+	client := http.Client{
+		Timeout: 120 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	res, err := client.Get(oAuthWellKnownEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	endpoints := OAuth2Endpoints{}
+	err = json.Unmarshal(body, &endpoints)
+	if err != nil {
+		return nil, err
+	}
+
+	return &endpoints, nil
 }

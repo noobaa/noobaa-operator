@@ -61,6 +61,7 @@ type Reconciler struct {
 	NBClient        nb.Client
 	CoreVersion     string
 	OperatorVersion string
+	OAuthEndpoints  *util.OAuth2Endpoints
 
 	NooBaa              *nbv1.NooBaa
 	CoreApp             *appsv1.StatefulSet
