@@ -27,6 +27,13 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		"noobaa operator started phase 2/4 - \"Creating\"",
 	)
 
+	// A failiure to discover OAuth endpoints should not fail the entire reconcile phase.
+	oAuthEndpoints, err := util.DiscoverOAuthEndpoints()
+	if err != nil {
+		r.Logger.Warnf("Discovery of OAuth endpoints failed, got: %v", err)
+	}
+	r.OAuthEndpoints = oAuthEndpoints
+
 	// the credentials that are created by cloud-credentials-operator sometimes take time
 	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
 	// creating the credential request as early as possible to try and avoid it
@@ -98,6 +105,16 @@ func (r *Reconciler) SetDesiredCoreApp() {
 				// 	c.Env[j].Value = "1" // TODO recalculate
 				case "AGENT_PROFILE":
 					c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
+
+				case "OAUTH_AUTHORIZATION_ENDPOINT":
+					if r.OAuthEndpoints != nil {
+						c.Env[j].Value = r.OAuthEndpoints.AuthorizationEndpoint
+					}
+
+				case "OAUTH_TOKEN_ENDPOINT":
+					if r.OAuthEndpoints != nil {
+						c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
+					}
 				}
 			}
 			if r.NooBaa.Spec.CoreResources != nil {
