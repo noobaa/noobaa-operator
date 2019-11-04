@@ -2,6 +2,22 @@ package bundle
 
 const Version = "2.0.6-wip"
 
+const Sha256_deploy_auth_delegator_cluster_role_binding_yaml = "7fd16a58f7ae0b9ecf8043536ce37a83673ab7e2c2df8f5a1690f919e81ae186"
+
+const File_deploy_auth_delegator_cluster_role_binding_yaml = `apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: noobaa.noobaa.io:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: noobaa
+    namespace: noobaa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+`
+
 const Sha256_deploy_cluster_role_yaml = "f719ff8e0015a73d4e6ff322d2b30efa1cc89fcb3f856c06a5910785cb9e8dd8"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
@@ -1031,7 +1047,7 @@ spec:
       name: s3-https
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "97cb70ec5b66a8fec8225a441a84948368513e5db515320f8f3fcf8ed0bd01b1"
+const Sha256_deploy_internal_statefulset_core_yaml = "effdb488acaf67b4cfbb2e1120f17a9d7283206f4a65f1cc1e687473d2bd96fd"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -1148,6 +1164,10 @@ spec:
           value: ""
         - name: OAUTH_TOKEN_ENDPOINT
           value: ""
+        - name: NOOBAA_SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
         - name: container_dbg
           value: "" # any non-empty value will set the container to dbg mode
         - name: CONTAINER_CPU_REQUEST
@@ -1969,11 +1989,13 @@ roleRef:
   name: noobaa
 `
 
-const Sha256_deploy_service_account_yaml = "51241cd291100562ccd8bec1625c3779e212a58a0a21d4042937a98c73245d66"
+const Sha256_deploy_service_account_yaml = "7c68e5bd65c614787d7d4cdf80db8c14d9159ce8e940c5134d33d21dbe66893f"
 
 const File_deploy_service_account_yaml = `apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: noobaa
+  annotations:
+    serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"noobaa-mgmt"}}'
 `
 

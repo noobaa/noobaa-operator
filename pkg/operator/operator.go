@@ -92,6 +92,7 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	util.KubeCreateSkipExisting(c.RoleBinding)
 	util.KubeCreateSkipExisting(c.ClusterRole)
 	util.KubeCreateSkipExisting(c.ClusterRoleBinding)
+	util.KubeCreateSkipExisting(c.AuthDelegatorClusterRoleBinding)
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		util.KubeCreateSkipExisting(c.Deployment)
@@ -106,6 +107,7 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 		util.KubeDelete(c.Deployment)
 	}
 	util.KubeDelete(c.ClusterRoleBinding)
+	util.KubeDelete(c.AuthDelegatorClusterRoleBinding)
 	util.KubeDelete(c.ClusterRole)
 	util.KubeDelete(c.RoleBinding)
 	util.KubeDelete(c.Role)
@@ -139,6 +141,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	util.KubeCheck(c.RoleBinding)
 	util.KubeCheck(c.ClusterRole)
 	util.KubeCheck(c.ClusterRoleBinding)
+	util.KubeCheck(c.AuthDelegatorClusterRoleBinding)
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		util.KubeCheck(c.Deployment)
@@ -155,6 +158,7 @@ func RunYaml(cmd *cobra.Command, args []string) {
 	util.Panic(p.PrintObj(c.RoleBinding, os.Stdout))
 	util.Panic(p.PrintObj(c.ClusterRole, os.Stdout))
 	util.Panic(p.PrintObj(c.ClusterRoleBinding, os.Stdout))
+	util.Panic(p.PrintObj(c.AuthDelegatorClusterRoleBinding, os.Stdout))
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		util.Panic(p.PrintObj(c.Deployment, os.Stdout))
@@ -163,13 +167,14 @@ func RunYaml(cmd *cobra.Command, args []string) {
 
 // Conf struct holds all the objects needed to install the operator
 type Conf struct {
-	NS                 *corev1.Namespace
-	SA                 *corev1.ServiceAccount
-	Role               *rbacv1.Role
-	RoleBinding        *rbacv1.RoleBinding
-	ClusterRole        *rbacv1.ClusterRole
-	ClusterRoleBinding *rbacv1.ClusterRoleBinding
-	Deployment         *appsv1.Deployment
+	NS                              *corev1.Namespace
+	SA                              *corev1.ServiceAccount
+	Role                            *rbacv1.Role
+	RoleBinding                     *rbacv1.RoleBinding
+	ClusterRole                     *rbacv1.ClusterRole
+	ClusterRoleBinding              *rbacv1.ClusterRoleBinding
+	AuthDelegatorClusterRoleBinding *rbacv1.ClusterRoleBinding
+	Deployment                      *appsv1.Deployment
 }
 
 // LoadOperatorConf loads and initializes all the objects needed to install the operator
@@ -182,6 +187,7 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.RoleBinding = util.KubeObject(bundle.File_deploy_role_binding_yaml).(*rbacv1.RoleBinding)
 	c.ClusterRole = util.KubeObject(bundle.File_deploy_cluster_role_yaml).(*rbacv1.ClusterRole)
 	c.ClusterRoleBinding = util.KubeObject(bundle.File_deploy_cluster_role_binding_yaml).(*rbacv1.ClusterRoleBinding)
+	c.AuthDelegatorClusterRoleBinding = util.KubeObject(bundle.File_deploy_auth_delegator_cluster_role_binding_yaml).(*rbacv1.ClusterRoleBinding)
 	c.Deployment = util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
 
 	c.NS.Name = options.Namespace
@@ -189,6 +195,7 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.Role.Namespace = options.Namespace
 	c.RoleBinding.Namespace = options.Namespace
 	c.ClusterRole.Namespace = options.Namespace
+	c.AuthDelegatorClusterRoleBinding.Namespace = options.Namespace
 	c.Deployment.Namespace = options.Namespace
 
 	c.ClusterRole.Name = options.SubDomainNS()
@@ -196,6 +203,11 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.ClusterRoleBinding.RoleRef.Name = c.ClusterRole.Name
 	for i := range c.ClusterRoleBinding.Subjects {
 		c.ClusterRoleBinding.Subjects[i].Namespace = options.Namespace
+	}
+
+	c.AuthDelegatorClusterRoleBinding.Name = options.SubDomainNS() + ":auth-delegator"
+	for i := range c.AuthDelegatorClusterRoleBinding.Subjects {
+		c.AuthDelegatorClusterRoleBinding.Subjects[i].Namespace = options.Namespace
 	}
 
 	c.Deployment.Spec.Template.Spec.Containers[0].Image = options.OperatorImage
