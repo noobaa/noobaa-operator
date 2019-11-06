@@ -350,10 +350,6 @@ func (r *Reconciler) ReadSystemInfo() error {
 	}
 	r.SystemInfo = &systemInfo
 
-	if r.BackingStore.DeletionTimestamp != nil {
-		return nil
-	}
-
 	conn, err := r.MakeExternalConnectionParams()
 	if err != nil {
 		return err
