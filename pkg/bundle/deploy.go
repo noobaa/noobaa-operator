@@ -2,23 +2,7 @@ package bundle
 
 const Version = "2.0.6-wip"
 
-const Sha256_deploy_auth_delegator_cluster_role_binding_yaml = "7fd16a58f7ae0b9ecf8043536ce37a83673ab7e2c2df8f5a1690f919e81ae186"
-
-const File_deploy_auth_delegator_cluster_role_binding_yaml = `apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: noobaa.noobaa.io:auth-delegator
-subjects:
-  - kind: ServiceAccount
-    name: noobaa
-    namespace: noobaa
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: system:auth-delegator
-`
-
-const Sha256_deploy_cluster_role_yaml = "f719ff8e0015a73d4e6ff322d2b30efa1cc89fcb3f856c06a5910785cb9e8dd8"
+const Sha256_deploy_cluster_role_yaml = "b7002d09a74061e0d16e9414d60f97ed7f6a8fb3192699f957169e1170f2a669"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -74,6 +58,18 @@ rules:
   - get
   - list
   - watch
+- apiGroups: # from system:auth-delegator
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups: # from system:auth-delegator
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
 `
 
 const Sha256_deploy_cluster_role_binding_yaml = "15c78355aefdceaf577bd96b4ae949ae424a3febdc8853be0917cf89a63941fc"
@@ -1860,7 +1856,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "26c988090a0b9e2b50e2ffc225476534c3916d75ecb4d67e434a514eab52824c"
+const Sha256_deploy_role_yaml = "dc9c707478bdb8e930a2a6697df9d97242c339ec9f99ca938b70d84b3393039f"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -1889,14 +1885,7 @@ rules:
   - events
   - configmaps
   - secrets
-  verbs:
-  - '*'
-- apiGroups:
-  - ""
-  resources:
   - serviceaccounts
-  resourceNames:
-    - noobaa
   verbs:
   - '*'
 - apiGroups:

@@ -25,14 +25,7 @@ rules:
   - events
   - configmaps
   - secrets
-  verbs:
-  - '*'
-- apiGroups:
-  - ""
-  resources:
   - serviceaccounts
-  resourceNames:
-    - noobaa
   verbs:
   - '*'
 - apiGroups:
