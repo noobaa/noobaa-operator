@@ -30,7 +30,7 @@ const (
 	// ContainerImageRepo is the repo of the default image url
 	ContainerImageRepo = "noobaa-core"
 	// ContainerImageTag is the tag of the default image url
-	ContainerImageTag = "5"
+	ContainerImageTag = "5.2.8"
 	// ContainerImageConstraintSemver is the contraints of supported image versions
 	ContainerImageConstraintSemver = ">=5, <6"
 	// ContainerImageName is the default image name without the tag/version
