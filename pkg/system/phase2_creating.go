@@ -41,6 +41,9 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		r.Logger.Errorf("failed to create CredentialsRequest. will retry in phase 4. error: %v", err)
 		return err
 	}
+	if err := r.ReconcileObject(r.ServiceAccount, r.SetDesiredServiceAccount); err != nil {
+		return err
+	}
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
 		return err
 	}
@@ -61,6 +64,12 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	}
 
 	return nil
+}
+
+// SetDesiredServiceAccount updates the ServiceAccount as desired for reconciling
+func (r *Reconciler) SetDesiredServiceAccount() {
+	r.ServiceAccount.Annotations["serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt"] =
+		`{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"` + r.RouteMgmt.Name + `"}}`
 }
 
 // SetDesiredServiceMgmt updates the ServiceMgmt as desired for reconciling

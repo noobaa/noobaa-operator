@@ -78,11 +78,11 @@ func (r *Reconciler) CheckSystemCR() error {
 			log.Infof("Parsed version %q from image tag %q", version.String(), imageTag)
 			if !ContainerImageConstraint.Check(version) {
 				return util.NewPersistentError("InvalidImageVersion",
-					fmt.Sprintf(`Invalid image version %q not matching contraints %q`,
+					fmt.Sprintf(`Invalid image version %q not matching constraints %q`,
 						imageRef, ContainerImageConstraint))
 			}
 		} else {
-			log.Infof("Using custom image %q contraints %q", imageRef.String(), ContainerImageConstraint.String())
+			log.Infof("Using custom image %q constraints %q", imageRef.String(), ContainerImageConstraint.String())
 		}
 	} else {
 		log.Infof("Using custom image name %q the default is %q", imageRef.String(), options.ContainerImageName)
