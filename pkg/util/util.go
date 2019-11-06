@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode"
 
 	"golang.org/x/crypto/ssh/terminal"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -760,3 +761,15 @@ func DiscoverOAuthEndpoints() (*OAuth2Endpoints, error) {
 
 	return &endpoints, nil
 }
+
+// IsStringGraphicCharsOnly returns true only if all the chars are graphic
+func IsStringGraphicCharsOnly(s string) bool {
+	for _, c := range s {
+		if !unicode.IsGraphic(c) {
+			return false
+		}
+	}
+	return true
+}
+
+// WriteYamlFile writes a yaml file from the given objects

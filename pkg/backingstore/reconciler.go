@@ -507,6 +507,11 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 			fmt.Sprintf("Invalid backing store type %q", r.BackingStore.Spec.Type))
 	}
 
+	if !util.IsStringGraphicCharsOnly(conn.Identity) || !util.IsStringGraphicCharsOnly(conn.Secret) {
+		return nil, util.NewPersistentError("InvalidSecret",
+			fmt.Sprintf("Invalid secret containing non graphic characters (perhaps not base64 encoded?) %q", r.Secret.Name))
+	}
+
 	return conn, nil
 }
 
