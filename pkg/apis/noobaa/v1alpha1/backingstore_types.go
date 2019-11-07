@@ -87,7 +87,8 @@ type BackingStoreSpec struct {
 type BackingStoreStatus struct {
 
 	// Phase is a simple, high-level summary of where the backing store is in its lifecycle
-	Phase BackingStorePhase `json:"phase"`
+	// +optional
+	Phase BackingStorePhase `json:"phase,omitempty"`
 
 	// Conditions is a list of conditions related to operator reconciliation
 	// +patchMergeKey=type
@@ -96,6 +97,7 @@ type BackingStoreStatus struct {
 	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
 
 	// RelatedObjects is a list of objects related to this operator.
+	// +optional
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 }
 

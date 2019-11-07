@@ -202,6 +202,13 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
 	util.KubeCheck(r.NooBaa)
 
+	if r.NooBaa.Status.Accounts == nil {
+		r.NooBaa.Status.Accounts = &nbv1.AccountsStatus{}
+	}
+	if r.NooBaa.Status.Services == nil {
+		r.NooBaa.Status.Services = &nbv1.ServicesStatus{}
+	}
+
 	if r.NooBaa.UID == "" {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return res, nil

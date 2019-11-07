@@ -104,6 +104,10 @@ type NooBaaSpec struct {
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
+	// Affinity (optional) passed through to noobaa's pods
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
 	// ImagePullSecret (optional) sets a pull secret for the system image
 	// +optional
 	ImagePullSecret *corev1.LocalObjectReference `json:"imagePullSecret,omitempty"`
@@ -115,10 +119,12 @@ type NooBaaStatus struct {
 
 	// ObservedGeneration is the most recent generation observed for this noobaa system.
 	// It corresponds to the CR generation, which is updated on mutation by the API Server.
-	ObservedGeneration int64 `json:"observedGeneration"`
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
 	// Phase is a simple, high-level summary of where the System is in its lifecycle
-	Phase SystemPhase `json:"phase"`
+	// +optional
+	Phase SystemPhase `json:"phase,omitempty"`
 
 	// Conditions is a list of conditions related to operator reconciliation
 	// +patchMergeKey=type
@@ -127,17 +133,24 @@ type NooBaaStatus struct {
 	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
 
 	// RelatedObjects is a list of objects related to this operator.
+	// +optional
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 
 	// ActualImage is set to report which image the operator is using
-	ActualImage string `json:"actualImage"`
+	// +optional
+	ActualImage string `json:"actualImage,omitempty"`
 
-	Accounts AccountsStatus `json:"accounts"`
+	// Accounts reports accounts info for the admin account
+	// +optional
+	Accounts *AccountsStatus `json:"accounts,omitempty"`
 
-	Services ServicesStatus `json:"services"`
+	// Services reports addresses for the services
+	// +optional
+	Services *ServicesStatus `json:"services,omitempty"`
 
 	// Readme is a user readable string with explanations on the system
-	Readme string `json:"readme"`
+	// +optional
+	Readme string `json:"readme,omitempty"`
 }
 
 // SystemPhase is a string enum type for system phases

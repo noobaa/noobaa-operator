@@ -150,6 +150,9 @@ func (r *Reconciler) SetDesiredCoreApp() {
 	if r.NooBaa.Spec.Tolerations != nil {
 		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
 	}
+	if r.NooBaa.Spec.Affinity != nil {
+		podSpec.Affinity = r.NooBaa.Spec.Affinity
+	}
 
 	if r.CoreApp.UID == "" {
 		for i := range r.CoreApp.Spec.VolumeClaimTemplates {
