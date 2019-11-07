@@ -1,6 +1,6 @@
 package bundle
 
-const Version = "2.0.6-wip"
+const Version = "2.0.6"
 
 const Sha256_deploy_cluster_role_yaml = "b7002d09a74061e0d16e9414d60f97ed7f6a8fb3192699f957169e1170f2a669"
 
@@ -1811,7 +1811,7 @@ spec:
   sourceNamespace: marketplace
 `
 
-const Sha256_deploy_operator_yaml = "1ccb574090bd70df42470a8cb08b35620b3c73dd9422e681a475690e4b23c5ea"
+const Sha256_deploy_operator_yaml = "da7953abeaba4a833719d5c197bc445049e6a3954f96cddfed7ee0c6a1f81dca"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1831,7 +1831,7 @@ spec:
       serviceAccountName: noobaa
       containers:
         - name: noobaa-operator
-          image: noobaa/noobaa-operator:2.0.6-wip
+          image: noobaa/noobaa-operator:2.0.6
           imagePullPolicy: IfNotPresent
           resources:
             limits:
