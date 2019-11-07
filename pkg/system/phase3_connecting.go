@@ -7,10 +7,10 @@ import (
 
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
+	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	routev1 "github.com/openshift/api/route/v1"
 )
 
 // ReconcilePhaseConnecting runs the reconcile phase
@@ -105,7 +105,7 @@ func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, route *routev1.Rout
 		)
 		status.InternalDNS = append(
 			status.InternalDNS,
-			fmt.Sprintf("%s://%s.%s:%d", proto, srv.Name, srv.Namespace, servicePort.Port),
+			fmt.Sprintf("%s://%s.%s.svc:%d", proto, srv.Name, srv.Namespace, servicePort.Port),
 		)
 	}
 

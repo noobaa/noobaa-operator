@@ -1,8 +1,8 @@
 package bundle
 
-const Version = "2.0.5"
+const Version = "2.0.6"
 
-const Sha256_deploy_cluster_role_yaml = "f719ff8e0015a73d4e6ff322d2b30efa1cc89fcb3f856c06a5910785cb9e8dd8"
+const Sha256_deploy_cluster_role_yaml = "b7002d09a74061e0d16e9414d60f97ed7f6a8fb3192699f957169e1170f2a669"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -58,6 +58,18 @@ rules:
   - get
   - list
   - watch
+- apiGroups: # from system:auth-delegator
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups: # from system:auth-delegator
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
 `
 
 const Sha256_deploy_cluster_role_binding_yaml = "15c78355aefdceaf577bd96b4ae949ae424a3febdc8853be0917cf89a63941fc"
@@ -94,7 +106,7 @@ spec:
       name: backing-store-secret-aws1
 `
 
-const Sha256_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml = "57e474668ba94f1f0853a04d13f02fff9135caf1428d4963259e8590d8c35c0e"
+const Sha256_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml = "253e43542cf6ca7cd76d16a77ccd7db6566428dd39766eca777b858af2c4fc61"
 
 const File_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -276,8 +288,6 @@ spec:
               items:
                 type: object
               type: array
-          required:
-          - phase
           type: object
   version: v1alpha1
   versions:
@@ -301,7 +311,7 @@ spec:
       - aws1
 `
 
-const Sha256_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml = "2362aac8610c170155687a2d11ba08bca30c7040a7e16c1228ccd94e6c3b7bec"
+const Sha256_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml = "29408a234dcde8822cc4e56938abed18fd597c737214494ddb0bcb2b7f4e57c1"
 
 const File_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -367,6 +377,9 @@ spec:
                       placement:
                         description: Placement specifies the type of placement for
                           the tier If empty it should have a single backing store.
+                        enum:
+                        - Spread
+                        - Mirror
                         type: string
                     type: object
                   type: array
@@ -414,8 +427,6 @@ spec:
               items:
                 type: object
               type: array
-          required:
-          - phase
           type: object
   version: v1alpha1
   versions:
@@ -435,7 +446,7 @@ metadata:
 spec: {}
 `
 
-const Sha256_deploy_crds_noobaa_v1alpha1_noobaa_crd_yaml = "c81b0849d9ab3e16d61b34d85752907f7f3e3cebb322f28a67eaab0cc6a9d701"
+const Sha256_deploy_crds_noobaa_v1alpha1_noobaa_crd_yaml = "cd83d27891e3dc29b118be1f524992636ef9e7208276fc1437b2c49d7de527df"
 
 const File_deploy_crds_noobaa_v1alpha1_noobaa_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -492,6 +503,9 @@ spec:
         spec:
           description: Specification of the desired behavior of the noobaa system.
           properties:
+            affinity:
+              description: Affinity (optional) passed through to noobaa's pods
+              type: object
             coreResources:
               description: CoreResources (optional) overrides the default resource
                 requirements for the server container
@@ -545,6 +559,7 @@ spec:
           description: Most recently observed status of the noobaa system.
           properties:
             accounts:
+              description: Accounts reports accounts info for the admin account
               properties:
                 admin:
                   properties:
@@ -606,6 +621,7 @@ spec:
                 type: object
               type: array
             services:
+              description: Services reports addresses for the services
               properties:
                 serviceMgmt:
                   properties:
@@ -713,13 +729,6 @@ spec:
               - serviceMgmt
               - serviceS3
               type: object
-          required:
-          - observedGeneration
-          - phase
-          - actualImage
-          - accounts
-          - services
-          - readme
           type: object
   version: v1alpha1
   versions:
@@ -1028,7 +1037,7 @@ spec:
       name: s3-https
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "97cb70ec5b66a8fec8225a441a84948368513e5db515320f8f3fcf8ed0bd01b1"
+const Sha256_deploy_internal_statefulset_core_yaml = "effdb488acaf67b4cfbb2e1120f17a9d7283206f4a65f1cc1e687473d2bd96fd"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -1145,6 +1154,10 @@ spec:
           value: ""
         - name: OAUTH_TOKEN_ENDPOINT
           value: ""
+        - name: NOOBAA_SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
         - name: container_dbg
           value: "" # any non-empty value will set the container to dbg mode
         - name: CONTAINER_CPU_REQUEST
@@ -1798,7 +1811,7 @@ spec:
   sourceNamespace: marketplace
 `
 
-const Sha256_deploy_operator_yaml = "f69ccad7b56baceecde898de48bcd7b2fde6a2926c485529142641165ae20317"
+const Sha256_deploy_operator_yaml = "da7953abeaba4a833719d5c197bc445049e6a3954f96cddfed7ee0c6a1f81dca"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1818,7 +1831,7 @@ spec:
       serviceAccountName: noobaa
       containers:
         - name: noobaa-operator
-          image: noobaa/noobaa-operator:2.0.5
+          image: noobaa/noobaa-operator:2.0.6
           imagePullPolicy: IfNotPresent
           resources:
             limits:
@@ -1837,7 +1850,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "26c988090a0b9e2b50e2ffc225476534c3916d75ecb4d67e434a514eab52824c"
+const Sha256_deploy_role_yaml = "dc9c707478bdb8e930a2a6697df9d97242c339ec9f99ca938b70d84b3393039f"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -1866,14 +1879,7 @@ rules:
   - events
   - configmaps
   - secrets
-  verbs:
-  - '*'
-- apiGroups:
-  - ""
-  resources:
   - serviceaccounts
-  resourceNames:
-    - noobaa
   verbs:
   - '*'
 - apiGroups:
@@ -1966,11 +1972,13 @@ roleRef:
   name: noobaa
 `
 
-const Sha256_deploy_service_account_yaml = "51241cd291100562ccd8bec1625c3779e212a58a0a21d4042937a98c73245d66"
+const Sha256_deploy_service_account_yaml = "7c68e5bd65c614787d7d4cdf80db8c14d9159ce8e940c5134d33d21dbe66893f"
 
 const File_deploy_service_account_yaml = `apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: noobaa
+  annotations:
+    serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"noobaa-mgmt"}}'
 `
 

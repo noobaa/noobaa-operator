@@ -350,10 +350,6 @@ func (r *Reconciler) ReadSystemInfo() error {
 	}
 	r.SystemInfo = &systemInfo
 
-	if r.BackingStore.DeletionTimestamp != nil {
-		return nil
-	}
-
 	conn, err := r.MakeExternalConnectionParams()
 	if err != nil {
 		return err
@@ -509,6 +505,11 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 	default:
 		return nil, util.NewPersistentError("InvalidType",
 			fmt.Sprintf("Invalid backing store type %q", r.BackingStore.Spec.Type))
+	}
+
+	if !util.IsStringGraphicCharsOnly(conn.Identity) || !util.IsStringGraphicCharsOnly(conn.Secret) {
+		return nil, util.NewPersistentError("InvalidSecret",
+			fmt.Sprintf("Invalid secret containing non graphic characters (perhaps not base64 encoded?) %q", r.Secret.Name))
 	}
 
 	return conn, nil

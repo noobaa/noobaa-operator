@@ -83,9 +83,10 @@ func CmdList() *cobra.Command {
 // CmdReconcile returns a CLI command
 func CmdReconcile() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "reconcile",
-		Short: "Runs a reconcile attempt like noobaa-operator",
-		Run:   RunReconcile,
+		Hidden: true,
+		Use:    "reconcile",
+		Short:  "Runs a reconcile attempt like noobaa-operator",
+		Run:    RunReconcile,
 	}
 	return cmd
 }
@@ -101,6 +102,9 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	name := args[0]
 
 	placement, _ := cmd.Flags().GetString("placement")
+	if placement != "" && placement != "Spread" && placement != "Mirror" {
+		log.Fatalf(`❌ Must provide valid placement: Mirror | Spread | ""`)
+	}
 	backingStores, _ := cmd.Flags().GetStringSlice("backingstores")
 	if len(backingStores) == 0 {
 		log.Fatalf(`❌ Must provide at least one backing store`)

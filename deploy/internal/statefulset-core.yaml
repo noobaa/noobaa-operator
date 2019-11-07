@@ -113,6 +113,10 @@ spec:
           value: ""
         - name: OAUTH_TOKEN_ENDPOINT
           value: ""
+        - name: NOOBAA_SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
         - name: container_dbg
           value: "" # any non-empty value will set the container to dbg mode
         - name: CONTAINER_CPU_REQUEST

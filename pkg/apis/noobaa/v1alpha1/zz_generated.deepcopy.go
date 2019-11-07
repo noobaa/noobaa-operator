@@ -420,6 +420,11 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Affinity != nil {
+		in, out := &in.Affinity, &out.Affinity
+		*out = new(corev1.Affinity)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ImagePullSecret != nil {
 		in, out := &in.ImagePullSecret, &out.ImagePullSecret
 		*out = new(corev1.LocalObjectReference)
@@ -453,8 +458,16 @@ func (in *NooBaaStatus) DeepCopyInto(out *NooBaaStatus) {
 		*out = make([]corev1.ObjectReference, len(*in))
 		copy(*out, *in)
 	}
-	out.Accounts = in.Accounts
-	in.Services.DeepCopyInto(&out.Services)
+	if in.Accounts != nil {
+		in, out := &in.Accounts, &out.Accounts
+		*out = new(AccountsStatus)
+		**out = **in
+	}
+	if in.Services != nil {
+		in, out := &in.Services, &out.Services
+		*out = new(ServicesStatus)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

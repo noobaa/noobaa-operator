@@ -52,3 +52,15 @@ rules:
   - get
   - list
   - watch
+- apiGroups: # from system:auth-delegator
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups: # from system:auth-delegator
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create

@@ -27,11 +27,21 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		"noobaa operator started phase 2/4 - \"Creating\"",
 	)
 
+	// A failiure to discover OAuth endpoints should not fail the entire reconcile phase.
+	oAuthEndpoints, err := util.DiscoverOAuthEndpoints()
+	if err != nil {
+		r.Logger.Warnf("Discovery of OAuth endpoints failed, got: %v", err)
+	}
+	r.OAuthEndpoints = oAuthEndpoints
+
 	// the credentials that are created by cloud-credentials-operator sometimes take time
 	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
 	// creating the credential request as early as possible to try and avoid it
 	if err := r.ReconcileBackingStoreCredentials(); err != nil {
 		r.Logger.Errorf("failed to create CredentialsRequest. will retry in phase 4. error: %v", err)
+		return err
+	}
+	if err := r.ReconcileObject(r.ServiceAccount, r.SetDesiredServiceAccount); err != nil {
 		return err
 	}
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
@@ -54,6 +64,12 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	}
 
 	return nil
+}
+
+// SetDesiredServiceAccount updates the ServiceAccount as desired for reconciling
+func (r *Reconciler) SetDesiredServiceAccount() {
+	r.ServiceAccount.Annotations["serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt"] =
+		`{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"` + r.RouteMgmt.Name + `"}}`
 }
 
 // SetDesiredServiceMgmt updates the ServiceMgmt as desired for reconciling
@@ -98,6 +114,16 @@ func (r *Reconciler) SetDesiredCoreApp() {
 				// 	c.Env[j].Value = "1" // TODO recalculate
 				case "AGENT_PROFILE":
 					c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
+
+				case "OAUTH_AUTHORIZATION_ENDPOINT":
+					if r.OAuthEndpoints != nil {
+						c.Env[j].Value = r.OAuthEndpoints.AuthorizationEndpoint
+					}
+
+				case "OAUTH_TOKEN_ENDPOINT":
+					if r.OAuthEndpoints != nil {
+						c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
+					}
 				}
 			}
 			if r.NooBaa.Spec.CoreResources != nil {
@@ -123,6 +149,9 @@ func (r *Reconciler) SetDesiredCoreApp() {
 	}
 	if r.NooBaa.Spec.Tolerations != nil {
 		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
+	}
+	if r.NooBaa.Spec.Affinity != nil {
+		podSpec.Affinity = r.NooBaa.Spec.Affinity
 	}
 
 	if r.CoreApp.UID == "" {
