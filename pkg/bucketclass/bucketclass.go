@@ -83,9 +83,10 @@ func CmdList() *cobra.Command {
 // CmdReconcile returns a CLI command
 func CmdReconcile() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "reconcile",
-		Short: "Runs a reconcile attempt like noobaa-operator",
-		Run:   RunReconcile,
+		Hidden: true,
+		Use:    "reconcile",
+		Short:  "Runs a reconcile attempt like noobaa-operator",
+		Run:    RunReconcile,
 	}
 	return cmd
 }
