@@ -2,10 +2,13 @@ package noobaa
 
 import (
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/system"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -52,6 +55,25 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, ownerHandler)
+	if err != nil {
+		return err
+	}
+
+	// Watch for StorageClass changes to trigger reconcile and recreate it when deleted
+	err = c.Watch(&source.Kind{Type: &storagev1.StorageClass{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(mo handler.MapObject) []reconcile.Request {
+			sc, ok := mo.Object.(*storagev1.StorageClass)
+			if !ok || sc.Provisioner != options.ObjectBucketProvisionerName() {
+				return nil
+			}
+			return []reconcile.Request{{
+				NamespacedName: types.NamespacedName{
+					Name:      options.SystemName,
+					Namespace: options.Namespace,
+				},
+			}}
+		}),
+	})
 	if err != nil {
 		return err
 	}
