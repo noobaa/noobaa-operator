@@ -64,6 +64,7 @@ type Reconciler struct {
 	OAuthEndpoints  *util.OAuth2Endpoints
 
 	NooBaa              *nbv1.NooBaa
+	ServiceAccount      *corev1.ServiceAccount
 	CoreApp             *appsv1.StatefulSet
 	ServiceMgmt         *corev1.Service
 	ServiceS3           *corev1.Service
@@ -100,6 +101,7 @@ func NewReconciler(
 		Ctx:                 context.TODO(),
 		Logger:              logrus.WithField("sys", req.Namespace+"/"+req.Name),
 		NooBaa:              util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
+		ServiceAccount:      util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
 		CoreApp:             util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
 		ServiceMgmt:         util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
 		ServiceS3:           util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
@@ -119,6 +121,7 @@ func NewReconciler(
 
 	// Set Namespace
 	r.NooBaa.Namespace = r.Request.Namespace
+	r.ServiceAccount.Namespace = r.Request.Namespace
 	r.CoreApp.Namespace = r.Request.Namespace
 	r.ServiceMgmt.Namespace = r.Request.Namespace
 	r.ServiceS3.Namespace = r.Request.Namespace
@@ -137,6 +140,7 @@ func NewReconciler(
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
+	r.ServiceAccount.Name = r.Request.Name
 	r.CoreApp.Name = r.Request.Name + "-core"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
 	r.ServiceS3.Name = "s3"
@@ -197,6 +201,13 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	log.Infof("Start ...")
 
 	util.KubeCheck(r.NooBaa)
+
+	if r.NooBaa.Status.Accounts == nil {
+		r.NooBaa.Status.Accounts = &nbv1.AccountsStatus{}
+	}
+	if r.NooBaa.Status.Services == nil {
+		r.NooBaa.Status.Services = &nbv1.ServicesStatus{}
+	}
 
 	if r.NooBaa.UID == "" {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")

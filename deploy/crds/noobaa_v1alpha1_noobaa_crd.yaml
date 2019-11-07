@@ -53,6 +53,9 @@ spec:
         spec:
           description: Specification of the desired behavior of the noobaa system.
           properties:
+            affinity:
+              description: Affinity (optional) passed through to noobaa's pods
+              type: object
             coreResources:
               description: CoreResources (optional) overrides the default resource
                 requirements for the server container
@@ -106,6 +109,7 @@ spec:
           description: Most recently observed status of the noobaa system.
           properties:
             accounts:
+              description: Accounts reports accounts info for the admin account
               properties:
                 admin:
                   properties:
@@ -167,6 +171,7 @@ spec:
                 type: object
               type: array
             services:
+              description: Services reports addresses for the services
               properties:
                 serviceMgmt:
                   properties:
@@ -274,13 +279,6 @@ spec:
               - serviceMgmt
               - serviceS3
               type: object
-          required:
-          - observedGeneration
-          - phase
-          - actualImage
-          - accounts
-          - services
-          - readme
           type: object
   version: v1alpha1
   versions:
