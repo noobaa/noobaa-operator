@@ -65,7 +65,8 @@ type BucketClassSpec struct {
 // +k8s:openapi-gen=true
 type BucketClassStatus struct {
 	// Phase is a simple, high-level summary of where the System is in its lifecycle
-	Phase BucketClassPhase `json:"phase"`
+	// +optional
+	Phase BucketClassPhase `json:"phase,omitempty"`
 
 	// Conditions is a list of conditions related to operator reconciliation
 	// +patchMergeKey=type
@@ -74,6 +75,7 @@ type BucketClassStatus struct {
 	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
 
 	// RelatedObjects is a list of objects related to this operator.
+	// +optional
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 }
 

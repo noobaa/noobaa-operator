@@ -106,7 +106,7 @@ spec:
       name: backing-store-secret-aws1
 `
 
-const Sha256_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml = "57e474668ba94f1f0853a04d13f02fff9135caf1428d4963259e8590d8c35c0e"
+const Sha256_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml = "253e43542cf6ca7cd76d16a77ccd7db6566428dd39766eca777b858af2c4fc61"
 
 const File_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -288,8 +288,6 @@ spec:
               items:
                 type: object
               type: array
-          required:
-          - phase
           type: object
   version: v1alpha1
   versions:
@@ -313,7 +311,7 @@ spec:
       - aws1
 `
 
-const Sha256_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml = "1c4ce07b125471ac44b881522aa0b78dbc5978dc679199f8b87e1f0289999f65"
+const Sha256_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml = "29408a234dcde8822cc4e56938abed18fd597c737214494ddb0bcb2b7f4e57c1"
 
 const File_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -429,8 +427,6 @@ spec:
               items:
                 type: object
               type: array
-          required:
-          - phase
           type: object
   version: v1alpha1
   versions:
@@ -450,7 +446,7 @@ metadata:
 spec: {}
 `
 
-const Sha256_deploy_crds_noobaa_v1alpha1_noobaa_crd_yaml = "c81b0849d9ab3e16d61b34d85752907f7f3e3cebb322f28a67eaab0cc6a9d701"
+const Sha256_deploy_crds_noobaa_v1alpha1_noobaa_crd_yaml = "cd83d27891e3dc29b118be1f524992636ef9e7208276fc1437b2c49d7de527df"
 
 const File_deploy_crds_noobaa_v1alpha1_noobaa_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -507,6 +503,9 @@ spec:
         spec:
           description: Specification of the desired behavior of the noobaa system.
           properties:
+            affinity:
+              description: Affinity (optional) passed through to noobaa's pods
+              type: object
             coreResources:
               description: CoreResources (optional) overrides the default resource
                 requirements for the server container
@@ -560,6 +559,7 @@ spec:
           description: Most recently observed status of the noobaa system.
           properties:
             accounts:
+              description: Accounts reports accounts info for the admin account
               properties:
                 admin:
                   properties:
@@ -621,6 +621,7 @@ spec:
                 type: object
               type: array
             services:
+              description: Services reports addresses for the services
               properties:
                 serviceMgmt:
                   properties:
@@ -728,13 +729,6 @@ spec:
               - serviceMgmt
               - serviceS3
               type: object
-          required:
-          - observedGeneration
-          - phase
-          - actualImage
-          - accounts
-          - services
-          - readme
           type: object
   version: v1alpha1
   versions:
