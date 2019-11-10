@@ -68,6 +68,9 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 
 // SetDesiredServiceAccount updates the ServiceAccount as desired for reconciling
 func (r *Reconciler) SetDesiredServiceAccount() {
+	if r.ServiceAccount.Annotations == nil {
+		r.ServiceAccount.Annotations = map[string]string{}
+	}
 	r.ServiceAccount.Annotations["serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt"] =
 		`{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"` + r.RouteMgmt.Name + `"}}`
 }
