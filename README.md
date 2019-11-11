@@ -44,7 +44,6 @@ CRDs
 - [BucketClass](doc/bucket-class-crd.md) - Policies applied to a class of buckets.
 
 Applications
-- [S3 Account](doc/s3-account.md) - Method to obtain S3 account credentials for native S3 applications.
 - [OBC Provisioner](doc/obc-provisioner.md) - Method to claim a new/existing bucket.
 
 # Developing
