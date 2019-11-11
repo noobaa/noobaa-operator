@@ -499,7 +499,7 @@ func CheckPhase(backStore *nbv1.BackingStore) {
 // RunList runs a CLI command
 func RunList(cmd *cobra.Command, args []string) {
 	list := &nbv1.BackingStoreList{
-		TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
+		TypeMeta: metav1.TypeMeta{Kind: "BackingStoreList"},
 	}
 	if !util.KubeList(list, &client.ListOptions{Namespace: options.Namespace}) {
 		return
