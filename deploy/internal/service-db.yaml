@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: noobaa-db
+  labels:
+    app: noobaa
+spec:
+  type: NodePort
+  selector:
+    noobaa-db: SYSNAME
+  ports:
+    - port: 27017
+      targetPort: 27017
+      name: mongodb

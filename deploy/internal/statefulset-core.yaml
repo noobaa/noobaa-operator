@@ -12,17 +12,6 @@ spec:
   serviceName: noobaa-mgmt
   updateStrategy:
     type: RollingUpdate
-  volumeClaimTemplates:
-  - metadata:
-      name: db
-      labels:
-        app: noobaa
-    spec:
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 50Gi
   template:
     metadata:
       labels:
@@ -33,124 +22,95 @@ spec:
     spec:
       serviceAccountName: noobaa
       volumes:
-      - name: logs
-        emptyDir: {}
-      - name: mgmt-secret
-        secret:
-          secretName: noobaa-mgmt-serving-cert
-          optional: true
-      - name: s3-secret
-        secret:
-          secretName: noobaa-s3-serving-cert
-          optional: true
-      initContainers:
-#----------------#
-# INIT CONTAINER #
-#----------------#
-      - name: init
-        image: NOOBAA_CORE_IMAGE
-        command:
-        - /noobaa_init_files/noobaa_init.sh
-        - init_mongo
-        volumeMounts:
-        - name: db
-          mountPath: /mongo_data
-      containers:
-#----------------#
-# CORE CONTAINER #
-#----------------#
-      - name: core
-        image: NOOBAA_CORE_IMAGE
-        volumeMounts:
         - name: logs
-          mountPath: /log
+          emptyDir: {}
         - name: mgmt-secret
-          mountPath: /etc/mgmt-secret
-          readOnly: true
+          secret:
+            secretName: noobaa-mgmt-serving-cert
+            optional: true
         - name: s3-secret
-          mountPath: /etc/s3-secret
-          readOnly: true
-        readinessProbe:
-          tcpSocket:
-            port: 6001 # ready when s3 port is open
-          timeoutSeconds: 5
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "1Gi"
-          limits:
-            cpu: "8"
-            memory: "16Gi"
-        ports:
-        - containerPort: 6001
-        - containerPort: 6443
-        - containerPort: 8080
-        - containerPort: 8443
-        - containerPort: 8444
-        - containerPort: 8445
-        - containerPort: 8446
-        - containerPort: 60100
-        env:
-        - name: CONTAINER_PLATFORM
-          value: KUBERNETES
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: noobaa-server
-              key: jwt
-        - name: SERVER_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: noobaa-server
-              key: server_secret
-        - name: AGENT_PROFILE
-          value: VALUE_AGENT_PROFILE
-        - name: DISABLE_DEV_RANDOM_SEED
-          value: "true"
-        - name: OAUTH_AUTHORIZATION_ENDPOINT
-          value: ""
-        - name: OAUTH_TOKEN_ENDPOINT
-          value: ""
-        - name: NOOBAA_SERVICE_ACCOUNT
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.serviceAccountName
-        - name: container_dbg
-          value: "" # any non-empty value will set the container to dbg mode
-        - name: CONTAINER_CPU_REQUEST
-          valueFrom:
-            resourceFieldRef:
-              resource: requests.cpu
-        - name: CONTAINER_MEM_REQUEST
-          valueFrom:
-            resourceFieldRef:
-              resource: requests.memory
-        - name: CONTAINER_CPU_LIMIT
-          valueFrom:
-            resourceFieldRef:
-              resource: limits.cpu
-        - name: CONTAINER_MEM_LIMIT
-          valueFrom:
-            resourceFieldRef:
-              resource: limits.memory
-        # - name: ENDPOINT_FORKS_NUMBER
-        #   value: "1"
-#--------------------#
-# DATABASE CONTAINER #
-#--------------------#
-      - name: db
-        image: NOOBAA_DB_IMAGE
-        command:
-        - bash
-        - -c
-        - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip 127.0.0.1 --dbpath /data/mongo/cluster/shard1
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "1Gi"
-          limits:
-            cpu: "4"
-            memory: "16Gi"
-        volumeMounts:
-        - name: db
-          mountPath: /data
+          secret:
+            secretName: noobaa-s3-serving-cert
+            optional: true
+      containers:
+        #----------------#
+        # CORE CONTAINER #
+        #----------------#
+        - name: core
+          image: NOOBAA_CORE_IMAGE
+          volumeMounts:
+            - name: logs
+              mountPath: /log
+            - name: mgmt-secret
+              mountPath: /etc/mgmt-secret
+              readOnly: true
+            - name: s3-secret
+              mountPath: /etc/s3-secret
+              readOnly: true
+          readinessProbe:
+            tcpSocket:
+              port: 6001 # ready when s3 port is open
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "8"
+              memory: "16Gi"
+          ports:
+            - containerPort: 6001
+            - containerPort: 6443
+            - containerPort: 8080
+            - containerPort: 8443
+            - containerPort: 8444
+            - containerPort: 8445
+            - containerPort: 8446
+            - containerPort: 60100
+          env:
+            - name: MONGODB_URL
+              value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
+            - name: CONTAINER_PLATFORM
+              value: KUBERNETES
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-server
+                  key: jwt
+            - name: SERVER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-server
+                  key: server_secret
+            - name: AGENT_PROFILE
+              value: VALUE_AGENT_PROFILE
+            - name: DISABLE_DEV_RANDOM_SEED
+              value: "true"
+            - name: OAUTH_AUTHORIZATION_ENDPOINT
+              value: ""
+            - name: OAUTH_TOKEN_ENDPOINT
+              value: ""
+            - name: NOOBAA_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: container_dbg
+              value: "" # any non-empty value will set the container to dbg mode
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+          # - name: ENDPOINT_FORKS_NUMBER
+          #   value: "1"
