@@ -1,6 +1,8 @@
 package util
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
@@ -8,19 +10,25 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 	"unicode"
 
 	"golang.org/x/crypto/ssh/terminal"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/cli-runtime/pkg/printers"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/v2/pkg/apis"
 	routev1 "github.com/openshift/api/route/v1"
+
+	// nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	operv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
@@ -35,6 +43,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -44,7 +53,7 @@ import (
 
 const oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
 
-// Holds OAuth2 endpoints information.
+// OAuth2Endpoints Holds OAuth2 endpoints information.
 type OAuth2Endpoints struct {
 	AuthorizationEndpoint string `json:"authorization_endpoint"`
 	TokenEndpoint         string `json:"token_endpoint"`
@@ -392,6 +401,73 @@ func GetPodStatusLine(pod *corev1.Pod) string {
 	return s
 }
 
+// GetPodLogs info
+func GetPodLogs(pod corev1.Pod) (map[string]io.ReadCloser, error) {
+	allContainers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
+	config := KubeConfig()
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Printf(`Could not create %s, reason: %s\n`, pod.Name, err)
+		return nil, err
+	}
+
+	containerMap := make(map[string]io.ReadCloser)
+	for _, container := range allContainers {
+		podLogOpts := corev1.PodLogOptions{Container: container.Name}
+		req := clientset.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOpts)
+		podLogs, err := req.Stream()
+		if err != nil {
+			log.Printf(`Could not read logs %s container %s, reason: %s\n`, pod.Name, container.Name, err)
+			continue
+		}
+		containerMap[container.Name] = podLogs
+	}
+	return containerMap, nil
+}
+
+// SaveStreamToFile info
+func SaveStreamToFile(body io.ReadCloser, path string) error {
+	if body == nil {
+		return nil
+	}
+	defer body.Close()
+	f, err := os.Create(path)
+	if err != nil {
+		log.Errorf(`Could not save stream to file: %s, reason: %s\n`, path, err)
+		return err
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, body); err != nil {
+		log.Errorf(`Could not write to file: %s, reason: %s\n`, path, err)
+		return err
+	}
+	return nil
+}
+
+// SaveCRsToFile info
+func SaveCRsToFile(crs runtime.Object, path string) error {
+	if crs == nil {
+		return nil
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		log.Printf(`Could not create file %s, reason: %s\n`, path, err)
+		return err
+	}
+
+	defer f.Close()
+	p := printers.YAMLPrinter{}
+	err = p.PrintObj(crs, f)
+	if err != nil {
+		log.Printf(`Could not write yaml to file %s, reason: %s\n`, path, err)
+		return err
+	}
+
+	return nil
+}
+
 // GetContainerStatusLine returns a one liner status for a container
 func GetContainerStatusLine(cont *corev1.ContainerStatus) string {
 	s := ""
@@ -735,6 +811,7 @@ func PrintThisNoteWhenFinishedApplyingAndStartWaitLoop() {
 	log.Printf("  - You may Ctrl-C at any time to stop the loop and watch it manually.")
 }
 
+// DiscoverOAuthEndpoints info
 func DiscoverOAuthEndpoints() (*OAuth2Endpoints, error) {
 	client := http.Client{
 		Timeout: 120 * time.Second,
@@ -772,4 +849,63 @@ func IsStringGraphicCharsOnly(s string) bool {
 	return true
 }
 
-// WriteYamlFile writes a yaml file from the given objects
+// Tar takes a source and variable writers and walks 'source' writing each file
+// found to the tar writer; the purpose for accepting multiple writers is to allow
+// for multiple outputs (for example a file, or md5 hash)
+func Tar(src string, writers ...io.Writer) error {
+	// ensure the src actually exists before trying to tar it
+	if _, err := os.Stat(src); err != nil {
+		return fmt.Errorf("Unable to tar files - %v", err.Error())
+	}
+
+	mw := io.MultiWriter(writers...)
+
+	gzw := gzip.NewWriter(mw)
+	defer gzw.Close()
+
+	tw := tar.NewWriter(gzw)
+	defer tw.Close()
+
+	// walk path
+	return filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
+
+		// return on any error
+		if err != nil {
+			return err
+		}
+
+		// return on non-regular files (thanks to [kumo](https://medium.com/@komuw/just-like-you-did-fbdd7df829d3) for this suggested update)
+		if !fi.Mode().IsRegular() {
+			return nil
+		}
+
+		// create a new dir/file header
+		header, err := tar.FileInfoHeader(fi, fi.Name())
+		if err != nil {
+			return err
+		}
+
+		// update the name to correctly reflect the desired destination when untaring
+		header.Name = strings.TrimPrefix(strings.Replace(file, src, "", -1), string(filepath.Separator))
+
+		// write the header
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+
+		// open files for taring
+		f, err := os.Open(file)
+		if err != nil {
+			return err
+		}
+
+		defer f.Close()
+
+		// copy file data into tar writer
+		if _, err := io.Copy(tw, f); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}

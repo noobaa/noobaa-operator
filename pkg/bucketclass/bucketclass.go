@@ -272,7 +272,7 @@ func CheckPhase(bucketClass *nbv1.BucketClass) {
 // RunList runs a CLI command
 func RunList(cmd *cobra.Command, args []string) {
 	list := &nbv1.BucketClassList{
-		TypeMeta: metav1.TypeMeta{Kind: "BucketClass"},
+		TypeMeta: metav1.TypeMeta{Kind: "BucketClassList"},
 	}
 	if !util.KubeList(list, &client.ListOptions{Namespace: options.Namespace}) {
 		return

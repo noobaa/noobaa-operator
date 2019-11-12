@@ -2,10 +2,11 @@
 # BackingStore CRD
 
 BackingStore CRD represents a storage target to be used as underlying storage for the data in NooBaa buckets.
-These storage targets are used to store deduped+compressed+encrypted chunks of data (encryption keys are stored separatly).
+These storage targets are used to store deduped+compressed+encrypted chunks of data (encryption keys are stored separately).
 Backing-stores are referred to by name when defining [BucketClass](bucket-class-crd.md).
 
-Multiple types of backing-stores are supported: aws-s3, s3-compatible, google-cloud-storage, azure-blob, obc, pvc.
+Multiple types of backing-stores are currently supported: aws-s3, s3-compatible, google-cloud-storage, azure-blob.
+Backing-store type pv-pool is not yet supported by the operator. Instead, the web management console must be used to administer pv-pool backing-stores.
 Adding support for a new type of backing-store is rather easy as it requires just GET/PUT key-value store, see [Backing-stores supported by NooBaa](https://github.com/noobaa/noobaa-core/tree/master/src/agent/block_store_services).
 
 
@@ -17,13 +18,181 @@ Adding support for a new type of backing-store is rather easy as it requires jus
 
 # Reconcile
 
-#### OBC type
+#### AWS-S3 type
 
-The operator will create a claim and the appropriate provisioner will create a new bucket or connect to existing one depending on the obc options. Once the claim is ready its details will be used to configure a cloud resource in NooBaa.
+Create a cloud resource within the NooBaa brain and use S3 API for storing encrypted chunks of data in the AWS cloud.
+```shell
+noobaa -n noobaa backingstore create aws-s3 bs --access-key KEY --secret-key SECRET --target-bucket BUCKET
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  labels:
+    app: noobaa
+  name: bs
+  namespace: noobaa
+spec:
+  awsS3:
+    secret:
+      name: backing-store-aws-s3-bs
+      namespace: noobaa
+    targetBucket: BUCKET
+  type: aws-s3
+```
 
-#### PVC type
+#### S3-COMPATIBLE type
 
-Create a NooBaa storage agent StatefulSet with PVC mounted in each pod. Each agent will connect to the NooBaa brain and provide the PV filesystem storage to be used for storing encrypted chunks of data.
+Create a cloud resource within the NooBaa brain and use S3 API for storing encrypted chunks of data in any S3 API compatible endpoint.
+```shell
+noobaa -n noobaa backingstore create s3-compatible bs --endpoint ENDPOINT --signature-version v4 --access-key KEY --secret-key SECRET --target-bucket BUCKET
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  labels:
+    app: noobaa
+  name: bs
+  namespace: noobaa
+spec:
+  s3Compatible:
+    endpoint: ENDPOINT
+    secret:
+      name: backing-store-s3-compatible-bs
+      namespace: noobaa
+    signatureVersion: v4
+    targetBucket: BUCKET
+  type: s3-compatible
+```
+
+#### GOOGLE-CLOUD-STORAGE type
+
+Create a cloud resource within the NooBaa brain and use Google Cloud Storage API for storing encrypted chunks of data in Google Cloud Storage.
+```shell
+noobaa -n noobaa backingstore create google-cloud-storage bs --private-key-json-file key.json --target-bucket BUCKET
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  labels:
+    app: noobaa
+  name: bs
+  namespace: noobaa
+spec:
+  googleCloudStorage:
+    secret:
+      name: backing-store-google-cloud-storage-bs
+      namespace: noobaa
+    targetBucket: BUCKET
+  type: google-cloud-storage
+```
+
+#### AZURE-BLOB type
+
+Create a cloud resource within the NooBaa brain and use BLOB API for storing encrypted chunks of data in Azure cloud.
+```shell
+noobaa -n noobaa backingstore create azure-blob bs --account-key KEY --account-name NAME --target-blob-container CONTAINER
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  labels:
+    app: noobaa
+  name: bs
+  namespace: noobaa
+spec:
+  azureBlob:
+    secret:
+      name: backing-store-azure-blob-bs
+      namespace: noobaa
+    targetBlobContainer: CONTAINER
+  type: azure-blob
+```
+
+#### PV-POOL type
+**Not yet implemented**
+
+Create NooBaa resources StatefulSet with PVC mounted in each pod. Each resource will connect to the NooBaa brain and provide the PV filesystem storage to be used for storing encrypted chunks of data.
+This action is supported from the NooBaa dashboard (Deploy Kubernetes Pool).
+It is possible to configure the number of pods to be used and their PV size.
+Here is an example of a StatefulSet with 3 pods and PV size of 30GB:
+```yaml
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: noobaa-agent
+  labels:
+    app: noobaa
+    noobaa-module: noobaa-pool-impl
+spec:
+  selector:
+    matchLabels:
+      noobaa-module: noobaa-agent
+  serviceName: noobaa-agent
+  replicas: 3
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: noobaa
+        noobaa-module: noobaa-agent
+        noobaa-s3: "true"
+    spec:
+      containers:
+        - name: noobaa-agent
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "500Mi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+          env:
+            - name: CONTAINER_PLATFORM
+              value: KUBERNETES
+            - name: AGENT_CONFIG
+              value: "AGENT_CONFIG_VALUE"
+            - name: ENDPOINT_PORT
+              value: "6001"
+            - name: ENDPOINT_SSL_PORT
+              value: "6443"
+          command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
+          ports:
+            - containerPort: 60101
+          volumeMounts:
+            - name: noobaastorage
+              mountPath: /noobaa_storage
+            - name: tmp-logs-vol
+              mountPath: /usr/local/noobaa/logs
+      volumes:
+        - name: tmp-logs-vol
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: noobaastorage
+        labels:
+          app: noobaa
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 30Gi
+```
+
 
 #### Credentials change
 
@@ -43,8 +212,32 @@ metadata:
 spec:
   ...
 status:
-  health: OK
-  issues: []
+  conditions:
+  - lastHeartbeatTime: "2019-11-05T13:50:50Z"
+    lastTransitionTime: "2019-11-06T07:03:46Z"
+    message: noobaa operator completed reconcile - backing store is ready
+    reason: BackingStorePhaseReady
+    status: "True"
+    type: Available
+  - lastHeartbeatTime: "2019-11-05T13:50:50Z"
+    lastTransitionTime: "2019-11-06T07:03:46Z"
+    message: noobaa operator completed reconcile - backing store is ready
+    reason: BackingStorePhaseReady
+    status: "False"
+    type: Progressing
+  - lastHeartbeatTime: "2019-11-05T13:50:50Z"
+    lastTransitionTime: "2019-11-05T13:50:50Z"
+    message: noobaa operator completed reconcile - backing store is ready
+    reason: BackingStorePhaseReady
+    status: "False"
+    type: Degraded
+  - lastHeartbeatTime: "2019-11-05T13:50:50Z"
+    lastTransitionTime: "2019-11-06T07:03:46Z"
+    message: noobaa operator completed reconcile - backing store is ready
+    reason: BackingStorePhaseReady
+    status: "True"
+    type: Upgradeable
+  phase: Ready
 ```
 
 
@@ -66,17 +259,35 @@ metadata:
   name: aws-s3
   namespace: noobaa
   finalizers:
-    - finalizer.noobaa.io
+    - noobaa.io/finalizer
 spec:
   ...
 status:
-  health: WARNING
-  issues:
-    - title: Backing-Store "aws" - Target bucket is missing / access denied
-      createTime: "2019-06-04T13:05:35.473Z"
-      lastTime: "2019-06-04T13:05:35.473Z"
-    - title: Backing-Store "aws" - Cannot remove `finalizer.noobaa.io` to complete deletion until the data rebuild process completes
-      createTime: "2019-06-04T13:05:35.473Z"
-      lastTime: "2019-06-04T13:05:35.473Z"
-      troubleshooting: "https://github.com/noobaa/noobaa-core/wiki/Backing-store-finalizer-troubleshooting"
+    conditions:
+  - lastHeartbeatTime: "2019-11-06T14:06:35Z"
+    lastTransitionTime: "2019-11-06T14:11:36Z"
+    message: BackingStore "bs" invalid external connection "INVALID_CREDENTIALS"
+    reason: INVALID_CREDENTIALS
+    status: Unknown
+    type: Available
+  - lastHeartbeatTime: "2019-11-06T14:06:35Z"
+    lastTransitionTime: "2019-11-06T14:11:36Z"
+    message: BackingStore "bs" invalid external connection "INVALID_CREDENTIALS"
+    reason: INVALID_CREDENTIALS
+    status: "False"
+    type: Progressing
+  - lastHeartbeatTime: "2019-11-06T14:06:35Z"
+    lastTransitionTime: "2019-11-06T14:11:36Z"
+    message: BackingStore "bs" invalid external connection "INVALID_CREDENTIALS"
+    reason: INVALID_CREDENTIALS
+    status: "True"
+    type: Degraded
+  - lastHeartbeatTime: "2019-11-06T14:06:35Z"
+    lastTransitionTime: "2019-11-06T14:11:36Z"
+    message: BackingStore "bs" invalid external connection "INVALID_CREDENTIALS"
+    reason: INVALID_CREDENTIALS
+    status: Unknown
+    type: Upgradeable
+  phase: Rejected
+
 ```
