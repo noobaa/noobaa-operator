@@ -173,7 +173,7 @@ func NewReconciler(
 
 // CheckAll checks the state of all the objects controlled by the system
 func (r *Reconciler) CheckAll() {
-	util.KubeCheck(r.NooBaa)
+	CheckSystem(r.NooBaa)
 	util.KubeCheck(r.CoreApp)
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
@@ -200,16 +200,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	log := r.Logger
 	log.Infof("Start ...")
 
-	util.KubeCheck(r.NooBaa)
-
-	if r.NooBaa.Status.Accounts == nil {
-		r.NooBaa.Status.Accounts = &nbv1.AccountsStatus{}
-	}
-	if r.NooBaa.Status.Services == nil {
-		r.NooBaa.Status.Services = &nbv1.ServicesStatus{}
-	}
-
-	if r.NooBaa.UID == "" {
+	if !CheckSystem(r.NooBaa) {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return res, nil
 	}

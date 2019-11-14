@@ -99,7 +99,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
-	util.KubeCheck(r.NooBaa)
+	system.CheckSystem(r.NooBaa)
 
 	secretRef := GetBackingStoreSecret(r.BackingStore)
 	if secretRef != nil {
