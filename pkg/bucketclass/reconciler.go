@@ -86,7 +86,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
-	util.KubeCheck(r.NooBaa)
+	system.CheckSystem(r.NooBaa)
 
 	var err error
 	if r.BucketClass.DeletionTimestamp != nil {
