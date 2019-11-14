@@ -31,7 +31,7 @@ const (
 	ContainerImageRepo = "noobaa-core"
 	// ContainerImageTag is the tag of the default image url
 	ContainerImageTag = "5.2.10"
-	// ContainerImageConstraintSemver is the contraints of supported image versions
+	// ContainerImageConstraintSemver is the constraints of supported image versions
 	ContainerImageConstraintSemver = ">=5, <6"
 	// ContainerImageName is the default image name without the tag/version
 	ContainerImageName = ContainerImageOrg + "/" + ContainerImageRepo
@@ -52,26 +52,26 @@ const (
 var Namespace = "noobaa"
 
 // OperatorImage is the container image url built from https://github.com/noobaa/noobaa-operator
-// it can be overriden for testing or for different registry locations.
+// it can be overridden for testing or different registry locations.
 var OperatorImage = "noobaa/noobaa-operator:" + version.Version
 
 // NooBaaImage is the container image url built from https://github.com/noobaa/noobaa-core
-// it can be overriden for testing or for different registry locations.
+// it can be overridden for testing or different registry locations.
 var NooBaaImage = ContainerImage
 
 // DBImage is the default db image url
-// it can be overriden for testing or for different registry locations.
+// it can be overridden for testing or different registry locations.
 var DBImage = "centos/mongodb-36-centos7"
 
 // DBVolumeSizeGB can be used to override the default database volume size
 var DBVolumeSizeGB = 0
 
 // DBStorageClass is used for PVC's allocation for the noobaa server data
-// it can be overriden for testing or for different PV providers.
+// it can be overridden for testing or different PV providers.
 var DBStorageClass = ""
 
 // PVPoolDefaultStorageClass is used for PVC's allocation for the noobaa server data
-// it can be overriden for testing or for different PV providers.
+// it can be overridden for testing or different PV providers.
 var PVPoolDefaultStorageClass = ""
 
 // ImagePullSecret is optionally used to authenticate when pulling the container images
