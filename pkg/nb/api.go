@@ -7,6 +7,8 @@ import (
 
 // Client is the interface providing typed noobaa API calls
 type Client interface {
+	Call(req *RPCRequest, res RPCResponseIfc) error
+
 	SetAuthToken(token string)
 	GetAuthToken() string
 

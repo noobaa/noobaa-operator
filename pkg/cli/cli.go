@@ -119,6 +119,7 @@ Load noobaa completion to bash:
 		Commands: []*cobra.Command{
 			operator.Cmd(),
 			system.Cmd(),
+			system.CmdAPICall(),
 			bucket.Cmd(),
 			pvstore.Cmd(),
 			crd.Cmd(),
