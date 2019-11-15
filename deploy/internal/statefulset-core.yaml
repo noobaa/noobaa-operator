@@ -49,7 +49,6 @@ spec:
 #----------------#
       - name: init
         image: NOOBAA_CORE_IMAGE
-        imagePullPolicy: IfNotPresent
         command:
         - /noobaa_init_files/noobaa_init.sh
         - init_mongo
@@ -62,7 +61,6 @@ spec:
 #----------------#
       - name: core
         image: NOOBAA_CORE_IMAGE
-        imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: logs
           mountPath: /log
@@ -142,7 +140,6 @@ spec:
 #--------------------#
       - name: db
         image: NOOBAA_DB_IMAGE
-        imagePullPolicy: IfNotPresent
         command:
         - bash
         - -c
