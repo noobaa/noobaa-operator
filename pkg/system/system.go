@@ -674,18 +674,12 @@ func Connect(usePortForwarding bool) (*Client, error) {
 
 // CheckSystem checks the state of the system and initializes its status fields
 func CheckSystem(sys *nbv1.NooBaa) bool {
-	if !util.KubeCheck(sys) {
-		return false
-	}
+	found := util.KubeCheck(sys)
 	if sys.Status.Accounts == nil {
 		sys.Status.Accounts = &nbv1.AccountsStatus{}
 	}
 	if sys.Status.Services == nil {
 		sys.Status.Services = &nbv1.ServicesStatus{}
 	}
-	if sys.UID == "" {
-		return false
-	}
-	return true
-
+	return found && sys.UID != ""
 }
