@@ -2,9 +2,9 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: noobaa-operator-subscription
-  namespace: my-noobaa-operator
+  namespace: default
 spec:
   channel: alpha
   name: noobaa-operator
-  source: noobaa-operator-source
-  sourceNamespace: marketplace
+  source: noobaa-operator-catalog
+  sourceNamespace: default

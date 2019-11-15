@@ -1,7 +1,11 @@
-# we only want to take build/ into the image
-# so we ignore everything else here
+# we ignore everything by default
 *
-!build
 
-# make sure we ignore vendor explicitly
-vendor/
+# we also explicitly ignore the following
+pkg
+test
+vendor
+
+# we un-ignore only the following
+!build
+!deploy

@@ -10,60 +10,13 @@ metadata:
     certified: "false"
     description: NooBaa is an object data service for hybrid and multi cloud environments.
     support: Red Hat
-    alm-examples: |-
-      [
-        {
-          "apiVersion": "noobaa.io/v1alpha1",
-          "kind": "NooBaa",
-          "metadata": {
-            "name": "noobaa",
-            "namespace": "my-noobaa-operator"
-          },
-          "spec": {}
-        },
-        {
-          "apiVersion": "noobaa.io/v1alpha1",
-          "kind": "BackingStore",
-          "metadata": {
-            "name": "aws1",
-            "namespace": "my-noobaa-operator"
-          },
-          "spec": {
-            "type": "aws-s3",
-            "bucketName": "noobaa-aws1",
-            "secret": {
-              "name": "backing-store-secret-aws1",
-              "namespace": "my-noobaa-operator"
-            }
-          }
-        },
-        {
-          "apiVersion": "noobaa.io/v1alpha1",
-          "kind": "BucketClass",
-          "metadata": {
-            "name": "default",
-            "namespace": "my-noobaa-operator"
-          },
-          "spec": {
-            "placementPolicy": {
-              "tiers": [{
-                "tier": {
-                  "mirrors": [{
-                    "mirror": {
-                      "spread": ["aws1"]
-                    }
-                  }]
-                }
-              }]
-            }
-          }
-        }
-      ]
+    alm-examples: placeholder
   name: placeholder
   namespace: placeholder
 spec:
   displayName: NooBaa Operator
   version: "999.999.999-placeholder"
+  minKubeVersion: 1.10.0
   maturity: alpha
   provider:
     name: NooBaa
