@@ -153,7 +153,6 @@ spec:
     spec:
       containers:
         - name: noobaa-agent
-          imagePullPolicy: IfNotPresent
           resources:
             requests:
               cpu: "100m"
