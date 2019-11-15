@@ -591,9 +591,16 @@ func Connect(usePortForwarding bool) (*Client, error) {
 	klient := util.KubeClient()
 	sysObjKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
 	r := NewReconciler(sysObjKey, klient, scheme.Scheme, nil)
-	util.KubeCheck(r.NooBaa)
-	util.KubeCheck(r.ServiceMgmt)
-	util.KubeCheck(r.SecretOp)
+
+	if !CheckSystem(r.NooBaa) {
+		return nil, fmt.Errorf("Connect(): System not found")
+	}
+	if !util.KubeCheck(r.ServiceMgmt) {
+		return nil, fmt.Errorf("Connect(): ServiceMgmt not found")
+	}
+	if !util.KubeCheck(r.SecretOp) {
+		return nil, fmt.Errorf("Connect(): SecretOp not found")
+	}
 
 	authToken := r.SecretOp.StringData["auth_token"]
 	accessKey := r.SecretOp.StringData["AWS_ACCESS_KEY_ID"]
@@ -602,19 +609,19 @@ func Connect(usePortForwarding bool) (*Client, error) {
 	s3Status := &r.NooBaa.Status.Services.ServiceS3
 
 	if authToken == "" {
-		return nil, fmt.Errorf("Operator secret with auth token is not ready")
+		return nil, fmt.Errorf("Connect(): Operator secret with auth token is not ready")
 	}
 	if len(mgmtStatus.NodePorts) == 0 {
-		return nil, fmt.Errorf("System mgmt service (nodeport) is not ready")
+		return nil, fmt.Errorf("Connect(): System mgmt service (nodeport) is not ready")
 	}
 	if len(s3Status.NodePorts) == 0 {
-		return nil, fmt.Errorf("System s3 service (nodeport) is not ready")
+		return nil, fmt.Errorf("Connect(): System s3 service (nodeport) is not ready")
 	}
 
 	mgmtNodePort := mgmtStatus.NodePorts[0]
 	mgmtURL, err := url.Parse(mgmtNodePort)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse s3 endpoint %q. got error: %v", mgmtNodePort, err)
+		return nil, fmt.Errorf("Connect(): Failed to parse s3 endpoint %q. got error: %v", mgmtNodePort, err)
 	}
 
 	s3NodePort := s3Status.NodePorts[0]
@@ -663,4 +670,22 @@ func Connect(usePortForwarding bool) (*Client, error) {
 		NBClient: nbClient,
 		S3Client: s3.New(s3Session),
 	}, nil
+}
+
+// CheckSystem checks the state of the system and initializes its status fields
+func CheckSystem(sys *nbv1.NooBaa) bool {
+	if !util.KubeCheck(sys) {
+		return false
+	}
+	if sys.Status.Accounts == nil {
+		sys.Status.Accounts = &nbv1.AccountsStatus{}
+	}
+	if sys.Status.Services == nil {
+		sys.Status.Services = &nbv1.ServicesStatus{}
+	}
+	if sys.UID == "" {
+		return false
+	}
+	return true
+
 }
