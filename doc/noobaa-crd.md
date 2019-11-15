@@ -60,7 +60,7 @@ status:
       secretRef:
         name: noobaa-admin
         namespace: noobaa
-  actualImage: noobaa/noobaa-core:5
+  actualImage: noobaa/noobaa-core:X.Y.Z
   conditions:
   - lastHeartbeatTime: "2019-11-05T13:50:20Z"
     lastTransitionTime: "2019-11-06T07:03:48Z"

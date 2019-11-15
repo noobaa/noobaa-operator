@@ -1,0 +1,8 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: noobaa-operator-catalog
+  namespace: default
+spec:
+  sourceType: grpc
+  image: noobaa/noobaa-operator-catalog
