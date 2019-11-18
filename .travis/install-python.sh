@@ -1,5 +1,6 @@
 #!/bin/bash
-sudo apt-get update
-sudo apt-get install python3-venv
-curl -O https://bootstrap.pypa.io/get-pip.py
-sudo python3 get-pip.py
+pyenv versions
+pyenv global 3.7
+pip3 install --upgrade pip
+pip3 install operator-courier==2.1.7
+operator-courier --version

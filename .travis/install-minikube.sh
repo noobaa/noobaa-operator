@@ -1,12 +1,8 @@
 #!/bin/bash
-# exit immediately when a command fails
-set -e
-# only exit with zero if all commands of the pipeline exit successfully
-set -o pipefail
-# error on unset variables
-set -u
-# print each command before executing it
-set -x
+set -e # exit immediately when a command fails
+set -o pipefail # only exit with zero if all commands of the pipeline exit successfully
+set -u # error on unset variables
+set -x # print each command before executing it
 
 #
 # NOTE: This script was originally copied from the Cojaeger-operator build

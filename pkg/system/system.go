@@ -1,10 +1,10 @@
 package system
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
@@ -56,6 +56,8 @@ func CmdCreate() *cobra.Command {
 		Short: "Create a noobaa system",
 		Run:   RunCreate,
 	}
+	cmd.Flags().String("core-resources", "", "Core resources JSON")
+	cmd.Flags().String("db-resources", "", "DB resources JSON")
 	return cmd
 }
 
@@ -159,6 +161,17 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	sys := LoadSystemDefaults()
 	ns := util.KubeObject(bundle.File_deploy_namespace_yaml).(*corev1.Namespace)
 	ns.Name = sys.Namespace
+
+	coreResourcesJSON, _ := cmd.Flags().GetString("core-resources")
+	dbResourcesJSON, _ := cmd.Flags().GetString("db-resources")
+
+	if coreResourcesJSON != "" {
+		util.Panic(json.Unmarshal([]byte(coreResourcesJSON), &sys.Spec.CoreResources))
+	}
+	if dbResourcesJSON != "" {
+		util.Panic(json.Unmarshal([]byte(dbResourcesJSON), &sys.Spec.DBResources))
+	}
+
 	// TODO check PVC if exist and the system does not exist -
 	// fail and suggest to delete them first with cli system delete.
 	util.KubeCreateSkipExisting(ns)
@@ -358,11 +371,8 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	fmt.Println("#- Mgmt Credentials -#")
 	fmt.Println("#--------------------#")
 	fmt.Println("")
-	for key, value := range secret.StringData {
-		if !strings.HasPrefix(key, "AWS") {
-			fmt.Printf("%s: %s\n", key, value)
-		}
-	}
+	fmt.Printf("email    : %s\n", secret.StringData["email"])
+	fmt.Printf("password : %s\n", secret.StringData["password"])
 
 	fmt.Println("")
 	fmt.Println("#----------------#")
@@ -382,11 +392,8 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	fmt.Println("#- S3 Credentials -#")
 	fmt.Println("#------------------#")
 	fmt.Println("")
-	for key, value := range secret.StringData {
-		if strings.HasPrefix(key, "AWS") {
-			fmt.Printf("%s: %s\n", key, value)
-		}
-	}
+	fmt.Printf("AWS_ACCESS_KEY_ID     : %s\n", secret.StringData["AWS_ACCESS_KEY_ID"])
+	fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n", secret.StringData["AWS_SECRET_ACCESS_KEY"])
 	fmt.Println("")
 }
 

@@ -13,6 +13,7 @@ TIME ?= time -p
 VERSION ?= $(shell go run cmd/version/main.go)
 IMAGE ?= noobaa/noobaa-operator:$(VERSION)
 REPO ?= github.com/noobaa/noobaa-operator
+CATALOG_IMAGE ?= noobaa/noobaa-operator-catalog:$(VERSION)
 
 GO_LINUX ?= GOOS=linux GOARCH=amd64
 GOHOSTOS ?= $(shell go env GOHOSTOS)
@@ -63,6 +64,7 @@ clean:
 
 release:
 	docker push $(IMAGE)
+	docker push $(CATALOG_IMAGE)
 	@echo "✅ docker push"
 	mkdir -p build-releases
 	cp build/_output/bin/noobaa-operator build-releases/noobaa-linux-v$(VERSION)
@@ -105,17 +107,13 @@ gen-api-fail-if-dirty: gen-api
 
 gen-olm: operator-sdk gen
 	rm -rf $(OLM)
-	mkdir -p $(OLM)
-	cp deploy/crds/*_crd.yaml $(OLM)/
-	operator-sdk up local --operator-flags "olm csv -n my-noobaa-operator" \
-		> $(OLM)/noobaa-operator.v$(VERSION).clusterserviceversion.yaml
-	operator-sdk up local --operator-flags "olm package -n my-noobaa-operator" \
-		> $(OLM)/noobaa-operator.package.yaml
+	operator-sdk up local --operator-flags "olm catalog -n my-noobaa-operator --dir $(OLM)"
 	python3 -m venv $(VENV) && \
 		. $(VENV)/bin/activate && \
 		pip3 install --upgrade pip && \
-		pip3 install operator-courier && \
-		operator-courier verify --ui_validate_io $(OLM)
+		pip3 install operator-courier==2.1.7 && \
+		operator-courier --verbose verify --ui_validate_io $(OLM)
+	docker build -t $(CATALOG_IMAGE) -f build/catalog-source.Dockerfile .
 	@echo "✅ gen-olm"
 .PHONY: gen-olm
 
@@ -124,14 +122,14 @@ gen-olm: operator-sdk gen
 #- Testing -#
 #-----------#
 
-test: lint unittest
+test: lint test-go
 	@echo "✅ test"
 .PHONY: test
 
 lint: gen
 	$(TIME) go run golang.org/x/lint/golint \
 		-set_exit_status=1 \
-		$$(go list ./... | cut -d'/' -f4- | sed 's/^\(.*\)$$/\.\/\1\//' | grep -v ./pkg/apis/noobaa/v1alpha1/)
+		$$(go list ./... | cut -d'/' -f5- | sed 's/^\(.*\)$$/\.\/\1\//' | grep -v ./pkg/apis/noobaa/v1alpha1/ | grep -v ./pkg/bundle/)
 	@echo
 	$(TIME) go run golang.org/x/lint/golint \
 		-set_exit_status=1 \
@@ -139,59 +137,13 @@ lint: gen
 	@echo "✅ lint"
 .PHONY: lint
 
-unittest: gen
+test-go: gen cli
 	$(TIME) go test ./pkg/... ./cmd/... ./version/...
-	@echo "✅ unittest"
-.PHONY: unittest
+	@echo "✅ test-go"
+.PHONY: test-go
 
-test-cli:
-	$(TIME) go test ./test/cli/...
-	@echo "✅ test-cli"
-.PHONY: test-cli
-
-test-csv: operator-sdk gen-olm
-	operator-sdk alpha olm install || exit 0
-	kubectl create ns my-noobaa-operator || exit 0
-	operator-sdk up local --operator-flags "crd create -n my-noobaa-operator"
-	operator-sdk up local --operator-flags "operator install --no-deploy -n my-noobaa-operator"
-	kubectl apply -f deploy/olm-catalog/operator-group.yaml
-	kubectl apply -f $(OLM)/noobaa-operator.v$(VERSION).clusterserviceversion.yaml
-	sleep 30
-	kubectl wait pod -n my-noobaa-operator -l noobaa-operator=deployment --for condition=ready
-	@echo "✅ test-csv"
-.PHONY: test-csv
-
+# test-olm runs tests for the OLM package
 test-olm: operator-sdk gen-olm
-	./test/test-olm.sh
+	$(TIME) ./test/test-olm.sh $(CATALOG_IMAGE)
 	@echo "✅ test-olm"
 .PHONY: test-olm
-
-test-scorecard: operator-sdk $(OUTPUT)/olm-global-manifest.yaml gen-olm
-	kubectl create ns noobaa-scorecard || exit 0
-	$(TIME) operator-sdk scorecard --verbose \
-		--csv-path $(OLM)/noobaa-operator.v$(VERSION).clusterserviceversion.yaml \
-		--crds-dir $(OLM)/ \
-		--cr-manifest deploy/crds/noobaa_v1alpha1_noobaa_cr.yaml \
-		--cr-manifest deploy/crds/noobaa_v1alpha1_backingstore_cr.yaml \
-		--cr-manifest deploy/crds/noobaa_v1alpha1_bucketclass_cr.yaml \
-		--global-manifest $(OUTPUT)/olm-global-manifest.yaml \
-		--namespace noobaa-scorecard
-	@echo "✅ test-scorecard"
-.PHONY: test-scorecard
-
-$(OUTPUT)/olm-global-manifest.yaml: operator-sdk gen
-	operator-sdk up local --operator-flags "crd yaml" > $(OUTPUT)/olm-global-manifest.yaml
-	echo "---" >> $(OUTPUT)/olm-global-manifest.yaml
-	cat deploy/cluster_role.yaml >> $(OUTPUT)/olm-global-manifest.yaml
-	echo "---" >> $(OUTPUT)/olm-global-manifest.yaml
-	yq write deploy/cluster_role_binding.yaml subjects.0.namespace noobaa-scorecard >> $(OUTPUT)/olm-global-manifest.yaml
-	echo "---" >> $(OUTPUT)/olm-global-manifest.yaml
-	yq write deploy/obc/storage_class.yaml provisioner "noobaa.io/noobaa-scorecard.bucket" >> $(OUTPUT)/olm-global-manifest.yaml
-
-# TODO operator-sdk test local is not working on CI !
-# test-e2e: gen
-# 	operator-sdk test local ./test/e2e \
-# 		--global-manifest deploy/cluster_role_binding.yaml \
-# 		--debug \
-# 		--go-test-flags "-v -parallel=1"
-# .PHONY: test-e2e

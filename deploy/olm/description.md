@@ -24,7 +24,7 @@ For more information on using NooBaa refer to [Github](https://github.com/noobaa
 
 ### 1. Install OLM (if you don't have it already):
 ```
-curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.10.0/install.sh | bash -s 0.10.0
+curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.12.0/install.sh | bash -s 0.12.0
 ```
 
 ### 2. Install noobaa-operator:
