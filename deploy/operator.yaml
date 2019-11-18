@@ -16,7 +16,7 @@ spec:
       serviceAccountName: noobaa
       containers:
         - name: noobaa-operator
-          image: noobaa/noobaa-operator:2.0.7
+          image: noobaa/noobaa-operator:2.0.8
           resources:
             limits:
               cpu: "250m"
