@@ -1,6 +1,6 @@
 package bundle
 
-const Version = "2.0.7"
+const Version = "2.0.8"
 
 const Sha256_deploy_cluster_role_yaml = "b7002d09a74061e0d16e9414d60f97ed7f6a8fb3192699f957169e1170f2a669"
 
@@ -1037,7 +1037,7 @@ spec:
       name: s3-https
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "effdb488acaf67b4cfbb2e1120f17a9d7283206f4a65f1cc1e687473d2bd96fd"
+const Sha256_deploy_internal_statefulset_core_yaml = "e358c0cbd92be099dcea3f032b9ba780b2d6ed4ad9257a4e13902aa640a3c1f2"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -1090,7 +1090,6 @@ spec:
 #----------------#
       - name: init
         image: NOOBAA_CORE_IMAGE
-        imagePullPolicy: IfNotPresent
         command:
         - /noobaa_init_files/noobaa_init.sh
         - init_mongo
@@ -1103,7 +1102,6 @@ spec:
 #----------------#
       - name: core
         image: NOOBAA_CORE_IMAGE
-        imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: logs
           mountPath: /log
@@ -1183,7 +1181,6 @@ spec:
 #--------------------#
       - name: db
         image: NOOBAA_DB_IMAGE
-        imagePullPolicy: IfNotPresent
         command:
         - bash
         - -c
@@ -1811,7 +1808,7 @@ spec:
   sourceNamespace: marketplace
 `
 
-const Sha256_deploy_operator_yaml = "bead9e44ebb85a2684e1d17f3c20c02ad8fedb461041db0c61305655538f79c0"
+const Sha256_deploy_operator_yaml = "852ca26b7a621010f216131fa9c5c82db19d31291a33c960b3d86b836ab6e9d9"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1831,8 +1828,7 @@ spec:
       serviceAccountName: noobaa
       containers:
         - name: noobaa-operator
-          image: noobaa/noobaa-operator:2.0.7
-          imagePullPolicy: IfNotPresent
+          image: noobaa/noobaa-operator:2.0.8
           resources:
             limits:
               cpu: "250m"

@@ -12,6 +12,7 @@ Constraints:
 A backing-store name may appear in more than one bucket-class but may not appear more than once in a single bucket-class.
 The operator cli currently only supports a single tier placement-policy for a bucket-class. 
 YAML must be used to create a bucket-class with a placement-policy that has multiple tiers.
+Placement-policy is case sensitive and should be of value (Mirror|Spread).
 
 For more information on using bucket-classes from S3 see [S3 Account](s3-account.md).
 

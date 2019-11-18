@@ -129,7 +129,7 @@ func (c *RPCClient) Call(req *RPCRequest, res RPCResponseIfc) error {
 		return r.Error
 	}
 
-	logrus.Infof("✅ RPC: %s Response OK: %+v", u, r)
+	logrus.Infof("✅ RPC: %s Response OK: took %.1fms", u, r.Took)
 	return nil
 }
 
