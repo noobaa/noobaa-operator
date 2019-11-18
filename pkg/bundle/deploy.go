@@ -1,6 +1,6 @@
 package bundle
 
-const Version = "2.0.7"
+const Version = "2.0.8"
 
 const Sha256_deploy_cluster_role_yaml = "b7002d09a74061e0d16e9414d60f97ed7f6a8fb3192699f957169e1170f2a669"
 
@@ -1808,7 +1808,7 @@ spec:
   sourceNamespace: marketplace
 `
 
-const Sha256_deploy_operator_yaml = "1ae40b1d77b51126d95632a9d28cc8302bf978ecde799868472531eb7758cb3a"
+const Sha256_deploy_operator_yaml = "852ca26b7a621010f216131fa9c5c82db19d31291a33c960b3d86b836ab6e9d9"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1828,7 +1828,7 @@ spec:
       serviceAccountName: noobaa
       containers:
         - name: noobaa-operator
-          image: noobaa/noobaa-operator:2.0.7
+          image: noobaa/noobaa-operator:2.0.8
           resources:
             limits:
               cpu: "250m"
