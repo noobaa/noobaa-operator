@@ -19,22 +19,17 @@ import (
 	"time"
 	"unicode"
 
-	"golang.org/x/crypto/ssh/terminal"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/cli-runtime/pkg/printers"
-
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/v2/pkg/apis"
 	routev1 "github.com/openshift/api/route/v1"
-
-	// nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	operv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 	corev1 "k8s.io/api/core/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -42,6 +37,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -53,7 +50,7 @@ import (
 
 const oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
 
-// OAuth2Endpoints Holds OAuth2 endpoints information.
+// OAuth2Endpoints holds OAuth2 endpoints information.
 type OAuth2Endpoints struct {
 	AuthorizationEndpoint string `json:"authorization_endpoint"`
 	TokenEndpoint         string `json:"token_endpoint"`
@@ -811,7 +808,7 @@ func PrintThisNoteWhenFinishedApplyingAndStartWaitLoop() {
 	log.Printf("  - You may Ctrl-C at any time to stop the loop and watch it manually.")
 }
 
-// DiscoverOAuthEndpoints info
+// DiscoverOAuthEndpoints uses a well known url to get info on the cluster oauth2 endpoints
 func DiscoverOAuthEndpoints() (*OAuth2Endpoints, error) {
 	client := http.Client{
 		Timeout: 120 * time.Second,
@@ -908,4 +905,31 @@ func Tar(src string, writers ...io.Writer) error {
 
 		return nil
 	})
+}
+
+// WriteYamlFile writes a yaml file from the given objects
+func WriteYamlFile(name string, obj runtime.Object, moreObjects ...runtime.Object) error {
+	p := printers.YAMLPrinter{}
+
+	file, err := os.Create(name)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	err = p.PrintObj(obj, file)
+	if err != nil {
+		return err
+	}
+
+	if moreObjects != nil {
+		for i := range moreObjects {
+			err = p.PrintObj(moreObjects[i], file)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

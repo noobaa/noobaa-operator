@@ -1,10 +1,12 @@
 package olm
 
 import (
-	"fmt"
+	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
@@ -18,6 +20,7 @@ import (
 	operv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/printers"
 	sigyaml "sigs.k8s.io/yaml"
@@ -33,14 +36,35 @@ func Cmd() *cobra.Command {
 		Short: "OLM related commands",
 	}
 	cmd.AddCommand(
+		CmdCatalog(),
 		CmdCSV(),
-		CmdPackage(),
 		CmdHubInstall(),
 		CmdHubUninstall(),
 		CmdHubStatus(),
 		// CmdLocalInstall(),
 		// CmdLocalUninstall(),
 	)
+	return cmd
+}
+
+// CmdCatalog returns a CLI command
+func CmdCatalog() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "catalog",
+		Short: "Create OLM catalog dir",
+		Run:   RunCatalog,
+	}
+	cmd.Flags().String("dir", "./build/_output/olm", "The output dir for the OLM package")
+	return cmd
+}
+
+// CmdCSV returns a CLI command
+func CmdCSV() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "csv",
+		Short: "Print CSV yaml",
+		Run:   RunCSV,
+	}
 	return cmd
 }
 
@@ -94,24 +118,140 @@ func CmdLocalUninstall() *cobra.Command {
 	return cmd
 }
 
-// CmdCSV returns a CLI command
-func CmdCSV() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "csv",
-		Short: "Print CSV yaml",
-		Run:   RunCSV,
+// RunCatalog runs a CLI command
+func RunCatalog(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	dir, _ := cmd.Flags().GetString("dir")
+	if dir == "" {
+		log.Fatalf(`Missing required flag: --dir: %s`, cmd.UsageString())
 	}
-	return cmd
+	if !strings.HasSuffix(dir, "/") {
+		dir += "/"
+	}
+	versionDir := dir + version.Version + "/"
+
+	opConf := operator.LoadOperatorConf(cmd)
+
+	pkgBytes, err := sigyaml.Marshal(unObj{
+		"packageName":    "noobaa-operator",
+		"defaultChannel": "alpha",
+		"channels": unArr{unObj{
+			"name":       "alpha",
+			"currentCSV": "noobaa-operator.v" + version.Version,
+		}},
+	})
+	util.Panic(err)
+
+	util.Panic(os.MkdirAll(versionDir, 0755))
+	util.Panic(ioutil.WriteFile(dir+"noobaa-operator.package.yaml", pkgBytes, 0644))
+	util.Panic(util.WriteYamlFile(versionDir+"noobaa-operator.v"+version.Version+".clusterserviceversion.yaml", GenerateCSV(opConf)))
+	crd.ForEachCRD(func(c *crd.CRD) {
+		if c.Spec.Group == nbv1.SchemeGroupVersion.Group {
+			util.Panic(util.WriteYamlFile(versionDir+c.Name+".crd.yaml", c))
+		}
+	})
 }
 
-// CmdPackage returns a CLI command
-func CmdPackage() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "package",
-		Short: "Print OLM package yaml",
-		Run:   RunPackage,
+// RunCSV runs a CLI command
+func RunCSV(cmd *cobra.Command, args []string) {
+	opConf := operator.LoadOperatorConf(cmd)
+	csv := GenerateCSV(opConf)
+	p := printers.YAMLPrinter{}
+	util.Panic(p.PrintObj(csv, os.Stdout))
+}
+
+// GenerateCSV creates the CSV
+func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
+
+	install := &unstructured.Unstructured{Object: unObj{
+		"deployments":        unArr{unObj{"name": opConf.Deployment.Name, "spec": opConf.Deployment.Spec}},
+		"permissions":        unArr{unObj{"serviceAccountName": opConf.SA.Name, "rules": opConf.Role.Rules}},
+		"clusterPermissions": unArr{unObj{"serviceAccountName": opConf.SA.Name, "rules": opConf.ClusterRole.Rules}},
+	}}
+	installRaw, err := install.MarshalJSON()
+	util.Panic(err)
+
+	almExamples, err := json.Marshal([]runtime.Object{
+		util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml),
+		util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml),
+		util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_bucketclass_cr_yaml),
+	})
+	util.Panic(err)
+
+	o := util.KubeObject(bundle.File_deploy_olm_noobaa_operator_clusterserviceversion_yaml)
+	csv := o.(*operv1.ClusterServiceVersion)
+	csv.Name = "noobaa-operator.v" + version.Version
+	csv.Namespace = options.Namespace
+	csv.Annotations["containerImage"] = options.OperatorImage
+	// csv.Annotations["createdAt"] = ???
+	csv.Annotations["alm-examples"] = string(almExamples)
+	csv.Spec.Version.Version = semver.MustParse(version.Version)
+	csv.Spec.Description = bundle.File_deploy_olm_description_md
+	csv.Spec.Icon[0].Data = bundle.File_deploy_olm_noobaa_icon_base64
+	csv.Spec.InstallStrategy.StrategySpecRaw = installRaw
+	csv.Spec.CustomResourceDefinitions.Owned = []operv1.CRDDescription{}
+	csv.Spec.CustomResourceDefinitions.Required = []operv1.CRDDescription{}
+	crdDescriptions := map[string]string{
+		"NooBaa": `A NooBaa system - Create this to start`,
+		"BackingStore": `Storage target spec such as aws-s3, s3-compatible, PV's and more. ` +
+			`Used in BacketClass to construct data placement policies.`,
+		"BucketClass": `Storage policy spec  tiering, mirroring, spreading. ` +
+			`Combines BackingStores. Referenced by ObjectBucketClaims.`,
+		"ObjectBucketClaim": `Claim a bucket just like claiming a PV. ` +
+			`Automate you app bucket provisioning by creating OBC with your app deployment. ` +
+			`A secret and configmap (name=claim) will be created with access details for the app pods.`,
+		"ObjectBucket": `Used under-the-hood. Created per ObjectBucketClaim and keeps provisioning information.`,
 	}
-	return cmd
+	uiText := []string{"urn:alm:descriptor:com.tectonic.ui:text"}
+	uiResources := []string{"urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
+	crdSpecDescriptors := map[string][]operv1.SpecDescriptor{
+		"NooBaa": []operv1.SpecDescriptor{
+			operv1.SpecDescriptor{Path: "image", XDescriptors: uiText},
+			operv1.SpecDescriptor{Path: "dbImage", XDescriptors: uiText},
+			operv1.SpecDescriptor{Path: "coreResources", XDescriptors: uiResources},
+			operv1.SpecDescriptor{Path: "dbResources", XDescriptors: uiResources},
+			operv1.SpecDescriptor{Path: "dbVolumeResources", XDescriptors: uiResources},
+			operv1.SpecDescriptor{Path: "dbStorageClass", XDescriptors: uiText},
+			operv1.SpecDescriptor{Path: "pvPoolDefaultStorageClass", XDescriptors: uiText},
+			operv1.SpecDescriptor{Path: "tolerations", XDescriptors: []string{"urn:alm:descriptor:io.kubernetes:Tolerations"}},
+			operv1.SpecDescriptor{Path: "imagePullSecret", XDescriptors: []string{"urn:alm:descriptor:io.kubernetes:Secret"}},
+		},
+		"BackingStore":      []operv1.SpecDescriptor{},
+		"BucketClass":       []operv1.SpecDescriptor{},
+		"ObjectBucketClaim": []operv1.SpecDescriptor{},
+		"ObjectBucket":      []operv1.SpecDescriptor{},
+	}
+	for kind := range crdSpecDescriptors {
+		for i := range crdSpecDescriptors[kind] {
+			d := &crdSpecDescriptors[kind][i]
+			d.DisplayName = d.Path
+			d.Description = d.Path
+		}
+	}
+	crd.ForEachCRD(func(c *crd.CRD) {
+		crdDesc := operv1.CRDDescription{
+			Name:            c.Name,
+			Kind:            c.Spec.Names.Kind,
+			Version:         c.Spec.Version,
+			DisplayName:     c.Spec.Names.Kind,
+			Description:     crdDescriptions[c.Spec.Names.Kind],
+			SpecDescriptors: crdSpecDescriptors[c.Spec.Names.Kind],
+			Resources: []operv1.APIResourceReference{
+				operv1.APIResourceReference{Name: "services", Kind: "Service", Version: "v1"},
+				operv1.APIResourceReference{Name: "secrets", Kind: "Secret", Version: "v1"},
+				operv1.APIResourceReference{Name: "configmaps", Kind: "ConfigMap", Version: "v1"},
+				operv1.APIResourceReference{Name: "statefulsets.apps", Kind: "StatefulSet", Version: "v1"},
+			},
+		}
+		if c.Spec.Group == nbv1.SchemeGroupVersion.Group {
+			csv.Spec.CustomResourceDefinitions.Owned = append(csv.Spec.CustomResourceDefinitions.Owned, crdDesc)
+		} else {
+			csv.Spec.CustomResourceDefinitions.Required = append(csv.Spec.CustomResourceDefinitions.Required, crdDesc)
+		}
+	})
+
+	return csv
 }
 
 // RunHubInstall runs a CLI command
@@ -147,81 +287,6 @@ func RunLocalInstall(cmd *cobra.Command, args []string) {
 // RunLocalUninstall runs a CLI command
 func RunLocalUninstall(cmd *cobra.Command, args []string) {
 	panic("TODO implement olm.RunLocalUninstall()")
-}
-
-// RunCSV runs a CLI command
-func RunCSV(cmd *cobra.Command, args []string) {
-
-	opConf := operator.LoadOperatorConf(cmd)
-	install := &unstructured.Unstructured{Object: unObj{
-		"deployments":        unArr{unObj{"name": opConf.Deployment.Name, "spec": opConf.Deployment.Spec}},
-		"permissions":        unArr{unObj{"serviceAccountName": opConf.SA.Name, "rules": opConf.Role.Rules}},
-		"clusterPermissions": unArr{unObj{"serviceAccountName": opConf.SA.Name, "rules": opConf.ClusterRole.Rules}},
-	}}
-	installRaw, err := install.MarshalJSON()
-	util.Panic(err)
-
-	o := util.KubeObject(bundle.File_deploy_olm_catalog_noobaa_operator_clusterserviceversion_yaml)
-	csv := o.(*operv1.ClusterServiceVersion)
-	csv.Name = "noobaa-operator.v" + version.Version
-	csv.Namespace = options.Namespace
-	csv.Annotations["containerImage"] = options.OperatorImage
-	// csv.Annotations["createdAt"] = ???
-	// csv.Annotations["alm-examples"] = ""
-	csv.Spec.Version.Version = semver.MustParse(version.Version)
-	csv.Spec.Description = bundle.File_deploy_olm_catalog_description_md
-	csv.Spec.Icon[0].Data = bundle.File_deploy_olm_catalog_noobaa_icon_base64
-	csv.Spec.InstallStrategy.StrategySpecRaw = installRaw
-	csv.Spec.CustomResourceDefinitions.Owned = []operv1.CRDDescription{}
-	csv.Spec.CustomResourceDefinitions.Required = []operv1.CRDDescription{}
-	crdDescriptions := map[string]string{
-		"NooBaa": `A NooBaa system - Create this to start`,
-		"BackingStore": `Storage target spec such as aws-s3, s3-compatible, PV's and more. ` +
-			`Used in BacketClass to construct data placement policies.`,
-		"BucketClass": `Storage policy spec  tiering, mirroring, spreading. ` +
-			`Combines BackingStores. Referenced by ObjectBucketClaims.`,
-		"ObjectBucketClaim": `Claim a bucket just like claiming a PV. ` +
-			`Automate you app bucket provisioning by creating OBC with your app deployment. ` +
-			`A secret and configmap (name=claim) will be created with access details for the app pods.`,
-		"ObjectBucket": `Used under-the-hood. Created per ObjectBucketClaim and keeps provisioning information.`,
-	}
-	crd.ForEachCRD(func(c *crd.CRD) {
-		crdDesc := operv1.CRDDescription{
-			Name:        c.Name,
-			Kind:        c.Spec.Names.Kind,
-			Version:     c.Spec.Version,
-			DisplayName: c.Spec.Names.Kind,
-			Description: crdDescriptions[c.Spec.Names.Kind],
-			Resources: []operv1.APIResourceReference{
-				operv1.APIResourceReference{Name: "services", Kind: "Service", Version: "v1"},
-				operv1.APIResourceReference{Name: "secrets", Kind: "Secret", Version: "v1"},
-				operv1.APIResourceReference{Name: "configmaps", Kind: "ConfigMap", Version: "v1"},
-				operv1.APIResourceReference{Name: "statefulsets.apps", Kind: "StatefulSet", Version: "v1"},
-			},
-		}
-		if c.Spec.Group == nbv1.SchemeGroupVersion.Group {
-			csv.Spec.CustomResourceDefinitions.Owned = append(csv.Spec.CustomResourceDefinitions.Owned, crdDesc)
-		} else {
-			csv.Spec.CustomResourceDefinitions.Required = append(csv.Spec.CustomResourceDefinitions.Required, crdDesc)
-		}
-	})
-
-	p := printers.YAMLPrinter{}
-	util.Panic(p.PrintObj(csv, os.Stdout))
-}
-
-// RunPackage runs a CLI command
-func RunPackage(cmd *cobra.Command, args []string) {
-	obj := &unObj{
-		"packageName":    "noobaa-operator",
-		"defaultChannel": "alpha",
-		"channels": unArr{
-			unObj{"name": "alpha", "currentCSV": "noobaa-operator.v" + version.Version},
-		},
-	}
-	output, err := sigyaml.Marshal(obj)
-	util.Panic(err)
-	fmt.Print(string(output))
 }
 
 // HubConf keeps the operatorhub yaml objects
