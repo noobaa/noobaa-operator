@@ -12,7 +12,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/cli-runtime/pkg/printers"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Cmd returns a CLI command
@@ -134,7 +136,12 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 func RunStatus(cmd *cobra.Command, args []string) {
 	c := LoadOperatorConf(cmd)
 	util.KubeCheck(c.NS)
-	util.KubeCheck(c.SA)
+	if util.KubeCheck(c.SA) {
+		// in OLM deployment the roles and bindings have generated names
+		// so we list and lookup bindings to our service account to discover the actual names
+		DetectRole(c)
+		DetectClusterRole(c)
+	}
 	util.KubeCheck(c.Role)
 	util.KubeCheck(c.RoleBinding)
 	util.KubeCheck(c.ClusterRole)
@@ -204,4 +211,55 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 			[]corev1.LocalObjectReference{{Name: options.ImagePullSecret}}
 	}
 	return c
+}
+
+// DetectRole looks up a role binding referencing our service account
+func DetectRole(c *Conf) {
+	roleBindings := &rbacv1.RoleBindingList{}
+	selector := labels.SelectorFromSet(labels.Set{
+		"olm.owner.kind":      "ClusterServiceVersion",
+		"olm.owner.namespace": c.SA.Namespace,
+	})
+	util.KubeList(roleBindings, &client.ListOptions{
+		Namespace:     c.SA.Namespace,
+		LabelSelector: selector,
+	})
+	for i := range roleBindings.Items {
+		b := &roleBindings.Items[i]
+		for j := range b.Subjects {
+			s := b.Subjects[j]
+			if s.Kind == "ServiceAccount" &&
+				s.Name == c.SA.Name &&
+				s.Namespace == c.SA.Namespace {
+				c.Role.Name = b.RoleRef.Name
+				c.RoleBinding.Name = b.Name
+				return
+			}
+		}
+	}
+}
+
+// DetectClusterRole looks up a cluster role binding referencing our service account
+func DetectClusterRole(c *Conf) {
+	clusterRoleBindings := &rbacv1.ClusterRoleBindingList{}
+	selector := labels.SelectorFromSet(labels.Set{
+		"olm.owner.kind":      "ClusterServiceVersion",
+		"olm.owner.namespace": c.SA.Namespace,
+	})
+	util.KubeList(clusterRoleBindings, &client.ListOptions{
+		LabelSelector: selector,
+	})
+	for i := range clusterRoleBindings.Items {
+		b := &clusterRoleBindings.Items[i]
+		for j := range b.Subjects {
+			s := b.Subjects[j]
+			if s.Kind == "ServiceAccount" &&
+				s.Name == c.SA.Name &&
+				s.Namespace == c.SA.Namespace {
+				c.ClusterRole.Name = b.RoleRef.Name
+				c.ClusterRoleBinding.Name = b.Name
+				return
+			}
+		}
+	}
 }
