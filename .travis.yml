@@ -1,7 +1,7 @@
 os: linux
 dist: xenial
 sudo: required
-sevices:
+services:
   - docker
 language: go
 go:
@@ -16,13 +16,16 @@ env:
     - MINIKUBE_HOME=$HOME
     - CHANGE_MINIKUBE_NONE_USER=true
     - KUBECONFIG=$HOME/.kube/config
+
 install:
   - bash .travis/install-tools.sh
   - bash .travis/install-operator-sdk.sh
   - bash .travis/install-python.sh
   - bash .travis/install-minikube.sh
+
 script:
   - make gen-api-fail-if-dirty --always-make
   - make build
   - make test
   - make test-olm
+  - make test-cli-flow

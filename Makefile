@@ -142,6 +142,11 @@ test-go: gen cli
 	@echo "✅ test-go"
 .PHONY: test-go
 
+test-cli-flow:
+	$(TIME) ./test/cli/test_cli_flow.sh
+	@echo "✅ test-cli-flow"
+.PHONY: test-cli-flow
+
 # test-olm runs tests for the OLM package
 test-olm: operator-sdk gen-olm
 	$(TIME) ./test/test-olm.sh $(CATALOG_IMAGE)
