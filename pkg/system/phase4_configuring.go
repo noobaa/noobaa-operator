@@ -321,11 +321,6 @@ func (r *Reconciler) ReconcileOBCStorageClass() error {
 		"bucketclass": r.DefaultBucketClass.Name,
 	}
 
-	// unsetting BlockOwnerDeletion to acoid error when trying to own storage class:
-	// "cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
-	r.Own(r.OBCStorageClass)
-	r.OBCStorageClass.OwnerReferences[0].BlockOwnerDeletion = nil
-
 	err := r.Client.Create(r.Ctx, r.OBCStorageClass)
 	if err != nil {
 		return err
