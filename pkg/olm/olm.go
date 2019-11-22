@@ -205,6 +205,18 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 	}
 	uiText := []string{"urn:alm:descriptor:com.tectonic.ui:text"}
 	uiResources := []string{"urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
+	uiFieldGroup := "urn:alm:descriptor:com.tectonic.ui:fieldGroup:"
+	uiK8sSecret := "urn:alm:descriptor:io.kubernetes:Secret"
+	uiBooleanSwitch := "urn:alm:descriptor:com.tectonic.ui:booleanSwitch"
+	uiNumber := "urn:alm:descriptor:com.tectonic.ui:number"
+	uiFieldGroupText := "urn:alm:descriptor:com.tectonic.ui:text"
+	uiFieldGroupAwsS3 := "urn:alm:descriptor:com.tectonic.ui:fieldGroup:awsS3"
+	uiFieldGroupAzureBlob := "urn:alm:descriptor:com.tectonic.ui:fieldGroup:azureBlob"
+	uiFieldGroupGoogleCloudStorage := "urn:alm:descriptor:com.tectonic.ui:fieldGroup:googleCloudStorage"
+	uiFieldGroupPvPool := "urn:alm:descriptor:com.tectonic.ui:fieldGroup:pvPool"
+	uiFieldGroupS3Compatible := "urn:alm:descriptor:com.tectonic.ui:fieldGroup:s3Compatible"
+
+
 	crdSpecDescriptors := map[string][]operv1.SpecDescriptor{
 		"NooBaa": []operv1.SpecDescriptor{
 			operv1.SpecDescriptor{Path: "image", XDescriptors: uiText},
@@ -217,16 +229,87 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			operv1.SpecDescriptor{Path: "tolerations", XDescriptors: []string{"urn:alm:descriptor:io.kubernetes:Tolerations"}},
 			operv1.SpecDescriptor{Path: "imagePullSecret", XDescriptors: []string{"urn:alm:descriptor:io.kubernetes:Secret"}},
 		},
-		"BackingStore":      []operv1.SpecDescriptor{},
-		"BucketClass":       []operv1.SpecDescriptor{},
+		"BackingStore": []operv1.SpecDescriptor{
+			operv1.SpecDescriptor{Description: "Region is the AWS region.",
+				Path:         "awsS3.region",
+				XDescriptors: []string{uiFieldGroupAwsS3, uiFieldGroupText},
+				DisplayName:  "Region"},
+			operv1.SpecDescriptor{Description: "Secret refers to a secret that provides the credentials. The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+				Path:         "awsS3.secret",
+				XDescriptors: []string{uiFieldGroupAwsS3, uiK8sSecret},
+				DisplayName:  "Secret"},
+			operv1.SpecDescriptor{Description: "SSLDisabled allows to disable SSL and use plain http.",
+				Path:         "awsS3.sslDisabled",
+				XDescriptors: []string{uiFieldGroupAwsS3, uiBooleanSwitch},
+				DisplayName:  "SSL Disabled"},
+			operv1.SpecDescriptor{Description: "TargetBucket is the name of the target S3 bucket.",
+				Path:         "awsS3.targetBucket",
+				XDescriptors: []string{uiFieldGroupAwsS3, uiFieldGroupText},
+				DisplayName:  "Target Bucket"},
+			operv1.SpecDescriptor{Description: " Secret refers to a secret that provides the credentials. The secret should define AccountName and AccountKey as provided\nby Azure Blob.",
+				Path:         "azureBlob.secret",
+				XDescriptors: []string{uiFieldGroupAzureBlob, uiK8sSecret},
+				DisplayName:  "Secret"},
+			operv1.SpecDescriptor{Description: "TargetBlobContainer is the name of the target Azure Blob container.",
+				Path:         "azureBlob.targetBlobContainer",
+				XDescriptors: []string{uiFieldGroupAzureBlob, uiFieldGroupText},
+				DisplayName:  "Target Blob Container"},
+			operv1.SpecDescriptor{Description: "Secret refers to a secret that provides the credentials. The secret should define GoogleServiceAccountPrivateKeyJson containing\nthe entire json string as provided by Google.",
+				Path:         "googleCloudStorage.secret",
+				XDescriptors: []string{uiFieldGroupGoogleCloudStorage, uiK8sSecret},
+				DisplayName:  "Secret"},
+			operv1.SpecDescriptor{Description: "TargetBucket is the name of the target S3 bucket.",
+				Path:         "googleCloudStorage.targetBucket",
+				XDescriptors: []string{uiFieldGroupGoogleCloudStorage, uiFieldGroupText},
+				DisplayName:  "Target Bucket"},
+			operv1.SpecDescriptor{Description: "NumVolumes is the number of volumes to allocate.",
+				Path:         "pvPool.numVolumes",
+				XDescriptors: []string{uiFieldGroupPvPool, uiNumber},
+				DisplayName:  "Num Volumes"},
+			operv1.SpecDescriptor{Description: "VolumeResources represents the minimum resources each volume should have.",
+				Path:         "pvPool.resources",
+				XDescriptors: []string{uiFieldGroupPvPool, uiFieldGroupText},
+				DisplayName:  "Resources"},
+			operv1.SpecDescriptor{Description: "StorageClass is the name of the storage class to use for the PV's.",
+				Path:         "pvPool.storageClass",
+				XDescriptors: []string{uiFieldGroupPvPool, uiNumber},
+				DisplayName:  "Storage Class"},
+			operv1.SpecDescriptor{Description: "Endpoint is the S3 compatible endpoint: http(s)://host:port.",
+				Path:         "s3Compatible.endpoint",
+				XDescriptors: []string{uiFieldGroupS3Compatible, uiFieldGroupText},
+				DisplayName:  "End Point"},
+			operv1.SpecDescriptor{Description: "Secret refers to a secret that provides the credentials. The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+				Path:         "s3Compatible.secret",
+				XDescriptors: []string{uiFieldGroupS3Compatible, uiK8sSecret},
+				DisplayName:  "Secret"},
+			operv1.SpecDescriptor{Description: "SignatureVersion specifies the client signature version to use when signing requests.",
+				Path:         "s3Compatible.signatureVersion",
+				XDescriptors: []string{uiFieldGroupS3Compatible, uiNumber},
+				DisplayName:  "Signature Version"},
+			operv1.SpecDescriptor{Description: "TargetBucket is the name of the target S3 bucket.",
+				Path:         "s3Compatible.targetBucket",
+				XDescriptors: []string{uiFieldGroupS3Compatible, uiFieldGroupText},
+				DisplayName:  "Target Bucket"},
+		},
+
+		"BucketClass": []operv1.SpecDescriptor{
+			operv1.SpecDescriptor{Description: "BackingStores is an unordered list of backing store names. The meaning of the list depends on the placement.",
+				Path:         "placementPolicy.tiers[0].backingStores[0]",
+				XDescriptors: []string{uiFieldGroup + "placementPolicy", uiFieldGroupText},
+				DisplayName:  "Backing Stores"},
+			operv1.SpecDescriptor{Description: "Placement specifies the type of placement for the tier If empty it should have a single backing store.",
+				Path:         "placementPolicy.tiers[0].placement",
+				XDescriptors: []string{uiFieldGroupAwsS3, uiFieldGroupText},
+				DisplayName:  "Placement"},
+		},
 		"ObjectBucketClaim": []operv1.SpecDescriptor{},
 		"ObjectBucket":      []operv1.SpecDescriptor{},
 	}
 	for kind := range crdSpecDescriptors {
 		for i := range crdSpecDescriptors[kind] {
 			d := &crdSpecDescriptors[kind][i]
-			d.DisplayName = d.Path
-			d.Description = d.Path
+			d.DisplayName = d.DisplayName
+			d.Description = d.Description
 		}
 	}
 	crd.ForEachCRD(func(c *crd.CRD) {
