@@ -362,24 +362,29 @@ func (r *Reconciler) ReadSystemInfo() error {
 	pool := r.PoolInfo
 	if r.BackingStore.Spec.Type == nbv1.StoreTypePVPool {
 		if pool != nil && pool.ResourceType != "HOSTS" {
-            return util.NewPersistentError("InvalidBackingStore",
-				fmt.Sprintf("BackingStore %q w/existing pool %+v has unexpected resource type %+v", r.BackingStore.Name, pool, pool.ResourceType))
+			return util.NewPersistentError("InvalidBackingStore", fmt.Sprintf(
+				"BackingStore %q w/existing pool %+v has unexpected resource type %+v",
+				r.BackingStore.Name, pool, pool.ResourceType,
+			))
 		}
 		pvPool := r.BackingStore.Spec.PVPool
 		qty := pvPool.VolumeResources.Requests[corev1.ResourceName(corev1.ResourceStorage)]
 		gbsize, _ := qty.AsInt64()
 		r.CreateHostsPoolParams = &nb.CreateHostsPoolParams{
-			Name:		r.BackingStore.Name,
-			IsManaged:	true,
-			HostCount:	int(pvPool.NumVolumes),
+			Name:       r.BackingStore.Name,
+			IsManaged:  true,
+			HostCount:  int(pvPool.NumVolumes),
 			HostConfig: nb.PoolHostsInfo{VolumeSize: gbsize},
 		}
 		return nil
 	}
-    if pool != nil && pool.ResourceType != "CLOUD" {
-        return util.NewPersistentError("InvalidBackingStore",
-            fmt.Sprintf("BackingStore %q w/existing pool %+v has unexpected resource type %+v", r.BackingStore.Name, pool, pool.ResourceType))
-    }
+
+	if pool != nil && pool.ResourceType != "CLOUD" {
+		return util.NewPersistentError("InvalidBackingStore", fmt.Sprintf(
+			"BackingStore %q w/existing pool %+v has unexpected resource type %+v",
+			r.BackingStore.Name, pool, pool.ResourceType,
+		))
+	}
 
 	conn, err := r.MakeExternalConnectionParams()
 	if err != nil {
@@ -517,8 +522,10 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		}{}
 		err := json.Unmarshal([]byte(privateKeyJSON), privateKey)
 		if err != nil {
-			return nil, util.NewPersistentError("InvalidGoogleSecret",
-				fmt.Sprintf("Invalid secret for google type %q expected JSON in data.GoogleServiceAccountPrivateKeyJson", r.Secret.Name))
+			return nil, util.NewPersistentError("InvalidGoogleSecret", fmt.Sprintf(
+				"Invalid secret for google type %q expected JSON in data.GoogleServiceAccountPrivateKeyJson",
+				r.Secret.Name,
+			))
 		}
 		conn.Identity = privateKey.ID
 		conn.Secret = privateKeyJSON
@@ -567,13 +574,14 @@ func (r *Reconciler) fixAlternateKeysNames() {
 // ReconcileExternalConnection handles the external connection using noobaa api
 func (r *Reconciler) ReconcileExternalConnection() error {
 
+	// TODO we only support creation here, but not updates
 	if r.ExternalConnectionInfo != nil {
 		return nil
 	}
-
 	if r.AddExternalConnectionParams == nil {
 		return nil
 	}
+
 	res, err := r.NBClient.CheckExternalConnectionAPI(*r.AddExternalConnectionParams)
 	if err != nil {
 		if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
@@ -623,11 +631,12 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 // ReconcilePool handles the pool using noobaa api
 func (r *Reconciler) ReconcilePool() error {
 
+	// TODO we only support creation here, but not updates
 	if r.PoolInfo != nil {
 		return nil
 	}
 
-    poolName := ""
+	poolName := ""
 
 	if r.CreateHostsPoolParams != nil {
 		err := r.NBClient.CreateHostsPoolAPI(*r.CreateHostsPoolParams)
@@ -642,10 +651,10 @@ func (r *Reconciler) ReconcilePool() error {
 		if err != nil {
 			return err
 		}
-        poolName = r.CreateCloudPoolParams.Name
+		poolName = r.CreateCloudPoolParams.Name
 	}
 
-    if poolName != "" {
+	if poolName != "" {
 		err := r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultPoolParams{
 			PoolName: poolName,
 		})

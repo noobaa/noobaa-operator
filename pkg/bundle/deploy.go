@@ -1,6 +1,6 @@
 package bundle
 
-const Version = "2.0.8"
+const Version = "2.0.9"
 
 const Sha256_deploy_cluster_role_yaml = "b7002d09a74061e0d16e9414d60f97ed7f6a8fb3192699f957169e1170f2a669"
 
@@ -778,6 +778,16 @@ spec:
         resource: "*"
 `
 
+const Sha256_deploy_internal_configmap_empty_yaml = "6405c531c6522ecd54808f5cb531c1001b9ad01a73917427c523a92be44f348f"
+
+const File_deploy_internal_configmap_empty_yaml = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: noobaa
+data: {}
+`
+
 const Sha256_deploy_internal_prometheus_rules_yaml = "31412ea08c2c489c6cccdb28acdc1817f7ed97b9f3672b1abf80ab4f4129c39f"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
@@ -1216,7 +1226,7 @@ const File_deploy_internal_text_system_status_readme_progress_tmpl = `
 	NooBaa Operator Version: {{.OperatorVersion}}
 `
 
-const Sha256_deploy_internal_text_system_status_readme_ready_tmpl = "d2d8a51e85e4d75ee15f70b4e0baaf514149ae1a3678475a057a5ce04c6a0157"
+const Sha256_deploy_internal_text_system_status_readme_ready_tmpl = "ed4077141304bbf69b08401f314b70c381523c60a7e18211576ba5275a286c30"
 
 const File_deploy_internal_text_system_status_readme_ready_tmpl = `
 
@@ -1235,7 +1245,7 @@ const File_deploy_internal_text_system_status_readme_ready_tmpl = `
 
 		Open the management console service - take External IP/DNS or Node Port or use port forwarding:
 
-			kubectl port-forward -n {{.ServiceMgmt.Namespace}} service/{{.ServiceMgmt.Name}} 11443:8443 &
+			kubectl port-forward -n {{.ServiceMgmt.Namespace}} service/{{.ServiceMgmt.Name}} 11443:443 &
 			open https://localhost:11443
 
 	2. Test S3 client:

@@ -15,7 +15,7 @@
 
 		Open the management console service - take External IP/DNS or Node Port or use port forwarding:
 
-			kubectl port-forward -n {{.ServiceMgmt.Namespace}} service/{{.ServiceMgmt.Name}} 11443:8443 &
+			kubectl port-forward -n {{.ServiceMgmt.Namespace}} service/{{.ServiceMgmt.Name}} 11443:443 &
 			open https://localhost:11443
 
 	2. Test S3 client:

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
@@ -576,9 +577,12 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 
 // Client is the system client for making mgmt or s3 calls (with operator/admin credentials)
 type Client struct {
-	NooBaa   *nbv1.NooBaa
-	NBClient nb.Client
-	S3Client *s3.S3
+	NooBaa      *nbv1.NooBaa
+	NBClient    nb.Client
+	S3Client    *s3.S3
+	MgmtURL     *url.URL
+	ServiceMgmt *corev1.Service
+	SecretOp    *corev1.Secret
 }
 
 // GetNBClient returns an api client
@@ -650,6 +654,7 @@ func Connect(usePortForwarding bool) (*Client, error) {
 			return nil, err
 		}
 		nbClient = nb.NewClient(router)
+		mgmtURL, _ = url.Parse(strings.TrimSuffix(router.GetAddress(""), "/rpc/"))
 	} else {
 		nbClient = nb.NewClient(&nb.APIRouterNodePort{
 			ServiceMgmt: r.ServiceMgmt,
@@ -673,9 +678,12 @@ func Connect(usePortForwarding bool) (*Client, error) {
 	}
 
 	return &Client{
-		NooBaa:   r.NooBaa,
-		NBClient: nbClient,
-		S3Client: s3.New(s3Session),
+		NooBaa:      r.NooBaa,
+		NBClient:    nbClient,
+		S3Client:    s3.New(s3Session),
+		MgmtURL:     mgmtURL,
+		ServiceMgmt: r.ServiceMgmt,
+		SecretOp:    r.SecretOp,
 	}, nil
 }
 
