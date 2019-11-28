@@ -350,26 +350,56 @@ func (r *Reconciler) ReadSystemInfo() error {
 	}
 	r.SystemInfo = &systemInfo
 
+	// Check if pool exists
+	for i := range r.SystemInfo.Pools {
+		p := &r.SystemInfo.Pools[i]
+		if p.Name == r.BackingStore.Name {
+			r.PoolInfo = p
+			break
+		}
+	}
+
+	pool := r.PoolInfo
+	if r.BackingStore.Spec.Type == nbv1.StoreTypePVPool {
+		if pool != nil && pool.ResourceType != "HOSTS" {
+			return util.NewPersistentError("InvalidBackingStore", fmt.Sprintf(
+				"BackingStore %q w/existing pool %+v has unexpected resource type %+v",
+				r.BackingStore.Name, pool, pool.ResourceType,
+			))
+		}
+		pvPool := r.BackingStore.Spec.PVPool
+		qty := pvPool.VolumeResources.Requests[corev1.ResourceName(corev1.ResourceStorage)]
+		gbsize, _ := qty.AsInt64()
+		r.CreateHostsPoolParams = &nb.CreateHostsPoolParams{
+			Name:       r.BackingStore.Name,
+			IsManaged:  true,
+			HostCount:  int(pvPool.NumVolumes),
+			HostConfig: nb.PoolHostsInfo{VolumeSize: gbsize},
+		}
+		return nil
+	}
+
+	if pool != nil && pool.ResourceType != "CLOUD" {
+		return util.NewPersistentError("InvalidBackingStore", fmt.Sprintf(
+			"BackingStore %q w/existing pool %+v has unexpected resource type %+v",
+			r.BackingStore.Name, pool, pool.ResourceType,
+		))
+	}
+
 	conn, err := r.MakeExternalConnectionParams()
 	if err != nil {
 		return err
 	}
 
-	// Check if pool exists
-	for i := range r.SystemInfo.Pools {
-		p := &r.SystemInfo.Pools[i]
-		if p.Name == r.BackingStore.Name {
-			if p.CloudInfo != nil &&
-				p.CloudInfo.EndpointType == conn.EndpointType &&
-				p.CloudInfo.Endpoint == conn.Endpoint &&
-				p.CloudInfo.Identity == conn.Identity {
-				// pool exists and connection match
-				r.PoolInfo = p
-			} else {
-				// TODO pool exists but connection mismatch
-				r.Logger.Warnf("using existing pool but connection mismatch %+v pool %+v %+v", conn, p, p.CloudInfo)
-				r.PoolInfo = p
-			}
+	// Check that noobaa-core uses the same connection as the pool
+	// Due to noobaa/noobaa-core#5750 the identity (access-key) is not returned in the api call so just warn for now
+	// TODO Improve handling of this condition
+	if pool != nil {
+		if pool.CloudInfo == nil ||
+			pool.CloudInfo.EndpointType != conn.EndpointType ||
+			pool.CloudInfo.Endpoint != conn.Endpoint ||
+			pool.CloudInfo.Identity != conn.Identity {
+			r.Logger.Warnf("using existing pool but connection mismatch %+v pool %+v %+v", conn, pool, pool.CloudInfo)
 		}
 	}
 
@@ -492,15 +522,17 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		}{}
 		err := json.Unmarshal([]byte(privateKeyJSON), privateKey)
 		if err != nil {
-			return nil, util.NewPersistentError("InvalidGoogleSecret",
-				fmt.Sprintf("Invalid secret for google type %q expected JSON in data.GoogleServiceAccountPrivateKeyJson", r.Secret.Name))
+			return nil, util.NewPersistentError("InvalidGoogleSecret", fmt.Sprintf(
+				"Invalid secret for google type %q expected JSON in data.GoogleServiceAccountPrivateKeyJson",
+				r.Secret.Name,
+			))
 		}
 		conn.Identity = privateKey.ID
 		conn.Secret = privateKeyJSON
 
 	case nbv1.StoreTypePVPool:
-		return nil, util.NewPersistentError("NotYetImplemented",
-			fmt.Sprintf("Not yet implemented backing store type %q", r.BackingStore.Spec.Type))
+		return nil, util.NewPersistentError("InvalidType",
+			fmt.Sprintf("%q type does not have external connection params", r.BackingStore.Spec.Type))
 
 	default:
 		return nil, util.NewPersistentError("InvalidType",
@@ -542,7 +574,11 @@ func (r *Reconciler) fixAlternateKeysNames() {
 // ReconcileExternalConnection handles the external connection using noobaa api
 func (r *Reconciler) ReconcileExternalConnection() error {
 
+	// TODO we only support creation here, but not updates
 	if r.ExternalConnectionInfo != nil {
+		return nil
+	}
+	if r.AddExternalConnectionParams == nil {
 		return nil
 	}
 
@@ -595,20 +631,36 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 // ReconcilePool handles the pool using noobaa api
 func (r *Reconciler) ReconcilePool() error {
 
+	// TODO we only support creation here, but not updates
 	if r.PoolInfo != nil {
 		return nil
 	}
 
-	err := r.NBClient.CreateCloudPoolAPI(*r.CreateCloudPoolParams)
-	if err != nil {
-		return err
+	poolName := ""
+
+	if r.CreateHostsPoolParams != nil {
+		err := r.NBClient.CreateHostsPoolAPI(*r.CreateHostsPoolParams)
+		if err != nil {
+			return err
+		}
+		poolName = r.CreateHostsPoolParams.Name
 	}
 
-	err = r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultPoolParams{
-		PoolName: r.CreateCloudPoolParams.Name,
-	})
-	if err != nil {
-		return err
+	if r.CreateCloudPoolParams != nil {
+		err := r.NBClient.CreateCloudPoolAPI(*r.CreateCloudPoolParams)
+		if err != nil {
+			return err
+		}
+		poolName = r.CreateCloudPoolParams.Name
+	}
+
+	if poolName != "" {
+		err := r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultPoolParams{
+			PoolName: poolName,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

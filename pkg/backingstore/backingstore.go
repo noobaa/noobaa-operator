@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -158,6 +159,14 @@ func CmdCreatePVPool() *cobra.Command {
 		Short: "Create pv-pool backing store",
 		Run:   RunCreatePVPool,
 	}
+	cmd.Flags().Uint32(
+		"num-volumes", 0,
+		`Number of volumes in the store`,
+	)
+	cmd.Flags().Uint32(
+		"pv-size-gb", 0,
+		`PV size of each volume in the store`,
+	)
 	cmd.Flags().String(
 		"storage-class", "",
 		"The storage class to use for PV provisioning",
@@ -249,10 +258,12 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 		log.Fatalf(`❌ Could not create BackingStore %q in Namespace %q (conflict)`, backStore.Name, backStore.Namespace)
 	}
 
-	// Create secret
-	util.Panic(controllerutil.SetControllerReference(backStore, secret, scheme.Scheme))
-	if !util.KubeCreateSkipExisting(secret) {
-		log.Fatalf(`❌ Could not create Secret %q in Namespace %q (conflict)`, secret.Name, secret.Namespace)
+	if GetBackingStoreSecret(backStore) != nil {
+		// Create secret
+		util.Panic(controllerutil.SetControllerReference(backStore, secret, scheme.Scheme))
+		if !util.KubeCreateSkipExisting(secret) {
+			log.Fatalf(`❌ Could not create Secret %q in Namespace %q (conflict)`, secret.Name, secret.Namespace)
+		}
 	}
 
 	log.Printf("")
@@ -355,12 +366,43 @@ func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 // RunCreatePVPool runs a CLI command
 func RunCreatePVPool(cmd *cobra.Command, args []string) {
 	log := util.Logger()
+	createCommon(cmd, args, nbv1.StoreTypePVPool, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
+		numVolumes, _ := cmd.Flags().GetUint32("num-volumes")
+		pvSizeGB, _ := cmd.Flags().GetUint32("pv-size-gb")
+		storageClass, _ := cmd.Flags().GetString("storage-class")
+		if numVolumes == 0 {
+			fmt.Printf("Enter number of volumes: ")
+			_, err := fmt.Scan(&numVolumes)
+			util.Panic(err)
+			if numVolumes == 0 {
+				log.Fatalf(`❌ Missing number of volumes %s`, cmd.UsageString())
+			}
+		}
+		if numVolumes > 20 {
+			log.Fatalf(`❌ Number of volumes seems to be too large %d %s`, numVolumes, cmd.UsageString())
+		}
 
-	log.Fatalf("TODO ...")
-
-	if len(args) != 1 || args[0] == "" {
-		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
-	}
+		if pvSizeGB == 0 {
+			fmt.Printf("Enter PV size (GB): ")
+			_, err := fmt.Scan(&pvSizeGB)
+			util.Panic(err)
+			if pvSizeGB == 0 {
+				log.Fatalf(`❌ Missing PV size (GB) %s`, cmd.UsageString())
+			}
+		}
+		if pvSizeGB > 1024 {
+			log.Fatalf(`❌ PV size seems to be too large %d %s`, pvSizeGB, cmd.UsageString())
+		}
+		backStore.Spec.PVPool = &nbv1.PVPoolSpec{
+			StorageClass: storageClass,
+			NumVolumes:   int(numVolumes),
+			VolumeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: *resource.NewScaledQuantity(int64(pvSizeGB), resource.Giga),
+				},
+			},
+		}
+	})
 }
 
 // RunDelete runs a CLI command

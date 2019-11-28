@@ -217,7 +217,7 @@ function obc_cycle {
     local bucket
     local buckets=()
 
-    local bucketclass_list_array=($(noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME))
+    local bucketclass_list_array=($(noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME | grep -v noobaa-default-bucket-class))
     for bucketclass in ${bucketclass_list_array[@]}
     do 
         buckets+=("bucket${bucketclass//[a-zA-Z.-]/}")
