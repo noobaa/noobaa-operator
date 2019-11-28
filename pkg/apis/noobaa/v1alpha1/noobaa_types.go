@@ -111,6 +111,38 @@ type NooBaaSpec struct {
 	// ImagePullSecret (optional) sets a pull secret for the system image
 	// +optional
 	ImagePullSecret *corev1.LocalObjectReference `json:"imagePullSecret,omitempty"`
+
+	// Region (optional) provide a region for the location info
+	// of the endpoints in the endpoint deployment
+	// +optional
+	// Commented as of Guy's requests, feature needs further deliberation
+	// Region *string `json:"region,omitempty"`
+
+	// Endpoints (optional) sets configuration info for the noobaa endpoint
+	// deployment.
+	Endpoints *EndpointsSpec `json:"endpoints,omitempty"`
+}
+
+// EndpointsSpec defines the desired state of noobaa endpoint deployment
+// +k8s:openapi-gen=true
+type EndpointsSpec struct {
+	// MinCount, the number of endpoint instances (pods)
+	// to be used as the lower bound when autoscaling
+	MinCount int32 `json:"minCount,omitempty"`
+
+	// MaxCount, the number of endpoint instances (pods)
+	// to be used as the upper bound when autoscaling
+	MaxCount int32 `json:"maxCount,omitempty"`
+
+	// AdditionalVirtualHosts (optional) provide a list of additional hostnames
+	// (on top of the buildin names defined by the cluster: service name, elb name, route name)
+	// to be used as virtual hosts by the the endpoints in the endpoint deployment
+	// +optional
+	AdditionalVirtualHosts []string `json:"additionalVirtualHosts,omitempty"`
+
+	// Resources (optional) overrides the default resource requirements for every endpoint pod
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // NooBaaStatus defines the observed state of System
@@ -147,6 +179,11 @@ type NooBaaStatus struct {
 	// Services reports addresses for the services
 	// +optional
 	Services *ServicesStatus `json:"services,omitempty"`
+
+	// Endpoints reports the actual number of endpoints in the endpoint deployment
+	// and the virtual hosts list used recognized by the endpoints
+	// +optional
+	Endpoints *EndpointsStatus `json:"endpoints,omitempty"`
 
 	// Readme is a user readable string with explanations on the system
 	// +optional
@@ -259,6 +296,12 @@ type ServiceStatus struct {
 	// ExternalDNS are external public addresses for the service
 	// +optional
 	ExternalDNS []string `json:"externalDNS,omitempty"`
+}
+
+// EndpointsStatus is the status info for the endpoints deployment
+type EndpointsStatus struct {
+	ReadyCount   int32    `json:"readyCount"`
+	VirtualHosts []string `json:"virtualHosts"`
 }
 
 const (

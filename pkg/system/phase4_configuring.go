@@ -2,6 +2,9 @@ package system
 
 import (
 	"fmt"
+	"net"
+	"net/url"
+	"strings"
 
 	"github.com/google/uuid"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
@@ -33,6 +36,9 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileSecretAdmin(); err != nil {
 		return err
 	}
+	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
+		return err
+	}
 	if err := r.ReconcileDefaultBackingStore(); err != nil {
 		return err
 	}
@@ -51,8 +57,108 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileReadSystem(); err != nil {
 		return err
 	}
+	if err := r.ReconcileDeploymentEndpointStatus(); err != nil {
+		return err
+	}
 
 	return nil
+}
+
+// ReconcileDeploymentEndpointStatus creates/updates the endpoints deployment
+func (r *Reconciler) ReconcileDeploymentEndpointStatus() error {
+	if !util.KubeCheck(r.DeploymentEndpoint) {
+		return fmt.Errorf("Could not load endpoint deployment")
+	}
+	if r.DeploymentEndpoint.Status.ReadyReplicas == 0 {
+		return fmt.Errorf("First endpoint is not ready yet")
+	}
+
+	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec
+	virtualHosts := []string{}
+	for i := range podSpec.Containers {
+		c := &podSpec.Containers[i]
+		if c.Name == "endpoint" {
+			for j := range c.Env {
+				e := c.Env[j]
+				if e.Name == "VIRTUAL_HOSTS" {
+					virtualHosts = append(virtualHosts, strings.Fields(e.Value)...)
+				}
+			}
+		}
+	}
+
+	r.NooBaa.Status.Endpoints = &nbv1.EndpointsStatus{
+		ReadyCount:   r.DeploymentEndpoint.Status.ReadyReplicas,
+		VirtualHosts: virtualHosts,
+	}
+
+	return nil
+}
+
+// SetDesiredDeploymentEndpoint updates the endpoint deployment as desired for reconciling
+func (r *Reconciler) SetDesiredDeploymentEndpoint() {
+	r.DeploymentEndpoint.Spec.Selector.MatchLabels["noobaa-s3"] = r.Request.Name
+	r.DeploymentEndpoint.Spec.Template.Labels["noobaa-s3"] = r.Request.Name
+
+	endpointsSpec := r.NooBaa.Spec.Endpoints
+	if endpointsSpec != nil {
+		replicas := int32(endpointsSpec.MinCount)
+		r.DeploymentEndpoint.Spec.Replicas = &replicas
+	}
+
+	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec
+	for i := range podSpec.Containers {
+		c := &podSpec.Containers[i]
+		switch c.Name {
+		case "endpoint":
+			c.Image = r.NooBaa.Status.ActualImage
+			if endpointsSpec.Resources != nil {
+				c.Resources = *endpointsSpec.Resources
+			}
+
+			for j := range c.Env {
+				switch c.Env[j].Name {
+				case "MGMT_URL":
+					c.Env[j].Value = fmt.Sprintf(`https://%s.%s.svc`,
+						r.ServiceMgmt.Name, r.Request.Namespace)
+
+				case "MONGODB_URL":
+					// TODO: change to mongodb pod name after mongo separation
+					c.Env[j].Value = fmt.Sprintf(`mongodb://%s-0.%s/nbcore`,
+						r.NooBaaDB.Name, r.NooBaaDB.Spec.ServiceName)
+
+				case "VIRTUAL_HOSTS":
+					hosts := []string{}
+					for _, addr := range r.NooBaa.Status.Services.ServiceS3.InternalDNS {
+						// Ignore mailformed addresses
+						if u, err := url.Parse(addr); err == nil {
+							if host, _, err := net.SplitHostPort(u.Host); err == nil {
+								hosts = append(hosts, host)
+							}
+						}
+					}
+					for _, addr := range r.NooBaa.Status.Services.ServiceS3.ExternalDNS {
+						// Ignore mailformed addresses
+						if u, err := url.Parse(addr); err == nil {
+							if host, _, err := net.SplitHostPort(u.Host); err == nil {
+								hosts = append(hosts, host)
+							}
+						}
+					}
+					if endpointsSpec != nil {
+						hosts = append(hosts, endpointsSpec.AdditionalVirtualHosts...)
+					}
+					c.Env[j].Value = fmt.Sprintf(strings.Join(hosts[:], " "))
+
+				// Commented as of Guy's requests, feature needs further deliberation
+				// case "REGION":
+				// 	if r.NooBaa.Spec.Endpoints.Region != nil {
+				// 		c.Env[j].Value = *r.NooBaa.Spec.Endpoints.Region
+				// 	}
+				}
+			}
+		}
+	}
 }
 
 // ReconcileSecretOp creates a new system in the noobaa server if not created yet.

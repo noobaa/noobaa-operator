@@ -14,12 +14,12 @@ function kuberun {
     fi
     ${kubectl} ${options}
     if [ $? -ne 0 ]
-    then 
+    then
         echo "❌  ${kubectl} ${options} failed, Exiting"
         exit 1
     elif [ ! ${silence} ]
     then
-        echo "✅  ${kubectl} ${options} passed" 
+        echo "✅  ${kubectl} ${options} passed"
     fi
 }
 
@@ -53,14 +53,14 @@ function noobaa {
         # When we are running with timeout because the command runs in the background
         timeout ${PID} ${options}
     else
-        ${noobaa} ${options} 
+        ${noobaa} ${options}
         if [ $? -ne 0 ]
-        then 
+        then
             echo "❌  ${noobaa} ${options} failed, Exiting"
             exit 1
         elif [ ! ${silence} ]
         then
-            echo "✅  ${noobaa} ${options} passed" 
+            echo "✅  ${noobaa} ${options} passed"
         fi
     fi
 
@@ -68,7 +68,7 @@ function noobaa {
 
 function timeout {
     local PID=${1}
-    shift 
+    shift
     local options=$*
     local START_TIME=${SECONDS}
 
@@ -83,7 +83,7 @@ function timeout {
         kill -s 0 ${PID} &> /dev/null
         if [ $? -ne 0 ]
         then
-            echo "✅  ${noobaa} ${options} passed" 
+            echo "✅  ${noobaa} ${options} passed"
             break
         fi
 
@@ -91,7 +91,7 @@ function timeout {
         then
             sleep 5
         else
-            kill -9 ${PID}            
+            kill -9 ${PID}
             echo "❌  ${noobaa} ${options} reached timeout, Exiting"
             exit 1
         fi
@@ -100,14 +100,16 @@ function timeout {
 
 function install {
 # TODO: once we can control the core resource amount we can use it,
-#       for now we will mimic the install command 
+#       for now we will mimic the install command
     noobaa crd create
     noobaa system create
     kuberun patch noobaa noobaa --type merge -p '{"spec":{"coreResources":{"requests":{"cpu":"1m","memory":"256Mi"}}}}'
+    kuberun patch noobaa noobaa --type merge -p '{"spec":{"dbResources":{"requests":{"cpu":"10m","memory":"256Mi"}}}}'
+    kuberun patch noobaa noobaa --type merge -p '{"spec":{"endpoints":{"minCount":1,"maxCount":1,"resources":{"requests":{"cpu":"10m","memory":"256Mi"}}}}}'
     noobaa operator install
     local status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
-    while [ "${status}" != "Ready" ] 
-    do 
+    while [ "${status}" != "Ready" ]
+    do
         echo "Waiting for status Ready, Status is ${status}"
         sleep 10
         status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
@@ -134,7 +136,7 @@ function aws_credentials {
     then
         echo "❌  Could not get AWS credentials, Exiting"
         exit 1
-    fi 
+    fi
 }
 
 function check_S3_compatible {
@@ -149,7 +151,7 @@ function check_S3_compatible {
     do
         noobaa backingstore create ${type} ${backingstore[cycle]} \
             --target-bucket ${buckets[cycle]} \
-            --endpoint 127.0.0.1:6443 \
+            --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
             --access-key ${AWS_ACCESS_KEY_ID} \
             --secret-key ${AWS_SECRET_ACCESS_KEY}
         noobaa backingstore status ${backingstore[cycle]}
@@ -182,14 +184,14 @@ function bucketclass_cycle {
     local number_of_backingstores=4
 
     for (( number=0 ; number < number_of_backingstores ; number++ ))
-    do 
+    do
         bucketclass_names+=("bucket.class$((number+1))")
         backingstore+=("compatible$((number+1))")
     done
 
     noobaa bucketclass create ${bucketclass_names[0]} --backingstores ${backingstore[0]}
-    # noobaa bucketclass create ${bucketclass_names[1]} --placement Mirror --backingstores nb1,aws1 ❌ 
-    # noobaa bucketclass create ${bucketclass_names[2]} --placement Spread --backingstores aws1,aws2 ❌ 
+    # noobaa bucketclass create ${bucketclass_names[1]} --placement Mirror --backingstores nb1,aws1 ❌
+    # noobaa bucketclass create ${bucketclass_names[2]} --placement Spread --backingstores aws1,aws2 ❌
     noobaa bucketclass create ${bucketclass_names[3]} --backingstores ${backingstore[0]},${backingstore[1]}
 
     local bucketclass_list_array=($(noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME))
@@ -219,7 +221,7 @@ function obc_cycle {
 
     local bucketclass_list_array=($(noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME | grep -v noobaa-default-bucket-class))
     for bucketclass in ${bucketclass_list_array[@]}
-    do 
+    do
         buckets+=("bucket${bucketclass//[a-zA-Z.-]/}")
         if [ "${bucketclass//[a-zA-Z.-]/}" == "3" ]
         then
@@ -250,7 +252,7 @@ function delete_backingstore_path {
     if [ ${#obc[@]} -ne 0 ]
     then
         for object_bucket in ${obc[@]}
-        do 
+        do
             noobaa obc delete ${object_bucket}
         done
     fi
@@ -258,11 +260,11 @@ function delete_backingstore_path {
     if [ ${#bucketclass[@]} -ne 0 ]
     then
         for bucket_class in ${bucketclass[@]}
-        do 
+        do
             noobaa bucketclass delete ${bucket_class}
         done
     fi
-    
+
     noobaa backingstore delete ${backingstore[0]}
     echo "✅  delete ${backingstore[0]} path is done"
 }

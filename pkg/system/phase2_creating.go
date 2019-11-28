@@ -202,7 +202,6 @@ func (r *Reconciler) SetDesiredNooBaaDB() {
 func (r *Reconciler) SetDesiredCoreApp() {
 	r.CoreApp.Spec.Template.Labels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
-	r.CoreApp.Spec.Template.Labels["noobaa-s3"] = r.Request.Name
 	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
 
@@ -280,7 +279,6 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 		return r.ReconcileAWSCredentials()
 	}
 	return r.ReconcileRGWCredentials()
-
 }
 
 // ReconcileRGWCredentials creates a ceph objectstore user if a ceph objectstore exists in the same namespace

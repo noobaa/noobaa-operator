@@ -59,6 +59,7 @@ func CmdCreate() *cobra.Command {
 	}
 	cmd.Flags().String("core-resources", "", "Core resources JSON")
 	cmd.Flags().String("db-resources", "", "DB resources JSON")
+	cmd.Flags().String("endpoint-resources", "", "Endpoint resources JSON")
 	return cmd
 }
 
@@ -165,12 +166,22 @@ func RunCreate(cmd *cobra.Command, args []string) {
 
 	coreResourcesJSON, _ := cmd.Flags().GetString("core-resources")
 	dbResourcesJSON, _ := cmd.Flags().GetString("db-resources")
+	endpointResourcesJSON, _ := cmd.Flags().GetString("endpoint-resources")
 
 	if coreResourcesJSON != "" {
 		util.Panic(json.Unmarshal([]byte(coreResourcesJSON), &sys.Spec.CoreResources))
 	}
 	if dbResourcesJSON != "" {
 		util.Panic(json.Unmarshal([]byte(dbResourcesJSON), &sys.Spec.DBResources))
+	}
+	if endpointResourcesJSON != "" {
+		if sys.Spec.Endpoints == nil {
+			sys.Spec.Endpoints = &nbv1.EndpointsSpec{
+				MinCount: 1,
+				MaxCount: 1,
+			}
+		}
+		util.Panic(json.Unmarshal([]byte(endpointResourcesJSON), &sys.Spec.Endpoints.Resources))
 	}
 
 	// TODO check PVC if exist and the system does not exist -

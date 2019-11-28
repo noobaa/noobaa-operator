@@ -79,6 +79,7 @@ type Reconciler struct {
 	CephObjectstoreUser *cephv1.CephObjectStoreUser
 	RouteMgmt           *routev1.Route
 	RouteS3             *routev1.Route
+	DeploymentEndpoint  *appsv1.Deployment
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -117,6 +118,7 @@ func NewReconciler(
 		CephObjectstoreUser: util.KubeObject(bundle.File_deploy_internal_ceph_objectstore_user_yaml).(*cephv1.CephObjectStoreUser),
 		RouteMgmt:           util.KubeObject(bundle.File_deploy_internal_route_mgmt_yaml).(*routev1.Route),
 		RouteS3:             util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
+		DeploymentEndpoint:  util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
 	}
 
 	// Set Namespace
@@ -139,6 +141,7 @@ func NewReconciler(
 	r.CephObjectstoreUser.Namespace = r.Request.Namespace
 	r.RouteMgmt.Namespace = r.Request.Namespace
 	r.RouteS3.Namespace = r.Request.Namespace
+	r.DeploymentEndpoint.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -160,6 +163,7 @@ func NewReconciler(
 	r.ServiceMonitor.Name = r.Request.Name + "-service-monitor"
 	r.RouteMgmt.Name = r.ServiceMgmt.Name
 	r.RouteS3.Name = r.ServiceS3.Name
+	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoints"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name

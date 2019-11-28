@@ -3,6 +3,7 @@ package system
 import (
 	"fmt"
 
+	"github.com/asaskevich/govalidator"
 	semver "github.com/coreos/go-semver/semver"
 	dockerref "github.com/docker/distribution/reference"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
@@ -92,6 +93,28 @@ func (r *Reconciler) CheckSystemCR() error {
 
 	// Set ActualImage to be updated in the noobaa status
 	r.NooBaa.Status.ActualImage = specImage
+
+	// Verfify the endpoints spec
+	endpointsSpec := r.NooBaa.Spec.Endpoints
+	if endpointsSpec != nil {
+		if endpointsSpec.MinCount <= 0 {
+			return util.NewPersistentError("InvalidEndpointsConfiguration",
+				"Invalid endpoint min count (must be greater than 0)")
+		}
+		// Validate bounds on endpoint counts
+		if endpointsSpec.MinCount > endpointsSpec.MaxCount {
+			return util.NewPersistentError("InvalidEndpointsConfiguration",
+				"Invalid endpoint maximum count (must be higher than or equal to minimum count)")
+		}
+
+		// Validate that all virtual hosts are in FQDN format
+		for _, virtualHost := range endpointsSpec.AdditionalVirtualHosts {
+			if !govalidator.IsDNSName(virtualHost) {
+				return util.NewPersistentError("InvalidEndpointsConfiguration",
+					fmt.Sprintf(`Invalid virtual host %s, not a fully qualified DNS name`, virtualHost))
+			}
+		}
+	}
 
 	return nil
 }

@@ -3,6 +3,7 @@ module github.com/noobaa/noobaa-operator/v2
 go 1.13
 
 require (
+	github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf
 	github.com/aws/aws-sdk-go v1.23.8
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/coreos/go-semver v0.2.0
