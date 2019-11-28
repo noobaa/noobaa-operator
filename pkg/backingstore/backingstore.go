@@ -13,8 +13,8 @@ import (
 
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -381,7 +381,7 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 		if numVolumes > 20 {
 			log.Fatalf(`❌ Number of volumes seems to be too large %d %s`, numVolumes, cmd.UsageString())
 		}
-	
+
 		if pvSizeGB == 0 {
 			fmt.Printf("Enter PV size (GB): ")
 			_, err := fmt.Scan(&pvSizeGB)
@@ -395,7 +395,7 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 		}
 		backStore.Spec.PVPool = &nbv1.PVPoolSpec{
 			StorageClass: storageClass,
-			NumVolumes: int(numVolumes),
+			NumVolumes:   int(numVolumes),
 			VolumeResources: &corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: *resource.NewScaledQuantity(int64(pvSizeGB), resource.Giga),

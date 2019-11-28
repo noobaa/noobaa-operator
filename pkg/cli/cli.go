@@ -113,6 +113,7 @@ Load noobaa completion to bash:
 			bucketclass.Cmd(),
 			obc.Cmd(),
 			diagnose.Cmd(),
+			system.CmdUI(),
 		},
 	}, {
 		Message: "Advanced:",
