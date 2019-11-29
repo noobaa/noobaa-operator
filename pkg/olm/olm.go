@@ -223,15 +223,21 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 
 	crdSpecDescriptors := map[string][]operv1.SpecDescriptor{
 		"NooBaa": []operv1.SpecDescriptor{
-			operv1.SpecDescriptor{Path: "image", XDescriptors: []string{uiText}},
-			operv1.SpecDescriptor{Path: "dbImage", XDescriptors: []string{uiText}},
-			operv1.SpecDescriptor{Path: "coreResources", XDescriptors: []string{uiResources}},
-			operv1.SpecDescriptor{Path: "dbResources", XDescriptors: []string{uiResources}},
-			operv1.SpecDescriptor{Path: "dbVolumeResources", XDescriptors: []string{uiResources}},
-			operv1.SpecDescriptor{Path: "dbStorageClass", XDescriptors: []string{uiText}},
-			operv1.SpecDescriptor{Path: "pvPoolDefaultStorageClass", XDescriptors: []string{uiText}},
-			operv1.SpecDescriptor{Path: "tolerations", XDescriptors: []string{uiK8sTolerations}},
-			operv1.SpecDescriptor{Path: "imagePullSecret", XDescriptors: []string{uiK8sTolerations}},
+			operv1.SpecDescriptor{Path: "image", XDescriptors: []string{uiText},Description: "DBImage (optional) overrides the default image for the db container.",DisplayName:  "DB Image"},
+			operv1.SpecDescriptor{Path: "dbImage", XDescriptors: []string{uiText},Description: "Image (optional) overrides the default image for the server container.",DisplayName:  "Image"},
+			operv1.SpecDescriptor{Path: "coreResources", XDescriptors: []string{uiResources},Description: "CoreResources (optional) overrides the default resource requirements for the server container.",DisplayName:  "Core Resources"},
+			operv1.SpecDescriptor{Path: "dbResources", XDescriptors: []string{uiResources},Description: "DBResources (optional) overrides the default resource requirements for the db container.",DisplayName:  "DB Resources"},
+			operv1.SpecDescriptor{Path: "dbVolumeResources", XDescriptors: []string{uiResources},
+				Description: "DBVolumeResources (optional) overrides the default PVC resource requirements for the database volume. For the time being this field is immutable and can only be set on system creation. This is because volume size updates are only supported for increasing the size, and only if the storage class specifies `allowVolumeExpansion: true`, +immutable.",
+				DisplayName:  "Image"},
+			operv1.SpecDescriptor{Path: "dbStorageClass", XDescriptors: []string{uiText},
+				Description: "DBStorageClass (optional) overrides the default cluster StorageClass for the database volume. For the time being this field is immutable and can only be set on system creation. This affects where the system stores its database which contains system config, buckets, objects meta-data and mapping file parts to storage locations. +immutable.",
+				DisplayName:  "DB StorageClass"},
+			operv1.SpecDescriptor{Path: "pvPoolDefaultStorageClass", XDescriptors: []string{uiText},
+				Description: "PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes. This affects where the system stores data chunks (encrypted). Updates to this field will only affect new pv-pools, but updates to existing pools are not supported by the operator.",
+				DisplayName:  "PV Pool DefaultStorageClass"},
+			operv1.SpecDescriptor{Path: "tolerations", XDescriptors: []string{uiK8sTolerations},Description: "Tolerations.",DisplayName:  "Tolerations"},
+			operv1.SpecDescriptor{Path: "imagePullSecret", XDescriptors: []string{uiK8sTolerations},Description: "ImagePullSecret (optional) sets a pull secret for the system image.",DisplayName:  "Image Pull Secret"},
 		},
 		"BackingStore": []operv1.SpecDescriptor{
 			operv1.SpecDescriptor{Description: "Region is the AWS region.",
@@ -309,13 +315,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 		"ObjectBucketClaim": []operv1.SpecDescriptor{},
 		"ObjectBucket":      []operv1.SpecDescriptor{},
 	}
-	for kind := range crdSpecDescriptors {
-		for i := range crdSpecDescriptors[kind] {
-			d := &crdSpecDescriptors[kind][i]
-			d.DisplayName = d.DisplayName
-			d.Description = d.Description
-		}
-	}
+	
 	crd.ForEachCRD(func(c *crd.CRD) {
 		crdDesc := operv1.CRDDescription{
 			Name:            c.Name,
