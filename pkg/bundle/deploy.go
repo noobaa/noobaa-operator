@@ -2,74 +2,75 @@ package bundle
 
 const Version = "2.0.9"
 
-const Sha256_deploy_cluster_role_yaml = "b7002d09a74061e0d16e9414d60f97ed7f6a8fb3192699f957169e1170f2a669"
+const Sha256_deploy_cluster_role_yaml = "349e613915ed288629c4926e22cd42f4a3776ed38dfbc9e814a9b28211a67b3c"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: noobaa.noobaa.io
 rules:
-- apiGroups:
-  - noobaa.io
-  resources:
-  - '*'
-  - noobaas
-  - backingstores
-  - bucketclasses
-  - noobaas/finalizers
-  - backingstores/finalizers
-  - bucketclasses/finalizers
-  verbs:
-  - '*'
-- apiGroups:
-  - objectbucket.io
-  resources:
-  - "*"
-  verbs:
-  - "*"
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - secrets
-  verbs:
-  - "*"
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  verbs:
-  - get
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: # from system:auth-delegator
-  - authentication.k8s.io
-  resources:
-  - tokenreviews
-  verbs:
-  - create
-- apiGroups: # from system:auth-delegator
-  - authorization.k8s.io
-  resources:
-  - subjectaccessreviews
-  verbs:
-  - create
+  - apiGroups:
+      - noobaa.io
+    resources:
+      - "*"
+      - noobaas
+      - backingstores
+      - bucketclasses
+      - noobaas/finalizers
+      - backingstores/finalizers
+      - bucketclasses/finalizers
+    verbs:
+      - "*"
+  - apiGroups:
+      - objectbucket.io
+    resources:
+      - "*"
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+      - persistentvolumes
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - get
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - storageclasses
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups: # from system:auth-delegator
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups: # from system:auth-delegator
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
 `
 
 const Sha256_deploy_cluster_role_binding_yaml = "15c78355aefdceaf577bd96b4ae949ae424a3febdc8853be0917cf89a63941fc"
@@ -975,6 +976,24 @@ type: Opaque
 data: {}
 `
 
+const Sha256_deploy_internal_service_db_yaml = "66c257079a810ef3924509b337b555a09e31458872fba2affb043e0eeab0a7dd"
+
+const File_deploy_internal_service_db_yaml = `apiVersion: v1
+kind: Service
+metadata:
+  name: noobaa-db
+  labels:
+    app: noobaa
+spec:
+  type: NodePort
+  selector:
+    noobaa-db: SYSNAME
+  ports:
+    - port: 27017
+      targetPort: 27017
+      name: mongodb
+`
+
 const Sha256_deploy_internal_service_mgmt_yaml = "528fb9ccd535776579e59dc5ae60602d0679ce9c6c59c7d5d5a22526fe79131d"
 
 const File_deploy_internal_service_mgmt_yaml = `apiVersion: v1
@@ -1047,7 +1066,7 @@ spec:
       name: s3-https
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "e358c0cbd92be099dcea3f032b9ba780b2d6ed4ad9257a4e13902aa640a3c1f2"
+const Sha256_deploy_internal_statefulset_core_yaml = "e90596d0927b6d3fea0298013287f0406ca30b698dc350cdfaa768942a5c79d1"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -1063,17 +1082,6 @@ spec:
   serviceName: noobaa-mgmt
   updateStrategy:
     type: RollingUpdate
-  volumeClaimTemplates:
-  - metadata:
-      name: db
-      labels:
-        app: noobaa
-    spec:
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 50Gi
   template:
     metadata:
       labels:
@@ -1084,127 +1092,166 @@ spec:
     spec:
       serviceAccountName: noobaa
       volumes:
-      - name: logs
-        emptyDir: {}
-      - name: mgmt-secret
-        secret:
-          secretName: noobaa-mgmt-serving-cert
-          optional: true
-      - name: s3-secret
-        secret:
-          secretName: noobaa-s3-serving-cert
-          optional: true
-      initContainers:
-#----------------#
-# INIT CONTAINER #
-#----------------#
-      - name: init
-        image: NOOBAA_CORE_IMAGE
-        command:
-        - /noobaa_init_files/noobaa_init.sh
-        - init_mongo
-        volumeMounts:
-        - name: db
-          mountPath: /mongo_data
-      containers:
-#----------------#
-# CORE CONTAINER #
-#----------------#
-      - name: core
-        image: NOOBAA_CORE_IMAGE
-        volumeMounts:
         - name: logs
-          mountPath: /log
+          emptyDir: {}
         - name: mgmt-secret
-          mountPath: /etc/mgmt-secret
-          readOnly: true
+          secret:
+            secretName: noobaa-mgmt-serving-cert
+            optional: true
         - name: s3-secret
-          mountPath: /etc/s3-secret
-          readOnly: true
-        readinessProbe:
-          tcpSocket:
-            port: 6001 # ready when s3 port is open
-          timeoutSeconds: 5
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "1Gi"
-          limits:
-            cpu: "8"
-            memory: "16Gi"
-        ports:
-        - containerPort: 6001
-        - containerPort: 6443
-        - containerPort: 8080
-        - containerPort: 8443
-        - containerPort: 8444
-        - containerPort: 8445
-        - containerPort: 8446
-        - containerPort: 60100
-        env:
-        - name: CONTAINER_PLATFORM
-          value: KUBERNETES
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: noobaa-server
-              key: jwt
-        - name: SERVER_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: noobaa-server
-              key: server_secret
-        - name: AGENT_PROFILE
-          value: VALUE_AGENT_PROFILE
-        - name: DISABLE_DEV_RANDOM_SEED
-          value: "true"
-        - name: OAUTH_AUTHORIZATION_ENDPOINT
-          value: ""
-        - name: OAUTH_TOKEN_ENDPOINT
-          value: ""
-        - name: NOOBAA_SERVICE_ACCOUNT
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.serviceAccountName
-        - name: container_dbg
-          value: "" # any non-empty value will set the container to dbg mode
-        - name: CONTAINER_CPU_REQUEST
-          valueFrom:
-            resourceFieldRef:
-              resource: requests.cpu
-        - name: CONTAINER_MEM_REQUEST
-          valueFrom:
-            resourceFieldRef:
-              resource: requests.memory
-        - name: CONTAINER_CPU_LIMIT
-          valueFrom:
-            resourceFieldRef:
-              resource: limits.cpu
-        - name: CONTAINER_MEM_LIMIT
-          valueFrom:
-            resourceFieldRef:
-              resource: limits.memory
-        # - name: ENDPOINT_FORKS_NUMBER
-        #   value: "1"
-#--------------------#
-# DATABASE CONTAINER #
-#--------------------#
-      - name: db
-        image: NOOBAA_DB_IMAGE
-        command:
-        - bash
-        - -c
-        - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip 127.0.0.1 --dbpath /data/mongo/cluster/shard1
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "1Gi"
-          limits:
-            cpu: "4"
-            memory: "16Gi"
-        volumeMounts:
+          secret:
+            secretName: noobaa-s3-serving-cert
+            optional: true
+      containers:
+        #----------------#
+        # CORE CONTAINER #
+        #----------------#
+        - name: core
+          image: NOOBAA_CORE_IMAGE
+          volumeMounts:
+            - name: logs
+              mountPath: /log
+            - name: mgmt-secret
+              mountPath: /etc/mgmt-secret
+              readOnly: true
+            - name: s3-secret
+              mountPath: /etc/s3-secret
+              readOnly: true
+          readinessProbe:
+            tcpSocket:
+              port: 6001 # ready when s3 port is open
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "8"
+              memory: "16Gi"
+          ports:
+            - containerPort: 6001
+            - containerPort: 6443
+            - containerPort: 8080
+            - containerPort: 8443
+            - containerPort: 8444
+            - containerPort: 8445
+            - containerPort: 8446
+            - containerPort: 60100
+          env:
+            - name: MONGODB_URL
+              value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
+            - name: CONTAINER_PLATFORM
+              value: KUBERNETES
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-server
+                  key: jwt
+            - name: SERVER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-server
+                  key: server_secret
+            - name: AGENT_PROFILE
+              value: VALUE_AGENT_PROFILE
+            - name: DISABLE_DEV_RANDOM_SEED
+              value: "true"
+            - name: OAUTH_AUTHORIZATION_ENDPOINT
+              value: ""
+            - name: OAUTH_TOKEN_ENDPOINT
+              value: ""
+            - name: NOOBAA_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: container_dbg
+              value: "" # any non-empty value will set the container to dbg mode
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+          # - name: ENDPOINT_FORKS_NUMBER
+          #   value: "1"
+`
+
+const Sha256_deploy_internal_statefulset_db_yaml = "a0fc0725d09f68309fb9dbaa00d0eb256ea9ba15a42c6e642aaf52c2480739bc"
+
+const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: noobaa-db
+  labels:
+    app: noobaa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      noobaa-db: noobaa
+  serviceName: noobaa-db
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: noobaa
+        noobaa-db: noobaa
+    spec:
+      serviceAccountName: noobaa
+      initContainers:
+        #----------------#
+        # INIT CONTAINER #
+        #----------------#
+        - name: init
+          image: NOOBAA_CORE_IMAGE
+          command:
+            - /noobaa_init_files/noobaa_init.sh
+            - init_mongo
+          volumeMounts:
+            - name: db
+              mountPath: /mongo_data
+      containers:
+        #--------------------#
+        # DATABASE CONTAINER #
+        #--------------------#
         - name: db
-          mountPath: /data
+          image: NOOBAA_DB_IMAGE
+          command:
+            - bash
+            - -c
+            - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "4"
+              memory: "16Gi"
+          volumeMounts:
+            - name: db
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: db
+        labels:
+          app: noobaa
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
 `
 
 const Sha256_deploy_internal_text_system_status_readme_progress_tmpl = "d26aa1028e4a235018cc46e00392d3209d3e09e8320f3692be6346a9cfdf289a"

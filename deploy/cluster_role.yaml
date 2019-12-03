@@ -3,64 +3,65 @@ kind: ClusterRole
 metadata:
   name: noobaa.noobaa.io
 rules:
-- apiGroups:
-  - noobaa.io
-  resources:
-  - '*'
-  - noobaas
-  - backingstores
-  - bucketclasses
-  - noobaas/finalizers
-  - backingstores/finalizers
-  - bucketclasses/finalizers
-  verbs:
-  - '*'
-- apiGroups:
-  - objectbucket.io
-  resources:
-  - "*"
-  verbs:
-  - "*"
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - secrets
-  verbs:
-  - "*"
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  verbs:
-  - get
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups: # from system:auth-delegator
-  - authentication.k8s.io
-  resources:
-  - tokenreviews
-  verbs:
-  - create
-- apiGroups: # from system:auth-delegator
-  - authorization.k8s.io
-  resources:
-  - subjectaccessreviews
-  verbs:
-  - create
+  - apiGroups:
+      - noobaa.io
+    resources:
+      - "*"
+      - noobaas
+      - backingstores
+      - bucketclasses
+      - noobaas/finalizers
+      - backingstores/finalizers
+      - bucketclasses/finalizers
+    verbs:
+      - "*"
+  - apiGroups:
+      - objectbucket.io
+    resources:
+      - "*"
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+      - persistentvolumes
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - get
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - storageclasses
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups: # from system:auth-delegator
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups: # from system:auth-delegator
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create

@@ -66,8 +66,10 @@ type Reconciler struct {
 	NooBaa              *nbv1.NooBaa
 	ServiceAccount      *corev1.ServiceAccount
 	CoreApp             *appsv1.StatefulSet
+	NooBaaDB            *appsv1.StatefulSet
 	ServiceMgmt         *corev1.Service
 	ServiceS3           *corev1.Service
+	ServiceDb           *corev1.Service
 	SecretServer        *corev1.Secret
 	SecretOp            *corev1.Secret
 	SecretAdmin         *corev1.Secret
@@ -103,8 +105,10 @@ func NewReconciler(
 		NooBaa:              util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		ServiceAccount:      util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
 		CoreApp:             util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
+		NooBaaDB:            util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet),
 		ServiceMgmt:         util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
 		ServiceS3:           util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
+		ServiceDb:           util.KubeObject(bundle.File_deploy_internal_service_db_yaml).(*corev1.Service),
 		SecretServer:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretOp:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
@@ -123,8 +127,10 @@ func NewReconciler(
 	r.NooBaa.Namespace = r.Request.Namespace
 	r.ServiceAccount.Namespace = r.Request.Namespace
 	r.CoreApp.Namespace = r.Request.Namespace
+	r.NooBaaDB.Namespace = r.Request.Namespace
 	r.ServiceMgmt.Namespace = r.Request.Namespace
 	r.ServiceS3.Namespace = r.Request.Namespace
+	r.ServiceDb.Namespace = r.Request.Namespace
 	r.SecretServer.Namespace = r.Request.Namespace
 	r.SecretOp.Namespace = r.Request.Namespace
 	r.SecretAdmin.Namespace = r.Request.Namespace
@@ -142,8 +148,10 @@ func NewReconciler(
 	r.NooBaa.Name = r.Request.Name
 	r.ServiceAccount.Name = r.Request.Name
 	r.CoreApp.Name = r.Request.Name + "-core"
+	r.NooBaaDB.Name = r.Request.Name + "-db"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
 	r.ServiceS3.Name = "s3"
+	r.ServiceDb.Name = r.Request.Name + "-db"
 	r.SecretServer.Name = r.Request.Name + "-server"
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
@@ -175,8 +183,10 @@ func NewReconciler(
 func (r *Reconciler) CheckAll() {
 	CheckSystem(r.NooBaa)
 	util.KubeCheck(r.CoreApp)
+	util.KubeCheck(r.NooBaaDB)
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
+	util.KubeCheck(r.ServiceDb)
 	util.KubeCheck(r.SecretServer)
 	util.KubeCheck(r.SecretOp)
 	util.KubeCheck(r.SecretAdmin)

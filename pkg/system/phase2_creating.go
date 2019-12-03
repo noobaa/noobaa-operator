@@ -2,8 +2,10 @@ package system
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
@@ -11,9 +13,11 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -27,13 +31,12 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		"noobaa operator started phase 2/4 - \"Creating\"",
 	)
 
-	// A failiure to discover OAuth endpoints should not fail the entire reconcile phase.
+	// A failure to discover OAuth endpoints should not fail the entire reconcile phase.
 	oAuthEndpoints, err := util.DiscoverOAuthEndpoints()
 	if err != nil {
 		r.Logger.Warnf("Discovery of OAuth endpoints failed, got: %v", err)
 	}
 	r.OAuthEndpoints = oAuthEndpoints
-
 	// the credentials that are created by cloud-credentials-operator sometimes take time
 	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
 	// creating the credential request as early as possible to try and avoid it
@@ -47,10 +50,21 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
 		return err
 	}
+
+	if err := r.UpgradeSplitDB(); err != nil {
+		return err
+	}
+
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}
+	if err := r.ReconcileObject(r.NooBaaDB, r.SetDesiredNooBaaDB); err != nil {
+		return err
+	}
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
+		return err
+	}
+	if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDB); err != nil {
 		return err
 	}
 	if err := r.ReconcileObject(r.ServiceS3, r.SetDesiredServiceS3); err != nil {
@@ -85,54 +99,28 @@ func (r *Reconciler) SetDesiredServiceS3() {
 	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
 }
 
-// SetDesiredCoreApp updates the CoreApp as desired for reconciling
-func (r *Reconciler) SetDesiredCoreApp() {
-	r.CoreApp.Spec.Template.Labels["noobaa-core"] = r.Request.Name
-	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
-	r.CoreApp.Spec.Template.Labels["noobaa-s3"] = r.Request.Name
-	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
-	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
+// SetDesiredServiceDB updates the ServiceS3 as desired for reconciling
+func (r *Reconciler) SetDesiredServiceDB() {
+	r.ServiceDb.Spec.Selector["noobaa-db"] = r.Request.Name
+}
 
-	podSpec := &r.CoreApp.Spec.Template.Spec
+// SetDesiredNooBaaDB updates the NooBaaDB as desired for reconciling
+func (r *Reconciler) SetDesiredNooBaaDB() {
+	r.NooBaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
+	r.NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
+	r.NooBaaDB.Spec.ServiceName = r.ServiceDb.Name
+
+	podSpec := &r.NooBaaDB.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa"
-	coreImageChanged := false
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
-		switch c.Name {
-		case "init":
+		if c.Name == "init" {
 			c.Image = r.NooBaa.Status.ActualImage
 		}
 	}
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
-		switch c.Name {
-		case "core":
-			if c.Image != r.NooBaa.Status.ActualImage {
-				coreImageChanged = true
-				c.Image = r.NooBaa.Status.ActualImage
-			}
-			for j := range c.Env {
-				switch c.Env[j].Name {
-				// case "ENDPOINT_FORKS_NUMBER":
-				// 	c.Env[j].Value = "1" // TODO recalculate
-				case "AGENT_PROFILE":
-					c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
-
-				case "OAUTH_AUTHORIZATION_ENDPOINT":
-					if r.OAuthEndpoints != nil {
-						c.Env[j].Value = r.OAuthEndpoints.AuthorizationEndpoint
-					}
-
-				case "OAUTH_TOKEN_ENDPOINT":
-					if r.OAuthEndpoints != nil {
-						c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
-					}
-				}
-			}
-			if r.NooBaa.Spec.CoreResources != nil {
-				c.Resources = *r.NooBaa.Spec.CoreResources
-			}
-		case "db":
+		if c.Name == "db" {
 			if r.NooBaa.Spec.DBImage == nil {
 				c.Image = options.DBImage
 			} else {
@@ -143,6 +131,7 @@ func (r *Reconciler) SetDesiredCoreApp() {
 			}
 		}
 	}
+
 	if r.NooBaa.Spec.ImagePullSecret == nil {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{}
@@ -157,9 +146,9 @@ func (r *Reconciler) SetDesiredCoreApp() {
 		podSpec.Affinity = r.NooBaa.Spec.Affinity
 	}
 
-	if r.CoreApp.UID == "" {
-		for i := range r.CoreApp.Spec.VolumeClaimTemplates {
-			pvc := &r.CoreApp.Spec.VolumeClaimTemplates[i]
+	if r.NooBaaDB.UID == "" {
+		for i := range r.NooBaaDB.Spec.VolumeClaimTemplates {
+			pvc := &r.NooBaaDB.Spec.VolumeClaimTemplates[i]
 			r.Own(pvc)
 			// unsetting BlockOwnerDeletion to acoid error when trying to own pvc:
 			// "cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
@@ -175,16 +164,12 @@ func (r *Reconciler) SetDesiredCoreApp() {
 			}
 		}
 
-		// generate info event for the first creation of noobaa
-		if r.Recorder != nil {
-			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
-				"NooBaaImage", `Using NooBaa image %q for the creation of %q`, r.NooBaa.Status.ActualImage, r.NooBaa.Name)
-		}
 	} else {
+
 		// when already exists we check that there is no update requested to the volumes
 		// otherwise we report that volume update is unsupported
-		for i := range r.CoreApp.Spec.VolumeClaimTemplates {
-			pvc := &r.CoreApp.Spec.VolumeClaimTemplates[i]
+		for i := range r.NooBaaDB.Spec.VolumeClaimTemplates {
+			pvc := &r.NooBaaDB.Spec.VolumeClaimTemplates[i]
 			switch pvc.Name {
 			case "db":
 				currentClass := ""
@@ -210,7 +195,73 @@ func (r *Reconciler) SetDesiredCoreApp() {
 				}
 			}
 		}
+	}
+}
 
+// SetDesiredCoreApp updates the CoreApp as desired for reconciling
+func (r *Reconciler) SetDesiredCoreApp() {
+	r.CoreApp.Spec.Template.Labels["noobaa-core"] = r.Request.Name
+	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
+	r.CoreApp.Spec.Template.Labels["noobaa-s3"] = r.Request.Name
+	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
+	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
+
+	podSpec := &r.CoreApp.Spec.Template.Spec
+	podSpec.ServiceAccountName = "noobaa"
+	coreImageChanged := false
+
+	for i := range podSpec.Containers {
+		c := &podSpec.Containers[i]
+		switch c.Name {
+		case "core":
+			if c.Image != r.NooBaa.Status.ActualImage {
+				coreImageChanged = true
+				c.Image = r.NooBaa.Status.ActualImage
+			}
+			for j := range c.Env {
+				switch c.Env[j].Name {
+				// case "ENDPOINT_FORKS_NUMBER":
+				// 	c.Env[j].Value = "1" // TODO recalculate
+				case "AGENT_PROFILE":
+					c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
+
+				case "MONGODB_URL":
+					c.Env[j].Value = "mongodb://" + r.NooBaaDB.Name + "-0." + r.NooBaaDB.Name + "/nbcore"
+
+				case "OAUTH_AUTHORIZATION_ENDPOINT":
+					if r.OAuthEndpoints != nil {
+						c.Env[j].Value = r.OAuthEndpoints.AuthorizationEndpoint
+					}
+
+				case "OAUTH_TOKEN_ENDPOINT":
+					if r.OAuthEndpoints != nil {
+						c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
+					}
+				}
+			}
+			if r.NooBaa.Spec.CoreResources != nil {
+				c.Resources = *r.NooBaa.Spec.CoreResources
+			}
+		}
+	}
+	if r.NooBaa.Spec.ImagePullSecret == nil {
+		podSpec.ImagePullSecrets =
+			[]corev1.LocalObjectReference{}
+	} else {
+		podSpec.ImagePullSecrets =
+			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
+	}
+	if r.NooBaa.Spec.Tolerations != nil {
+		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
+	}
+
+	if r.CoreApp.UID == "" {
+		// generate info event for the first creation of noobaa
+		if r.Recorder != nil {
+			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
+				"NooBaaImage", `Using NooBaa image %q for the creation of %q`, r.NooBaa.Status.ActualImage, r.NooBaa.Name)
+		}
+	} else {
 		if coreImageChanged {
 			// generate info event for the first creation of noobaa
 			if r.Recorder != nil {
@@ -352,4 +403,111 @@ func (r *Reconciler) SetDesiredAgentProfile(profileString string) string {
 	profileBytes, err := json.Marshal(agentProfile)
 	util.Panic(err)
 	return string(profileBytes)
+}
+
+// UpgradeSplitDB removes the old pvc and create a  new one with the same PV
+func (r *Reconciler) UpgradeSplitDB() error {
+	oldPvc := &corev1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "db-noobaa-core-0",
+			Namespace: options.Namespace,
+		},
+	}
+	if util.KubeCheck(oldPvc) {
+		r.Logger.Infof("UpgradeSplitDB: Old OVC found, upgrading...")
+		if err := r.UpgradeSplitDBSetReclaimPolicy(oldPvc, corev1.PersistentVolumeReclaimRetain); err != nil {
+			return err
+		}
+		if err := r.UpgradeSplitDBCreateNewPVC(oldPvc); err != nil {
+			return err
+		}
+		if err := r.UpgradeSplitDBSetReclaimPolicy(oldPvc, corev1.PersistentVolumeReclaimDelete); err != nil {
+			return err
+		}
+		if err := r.UpgradeSplitDBDeleteOldSTS(); err != nil {
+			return err
+		}
+		if err := r.UpgradeSplitDBDeleteOldPVC(oldPvc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// UpgradeSplitDBSetReclaimPolicy sets the reclaim policy to reclaim parameter and checks it
+func (r *Reconciler) UpgradeSplitDBSetReclaimPolicy(oldPvc *corev1.PersistentVolumeClaim, reclaim corev1.PersistentVolumeReclaimPolicy) error {
+	pv := &corev1.PersistentVolume{
+		TypeMeta:   metav1.TypeMeta{Kind: "PersistentVolume"},
+		ObjectMeta: metav1.ObjectMeta{Name: oldPvc.Spec.VolumeName},
+	}
+	if !util.KubeCheck(pv) {
+		return fmt.Errorf("UpgradeSplitDBSetReclaimPolicy(%s): PV not found", reclaim)
+	}
+	if pv.Spec.PersistentVolumeReclaimPolicy != reclaim {
+		pv.Spec.PersistentVolumeReclaimPolicy = reclaim
+		if pv.Spec.ClaimRef != nil &&
+			pv.Spec.ClaimRef.Name == oldPvc.Name &&
+			pv.Spec.ClaimRef.Namespace == oldPvc.Namespace {
+			pv.Spec.ClaimRef = nil
+		}
+		util.KubeUpdate(pv)
+		if !util.KubeCheck(pv) {
+			return fmt.Errorf("UpgradeSplitDBSetReclaimPolicy(%s): PV not found after update", reclaim)
+		}
+		if pv.Spec.PersistentVolumeReclaimPolicy != reclaim {
+			return fmt.Errorf("UpgradeSplitDBSetReclaimPolicy(%s): PV reclaim policy could not be updated", reclaim)
+		}
+	}
+	return nil
+}
+
+// UpgradeSplitDBCreateNewPVC creates new pvc and checks it
+func (r *Reconciler) UpgradeSplitDBCreateNewPVC(oldPvc *corev1.PersistentVolumeClaim) error {
+	newPvc := &corev1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "db-" + r.NooBaaDB.Name + "-0",
+			Namespace: options.Namespace,
+		},
+		Spec: oldPvc.Spec,
+	}
+	util.KubeCreateSkipExisting(newPvc)
+	time.Sleep(2 * time.Second)
+	if !util.KubeCheck(newPvc) {
+		return fmt.Errorf("UpgradeSplitDBCreateNewPVC: New PVC not found")
+	}
+	if newPvc.Status.Phase != corev1.ClaimBound {
+		return fmt.Errorf("UpgradeSplitDBCreateNewPVC: New PVC not bound yet")
+	}
+	if newPvc.Spec.VolumeName != oldPvc.Spec.VolumeName {
+		// TODO how to recover?? since this is not expected maybe just return persistent error and wait for manual fix
+		return fmt.Errorf("UpgradeSplitDBCreateNewPVC: New PVC bound to another PV")
+	}
+	return nil
+}
+
+// UpgradeSplitDBDeleteOldSTS deletes old STS named noobaa-core and checks it
+func (r *Reconciler) UpgradeSplitDBDeleteOldSTS() error {
+	oldSts := &appsv1.StatefulSet{
+		TypeMeta: metav1.TypeMeta{Kind: "StatefulSet"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "noobaa-core",
+			Namespace: options.Namespace,
+		},
+	}
+	util.KubeDelete(oldSts)
+	if util.KubeCheck(oldSts) {
+		return fmt.Errorf("UpgradeSplitDBDeleteOldSTS: Old STS still exists")
+	}
+	return nil
+}
+
+// UpgradeSplitDBDeleteOldPVC deletes the parameter oldPvc and checks it
+func (r *Reconciler) UpgradeSplitDBDeleteOldPVC(oldPVC *corev1.PersistentVolumeClaim) error {
+	util.KubeDelete(oldPVC)
+	if util.KubeCheck(oldPVC) {
+		return fmt.Errorf("UpgradeSplitDBDeleteOldPVC: Old PVC still exists")
+	}
+	return nil
 }

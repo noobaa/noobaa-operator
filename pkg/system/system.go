@@ -193,22 +193,19 @@ func RunDelete(cmd *cobra.Command, args []string) {
 
 	util.KubeDelete(sys)
 
-	// TEMPORARY ? delete PVCs here because we couldn't own them in openshift
-	// See https://github.com/noobaa/noobaa-operator/issues/12
-	// So we delete the PVC here on system delete.
-	coreApp := util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet)
-	for i := range coreApp.Spec.VolumeClaimTemplates {
-		t := &coreApp.Spec.VolumeClaimTemplates[i]
+	// NoobaaDB
+	noobaaDB := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
+	for i := range noobaaDB.Spec.VolumeClaimTemplates {
+		t := &noobaaDB.Spec.VolumeClaimTemplates[i]
 		pvc := &corev1.PersistentVolumeClaim{
 			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      t.Name + "-" + options.SystemName + "-core-0",
+				Name:      t.Name + "-" + options.SystemName + "-db-0",
 				Namespace: options.Namespace,
 			},
 		}
 		util.KubeDelete(pvc)
 	}
-
 	backingStores := &nbv1.BackingStoreList{}
 	util.KubeList(backingStores, &client.ListOptions{Namespace: options.Namespace})
 	for i := range backingStores.Items {
@@ -326,15 +323,13 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	sysKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
 	r := NewReconciler(sysKey, klient, scheme.Scheme, nil)
 	r.CheckAll()
-
-	// TEMPORARY ? check PVCs here because we couldn't own them in openshift
-	// See https://github.com/noobaa/noobaa-operator/issues/12
-	for i := range r.CoreApp.Spec.VolumeClaimTemplates {
-		t := &r.CoreApp.Spec.VolumeClaimTemplates[i]
+	// NobbaaDB
+	for i := range r.NooBaaDB.Spec.VolumeClaimTemplates {
+		t := &r.NooBaaDB.Spec.VolumeClaimTemplates[i]
 		pvc := &corev1.PersistentVolumeClaim{
 			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      t.Name + "-" + options.SystemName + "-core-0",
+				Name:      t.Name + "-" + options.SystemName + "-db-0",
 				Namespace: options.Namespace,
 			},
 		}
