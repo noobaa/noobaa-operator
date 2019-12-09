@@ -108,6 +108,11 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			log.Warnf("⏳ Temporary Error: %s", err)
 		}
 	} else {
+		if r.BucketClass.Status.Mode != "" {
+			if r.Recorder != nil {
+				r.Recorder.Eventf(r.BucketClass, corev1.EventTypeWarning, r.BucketClass.Status.Mode, r.BucketClass.Status.Mode)
+			}
+		}
 		r.SetPhase(
 			nbv1.BucketClassPhaseReady,
 			"BucketClassPhaseReady",

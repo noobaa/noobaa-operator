@@ -131,12 +131,19 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			log.Warnf("⏳ Temporary Error: %s", err)
 		}
 	} else {
-		r.SetPhase(
-			nbv1.BackingStorePhaseReady,
-			"BackingStorePhaseReady",
-			"noobaa operator completed reconcile - backing store is ready",
-		)
-		log.Infof("✅ Done")
+		if r.BackingStore.Status.Mode.Mode != "" && r.BackingStore.Status.Mode.Mode == nbv1.BackingStorePhaseRejected {
+			r.SetPhase(nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", r.BackingStore.Status.Mode.ModeMessage)
+			if r.Recorder != nil {
+				r.Recorder.Eventf(r.BackingStore, corev1.EventTypeWarning, "BackingStorePhaseRejected", r.BackingStore.Status.Mode.ModeMessage)
+			}
+		} else {
+			r.SetPhase(
+				nbv1.BackingStorePhaseReady,
+				"BackingStorePhaseReady",
+				"noobaa operator completed reconcile - backing store is ready",
+			)
+			log.Infof("✅ Done")
+		}
 	}
 
 	r.UpdateStatus()

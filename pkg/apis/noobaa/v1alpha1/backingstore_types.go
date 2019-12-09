@@ -99,6 +99,20 @@ type BackingStoreStatus struct {
 	// RelatedObjects is a list of objects related to this operator.
 	// +optional
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
+	// BackingStoreMode is an object that specifies if after a read system the backing store phase should be updated
+	// +optional
+	Mode BackingStoreMode `json:"backingStoreMode,omitempty"`
+}
+
+// BackingStoreMode defines the updated Mode of BackingStore
+// +k8s:openapi-gen=true
+type BackingStoreMode struct {
+	// Mode is  specifies the updated mode of backingstore
+	// +optional
+	Mode BackingStorePhase `json:"mode,omitempty"`
+	// ModeMessage is a string that specifies the updated message of backingstore new mode
+	// +optional
+	ModeMessage string `json:"modeMessage,omitempty"`
 }
 
 // StoreType is the backing store type enum

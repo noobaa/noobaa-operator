@@ -10,6 +10,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -352,6 +353,54 @@ func (r *Reconciler) createS3BucketForBackingStore(s3Config *aws.Config, bucketN
 	return nil
 }
 
+// UpdateBackingStoresPhase updates newPhase of backingstore after readSystem
+func (r *Reconciler) UpdateBackingStoresPhase(pools []nb.PoolInfo) {
+	bsList := &nbv1.BackingStoreList{
+		TypeMeta: metav1.TypeMeta{Kind: "BackingStoreList"},
+	}
+	if !util.KubeList(bsList, &client.ListOptions{Namespace: options.Namespace}) {
+		fmt.Errorf("not found: Backing Store list")
+	}
+	for i := range bsList.Items {
+		bs := &bsList.Items[i]
+		for _, pool := range pools {
+			if pool.Name == bs.Name && pool.Mode != "OPTIMAL" && bs.Status.Mode.Mode != nbv1.BackingStorePhaseRejected {
+				bs.Status.Mode.Mode = nbv1.BackingStorePhaseRejected
+				bs.Status.Mode.ModeMessage = pool.Mode
+				r.NooBaa.Status.ObservedGeneration = r.NooBaa.Generation
+				r.Client.Status().Update(r.Ctx, bs)
+			}
+		}
+	}
+}
+
+// UpdateBucketClassesPhase updates newPhase of bucketclass after readSystem
+func (r *Reconciler) UpdateBucketClassesPhase(Buckets []nb.BucketInfo) {
+
+	bucketclassList := &nbv1.BucketClassList{
+		TypeMeta: metav1.TypeMeta{Kind: "BucketClassList"},
+	}
+	if !util.KubeList(bucketclassList, &client.ListOptions{Namespace: options.Namespace}) {
+		fmt.Errorf("not found: Backing Store list")
+	}
+	for i := range bucketclassList.Items {
+		bc := &bucketclassList.Items[i]
+		for _, bucket := range Buckets {
+
+			bucketTieringPolicyName := ""
+			if bucket.BucketClaim != nil {
+				bucketTieringPolicyName = bucket.BucketClaim.BucketClass
+			}
+			if bucketTieringPolicyName != "" && bc.Name == bucketTieringPolicyName && bucket.Tiering.Mode != "OPTIMAL" && bucket.Tiering.Mode != bc.Status.Mode {
+				bc.Status.Mode = bucket.Tiering.Mode // TODO: add timstamp and condition related to timestamp
+				r.NooBaa.Status.ObservedGeneration = r.NooBaa.Generation
+				r.Client.Status().Update(r.Ctx, bc)
+
+			}
+		}
+	}
+}
+
 // ReconcileReadSystem calls read_system on noobaa server and stores the result
 func (r *Reconciler) ReconcileReadSystem() error {
 	// update noobaa-core version in reconciler struct
@@ -363,5 +412,8 @@ func (r *Reconciler) ReconcileReadSystem() error {
 	r.SystemInfo = &systemInfo
 	r.Logger.Infof("updating noobaa-core version to %s", systemInfo.Version)
 	r.CoreVersion = systemInfo.Version
+	// update backingstores and bucketclass mode
+	r.UpdateBackingStoresPhase(systemInfo.Pools)
+	r.UpdateBucketClassesPhase(systemInfo.Buckets)
 	return nil
 }
