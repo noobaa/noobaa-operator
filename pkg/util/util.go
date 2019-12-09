@@ -836,10 +836,10 @@ func DiscoverOAuthEndpoints() (*OAuth2Endpoints, error) {
 	return &endpoints, nil
 }
 
-// IsStringGraphicCharsOnly returns true only if all the chars are graphic
-func IsStringGraphicCharsOnly(s string) bool {
+// IsStringGraphicOrSpacesCharsOnly returns true only if all the chars are graphic or spaces
+func IsStringGraphicOrSpacesCharsOnly(s string) bool {
 	for _, c := range s {
-		if !unicode.IsGraphic(c) {
+		if !unicode.IsGraphic(c) && !unicode.IsSpace(c) {
 			return false
 		}
 	}
