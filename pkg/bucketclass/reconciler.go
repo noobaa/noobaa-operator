@@ -256,6 +256,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	}
 	r.SystemInfo = &systemInfo
 
+	r.UpdateBucketClass()
 	// TODO ReconcileTieringPolicy
 	// for i := range r.SystemInfo.Buckets {
 	// 	bucket := &r.SystemInfo.Buckets[i]
@@ -295,5 +296,78 @@ func (r *Reconciler) FinalizeDeletion() error {
 	if !util.KubeUpdate(r.BucketClass) {
 		return fmt.Errorf("BucketClass %q failed to remove finalizer %q", r.BucketClass.Name, nbv1.Finalizer)
 	}
+	return nil
+}
+
+// UpdateBucketClass updates all buckets that are assigned to a BucketClass
+func (r *Reconciler) UpdateBucketClass() error {
+	log := r.Logger
+
+	if r.BucketClass == nil {
+		return fmt.Errorf("BucketClass not loaded %#v", r)
+	}
+
+	policyTiers := []nb.TierItem{}
+	tiers := []nb.TierInfo{}
+
+	for i := range r.BucketClass.Spec.PlacementPolicy.Tiers {
+		tier := &r.BucketClass.Spec.PlacementPolicy.Tiers[i]
+		// Tier is irrelevant and will be populated in the BE
+		policyTiers = append(policyTiers, nb.TierItem{Order: int64(i), Tier: "TEMP"})
+		// we assume either mirror or spread but no mix and the bucket class controller rejects mixed classes.
+		placement := "SPREAD"
+		if tier.Placement == nbv1.TierPlacementMirror {
+			placement = "MIRROR"
+		}
+		// Name is irrelevant and will be populated in the BE
+		tiers = append(tiers, nb.TierInfo{Name: "TEMP", AttachedPools: tier.BackingStores, DataPlacement: placement})
+	}
+
+	err := r.NBClient.UpdateBucketClass(nb.UpdateBucketClassParams{
+		Name: r.BucketClass.Name,
+		// Name is irrelevant and will be populated in the BE
+		Policy: nb.TieringPolicyInfo{Name: "TEMP", Tiers: policyTiers},
+		Tiers:  tiers,
+	})
+
+	if err != nil {
+		// TODO: Any additional checks
+		// if nbErr, ok := err.(*nb.RPCError); ok {
+		// 	if nbErr.RPCCode == "BAD_REQUEST" {
+		// 		msg := fmt.Sprintf("Bucket %q already exists", r.BucketName)
+		// 		log.Error(msg)
+		// 		return obErrors.NewBucketExistsError(msg)
+		// 	}
+		// }
+		for _, b := range r.SystemInfo.Buckets {
+			if b.BucketClaim != nil && b.BucketClaim.BucketClass == r.BucketClass.Name {
+				r.BucketClass.Spec.PlacementPolicy.Tiers = []nbv1.Tier{}
+				tiers := make([]string, len(b.Tiering.Tiers))
+				for _, tier := range b.Tiering.Tiers {
+					tiers = append(tiers, tier.Tier)
+				}
+				for _, tier := range tiers {
+					for _, t := range r.SystemInfo.Tiers {
+						if t.Name == tier {
+							var placement nbv1.TierPlacement
+							if t.DataPlacement == "MIRROR" {
+								placement = nbv1.TierPlacementMirror
+							} else {
+								placement = nbv1.TierPlacementSpread
+							}
+							r.BucketClass.Spec.PlacementPolicy.Tiers = append(r.BucketClass.Spec.PlacementPolicy.Tiers,
+								nbv1.Tier{Placement: placement, BackingStores: t.AttachedPools})
+							break
+						}
+					}
+				}
+				break
+			}
+		}
+		util.KubeUpdate(r.BucketClass)
+		return fmt.Errorf("Failed to update bucket class %q with error: %v", r.BucketClass.Name, err)
+	}
+
+	log.Infof("✅ Successfully updated bucket class %q", r.BucketClass.Name)
 	return nil
 }

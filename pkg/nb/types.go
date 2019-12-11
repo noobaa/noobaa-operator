@@ -363,6 +363,13 @@ type UpdateDefaultPoolParams struct {
 	PoolName string `json:"pool_name"`
 }
 
+// UpdateBucketClassParams is the params of tiering_policy_api.update_bucket_class()
+type UpdateBucketClassParams struct {
+	Name   string            `json:"name"`
+	Policy TieringPolicyInfo `json:"policy"`
+	Tiers  []TierInfo        `json:"tiers"`
+}
+
 // AllowedBuckets is a struct for setting which buckets an account can access
 type AllowedBuckets struct {
 	FullPermission bool     `json:"full_permission"`
