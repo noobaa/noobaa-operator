@@ -11,15 +11,15 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"./pkg/apis/noobaa/v1alpha1.BackingStore":       schema_pkg_apis_noobaa_v1alpha1_BackingStore(ref),
-		"./pkg/apis/noobaa/v1alpha1.BackingStoreSpec":   schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref),
-		"./pkg/apis/noobaa/v1alpha1.BackingStoreStatus": schema_pkg_apis_noobaa_v1alpha1_BackingStoreStatus(ref),
-		"./pkg/apis/noobaa/v1alpha1.BucketClass":        schema_pkg_apis_noobaa_v1alpha1_BucketClass(ref),
-		"./pkg/apis/noobaa/v1alpha1.BucketClassSpec":    schema_pkg_apis_noobaa_v1alpha1_BucketClassSpec(ref),
-		"./pkg/apis/noobaa/v1alpha1.BucketClassStatus":  schema_pkg_apis_noobaa_v1alpha1_BucketClassStatus(ref),
-		"./pkg/apis/noobaa/v1alpha1.NooBaa":             schema_pkg_apis_noobaa_v1alpha1_NooBaa(ref),
-		"./pkg/apis/noobaa/v1alpha1.NooBaaSpec":         schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref),
-		"./pkg/apis/noobaa/v1alpha1.NooBaaStatus":       schema_pkg_apis_noobaa_v1alpha1_NooBaaStatus(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStore":       schema_pkg_apis_noobaa_v1alpha1_BackingStore(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreSpec":   schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreStatus": schema_pkg_apis_noobaa_v1alpha1_BackingStoreStatus(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClass":        schema_pkg_apis_noobaa_v1alpha1_BucketClass(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassSpec":    schema_pkg_apis_noobaa_v1alpha1_BucketClassSpec(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassStatus":  schema_pkg_apis_noobaa_v1alpha1_BucketClassStatus(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaa":             schema_pkg_apis_noobaa_v1alpha1_NooBaa(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaSpec":         schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref),
+		"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaStatus":       schema_pkg_apis_noobaa_v1alpha1_NooBaaStatus(ref),
 	}
 }
 
@@ -52,20 +52,20 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStore(ref common.ReferenceCallback) 
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Specification of the desired behavior of the noobaa BackingStore.",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.BackingStoreSpec"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Most recently observed status of the noobaa BackingStore.",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.BackingStoreStatus"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/noobaa/v1alpha1.BackingStoreSpec", "./pkg/apis/noobaa/v1alpha1.BackingStoreStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -85,31 +85,31 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref common.ReferenceCallba
 					"awsS3": {
 						SchemaProps: spec.SchemaProps{
 							Description: "AWSS3Spec specifies a backing store of type aws-s3",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.AWSS3Spec"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AWSS3Spec"),
 						},
 					},
 					"s3Compatible": {
 						SchemaProps: spec.SchemaProps{
 							Description: "S3Compatible specifies a backing store of type s3-compatible",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.S3CompatibleSpec"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.S3CompatibleSpec"),
 						},
 					},
 					"azureBlob": {
 						SchemaProps: spec.SchemaProps{
 							Description: "AzureBlob specifies a backing store of type azure-blob",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.AzureBlobSpec"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AzureBlobSpec"),
 						},
 					},
 					"googleCloudStorage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "GoogleCloudStorage specifies a backing store of type google-cloud-storage",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.GoogleCloudStorageSpec"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.GoogleCloudStorageSpec"),
 						},
 					},
 					"pvPool": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PVPool specifies a backing store of type pv-pool",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.PVPoolSpec"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.PVPoolSpec"),
 						},
 					},
 				},
@@ -117,7 +117,7 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/noobaa/v1alpha1.AWSS3Spec", "./pkg/apis/noobaa/v1alpha1.AzureBlobSpec", "./pkg/apis/noobaa/v1alpha1.GoogleCloudStorageSpec", "./pkg/apis/noobaa/v1alpha1.PVPoolSpec", "./pkg/apis/noobaa/v1alpha1.S3CompatibleSpec"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AWSS3Spec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AzureBlobSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.GoogleCloudStorageSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.PVPoolSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.S3CompatibleSpec"},
 	}
 }
 
@@ -203,20 +203,20 @@ func schema_pkg_apis_noobaa_v1alpha1_BucketClass(ref common.ReferenceCallback) c
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Specification of the desired behavior of the noobaa BucketClass.",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.BucketClassSpec"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Most recently observed status of the noobaa BackingStore.",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.BucketClassStatus"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/noobaa/v1alpha1.BucketClassSpec", "./pkg/apis/noobaa/v1alpha1.BucketClassStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BucketClassStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -229,7 +229,7 @@ func schema_pkg_apis_noobaa_v1alpha1_BucketClassSpec(ref common.ReferenceCallbac
 					"placementPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PlacementPolicy specifies the placement policy for the bucket class",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.PlacementPolicy"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.PlacementPolicy"),
 						},
 					},
 				},
@@ -237,7 +237,7 @@ func schema_pkg_apis_noobaa_v1alpha1_BucketClassSpec(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/noobaa/v1alpha1.PlacementPolicy"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.PlacementPolicy"},
 	}
 }
 
@@ -323,20 +323,20 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaa(ref common.ReferenceCallback) common
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Specification of the desired behavior of the noobaa system.",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.NooBaaSpec"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Most recently observed status of the noobaa system.",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.NooBaaStatus"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/noobaa/v1alpha1.NooBaaSpec", "./pkg/apis/noobaa/v1alpha1.NooBaaStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.NooBaaStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -487,13 +487,13 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaStatus(ref common.ReferenceCallback) 
 					"accounts": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Accounts reports accounts info for the admin account",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.AccountsStatus"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AccountsStatus"),
 						},
 					},
 					"services": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Services reports addresses for the services",
-							Ref:         ref("./pkg/apis/noobaa/v1alpha1.ServicesStatus"),
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.ServicesStatus"),
 						},
 					},
 					"readme": {
@@ -507,6 +507,6 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaStatus(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/noobaa/v1alpha1.AccountsStatus", "./pkg/apis/noobaa/v1alpha1.ServicesStatus", "github.com/openshift/custom-resource-status/conditions/v1.Condition", "k8s.io/api/core/v1.ObjectReference"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AccountsStatus", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.ServicesStatus", "github.com/openshift/custom-resource-status/conditions/v1.Condition", "k8s.io/api/core/v1.ObjectReference"},
 	}
 }

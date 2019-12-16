@@ -30,9 +30,11 @@ const (
 	// ContainerImageRepo is the repo of the default image url
 	ContainerImageRepo = "noobaa-core"
 	// ContainerImageTag is the tag of the default image url
-	ContainerImageTag = "5.3-nighlty-12-15-19"
-	// ContainerImageConstraintSemver is the constraints of supported image versions
-	ContainerImageConstraintSemver = ">=5, <6"
+	ContainerImageTag = "5.3.0-master20191215"
+	// ContainerImageSemverLowerBound is the lower bound for supported image versions
+	ContainerImageSemverLowerBound = "5.0.0"
+	// ContainerImageSemverUpperBound is the upper bound for supported image versions
+	ContainerImageSemverUpperBound = "6.0.0"
 	// ContainerImageName is the default image name without the tag/version
 	ContainerImageName = ContainerImageOrg + "/" + ContainerImageRepo
 	// ContainerImage is the full default image url

@@ -15,7 +15,6 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/version"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
-	semver "github.com/hashicorp/go-version"
 	routev1 "github.com/openshift/api/route/v1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
@@ -34,9 +33,6 @@ import (
 )
 
 var (
-	// ContainerImageConstraint is the instantiated semver contraints used for image verification
-	ContainerImageConstraint, _ = semver.NewConstraint(options.ContainerImageConstraintSemver)
-
 	// ReadmeReady is a template for system.status.readme
 	ReadmeReady = template.Must(template.New("system_status_readme_ready").
 			Parse(bundle.File_deploy_internal_text_system_status_readme_ready_tmpl))
