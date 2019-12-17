@@ -3,8 +3,8 @@ package system
 import (
 	"fmt"
 
+	semver "github.com/coreos/go-semver/semver"
 	dockerref "github.com/docker/distribution/reference"
-	semver "github.com/hashicorp/go-version"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
@@ -76,13 +76,15 @@ func (r *Reconciler) CheckSystemCR() error {
 		version, err := semver.NewVersion(imageTag)
 		if err == nil {
 			log.Infof("Parsed version %q from image tag %q", version.String(), imageTag)
-			if !ContainerImageConstraint.Check(version) {
+			minver := semver.New(options.ContainerImageSemverLowerBound)
+			maxver := semver.New(options.ContainerImageSemverUpperBound)
+			if version.Compare(*minver) != 1 || version.Compare(*maxver) != -1 {
 				return util.NewPersistentError("InvalidImageVersion",
-					fmt.Sprintf(`Invalid image version %q not matching constraints %q`,
-						imageRef, ContainerImageConstraint))
+					fmt.Sprintf(`Invalid image version %q not matching version constraints: >=%v, <%v`,
+						imageRef, minver, maxver))
 			}
 		} else {
-			log.Infof("Using custom image %q constraints %q", imageRef.String(), ContainerImageConstraint.String())
+			log.Infof("Using custom image %q", imageRef.String())
 		}
 	} else {
 		log.Infof("Using custom image name %q the default is %q", imageRef.String(), options.ContainerImageName)

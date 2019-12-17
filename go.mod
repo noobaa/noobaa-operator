@@ -5,12 +5,12 @@ go 1.13
 require (
 	github.com/aws/aws-sdk-go v1.23.8
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/coreos/go-semver v0.2.0
 	github.com/coreos/prometheus-operator v0.29.0
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/go-openapi/spec v0.19.2
 	github.com/gobuffalo/flect v0.1.6 // indirect
 	github.com/google/uuid v1.1.1
-	github.com/hashicorp/go-version v1.2.0
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20190924175516-f3ba69cc601e
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c
