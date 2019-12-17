@@ -210,6 +210,10 @@ func KubeCreateSkipExisting(obj runtime.Object) bool {
 		log.Printf("❌ Forbidden: %s %q: %s\n", gvk.Kind, objKey.Name, err)
 		return false
 	}
+	if errors.IsInvalid(err) {
+		log.Printf("❌ Invalid: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		return false
+	}
 	Panic(err)
 	return false
 }

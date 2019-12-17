@@ -197,10 +197,10 @@ func NewBucketRequest(
 		return nil, err
 	}
 
-	s3Hostname := sysClient.S3DnsURL.Hostname()
-	s3Port, err := strconv.Atoi(sysClient.S3DnsURL.Port())
+	s3Hostname := sysClient.S3URL.Hostname()
+	s3Port, err := strconv.Atoi(sysClient.S3URL.Port())
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse s3 port %q. got error: %v", sysClient.S3Client.Endpoint, err)
+		return nil, fmt.Errorf("failed to parse s3 port %q. got error: %v", sysClient.S3URL, err)
 	}
 
 	r := &BucketRequest{

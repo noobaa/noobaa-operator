@@ -12,6 +12,7 @@ type Client interface {
 	ReadAccountAPI(ReadAccountParams) (AccountInfo, error)
 	ReadSystemAPI() (SystemInfo, error)
 	ReadBucketAPI(ReadBucketParams) (BucketInfo, error)
+	ReadPoolAPI(ReadPoolParams) (PoolInfo, error)
 
 	ListAccountsAPI() (ListAccountsReply, error)
 	ListBucketsAPI() (ListBucketsReply, error)
@@ -79,6 +80,17 @@ func (c *RPCClient) ReadBucketAPI(params ReadBucketParams) (BucketInfo, error) {
 	res := &struct {
 		RPCResponse `json:",inline"`
 		Reply       BucketInfo `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
+}
+
+// ReadPoolAPI calls pool_api.read_pool()
+func (c *RPCClient) ReadPoolAPI(params ReadPoolParams) (PoolInfo, error) {
+	req := &RPCRequest{API: "pool_api", Method: "read_pool", Params: params}
+	res := &struct {
+		RPCResponse `json:",inline"`
+		Reply       PoolInfo `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err

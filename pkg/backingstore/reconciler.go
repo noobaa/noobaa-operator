@@ -303,6 +303,16 @@ func (r *Reconciler) ReconcileDeletion() error {
 		}
 		err := r.NBClient.DeletePoolAPI(nb.DeletePoolParams{Name: r.PoolInfo.Name})
 		if err != nil {
+			if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
+				if rpcErr.RPCCode == "DEFAULT_RESOURCE" {
+					return util.NewPersistentError("DefaultResource",
+						fmt.Sprintf("DeletePoolAPI cannot complete because pool %q is an account default resource", r.PoolInfo.Name))
+				}
+				if rpcErr.RPCCode == "IN_USE" {
+					return util.NewPersistentError("ResourceInUse",
+						fmt.Sprintf("DeletePoolAPI cannot complete because pool %q has buckets attached", r.PoolInfo.Name))
+				}
+			}
 			return err
 		}
 	}
