@@ -1127,7 +1127,7 @@ type: Opaque
 data: {}
 `
 
-const Sha256_deploy_internal_service_db_yaml = "66c257079a810ef3924509b337b555a09e31458872fba2affb043e0eeab0a7dd"
+const Sha256_deploy_internal_service_db_yaml = "73f358a75a8a89f47f9b1319657ac7e72ab81216369b624f06d2929f6cb45052"
 
 const File_deploy_internal_service_db_yaml = `apiVersion: v1
 kind: Service
@@ -1136,7 +1136,7 @@ metadata:
   labels:
     app: noobaa
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     noobaa-db: SYSNAME
   ports:
