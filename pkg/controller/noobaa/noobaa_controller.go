@@ -58,6 +58,10 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, ownerHandler)
+	if err != nil {
+		return err
+	}
 
 	// Watch for StorageClass changes to trigger reconcile and recreate it when deleted
 	err = c.Watch(&source.Kind{Type: &storagev1.StorageClass{}}, &handler.EnqueueRequestsFromMapFunc{

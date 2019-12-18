@@ -84,6 +84,33 @@ spec:
                 size, and only if the storage class specifies `allowVolumeExpansion:
                 true`, +immutable'
               type: object
+            endpoints:
+              description: Endpoints (optional) sets configuration info for the noobaa
+                endpoint deployment.
+              properties:
+                additionalVirtualHosts:
+                  description: 'AdditionalVirtualHosts (optional) provide a list of
+                    additional hostnames (on top of the buildin names defined by the
+                    cluster: service name, elb name, route name) to be used as virtual
+                    hosts by the the endpoints in the endpoint deployment'
+                  items:
+                    type: string
+                  type: array
+                maxCount:
+                  description: MaxCount, the number of endpoint instances (pods) to
+                    be used as the upper bound when autoscaling
+                  format: int32
+                  type: integer
+                minCount:
+                  description: MinCount, the number of endpoint instances (pods) to
+                    be used as the lower bound when autoscaling
+                  format: int32
+                  type: integer
+                resources:
+                  description: Resources (optional) overrides the default resource
+                    requirements for every endpoint pod
+                  type: object
+              type: object
             image:
               description: Image (optional) overrides the default image for the server
                 container
@@ -151,6 +178,22 @@ spec:
                 - lastTransitionTime
                 type: object
               type: array
+            endpoints:
+              description: Endpoints reports the actual number of endpoints in the
+                endpoint deployment and the virtual hosts list used recognized by
+                the endpoints
+              properties:
+                readyCount:
+                  format: int32
+                  type: integer
+                virtualHosts:
+                  items:
+                    type: string
+                  type: array
+              required:
+              - readyCount
+              - virtualHosts
+              type: object
             observedGeneration:
               description: ObservedGeneration is the most recent generation observed
                 for this noobaa system. It corresponds to the CR generation, which

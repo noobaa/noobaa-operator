@@ -13,8 +13,8 @@ directory=$(dirname ${0})
 . ${directory}/test_cli_functions.sh
 unset directory
 
-#FLOW TODO: 
-# # AWS-S3 ❌  
+#FLOW TODO:
+# # AWS-S3 ❌
 # nb backingstore create aws-s3 aws1 --target-bucket znoobaa --access-key $AWS_ACCESS_KEY_ID --secret-key $AWS_SECRET_ACCESS_KEY ❌
 # nb backingstore create aws-s3 aws2 --target-bucket noobaa-qa --access-key $AWS_ACCESS_KEY_ID --secret-key $AWS_SECRET_ACCESS_KEY ❌
 # nb backingstore status aws1 ❌
@@ -24,16 +24,16 @@ unset directory
 # kubectl get backingstore ❌
 # kubectl describe backingstore ❌
 
-# # Google - TODO ❌  
+# # Google - TODO ❌
 # nb backingstore create azure-blob blob1 --target-blob-container jacky-container --account-name $AZURE_ACCOUNT_NAME --account-key $AZURE_ACCOUNT_KEY
 
-# # Azure - TODO ❌ 
+# # Azure - TODO ❌
 # nb backingstore create google-cloud-storage google1 --target-bucket jacky-bucket --private-key-json-file ~/Downloads/noobaa-test-1-d462775d1e1a.json
 
-# # BucketClass ❌  
+# # BucketClass ❌
 # nb bucketclass create class1 --backingstores nb1 ✅
-# nb bucketclass create class2 --placement Mirror --backingstores nb1,aws1 ❌ 
-# nb bucketclass create class3 --placement Spread --backingstores aws1,aws2 ❌ 
+# nb bucketclass create class2 --placement Mirror --backingstores nb1,aws1 ❌
+# nb bucketclass create class3 --placement Spread --backingstores aws1,aws2 ❌
 # nb bucketclass create class4 --backingstores nb1,nb2 ✅
 # nb bucketclass status class1 ✅
 # nb bucketclass status class2 ✅
@@ -42,10 +42,10 @@ unset directory
 # kubectl get bucketclass ✅
 # kubectl describe bucketclass ✅
 
-# # OBC ❌  
+# # OBC ❌
 # nb obc create buck1 --bucketclass class1 ✅
-# nb obc create buck2 --bucketclass class2 ❌  
-# nb obc create buck3 --bucketclass class3 --app-namespace default ❌  
+# nb obc create buck2 --bucketclass class2 ❌
+# nb obc create buck3 --bucketclass class3 --app-namespace default ❌
 # nb obc create buck4 --bucketclass class4 ✅
 # nb obc list ✅
 # # nb obc status buck1 ✅
@@ -55,7 +55,7 @@ unset directory
 # kubectl describe obc ✅
 # kubectl get obc,ob,secret,cm -l noobaa-obc ✅
 
-# AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=YYY aws s3 --endpoint-url XXX ls BUCKETNAME ❌  
+# AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=YYY aws s3 --endpoint-url XXX ls BUCKETNAME ❌
 
 function clean {
     PID=$1
@@ -69,9 +69,9 @@ function main {
     check_S3_compatible
     bucketclass_cycle
     obc_cycle
-    # TODO:: Enable the deletions path 
+    # TODO:: Enable the deletions path
     #check_deletes
-    #noobaa uninstall 
+    #noobaa uninstall
 }
 
 function usage {
@@ -101,7 +101,7 @@ do
                             shift 2;;
         -n|--namespace)     NAMESPACE=${2}
                             shift 2;;
-        --timeout)          TIMEOUT=${2} 
+        --timeout)          TIMEOUT=${2}
                             shift 2
                             number='^[0-9]+$'
                             if ! [[ ${TIMEOUT} =~ ${number} ]]

@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: noobaa
+  name: noobaa-endpoint
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      noobaa-s3: noobaa
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        noobaa-s3: noobaa
+    spec:
+      serviceAccountName: noobaa
+      volumes:
+      - name: mgmt-secret
+        secret:
+          secretName: noobaa-mgmt-serving-cert
+          optional: true
+      - name: s3-secret
+        secret:
+          secretName: noobaa-s3-serving-cert
+          optional: true
+      containers:
+      - name: endpoint
+        image: NOOBAA_CORE_IMAGE
+        command:
+        - /noobaa_init_files/noobaa_init.sh
+        - init_endpoint
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+        ports:
+        - containerPort: 6001
+        - containerPort: 6443
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: noobaa-server
+              key: jwt
+        - name: MGMT_URL
+        - name: MONGODB_URL
+        - name: VIRTUAL_HOSTS
+        - name: REGION
+        - name: CONTAINER_CPU_REQUEST
+          valueFrom:
+            resourceFieldRef:
+              resource: requests.cpu
+        - name: CONTAINER_MEM_REQUEST
+          valueFrom:
+            resourceFieldRef:
+              resource: requests.memory
+        - name: CONTAINER_CPU_LIMIT
+          valueFrom:
+            resourceFieldRef:
+              resource: limits.cpu
+        - name: CONTAINER_MEM_LIMIT
+          valueFrom:
+            resourceFieldRef:
+              resource: limits.memory
+        volumeMounts:
+        # curently ssl_utils expects both secrets to be configured in order to use
+        # certificates. TODO: Allow each secret to be configured by intself.
+        - name: mgmt-secret
+          mountPath: /etc/mgmt-secret
+          readOnly: true
+        - name: s3-secret
+          mountPath: /etc/s3-secret
+          readOnly: true
+        readinessProbe: # must be configured to support rolling updates
+          tcpSocket:
+            port: 6001 # ready when s3 port is open
+          timeoutSeconds: 5

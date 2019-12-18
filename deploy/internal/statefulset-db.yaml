@@ -20,45 +20,45 @@ spec:
     spec:
       serviceAccountName: noobaa
       initContainers:
-        #----------------#
-        # INIT CONTAINER #
-        #----------------#
-        - name: init
-          image: NOOBAA_CORE_IMAGE
-          command:
-            - /noobaa_init_files/noobaa_init.sh
-            - init_mongo
-          volumeMounts:
-            - name: db
-              mountPath: /mongo_data
-      containers:
-        #--------------------#
-        # DATABASE CONTAINER #
-        #--------------------#
+      #----------------#
+      # INIT CONTAINER #
+      #----------------#
+      - name: init
+        image: NOOBAA_CORE_IMAGE
+        command:
+        - /noobaa_init_files/noobaa_init.sh
+        - init_mongo
+        volumeMounts:
         - name: db
-          image: NOOBAA_DB_IMAGE
-          command:
-            - bash
-            - -c
-            - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
-          resources:
-            requests:
-              cpu: "500m"
-              memory: "1Gi"
-            limits:
-              cpu: "4"
-              memory: "16Gi"
-          volumeMounts:
-            - name: db
-              mountPath: /data
-  volumeClaimTemplates:
-    - metadata:
-        name: db
-        labels:
-          app: noobaa
-      spec:
-        accessModes:
-          - ReadWriteOnce
+          mountPath: /mongo_data
+      containers:
+      #--------------------#
+      # DATABASE CONTAINER #
+      #--------------------#
+      - name: db
+        image: NOOBAA_DB_IMAGE
+        command:
+        - bash
+        - -c
+        - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
         resources:
           requests:
-            storage: 50Gi
+            cpu: "2"
+            memory: "4Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        volumeMounts:
+        - name: db
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: db
+      labels:
+        app: noobaa
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 50Gi

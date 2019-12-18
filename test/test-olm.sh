@@ -63,7 +63,7 @@ function wait_for_operator() {
 
 function test_operator() {
     MINI_RESOURCES='{"requests":{"cpu":"10m","memory":"128Mi"}}'
-    operator-sdk up local --operator-flags "system create --core-resources $MINI_RESOURCES --db-resources $MINI_RESOURCES"
+    operator-sdk up local --operator-flags "system create --core-resources $MINI_RESOURCES --db-resources $MINI_RESOURCES --endpoint-resources ${MINI_RESOURCES}"
     while [ "$(kubectl get noobaa/noobaa -o jsonpath={.status.phase})" != "Ready" ]
     do
         echo -n '.'
