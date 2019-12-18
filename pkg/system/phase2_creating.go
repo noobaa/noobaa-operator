@@ -225,7 +225,7 @@ func (r *Reconciler) SetDesiredCoreApp() {
 					c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
 
 				case "MONGODB_URL":
-					c.Env[j].Value = "mongodb://" + r.NooBaaDB.Name + "-0." + r.NooBaaDB.Name + "/nbcore"
+					c.Env[j].Value = "mongodb://" + r.NooBaaDB.Name + "-0." + r.NooBaaDB.Spec.ServiceName + "/nbcore"
 
 				case "OAUTH_AUTHORIZATION_ENDPOINT":
 					if r.OAuthEndpoints != nil {
