@@ -99,14 +99,7 @@ function timeout {
 }
 
 function install {
-# TODO: once we can control the core resource amount we can use it,
-#       for now we will mimic the install command
-    noobaa crd create
-    noobaa system create
-    kuberun patch noobaa noobaa --type merge -p '{"spec":{"coreResources":{"requests":{"cpu":"1m","memory":"256Mi"}}}}'
-    kuberun patch noobaa noobaa --type merge -p '{"spec":{"dbResources":{"requests":{"cpu":"10m","memory":"256Mi"}}}}'
-    kuberun patch noobaa noobaa --type merge -p '{"spec":{"endpoints":{"minCount":1,"maxCount":1,"resources":{"requests":{"cpu":"10m","memory":"256Mi"}}}}}'
-    noobaa operator install
+    noobaa install --mini
     local status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
     while [ "${status}" != "Ready" ]
     do
