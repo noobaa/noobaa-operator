@@ -373,7 +373,9 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 		if numVolumes == 0 {
 			fmt.Printf("Enter number of volumes: ")
 			_, err := fmt.Scan(&numVolumes)
-			util.Panic(err)
+			if err != nil {
+				log.Fatalf(`❌ Number of volumes must be a positive number %s`, cmd.UsageString())
+			}
 			if numVolumes == 0 {
 				log.Fatalf(`❌ Missing number of volumes %s`, cmd.UsageString())
 			}
@@ -385,13 +387,18 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 		if pvSizeGB == 0 {
 			fmt.Printf("Enter PV size (GB): ")
 			_, err := fmt.Scan(&pvSizeGB)
-			util.Panic(err)
+			if err != nil {
+				log.Fatalf(`❌ PV size (GB) must be a positive number %s`, cmd.UsageString())
+			}
 			if pvSizeGB == 0 {
 				log.Fatalf(`❌ Missing PV size (GB) %s`, cmd.UsageString())
 			}
 		}
 		if pvSizeGB > 1024 {
 			log.Fatalf(`❌ PV size seems to be too large %d %s`, pvSizeGB, cmd.UsageString())
+		}
+		if pvSizeGB < 16 {
+			log.Fatalf(`❌ PV size seems to be too small (%dGB), minimal size for a pv is 16GB %s`, pvSizeGB, cmd.UsageString())
 		}
 		backStore.Spec.PVPool = &nbv1.PVPoolSpec{
 			StorageClass: storageClass,
