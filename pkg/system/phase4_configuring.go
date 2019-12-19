@@ -112,7 +112,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() {
 		switch c.Name {
 		case "endpoint":
 			c.Image = r.NooBaa.Status.ActualImage
-			if endpointsSpec.Resources != nil {
+			if endpointsSpec != nil && endpointsSpec.Resources != nil {
 				c.Resources = *endpointsSpec.Resources
 			}
 
@@ -123,7 +123,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() {
 						r.ServiceMgmt.Name, r.Request.Namespace)
 
 				case "MONGODB_URL":
-					// TODO: change to mongodb pod name after mongo separation
 					c.Env[j].Value = fmt.Sprintf(`mongodb://%s-0.%s/nbcore`,
 						r.NooBaaDB.Name, r.NooBaaDB.Spec.ServiceName)
 
