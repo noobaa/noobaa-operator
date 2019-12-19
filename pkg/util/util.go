@@ -30,6 +30,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -73,6 +74,7 @@ func init() {
 	Panic(operv1.AddToScheme(scheme.Scheme))
 	Panic(cephv1.AddToScheme(scheme.Scheme))
 	Panic(routev1.AddToScheme(scheme.Scheme))
+	Panic(autoscalingv1.AddToScheme(scheme.Scheme))
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)
@@ -102,6 +104,7 @@ func MapperProvider(config *rest.Config) (meta.RESTMapper, error) {
 				g.Name == "cloudcredential.openshift.io" ||
 				g.Name == "monitoring.coreos.com" ||
 				g.Name == "ceph.rook.io" ||
+				g.Name == "autoscaling" ||
 				strings.HasSuffix(g.Name, ".k8s.io") {
 				return true
 			}

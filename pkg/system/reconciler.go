@@ -20,6 +20,7 @@ import (
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -80,6 +81,7 @@ type Reconciler struct {
 	RouteMgmt           *routev1.Route
 	RouteS3             *routev1.Route
 	DeploymentEndpoint  *appsv1.Deployment
+	HPAEndpoint         *autoscalingv1.HorizontalPodAutoscaler
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -119,6 +121,7 @@ func NewReconciler(
 		RouteMgmt:           util.KubeObject(bundle.File_deploy_internal_route_mgmt_yaml).(*routev1.Route),
 		RouteS3:             util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
 		DeploymentEndpoint:  util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
+		HPAEndpoint:         util.KubeObject(bundle.File_deploy_internal_hpa_endpoint_yaml).(*autoscalingv1.HorizontalPodAutoscaler),
 	}
 
 	// Set Namespace
@@ -142,6 +145,7 @@ func NewReconciler(
 	r.RouteMgmt.Namespace = r.Request.Namespace
 	r.RouteS3.Namespace = r.Request.Namespace
 	r.DeploymentEndpoint.Namespace = r.Request.Namespace
+	r.HPAEndpoint.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -163,11 +167,15 @@ func NewReconciler(
 	r.ServiceMonitor.Name = r.Request.Name + "-service-monitor"
 	r.RouteMgmt.Name = r.ServiceMgmt.Name
 	r.RouteS3.Name = r.ServiceS3.Name
-	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoints"
+	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
+	r.HPAEndpoint.Name = r.Request.Name + "-endpoint"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name
 	r.RouteS3.Spec.To.Name = r.ServiceS3.Name
+
+	// Set the target deployment for the horizontal auto scaler
+	r.HPAEndpoint.Spec.ScaleTargetRef.Name = r.DeploymentEndpoint.Name
 
 	// Since StorageClass is global we set the name and provisioner to have unique global name
 	r.OBCStorageClass.Name = options.SubDomainNS()
@@ -192,6 +200,8 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.SecretAdmin)
 	util.KubeCheck(r.OBCStorageClass)
 	util.KubeCheck(r.DefaultBucketClass)
+	util.KubeCheck(r.DeploymentEndpoint)
+	util.KubeCheck(r.HPAEndpoint)
 	util.KubeCheckOptional(r.DefaultBackingStore)
 	util.KubeCheckOptional(r.CloudCreds)
 	util.KubeCheckOptional(r.PrometheusRule)
