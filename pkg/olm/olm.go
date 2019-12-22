@@ -203,125 +203,205 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			`A secret and configmap (name=claim) will be created with access details for the app pods.`,
 		"ObjectBucket": `Used under-the-hood. Created per ObjectBucketClaim and keeps provisioning information.`,
 	}
+	crdDisplayNames := map[string]string{
+		"NooBaa":            "NooBaa",
+		"BackingStore":      "Backing Store",
+		"BucketClass":       "Bucket Class",
+		"ObjectBucketClaim": "Object Bucket Claim",
+		"ObjectBucket":      "Object Bucket",
+	}
 	const (
-		uiTectonic = "urn:alm:descriptor:com.tectonic.ui:"
-		uiText = uiTectonic + "text"
-		uiResources = uiTectonic + "resourceRequirements"
-		uiFieldGroup = uiTectonic + "fieldGroup:"
-		uiKubernetes= "urn:alm:descriptor:io.kubernetes:"
-		uiK8sSecret = uiKubernetes + "Secret"
-		uiK8sTolerations = uiKubernetes + "Tolerations"
-		uiBooleanSwitch = uiTectonic + "booleanSwitch"
-		uiNumber = uiTectonic + "number"
-		uiFieldGroupAwsS3 = uiFieldGroup + "awsS3"
-		uiFieldGroupAzureBlob = uiFieldGroup + "azureBlob"
+		uiTectonic                     = "urn:alm:descriptor:com.tectonic.ui:"
+		uiText                         = uiTectonic + "text"
+		uiResources                    = uiTectonic + "resourceRequirements"
+		uiFieldGroup                   = uiTectonic + "fieldGroup:"
+		uiKubernetes                   = "urn:alm:descriptor:io.kubernetes:"
+		uiK8sSecret                    = uiKubernetes + "Secret"
+		uiK8sTolerations               = uiKubernetes + "Tolerations"
+		uiBooleanSwitch                = uiTectonic + "booleanSwitch"
+		uiNumber                       = uiTectonic + "number"
+		uiFieldGroupAwsS3              = uiFieldGroup + "awsS3"
+		uiFieldGroupAzureBlob          = uiFieldGroup + "azureBlob"
 		uiFieldGroupGoogleCloudStorage = uiFieldGroup + "googleCloudStorage"
-		uiFieldGroupPvPool = uiFieldGroup + "pvPool"
-		uiFieldGroupS3Compatible = uiFieldGroup + "s3Compatible"
-		uiFieldGroupPlacementPolicy = uiFieldGroup + "placementPolicy"
+		uiFieldGroupPvPool             = uiFieldGroup + "pvPool"
+		uiFieldGroupS3Compatible       = uiFieldGroup + "s3Compatible"
+		uiFieldGroupPlacementPolicy    = uiFieldGroup + "placementPolicy"
 	)
 
 	crdSpecDescriptors := map[string][]operv1.SpecDescriptor{
 		"NooBaa": []operv1.SpecDescriptor{
-			operv1.SpecDescriptor{Path: "image", XDescriptors: []string{uiText},Description: "DBImage (optional) overrides the default image for the db container.",DisplayName:  "DB Image"},
-			operv1.SpecDescriptor{Path: "dbImage", XDescriptors: []string{uiText},Description: "Image (optional) overrides the default image for the server container.",DisplayName:  "Image"},
-			operv1.SpecDescriptor{Path: "coreResources", XDescriptors: []string{uiResources},Description: "CoreResources (optional) overrides the default resource requirements for the server container.",DisplayName:  "Core Resources"},
-			operv1.SpecDescriptor{Path: "dbResources", XDescriptors: []string{uiResources},Description: "DBResources (optional) overrides the default resource requirements for the db container.",DisplayName:  "DB Resources"},
-			operv1.SpecDescriptor{Path: "dbVolumeResources", XDescriptors: []string{uiResources},
-				Description: "DBVolumeResources (optional) overrides the default PVC resource requirements for the database volume. For the time being this field is immutable and can only be set on system creation. This is because volume size updates are only supported for increasing the size, and only if the storage class specifies `allowVolumeExpansion: true`, +immutable.",
-				DisplayName:  "Image"},
-			operv1.SpecDescriptor{Path: "dbStorageClass", XDescriptors: []string{uiText},
-				Description: "DBStorageClass (optional) overrides the default cluster StorageClass for the database volume. For the time being this field is immutable and can only be set on system creation. This affects where the system stores its database which contains system config, buckets, objects meta-data and mapping file parts to storage locations. +immutable.",
-				DisplayName:  "DB StorageClass"},
-			operv1.SpecDescriptor{Path: "pvPoolDefaultStorageClass", XDescriptors: []string{uiText},
-				Description: "PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes. This affects where the system stores data chunks (encrypted). Updates to this field will only affect new pv-pools, but updates to existing pools are not supported by the operator.",
-				DisplayName:  "PV Pool DefaultStorageClass"},
-			operv1.SpecDescriptor{Path: "tolerations", XDescriptors: []string{uiK8sTolerations},Description: "Tolerations.",DisplayName:  "Tolerations"},
-			operv1.SpecDescriptor{Path: "imagePullSecret", XDescriptors: []string{uiK8sTolerations},Description: "ImagePullSecret (optional) sets a pull secret for the system image.",DisplayName:  "Image Pull Secret"},
+			operv1.SpecDescriptor{
+				Path:         "image",
+				XDescriptors: []string{uiText},
+				Description:  "DBImage (optional) overrides the default image for the db container.",
+				DisplayName:  "DB Image",
+			},
+			operv1.SpecDescriptor{
+				Path:         "dbImage",
+				XDescriptors: []string{uiText},
+				Description:  "Image (optional) overrides the default image for the server container.",
+				DisplayName:  "Image",
+			},
+			operv1.SpecDescriptor{
+				Path:         "coreResources",
+				XDescriptors: []string{uiResources},
+				Description:  "CoreResources (optional) overrides the default resource requirements for the server container.",
+				DisplayName:  "Core Resources",
+			},
+			operv1.SpecDescriptor{
+				Path:         "dbResources",
+				XDescriptors: []string{uiResources},
+				Description:  "DBResources (optional) overrides the default resource requirements for the db container.",
+				DisplayName:  "DB Resources",
+			},
+			operv1.SpecDescriptor{
+				Path:         "dbVolumeResources",
+				XDescriptors: []string{uiResources},
+				Description:  "DBVolumeResources (optional) overrides the default PVC resource requirements for the database volume. For the time being this field is immutable and can only be set on system creation. This is because volume size updates are only supported for increasing the size, and only if the storage class specifies `allowVolumeExpansion: true`, +immutable.",
+				DisplayName:  "Image",
+			},
+			operv1.SpecDescriptor{
+				Path:         "dbStorageClass",
+				XDescriptors: []string{uiText},
+				Description:  "DBStorageClass (optional) overrides the default cluster StorageClass for the database volume. For the time being this field is immutable and can only be set on system creation. This affects where the system stores its database which contains system config, buckets, objects meta-data and mapping file parts to storage locations. +immutable.",
+				DisplayName:  "DB StorageClass",
+			},
+			operv1.SpecDescriptor{
+				Path:         "pvPoolDefaultStorageClass",
+				XDescriptors: []string{uiText},
+				Description:  "PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes. This affects where the system stores data chunks (encrypted). Updates to this field will only affect new pv-pools, but updates to existing pools are not supported by the operator.",
+				DisplayName:  "PV Pool DefaultStorageClass",
+			},
+			operv1.SpecDescriptor{
+				Path:         "tolerations",
+				XDescriptors: []string{uiK8sTolerations},
+				Description:  "Tolerations.",
+				DisplayName:  "Tolerations",
+			},
+			operv1.SpecDescriptor{
+				Path:         "imagePullSecret",
+				XDescriptors: []string{uiK8sTolerations},
+				Description:  "ImagePullSecret (optional) sets a pull secret for the system image.",
+				DisplayName:  "Image Pull Secret",
+			},
 		},
 		"BackingStore": []operv1.SpecDescriptor{
-			operv1.SpecDescriptor{Description: "Region is the AWS region.",
+			operv1.SpecDescriptor{
+				Description:  "Region is the AWS region.",
 				Path:         "awsS3.region",
 				XDescriptors: []string{uiFieldGroupAwsS3, uiText},
-				DisplayName:  "Region"},
-			operv1.SpecDescriptor{Description: "Secret refers to a secret that provides the credentials. The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+				DisplayName:  "Region",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Secret refers to a secret that provides the credentials. The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
 				Path:         "awsS3.secret",
 				XDescriptors: []string{uiFieldGroupAwsS3, uiK8sSecret},
-				DisplayName:  "Secret"},
-			operv1.SpecDescriptor{Description: "SSLDisabled allows to disable SSL and use plain http.",
+				DisplayName:  "Secret",
+			},
+			operv1.SpecDescriptor{
+				Description:  "SSLDisabled allows to disable SSL and use plain http.",
 				Path:         "awsS3.sslDisabled",
 				XDescriptors: []string{uiFieldGroupAwsS3, uiBooleanSwitch},
-				DisplayName:  "SSL Disabled"},
-			operv1.SpecDescriptor{Description: "TargetBucket is the name of the target S3 bucket.",
+				DisplayName:  "SSL Disabled",
+			},
+			operv1.SpecDescriptor{
+				Description:  "TargetBucket is the name of the target S3 bucket.",
 				Path:         "awsS3.targetBucket",
 				XDescriptors: []string{uiFieldGroupAwsS3, uiText},
-				DisplayName:  "Target Bucket"},
-			operv1.SpecDescriptor{Description: " Secret refers to a secret that provides the credentials. The secret should define AccountName and AccountKey as provided\nby Azure Blob.",
+				DisplayName:  "Target Bucket",
+			},
+			operv1.SpecDescriptor{
+				Description:  " Secret refers to a secret that provides the credentials. The secret should define AccountName and AccountKey as provided\nby Azure Blob.",
 				Path:         "azureBlob.secret",
 				XDescriptors: []string{uiFieldGroupAzureBlob, uiK8sSecret},
-				DisplayName:  "Secret"},
-			operv1.SpecDescriptor{Description: "TargetBlobContainer is the name of the target Azure Blob container.",
+				DisplayName:  "Secret",
+			},
+			operv1.SpecDescriptor{
+				Description:  "TargetBlobContainer is the name of the target Azure Blob container.",
 				Path:         "azureBlob.targetBlobContainer",
 				XDescriptors: []string{uiFieldGroupAzureBlob, uiText},
-				DisplayName:  "Target Blob Container"},
-			operv1.SpecDescriptor{Description: "Secret refers to a secret that provides the credentials. The secret should define GoogleServiceAccountPrivateKeyJson containing\nthe entire json string as provided by Google.",
+				DisplayName:  "Target Blob Container",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Secret refers to a secret that provides the credentials. The secret should define GoogleServiceAccountPrivateKeyJson containing\nthe entire json string as provided by Google.",
 				Path:         "googleCloudStorage.secret",
 				XDescriptors: []string{uiFieldGroupGoogleCloudStorage, uiK8sSecret},
-				DisplayName:  "Secret"},
-			operv1.SpecDescriptor{Description: "TargetBucket is the name of the target S3 bucket.",
+				DisplayName:  "Secret",
+			},
+			operv1.SpecDescriptor{
+				Description:  "TargetBucket is the name of the target S3 bucket.",
 				Path:         "googleCloudStorage.targetBucket",
 				XDescriptors: []string{uiFieldGroupGoogleCloudStorage, uiText},
-				DisplayName:  "Target Bucket"},
-			operv1.SpecDescriptor{Description: "NumVolumes is the number of volumes to allocate.",
+				DisplayName:  "Target Bucket",
+			},
+			operv1.SpecDescriptor{
+				Description:  "NumVolumes is the number of volumes to allocate.",
 				Path:         "pvPool.numVolumes",
 				XDescriptors: []string{uiFieldGroupPvPool, uiNumber},
-				DisplayName:  "Num Volumes"},
-			operv1.SpecDescriptor{Description: "VolumeResources represents the minimum resources each volume should have.",
+				DisplayName:  "Num Volumes",
+			},
+			operv1.SpecDescriptor{
+				Description:  "VolumeResources represents the minimum resources each volume should have.",
 				Path:         "pvPool.resources",
 				XDescriptors: []string{uiFieldGroupPvPool, uiText},
-				DisplayName:  "Resources"},
-			operv1.SpecDescriptor{Description: "StorageClass is the name of the storage class to use for the PV's.",
+				DisplayName:  "Resources",
+			},
+			operv1.SpecDescriptor{
+				Description:  "StorageClass is the name of the storage class to use for the PV's.",
 				Path:         "pvPool.storageClass",
 				XDescriptors: []string{uiFieldGroupPvPool, uiNumber},
-				DisplayName:  "Storage Class"},
-			operv1.SpecDescriptor{Description: "Endpoint is the S3 compatible endpoint: http(s)://host:port.",
+				DisplayName:  "Storage Class",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Endpoint is the S3 compatible endpoint: http(s)://host:port.",
 				Path:         "s3Compatible.endpoint",
 				XDescriptors: []string{uiFieldGroupS3Compatible, uiText},
-				DisplayName:  "End Point"},
-			operv1.SpecDescriptor{Description: "Secret refers to a secret that provides the credentials. The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+				DisplayName:  "End Point",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Secret refers to a secret that provides the credentials. The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
 				Path:         "s3Compatible.secret",
 				XDescriptors: []string{uiFieldGroupS3Compatible, uiK8sSecret},
-				DisplayName:  "Secret"},
-			operv1.SpecDescriptor{Description: "SignatureVersion specifies the client signature version to use when signing requests.",
+				DisplayName:  "Secret",
+			},
+			operv1.SpecDescriptor{
+				Description:  "SignatureVersion specifies the client signature version to use when signing requests.",
 				Path:         "s3Compatible.signatureVersion",
 				XDescriptors: []string{uiFieldGroupS3Compatible, uiNumber},
-				DisplayName:  "Signature Version"},
-			operv1.SpecDescriptor{Description: "TargetBucket is the name of the target S3 bucket.",
+				DisplayName:  "Signature Version",
+			},
+			operv1.SpecDescriptor{
+				Description:  "TargetBucket is the name of the target S3 bucket.",
 				Path:         "s3Compatible.targetBucket",
 				XDescriptors: []string{uiFieldGroupS3Compatible, uiText},
-				DisplayName:  "Target Bucket"},
+				DisplayName:  "Target Bucket",
+			},
 		},
 
 		"BucketClass": []operv1.SpecDescriptor{
-			operv1.SpecDescriptor{Description: "BackingStores is an unordered list of backing store names. The meaning of the list depends on the placement.",
+			operv1.SpecDescriptor{
+				Description:  "BackingStores is an unordered list of backing store names. The meaning of the list depends on the placement.",
 				Path:         "placementPolicy.tiers[0].backingStores[0]",
 				XDescriptors: []string{uiFieldGroupPlacementPolicy, uiText},
-				DisplayName:  "Backing Stores"},
-			operv1.SpecDescriptor{Description: "Placement specifies the type of placement for the tier If empty it should have a single backing store.",
+				DisplayName:  "Backing Stores",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Placement specifies the type of placement for the tier If empty it should have a single backing store.",
 				Path:         "placementPolicy.tiers[0].placement",
 				XDescriptors: []string{uiFieldGroupPlacementPolicy, uiText},
-				DisplayName:  "Placement"},
+				DisplayName:  "Placement",
+			},
 		},
 		"ObjectBucketClaim": []operv1.SpecDescriptor{},
 		"ObjectBucket":      []operv1.SpecDescriptor{},
 	}
-	
+
 	crd.ForEachCRD(func(c *crd.CRD) {
 		crdDesc := operv1.CRDDescription{
 			Name:            c.Name,
 			Kind:            c.Spec.Names.Kind,
 			Version:         c.Spec.Version,
-			DisplayName:     c.Spec.Names.Kind,
+			DisplayName:     crdDisplayNames[c.Spec.Names.Kind],
 			Description:     crdDescriptions[c.Spec.Names.Kind],
 			SpecDescriptors: crdSpecDescriptors[c.Spec.Names.Kind],
 			Resources: []operv1.APIResourceReference{
