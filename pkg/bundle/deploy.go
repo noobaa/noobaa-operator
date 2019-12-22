@@ -922,6 +922,24 @@ spec:
           timeoutSeconds: 5
 `
 
+const Sha256_deploy_internal_hpa_endpoint_yaml = "7e23ff7cc720e344497e9675e9f514aa5e9fc780c4f572eb40e1be1004e1e6e7"
+
+const File_deploy_internal_hpa_endpoint_yaml = `apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  labels:
+    app: noobaa
+  name: noobaa-endpoint
+spec:
+  maxReplicas: 1
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: noobaa-endpoint
+  targetCPUUtilizationPercentage: 80
+`
+
 const Sha256_deploy_internal_prometheus_rules_yaml = "31412ea08c2c489c6cccdb28acdc1817f7ed97b9f3672b1abf80ab4f4129c39f"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
@@ -2178,7 +2196,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "dc9c707478bdb8e930a2a6697df9d97242c339ec9f99ca938b70d84b3393039f"
+const Sha256_deploy_role_yaml = "d1077c7d48590e7889015b59f4d5f6069f11ca8099c2ed0814e80b4a5936833f"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -2282,7 +2300,17 @@ rules:
   - update
   - list
   - watch
-
+- apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - get
+  - create
+  - update
+  - patch
+  - list
+  - watch
 `
 
 const Sha256_deploy_role_binding_yaml = "59a2627156ed3db9cd1a4d9c47e8c1044279c65e84d79c525e51274329cb16ff"

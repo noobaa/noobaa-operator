@@ -39,6 +39,9 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
 		return err
 	}
+	if err := r.ReconcileObject(r.HPAEndpoint, r.SetDesiredHPAEndpoint); err != nil {
+		return err
+	}
 	if err := r.ReconcileDefaultBackingStore(); err != nil {
 		return err
 	}
@@ -101,11 +104,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() {
 	r.DeploymentEndpoint.Spec.Template.Labels["noobaa-s3"] = r.Request.Name
 
 	endpointsSpec := r.NooBaa.Spec.Endpoints
-	if endpointsSpec != nil {
-		replicas := int32(endpointsSpec.MinCount)
-		r.DeploymentEndpoint.Spec.Replicas = &replicas
-	}
-
 	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
@@ -149,14 +147,23 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() {
 					}
 					c.Env[j].Value = fmt.Sprintf(strings.Join(hosts[:], " "))
 
-				// Commented as of Guy's requests, feature needs further deliberation
-				// case "REGION":
-				// 	if r.NooBaa.Spec.Endpoints.Region != nil {
-				// 		c.Env[j].Value = *r.NooBaa.Spec.Endpoints.Region
-				// 	}
+					// Commented as of Guy's requests, feature needs further deliberation
+					// case "REGION":
+					// 	if r.NooBaa.Spec.Endpoints.Region != nil {
+					// 		c.Env[j].Value = *r.NooBaa.Spec.Endpoints.Region
+					// 	}
 				}
 			}
 		}
+	}
+}
+
+// SetDesiredHPAEndpoint updates the endpoint horizontal pod autoscaler as desired for reconciling
+func (r *Reconciler) SetDesiredHPAEndpoint() {
+	endpointsSpec := r.NooBaa.Spec.Endpoints
+	if endpointsSpec != nil {
+		r.HPAEndpoint.Spec.MinReplicas = &endpointsSpec.MinCount
+		r.HPAEndpoint.Spec.MaxReplicas = endpointsSpec.MaxCount
 	}
 }
 
