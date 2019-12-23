@@ -36,6 +36,7 @@ require (
 	k8s.io/gengo v0.0.0-20190822140433-26a664648505
 	k8s.io/kube-openapi v0.0.0-20190816220812-743ec37842bf
 	k8s.io/kubectl v0.0.0-20191005122440-987b623dc1f7
+	nhooyr.io/websocket v1.7.4
 	sigs.k8s.io/controller-runtime v0.1.12
 	sigs.k8s.io/controller-tools v0.1.12
 	sigs.k8s.io/testing_frameworks v0.1.2 // indirect

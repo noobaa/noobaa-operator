@@ -3,7 +3,7 @@ package nb
 
 // Client is the interface providing typed noobaa API calls
 type Client interface {
-	Call(req *RPCRequest, res RPCResponseIfc) error
+	Call(req *RPCMessage, res RPCResponse) error
 
 	SetAuthToken(token string)
 	GetAuthToken() string
@@ -39,14 +39,16 @@ type Client interface {
 	CheckExternalConnectionAPI(AddExternalConnectionParams) (CheckExternalConnectionReply, error)
 	EditExternalConnectionCredentialsAPI(EditExternalConnectionCredentialsParams) error
 	DeleteExternalConnectionAPI(DeleteExternalConnectionParams) error
+
+	RegisterToCluster() error
 }
 
 // ReadAuthAPI calls auth_api.read_auth()
 func (c *RPCClient) ReadAuthAPI() (ReadAuthReply, error) {
-	req := &RPCRequest{API: "auth_api", Method: "read_auth"}
+	req := &RPCMessage{API: "auth_api", Method: "read_auth"}
 	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       ReadAuthReply `json:"reply"`
+		RPCMessage `json:",inline"`
+		Reply      ReadAuthReply `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -54,10 +56,10 @@ func (c *RPCClient) ReadAuthAPI() (ReadAuthReply, error) {
 
 // ReadAccountAPI calls account_api.read_account()
 func (c *RPCClient) ReadAccountAPI(params ReadAccountParams) (AccountInfo, error) {
-	req := &RPCRequest{API: "account_api", Method: "read_account", Params: params}
+	req := &RPCMessage{API: "account_api", Method: "read_account", Params: params}
 	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       AccountInfo `json:"reply"`
+		RPCMessage `json:",inline"`
+		Reply      AccountInfo `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -65,10 +67,10 @@ func (c *RPCClient) ReadAccountAPI(params ReadAccountParams) (AccountInfo, error
 
 // ReadSystemAPI calls system_api.read_system()
 func (c *RPCClient) ReadSystemAPI() (SystemInfo, error) {
-	req := &RPCRequest{API: "system_api", Method: "read_system"}
+	req := &RPCMessage{API: "system_api", Method: "read_system"}
 	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       SystemInfo `json:"reply"`
+		RPCMessage `json:",inline"`
+		Reply      SystemInfo `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -76,10 +78,10 @@ func (c *RPCClient) ReadSystemAPI() (SystemInfo, error) {
 
 // ReadBucketAPI calls bucket_api.read_bucket()
 func (c *RPCClient) ReadBucketAPI(params ReadBucketParams) (BucketInfo, error) {
-	req := &RPCRequest{API: "bucket_api", Method: "read_bucket", Params: params}
+	req := &RPCMessage{API: "bucket_api", Method: "read_bucket", Params: params}
 	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       BucketInfo `json:"reply"`
+		RPCMessage `json:",inline"`
+		Reply      BucketInfo `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -87,10 +89,10 @@ func (c *RPCClient) ReadBucketAPI(params ReadBucketParams) (BucketInfo, error) {
 
 // ReadPoolAPI calls pool_api.read_pool()
 func (c *RPCClient) ReadPoolAPI(params ReadPoolParams) (PoolInfo, error) {
-	req := &RPCRequest{API: "pool_api", Method: "read_pool", Params: params}
+	req := &RPCMessage{API: "pool_api", Method: "read_pool", Params: params}
 	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       PoolInfo `json:"reply"`
+		RPCMessage `json:",inline"`
+		Reply      PoolInfo `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -98,10 +100,10 @@ func (c *RPCClient) ReadPoolAPI(params ReadPoolParams) (PoolInfo, error) {
 
 // ListAccountsAPI calls account_api.list_accounts()
 func (c *RPCClient) ListAccountsAPI() (ListAccountsReply, error) {
-	req := &RPCRequest{API: "account_api", Method: "list_accounts"}
+	req := &RPCMessage{API: "account_api", Method: "list_accounts"}
 	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       ListAccountsReply `json:"reply"`
+		RPCMessage `json:",inline"`
+		Reply      ListAccountsReply `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -109,10 +111,10 @@ func (c *RPCClient) ListAccountsAPI() (ListAccountsReply, error) {
 
 // ListBucketsAPI calls bucket_api.list_buckets()
 func (c *RPCClient) ListBucketsAPI() (ListBucketsReply, error) {
-	req := &RPCRequest{API: "bucket_api", Method: "list_buckets"}
+	req := &RPCMessage{API: "bucket_api", Method: "list_buckets"}
 	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       ListBucketsReply `json:"reply"`
+		RPCMessage `json:",inline"`
+		Reply      ListBucketsReply `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -120,10 +122,10 @@ func (c *RPCClient) ListBucketsAPI() (ListBucketsReply, error) {
 
 // CreateAuthAPI calls auth_api.create_auth()
 func (c *RPCClient) CreateAuthAPI(params CreateAuthParams) (CreateAuthReply, error) {
-	req := &RPCRequest{API: "auth_api", Method: "create_auth", Params: params}
+	req := &RPCMessage{API: "auth_api", Method: "create_auth", Params: params}
 	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       CreateAuthReply `json:"reply"`
+		RPCMessage `json:",inline"`
+		Reply      CreateAuthReply `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -131,10 +133,10 @@ func (c *RPCClient) CreateAuthAPI(params CreateAuthParams) (CreateAuthReply, err
 
 // CreateSystemAPI calls system_api.create_system()
 func (c *RPCClient) CreateSystemAPI(params CreateSystemParams) (CreateSystemReply, error) {
-	req := &RPCRequest{API: "system_api", Method: "create_system", Params: params}
+	req := &RPCMessage{API: "system_api", Method: "create_system", Params: params}
 	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       CreateSystemReply `json:"reply"`
+		RPCMessage `json:",inline"`
+		Reply      CreateSystemReply `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -142,10 +144,10 @@ func (c *RPCClient) CreateSystemAPI(params CreateSystemParams) (CreateSystemRepl
 
 // CreateAccountAPI calls account_api.create_account()
 func (c *RPCClient) CreateAccountAPI(params CreateAccountParams) (CreateAccountReply, error) {
-	req := &RPCRequest{API: "account_api", Method: "create_account", Params: params}
+	req := &RPCMessage{API: "account_api", Method: "create_account", Params: params}
 	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       CreateAccountReply `json:"reply"`
+		RPCMessage `json:",inline"`
+		Reply      CreateAccountReply `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -153,101 +155,88 @@ func (c *RPCClient) CreateAccountAPI(params CreateAccountParams) (CreateAccountR
 
 // CreateBucketAPI calls bucket_api.create_bucket()
 func (c *RPCClient) CreateBucketAPI(params CreateBucketParams) error {
-	req := &RPCRequest{API: "bucket_api", Method: "create_bucket", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "bucket_api", Method: "create_bucket", Params: params}
+	return c.Call(req, nil)
 }
 
 // CreateHostsPoolAPI calls pool_api.create_hosts_pool()
 func (c *RPCClient) CreateHostsPoolAPI(params CreateHostsPoolParams) error {
-	req := &RPCRequest{API: "pool_api", Method: "create_hosts_pool", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "pool_api", Method: "create_hosts_pool", Params: params}
+	return c.Call(req, nil)
 }
 
 // CreateCloudPoolAPI calls pool_api.create_cloud_pool()
 func (c *RPCClient) CreateCloudPoolAPI(params CreateCloudPoolParams) error {
-	req := &RPCRequest{API: "pool_api", Method: "create_cloud_pool", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "pool_api", Method: "create_cloud_pool", Params: params}
+	return c.Call(req, nil)
 }
 
 // CreateTierAPI calls tier_api.create_tier()
 func (c *RPCClient) CreateTierAPI(params CreateTierParams) error {
-	req := &RPCRequest{API: "tier_api", Method: "create_tier", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "tier_api", Method: "create_tier", Params: params}
+	return c.Call(req, nil)
 }
 
 // CreateTieringPolicyAPI calls tiering_policy_api.create_policy()
 func (c *RPCClient) CreateTieringPolicyAPI(params TieringPolicyInfo) error {
-	req := &RPCRequest{API: "tiering_policy_api", Method: "create_policy", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "tiering_policy_api", Method: "create_policy", Params: params}
+	return c.Call(req, nil)
 }
 
 // DeleteBucketAPI calls bucket_api.delete_bucket()
 func (c *RPCClient) DeleteBucketAPI(params DeleteBucketParams) error {
-	req := &RPCRequest{API: "bucket_api", Method: "delete_bucket", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "bucket_api", Method: "delete_bucket", Params: params}
+	return c.Call(req, nil)
 }
 
 // DeleteBucketAndObjectsAPI calls bucket_api.delete_bucket()
 func (c *RPCClient) DeleteBucketAndObjectsAPI(params DeleteBucketParams) error {
-	req := &RPCRequest{API: "bucket_api", Method: "delete_bucket_and_objects", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "bucket_api", Method: "delete_bucket_and_objects", Params: params}
+	return c.Call(req, nil)
 }
 
 // DeleteAccountAPI calls account_api.delete_account()
 func (c *RPCClient) DeleteAccountAPI(params DeleteAccountParams) error {
-	req := &RPCRequest{API: "account_api", Method: "delete_account", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "account_api", Method: "delete_account", Params: params}
+	return c.Call(req, nil)
 }
 
 // DeletePoolAPI calls pool_api.delete_pool()
 func (c *RPCClient) DeletePoolAPI(params DeletePoolParams) error {
-	req := &RPCRequest{API: "pool_api", Method: "delete_pool", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "pool_api", Method: "delete_pool", Params: params}
+	return c.Call(req, nil)
 }
 
 // UpdateAccountS3Access calls account_api.update_account_s3_access()
 func (c *RPCClient) UpdateAccountS3Access(params UpdateAccountS3AccessParams) error {
-	req := &RPCRequest{API: "account_api", Method: "update_account_s3_access", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "account_api", Method: "update_account_s3_access", Params: params}
+	return c.Call(req, nil)
 }
 
 // UpdateBucketClass calls bucket_api.update_bucket_class()
 func (c *RPCClient) UpdateBucketClass(params UpdateBucketClassParams) error {
-	req := &RPCRequest{API: "tiering_policy_api", Method: "update_bucket_class", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "tiering_policy_api", Method: "update_bucket_class", Params: params}
+	return c.Call(req, nil)
 }
 
 // UpdateAllBucketsDefaultPool calls bucket_api.update_all_buckets_default_pool()
 func (c *RPCClient) UpdateAllBucketsDefaultPool(params UpdateDefaultPoolParams) error {
-	req := &RPCRequest{API: "bucket_api", Method: "update_all_buckets_default_pool", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "bucket_api", Method: "update_all_buckets_default_pool", Params: params}
+	return c.Call(req, nil)
 }
 
 // AddExternalConnectionAPI calls account_api.add_external_connection()
 func (c *RPCClient) AddExternalConnectionAPI(params AddExternalConnectionParams) error {
-	req := &RPCRequest{API: "account_api", Method: "add_external_connection", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "account_api", Method: "add_external_connection", Params: params}
+	return c.Call(req, nil)
 }
 
 // CheckExternalConnectionAPI calls account_api.check_external_connection()
 func (c *RPCClient) CheckExternalConnectionAPI(params AddExternalConnectionParams) (CheckExternalConnectionReply, error) {
-	req := &RPCRequest{API: "account_api", Method: "check_external_connection", Params: params}
+	req := &RPCMessage{API: "account_api", Method: "check_external_connection", Params: params}
 	res := &struct {
-		RPCResponse `json:",inline"`
-		Reply       CheckExternalConnectionReply `json:"reply"`
+		RPCMessage `json:",inline"`
+		Reply      CheckExternalConnectionReply `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -255,14 +244,18 @@ func (c *RPCClient) CheckExternalConnectionAPI(params AddExternalConnectionParam
 
 // EditExternalConnectionCredentialsAPI calls account_api.edit_external_connection_credentials()
 func (c *RPCClient) EditExternalConnectionCredentialsAPI(params EditExternalConnectionCredentialsParams) error {
-	req := &RPCRequest{API: "account_api", Method: "edit_external_connection_credentials", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "account_api", Method: "edit_external_connection_credentials", Params: params}
+	return c.Call(req, nil)
 }
 
 // DeleteExternalConnectionAPI calls account_api.delete_external_connection()
 func (c *RPCClient) DeleteExternalConnectionAPI(params DeleteExternalConnectionParams) error {
-	req := &RPCRequest{API: "account_api", Method: "delete_external_connection", Params: params}
-	res := &RPCResponse{}
-	return c.Call(req, res)
+	req := &RPCMessage{API: "account_api", Method: "delete_external_connection", Params: params}
+	return c.Call(req, nil)
+}
+
+// RegisterToCluster calls redirector_api.RegisterToCluster()
+func (c *RPCClient) RegisterToCluster() error {
+	req := &RPCMessage{API: "redirector_api", Method: "register_to_cluster"}
+	return c.Call(req, nil)
 }

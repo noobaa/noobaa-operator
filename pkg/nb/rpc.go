@@ -1,42 +1,82 @@
 package nb
 
 import (
-	"bytes"
 	"crypto/tls"
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	// RPCVersionNumber specifies the RPC version number
+	RPCVersionNumber uint32 = 0xba000000
+
+	// RPCMaxMessageSize is a limit to protect the process from allocating too much memory
+	// for a single incoming message for example in case the connection is out of sync or other bugs.
+	RPCMaxMessageSize = 64 * 1024 * 1024
+)
+
+// GlobalRPC is the global rpc
+var GlobalRPC *RPC
+
+func init() {
+	// GlobalRPC initialization
+	GlobalRPC = NewRPC()
+}
+
+// RPC is a struct that describes the relevant fields upon handeling rpc protocol
+type RPC struct {
+	HTTPClient  http.Client
+	ConnMap     map[string]RPCConn
+	ConnMapLock sync.Mutex
+	Handler     RPCHandler
+}
+
 // RPCClient makes API calls to noobaa.
 // Requests to noobaa are plain http requests with json request and json response.
 type RPCClient struct {
-	Router     APIRouter
-	HTTPClient http.Client
-	AuthToken  string
+	RPC       *RPC
+	Router    APIRouter
+	AuthToken string
 }
 
-// RPCRequest is the structure encoded in every request
-type RPCRequest struct {
-	API       string      `json:"api"`
-	Method    string      `json:"method"`
+// RPCConn is a common connection interface implemented by http and ws
+type RPCConn interface {
+	// GetAddress returns the connection address
+	GetAddress() string
+	// Reonnect should make sure the connection is ready to be used
+	Reconnect()
+	// Call sends request and receives the response
+	Call(req *RPCMessage, res RPCResponse) error
+}
+
+// RPCMessage structure encoded in every RPC message
+type RPCMessage struct {
+	Op        string      `json:"op"`
+	API       string      `json:"api,omitempty"`
+	Method    string      `json:"method,omitempty"`
+	RequestID string      `json:"reqid,omitempty"`
 	AuthToken string      `json:"auth_token,omitempty"`
+	Took      float64     `json:"took,omitempty"`
+	Error     *RPCError   `json:"error,omitempty"`
 	Params    interface{} `json:"params,omitempty"`
+	Buffers   []RPCBuffer `json:"buffers,omitempty"`
+	RawBytes  []byte      `json:"-"`
 }
 
-// RPCResponse is the structure encoded in every response
-// Specific API response structures should include this inline,
-// and add the standard Reply field with the specific fields.
-// Refer to examples.
-type RPCResponse struct {
-	Op        string    `json:"op"`
-	RequestID string    `json:"reqid"`
-	Took      float64   `json:"took"`
-	Error     *RPCError `json:"error,omitempty"`
+// RPCMessageReply structure encoded in every RPC message that contains reply
+type RPCMessageReply struct {
+	RPCMessage `json:",inline"`
+	Reply      interface{} `json:"reply,omitempty"`
+}
+
+// RPCBuffer is a struct that describes the fields related to an rpc buffer
+type RPCBuffer struct {
+	Name   string `json:"name,omitempty"`
+	Length int32  `json:"len,omitempty"`
+	Buffer []byte `json:"-"`
 }
 
 // RPCError is a struct sent by noobaa servers to denote an error response.
@@ -45,10 +85,13 @@ type RPCError struct {
 	Message string `json:"message"`
 }
 
-// RPCResponseIfc is the interface for response structs.
-// RPCResponse is the only real implementor of it.
-type RPCResponseIfc interface {
-	Response() *RPCResponse
+// RPCHandler is the interface for RPCHandler struct
+type RPCHandler func(req *RPCMessage) (interface{}, error)
+
+// RPCResponse is the interface for response structs.
+// RPCMessage is the only real implementor of it.
+type RPCResponse interface {
+	Response() *RPCMessage
 }
 
 // SetAuthToken is setting the client token for next calls
@@ -57,69 +100,72 @@ func (c *RPCClient) SetAuthToken(token string) { c.AuthToken = token }
 // GetAuthToken is getting the client token for next calls
 func (c *RPCClient) GetAuthToken() string { return c.AuthToken }
 
-// Response is implementing the RPCResponseIfc interface
-func (r *RPCResponse) Response() *RPCResponse { return r }
-
 // Error is implementing the standard error type interface
 func (e *RPCError) Error() string { return e.Message }
 
+// Response is implementing the RPCResponse interface
+func (msg *RPCMessage) Response() *RPCMessage { return msg }
+
+// SetBuffers assigns the buffers from the message and slices them to the message buffers
+func (msg *RPCMessage) SetBuffers(buffers []byte) {
+	pos := 0
+	for i := range msg.Buffers {
+		b := &msg.Buffers[i]
+		end := pos + int(b.Length)
+		b.Buffer = buffers[pos:end]
+		pos = end
+	}
+}
+
 var _ Client = &RPCClient{}
-var _ RPCResponseIfc = &RPCResponse{}
+var _ RPCResponse = &RPCMessage{}
 var _ error = &RPCError{}
+
+// NewRPC initializes an RPC with defaults
+func NewRPC() *RPC {
+	return &RPC{
+		HTTPClient: http.Client{
+			//Timeout: 120 * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		},
+		ConnMap:     make(map[string]RPCConn),
+		ConnMapLock: sync.Mutex{},
+	}
+}
 
 // NewClient initializes an RPCClient with defaults
 func NewClient(router APIRouter) Client {
 	return &RPCClient{
 		Router: router,
-		HTTPClient: http.Client{
-			Timeout: 120 * time.Second,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
-		},
+		RPC:    GlobalRPC,
 	}
 }
 
-// Call an API method to noobaa.
-// The response type should be defined to include RPCResponseIfc inline.
+// Call an API method to noobaa over wss or https protocol
+// The response type should be defined to include RPCResponse inline.
 // This is needed in order for json.Unmarshal() to decode into the reply structure.
-func (c *RPCClient) Call(req *RPCRequest, res RPCResponseIfc) error {
+func (c *RPCClient) Call(req *RPCMessage, res RPCResponse) error {
+	if res == nil {
+		res = &RPCMessage{}
+	}
 	api := req.API
 	method := req.Method
 	if req.AuthToken == "" {
 		req.AuthToken = c.AuthToken
 	}
+
 	address := c.Router.GetAddress(api)
+
 	// u := address + strings.TrimSuffix(api, "_api") + "/" + method
 	u := strings.TrimSuffix(api, "_api") + "." + method + "()"
 	logrus.Infof("✈️  RPC: %s Request: %+v", u, req.Params)
 
-	reqBytes, err := json.Marshal(req)
-	fatal(err)
-
-	httpRequest, err := http.NewRequest("PUT", address, bytes.NewReader(reqBytes))
-	fatal(err)
-
-	httpResponse, err := c.HTTPClient.Do(httpRequest)
-	defer func() {
-		if httpResponse != nil && httpResponse.Body != nil {
-			httpResponse.Body.Close()
-		}
-	}()
+	conn := c.RPC.GetConnection(address)
+	err := conn.Call(req, res)
 	if err != nil {
-		logrus.Errorf("⚠️  RPC: %s Sending http request failed: %s", u, err)
-		return err
-	}
-
-	resBytes, err := ioutil.ReadAll(httpResponse.Body)
-	if err != nil {
-		logrus.Errorf("⚠️  RPC: %s Reading http response failed: %s", u, err)
-		return err
-	}
-
-	err = json.Unmarshal(resBytes, res)
-	if err != nil {
-		logrus.Errorf("⚠️  RPC: %s Decoding response failed: %s", u, err)
+		logrus.Errorf("⚠️  RPC: %s Call failed: %s", u, err)
 		return err
 	}
 
@@ -133,8 +179,38 @@ func (c *RPCClient) Call(req *RPCRequest, res RPCResponseIfc) error {
 	return nil
 }
 
-func fatal(err error) {
-	if err != nil {
-		panic(err)
+// GetConnection finds the connection related to the pending request or creates a new one
+func (r *RPC) GetConnection(address string) RPCConn {
+	var conn RPCConn
+	if strings.HasPrefix(address, "wss:") || strings.HasPrefix(address, "ws:") {
+		r.ConnMapLock.Lock()
+		conn = r.ConnMap[address]
+		if conn == nil {
+			conn = NewRPCConnWS(r, address)
+			logrus.Warnf("RPC: GetConnection creating connection to %s %p", address, conn)
+			r.ConnMap[address] = conn
+		}
+		r.ConnMapLock.Unlock()
+	} else {
+		// http connections are transient and not inserted to ConnMap!
+		conn = NewRPCConnHTTP(r, address)
 	}
+	return conn
+}
+
+// RemoveConnection removes the connection from the RPC connections map and start reconnecting
+func (r *RPC) RemoveConnection(conn RPCConn) {
+	r.ConnMapLock.Lock()
+	address := conn.GetAddress()
+	current := r.ConnMap[address]
+	if current == conn {
+		logrus.Warnf("RPC: RemoveConnection %s current=%p conn=%p", address, current, conn)
+		delete(r.ConnMap, address)
+	}
+	if current == conn || current == nil {
+		go func() {
+			r.GetConnection(address).Reconnect()
+		}()
+	}
+	r.ConnMapLock.Unlock()
 }

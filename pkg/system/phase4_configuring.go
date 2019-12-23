@@ -36,6 +36,9 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileSecretAdmin(); err != nil {
 		return err
 	}
+	/*if err := r.NBClient.RegisterToCluster(); err != nil {
+		return err
+	}*/
 	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
 		return err
 	}
