@@ -2,6 +2,7 @@ package obc
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
@@ -230,9 +231,13 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	sysClient, err := system.Connect(true)
+	if err != nil {
+		util.Logger().Fatalf("❌ %s", err)
+	}
 	var b *nb.BucketInfo
 	if obc.Spec.BucketName != "" {
-		nbClient := system.GetNBClient()
+		nbClient := sysClient.NBClient
 		bucket, err := nbClient.ReadBucketAPI(nb.ReadBucketParams{Name: obc.Spec.BucketName})
 		if err == nil {
 			b = &bucket
@@ -264,7 +269,11 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	}
 	fmt.Printf("\n")
 	fmt.Printf("Shell commands:\n")
-	fmt.Printf("  %-22s : alias s3='%saws s3 --no-verify-ssl --endpoint-url https://%s:%s'\n", "AWS S3 Alias", credsEnv, cm.Data["BUCKET_HOST"], cm.Data["BUCKET_PORT"])
+	s3URL, err := url.Parse(sysClient.S3Client.Endpoint)
+	if err != nil {
+		log.Errorf(`❌ failed to parse s3 endpoint %q. got error: %v`, sysClient.S3Client.Endpoint, err)
+	}
+	fmt.Printf("  %-22s : alias s3='%saws s3 --no-verify-ssl --endpoint-url https://%s:%s'\n", "AWS S3 Alias", credsEnv, s3URL.Hostname(), s3URL.Port())
 	fmt.Printf("\n")
 	if b != nil {
 		fmt.Printf("Bucket status:\n")

@@ -615,6 +615,7 @@ type Client struct {
 	NooBaa      *nbv1.NooBaa
 	NBClient    nb.Client
 	S3Client    *s3.S3
+	S3DnsURL    *url.URL
 	MgmtURL     *url.URL
 	ServiceMgmt *corev1.Service
 	SecretOp    *corev1.Secret
@@ -675,6 +676,15 @@ func Connect(usePortForwarding bool) (*Client, error) {
 	// if err != nil {
 	// 	return nil, fmt.Errorf("failed to parse s3 endpoint %q. got error: %v", s3NodePort, err)
 	// }
+	endpoint := s3NodePort
+	if len(s3Status.ExternalIP) > 0 {
+		endpoint = s3Status.ExternalIP[0]
+	}
+	s3InternalDNS := s3Status.InternalDNS[0]
+	s3DnsURL, err := url.Parse(s3InternalDNS)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse s3 internal dns %q. got error: %v", s3InternalDNS, err)
+	}
 
 	var nbClient nb.Client
 
@@ -699,7 +709,7 @@ func Connect(usePortForwarding bool) (*Client, error) {
 	nbClient.SetAuthToken(authToken)
 
 	s3Config := &aws.Config{
-		Endpoint: &s3NodePort,
+		Endpoint: &endpoint,
 		Credentials: credentials.NewStaticCredentials(
 			accessKey,
 			secretKey,
@@ -716,6 +726,7 @@ func Connect(usePortForwarding bool) (*Client, error) {
 		NooBaa:      r.NooBaa,
 		NBClient:    nbClient,
 		S3Client:    s3.New(s3Session),
+		S3DnsURL:    s3DnsURL,
 		MgmtURL:     mgmtURL,
 		ServiceMgmt: r.ServiceMgmt,
 		SecretOp:    r.SecretOp,
