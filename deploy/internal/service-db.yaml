@@ -5,7 +5,7 @@ metadata:
   labels:
     app: noobaa
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     noobaa-db: SYSNAME
   ports:
