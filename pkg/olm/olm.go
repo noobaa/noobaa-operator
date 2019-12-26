@@ -273,12 +273,6 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 				DisplayName:  "PV Pool DefaultStorageClass",
 			},
 			operv1.SpecDescriptor{
-				Path:         "tolerations",
-				XDescriptors: []string{uiK8sTolerations},
-				Description:  "Tolerations.",
-				DisplayName:  "Tolerations",
-			},
-			operv1.SpecDescriptor{
 				Path:         "imagePullSecret",
 				XDescriptors: []string{uiK8sTolerations},
 				Description:  "ImagePullSecret (optional) sets a pull secret for the system image.",
