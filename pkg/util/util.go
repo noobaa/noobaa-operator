@@ -219,7 +219,7 @@ func KubeCreateSkipExisting(obj runtime.Object) bool {
 }
 
 // KubeDelete deletes an object and reports the object status.
-func KubeDelete(obj runtime.Object, opts ...client.DeleteOptionFunc) bool {
+func KubeDelete(obj runtime.Object, opts ...client.DeleteOption) bool {
 	klient := KubeClient()
 	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
@@ -348,10 +348,10 @@ func KubeCheckOptional(obj runtime.Object) bool {
 }
 
 // KubeList returns a list of objects.
-func KubeList(list runtime.Object, options *client.ListOptions) bool {
+func KubeList(list runtime.Object, options ...client.ListOption) bool {
 	klient := KubeClient()
 	gvk := list.GetObjectKind().GroupVersionKind()
-	err := klient.List(ctx, options, list)
+	err := klient.List(ctx, list, options...)
 	if err == nil {
 		return true
 	}
@@ -726,7 +726,7 @@ func SetErrorCondition(conditions *[]conditionsv1.Condition, reason string, mess
 // IsAWSPlatform returns true if this cluster is running on AWS
 func IsAWSPlatform() bool {
 	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList, nil); !ok || len(nodesList.Items) == 0 {
+	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
 		Panic(fmt.Errorf("failed to list kubernetes nodes"))
 	}
 	isAWS := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "aws")
@@ -761,7 +761,7 @@ func GetAWSRegion() (string, error) {
 		"sa-east-1":      "sa-east-1",
 	}
 	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList, nil); !ok || len(nodesList.Items) == 0 {
+	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
 		return "", fmt.Errorf("Failed to list kubernetes nodes")
 	}
 	nameSplit := strings.Split(nodesList.Items[0].Name, ".")

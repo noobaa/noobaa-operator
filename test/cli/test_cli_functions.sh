@@ -9,18 +9,22 @@ function kuberun {
     local options=$*
     if [ -z "${kubectl}" ]
     then
-        echo "❌  The kubectl variable must be define in the shell"
+        echo_time "❌  The kubectl variable must be define in the shell"
         exit 1
     fi
     ${kubectl} ${options}
     if [ $? -ne 0 ]
     then
-        echo "❌  ${kubectl} ${options} failed, Exiting"
+        echo_time "❌  ${kubectl} ${options} failed, Exiting"
         exit 1
     elif [ ! ${silence} ]
     then
-        echo "✅  ${kubectl} ${options} passed"
+        echo_time "✅  ${kubectl} ${options} passed"
     fi
+}
+
+echo_time() {
+    date +"%T $*"
 }
 
 function test_noobaa {
@@ -47,7 +51,7 @@ function test_noobaa {
 
     if [ -z "${noobaa}" ]
     then
-        echo "❌  The noobaa variable must be define in the shell"
+        echo_time "❌  The noobaa variable must be define in the shell"
         exit 1
     fi
     if ${run_with_timeout}
@@ -64,14 +68,19 @@ function test_noobaa {
         then
             if ${should_fail}
             then
-                echo "✅  ${noobaa} ${options} failed - as should"
+                echo_time "✅  ${noobaa} ${options} failed - as should"
             else 
-                echo "❌  ${noobaa} ${options} failed, Exiting"
+                echo_time "❌  ${noobaa} ${options} failed, Exiting"
+                local pod_operator=$(kuberun get pod | grep noobaa-operator | awk '{print $1}')
+                echo_time "==============OPERATOR LOGS============"
+                kuberun logs ${pod_operator}
+                echo_time "==============CORE LOGS============"
+                kuberun logs noobaa-core-0
                 exit 1
             fi
         elif [ ! ${silence} ]
         then
-            echo "✅  ${noobaa} ${options} passed"
+            echo_time "✅  ${noobaa} ${options} passed"
         fi
     fi
 
@@ -94,7 +103,7 @@ function timeout {
         kill -s 0 ${PID} &> /dev/null
         if [ $? -ne 0 ]
         then
-            echo "✅  ${noobaa} ${options} passed"
+            echo_time "✅  ${noobaa} ${options} passed"
             break
         fi
 
@@ -103,7 +112,7 @@ function timeout {
             sleep 5
         else
             kill -9 ${PID}
-            echo "❌  ${noobaa} ${options} reached timeout, Exiting"
+            echo_time "❌  ${noobaa} ${options} reached timeout, Exiting"
             exit 1
         fi
     done
@@ -114,7 +123,7 @@ function install {
     local status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
     while [ "${status}" != "Ready" ]
     do
-        echo "Waiting for status Ready, Status is ${status}"
+        echo_time "Waiting for status Ready, Status is ${status}"
         sleep 10
         status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
     done
@@ -138,13 +147,13 @@ function aws_credentials {
     done < <(test_noobaa silence status)
     if [ -z ${AWS_ACCESS_KEY_ID} ] || [ -z ${AWS_SECRET_ACCESS_KEY} ]
     then
-        echo "❌  Could not get AWS credentials, Exiting"
+        echo_time "❌  Could not get AWS credentials, Exiting"
         exit 1
     fi
 }
 
 function check_S3_compatible {
-    echo "Staring compatible cycle"
+    echo_time "Staring compatible cycle"
     local cycle
     local type="s3-compatible"
     local buckets=("first.bucket" "second.bucket")
@@ -164,7 +173,7 @@ function check_S3_compatible {
     test_noobaa status
     kuberun get backingstore
     kuberun describe backingstore
-    echo "✅  s3 compatible cycle is done"
+    echo_time "✅  s3 compatible cycle is done"
 }
 
 function check_aws_S3 {
@@ -181,7 +190,7 @@ function check_aws_S3 {
 }
 
 function bucketclass_cycle {
-    echo "Starting the bucketclass cycle"
+    echo_time "Starting the bucketclass cycle"
     local bucketclass
     local bucketclass_names=()
     local backingstore=()
@@ -207,19 +216,19 @@ function bucketclass_cycle {
     #TODO: activate the code below when we create all the bucketclass
     # if [ ${#bucketclass_list_array[@]} -ne $((${#bucketclass_names[@]}+1)) ]
     # then
-    #     echo "❌  Bucket expected $((${#bucketclass_names[@]}+1)), and got ${#bucketclass_list_array[@]}."
-    #     echo "👓  bucketclass list is ${bucketclass_list_array[@]}, Exiting."
+    #     echo_time "❌  Bucket expected $((${#bucketclass_names[@]}+1)), and got ${#bucketclass_list_array[@]}."
+    #     echo_time "👓  bucketclass list is ${bucketclass_list_array[@]}, Exiting."
     #     exit 1
     # fi
 
     test_noobaa status
     kuberun get bucketclass
     kuberun describe bucketclass
-    echo "✅  bucketclass cycle is done"
+    echo_time "✅  bucketclass cycle is done"
 }
 
 function obc_cycle {
-    echo "Starting the obc cycle"
+    echo_time "Starting the obc cycle"
     local bucket
     local buckets=()
 
@@ -244,7 +253,7 @@ function obc_cycle {
     kuberun get obc,ob,secret,cm -l noobaa-obc
 
     # aws s3 --endpoint-url XXX ls
-    echo "✅  obc cycle is done"
+    echo_time "✅  obc cycle is done"
 }
 
 function delete_backingstore_path {
@@ -252,7 +261,7 @@ function delete_backingstore_path {
     local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
     local bucketclass=($(test_noobaa silence bucketclass list  | grep ${backingstore[1]} | awk '{print $1}'))
     local obc=($(test_noobaa silence obc list | grep -v "BUCKET-NAME" | awk '{print $2}'))
-    echo "Starting the delete related ${backingstore[1]} paths"
+    echo_time "Starting the delete related ${backingstore[1]} paths"
 
     test_noobaa failure backingstore delete ${backingstore[1]}
     if [ ${#obc[@]} -ne 0 ]
@@ -271,14 +280,14 @@ function delete_backingstore_path {
     fi
     sleep 30
     local buckets=($(test_noobaa silence bucket list  | grep -v "BUCKET-NAME" | awk '{print $1}'))
-    echo "✅  buckets in system: ${buckets}"
+    echo_time "✅  buckets in system: ${buckets}"
     test_noobaa backingstore delete ${backingstore[1]}
     test_noobaa failure backingstore delete ${backingstore[0]}
-    echo "✅  delete ${backingstore[1]} path is done"
+    echo_time "✅  delete ${backingstore[1]} path is done"
 }
 
 function check_deletes {
-    echo "Starting the delete cycle"
+    echo_time "Starting the delete cycle"
     local obc=($(test_noobaa silence obc list | grep -v "NAME\|default" | awk '{print $2}'))
     local bucketclass=($(test_noobaa silence bucketclass list  | grep -v NAME | awk '{print $1}'))
     local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
@@ -286,5 +295,5 @@ function check_deletes {
     test_noobaa bucketclass delete ${bucketclass[0]}
     test_noobaa backingstore list
     delete_backingstore_path
-    echo "✅  delete cycle is done"
+    echo_time "✅  delete cycle is done"
 }

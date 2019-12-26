@@ -102,6 +102,7 @@ type NooBaaSpec struct {
 
 	// Tolerations (optional) passed through to noobaa's pods
 	// +optional
+	// +listType=set
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// Affinity (optional) passed through to noobaa's pods
@@ -138,6 +139,7 @@ type EndpointsSpec struct {
 	// (on top of the buildin names defined by the cluster: service name, elb name, route name)
 	// to be used as virtual hosts by the the endpoints in the endpoint deployment
 	// +optional
+	// +listType=set
 	AdditionalVirtualHosts []string `json:"additionalVirtualHosts,omitempty"`
 
 	// Resources (optional) overrides the default resource requirements for every endpoint pod
@@ -162,10 +164,12 @@ type NooBaaStatus struct {
 	// +patchMergeKey=type
 	// +patchStrategy=merge
 	// +optional
+	// +listType=set
 	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
 
 	// RelatedObjects is a list of objects related to this operator.
 	// +optional
+	// +listType=set
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 
 	// ActualImage is set to report which image the operator is using

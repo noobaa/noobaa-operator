@@ -25,7 +25,7 @@ func Add(mgr manager.Manager) error {
 					req.NamespacedName,
 					mgr.GetClient(),
 					mgr.GetScheme(),
-					mgr.GetRecorder("noobaa-operator"),
+					mgr.GetEventRecorderFor("noobaa-operator"),
 				).Reconcile()
 			}),
 	})
