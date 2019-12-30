@@ -2,7 +2,6 @@ package obc
 
 import (
 	"fmt"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -198,12 +197,8 @@ func NewBucketRequest(
 		return nil, err
 	}
 
-	s3URL, err := url.Parse(sysClient.S3Client.Endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse s3 endpoint %q. got error: %v", sysClient.S3Client.Endpoint, err)
-	}
-	s3Hostname := s3URL.Hostname()
-	s3Port, err := strconv.Atoi(s3URL.Port())
+	s3Hostname := sysClient.S3DnsURL.Hostname()
+	s3Port, err := strconv.Atoi(sysClient.S3DnsURL.Port())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse s3 port %q. got error: %v", sysClient.S3Client.Endpoint, err)
 	}
