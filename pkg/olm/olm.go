@@ -272,15 +272,17 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 				Description:  "PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes. This affects where the system stores data chunks (encrypted). Updates to this field will only affect new pv-pools, but updates to existing pools are not supported by the operator.",
 				DisplayName:  "PV Pool DefaultStorageClass",
 			},
-			operv1.SpecDescriptor{
-				Path:         "tolerations",
-				XDescriptors: []string{uiK8sTolerations},
-				Description:  "Tolerations.",
-				DisplayName:  "Tolerations",
-			},
+			// this descriptor caused the OCP console to crash on noobaa CRD page, when trying to display tolerations.
+			// removing for now
+			// operv1.SpecDescriptor{
+			// 	Path:         "tolerations",
+			// 	XDescriptors: []string{uiK8sTolerations},
+			// 	Description:  "Tolerations.",
+			// 	DisplayName:  "Tolerations",
+			// },
 			operv1.SpecDescriptor{
 				Path:         "imagePullSecret",
-				XDescriptors: []string{uiK8sTolerations},
+				XDescriptors: []string{uiK8sSecret},
 				Description:  "ImagePullSecret (optional) sets a pull secret for the system image.",
 				DisplayName:  "Image Pull Secret",
 			},
