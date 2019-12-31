@@ -14,10 +14,6 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -613,12 +609,11 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 // Client is the system client for making mgmt or s3 calls (with operator/admin credentials)
 type Client struct {
 	NooBaa      *nbv1.NooBaa
-	NBClient    nb.Client
-	S3Client    *s3.S3
-	S3DnsURL    *url.URL
-	MgmtURL     *url.URL
 	ServiceMgmt *corev1.Service
 	SecretOp    *corev1.Secret
+	NBClient    nb.Client
+	MgmtURL     *url.URL
+	S3URL       *url.URL
 }
 
 // GetNBClient returns an api client
@@ -633,7 +628,9 @@ func GetNBClient() nb.Client {
 // Connect loads the mgmt and S3 api details from the system.
 // It gets the endpoint address and token from the system status and secret that the
 // operator creates for the system.
-func Connect(usePortForwarding bool) (*Client, error) {
+// When isExternal is true we return  : s3 => external DNS, mgmt => port-forwarding (router)
+// When isExternal is false we return : s3 => internal DNS, mgmt => node-port
+func Connect(isExternal bool) (*Client, error) {
 
 	klient := util.KubeClient()
 	sysObjKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
@@ -650,8 +647,6 @@ func Connect(usePortForwarding bool) (*Client, error) {
 	}
 
 	authToken := r.SecretOp.StringData["auth_token"]
-	accessKey := r.SecretOp.StringData["AWS_ACCESS_KEY_ID"]
-	secretKey := r.SecretOp.StringData["AWS_SECRET_ACCESS_KEY"]
 	mgmtStatus := &r.NooBaa.Status.Services.ServiceMgmt
 	s3Status := &r.NooBaa.Status.Services.ServiceS3
 
@@ -659,77 +654,67 @@ func Connect(usePortForwarding bool) (*Client, error) {
 		return nil, fmt.Errorf("Connect(): Operator secret with auth token is not ready")
 	}
 	if len(mgmtStatus.NodePorts) == 0 {
-		return nil, fmt.Errorf("Connect(): System mgmt service (nodeport) is not ready")
+		return nil, fmt.Errorf("Connect(): System mgmt service (NodePorts) is not ready")
 	}
-	if len(s3Status.NodePorts) == 0 {
-		return nil, fmt.Errorf("Connect(): System s3 service (nodeport) is not ready")
-	}
-
-	mgmtNodePort := mgmtStatus.NodePorts[0]
-	mgmtURL, err := url.Parse(mgmtNodePort)
-	if err != nil {
-		return nil, fmt.Errorf("Connect(): Failed to parse s3 endpoint %q. got error: %v", mgmtNodePort, err)
+	if len(s3Status.InternalDNS) == 0 {
+		return nil, fmt.Errorf("Connect(): System s3 service (InternalDNS) is not ready")
 	}
 
-	s3NodePort := s3Status.NodePorts[0]
-	// s3URL, err := url.Parse(s3NodePort)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to parse s3 endpoint %q. got error: %v", s3NodePort, err)
-	// }
-	endpoint := s3NodePort
-	if len(s3Status.ExternalIP) > 0 {
-		endpoint = s3Status.ExternalIP[0]
-	}
-	s3InternalDNS := s3Status.InternalDNS[0]
-	s3DnsURL, err := url.Parse(s3InternalDNS)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse s3 internal dns %q. got error: %v", s3InternalDNS, err)
-	}
-
+	mgmtEndpoint := mgmtStatus.NodePorts[0]
+	s3Endpoint := s3Status.InternalDNS[0]
 	var nbClient nb.Client
 
-	if usePortForwarding {
+	if isExternal {
+
+		// setup port forwarding
 		router := &nb.APIRouterPortForward{
 			ServiceMgmt:  r.ServiceMgmt,
 			PodNamespace: r.NooBaa.Namespace,
 			PodName:      r.NooBaa.Name + "-core-0",
 		}
-		err = router.Start()
+		err := router.Start()
 		if err != nil {
 			return nil, err
 		}
 		nbClient = nb.NewClient(router)
-		mgmtURL, _ = url.Parse(strings.TrimSuffix(router.GetAddress(""), "/rpc/"))
+		mgmtEndpoint = strings.TrimSuffix(router.GetAddress(""), "/rpc/")
+
+		// set s3 to external if possible, otherwise fallback to node-port which is like external for minikube
+		if len(s3Status.ExternalIP) > 0 {
+			s3Endpoint = s3Status.ExternalIP[0]
+		} else if len(s3Status.NodePorts) > 0 {
+			s3Endpoint = s3Status.NodePorts[0]
+		}
+
 	} else {
+		nodePortURL, err := url.Parse(mgmtEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("Connect(): Failed to parse mgmt url %q. got error: %v", mgmtEndpoint, err)
+		}
 		nbClient = nb.NewClient(&nb.APIRouterNodePort{
 			ServiceMgmt: r.ServiceMgmt,
-			NodeIP:      mgmtURL.Hostname(),
+			NodeIP:      nodePortURL.Hostname(),
 		})
 	}
+
 	nbClient.SetAuthToken(authToken)
 
-	s3Config := &aws.Config{
-		Endpoint: &endpoint,
-		Credentials: credentials.NewStaticCredentials(
-			accessKey,
-			secretKey,
-			"",
-		),
-	}
-
-	s3Session, err := session.NewSession(s3Config)
+	mgmtURL, err := url.Parse(mgmtEndpoint)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Connect(): Failed to parse mgmt url %q. got error: %v", mgmtEndpoint, err)
+	}
+	s3URL, err := url.Parse(s3Endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("Connect(): Failed to parse s3 url %q. got error: %v", s3Endpoint, err)
 	}
 
 	return &Client{
 		NooBaa:      r.NooBaa,
-		NBClient:    nbClient,
-		S3Client:    s3.New(s3Session),
-		S3DnsURL:    s3DnsURL,
-		MgmtURL:     mgmtURL,
 		ServiceMgmt: r.ServiceMgmt,
 		SecretOp:    r.SecretOp,
+		NBClient:    nbClient,
+		MgmtURL:     mgmtURL,
+		S3URL:       s3URL,
 	}, nil
 }
 

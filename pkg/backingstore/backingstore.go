@@ -8,7 +8,9 @@ import (
 
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
+	"github.com/noobaa/noobaa-operator/v2/pkg/system"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
 	"github.com/spf13/cobra"
@@ -300,10 +302,10 @@ func RunCreateAWSS3(cmd *cobra.Command, args []string) {
 // RunCreateS3Compatible runs a CLI command
 func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.StoreTypeS3Compatible, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
+		endpoint := util.GetFlagStringOrPrompt(cmd, "endpoint")
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 		accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
 		secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
-		endpoint, _ := cmd.Flags().GetString("endpoint")
 		sigVer, _ := cmd.Flags().GetString("signature-version")
 		secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
 		secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
@@ -427,6 +429,30 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	backStore.Namespace = options.Namespace
 	backStore.Spec = nbv1.BackingStoreSpec{}
 
+	nbClient := system.GetNBClient()
+
+	poolinfo, err := nbClient.ReadPoolAPI(nb.ReadPoolParams{Name: backStore.Name})
+	if err != nil {
+		rpcErr, isRPCErr := err.(*nb.RPCError)
+		if !isRPCErr || rpcErr.RPCCode != "NO_SUCH_POOL" {
+			log.Fatalf(`❌ Failed to read BackingStore info: %s`, err)
+		}
+	} else if poolinfo.Undeletable != "" {
+		switch poolinfo.Undeletable {
+		case "CONNECTED_BUCKET_DELETING":
+			fallthrough
+		case "IN_USE":
+			log.Fatalf(`❌ Could not delete BackingStore %q in namespace %q as it is being used by one or more bucket classes`,
+				backStore.Name, backStore.Namespace)
+
+		case "DEFAULT_RESOURCE":
+			log.Fatalf(`❌ Could not delete BackingStore %q in namespace %q as it is the default resource of one or more accounts`,
+				backStore.Name, backStore.Namespace)
+		default:
+			log.Fatalf(`❌ Could not delete BackingStore %q in namespace %q, undeletable due to %q`,
+				backStore.Name, backStore.Namespace, poolinfo.Undeletable)
+		}
+	}
 	if !util.KubeDelete(backStore) {
 		log.Fatalf(`❌ Could not delete BackingStore %q in namespace %q`,
 			backStore.Name, backStore.Namespace)

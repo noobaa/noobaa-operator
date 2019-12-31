@@ -19,6 +19,7 @@ func Cmd() *cobra.Command {
 	cmd.AddCommand(
 		CmdCreate(),
 		CmdList(),
+		CmdDelete(),
 	)
 	return cmd
 }
@@ -40,6 +41,16 @@ func CmdCreate() *cobra.Command {
 		`PV size of each volume in the store`,
 	)
 
+	return cmd
+}
+
+// CmdDelete creates a CLI command
+func CmdDelete() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "delete <store-name>",
+		Short: "Deletes a NooBaa PV Store",
+		Run:   RunDelete,
+	}
 	return cmd
 }
 
@@ -98,6 +109,34 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		HostCount:  int(numVolumes),
 		HostConfig: nb.PoolHostsInfo{VolumeSize: gbsize},
 	})
+	util.Panic(err)
+}
+
+// RunDelete runs a CLI command
+func RunDelete(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <pv-store-name> %s`, cmd.UsageString())
+	}
+
+	nbClient := system.GetNBClient()
+
+	poolName := args[0]
+
+	err := nbClient.DeletePoolAPI(nb.DeletePoolParams{
+		Name: poolName,
+	})
+	if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
+		switch rpcErr.RPCCode {
+		case "NO_SUCH_POOL":
+			log.Fatalf(`❌ Can't delete pv-store %s - pool does not exist`, poolName)
+		case "DEFAULT_RESOURCE":
+			log.Fatalf(`❌ Can't delete pv-store %s - pool is one or more accounts default resource`, poolName)
+		case "IN_USE":
+			log.Fatalf(`❌ Can't delete pv-store %s - pool is used by one or more buckets`, poolName)
+		}
+	}
 	util.Panic(err)
 }
 

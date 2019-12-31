@@ -206,6 +206,11 @@ type ReadBucketParams struct {
 	Name string `json:"name"`
 }
 
+// ReadPoolParams is the params to pool_api.read_pool()
+type ReadPoolParams struct {
+	Name string `json:"name"`
+}
+
 // ListAccountsReply is the reply to account_api.list_accounts()
 type ListAccountsReply struct {
 	Accounts []*AccountInfo `json:"accounts"`

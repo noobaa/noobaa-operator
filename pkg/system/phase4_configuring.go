@@ -449,10 +449,10 @@ func (r *Reconciler) createS3BucketForBackingStore(s3Config *aws.Config, bucketN
 	if err != nil {
 		return err
 	}
-	S3Client := s3.New(s3Session)
+	s3Client := s3.New(s3Session)
 
 	r.Logger.Infof("creating bucket %s", bucketName)
-	createBucketOutout, err := S3Client.CreateBucket(&s3.CreateBucketInput{Bucket: &bucketName})
+	createBucketOutout, err := s3Client.CreateBucket(&s3.CreateBucketInput{Bucket: &bucketName})
 	if err != nil {
 		awsErr, isAwsErr := err.(awserr.Error)
 		if isAwsErr && awsErr.Code() == s3.ErrCodeBucketAlreadyOwnedByYou {
