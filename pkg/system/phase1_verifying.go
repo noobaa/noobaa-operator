@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/asaskevich/govalidator"
 	semver "github.com/coreos/go-semver/semver"
@@ -41,6 +42,9 @@ func (r *Reconciler) CheckSystemCR() error {
 	}
 
 	specImage := options.ContainerImage
+	if os.Getenv("NOOBAA_CORE_IMAGE") != "" {
+		specImage = os.Getenv("NOOBAA_CORE_IMAGE")
+	}
 	if r.NooBaa.Spec.Image != nil {
 		specImage = *r.NooBaa.Spec.Image
 	}
