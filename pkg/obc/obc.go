@@ -308,7 +308,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		return
 	}
 	if len(list.Items) == 0 {
-		fmt.Printf("No OBC's found.\n")
+		fmt.Printf("No OBCs found.\n")
 		return
 	}
 	table := (&util.PrintTable{}).AddRow(
