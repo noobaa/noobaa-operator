@@ -147,6 +147,9 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() {
 					}
 					c.Env[j].Value = fmt.Sprintf(strings.Join(hosts[:], " "))
 
+				case "ENDPOINT_GROUP_ID":
+					c.Env[j].Value = fmt.Sprint(r.NooBaa.UID)
+
 					// Commented as of Guy's requests, feature needs further deliberation
 					// case "REGION":
 					// 	if r.NooBaa.Spec.Endpoints.Region != nil {
