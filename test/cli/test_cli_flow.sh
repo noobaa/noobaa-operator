@@ -69,9 +69,8 @@ function main {
     check_S3_compatible
     bucketclass_cycle
     obc_cycle
-    # TODO:: Enable the deletions path
-    #check_deletes
-    #noobaa uninstall
+    check_deletes
+    test_noobaa uninstall
 }
 
 function usage {

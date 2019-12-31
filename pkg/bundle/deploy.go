@@ -832,7 +832,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "5286a9f4298f25b47878ed73e25e5efb3b4bbff7eafc2ae55264e3d9a16734f6"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "7c3a8c9818e98da25e3c1f27271c614171b6db53989f2beee709c9f19d47d539"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -891,6 +891,7 @@ spec:
         - name: MONGODB_URL
         - name: VIRTUAL_HOSTS
         - name: REGION
+        - name: ENDPOINT_GROUP_ID
         - name: CONTAINER_CPU_REQUEST
           valueFrom:
             resourceFieldRef:

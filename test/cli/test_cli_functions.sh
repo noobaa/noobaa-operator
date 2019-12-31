@@ -23,10 +23,16 @@ function kuberun {
     fi
 }
 
-function noobaa {
+function test_noobaa {
     local rc
     local run_with_timeout=false
+    local should_fail=false
     local silence=false
+    if [ "${1}" == "failure" ]
+    then
+        should_fail=true
+        shift
+    fi
     if [ "${1}" == "timeout" ]
     then
         run_with_timeout=true
@@ -56,8 +62,13 @@ function noobaa {
         ${noobaa} ${options}
         if [ $? -ne 0 ]
         then
-            echo "❌  ${noobaa} ${options} failed, Exiting"
-            exit 1
+            if ${should_fail}
+            then
+                echo "✅  ${noobaa} ${options} failed - as should"
+            else 
+                echo "❌  ${noobaa} ${options} failed, Exiting"
+                exit 1
+            fi
         elif [ ! ${silence} ]
         then
             echo "✅  ${noobaa} ${options} passed"
@@ -99,7 +110,7 @@ function timeout {
 }
 
 function install {
-    noobaa install --mini
+    test_noobaa install --mini
     local status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
     while [ "${status}" != "Ready" ]
     do
@@ -112,7 +123,7 @@ function install {
 function noobaa_install {
     #noobaa timeout install # Maybe when creating server we can use local PV
     install
-    noobaa status
+    test_noobaa status
     kuberun get noobaa
     kuberun describe noobaa
 }
@@ -124,7 +135,7 @@ function aws_credentials {
         then
             eval $(echo ${line//\"/} | sed -e 's/ //g' -e 's/:/=/g')
         fi
-    done < <(noobaa silence status)
+    done < <(test_noobaa silence status)
     if [ -z ${AWS_ACCESS_KEY_ID} ] || [ -z ${AWS_SECRET_ACCESS_KEY} ]
     then
         echo "❌  Could not get AWS credentials, Exiting"
@@ -139,18 +150,18 @@ function check_S3_compatible {
     local buckets=("first.bucket" "second.bucket")
     local backingstore=("compatible1" "compatible2")
 
-    noobaa bucket create ${buckets[1]}
+    test_noobaa bucket create ${buckets[1]}
     for (( cycle=0 ; cycle < ${#backingstore[@]} ; cycle++ ))
     do
-        noobaa backingstore create ${type} ${backingstore[cycle]} \
+        test_noobaa backingstore create ${type} ${backingstore[cycle]} \
             --target-bucket ${buckets[cycle]} \
             --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
             --access-key ${AWS_ACCESS_KEY_ID} \
             --secret-key ${AWS_SECRET_ACCESS_KEY}
-        noobaa backingstore status ${backingstore[cycle]}
+        test_noobaa backingstore status ${backingstore[cycle]}
     done
-    noobaa backingstore list
-    noobaa status
+    test_noobaa backingstore list
+    test_noobaa status
     kuberun get backingstore
     kuberun describe backingstore
     echo "✅  s3 compatible cycle is done"
@@ -158,13 +169,13 @@ function check_S3_compatible {
 
 function check_aws_S3 {
     return
-    # noobaa bucket create second.bucket
-    # noobaa backingstore create aws1 --type aws-s3 --bucket-name znoobaa --access-key XXX --secret-key YYY
-    # noobaa backingstore create aws2 --type aws-s3 --bucket-name noobaa-qa --access-key XXX --secret-key YYY
-    # noobaa backingstore status aws1
-    # noobaa backingstore status aws2
-    # noobaa backingstore list
-    # noobaa status
+    # test_noobaa bucket create second.bucket
+    # test_noobaa backingstore create aws1 --type aws-s3 --bucket-name znoobaa --access-key XXX --secret-key YYY
+    # test_noobaa backingstore create aws2 --type aws-s3 --bucket-name noobaa-qa --access-key XXX --secret-key YYY
+    # test_noobaa backingstore status aws1
+    # test_noobaa backingstore status aws2
+    # test_noobaa backingstore list
+    # test_noobaa status
     # kubectl get backingstore
     # kubectl describe backingstore
 }
@@ -182,15 +193,15 @@ function bucketclass_cycle {
         backingstore+=("compatible$((number+1))")
     done
 
-    noobaa bucketclass create ${bucketclass_names[0]} --backingstores ${backingstore[0]}
-    # noobaa bucketclass create ${bucketclass_names[1]} --placement Mirror --backingstores nb1,aws1 ❌
-    # noobaa bucketclass create ${bucketclass_names[2]} --placement Spread --backingstores aws1,aws2 ❌
-    noobaa bucketclass create ${bucketclass_names[3]} --backingstores ${backingstore[0]},${backingstore[1]}
+    test_noobaa bucketclass create ${bucketclass_names[0]} --backingstores ${backingstore[0]}
+    # test_noobaa bucketclass create ${bucketclass_names[1]} --placement Mirror --backingstores nb1,aws1 ❌
+    # test_noobaa bucketclass create ${bucketclass_names[2]} --placement Spread --backingstores aws1,aws2 ❌
+    test_noobaa bucketclass create ${bucketclass_names[3]} --backingstores ${backingstore[0]},${backingstore[1]}
 
-    local bucketclass_list_array=($(noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME))
+    local bucketclass_list_array=($(test_noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME))
     for bucketclass in ${bucketclass_list_array[@]}
     do
-        noobaa bucketclass status ${bucketclass}
+        test_noobaa bucketclass status ${bucketclass}
     done
 
     #TODO: activate the code below when we create all the bucketclass
@@ -201,7 +212,7 @@ function bucketclass_cycle {
     #     exit 1
     # fi
 
-    noobaa status
+    test_noobaa status
     kuberun get bucketclass
     kuberun describe bucketclass
     echo "✅  bucketclass cycle is done"
@@ -212,7 +223,7 @@ function obc_cycle {
     local bucket
     local buckets=()
 
-    local bucketclass_list_array=($(noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME | grep -v noobaa-default-bucket-class))
+    local bucketclass_list_array=($(test_noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME | grep -v noobaa-default-bucket-class))
     for bucketclass in ${bucketclass_list_array[@]}
     do
         buckets+=("bucket${bucketclass//[a-zA-Z.-]/}")
@@ -220,13 +231,13 @@ function obc_cycle {
         then
             flag="--app-namespace default"
         fi
-        noobaa obc create ${buckets[$((${#buckets[@]}-1))]} --bucketclass ${bucketclass} ${flag}
+        test_noobaa obc create ${buckets[$((${#buckets[@]}-1))]} --bucketclass ${bucketclass} ${flag}
         unset flag
     done
-    noobaa obc list
+    test_noobaa obc list
     for bucket in ${buckets[@]}
     do
-        noobaa obc status ${bucket}
+        test_noobaa obc status ${bucket}
     done
     kuberun get obc
     kuberun describe obc
@@ -238,38 +249,40 @@ function obc_cycle {
 
 function delete_backingstore_path {
     local object_bucket backing_store
-    local backingstore=($(noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
-    local bucketclass=($(noobaa silence bucketclass list  | grep ${backingstore[0]} | awk '{print $1}'))
-    local obc=($(noobaa silence obc list | grep ${backingstore[0]} | awk '{print $2}'))
-    echo "Starting the delete related ${backingstore[0]} paths"
+    local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
+    local bucketclass=($(test_noobaa silence bucketclass list  | grep ${backingstore[1]} | awk '{print $1}'))
+    local obc=($(test_noobaa silence obc list | grep -v "BUCKET-NAME" | awk '{print $2}'))
+    echo "Starting the delete related ${backingstore[1]} paths"
+
+    test_noobaa failure backingstore delete ${backingstore[1]}
     if [ ${#obc[@]} -ne 0 ]
     then
         for object_bucket in ${obc[@]}
         do
-            noobaa obc delete ${object_bucket}
+            test_noobaa obc delete ${object_bucket}
         done
     fi
-
     if [ ${#bucketclass[@]} -ne 0 ]
     then
         for bucket_class in ${bucketclass[@]}
         do
-            noobaa bucketclass delete ${bucket_class}
+            test_noobaa bucketclass delete ${bucket_class}
         done
     fi
-
-    noobaa backingstore delete ${backingstore[0]}
-    echo "✅  delete ${backingstore[0]} path is done"
+    sleep 30
+    test_noobaa backingstore delete ${backingstore[1]}
+    test_noobaa failure backingstore delete ${backingstore[0]}
+    echo "✅  delete ${backingstore[1]} path is done"
 }
 
 function check_deletes {
     echo "Starting the delete cycle"
-    local obc=($(noobaa silence obc list | grep -v "NAME\|default" | awk '{print $2}'))
-    local bucketclass=($(noobaa silence bucketclass list  | grep -v NAME | awk '{print $1}'))
-    local backingstore=($(noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
-    noobaa obc delete ${obc[0]}
-    noobaa bucketclass delete ${bucketclass[0]}
-    noobaa backingstore list
+    local obc=($(test_noobaa silence obc list | grep -v "NAME\|default" | awk '{print $2}'))
+    local bucketclass=($(test_noobaa silence bucketclass list  | grep -v NAME | awk '{print $1}'))
+    local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
+    test_noobaa obc delete ${obc[0]}
+    test_noobaa bucketclass delete ${bucketclass[0]}
+    test_noobaa backingstore list
     delete_backingstore_path
     echo "✅  delete cycle is done"
 }
