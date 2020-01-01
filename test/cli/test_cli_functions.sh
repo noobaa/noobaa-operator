@@ -270,6 +270,8 @@ function delete_backingstore_path {
         done
     fi
     sleep 30
+    local buckets=($(test_noobaa silence bucket list  | grep -v "BUCKET-NAME" | awk '{print $1}'))
+    echo "✅  buckets in system: ${buckets}"
     test_noobaa backingstore delete ${backingstore[1]}
     test_noobaa failure backingstore delete ${backingstore[0]}
     echo "✅  delete ${backingstore[1]} path is done"
