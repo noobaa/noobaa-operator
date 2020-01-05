@@ -53,6 +53,18 @@ type APIRouterServicePort struct {
 	ServiceMgmt *corev1.Service
 }
 
+// SimpleRouter is a basic router
+type SimpleRouter struct {
+	Address string
+}
+
+// GetAddress implements the router
+func (r *SimpleRouter) GetAddress(api string) string {
+	return r.Address
+}
+
+var _ APIRouter = &SimpleRouter{}
+
 var forwardingLogRE = regexp.MustCompile(`^Forwarding from 127.0.0.1:(\d+) -> (\d+)$`)
 
 // Start initializes and runs portforwarding by listening on to local ports
@@ -154,25 +166,25 @@ func (r *APIRouterPortForward) Stop() {
 func (r *APIRouterPortForward) GetAddress(api string) string {
 	port := FindPortByName(r.ServiceMgmt, GetAPIPortName(api)).TargetPort.IntValue()
 	localPort := r.MapRemotePortToLocal[uint16(port)]
-	return fmt.Sprintf("https://localhost:%d/rpc/", localPort)
+	return fmt.Sprintf("wss://localhost:%d/rpc/", localPort)
 }
 
 // GetAddress implements the router
 func (r *APIRouterPodPort) GetAddress(api string) string {
 	port := FindPortByName(r.ServiceMgmt, GetAPIPortName(api)).TargetPort.IntValue()
-	return fmt.Sprintf("https://%s:%d/rpc/", r.PodIP, port)
+	return fmt.Sprintf("wss://%s:%d/rpc/", r.PodIP, port)
 }
 
 // GetAddress implements the router
 func (r *APIRouterNodePort) GetAddress(api string) string {
 	port := FindPortByName(r.ServiceMgmt, GetAPIPortName(api)).NodePort
-	return fmt.Sprintf("https://%s:%d/rpc/", r.NodeIP, port)
+	return fmt.Sprintf("wss://%s:%d/rpc/", r.NodeIP, port)
 }
 
 // GetAddress implements the router
 func (r *APIRouterServicePort) GetAddress(api string) string {
 	port := FindPortByName(r.ServiceMgmt, GetAPIPortName(api)).Port
-	return fmt.Sprintf("https://%s.%s:%d/rpc/", r.ServiceMgmt.Name, r.ServiceMgmt.Namespace, port)
+	return fmt.Sprintf("wss://%s.%s:%d/rpc/", r.ServiceMgmt.Name, r.ServiceMgmt.Namespace, port)
 }
 
 // FindPortByName returns the port in the service that matches the given name.

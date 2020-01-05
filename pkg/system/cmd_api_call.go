@@ -40,10 +40,10 @@ func RunAPICall(cmd *cobra.Command, args []string) {
 		log.Fatalf("❌ %s", err)
 	}
 
-	req := &nb.RPCRequest{API: apiName, Method: methodName}
+	req := &nb.RPCMessage{API: apiName, Method: methodName}
 	res := &struct {
-		nb.RPCResponse `json:",inline"`
-		Reply          map[string]interface{} `json:"reply"`
+		nb.RPCMessage `json:",inline"`
+		Reply         map[string]interface{} `json:"reply"`
 	}{}
 
 	if paramsStr != "" {
