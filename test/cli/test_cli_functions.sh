@@ -67,6 +67,11 @@ function test_noobaa {
                 echo "✅  ${noobaa} ${options} failed - as should"
             else 
                 echo "❌  ${noobaa} ${options} failed, Exiting"
+                local pod_operator=$(kuberun get pod | grep noobaa-operator | awk '{print $1}')
+                echo "==============OPERATOR LOGS============"
+                kuberun logs ${pod_operator}
+                echo "==============CORE LOGS============"
+                kuberun logs noobaa-core-0
                 exit 1
             fi
         elif [ ! ${silence} ]
