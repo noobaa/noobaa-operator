@@ -79,6 +79,9 @@ type BucketClassStatus struct {
 	// +optional
 	// +listType=set
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
+	// Mode is a simple, high-level summary of where the System is in its lifecycle
+	// +optional
+	Mode string `json:"mode,omitempty"`
 }
 
 // PlacementPolicy specifies the placement policy for the bucket class

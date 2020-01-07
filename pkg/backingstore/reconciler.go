@@ -24,6 +24,33 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+var bsModeToPhaseMap map[string]nbv1.BackingStorePhaseInfo
+
+func init() {
+	bsModeToPhaseMap = modeToPhaseMap()
+}
+
+func modeToPhaseMap() map[string]nbv1.BackingStorePhaseInfo {
+	return map[string]nbv1.BackingStorePhaseInfo{
+		"INITIALIZING":        nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: INITALIZING"},
+		"DELETING":            nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: DELETING"},
+		"SCALING":             nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: SCALING"},
+		"MOST_NODES_ISSUES":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_NODES_ISSUES"},
+		"MANY_NODES_ISSUES":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_ISSUES"},
+		"MOST_STORAGE_ISSUES": nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_STORAGE_ISSUES"},
+		"MANY_STORAGE_ISSUES": nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_STORAGE_ISSUES"},
+		"MANY_NODES_OFFLINE":  nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_OFFLINE"},
+		"LOW_CAPACITY":        nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: LOW_CAPACITY"},
+		"OPTIMAL":             nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: OPTIMAL"},
+		"HAS_NO_NODES":        nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: HAS_NO_NODES"},
+		"ALL_NODES_OFFLINE":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: ALL_NODES_OFFLINE"},
+		"NO_CAPACITY":         nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: NO_CAPACITY"},
+		"IO_ERRORS":           nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: IO_ERRORS"},
+		"STORAGE_NOT_EXIST":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: STORAGE_NOT_EXIST"},
+		"AUTH_FAILED":         nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: AUTH_FAILED"},
+	}
+}
+
 // Reconciler is the context for loading or reconciling a noobaa system
 type Reconciler struct {
 	Request  types.NamespacedName
@@ -131,12 +158,21 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			log.Warnf("⏳ Temporary Error: %s", err)
 		}
 	} else {
-		r.SetPhase(
-			nbv1.BackingStorePhaseReady,
-			"BackingStorePhaseReady",
-			"noobaa operator completed reconcile - backing store is ready",
-		)
-		log.Infof("✅ Done")
+		bsPhase, exist := bsModeToPhaseMap[r.BackingStore.Status.Mode.ModeCode]
+
+		if exist && bsPhase.Phase != r.BackingStore.Status.Phase {
+			r.SetPhase(bsPhase.Phase, bsPhase.Message, bsPhase.Reason)
+			if r.Recorder != nil {
+				r.Recorder.Eventf(r.BackingStore, corev1.EventTypeWarning, bsPhase.Reason, bsPhase.Message)
+			}
+		} else {
+			r.SetPhase(
+				nbv1.BackingStorePhaseReady,
+				"BackingStorePhaseReady",
+				"noobaa operator completed reconcile - backing store is ready",
+			)
+			log.Infof("✅ Done")
+		}
 	}
 
 	r.UpdateStatus()

@@ -101,6 +101,32 @@ type BackingStoreStatus struct {
 	// +optional
 	// +listType=set
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
+	// Mode specifies the updating mode of a BackingStore
+	// +optional
+	Mode BackingStoreMode `json:"mode,omitempty"`
+}
+
+// BackingStoreMode defines the updated Mode of BackingStore
+type BackingStoreMode struct {
+	// ModeCode specifies the updated mode of backingstore
+	// +optional
+	ModeCode string `json:"modeCode,omitempty"`
+	// TimeStamp specifies the update time of backingstore new mode
+	// +optional
+	TimeStamp string `json:"timeStamp,omitempty"`
+}
+
+// BackingStorePhaseInfo defines the phase and the updated Mode of BackingStore
+type BackingStorePhaseInfo struct {
+	// Phase specifies the phase of backingstore
+	// +optional
+	Phase BackingStorePhase `json:"phase,omitempty"`
+	// Reason specifies the reason of backingstore phase
+	// +optional
+	Reason string `json:"reason,omitempty"`
+	// Message specifies the message of backingstore phase
+	// +optional
+	Message string `json:"message,omitempty"`
 }
 
 // StoreType is the backing store type enum
