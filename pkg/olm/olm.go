@@ -214,9 +214,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			operv1.SpecDescriptor{Path: "dbVolumeResources", XDescriptors: uiResources},
 			operv1.SpecDescriptor{Path: "dbStorageClass", XDescriptors: uiText},
 			operv1.SpecDescriptor{Path: "pvPoolDefaultStorageClass", XDescriptors: uiText},
-			// this descriptor caused the OCP console to crash on noobaa CRD page, when trying to display tolerations.
-			// removing for now
-			// operv1.SpecDescriptor{Path: "tolerations", XDescriptors: []string{"urn:alm:descriptor:io.kubernetes:Tolerations"}},
+			operv1.SpecDescriptor{Path: "tolerations", XDescriptors: []string{"urn:alm:descriptor:io.kubernetes:Tolerations"}},
 			operv1.SpecDescriptor{Path: "imagePullSecret", XDescriptors: []string{"urn:alm:descriptor:io.kubernetes:Secret"}},
 		},
 		"BackingStore":      []operv1.SpecDescriptor{},
