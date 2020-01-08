@@ -154,6 +154,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() {
 	if r.NooBaaDB.UID == "" {
 		for i := range r.NooBaaDB.Spec.VolumeClaimTemplates {
 			pvc := &r.NooBaaDB.Spec.VolumeClaimTemplates[i]
+			pvc.Namespace = r.NooBaaDB.Namespace
 			r.Own(pvc)
 			// unsetting BlockOwnerDeletion to acoid error when trying to own pvc:
 			// "cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"

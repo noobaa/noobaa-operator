@@ -299,7 +299,7 @@ func RunList(cmd *cobra.Command, args []string) {
 	list := &nbv1.ObjectBucketClaimList{
 		TypeMeta: metav1.TypeMeta{Kind: "ObjectBucketClaim"},
 	}
-	if !util.KubeList(list, nil) {
+	if !util.KubeList(list) {
 		return
 	}
 	if len(list.Items) == 0 {

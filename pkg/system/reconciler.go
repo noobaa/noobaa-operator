@@ -348,8 +348,7 @@ func (r *Reconciler) reconcileObject(obj runtime.Object, desiredFunc func(), opt
 	r.Own(objMeta)
 
 	op, err := controllerutil.CreateOrUpdate(
-		r.Ctx, r.Client, obj.(runtime.Object),
-		func(obj runtime.Object) error {
+		r.Ctx, r.Client, obj.(runtime.Object), func() error {
 			if desiredFunc != nil {
 				desiredFunc()
 			}

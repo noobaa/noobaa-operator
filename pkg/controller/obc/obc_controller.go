@@ -10,6 +10,6 @@ func Add(mgr manager.Manager) error {
 	return obc.RunProvisioner(
 		mgr.GetClient(),
 		mgr.GetScheme(),
-		mgr.GetRecorder("noobaa-operator"),
+		mgr.GetEventRecorderFor("noobaa-operator"),
 	)
 }

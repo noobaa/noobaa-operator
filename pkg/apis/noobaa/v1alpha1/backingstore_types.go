@@ -94,10 +94,12 @@ type BackingStoreStatus struct {
 	// +patchMergeKey=type
 	// +patchStrategy=merge
 	// +optional
+	// +listType=set
 	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
 
 	// RelatedObjects is a list of objects related to this operator.
 	// +optional
+	// +listType=set
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 }
 

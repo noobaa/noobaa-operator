@@ -79,7 +79,7 @@ func (r *APIRouterPortForward) Start() error {
 
 	config := *util.KubeConfig()
 	config.GroupVersion = &schema.GroupVersion{Group: "api", Version: "v1"}
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
+	config.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs}
 	restClient, err := rest.RESTClientFor(&config)
 	util.Panic(err)
 
