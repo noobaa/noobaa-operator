@@ -233,6 +233,8 @@ func KubeDelete(obj runtime.Object, opts ...client.DeleteOption) bool {
 	} else if errors.IsConflict(err) {
 		conflicted = true
 		log.Printf("🗑️  Conflict (OK): %s %q: %s\n", gvk.Kind, objKey.Name, err)
+	} else if errors.IsNotFound(err) {
+		return true
 	}
 
 	time.Sleep(10 * time.Millisecond)

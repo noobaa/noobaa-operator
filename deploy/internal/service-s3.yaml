@@ -17,3 +17,6 @@ spec:
     - port: 443
       targetPort: 6443
       name: s3-https
+    - port: 8444
+      name: md-https
+

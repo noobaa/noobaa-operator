@@ -753,6 +753,19 @@ spec:
                     TODO: Add other useful fields. apiVersion, kind, uid?'
                   type: string
               type: object
+            joinSecret:
+              description: JoinSecret (optional) instructs the operator to join another
+                cluster and point to a secret that holds the join information
+              properties:
+                name:
+                  description: Name is unique within a namespace to reference a secret
+                    resource.
+                  type: string
+                namespace:
+                  description: Namespace defines the space within which the secret
+                    name must be unique.
+                  type: string
+              type: object
             pvPoolDefaultStorageClass:
               description: PVPoolDefaultStorageClass (optional) overrides the default
                 cluster StorageClass for the pv-pool volumes. This affects where the

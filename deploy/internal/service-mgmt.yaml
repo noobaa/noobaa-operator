@@ -20,8 +20,6 @@ spec:
     - port: 443
       name: mgmt-https
       targetPort: 8443
-    - port: 8444
-      name: md-https
     - port: 8445
       name: bg-https
     - port: 8446

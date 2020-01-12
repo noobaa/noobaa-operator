@@ -121,7 +121,13 @@ type NooBaaSpec struct {
 
 	// Endpoints (optional) sets configuration info for the noobaa endpoint
 	// deployment.
+	// +optional
 	Endpoints *EndpointsSpec `json:"endpoints,omitempty"`
+
+	// JoinSecret (optional) instructs the operator to join another cluster
+	// and point to a secret that holds the join information
+	// +optional
+	JoinSecret *corev1.SecretReference `json:"joinSecret,omitempty"`
 }
 
 // EndpointsSpec defines the desired state of noobaa endpoint deployment

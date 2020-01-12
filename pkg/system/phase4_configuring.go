@@ -39,13 +39,16 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileSecretAdmin(); err != nil {
 		return err
 	}
-	if err := r.NBClient.RegisterToCluster(); err != nil {
+	if err := r.ReconcileSecretEndpoints(); err != nil {
 		return err
 	}
 	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
 		return err
 	}
 	if err := r.ReconcileObject(r.HPAEndpoint, r.SetDesiredHPAEndpoint); err != nil {
+		return err
+	}
+	if err := r.NBClient.RegisterToCluster(); err != nil {
 		return err
 	}
 	if err := r.ReconcileDefaultBackingStore(); err != nil {
@@ -57,10 +60,10 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileOBCStorageClass(); err != nil {
 		return err
 	}
-	if err := r.ReconcileObjectOptional(r.PrometheusRule, nil); err != nil {
+	if err := r.ReconcilePrometheusRule(); err != nil {
 		return err
 	}
-	if err := r.ReconcileObjectOptional(r.ServiceMonitor, nil); err != nil {
+	if err := r.ReconcileServiceMonitor(); err != nil {
 		return err
 	}
 	if err := r.ReconcileReadSystem(); err != nil {
@@ -120,16 +123,67 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() {
 				c.Resources = *endpointsSpec.Resources
 			}
 
+			mgmtBaseAddr := ""
+			s3BaseAddr := ""
+			if r.JoinSecret == nil {
+				mgmtBaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceMgmt.Name, r.Request.Namespace)
+				s3BaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceS3.Name, r.Request.Namespace)
+			}
+
 			for j := range c.Env {
 				switch c.Env[j].Name {
-				case "MGMT_URL":
-					c.Env[j].Value = fmt.Sprintf(`https://%s.%s.svc`,
-						r.ServiceMgmt.Name, r.Request.Namespace)
-
+				case "MGMT_ADDR":
+					if r.JoinSecret == nil {
+						port := nb.FindPortByName(r.ServiceMgmt, "mgmt-https")
+						c.Env[j].Value = fmt.Sprintf(`%s:%d`, mgmtBaseAddr, port.Port)
+					} else {
+						c.Env[j].Value = r.JoinSecret.StringData["mgmt_addr"]
+					}
+				case "BG_ADDR":
+					if r.JoinSecret == nil {
+						port := nb.FindPortByName(r.ServiceMgmt, "bg-https")
+						c.Env[j].Value = fmt.Sprintf(`%s:%d`, mgmtBaseAddr, port.Port)
+					} else {
+						c.Env[j].Value = r.JoinSecret.StringData["bg_addr"]
+					}
+				case "MD_ADDR":
+					if r.JoinSecret == nil {
+						port := nb.FindPortByName(r.ServiceS3, "md-https")
+						c.Env[j].Value = fmt.Sprintf(`%s:%d`, s3BaseAddr, port.Port)
+					} else {
+						c.Env[j].Value = r.JoinSecret.StringData["md_addr"]
+					}
+				case "HOSTED_AGENTS_ADDR":
+					if r.JoinSecret == nil {
+						port := nb.FindPortByName(r.ServiceMgmt, "hosted-agents-https")
+						c.Env[j].Value = fmt.Sprintf(`%s:%d`, mgmtBaseAddr, port.Port)
+					} else {
+						c.Env[j].Value = r.JoinSecret.StringData["hosted_agents_addr"]
+					}
 				case "MONGODB_URL":
-					c.Env[j].Value = fmt.Sprintf(`mongodb://%s-0.%s/nbcore`,
-						r.NooBaaDB.Name, r.NooBaaDB.Spec.ServiceName)
-
+					if r.JoinSecret == nil {
+						c.Env[j].Value = fmt.Sprintf(`mongodb://%s-0.%s/nbcore`,
+							r.NooBaaDB.Name, r.NooBaaDB.Spec.ServiceName)
+					}
+				case "LOCAL_MD_SERVER":
+					if r.JoinSecret == nil {
+						c.Env[j].Value = "true"
+					}
+				case "LOCAL_N2N_AGENT":
+					if r.JoinSecret == nil {
+						c.Env[j].Value = "true"
+					}
+				case "JWT_SECRET":
+					if r.JoinSecret == nil {
+						c.Env[j].ValueFrom = &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "noobaa-server",
+								},
+								Key: "jwt",
+							},
+						}
+					}
 				case "VIRTUAL_HOSTS":
 					hosts := []string{}
 					for _, addr := range r.NooBaa.Status.Services.ServiceS3.InternalDNS {
@@ -152,7 +206,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() {
 						hosts = append(hosts, endpointsSpec.AdditionalVirtualHosts...)
 					}
 					c.Env[j].Value = fmt.Sprintf(strings.Join(hosts[:], " "))
-
 				case "ENDPOINT_GROUP_ID":
 					c.Env[j].Value = fmt.Sprint(r.NooBaa.UID)
 
@@ -178,6 +231,10 @@ func (r *Reconciler) SetDesiredHPAEndpoint() {
 
 // ReconcileSecretOp creates a new system in the noobaa server if not created yet.
 func (r *Reconciler) ReconcileSecretOp() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
 
 	// log := r.Logger.WithName("ReconcileSecretOp")
 	util.KubeCheck(r.SecretOp)
@@ -227,6 +284,10 @@ func (r *Reconciler) ReconcileSecretOp() error {
 
 // ReconcileSecretAdmin creates the admin secret
 func (r *Reconciler) ReconcileSecretAdmin() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
 
 	log := r.Logger.WithField("func", "ReconcileSecretAdmin")
 
@@ -270,9 +331,46 @@ func (r *Reconciler) ReconcileSecretAdmin() error {
 	return nil
 }
 
+// ReconcileSecretEndpoints creates the endpoints secret
+func (r *Reconciler) ReconcileSecretEndpoints() error {
+	util.KubeCheck(r.SecretEndpoints)
+
+	if r.SecretEndpoints.UID != "" {
+		return nil
+	}
+
+	if r.JoinSecret == nil {
+		res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+			System:   r.Request.Name,
+			Role:     "admin",
+			Email:    r.SecretOp.StringData["email"],
+			Password: r.SecretOp.StringData["password"],
+		})
+		if err != nil {
+			return err
+		}
+
+		r.SecretEndpoints.StringData["auth_token"] = res.Token
+	} else {
+		r.SecretEndpoints.StringData["auth_token"] = r.JoinSecret.StringData["auth_token"]
+	}
+
+	r.Own(r.SecretEndpoints)
+	err := r.Client.Create(r.Ctx, r.SecretEndpoints)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // ReconcileDefaultBackingStore attempts to get credentials to cloud storage using the cloud-credentials operator
 // and use it for the default backing store
 func (r *Reconciler) ReconcileDefaultBackingStore() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
 
 	log := r.Logger.WithField("func", "ReconcileDefaultBackingStore")
 
@@ -419,6 +517,10 @@ func (r *Reconciler) generateBackingStoreTargetName() string {
 
 // ReconcileDefaultBucketClass creates the default bucket class
 func (r *Reconciler) ReconcileDefaultBucketClass() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
 
 	util.KubeCheck(r.DefaultBucketClass)
 	if r.DefaultBucketClass.UID != "" {
@@ -445,6 +547,10 @@ func (r *Reconciler) ReconcileDefaultBucketClass() error {
 
 // ReconcileOBCStorageClass reconciles default OBC storage class for the system
 func (r *Reconciler) ReconcileOBCStorageClass() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
 
 	util.KubeCheck(r.OBCStorageClass)
 	if r.OBCStorageClass.UID != "" {
@@ -483,6 +589,50 @@ func (r *Reconciler) createS3BucketForBackingStore(s3Config *aws.Config, bucketN
 	} else {
 		r.Logger.Infof("Successfully created bucket %s. result = %v", bucketName, createBucketOutout)
 	}
+	return nil
+}
+
+// ReconcilePrometheusRule reconciles prometheus rule
+func (r *Reconciler) ReconcilePrometheusRule() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
+
+	return r.ReconcileObjectOptional(r.PrometheusRule, nil)
+}
+
+// ReconcileServiceMonitor reconciles service monitor
+func (r *Reconciler) ReconcileServiceMonitor() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
+
+	return r.ReconcileObjectOptional(r.ServiceMonitor, nil)
+}
+
+// ReconcileReadSystem calls read_system on noobaa server and stores the result
+func (r *Reconciler) ReconcileReadSystem() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
+
+	// update noobaa-core version in reconciler struct
+	systemInfo, err := r.NBClient.ReadSystemAPI()
+	if err != nil {
+		r.Logger.Errorf("failed to read system info: %v", err)
+		return err
+	}
+	r.SystemInfo = &systemInfo
+	r.Logger.Infof("updating noobaa-core version to %s", systemInfo.Version)
+	r.CoreVersion = systemInfo.Version
+
+	// update backingstores and bucketclass mode
+	r.UpdateBackingStoresPhase(systemInfo.Pools)
+	r.UpdateBucketClassesPhase(systemInfo.Buckets)
+
 	return nil
 }
 
@@ -533,23 +683,4 @@ func (r *Reconciler) UpdateBucketClassesPhase(Buckets []nb.BucketInfo) {
 			}
 		}
 	}
-}
-
-// ReconcileReadSystem calls read_system on noobaa server and stores the result
-func (r *Reconciler) ReconcileReadSystem() error {
-	// update noobaa-core version in reconciler struct
-	systemInfo, err := r.NBClient.ReadSystemAPI()
-	if err != nil {
-		r.Logger.Errorf("failed to read system info: %v", err)
-		return err
-	}
-	r.SystemInfo = &systemInfo
-	r.Logger.Infof("updating noobaa-core version to %s", systemInfo.Version)
-	r.CoreVersion = systemInfo.Version
-
-	// update backingstores and bucketclass mode
-	r.UpdateBackingStoresPhase(systemInfo.Pools)
-	r.UpdateBucketClassesPhase(systemInfo.Buckets)
-
-	return nil
 }

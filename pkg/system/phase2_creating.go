@@ -31,23 +31,49 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		"noobaa operator started phase 2/4 - \"Creating\"",
 	)
 
+	if err := r.ReconcileObject(r.ServiceAccount, r.SetDesiredServiceAccount); err != nil {
+		return err
+	}
+	if err := r.ReconcilePhaseCreatingForMainClusters(); err != nil {
+		return err
+	}
+	if err := r.ReconcileObject(r.ServiceS3, r.SetDesiredServiceS3); err != nil {
+		return err
+	}
+	if err := r.ReconcileObjectOptional(r.RouteS3, nil); err != nil {
+		return err
+	}
+	// the credentials that are created by cloud-credentials-operator sometimes take time
+	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
+	// creating the credential request as early as possible to try and avoid it
+	if err := r.ReconcileBackingStoreCredentials(); err != nil {
+		r.Logger.Errorf("failed to create CredentialsRequest. will retry in phase 4. error: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// ReconcilePhaseCreatingForMainClusters reconcile all object for full deployment clusters
+func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
+
 	// A failure to discover OAuth endpoints should not fail the entire reconcile phase.
 	oAuthEndpoints, err := util.DiscoverOAuthEndpoints()
 	if err != nil {
 		r.Logger.Warnf("Discovery of OAuth endpoints failed, got: %v", err)
 	}
 	r.OAuthEndpoints = oAuthEndpoints
-	if err := r.ReconcileObject(r.ServiceAccount, r.SetDesiredServiceAccount); err != nil {
-		return err
-	}
+
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
 		return err
 	}
-
 	if err := r.UpgradeSplitDB(); err != nil {
 		return err
 	}
-
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}
@@ -60,20 +86,7 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDB); err != nil {
 		return err
 	}
-	if err := r.ReconcileObject(r.ServiceS3, r.SetDesiredServiceS3); err != nil {
-		return err
-	}
 	if err := r.ReconcileObjectOptional(r.RouteMgmt, nil); err != nil {
-		return err
-	}
-	if err := r.ReconcileObjectOptional(r.RouteS3, nil); err != nil {
-		return err
-	}
-	// the credentials that are created by cloud-credentials-operator sometimes take time
-	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
-	// creating the credential request as early as possible to try and avoid it
-	if err := r.ReconcileBackingStoreCredentials(); err != nil {
-		r.Logger.Errorf("failed to create CredentialsRequest. will retry in phase 4. error: %v", err)
 		return err
 	}
 
@@ -224,8 +237,6 @@ func (r *Reconciler) SetDesiredCoreApp() {
 			}
 			for j := range c.Env {
 				switch c.Env[j].Name {
-				// case "ENDPOINT_FORKS_NUMBER":
-				// 	c.Env[j].Value = "1" // TODO recalculate
 				case "AGENT_PROFILE":
 					c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
 
@@ -280,6 +291,11 @@ func (r *Reconciler) SetDesiredCoreApp() {
 // ReconcileBackingStoreCredentials creates a CredentialsRequest resource if neccesary and returns
 // the bucket name allowed for the credentials. nil is returned if cloud credentials are not supported
 func (r *Reconciler) ReconcileBackingStoreCredentials() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
+
 	if util.IsAWSPlatform() {
 		return r.ReconcileAWSCredentials()
 	}
