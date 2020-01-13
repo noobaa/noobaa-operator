@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 
-	"github.com/google/uuid"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
@@ -385,7 +386,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		Region:           &region,
 		S3ForcePathStyle: &forcePathStyle,
 	}
-	bucketName := "noobaa-backing-store-" + uuid.New().String()
+	bucketName := r.generateBackingStoreTargetName()
 	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
 		return err
 	}
@@ -399,6 +400,19 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		SignatureVersion: nbv1.S3SignatureVersionV4,
 	}
 	return nil
+}
+
+func (r *Reconciler) generateBackingStoreTargetName() string {
+	const MaxNameLength = 63
+	tsMilli := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
+	name := "nb." + tsMilli
+	if r.RouteMgmt.Spec.Host != "" {
+		name += "." + r.RouteMgmt.Spec.Host
+	}
+	if len(name) > MaxNameLength {
+		name = name[:MaxNameLength]
+	}
+	return name
 }
 
 // ReconcileDefaultBucketClass creates the default bucket class
