@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
@@ -38,13 +37,6 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		r.Logger.Warnf("Discovery of OAuth endpoints failed, got: %v", err)
 	}
 	r.OAuthEndpoints = oAuthEndpoints
-	// the credentials that are created by cloud-credentials-operator sometimes take time
-	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
-	// creating the credential request as early as possible to try and avoid it
-	if err := r.ReconcileBackingStoreCredentials(); err != nil {
-		r.Logger.Errorf("failed to create CredentialsRequest. will retry in phase 4. error: %v", err)
-		return err
-	}
 	if err := r.ReconcileObject(r.ServiceAccount, r.SetDesiredServiceAccount); err != nil {
 		return err
 	}
@@ -75,6 +67,13 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		return err
 	}
 	if err := r.ReconcileObjectOptional(r.RouteS3, nil); err != nil {
+		return err
+	}
+	// the credentials that are created by cloud-credentials-operator sometimes take time
+	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
+	// creating the credential request as early as possible to try and avoid it
+	if err := r.ReconcileBackingStoreCredentials(); err != nil {
+		r.Logger.Errorf("failed to create CredentialsRequest. will retry in phase 4. error: %v", err)
 		return err
 	}
 
@@ -356,7 +355,7 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 	if errors.IsNotFound(err) {
 		// credential request does not exist. create one
 		r.Logger.Info("Creating CredentialsRequest resource")
-		bucketName = "noobaa-backing-store-" + uuid.New().String()
+		bucketName = r.generateBackingStoreTargetName()
 		codec, err := cloudcredsv1.NewCodec()
 		if err != nil {
 			r.Logger.Error("error creating codec for cloud credentials providerSpec")
