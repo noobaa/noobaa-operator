@@ -11,9 +11,11 @@ The `lib-bucket-provisioner` repo provides a library implementation and design t
 
 # StorageClass
 
-The administrator will create StorageClasses and control its visibility to app-owners using RBAC rules.
+The operator creates a default storage class with the name pattern `<noobaa-namespace>.noobaa.io` which helps to identify the target noobaa deployment since storage classes are non-namespaced. 
 
-See https://github.com/kube-object-storage/lib-bucket-provisioner/blob/master/deploy/storageClass.yaml 
+However the administrator of a noobaa deployment can create additional StorageClasses that refer to a different BucketClass for different data placement policies or reclaim policy, and control its visibility to app-owners using RBAC rules.
+
+For more information see https://github.com/kube-object-storage/lib-bucket-provisioner/blob/master/deploy/storageClass.yaml 
 
 Example:
 
@@ -38,18 +40,169 @@ The operator will watch for OBC's and fulfill the claims by create/find existing
 
 Example:
 
+```bash
+noobaa obc create my-bucket-claim -n noobaa --app-namespace my-app
+```
+
+```yaml
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: my-bucket-claim
+  namespace: my-app
+spec:
+  generateBucketName: my-bucket
+  storageClassName: noobaa.noobaa.io
+```
+
+# OBC with specific BucketClass
+
+Applications that require a bucket from a specific BucketClass can create an OBC with the default StorageClass, but override the BucketClass specifically for that claim using the `spec.additionalConfig.bucketclass` property.
+
+Example:
+
+```bash
+noobaa obc create my-bucket-claim -n noobaa --app-namespace my-app --bucketclass custom-bucket-class
+```
+
+```yaml
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: my-bucket-claim
+  namespace: my-app
+spec:
+  generateBucketName: my-bucket
+  storageClassName: noobaa.noobaa.io
+  additionalConfig:
+    bucketclass: custom-bucket-class
+```
+
+# Using the OBC
+
+Once the OBC is provisioned by the operator, a bucket will be created in NooBaa, and the operator will create a Secret and ConfigMap with the same name of the OBC on the same namespace of the OBC. For the example above, the Secret and ConfigMap will both be named `my-bucket-claim`.
+
+The content of the Secret and ConfigMap provides all the information needed by the application in order to connect to the bucket using S3 API, and these can be mounted into the application pods using env or volumes. The application should configure its S3 SDK to use the AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY credentials as provided by the Secret, and the BUCKET_HOST:BUCKET_PORT endpoint and BUCKET_NAME as provided by the ConfigMap - see below.
+
+**NOTE on SSL certificates**
+Currently the BUCKET_HOST:BUCKET_PORT refers to the s3 service ClusterIP and the https port. However, the SSL certificate of the service is self signed by the cluster CA, and whenever a client application running in the cluster wants to use it and trust the cluster CA it should use the service name instead, which is `s3.<noobaa-namespace>.svc.cluster.local` with the default 443 https port. 
+
+Here is an example content:
+
+Secret:
+```yaml
+apiVersion: v1
+data:
+  AWS_ACCESS_KEY_ID: UU1odkFSWjNiMWplTmx2UnZpcHU=
+  AWS_SECRET_ACCESS_KEY: eTdFdlkva1FSQVEzWElWWXB3L2ZYdVBZdG8wSDBxaVlBSUpraW1iTA==
+kind: Secret
+metadata:
+  creationTimestamp: "2020-01-14T08:05:31Z"
+  finalizers:
+  - objectbucket.io/finalizer
+  labels:
+    app: noobaa
+    bucket-provisioner: noobaa.noobaa.io-obc
+    noobaa-domain: noobaa.noobaa.io
+  name: my-bucket-claim
+  namespace: my-app
+  ownerReferences:
+  - apiVersion: objectbucket.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: ObjectBucketClaim
+    name: my-bucket-claim
+    uid: a2852724-36a4-11ea-bb22-0a49da05a082
+  resourceVersion: "24953844"
+  selfLink: /api/v1/namespaces/my-app/secrets/my-bucket-claim
+  uid: a2a6ee13-36a4-11ea-bb22-0a49da05a082
+type: Opaque
+```
+
+ConfigMap:
+```yaml
+apiVersion: v1
+data:
+  BUCKET_HOST: 10.0.169.118
+  BUCKET_NAME: my-bucket-9febb742-f14d-4a94-8ed8-3da5d8bd242c
+  BUCKET_PORT: "32603"
+  BUCKET_REGION: ""
+  BUCKET_SUBREGION: ""
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2020-01-14T08:05:32Z"
+  finalizers:
+  - objectbucket.io/finalizer
+  labels:
+    app: noobaa
+    bucket-provisioner: noobaa.noobaa.io-obc
+    noobaa-domain: noobaa.noobaa.io
+  name: my-bucket-claim
+  namespace: my-app
+  ownerReferences:
+  - apiVersion: objectbucket.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: ObjectBucketClaim
+    name: my-bucket-claim
+    uid: a2852724-36a4-11ea-bb22-0a49da05a082
+  resourceVersion: "24953845"
+  selfLink: /api/v1/namespaces/my-app/configmaps/my-bucket-claim
+  uid: a2b28adc-36a4-11ea-bb22-0a49da05a082
+```
+
+# Embedding OBC in the Application
+
+An application deployment can claim a bucket and refer to the expected Secret & ConfigMap in a static deployment yaml, since the names of the Secret and ConfigMap follow the same name as the OBC, and pods that mount information from Secret or ConfigMaps will not start until those resources exist, this provides a self contained deployment that will only run the application once the bucket provisioning is complete.
+
+Here is an example yaml that combines the OBC and a Pod that uses it:
+
 ```yaml
 apiVersion: objectbucket.io/v1alpha1
 kind: ObjectBucketClaim
 metadata:
   name: my-bucket-claim
 spec:
-  generateBucketName: "my-bucket-"
+  generateBucketName: my-bucket
   storageClassName: noobaa.noobaa.io
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  labels:
+    app: my-app
+spec:
+  containers:
+  - name: app
+    envFrom:
+    - secretRef:
+        name: my-bucket-claim
+    - configMapRef:
+        name: my-bucket-claim
+    env:
+    - name
+    image: banst/awscli
+    command:
+    - sh
+    - "-c"
+    - |
+      echo "----> Configuring S3 endpoint ...";
+      pip install awscli-plugin-endpoint;
+      aws configure set plugins.endpoint awscli_plugin_endpoint;
+      aws configure set s3.endpoint_url https://s3.noobaa.svc.cluster.local;
+      echo "----> Configuring certificates ...";
+      aws configure set ca_bundle /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt;
+      echo "----> Copying files ...";
+      aws s3 cp --recursive /etc s3://$BUCKET_NAME;
+      echo "----> List files ...";
+      aws s3 ls $BUCKET_NAME;
+      echo "----> Done.";
 ```
+
 
 # Bucket Permissions and Sharing
 
-The scope of bucket permissions will be at the namespace scope - this means that all the OBC's from the same namespace will receive S3 credentials that has permission to use any other bucket provisioned by that namespace. Notice that also listing buckets with these S3 credentials will return only the subset of buckets claimed by that namespace.
+The scope of bucket permissions is at the claim scope - this means that the credentials of the OBC are confined to access only that single OBC bucket. Notice that also listing buckets with these S3 credentials will return only that one bucket.
 
-While there are cases that this namespace scope is not enough, it provides a simple model for sharing and privacy for the initial release.
+Going forward we would like to have an option to create a single account per application namespace so that all buckets claimed by an application will be visible and accessible to that application.
