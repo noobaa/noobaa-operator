@@ -84,8 +84,8 @@ Once the OBC is provisioned by the operator, a bucket will be created in NooBaa,
 
 The content of the Secret and ConfigMap provides all the information needed by the application in order to connect to the bucket using S3 API, and these can be mounted into the application pods using env or volumes. The application should configure its S3 SDK to use the AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY credentials as provided by the Secret, and the BUCKET_HOST:BUCKET_PORT endpoint and BUCKET_NAME as provided by the ConfigMap - see below.
 
-**NOTE on SSL certificates**
-Currently the BUCKET_HOST:BUCKET_PORT refers to the s3 service ClusterIP and the https port. However, the SSL certificate of the service is self signed by the cluster CA, and whenever a client application running in the cluster wants to use it and trust the cluster CA it should use the service name instead, which is `s3.<noobaa-namespace>.svc.cluster.local` with the default 443 https port. 
+**NOTE on SSL certificates:**
+In the last release v2.0.9 the BUCKET_HOST:BUCKET_PORT refers to the s3 service ClusterIP and the https port. However, the SSL certificate of the service is self signed by the cluster CA, and whenever a client application running in the cluster wants to use it and trust the cluster CA it should use the service name instead, which is `s3.<noobaa-namespace>.svc.cluster.local` with the default 443 https port. This was fixed in https://github.com/noobaa/noobaa-operator/pull/189 and will be part of v2.1.0 once it gets released.
 
 Here is an example content:
 
@@ -180,8 +180,6 @@ spec:
         name: my-bucket-claim
     - configMapRef:
         name: my-bucket-claim
-    env:
-    - name
     image: banst/awscli
     command:
     - sh
