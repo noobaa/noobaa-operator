@@ -113,7 +113,7 @@ func CmdYaml() *cobra.Command {
 // LoadSystemDefaults loads a noobaa system CR from bundled yamls
 // and apply's changes from CLI flags to the defaults.
 func LoadSystemDefaults() *nbv1.NooBaa {
-	sys := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa)
+	sys := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa)
 	sys.Namespace = options.Namespace
 	sys.Name = options.SystemName
 	if options.NooBaaImage != "" {

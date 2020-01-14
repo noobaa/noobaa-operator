@@ -124,11 +124,11 @@ func RunYaml(cmd *cobra.Command, args []string) {
 
 // LoadCrds loads the CRDs structures from the bundled yamls
 func LoadCrds() *Crds {
-	o1 := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_crd_yaml)
-	o2 := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml)
-	o3 := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_bucketclass_crd_yaml)
-	o4 := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_crd_yaml)
-	o5 := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucket_crd_yaml)
+	o1 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_noobaas_crd_yaml)
+	o2 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_backingstores_crd_yaml)
+	o3 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_bucketclasses_crd_yaml)
+	o4 := util.KubeObject(bundle.File_deploy_obc_objectbucket_io_objectbucketclaims_crd_yaml)
+	o5 := util.KubeObject(bundle.File_deploy_obc_objectbucket_io_objectbuckets_crd_yaml)
 	crds := &Crds{
 		NooBaa:            o1.(*CRD),
 		BackingStore:      o2.(*CRD),

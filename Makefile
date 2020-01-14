@@ -93,7 +93,7 @@ pkg/bundle/deploy.go: pkg/bundler/bundler.go $(shell find deploy/ -type f)
 
 gen-api: operator-sdk gen
 	$(TIME) operator-sdk generate k8s
-	$(TIME) operator-sdk generate openapi
+	$(TIME) operator-sdk generate crds
 	@echo "✅ gen-api"
 .PHONY: gen-api
 
