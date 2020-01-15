@@ -107,7 +107,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		Name:       poolName,
 		IsManaged:  true,
 		HostCount:  int(numVolumes),
-		HostConfig: nb.PoolHostsInfo{VolumeSize: gbsize},
+		HostConfig: nb.PoolHostsInfo{VolumeSize: gbsize},   
 	})
 	util.Panic(err)
 }
