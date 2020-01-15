@@ -437,7 +437,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		if !isRPCErr || rpcErr.RPCCode != "NO_SUCH_POOL" {
 			log.Fatalf(`❌ Failed to read BackingStore info: %s`, err)
 		}
-	} else if poolinfo.Undeletable != "" {
+	} else if poolinfo.Undeletable != "" && poolinfo.Undeletable!="IS_BACKINGSTORE"{
 		switch poolinfo.Undeletable {
 		case "CONNECTED_BUCKET_DELETING":
 			fallthrough
