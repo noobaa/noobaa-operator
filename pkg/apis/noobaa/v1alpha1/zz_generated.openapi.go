@@ -176,11 +176,17 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreStatus(ref common.ReferenceCall
 							},
 						},
 					},
+					"mode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Mode specifies the updating mode of a BackingStore",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreMode"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/openshift/custom-resource-status/conditions/v1.Condition", "k8s.io/api/core/v1.ObjectReference"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.BackingStoreMode", "github.com/openshift/custom-resource-status/conditions/v1.Condition", "k8s.io/api/core/v1.ObjectReference"},
 	}
 }
 
@@ -303,6 +309,13 @@ func schema_pkg_apis_noobaa_v1alpha1_BucketClassStatus(ref common.ReferenceCallb
 									},
 								},
 							},
+						},
+					},
+					"mode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Mode is a simple, high-level summary of where the System is in its lifecycle",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},

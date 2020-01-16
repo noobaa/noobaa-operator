@@ -89,7 +89,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "fc3773993371b6a6f9fa34c9939665b66a3d449ab493822a58d2a342b90ea625"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "e69e698b5f7a8f99dc3439153bb39c231be79427430385579259d82c5da8cabe"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -315,6 +315,17 @@ spec:
                 - type
                 type: object
               type: array
+            mode:
+              description: Mode specifies the updating mode of a BackingStore
+              properties:
+                modeCode:
+                  description: ModeCode specifies the updated mode of backingstore
+                  type: string
+                timeStamp:
+                  description: TimeStamp specifies the update time of backingstore
+                    new mode
+                  type: string
+              type: object
             phase:
               description: Phase is a simple, high-level summary of where the backing
                 store is in its lifecycle
@@ -368,7 +379,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "f52d97bf50d81b0363d44b4b2a8b8528447789a52faa5e5c4dedc66f607a7fb5"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "cbd965f4609883e1dc90aaf228873464cd1598c10dd1880537528f80e12e9abf"
 
 const File_deploy_crds_noobaa_io_bucketclasses_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -479,6 +490,10 @@ spec:
                 - type
                 type: object
               type: array
+            mode:
+              description: Mode is a simple, high-level summary of where the System
+                is in its lifecycle
+              type: string
             phase:
               description: Phase is a simple, high-level summary of where the System
                 is in its lifecycle

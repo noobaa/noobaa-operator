@@ -86,6 +86,7 @@ type TieringPolicyInfo struct {
 	ChunkSplitConfig *ChunkSplitConfig `json:"chunk_split_config,omitempty"`
 	DataCapacity     *StorageInfo      `json:"data,omitempty"`
 	StorageCapacity  *StorageInfo      `json:"storage,omitempty"`
+	Mode             string            `json:"mode,omitempty"`
 }
 
 // TierInfo is the information of a tier

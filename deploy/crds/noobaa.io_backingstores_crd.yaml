@@ -222,6 +222,17 @@ spec:
                 - type
                 type: object
               type: array
+            mode:
+              description: Mode specifies the updating mode of a BackingStore
+              properties:
+                modeCode:
+                  description: ModeCode specifies the updated mode of backingstore
+                  type: string
+                timeStamp:
+                  description: TimeStamp specifies the update time of backingstore
+                    new mode
+                  type: string
+              type: object
             phase:
               description: Phase is a simple, high-level summary of where the backing
                 store is in its lifecycle

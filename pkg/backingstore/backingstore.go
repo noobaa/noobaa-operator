@@ -442,7 +442,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		case "CONNECTED_BUCKET_DELETING":
 			fallthrough
 		case "IN_USE":
-			log.Fatalf(`❌ Could not delete BackingStore %q in namespace %q as it is being used by one or more bucket classes`,
+			log.Fatalf(`❌ Could not delete BackingStore %q in namespace %q as it is being used by one or more buckets`,
 				backStore.Name, backStore.Namespace)
 
 		case "DEFAULT_RESOURCE":
