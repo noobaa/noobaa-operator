@@ -515,6 +515,11 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 		*out = new(EndpointsSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.JoinSecret != nil {
+		in, out := &in.JoinSecret, &out.JoinSecret
+		*out = new(corev1.SecretReference)
+		**out = **in
+	}
 	return
 }
 

@@ -547,7 +547,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "bea454a865d4510e25f6703409495603357c060538aa43a2e4f4f1605bc3b9c0"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "e2da8ecd82bd3eb411d3fefbf0f76f67547023bb665b0ce607137ad99af4aef6"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -1304,6 +1304,19 @@ spec:
                     TODO: Add other useful fields. apiVersion, kind, uid?'
                   type: string
               type: object
+            joinSecret:
+              description: JoinSecret (optional) instructs the operator to join another
+                cluster and point to a secret that holds the join information
+              properties:
+                name:
+                  description: Name is unique within a namespace to reference a secret
+                    resource.
+                  type: string
+                namespace:
+                  description: Namespace defines the space within which the secret
+                    name must be unique.
+                  type: string
+              type: object
             pvPoolDefaultStorageClass:
               description: PVPoolDefaultStorageClass (optional) overrides the default
                 cluster StorageClass for the pv-pool volumes. This affects where the
@@ -1699,7 +1712,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "7c3a8c9818e98da25e3c1f27271c614171b6db53989f2beee709c9f19d47d539"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "ff6d715cce677a81b36bab784aeaed016b44750b342b4fc8a48a8743eaac7d2f"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1749,16 +1762,22 @@ spec:
         - containerPort: 6001
         - containerPort: 6443
         env:
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: noobaa-server
-              key: jwt
-        - name: MGMT_URL
+        - name: MGMT_ADDR
+        - name: BG_ADDR
+        - name: MD_ADDR
+        - name: HOSTED_AGENTS_ADDR
         - name: MONGODB_URL
         - name: VIRTUAL_HOSTS
         - name: REGION
         - name: ENDPOINT_GROUP_ID
+        - name: LOCAL_MD_SERVER
+        - name: LOCAL_N2N_AGENT
+        - name: JWT_SECRET
+        - name: NOOBAA_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: noobaa-endpoints
+              key: auth_token
         - name: CONTAINER_CPU_REQUEST
           valueFrom:
             resourceFieldRef:
@@ -2013,7 +2032,7 @@ spec:
       name: mongodb
 `
 
-const Sha256_deploy_internal_service_mgmt_yaml = "528fb9ccd535776579e59dc5ae60602d0679ce9c6c59c7d5d5a22526fe79131d"
+const Sha256_deploy_internal_service_mgmt_yaml = "450984e5e72eee3a761e240c6c0731dd14160c5fcb502fc81beb6abe2789e906"
 
 const File_deploy_internal_service_mgmt_yaml = `apiVersion: v1
 kind: Service
@@ -2037,8 +2056,6 @@ spec:
     - port: 443
       name: mgmt-https
       targetPort: 8443
-    - port: 8444
-      name: md-https
     - port: 8445
       name: bg-https
     - port: 8446
@@ -2062,7 +2079,7 @@ spec:
       app: noobaa
 `
 
-const Sha256_deploy_internal_service_s3_yaml = "220a8196a5937ca7763bcedf3ea42e9ed6dd99cbfc38dd428a884d2712a7a3bd"
+const Sha256_deploy_internal_service_s3_yaml = "9e5b3d6ef68b19be9f431481154faae1ed708b642e760b6cd0bd77eb7fc1d5f0"
 
 const File_deploy_internal_service_s3_yaml = `apiVersion: v1
 kind: Service
@@ -2083,6 +2100,9 @@ spec:
     - port: 443
       targetPort: 6443
       name: s3-https
+    - port: 8444
+      name: md-https
+
 `
 
 const Sha256_deploy_internal_statefulset_core_yaml = "3bf734db9a1c6d2dde8a5afb3582389b7d005d75938bacbd4e169994dad66bda"

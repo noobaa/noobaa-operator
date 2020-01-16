@@ -46,16 +46,22 @@ spec:
         - containerPort: 6001
         - containerPort: 6443
         env:
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: noobaa-server
-              key: jwt
-        - name: MGMT_URL
+        - name: MGMT_ADDR
+        - name: BG_ADDR
+        - name: MD_ADDR
+        - name: HOSTED_AGENTS_ADDR
         - name: MONGODB_URL
         - name: VIRTUAL_HOSTS
         - name: REGION
         - name: ENDPOINT_GROUP_ID
+        - name: LOCAL_MD_SERVER
+        - name: LOCAL_N2N_AGENT
+        - name: JWT_SECRET
+        - name: NOOBAA_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: noobaa-endpoints
+              key: auth_token
         - name: CONTAINER_CPU_REQUEST
           valueFrom:
             resourceFieldRef:

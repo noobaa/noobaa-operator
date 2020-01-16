@@ -25,6 +25,12 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		return err
 	}
 
+	if r.JoinSecret != nil {
+		if err := r.CheckJoinSecret(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -120,5 +126,31 @@ func (r *Reconciler) CheckSystemCR() error {
 		}
 	}
 
+	return nil
+}
+
+// CheckJoinSecret checks that all need information to allow to join
+// another noobaa clauster is specified in the join secret
+func (r *Reconciler) CheckJoinSecret() error {
+	if r.JoinSecret.StringData["mgmt_addr"] == "" {
+		return util.NewPersistentError("InvalidJoinSecert",
+			"JoinSecret is missing mgmt_addr")
+	}
+	if r.JoinSecret.StringData["bg_addr"] == "" {
+		return util.NewPersistentError("InvalidJoinSecert",
+			"JoinSecret is missing bg_addr")
+	}
+	if r.JoinSecret.StringData["md_addr"] == "" {
+		return util.NewPersistentError("InvalidJoinSecert",
+			"JoinSecret is missing md_addr")
+	}
+	if r.JoinSecret.StringData["hosted_agents_addr"] == "" {
+		return util.NewPersistentError("InvalidJoinSecert",
+			"JoinSecret is missing hosted_agents_addr")
+	}
+	if r.JoinSecret.StringData["auth_token"] == "" {
+		return util.NewPersistentError("InvalidJoinSecert",
+			"JoinSecret is missing auth_token")
+	}
 	return nil
 }

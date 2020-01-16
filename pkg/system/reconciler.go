@@ -70,6 +70,7 @@ type Reconciler struct {
 	SecretServer        *corev1.Secret
 	SecretOp            *corev1.Secret
 	SecretAdmin         *corev1.Secret
+	SecretEndpoints     *corev1.Secret
 	CloudCreds          *cloudcredsv1.CredentialsRequest
 	DefaultBackingStore *nbv1.BackingStore
 	DefaultBucketClass  *nbv1.BucketClass
@@ -82,6 +83,7 @@ type Reconciler struct {
 	RouteS3             *routev1.Route
 	DeploymentEndpoint  *appsv1.Deployment
 	HPAEndpoint         *autoscalingv1.HorizontalPodAutoscaler
+	JoinSecret          *corev1.Secret
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -111,6 +113,7 @@ func NewReconciler(
 		SecretServer:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretOp:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretEndpoints:     util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		CloudCreds:          util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
 		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
@@ -135,6 +138,7 @@ func NewReconciler(
 	r.SecretServer.Namespace = r.Request.Namespace
 	r.SecretOp.Namespace = r.Request.Namespace
 	r.SecretAdmin.Namespace = r.Request.Namespace
+	r.SecretEndpoints.Namespace = r.Request.Namespace
 	r.CloudCreds.Namespace = r.Request.Namespace
 	r.CloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
 	r.DefaultBackingStore.Namespace = r.Request.Namespace
@@ -158,6 +162,7 @@ func NewReconciler(
 	r.SecretServer.Name = r.Request.Name + "-server"
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
+	r.SecretEndpoints.Name = r.Request.Name + "-endpoints"
 	r.CloudCreds.Name = r.Request.Name + "-cloud-creds"
 	r.CloudCreds.Spec.SecretRef.Name = r.Request.Name + "-cloud-creds-secret"
 	r.CephObjectstoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
@@ -197,6 +202,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.ServiceDb)
 	util.KubeCheck(r.SecretServer)
 	util.KubeCheck(r.SecretOp)
+	util.KubeCheck(r.SecretEndpoints)
 	util.KubeCheck(r.SecretAdmin)
 	util.KubeCheck(r.OBCStorageClass)
 	util.KubeCheck(r.DefaultBucketClass)
@@ -223,6 +229,20 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	if !CheckSystem(r.NooBaa) {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return res, nil
+	}
+
+	if r.NooBaa.Spec.JoinSecret != nil {
+		r.JoinSecret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.NooBaa.Spec.JoinSecret.Namespace,
+				Name:      r.NooBaa.Spec.JoinSecret.Name,
+			},
+		}
+
+		if !util.KubeCheck(r.JoinSecret) {
+			log.Infof("Join secret not found or already deleted. Skip reconcile.")
+			return res, nil
+		}
 	}
 
 	err := r.ReconcilePhases()
