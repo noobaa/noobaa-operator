@@ -48,7 +48,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileObject(r.HPAEndpoint, r.SetDesiredHPAEndpoint); err != nil {
 		return err
 	}
-	if err := r.NBClient.RegisterToCluster(); err != nil {
+	if err := r.RegisterToCluster(); err != nil {
 		return err
 	}
 	if err := r.ReconcileDefaultBackingStore(); err != nil {
@@ -362,6 +362,16 @@ func (r *Reconciler) ReconcileSecretEndpoints() error {
 	}
 
 	return nil
+}
+
+// RegisterToCluster registers the noobaa client with the noobaa cluster
+func (r *Reconciler) RegisterToCluster() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
+
+	return r.NBClient.RegisterToCluster()
 }
 
 // ReconcileDefaultBackingStore attempts to get credentials to cloud storage using the cloud-credentials operator
