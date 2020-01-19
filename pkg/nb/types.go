@@ -376,6 +376,13 @@ type UpdateBucketClassParams struct {
 	Tiers  []TierInfo        `json:"tiers"`
 }
 
+// BucketClassInfo is the is the reply of tiering_policy_api.update_bucket_class()
+type BucketClassInfo struct {
+	ErrorMessage   string                  `json:"error_message"`
+	ShouldRevert   bool                    `json:"should_revert"`
+	RevertToPolicy UpdateBucketClassParams `json:"revert_to_policy"`
+}
+
 // AllowedBuckets is a struct for setting which buckets an account can access
 type AllowedBuckets struct {
 	FullPermission bool     `json:"full_permission"`
