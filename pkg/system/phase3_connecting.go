@@ -24,11 +24,11 @@ func (r *Reconciler) ReconcilePhaseConnecting() error {
 
 	if r.JoinSecret == nil {
 		r.CheckServiceStatus(r.ServiceMgmt, r.RouteMgmt, &r.NooBaa.Status.Services.ServiceMgmt, "mgmt-https")
-
-		if err := r.InitNBClient(); err != nil {
-			return err
-		}
 	}
+	if err := r.InitNBClient(); err != nil {
+		return err
+	}
+
 	r.CheckServiceStatus(r.ServiceS3, r.RouteS3, &r.NooBaa.Status.Services.ServiceS3, "s3-https")
 
 	return nil
@@ -136,24 +136,31 @@ func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, route *routev1.Rout
 
 // InitNBClient initialize the noobaa client for making calls to the server.
 func (r *Reconciler) InitNBClient() error {
-	if len(r.NooBaa.Status.Services.ServiceMgmt.NodePorts) == 0 {
-		return fmt.Errorf("mgmt port not ready yet")
-	}
+	if r.JoinSecret == nil {
+		if len(r.NooBaa.Status.Services.ServiceMgmt.NodePorts) == 0 {
+			return fmt.Errorf("mgmt port not ready yet")
+		}
 
-	mgmtAddress := r.NooBaa.Status.Services.ServiceMgmt.NodePorts[0]
-	mgmtURL, err := url.Parse(mgmtAddress)
-	if err != nil {
-		return fmt.Errorf("failed to parse mgmt address %q. got error: %v", mgmtAddress, err)
-	}
+		mgmtAddress := r.NooBaa.Status.Services.ServiceMgmt.NodePorts[0]
+		mgmtURL, err := url.Parse(mgmtAddress)
+		if err != nil {
+			return fmt.Errorf("failed to parse mgmt address %q. got error: %v", mgmtAddress, err)
+		}
 
-	r.NBClient = nb.NewClient(&nb.APIRouterNodePort{
-		ServiceMgmt: r.ServiceMgmt,
-		NodeIP:      mgmtURL.Hostname(),
-	})
+		r.NBClient = nb.NewClient(&nb.APIRouterNodePort{
+			ServiceMgmt: r.ServiceMgmt,
+			NodeIP:      mgmtURL.Hostname(),
+		})
+
+	} else {
+		r.NBClient = nb.NewClient(&nb.SimpleRouter{
+			Address: fmt.Sprintf("%srpc", r.JoinSecret.StringData["mgmt_addr"]),
+		})
+	}
 
 	// Check that the server is indeed serving the API already
 	// we use the read_auth call here because it's an API that always answers
 	// even when auth_token is empty.
-	_, err = r.NBClient.ReadAuthAPI()
+	_, err := r.NBClient.ReadAuthAPI()
 	return err
 }

@@ -39,7 +39,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
 		return err
 	}
-	if err := r.ReconcileObject(r.HPAEndpoint, r.SetDesiredHPAEndpoint); err != nil {
+	if err := r.ReconcileHPAEndpoint(); err != nil {
 		return err
 	}
 	if err := r.RegisterToCluster(); err != nil {
@@ -81,16 +81,19 @@ func (r *Reconciler) ReconcileSystemSecrets() error {
 		// Point the admin account secret reference to the admin secret.
 		r.NooBaa.Status.Accounts.Admin.SecretRef.Name = r.SecretAdmin.Name
 		r.NooBaa.Status.Accounts.Admin.SecretRef.Namespace = r.SecretAdmin.Namespace
+	}
 
-		if err := r.ReconcileObject(r.SecretOp, r.SetDesiredSecretOp); err != nil {
-			return err
-		}
-		r.NBClient.SetAuthToken(r.SecretOp.StringData["auth_token"])
+	if err := r.ReconcileObject(r.SecretOp, r.SetDesiredSecretOp); err != nil {
+		return err
+	}
+	r.NBClient.SetAuthToken(r.SecretOp.StringData["auth_token"])
 
+	if r.JoinSecret == nil {
 		if err := r.ReconcileObject(r.SecretAdmin, r.SetDesiredSecretAdminAccountInfo); err != nil {
 			return err
 		}
 	}
+
 	if err := r.ReconcileObject(r.SecretEndpoints, r.SetDesiredSecretEndpoints); err != nil {
 		return err
 	}
@@ -120,37 +123,42 @@ func (r *Reconciler) SetDesiredSecretOp() error {
 		return nil
 	}
 
-	// Trying to create token for admin so we could use it to create
-	// a token for the operator account
-	res1, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-		System:   r.Request.Name,
-		Role:     "admin",
-		Email:    r.SecretAdmin.StringData["email"],
-		Password: r.SecretAdmin.StringData["password"],
-	})
-	if err == nil {
-		r.NBClient.SetAuthToken(res1.Token)
-		res2, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-			System: r.Request.Name,
-			Role:   "operator",
-			Email:  options.OperatorAccountEmail,
-		})
-		if err != nil {
-			return fmt.Errorf("cannot create an auth token for operator, error: %v", err)
-		}
-		r.SecretOp.StringData["auth_token"] = res2.Token
-
-	} else {
-		// A failure to create a token for admin usually means that a system need to be created
-		res3, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
-			Name:     r.Request.Name,
+	if r.JoinSecret == nil {
+		// Trying to create token for admin so we could use it to create
+		// a token for the operator account
+		res1, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+			System:   r.Request.Name,
+			Role:     "admin",
 			Email:    r.SecretAdmin.StringData["email"],
 			Password: r.SecretAdmin.StringData["password"],
 		})
-		if err != nil {
-			return fmt.Errorf("system creation failed, error: %v", err)
+		if err == nil {
+			r.NBClient.SetAuthToken(res1.Token)
+			res2, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+				System: r.Request.Name,
+				Role:   "operator",
+				Email:  options.OperatorAccountEmail,
+			})
+			if err != nil {
+				return fmt.Errorf("cannot create an auth token for operator, error: %v", err)
+			}
+			r.SecretOp.StringData["auth_token"] = res2.Token
+
+		} else {
+			// A failure to create a token for admin usually means that a system need to be created
+			res3, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
+				Name:     r.Request.Name,
+				Email:    r.SecretAdmin.StringData["email"],
+				Password: r.SecretAdmin.StringData["password"],
+			})
+			if err != nil {
+				return fmt.Errorf("system creation failed, error: %v", err)
+			}
+			r.SecretOp.StringData["auth_token"] = res3.OperatorToken
 		}
-		r.SecretOp.StringData["auth_token"] = res3.OperatorToken
+	} else {
+		// Set the operator secret from the join secret
+		r.SecretOp.StringData["auth_token"] = r.JoinSecret.StringData["auth_token"]
 	}
 
 	return nil
@@ -184,21 +192,16 @@ func (r *Reconciler) SetDesiredSecretEndpoints() error {
 	// Load string data from data
 	util.SecretResetStringDataFromData(r.SecretEndpoints)
 
-	if r.JoinSecret == nil {
-		res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-			System:   r.Request.Name,
-			Role:     "admin",
-			Email:    r.SecretAdmin.StringData["email"],
-			Password: r.SecretAdmin.StringData["password"],
-		})
-		if err != nil {
-			return fmt.Errorf("cannot create auth token for use by endpoints, error: %v", err)
-		}
-
-		r.SecretEndpoints.StringData["auth_token"] = res.Token
-	} else {
-		r.SecretEndpoints.StringData["auth_token"] = r.JoinSecret.StringData["auth_token"]
+	res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+		System: r.Request.Name,
+		Role:   "admin",
+		Email:  options.AdminAccountEmail,
+	})
+	if err != nil {
+		return fmt.Errorf("cannot create auth token for use by endpoints, error: %v", err)
 	}
+
+	r.SecretEndpoints.StringData["auth_token"] = res.Token
 	return nil
 }
 
@@ -314,6 +317,29 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 		}
 	}
 	return nil
+}
+
+// ReconcileHPAEndpoint reconcile the endpoint's HPS and report the configuration
+// back to the noobaa core
+func (r *Reconciler) ReconcileHPAEndpoint() error {
+	if err := r.ReconcileObject(r.HPAEndpoint, r.SetDesiredHPAEndpoint); err != nil {
+		return err
+	}
+
+	max := r.HPAEndpoint.Spec.MaxReplicas
+	min := r.HPAEndpoint.Spec.MaxReplicas
+	if r.HPAEndpoint.Spec.MinReplicas != nil {
+		min = *r.HPAEndpoint.Spec.MinReplicas
+	}
+
+	return r.NBClient.UpdateEndpointGroupAPI(nb.UpdateEndpointGroupParams{
+		GroupName: fmt.Sprint(r.NooBaa.UID),
+		IsRemote:  r.JoinSecret != nil,
+		EndpointRange: nb.IntRange{
+			Min: max,
+			Max: min,
+		},
+	})
 }
 
 // SetDesiredHPAEndpoint updates the endpoint horizontal pod autoscaler as desired for reconciling
