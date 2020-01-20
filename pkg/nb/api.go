@@ -33,7 +33,7 @@ type Client interface {
 
 	UpdateAccountS3Access(UpdateAccountS3AccessParams) error
 	UpdateAllBucketsDefaultPool(UpdateDefaultPoolParams) error
-	UpdateBucketClass(UpdateBucketClassParams) error
+	UpdateBucketClass(UpdateBucketClassParams) (BucketClassInfo, error)
 
 	AddExternalConnectionAPI(AddExternalConnectionParams) error
 	CheckExternalConnectionAPI(AddExternalConnectionParams) (CheckExternalConnectionReply, error)
@@ -214,9 +214,14 @@ func (c *RPCClient) UpdateAccountS3Access(params UpdateAccountS3AccessParams) er
 }
 
 // UpdateBucketClass calls bucket_api.update_bucket_class()
-func (c *RPCClient) UpdateBucketClass(params UpdateBucketClassParams) error {
+func (c *RPCClient) UpdateBucketClass(params UpdateBucketClassParams) (BucketClassInfo, error) {
 	req := &RPCMessage{API: "tiering_policy_api", Method: "update_bucket_class", Params: params}
-	return c.Call(req, nil)
+	res := &struct {
+		RPCMessage `json:",inline"`
+		Reply      BucketClassInfo `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
 }
 
 // UpdateAllBucketsDefaultPool calls bucket_api.update_all_buckets_default_pool()
