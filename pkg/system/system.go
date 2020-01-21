@@ -611,6 +611,7 @@ type Client struct {
 	NooBaa      *nbv1.NooBaa
 	ServiceMgmt *corev1.Service
 	SecretOp    *corev1.Secret
+	SecretAdmin *corev1.Secret
 	NBClient    nb.Client
 	MgmtURL     *url.URL
 	S3URL       *url.URL
@@ -712,6 +713,7 @@ func Connect(isExternal bool) (*Client, error) {
 		NooBaa:      r.NooBaa,
 		ServiceMgmt: r.ServiceMgmt,
 		SecretOp:    r.SecretOp,
+		SecretAdmin: r.SecretAdmin,
 		NBClient:    nbClient,
 		MgmtURL:     mgmtURL,
 		S3URL:       s3URL,

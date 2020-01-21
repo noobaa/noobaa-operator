@@ -33,6 +33,9 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 		"noobaa operator started phase 4/4 - \"Configuring\"",
 	)
 
+	if err := r.ReconcileNBSystem(); err != nil {
+		return err
+	}
 	if err := r.ReconcileSecretOp(); err != nil {
 		return err
 	}
@@ -229,60 +232,108 @@ func (r *Reconciler) SetDesiredHPAEndpoint() {
 	}
 }
 
-// ReconcileSecretOp creates a new system in the noobaa server if not created yet.
+// ReconcileNBSystem creates a new system in the noobaa server if not created yet.
+func (r *Reconciler) ReconcileNBSystem() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
+
+	found := util.KubeCheck(r.SecretAdmin)
+	if r.SecretAdmin.StringData["email"] == "" {
+		r.SecretAdmin.StringData["email"] = options.AdminAccountEmail
+	}
+	if r.SecretAdmin.StringData["password"] == "" {
+		r.SecretAdmin.StringData["password"] = util.RandomBase64(16)
+	}
+
+	r.Own(r.SecretAdmin)
+	if found {
+		if err := r.Client.Update(r.Ctx, r.SecretAdmin); err != nil {
+			return err
+		}
+	} else {
+		if err := r.Client.Create(r.Ctx, r.SecretAdmin); err != nil {
+			return err
+		}
+	}
+
+	r.NooBaa.Status.Accounts.Admin.SecretRef.Name = r.SecretAdmin.Name
+	r.NooBaa.Status.Accounts.Admin.SecretRef.Namespace = r.SecretAdmin.Namespace
+
+	_, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+		System:   r.Request.Name,
+		Role:     "admin",
+		Email:    r.SecretAdmin.StringData["email"],
+		Password: r.SecretAdmin.StringData["password"],
+	})
+	if err != nil {
+		_, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
+			Name:     r.Request.Name,
+			Email:    r.SecretAdmin.StringData["email"],
+			Password: r.SecretAdmin.StringData["password"],
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ReconcileSecretOp reterive and save the operator account token in a secret
 func (r *Reconciler) ReconcileSecretOp() error {
 	// Skip if joining another NooBaa
 	if r.JoinSecret != nil {
 		return nil
 	}
 
-	// log := r.Logger.WithName("ReconcileSecretOp")
-	util.KubeCheck(r.SecretOp)
-
-	if r.SecretOp.StringData["auth_token"] != "" {
+	// If we have a valid operator secret we skip the reconcile
+	found := util.KubeCheck(r.SecretOp)
+	if found && r.SecretOp.StringData["auth_token"] != "" {
 		r.NBClient.SetAuthToken(r.SecretOp.StringData["auth_token"])
 		return nil
 	}
 
-	if r.SecretOp.StringData["email"] == "" {
-		r.SecretOp.StringData["email"] = options.AdminAccountEmail
-	}
-
-	if r.SecretOp.StringData["password"] == "" {
-		r.SecretOp.StringData["password"] = util.RandomBase64(16)
-		r.Own(r.SecretOp)
-		err := r.Client.Create(r.Ctx, r.SecretOp)
-		if err != nil {
-			return err
-		}
-	}
-
+	// If we have a valid admin secret we use it to reconstruct
+	// the operator secret
 	res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
 		System:   r.Request.Name,
 		Role:     "admin",
-		Email:    r.SecretOp.StringData["email"],
-		Password: r.SecretOp.StringData["password"],
+		Email:    r.SecretAdmin.StringData["email"],
+		Password: r.SecretAdmin.StringData["password"],
 	})
-	if err == nil {
-		// TODO this recovery flow does not allow us to get OperatorToken like CreateSystem
-		r.SecretOp.StringData["auth_token"] = res.Token
-	} else {
-		res, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
-			Name:     r.Request.Name,
-			Email:    r.SecretOp.StringData["email"],
-			Password: r.SecretOp.StringData["password"],
-		})
-		if err != nil {
+	if err != nil {
+		return err
+	}
+
+	r.NBClient.SetAuthToken(res.Token)
+	res, err = r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+		System: r.Request.Name,
+		Role:   "operator",
+		Email:  options.OperatorAccountEmail,
+	})
+	if err != nil {
+		return err
+	}
+
+	r.SecretOp.StringData["auth_token"] = res.Token
+	r.Own(r.SecretOp)
+	if found {
+		if err := r.Client.Update(r.Ctx, r.SecretOp); err != nil {
 			return err
 		}
-		// TODO use res.OperatorToken after https://github.com/noobaa/noobaa-core/issues/5635
-		r.SecretOp.StringData["auth_token"] = res.Token
+	} else {
+		if err := r.Client.Create(r.Ctx, r.SecretOp); err != nil {
+			return err
+		}
 	}
-	r.NBClient.SetAuthToken(r.SecretOp.StringData["auth_token"])
-	return r.Client.Update(r.Ctx, r.SecretOp)
+
+	r.NBClient.SetAuthToken(res.Token)
+	return nil
 }
 
-// ReconcileSecretAdmin creates the admin secret
+// ReconcileSecretAdmin updagte the admin secret with account info
 func (r *Reconciler) ReconcileSecretAdmin() error {
 	// Skip if joining another NooBaa
 	if r.JoinSecret != nil {
@@ -291,43 +342,24 @@ func (r *Reconciler) ReconcileSecretAdmin() error {
 
 	log := r.Logger.WithField("func", "ReconcileSecretAdmin")
 
-	util.KubeCheck(r.SecretAdmin)
-
-	// already exists - we can skip
-	if r.SecretAdmin.UID != "" {
-		r.NooBaa.Status.Accounts.Admin.SecretRef.Name = r.SecretAdmin.Name
-		r.NooBaa.Status.Accounts.Admin.SecretRef.Namespace = r.SecretAdmin.Namespace
-		return nil
-	}
-
-	log.Infof("listing accounts")
-	res, err := r.NBClient.ListAccountsAPI()
+	log.Infof("Read admin account")
+	account, err := r.NBClient.ReadAccountAPI(nb.ReadAccountParams{
+		Email: r.SecretAdmin.StringData["email"],
+	})
 	if err != nil {
 		return err
 	}
-	var account *nb.AccountInfo
-	for _, a := range res.Accounts {
-		if a.Email == options.AdminAccountEmail {
-			account = a
-		}
-	}
-	if account == nil || account.AccessKeys == nil || len(account.AccessKeys) <= 0 {
+	if account.AccessKeys == nil || len(account.AccessKeys) <= 0 {
 		return fmt.Errorf("admin account has no access keys yet")
 	}
 
 	r.SecretAdmin.StringData["system"] = r.NooBaa.Name
-	r.SecretAdmin.StringData["email"] = options.AdminAccountEmail
-	r.SecretAdmin.StringData["password"] = r.SecretOp.StringData["password"]
 	r.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"] = account.AccessKeys[0].AccessKey
 	r.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"] = account.AccessKeys[0].SecretKey
-	r.Own(r.SecretAdmin)
-	err = r.Client.Create(r.Ctx, r.SecretAdmin)
+	err = r.Client.Update(r.Ctx, r.SecretAdmin)
 	if err != nil {
 		return err
 	}
-
-	r.NooBaa.Status.Accounts.Admin.SecretRef.Name = r.SecretAdmin.Name
-	r.NooBaa.Status.Accounts.Admin.SecretRef.Namespace = r.SecretAdmin.Namespace
 	return nil
 }
 
@@ -343,8 +375,8 @@ func (r *Reconciler) ReconcileSecretEndpoints() error {
 		res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
 			System:   r.Request.Name,
 			Role:     "admin",
-			Email:    r.SecretOp.StringData["email"],
-			Password: r.SecretOp.StringData["password"],
+			Email:    r.SecretAdmin.StringData["email"],
+			Password: r.SecretAdmin.StringData["password"],
 		})
 		if err != nil {
 			return err

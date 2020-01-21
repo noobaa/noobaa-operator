@@ -229,7 +229,7 @@ type CreateAuthParams struct {
 	System   string `json:"system"`
 	Role     string `json:"role"`
 	Email    string `json:"email"`
-	Password string `json:"password"`
+	Password string `json:"password,omitempty"`
 }
 
 // CreateAuthReply is the reply of auth_api.create_auth()
