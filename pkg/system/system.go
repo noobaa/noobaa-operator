@@ -646,6 +646,9 @@ func Connect(isExternal bool) (*Client, error) {
 	if !util.KubeCheck(r.SecretOp) {
 		return nil, fmt.Errorf("Connect(): SecretOp not found")
 	}
+	if !util.KubeCheck(r.SecretAdmin) {
+		return nil, fmt.Errorf("Connect(): SecretAdmin not found")
+	}
 
 	authToken := r.SecretOp.StringData["auth_token"]
 	mgmtStatus := &r.NooBaa.Status.Services.ServiceMgmt
