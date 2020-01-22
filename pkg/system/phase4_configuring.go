@@ -33,16 +33,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 		"noobaa operator started phase 4/4 - \"Configuring\"",
 	)
 
-	if err := r.ReconcileNBSystem(); err != nil {
-		return err
-	}
-	if err := r.ReconcileSecretOp(); err != nil {
-		return err
-	}
-	if err := r.ReconcileSecretAdmin(); err != nil {
-		return err
-	}
-	if err := r.ReconcileSecretEndpoints(); err != nil {
+	if err := r.ReconcileSystemSecrets(); err != nil {
 		return err
 	}
 	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
@@ -79,39 +70,140 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	return nil
 }
 
-// ReconcileDeploymentEndpointStatus creates/updates the endpoints deployment
-func (r *Reconciler) ReconcileDeploymentEndpointStatus() error {
-	if !util.KubeCheck(r.DeploymentEndpoint) {
-		return fmt.Errorf("Could not load endpoint deployment")
-	}
-	if r.DeploymentEndpoint.Status.ReadyReplicas == 0 {
-		return fmt.Errorf("First endpoint is not ready yet")
-	}
+// ReconcileSystemSecrets reconciles secrets used by the system and
+// create the system if does not exists
+func (r *Reconciler) ReconcileSystemSecrets() error {
+	if r.JoinSecret == nil {
+		if err := r.ReconcileObject(r.SecretAdmin, r.SetDesiredSecretAdmin); err != nil {
+			return err
+		}
 
-	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec
-	virtualHosts := []string{}
-	for i := range podSpec.Containers {
-		c := &podSpec.Containers[i]
-		if c.Name == "endpoint" {
-			for j := range c.Env {
-				e := c.Env[j]
-				if e.Name == "VIRTUAL_HOSTS" {
-					virtualHosts = append(virtualHosts, strings.Fields(e.Value)...)
-				}
-			}
+		// Point the admin account secret reference to the admin secret.
+		r.NooBaa.Status.Accounts.Admin.SecretRef.Name = r.SecretAdmin.Name
+		r.NooBaa.Status.Accounts.Admin.SecretRef.Namespace = r.SecretAdmin.Namespace
+
+		if err := r.ReconcileObject(r.SecretOp, r.SetDesiredSecretOp); err != nil {
+			return err
+		}
+		r.NBClient.SetAuthToken(r.SecretOp.StringData["auth_token"])
+
+		if err := r.ReconcileObject(r.SecretAdmin, r.SetDesiredSecretAdminAccountInfo); err != nil {
+			return err
 		}
 	}
+	if err := r.ReconcileObject(r.SecretEndpoints, r.SetDesiredSecretEndpoints); err != nil {
+		return err
+	}
+	return nil
+}
 
-	r.NooBaa.Status.Endpoints = &nbv1.EndpointsStatus{
-		ReadyCount:   r.DeploymentEndpoint.Status.ReadyReplicas,
-		VirtualHosts: virtualHosts,
+// SetDesiredSecretAdmin set auth related info in admin secret
+func (r *Reconciler) SetDesiredSecretAdmin() error {
+	// Load string data from data
+	util.SecretResetStringDataFromData(r.SecretAdmin)
+
+	r.SecretAdmin.StringData["system"] = r.NooBaa.Name
+	r.SecretAdmin.StringData["email"] = options.AdminAccountEmail
+	if r.SecretAdmin.StringData["password"] == "" {
+		r.SecretAdmin.StringData["password"] = util.RandomBase64(16)
+	}
+	return nil
+}
+
+// SetDesiredSecretOp set auth token in operator secret
+func (r *Reconciler) SetDesiredSecretOp() error {
+	// Load string data from data
+	util.SecretResetStringDataFromData(r.SecretOp)
+
+	// SecretOp exists means the system already created and we can skip
+	if r.SecretOp.StringData["auth_token"] != "" {
+		return nil
+	}
+
+	// Trying to create token for admin so we could use it to create
+	// a token for the operator account
+	res1, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+		System:   r.Request.Name,
+		Role:     "admin",
+		Email:    r.SecretAdmin.StringData["email"],
+		Password: r.SecretAdmin.StringData["password"],
+	})
+	if err == nil {
+		r.NBClient.SetAuthToken(res1.Token)
+		res2, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+			System: r.Request.Name,
+			Role:   "operator",
+			Email:  options.OperatorAccountEmail,
+		})
+		if err != nil {
+			return fmt.Errorf("cannot create an auth token for operator, error: %v", err)
+		}
+		r.SecretOp.StringData["auth_token"] = res2.Token
+
+	} else {
+		// A failure to create a token for admin usually means that a system need to be created
+		res3, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
+			Name:     r.Request.Name,
+			Email:    r.SecretAdmin.StringData["email"],
+			Password: r.SecretAdmin.StringData["password"],
+		})
+		if err != nil {
+			return fmt.Errorf("system creation failed, error: %v", err)
+		}
+		r.SecretOp.StringData["auth_token"] = res3.OperatorToken
 	}
 
 	return nil
 }
 
+// SetDesiredSecretAdminAccountInfo set account related info in admin secret
+func (r *Reconciler) SetDesiredSecretAdminAccountInfo() error {
+	util.SecretResetStringDataFromData(r.SecretAdmin)
+
+	account, err := r.NBClient.ReadAccountAPI(nb.ReadAccountParams{
+		Email: r.SecretAdmin.StringData["email"],
+	})
+	if err != nil {
+		return fmt.Errorf("cannot read admin account info, error: %v", err)
+	}
+	if account.AccessKeys == nil || len(account.AccessKeys) <= 0 {
+		return fmt.Errorf("admin account has no access keys yet")
+	}
+
+	r.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"] = account.AccessKeys[0].AccessKey
+	r.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"] = account.AccessKeys[0].SecretKey
+	return nil
+}
+
+// SetDesiredSecretEndpoints set auth related info in endpoints secret
+func (r *Reconciler) SetDesiredSecretEndpoints() error {
+	if r.SecretEndpoints.UID != "" {
+		return nil
+	}
+
+	// Load string data from data
+	util.SecretResetStringDataFromData(r.SecretEndpoints)
+
+	if r.JoinSecret == nil {
+		res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+			System:   r.Request.Name,
+			Role:     "admin",
+			Email:    r.SecretAdmin.StringData["email"],
+			Password: r.SecretAdmin.StringData["password"],
+		})
+		if err != nil {
+			return fmt.Errorf("cannot create auth token for use by endpoints, error: %v", err)
+		}
+
+		r.SecretEndpoints.StringData["auth_token"] = res.Token
+	} else {
+		r.SecretEndpoints.StringData["auth_token"] = r.JoinSecret.StringData["auth_token"]
+	}
+	return nil
+}
+
 // SetDesiredDeploymentEndpoint updates the endpoint deployment as desired for reconciling
-func (r *Reconciler) SetDesiredDeploymentEndpoint() {
+func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 	r.DeploymentEndpoint.Spec.Selector.MatchLabels["noobaa-s3"] = r.Request.Name
 	r.DeploymentEndpoint.Spec.Template.Labels["noobaa-s3"] = r.Request.Name
 
@@ -221,178 +313,16 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() {
 			}
 		}
 	}
+	return nil
 }
 
 // SetDesiredHPAEndpoint updates the endpoint horizontal pod autoscaler as desired for reconciling
-func (r *Reconciler) SetDesiredHPAEndpoint() {
+func (r *Reconciler) SetDesiredHPAEndpoint() error {
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	if endpointsSpec != nil {
 		r.HPAEndpoint.Spec.MinReplicas = &endpointsSpec.MinCount
 		r.HPAEndpoint.Spec.MaxReplicas = endpointsSpec.MaxCount
 	}
-}
-
-// ReconcileNBSystem creates a new system in the noobaa server if not created yet.
-func (r *Reconciler) ReconcileNBSystem() error {
-	// Skip if joining another NooBaa
-	if r.JoinSecret != nil {
-		return nil
-	}
-
-	found := util.KubeCheck(r.SecretAdmin)
-	if r.SecretAdmin.StringData["email"] == "" {
-		r.SecretAdmin.StringData["email"] = options.AdminAccountEmail
-	}
-	if r.SecretAdmin.StringData["password"] == "" {
-		r.SecretAdmin.StringData["password"] = util.RandomBase64(16)
-	}
-
-	r.Own(r.SecretAdmin)
-	if found {
-		if err := r.Client.Update(r.Ctx, r.SecretAdmin); err != nil {
-			return err
-		}
-	} else {
-		if err := r.Client.Create(r.Ctx, r.SecretAdmin); err != nil {
-			return err
-		}
-	}
-
-	r.NooBaa.Status.Accounts.Admin.SecretRef.Name = r.SecretAdmin.Name
-	r.NooBaa.Status.Accounts.Admin.SecretRef.Namespace = r.SecretAdmin.Namespace
-
-	_, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-		System:   r.Request.Name,
-		Role:     "admin",
-		Email:    r.SecretAdmin.StringData["email"],
-		Password: r.SecretAdmin.StringData["password"],
-	})
-	if err != nil {
-		_, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
-			Name:     r.Request.Name,
-			Email:    r.SecretAdmin.StringData["email"],
-			Password: r.SecretAdmin.StringData["password"],
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// ReconcileSecretOp reterive and save the operator account token in a secret
-func (r *Reconciler) ReconcileSecretOp() error {
-	// Skip if joining another NooBaa
-	if r.JoinSecret != nil {
-		return nil
-	}
-
-	// If we have a valid operator secret we skip the reconcile
-	found := util.KubeCheck(r.SecretOp)
-	if found && r.SecretOp.StringData["auth_token"] != "" {
-		r.NBClient.SetAuthToken(r.SecretOp.StringData["auth_token"])
-		return nil
-	}
-
-	// If we have a valid admin secret we use it to reconstruct
-	// the operator secret
-	res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-		System:   r.Request.Name,
-		Role:     "admin",
-		Email:    r.SecretAdmin.StringData["email"],
-		Password: r.SecretAdmin.StringData["password"],
-	})
-	if err != nil {
-		return err
-	}
-
-	r.NBClient.SetAuthToken(res.Token)
-	res, err = r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-		System: r.Request.Name,
-		Role:   "operator",
-		Email:  options.OperatorAccountEmail,
-	})
-	if err != nil {
-		return err
-	}
-
-	r.SecretOp.StringData["auth_token"] = res.Token
-	r.Own(r.SecretOp)
-	if found {
-		if err := r.Client.Update(r.Ctx, r.SecretOp); err != nil {
-			return err
-		}
-	} else {
-		if err := r.Client.Create(r.Ctx, r.SecretOp); err != nil {
-			return err
-		}
-	}
-
-	r.NBClient.SetAuthToken(res.Token)
-	return nil
-}
-
-// ReconcileSecretAdmin updagte the admin secret with account info
-func (r *Reconciler) ReconcileSecretAdmin() error {
-	// Skip if joining another NooBaa
-	if r.JoinSecret != nil {
-		return nil
-	}
-
-	log := r.Logger.WithField("func", "ReconcileSecretAdmin")
-
-	log.Infof("Read admin account")
-	account, err := r.NBClient.ReadAccountAPI(nb.ReadAccountParams{
-		Email: r.SecretAdmin.StringData["email"],
-	})
-	if err != nil {
-		return err
-	}
-	if account.AccessKeys == nil || len(account.AccessKeys) <= 0 {
-		return fmt.Errorf("admin account has no access keys yet")
-	}
-
-	r.SecretAdmin.StringData["system"] = r.NooBaa.Name
-	r.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"] = account.AccessKeys[0].AccessKey
-	r.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"] = account.AccessKeys[0].SecretKey
-	err = r.Client.Update(r.Ctx, r.SecretAdmin)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// ReconcileSecretEndpoints creates the endpoints secret
-func (r *Reconciler) ReconcileSecretEndpoints() error {
-	util.KubeCheck(r.SecretEndpoints)
-
-	if r.SecretEndpoints.UID != "" {
-		return nil
-	}
-
-	if r.JoinSecret == nil {
-		res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-			System:   r.Request.Name,
-			Role:     "admin",
-			Email:    r.SecretAdmin.StringData["email"],
-			Password: r.SecretAdmin.StringData["password"],
-		})
-		if err != nil {
-			return err
-		}
-
-		r.SecretEndpoints.StringData["auth_token"] = res.Token
-	} else {
-		r.SecretEndpoints.StringData["auth_token"] = r.JoinSecret.StringData["auth_token"]
-	}
-
-	r.Own(r.SecretEndpoints)
-	err := r.Client.Create(r.Ctx, r.SecretEndpoints)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -725,4 +655,35 @@ func (r *Reconciler) UpdateBucketClassesPhase(Buckets []nb.BucketInfo) {
 			}
 		}
 	}
+}
+
+// ReconcileDeploymentEndpointStatus creates/updates the endpoints deployment
+func (r *Reconciler) ReconcileDeploymentEndpointStatus() error {
+	if !util.KubeCheck(r.DeploymentEndpoint) {
+		return fmt.Errorf("Could not load endpoint deployment")
+	}
+	if r.DeploymentEndpoint.Status.ReadyReplicas == 0 {
+		return fmt.Errorf("First endpoint is not ready yet")
+	}
+
+	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec
+	virtualHosts := []string{}
+	for i := range podSpec.Containers {
+		c := &podSpec.Containers[i]
+		if c.Name == "endpoint" {
+			for j := range c.Env {
+				e := c.Env[j]
+				if e.Name == "VIRTUAL_HOSTS" {
+					virtualHosts = append(virtualHosts, strings.Fields(e.Value)...)
+				}
+			}
+		}
+	}
+
+	r.NooBaa.Status.Endpoints = &nbv1.EndpointsStatus{
+		ReadyCount:   r.DeploymentEndpoint.Status.ReadyReplicas,
+		VirtualHosts: virtualHosts,
+	}
+
+	return nil
 }

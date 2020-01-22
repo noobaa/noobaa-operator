@@ -352,16 +352,16 @@ func (r *Reconciler) UpdateStatus() {
 // ReconcileObject is a generic call to reconcile a kubernetes object
 // desiredFunc can be passed to modify the object before create/update.
 // Currently we ignore enforcing a desired state, but it might be needed on upgrades.
-func (r *Reconciler) ReconcileObject(obj runtime.Object, desiredFunc func()) error {
+func (r *Reconciler) ReconcileObject(obj runtime.Object, desiredFunc func() error) error {
 	return r.reconcileObject(obj, desiredFunc, false)
 }
 
 // ReconcileObjectOptional is like ReconcileObject but also ignores if the CRD is missing
-func (r *Reconciler) ReconcileObjectOptional(obj runtime.Object, desiredFunc func()) error {
+func (r *Reconciler) ReconcileObjectOptional(obj runtime.Object, desiredFunc func() error) error {
 	return r.reconcileObject(obj, desiredFunc, true)
 }
 
-func (r *Reconciler) reconcileObject(obj runtime.Object, desiredFunc func(), optionalCRD bool) error {
+func (r *Reconciler) reconcileObject(obj runtime.Object, desiredFunc func() error, optionalCRD bool) error {
 
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	objMeta, _ := meta.Accessor(obj)
@@ -370,7 +370,9 @@ func (r *Reconciler) reconcileObject(obj runtime.Object, desiredFunc func(), opt
 	op, err := controllerutil.CreateOrUpdate(
 		r.Ctx, r.Client, obj.(runtime.Object), func() error {
 			if desiredFunc != nil {
-				desiredFunc()
+				if err := desiredFunc(); err != nil {
+					return err
+				}
 			}
 			return nil
 		},
