@@ -474,6 +474,19 @@ type DeleteExternalConnectionParams struct {
 	Name string `json:"connection_name"`
 }
 
+// IntRange Hold a min/max integer range
+type IntRange struct {
+	Min int32 `json:"min"`
+	Max int32 `json:"max"`
+}
+
+// UpdateEndpointGroupParams is the params of system_api.update_endpoint_group()
+type UpdateEndpointGroupParams struct {
+	GroupName     string   `json:"group_name"`
+	IsRemote      bool     `json:"is_remote"`
+	EndpointRange IntRange `json:"endpoint_range"`
+}
+
 // BigIntToHumanBytes returns a human readable bytes string
 func BigIntToHumanBytes(bi *BigInt) string {
 	return IntToHumanBytes(bi.N + (bi.Peta * 1024 * 1024 * 1024 * 1024 * 1024))

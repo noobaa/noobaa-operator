@@ -40,6 +40,8 @@ type Client interface {
 	EditExternalConnectionCredentialsAPI(EditExternalConnectionCredentialsParams) error
 	DeleteExternalConnectionAPI(DeleteExternalConnectionParams) error
 
+	UpdateEndpointGroupAPI(UpdateEndpointGroupParams) error
+
 	RegisterToCluster() error
 }
 
@@ -256,6 +258,12 @@ func (c *RPCClient) EditExternalConnectionCredentialsAPI(params EditExternalConn
 // DeleteExternalConnectionAPI calls account_api.delete_external_connection()
 func (c *RPCClient) DeleteExternalConnectionAPI(params DeleteExternalConnectionParams) error {
 	req := &RPCMessage{API: "account_api", Method: "delete_external_connection", Params: params}
+	return c.Call(req, nil)
+}
+
+// UpdateEndpointGroupAPI updates the noobaa core about endpoint configuration changes
+func (c *RPCClient) UpdateEndpointGroupAPI(params UpdateEndpointGroupParams) error {
+	req := &RPCMessage{API: "system_api", Method: "update_endpoint_group", Params: params}
 	return c.Call(req, nil)
 }
 
