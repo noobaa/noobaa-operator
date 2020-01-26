@@ -336,8 +336,8 @@ func (r *Reconciler) ReconcileHPAEndpoint() error {
 		GroupName: fmt.Sprint(r.NooBaa.UID),
 		IsRemote:  r.JoinSecret != nil,
 		EndpointRange: nb.IntRange{
-			Min: max,
-			Max: min,
+			Min: min,
+			Max: max,
 		},
 	})
 }
