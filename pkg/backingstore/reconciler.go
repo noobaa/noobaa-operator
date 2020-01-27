@@ -421,6 +421,10 @@ func (r *Reconciler) ReadSystemInfo() error {
 			IsManaged:  true,
 			HostCount:  int(pvPool.NumVolumes),
 			HostConfig: nb.PoolHostsInfo{VolumeSize: gbsize},
+			Backingstore: &nb.BackingStoreInfo{
+				Name: r.BackingStore.Name,
+				Namespace: r.NooBaa.Namespace,
+			},
 		}
 		return nil
 	}
@@ -469,6 +473,10 @@ func (r *Reconciler) ReadSystemInfo() error {
 		Name:         r.BackingStore.Name,
 		Connection:   conn.Name,
 		TargetBucket: GetBackingStoreTargetBucket(r.BackingStore),
+		Backingstore: &nb.BackingStoreInfo{
+			Name: r.BackingStore.Name,
+			Namespace: r.NooBaa.Namespace,
+		},
 	}
 
 	return nil

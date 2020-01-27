@@ -94,31 +94,35 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 }
 
 // SetDesiredServiceAccount updates the ServiceAccount as desired for reconciling
-func (r *Reconciler) SetDesiredServiceAccount() {
+func (r *Reconciler) SetDesiredServiceAccount() error {
 	if r.ServiceAccount.Annotations == nil {
 		r.ServiceAccount.Annotations = map[string]string{}
 	}
 	r.ServiceAccount.Annotations["serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt"] =
 		`{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"` + r.RouteMgmt.Name + `"}}`
+	return nil
 }
 
 // SetDesiredServiceMgmt updates the ServiceMgmt as desired for reconciling
-func (r *Reconciler) SetDesiredServiceMgmt() {
+func (r *Reconciler) SetDesiredServiceMgmt() error {
 	r.ServiceMgmt.Spec.Selector["noobaa-mgmt"] = r.Request.Name
+	return nil
 }
 
 // SetDesiredServiceS3 updates the ServiceS3 as desired for reconciling
-func (r *Reconciler) SetDesiredServiceS3() {
+func (r *Reconciler) SetDesiredServiceS3() error {
 	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
+	return nil
 }
 
 // SetDesiredServiceDB updates the ServiceS3 as desired for reconciling
-func (r *Reconciler) SetDesiredServiceDB() {
+func (r *Reconciler) SetDesiredServiceDB() error {
 	r.ServiceDb.Spec.Selector["noobaa-db"] = r.Request.Name
+	return nil
 }
 
 // SetDesiredNooBaaDB updates the NooBaaDB as desired for reconciling
-func (r *Reconciler) SetDesiredNooBaaDB() {
+func (r *Reconciler) SetDesiredNooBaaDB() error {
 	r.NooBaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
 	r.NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
 	r.NooBaaDB.Spec.ServiceName = r.ServiceDb.Name
@@ -214,10 +218,12 @@ func (r *Reconciler) SetDesiredNooBaaDB() {
 			}
 		}
 	}
+
+	return nil
 }
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
-func (r *Reconciler) SetDesiredCoreApp() {
+func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.Template.Labels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
 	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
@@ -286,6 +292,8 @@ func (r *Reconciler) SetDesiredCoreApp() {
 		}
 
 	}
+
+	return nil
 }
 
 // ReconcileBackingStoreCredentials creates a CredentialsRequest resource if neccesary and returns

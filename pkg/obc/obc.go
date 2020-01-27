@@ -111,7 +111,16 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		obc.Spec.BucketName = ""
 		obc.Spec.GenerateBucketName = name
 	}
-	obc.Spec.StorageClassName = options.SubDomainNS()
+
+	sc := &storagev1.StorageClass{
+		TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
+		ObjectMeta: metav1.ObjectMeta{Name: options.SubDomainNS()},
+	}
+	if !util.KubeCheck(sc) {
+		log.Fatalf(`❌ Could not get StorageClass %q for system in namespace %q`,
+			sc.Name, options.Namespace)
+	}
+	obc.Spec.StorageClassName = sc.Name
 	obc.Spec.AdditionalConfig = map[string]string{}
 
 	if bucketClassName != "" {

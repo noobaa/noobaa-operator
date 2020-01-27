@@ -229,7 +229,7 @@ type CreateAuthParams struct {
 	System   string `json:"system"`
 	Role     string `json:"role"`
 	Email    string `json:"email"`
-	Password string `json:"password"`
+	Password string `json:"password,omitempty"`
 }
 
 // CreateAuthReply is the reply of auth_api.create_auth()
@@ -286,12 +286,21 @@ type CreateAccountReply struct {
 	AccessKeys []S3AccessKeys `json:"access_keys"`
 }
 
+// BackingStoreInfo describes backingstore info
+type BackingStoreInfo struct{
+	// Name describes backingstore name
+	Name string `json:"name"`
+	// Namespace describes backingstore namespace
+	Namespace string `json:"namespace"`
+}
+
 // CreateHostsPoolParams is the params of pool_api.create_hosts_pool()
 type CreateHostsPoolParams struct {
 	Name       string        `json:"name"`
 	IsManaged  bool          `json:"is_managed"`
 	HostCount  int           `json:"host_count"`
 	HostConfig PoolHostsInfo `json:"host_config"`
+	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
 }
 
 // CreateCloudPoolParams is the reply of pool_api.create_cloud_pool()
@@ -299,6 +308,7 @@ type CreateCloudPoolParams struct {
 	Name         string `json:"name"`
 	Connection   string `json:"connection"`
 	TargetBucket string `json:"target_bucket"`
+	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
 }
 
 // CreateTierParams is the reply of tier_api.create_tier()
@@ -374,6 +384,13 @@ type UpdateBucketClassParams struct {
 	Name   string            `json:"name"`
 	Policy TieringPolicyInfo `json:"policy"`
 	Tiers  []TierInfo        `json:"tiers"`
+}
+
+// BucketClassInfo is the is the reply of tiering_policy_api.update_bucket_class()
+type BucketClassInfo struct {
+	ErrorMessage   string                  `json:"error_message"`
+	ShouldRevert   bool                    `json:"should_revert"`
+	RevertToPolicy UpdateBucketClassParams `json:"revert_to_policy"`
 }
 
 // AllowedBuckets is a struct for setting which buckets an account can access
@@ -465,6 +482,19 @@ type EditExternalConnectionCredentialsParams struct {
 // DeleteExternalConnectionParams is the params of account_api.delete_external_connection()
 type DeleteExternalConnectionParams struct {
 	Name string `json:"connection_name"`
+}
+
+// IntRange Hold a min/max integer range
+type IntRange struct {
+	Min int32 `json:"min"`
+	Max int32 `json:"max"`
+}
+
+// UpdateEndpointGroupParams is the params of system_api.update_endpoint_group()
+type UpdateEndpointGroupParams struct {
+	GroupName     string   `json:"group_name"`
+	IsRemote      bool     `json:"is_remote"`
+	EndpointRange IntRange `json:"endpoint_range"`
 }
 
 // BigIntToHumanBytes returns a human readable bytes string

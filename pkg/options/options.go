@@ -30,7 +30,7 @@ const (
 	// ContainerImageRepo is the repo of the default image url
 	ContainerImageRepo = "noobaa-core"
 	// ContainerImageTag is the tag of the default image url
-	ContainerImageTag = "5.3.0-master20200116"
+	ContainerImageTag = "5.3.0-master20200127"
 	// ContainerImageSemverLowerBound is the lower bound for supported image versions
 	ContainerImageSemverLowerBound = "5.0.0"
 	// ContainerImageSemverUpperBound is the upper bound for supported image versions
@@ -40,8 +40,11 @@ const (
 	// ContainerImage is the full default image url
 	ContainerImage = ContainerImageName + ":" + ContainerImageTag
 
-	// AdminAccountEmail is the default email used for admin account
+	// AdminAccountEmail is the default email used by the admin account
 	AdminAccountEmail = "admin@noobaa.io"
+
+	// OperatorAccountEmail is the default email used by the operator account
+	OperatorAccountEmail = "operator@noobaa.io"
 
 	// SystemName is a constant as we want just a single system per namespace
 	SystemName = "noobaa"
