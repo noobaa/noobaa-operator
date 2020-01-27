@@ -3046,7 +3046,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "e0a6c71f7148d2561114fcd7c5f36521b51cb69df642c60062ab811ecb0468aa"
+const Sha256_deploy_operator_yaml = "3030f31026433e2737957a3f153739ce3d1a69cf11813d27b4fd95e7452ee3df"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3070,7 +3070,7 @@ spec:
           resources:
             limits:
               cpu: "250m"
-              memory: "256Mi"
+              memory: "512Mi"
           env:
             - name: OPERATOR_NAME
               value: noobaa-operator
