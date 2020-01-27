@@ -286,12 +286,21 @@ type CreateAccountReply struct {
 	AccessKeys []S3AccessKeys `json:"access_keys"`
 }
 
+// BackingStoreInfo describes backingstore info
+type BackingStoreInfo struct{
+	// Name describes backingstore name
+	Name string `json:"name"`
+	// Namespace describes backingstore namespace
+	Namespace string `json:"namespace"`
+}
+
 // CreateHostsPoolParams is the params of pool_api.create_hosts_pool()
 type CreateHostsPoolParams struct {
 	Name       string        `json:"name"`
 	IsManaged  bool          `json:"is_managed"`
 	HostCount  int           `json:"host_count"`
 	HostConfig PoolHostsInfo `json:"host_config"`
+	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
 }
 
 // CreateCloudPoolParams is the reply of pool_api.create_cloud_pool()
@@ -299,6 +308,7 @@ type CreateCloudPoolParams struct {
 	Name         string `json:"name"`
 	Connection   string `json:"connection"`
 	TargetBucket string `json:"target_bucket"`
+	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
 }
 
 // CreateTierParams is the reply of tier_api.create_tier()
