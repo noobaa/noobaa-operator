@@ -474,6 +474,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 	endpoint := "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ":80"
 	region := "us-east-1"
 	forcePathStyle := true
+	disableSSL := true
 	s3Config := &aws.Config{
 		Credentials: credentials.NewStaticCredentials(
 			cephObjectUserSecret.StringData["AccessKey"],
@@ -483,6 +484,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		Endpoint:         &endpoint,
 		Region:           &region,
 		S3ForcePathStyle: &forcePathStyle,
+		DisableSSL:       &disableSSL,
 	}
 	bucketName := r.generateBackingStoreTargetName()
 	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
