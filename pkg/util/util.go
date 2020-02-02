@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 	"unicode"
@@ -775,6 +776,13 @@ func GetAWSRegion() (string, error) {
 		return "", fmt.Errorf("The parsed AWS region is invalid: %q", awsRegion)
 	}
 	return awsRegion, nil
+}
+
+// IsValidS3BucketName checks the name according to
+// https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-s3-bucket-naming-requirements.html
+func IsValidS3BucketName(name string) bool {
+	validBucketNameRegex := regexp.MustCompile(`^(([a-z0-9]|[a-z0-9][a-z0-9-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9-]*[a-z0-9])$`)
+	return validBucketNameRegex.MatchString(name)
 }
 
 // GetFlagStringOrPrompt returns flag value but if empty will promtp to read from stdin
