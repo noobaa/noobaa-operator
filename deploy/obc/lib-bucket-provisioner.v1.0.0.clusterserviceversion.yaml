@@ -1,7 +1,7 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
-  name: lib-bucket-provisioner.v1.14.1
+  name: lib-bucket-provisioner.v1.0.0
   namespace: placeholder
   annotations:
     categories: Storage,Big Data

@@ -471,7 +471,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		return fmt.Errorf("Ceph object user secret %q is not ready yet", secretName)
 	}
 
-	endpoint := "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ":80"
+	endpoint := "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
 	region := "us-east-1"
 	forcePathStyle := true
 	s3Config := &aws.Config{
@@ -505,10 +505,25 @@ func (r *Reconciler) generateBackingStoreTargetName() string {
 	tsMilli := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
 	name := "nb." + tsMilli
 	if r.RouteMgmt.Spec.Host != "" {
-		name += "." + r.RouteMgmt.Spec.Host
+		suffix := ""
+		hostItems := strings.Split(r.RouteMgmt.Spec.Host, ".")
+		for i := len(hostItems) - 1; i >= 0; i-- {
+			hostItem := strings.Trim(hostItems[i], "-.")
+			if len(name)+1+len(hostItem)+1+len(suffix) > 63 {
+				break
+			}
+			suffix = hostItem + "." + suffix
+		}
+		name += "." + suffix
 	}
-	if len(name) > MaxNameLength {
-		name = name[:MaxNameLength]
+	// make sure the name is ended with a valid charecter
+	name = strings.Trim(name, "-.")
+
+	// if for some reason the bucket name is not valid then fallback to nb.timestamp
+	if !util.IsValidS3BucketName(name) {
+		oldName := name
+		name = "nb." + tsMilli
+		logrus.Warnf("generated bucket name (%s) is invalid. falling back to (%s)", oldName, name)
 	}
 	return name
 }

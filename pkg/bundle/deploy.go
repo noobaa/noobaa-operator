@@ -2362,21 +2362,21 @@ metadata:
     openshift.io/cluster-monitoring: "true"
 `
 
-const Sha256_deploy_obc_lib_bucket_provisioner_package_yaml = "3164044c0ac8a73824da92512baa2b2809b4a648347178c6d80972ef4f92f376"
+const Sha256_deploy_obc_lib_bucket_provisioner_package_yaml = "26eed5792ad7e75fa7e02329e648efff0be25f33595dcc1b4671fb99758f7cc0"
 
 const File_deploy_obc_lib_bucket_provisioner_package_yaml = `packageName: lib-bucket-provisioner
 channels:
   - name: alpha
-    currentCSV: lib-bucket-provisioner.v1.14.1
+    currentCSV: lib-bucket-provisioner.v1.0.0
 defaultChannel: alpha
 `
 
-const Sha256_deploy_obc_lib_bucket_provisioner_v1_14_1_clusterserviceversion_yaml = "3be3cdf3a278f2663fb6b103ede532fa652dacc219bacd6394af5b1462bf8b70"
+const Sha256_deploy_obc_lib_bucket_provisioner_v1_0_0_clusterserviceversion_yaml = "aee3bfbb7be1965fbe6ec0741802d84fc81f3b47ea213c1c8bb1bb2c3eb130b6"
 
-const File_deploy_obc_lib_bucket_provisioner_v1_14_1_clusterserviceversion_yaml = `apiVersion: operators.coreos.com/v1alpha1
+const File_deploy_obc_lib_bucket_provisioner_v1_0_0_clusterserviceversion_yaml = `apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
-  name: lib-bucket-provisioner.v1.14.1
+  name: lib-bucket-provisioner.v1.0.0
   namespace: placeholder
   annotations:
     categories: Storage,Big Data
