@@ -254,7 +254,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		return fmt.Errorf("Ceph object user secret %q is not ready yet", secretName)
 	}
 
-	endpoint := "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ":80"
+	endpoint := "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
 	region := "us-east-1"
 	forcePathStyle := true
 	s3Config := &aws.Config{
