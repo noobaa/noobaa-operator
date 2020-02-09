@@ -298,25 +298,22 @@ func KubeUpdate(obj runtime.Object) bool {
 
 // KubeCheck checks if the object exists and reports the object status.
 func KubeCheck(obj runtime.Object) bool {
-	klient := KubeClient()
-	objKey := ObjectKey(obj)
-	gvk := obj.GetObjectKind().GroupVersionKind()
-	err := klient.Get(ctx, objKey, obj)
+	name, kind, err := KubeGet(obj)
 	if err == nil {
 		SecretResetStringDataFromData(obj)
-		log.Printf("✅ Exists: %s %q\n", gvk.Kind, objKey.Name)
+		log.Printf("✅ Exists: %s %q\n", kind, name)
 		return true
 	}
 	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
-		log.Printf("❌ CRD Missing: %s %q\n", gvk.Kind, objKey.Name)
+		log.Printf("❌ CRD Missing: %s %q\n", kind, name)
 		return false
 	}
 	if errors.IsNotFound(err) {
-		log.Printf("❌ Not Found: %s %q\n", gvk.Kind, objKey.Name)
+		log.Printf("❌ Not Found: %s %q\n", kind, name)
 		return false
 	}
 	if errors.IsConflict(err) {
-		log.Printf("❌ Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		log.Printf("❌ Conflict: %s %q: %s\n", kind, name, err)
 		return false
 	}
 	Panic(err)
@@ -326,28 +323,53 @@ func KubeCheck(obj runtime.Object) bool {
 // KubeCheckOptional checks if the object exists and reports the object status.
 // It detects the situation of a missing CRD and reports it as an optional feature.
 func KubeCheckOptional(obj runtime.Object) bool {
-	klient := KubeClient()
-	objKey := ObjectKey(obj)
-	gvk := obj.GetObjectKind().GroupVersionKind()
-	err := klient.Get(ctx, objKey, obj)
+	name, kind, err := KubeGet(obj)
 	if err == nil {
-		log.Printf("✅ (Optional) Exists: %s %q\n", gvk.Kind, objKey.Name)
+		log.Printf("✅ (Optional) Exists: %s %q\n", kind, name)
 		return true
 	}
 	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
-		log.Printf("⬛ (Optional) CRD Unavailable: %s %q\n", gvk.Kind, objKey.Name)
+		log.Printf("⬛ (Optional) CRD Unavailable: %s %q\n", kind, name)
 		return false
 	}
 	if errors.IsNotFound(err) {
-		log.Printf("⬛ (Optional) Not Found: %s %q\n", gvk.Kind, objKey.Name)
+		log.Printf("⬛ (Optional) Not Found: %s %q\n", kind, name)
 		return false
 	}
 	if errors.IsConflict(err) {
-		log.Printf("❌ (Optional) Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		log.Printf("❌ (Optional) Conflict: %s %q: %s\n", kind, name, err)
 		return false
 	}
 	Panic(err)
 	return false
+}
+
+// KubeCheckQuiet checks if the object exists and reports the object status.
+// It detects the situation of a missing CRD and reports it as an optional feature.
+func KubeCheckQuiet(obj runtime.Object) bool {
+	_, _, err := KubeGet(obj)
+	if err == nil {
+		return true
+	} else if meta.IsNoMatchError(err) ||
+		runtime.IsNotRegisteredError(err) ||
+		errors.IsNotFound(err) ||
+		errors.IsConflict(err) {
+		return false
+	}
+	Panic(err)
+	return false
+}
+
+// KubeGet checks if the object exists and reports the object status.
+// It detects the situation of a missing CRD and reports it as an optional feature.
+func KubeGet(obj runtime.Object) (name string, kind string, err error) {
+	klient := KubeClient()
+	objKey := ObjectKey(obj)
+	name = objKey.Name
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	kind = gvk.Kind
+	err = klient.Get(ctx, objKey, obj)
+	return name, kind, err
 }
 
 // KubeList returns a list of objects.
