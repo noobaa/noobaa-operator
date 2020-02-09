@@ -547,7 +547,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "e2da8ecd82bd3eb411d3fefbf0f76f67547023bb665b0ce607137ad99af4aef6"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "5ab2a748ff07dcabe35917561ef4eba1facaade26abcbdaf6ae05d17621bb533"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -1323,6 +1323,10 @@ spec:
                 system stores data chunks (encrypted). Updates to this field will
                 only affect new pv-pools, but updates to existing pools are not supported
                 by the operator.
+              type: string
+            region:
+              description: Region (optional) provide a region for the location info
+                of the endpoints in the endpoint deployment
               type: string
             tolerations:
               description: Tolerations (optional) passed through to noobaa's pods

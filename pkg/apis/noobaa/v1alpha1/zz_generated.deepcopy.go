@@ -510,6 +510,11 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 		*out = new(corev1.LocalObjectReference)
 		**out = **in
 	}
+	if in.Region != nil {
+		in, out := &in.Region, &out.Region
+		*out = new(string)
+		**out = **in
+	}
 	if in.Endpoints != nil {
 		in, out := &in.Endpoints, &out.Endpoints
 		*out = new(EndpointsSpec)
