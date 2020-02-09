@@ -441,7 +441,7 @@ func (r *Reconciler) UpgradeSplitDB() error {
 			Namespace: options.Namespace,
 		},
 	}
-	if util.KubeCheck(oldPvc) {
+	if util.KubeCheckQuiet(oldPvc) {
 		r.Logger.Infof("UpgradeSplitDB: Old OVC found, upgrading...")
 		if err := r.UpgradeSplitDBSetReclaimPolicy(oldPvc, corev1.PersistentVolumeReclaimRetain); err != nil {
 			return err
