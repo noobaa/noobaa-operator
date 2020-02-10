@@ -2220,7 +2220,7 @@ spec:
               resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_db_yaml = "e0aac93d6d64905ac5c95d18efa671fa2e904e4da187ae5442787bfcf97a9fbb"
+const Sha256_deploy_internal_statefulset_db_yaml = "5916e76021db87d379658147871643bfa6e0f016a53e63afefac36ea9cbe62e3"
 
 const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2252,6 +2252,13 @@ spec:
         command:
         - /noobaa_init_files/noobaa_init.sh
         - init_mongo
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "500Mi"
+          limits:
+            cpu: "500m"
+            memory: "500Mi"
         volumeMounts:
         - name: db
           mountPath: /mongo_data
