@@ -344,13 +344,14 @@ func KubeCheckOptional(obj runtime.Object) bool {
 	return false
 }
 
-// KubeCheckQuiet checks if the object exists and reports the object status.
-// It detects the situation of a missing CRD and reports it as an optional feature.
+// KubeCheckQuiet checks if the object exists fills the given object if found.
+// returns true if the object was found. It does not print any status
 func KubeCheckQuiet(obj runtime.Object) bool {
 	_, _, err := KubeGet(obj)
 	if err == nil {
 		return true
-	} else if meta.IsNoMatchError(err) ||
+	}
+	if meta.IsNoMatchError(err) ||
 		runtime.IsNotRegisteredError(err) ||
 		errors.IsNotFound(err) ||
 		errors.IsConflict(err) {
@@ -360,8 +361,8 @@ func KubeCheckQuiet(obj runtime.Object) bool {
 	return false
 }
 
-// KubeGet checks if the object exists and reports the object status.
-// It detects the situation of a missing CRD and reports it as an optional feature.
+// KubeGet gets a runtime.Object, fills the given object and returns the name and kind
+// returns error on failure
 func KubeGet(obj runtime.Object) (name string, kind string, err error) {
 	klient := KubeClient()
 	objKey := ObjectKey(obj)
