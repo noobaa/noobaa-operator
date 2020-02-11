@@ -240,13 +240,13 @@ function obc_cycle {
         then
             flag="--app-namespace default"
         fi
-        test_noobaa obc create ${buckets[$((${#buckets[@]}-1))]} --bucketclass ${bucketclass} ${flag}
+        test_noobaa timeout obc create ${buckets[$((${#buckets[@]}-1))]} --bucketclass ${bucketclass} ${flag}
         unset flag
     done
     test_noobaa obc list
     for bucket in ${buckets[@]}
     do
-        test_noobaa obc status ${bucket}
+        test_noobaa timeout obc status ${bucket}
     done
     kuberun get obc
     kuberun describe obc
