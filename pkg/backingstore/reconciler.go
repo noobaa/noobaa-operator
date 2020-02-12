@@ -413,16 +413,23 @@ func (r *Reconciler) ReadSystemInfo() error {
 				r.BackingStore.Name, pool, pool.ResourceType,
 			))
 		}
+		const defaultVolumeSize = int64(21474836480) // 20Gi=20*1024^3
+		var volumeSize int64
 		pvPool := r.BackingStore.Spec.PVPool
-		qty := pvPool.VolumeResources.Requests[corev1.ResourceName(corev1.ResourceStorage)]
-		gbsize, _ := qty.AsInt64()
+		if pvPool.VolumeResources != nil {
+			qty := pvPool.VolumeResources.Requests[corev1.ResourceName(corev1.ResourceStorage)]
+			volumeSize = qty.Value()
+		}
+		if volumeSize == 0 {
+			volumeSize = int64(defaultVolumeSize)
+		}
 		r.CreateHostsPoolParams = &nb.CreateHostsPoolParams{
 			Name:       r.BackingStore.Name,
 			IsManaged:  true,
 			HostCount:  int(pvPool.NumVolumes),
-			HostConfig: nb.PoolHostsInfo{VolumeSize: gbsize},
+			HostConfig: nb.PoolHostsInfo{VolumeSize: volumeSize},
 			Backingstore: &nb.BackingStoreInfo{
-				Name: r.BackingStore.Name,
+				Name:      r.BackingStore.Name,
 				Namespace: r.NooBaa.Namespace,
 			},
 		}
@@ -474,7 +481,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 		Connection:   conn.Name,
 		TargetBucket: GetBackingStoreTargetBucket(r.BackingStore),
 		Backingstore: &nb.BackingStoreInfo{
-			Name: r.BackingStore.Name,
+			Name:      r.BackingStore.Name,
 			Namespace: r.NooBaa.Namespace,
 		},
 	}
