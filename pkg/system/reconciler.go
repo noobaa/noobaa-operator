@@ -3,6 +3,7 @@ package system
 import (
 	"context"
 	"fmt"
+	goruntime "runtime"
 	"strings"
 	"text/template"
 	"time"
@@ -273,20 +274,37 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	return res, nil
 }
 
+// bToMb convert bytes to megabytes
+func (r *Reconciler) bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
+}
+
+// PrintMemUsage prints memory usage message.
+func (r *Reconciler) PrintMemUsage(phase string) {
+	var m goruntime.MemStats
+	goruntime.ReadMemStats(&m)
+	r.Logger.Infof("Memory Usage: Phase %q - Alloc = %v MiB  Sys = %v MiB  NumGC = %v", phase, r.bToMb(m.Alloc), r.bToMb(m.Sys), m.NumGC)
+}
+
 // ReconcilePhases runs the reconcile flow and populates System.Status.
 func (r *Reconciler) ReconcilePhases() error {
+	r.PrintMemUsage("Starting")
 	if err := r.ReconcilePhaseVerifying(); err != nil {
 		return err
 	}
+	r.PrintMemUsage("Verifying")
 	if err := r.ReconcilePhaseCreating(); err != nil {
 		return err
 	}
+	r.PrintMemUsage("Creating")
 	if err := r.ReconcilePhaseConnecting(); err != nil {
 		return err
 	}
+	r.PrintMemUsage("Connecting")
 	if err := r.ReconcilePhaseConfiguring(); err != nil {
 		return err
 	}
+	r.PrintMemUsage("Configuring")
 	return nil
 }
 
