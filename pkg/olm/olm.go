@@ -345,13 +345,13 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			operv1.SpecDescriptor{
 				Description:  "VolumeResources represents the minimum resources each volume should have.",
 				Path:         "pvPool.resources",
-				XDescriptors: []string{uiFieldGroupPvPool, uiText},
+				XDescriptors: []string{uiFieldGroupPvPool, uiResources},
 				DisplayName:  "Resources",
 			},
 			operv1.SpecDescriptor{
 				Description:  "StorageClass is the name of the storage class to use for the PV's.",
 				Path:         "pvPool.storageClass",
-				XDescriptors: []string{uiFieldGroupPvPool, uiNumber},
+				XDescriptors: []string{uiFieldGroupPvPool, uiText},
 				DisplayName:  "Storage Class",
 			},
 			operv1.SpecDescriptor{

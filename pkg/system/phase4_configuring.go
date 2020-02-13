@@ -307,11 +307,12 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 				case "ENDPOINT_GROUP_ID":
 					c.Env[j].Value = fmt.Sprint(r.NooBaa.UID)
 
-					// Commented as of Guy's requests, feature needs further deliberation
-					// case "REGION":
-					// 	if r.NooBaa.Spec.Endpoints.Region != nil {
-					// 		c.Env[j].Value = *r.NooBaa.Spec.Endpoints.Region
-					// 	}
+				case "REGION":
+					if r.NooBaa.Spec.Region != nil {
+						c.Env[j].Value = *r.NooBaa.Spec.Region
+					} else {
+						c.Env[j].Value = ""
+					}
 				}
 			}
 		}
@@ -332,9 +333,15 @@ func (r *Reconciler) ReconcileHPAEndpoint() error {
 		min = *r.HPAEndpoint.Spec.MinReplicas
 	}
 
+	region := ""
+	if r.NooBaa.Spec.Region != nil {
+		region = *r.NooBaa.Spec.Region
+	}
+
 	return r.NBClient.UpdateEndpointGroupAPI(nb.UpdateEndpointGroupParams{
 		GroupName: fmt.Sprint(r.NooBaa.UID),
 		IsRemote:  r.JoinSecret != nil,
+		Region:    region,
 		EndpointRange: nb.IntRange{
 			Min: min,
 			Max: max,

@@ -547,7 +547,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "e2da8ecd82bd3eb411d3fefbf0f76f67547023bb665b0ce607137ad99af4aef6"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "5ab2a748ff07dcabe35917561ef4eba1facaade26abcbdaf6ae05d17621bb533"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -1323,6 +1323,10 @@ spec:
                 system stores data chunks (encrypted). Updates to this field will
                 only affect new pv-pools, but updates to existing pools are not supported
                 by the operator.
+              type: string
+            region:
+              description: Region (optional) provide a region for the location info
+                of the endpoints in the endpoint deployment
               type: string
             tolerations:
               description: Tolerations (optional) passed through to noobaa's pods
@@ -2216,7 +2220,7 @@ spec:
               resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_db_yaml = "e0aac93d6d64905ac5c95d18efa671fa2e904e4da187ae5442787bfcf97a9fbb"
+const Sha256_deploy_internal_statefulset_db_yaml = "5916e76021db87d379658147871643bfa6e0f016a53e63afefac36ea9cbe62e3"
 
 const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2248,6 +2252,13 @@ spec:
         command:
         - /noobaa_init_files/noobaa_init.sh
         - init_mongo
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "500Mi"
+          limits:
+            cpu: "500m"
+            memory: "500Mi"
         volumeMounts:
         - name: db
           mountPath: /mongo_data

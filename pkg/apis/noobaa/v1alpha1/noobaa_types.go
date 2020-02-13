@@ -116,8 +116,7 @@ type NooBaaSpec struct {
 	// Region (optional) provide a region for the location info
 	// of the endpoints in the endpoint deployment
 	// +optional
-	// Commented as of Guy's requests, feature needs further deliberation
-	// Region *string `json:"region,omitempty"`
+	Region *string `json:"region,omitempty"`
 
 	// Endpoints (optional) sets configuration info for the noobaa endpoint
 	// deployment.
