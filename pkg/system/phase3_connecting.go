@@ -2,6 +2,8 @@ package system
 
 import (
 	"fmt"
+	"net/url"
+	"path"
 	"strings"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
@@ -141,8 +143,16 @@ func (r *Reconciler) InitNBClient() error {
 		})
 
 	} else {
+		addr := r.JoinSecret.StringData["mgmt_addr"]
+		u, err := url.Parse(addr)
+		// The URL's Parse method "may not necessarily return an error, due to parsing ambiguities"
+		if err != nil {
+			return err
+		}
+		u.Path = path.Join(u.Path, "rpc")
+		addr = u.String()
 		r.NBClient = nb.NewClient(&nb.SimpleRouter{
-			Address: fmt.Sprintf("%srpc", r.JoinSecret.StringData["mgmt_addr"]),
+			Address: addr,
 		})
 	}
 
