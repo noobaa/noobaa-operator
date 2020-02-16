@@ -184,7 +184,7 @@ func (r *APIRouterNodePort) GetAddress(api string) string {
 // GetAddress implements the router
 func (r *APIRouterServicePort) GetAddress(api string) string {
 	port := FindPortByName(r.ServiceMgmt, GetAPIPortName(api)).Port
-	return fmt.Sprintf("wss://%s.%s:%d/rpc/", r.ServiceMgmt.Name, r.ServiceMgmt.Namespace, port)
+	return fmt.Sprintf("wss://%s.%s.svc.cluster.local:%d/rpc/", r.ServiceMgmt.Name, r.ServiceMgmt.Namespace, port)
 }
 
 // FindPortByName returns the port in the service that matches the given name.

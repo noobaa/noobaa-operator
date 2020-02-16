@@ -691,13 +691,8 @@ func Connect(isExternal bool) (*Client, error) {
 		}
 
 	} else {
-		nodePortURL, err := url.Parse(mgmtEndpoint)
-		if err != nil {
-			return nil, fmt.Errorf("Connect(): Failed to parse mgmt url %q. got error: %v", mgmtEndpoint, err)
-		}
-		nbClient = nb.NewClient(&nb.APIRouterNodePort{
+		nbClient = nb.NewClient(&nb.APIRouterServicePort{
 			ServiceMgmt: r.ServiceMgmt,
-			NodeIP:      nodePortURL.Hostname(),
 		})
 	}
 
