@@ -312,7 +312,7 @@ func RunList(cmd *cobra.Command, args []string) {
 	list := &nbv1.NooBaaList{
 		TypeMeta: metav1.TypeMeta{Kind: "NooBaa"},
 	}
-	if !util.KubeList(list) {
+	if !util.KubeList(list, nil) {
 		return
 	}
 	if len(list.Items) == 0 {
@@ -521,8 +521,8 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 	operPodList := &corev1.PodList{}
 	operPodSelector, _ := labels.Parse("noobaa-operator=deployment")
 	operPodErr := klient.List(util.Context(),
-		operPodList,
-		&client.ListOptions{Namespace: sys.Namespace, LabelSelector: operPodSelector})
+		&client.ListOptions{Namespace: sys.Namespace, LabelSelector: operPodSelector},
+		operPodList)
 
 	if operPodErr != nil {
 		return operPodErr
@@ -578,8 +578,8 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 	corePodList := &corev1.PodList{}
 	corePodSelector, _ := labels.Parse("noobaa-core=" + sys.Name)
 	corePodErr := klient.List(util.Context(),
-		corePodList,
-		&client.ListOptions{Namespace: sys.Namespace, LabelSelector: corePodSelector})
+		&client.ListOptions{Namespace: sys.Namespace, LabelSelector: corePodSelector},
+		corePodList)
 
 	if corePodErr != nil {
 		return corePodErr

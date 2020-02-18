@@ -3,63 +3,55 @@ module github.com/noobaa/noobaa-operator/v2
 go 1.13
 
 require (
-	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
+	github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf
 	github.com/aws/aws-sdk-go v1.23.8
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/coreos/go-semver v0.3.0
-	github.com/coreos/prometheus-operator v0.34.0
+	github.com/coreos/go-semver v0.2.0
+	github.com/coreos/prometheus-operator v0.29.0
 	github.com/docker/distribution v2.7.1+incompatible
-	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/go-openapi/spec v0.19.2
 	github.com/gobuffalo/flect v0.1.6 // indirect
-	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20200107223247-51020689f1fb
-	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
+	github.com/google/uuid v1.1.1
+	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20190924175516-f3ba69cc601e
+	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
-	github.com/operator-framework/operator-lifecycle-manager v0.0.0-20191115003340-16619cd27fa5 // 0.11.0
-	github.com/operator-framework/operator-sdk v0.13.0
+	github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190605231540-b8a4faf68e36 // 0.11.0
+	github.com/operator-framework/operator-sdk v0.10.0
 	github.com/rook/rook v1.1.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.3
 	go.uber.org/multierr v1.2.0 // indirect
-	golang.org/x/crypto v0.0.0-20191119213627-4f8c1d86b1ba
-	k8s.io/api v0.0.0
-	k8s.io/apiextensions-apiserver v0.0.0
-	k8s.io/apimachinery v0.0.0
-	k8s.io/cli-runtime v0.0.0
-	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/code-generator v0.0.0
-	k8s.io/gengo v0.0.0-20191010091904-7fa3014cb28f
-	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
-	k8s.io/kubectl v0.0.0
+	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472
+	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297 // indirect
+	golang.org/x/sys v0.0.0-20190904005037-43c01164e931 // indirect
+	golang.org/x/tools v0.0.0-20190903163617-be0da057c5e3 // indirect
+	k8s.io/api v0.0.0-20191005115622-2e41325d9e4b
+	k8s.io/apiextensions-apiserver v0.0.0-20190315093550-53c4693659ed
+	k8s.io/apimachinery v0.0.0-20191005115455-e71eb83a557c
+	k8s.io/cli-runtime v0.0.0-20191005121332-4d28aef60981
+	k8s.io/client-go v11.0.0+incompatible
+	k8s.io/code-generator v0.0.0-20191003035328-700b1226c0bd
+	k8s.io/gengo v0.0.0-20190822140433-26a664648505
+	k8s.io/kube-openapi v0.0.0-20190816220812-743ec37842bf
+	k8s.io/kubectl v0.0.0-20191005122440-987b623dc1f7
 	nhooyr.io/websocket v1.7.4
-	sigs.k8s.io/controller-runtime v0.4.0
+	sigs.k8s.io/controller-runtime v0.1.12
+	sigs.k8s.io/controller-tools v0.1.12
+	sigs.k8s.io/testing_frameworks v0.1.2 // indirect
 	sigs.k8s.io/yaml v1.1.0
 )
 
-/// Pinned to kubernetes-1.16.2
+// Pinned to kubernetes-1.13.4
+// This is because operator-sdk v0.10.0 still requires kubernetes-1.13.4 and controller-runtime v0.1.10
+// once we can bump the operator-sdk version we can also bump k8s.io/* and controller-runtime
 replace (
-	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20191016113550-5357c4baaf65
-	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
-	k8s.io/apiserver => k8s.io/apiserver v0.0.0-20191016112112-5190913f932d
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.0.0-20191016114015-74ad18325ed5
-	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
-	k8s.io/cloud-provider => k8s.io/cloud-provider v0.0.0-20191016115326-20453efc2458
-	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.0.0-20191016115129-c07a134afb42
-	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20191004115455-8e001e5d1894
-	k8s.io/component-base => k8s.io/component-base v0.0.0-20191016111319-039242c015a9
-	k8s.io/cri-api => k8s.io/cri-api v0.0.0-20190828162817-608eb1dad4ac
-	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.0.0-20191016115521-756ffa5af0bd
-	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.0.0-20191016112429-9587704a8ad4
-	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.0.0-20191016114939-2b2b218dc1df
-	k8s.io/kube-proxy => k8s.io/kube-proxy v0.0.0-20191016114407-2e83b6f20229
-	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.0.0-20191016114748-65049c67a58b
-	k8s.io/kubectl => k8s.io/kubectl v0.0.0-20191016120415-2ed914427d51
-	k8s.io/kubelet => k8s.io/kubelet v0.0.0-20191016114556-7841ed97f1b2
-	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20191016115753-cf0698c3a16b
-	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
-	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
-	sigs.k8s.io/controller-tools => sigs.k8s.io/controller-tools v0.2.2
+	github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v0.10.0
+	k8s.io/api => k8s.io/api v0.0.0-20190222213804-5cb15d344471 // kubernetes-1.13.4
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20190228180357-d002e88f6236 // kubernetes-1.13.4
+	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190221213512-86fb29eff628 // kubernetes-1.13.4
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20190228174230-b40b2a5939e4 // kubernetes-1.13.4
+	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.1.12
+	sigs.k8s.io/controller-tools => sigs.k8s.io/controller-tools v0.1.12
 )

@@ -1,5 +1,5 @@
 #!/bin/bash
-SDK_VERSION="v0.13.0"
+SDK_VERSION="v0.10.1"
 SDK_RELEASE="https://github.com/operator-framework/operator-sdk/releases/download/${SDK_VERSION}/operator-sdk-${SDK_VERSION}-x86_64-linux-gnu"
 
 echo "install-sdk - installing version ${SDK_VERSION}"
