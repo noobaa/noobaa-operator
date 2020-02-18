@@ -92,22 +92,22 @@ func (c *RPCConnWS) ConnectUnderLock() error {
 		return nil
 	}
 	if c.State != "init" {
-		return fmt.Errorf("RPC: connection already closed %s %p", c.Address, c)
+		return fmt.Errorf("RPC: connection (%p) already closed %+v", c, c)
 	}
 
 	if c.ReconnectDelay != 0 {
-		logrus.Infof("RPC: Reconnect delay %s %s %p", c.ReconnectDelay, c.Address, c)
+		logrus.Infof("RPC: Reconnect (%p) delay %+v", c, c)
 		time.Sleep(c.ReconnectDelay)
 	}
 
-	logrus.Infof("RPC: Connecting websocket %s %p", c.Address, c)
+	logrus.Infof("RPC: Connecting websocket (%p) %+v", c, c)
 	ws, _, err := websocket.Dial(context.TODO(), c.Address, &websocket.DialOptions{HTTPClient: &c.RPC.HTTPClient})
 	if err != nil {
 		c.CloseUnderLock()
 		return err
 	}
 
-	logrus.Infof("RPC: Connected websocket %s %p", c.Address, c)
+	logrus.Infof("RPC: Connected websocket (%p) %+v", c, c)
 	ws.SetReadLimit(RPCMaxMessageSize)
 	c.WS = ws
 	c.State = "connected"
@@ -128,7 +128,7 @@ func (c *RPCConnWS) CloseUnderLock() {
 	if c.State == "closed" {
 		return
 	}
-	logrus.Errorf("RPC: closing connection %s %p", c.Address, c)
+	logrus.Errorf("RPC: closing connection (%p) %+v", c, c)
 	c.State = "closed"
 
 	// close the websocket
