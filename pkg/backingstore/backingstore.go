@@ -225,12 +225,12 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 	}
 	name := args[0]
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml)
 	sys := o.(*nbv1.NooBaa)
 	sys.Name = options.SystemName
 	sys.Namespace = options.Namespace
 
-	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml)
+	o = util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml)
 	backStore := o.(*nbv1.BackingStore)
 	backStore.Name = name
 	backStore.Namespace = options.Namespace
@@ -423,7 +423,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
 	}
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml)
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml)
 	backStore := o.(*nbv1.BackingStore)
 	backStore.Name = args[0]
 	backStore.Namespace = options.Namespace
@@ -469,7 +469,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 	o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
 	secret := o.(*corev1.Secret)
-	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml)
+	o = util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml)
 	backStore := o.(*nbv1.BackingStore)
 
 	backStore.Name = args[0]

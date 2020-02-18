@@ -54,8 +54,8 @@ func NewReconciler(
 		Recorder:    recorder,
 		Ctx:         context.TODO(),
 		Logger:      logrus.WithField("bucketclass", req.Namespace+"/"+req.Name),
-		BucketClass: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
-		NooBaa:      util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
+		BucketClass: util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
+		NooBaa:      util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 	}
 
 	// Set Namespace
