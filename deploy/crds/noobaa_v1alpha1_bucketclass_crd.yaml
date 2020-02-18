@@ -103,6 +103,10 @@ spec:
                 - lastTransitionTime
                 type: object
               type: array
+            mode:
+              description: Mode is a simple, high-level summary of where the System
+                is in its lifecycle
+              type: string
             phase:
               description: Phase is a simple, high-level summary of where the System
                 is in its lifecycle

@@ -479,17 +479,30 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref common.ReferenceCallback) co
 							Ref:         ref("k8s.io/api/core/v1.LocalObjectReference"),
 						},
 					},
+					"region": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Region (optional) provide a region for the location info of the endpoints in the endpoint deployment",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"endpoints": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Endpoints (optional) sets configuration info for the noobaa endpoint deployment.",
 							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.EndpointsSpec"),
 						},
 					},
+					"joinSecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "JoinSecret (optional) instructs the operator to join another cluster and point to a secret that holds the join information",
+							Ref:         ref("k8s.io/api/core/v1.SecretReference"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.EndpointsSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.EndpointsSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.SecretReference", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 
