@@ -1,6 +1,6 @@
 module github.com/noobaa/noobaa-operator/v2
 
-go 1.13
+go 1.12
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf
@@ -10,6 +10,7 @@ require (
 	github.com/coreos/prometheus-operator v0.29.0
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/go-openapi/spec v0.19.2
+	github.com/go-openapi/validate v0.18.0 // indirect
 	github.com/gobuffalo/flect v0.1.6 // indirect
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20191209225510-8423df408133
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
@@ -17,6 +18,7 @@ require (
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
 	github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190605231540-b8a4faf68e36 // 0.11.0
 	github.com/operator-framework/operator-sdk v0.10.0
+	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/rook/rook v1.1.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
@@ -33,7 +35,7 @@ require (
 	k8s.io/gengo v0.0.0-20190822140433-26a664648505
 	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
 	k8s.io/kubectl v0.0.0-20191005122440-987b623dc1f7
-	nhooyr.io/websocket v1.7.4
+	nhooyr.io/websocket v1.5.0
 	sigs.k8s.io/controller-runtime v0.1.12
 	sigs.k8s.io/controller-tools v0.1.12
 	sigs.k8s.io/testing_frameworks v0.1.2 // indirect
