@@ -89,8 +89,8 @@ func NewReconciler(
 		Recorder:     recorder,
 		Ctx:          context.TODO(),
 		Logger:       logrus.WithField("backingstore", req.Namespace+"/"+req.Name),
-		BackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
-		NooBaa:       util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
+		BackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
+		NooBaa:       util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		Secret:       util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 	}
 

@@ -64,7 +64,7 @@ func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, route *routev1.Rout
 		Namespace:     r.Request.Namespace,
 		LabelSelector: labels.SelectorFromSet(srv.Spec.Selector),
 	}
-	err := r.Client.List(r.Ctx, &pods, podsListOptions)
+	err := r.Client.List(r.Ctx, podsListOptions, &pods)
 	if err == nil {
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == corev1.PodRunning {

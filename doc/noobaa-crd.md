@@ -6,8 +6,8 @@ NooBaa CRD represents a single installation of NooBaa that includes a set of sub
 
 # Definitions
 
-- CRD: [noobaa.io_noobaas_crd.yaml](../deploy/crds/noobaa.io_noobaas_crd.yaml)
-- CR: [noobaa.io_v1alpha1_noobaa_cr.yaml](../deploy/crds/noobaa.io_v1alpha1_noobaa_cr.yaml)
+- CRD: [noobaa_v1alpha1_noobaa_crd.yaml](../deploy/crds/noobaa_v1alpha1_noobaa_crd.yaml)
+- CR: [noobaa_v1alpha1_noobaa_cr.yaml](../deploy/crds/noobaa_v1alpha1_noobaa_cr.yaml)
 
 
 # Reconcile

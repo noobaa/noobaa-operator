@@ -75,7 +75,7 @@ release:
 
 operator-sdk:
 	@echo "checking operator-sdk version"
-	operator-sdk version | grep -q "\"v0.13.0\", commit: \"1af9c95bb51420c55a7f7f2b7fabebda24451276\""
+	operator-sdk version | grep -q "operator-sdk version: v0.10.1, commit: 872e7d997486bb587660fc8d6226eaab8b5c1087"
 	@echo "✅ operator-sdk"
 .PHONY: operator-sdk
 
@@ -93,7 +93,7 @@ pkg/bundle/deploy.go: pkg/bundler/bundler.go $(shell find deploy/ -type f)
 
 gen-api: operator-sdk gen
 	$(TIME) operator-sdk generate k8s
-	$(TIME) operator-sdk generate crds
+	$(TIME) operator-sdk generate openapi
 	@echo "✅ gen-api"
 .PHONY: gen-api
 

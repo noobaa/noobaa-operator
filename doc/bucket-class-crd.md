@@ -18,8 +18,8 @@ For more information on using bucket-classes from S3 see [S3 Account](s3-account
 
 # Definitions
 
-- CRD: [noobaa.io_bucketclasses_crd.yaml](../deploy/crds/noobaa.io_bucketclasses_crd.yaml)
-- CR: [noobaa.io_v1alpha1_bucketclass_cr.yaml](../deploy/crds/noobaa.io_v1alpha1_bucketclass_cr.yaml)
+- CRD: [noobaa_v1alpha1_bucketclass_crd.yaml](../deploy/crds/noobaa_v1alpha1_bucketclass_crd.yaml)
+- CR: [noobaa_v1alpha1_bucketclass_cr.yaml](../deploy/crds/noobaa_v1alpha1_bucketclass_cr.yaml)
 
 
 # Reconcile

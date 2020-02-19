@@ -21,22 +21,21 @@ spec:
     listKind: BackingStoreList
     plural: backingstores
     singular: backingstore
-  scope: ""
+  scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: BackingStore is the Schema for the backingstores API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
             of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
           type: string
         kind:
           description: 'Kind is a string value representing the REST resource this
             object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
           type: string
         metadata:
           description: Standard object metadata.
@@ -53,15 +52,6 @@ spec:
                 secret:
                   description: Secret refers to a secret that provides the credentials
                     The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
-                  properties:
-                    name:
-                      description: Name is unique within a namespace to reference
-                        a secret resource.
-                      type: string
-                    namespace:
-                      description: Namespace defines the space within which the secret
-                        name must be unique.
-                      type: string
                   type: object
                 sslDisabled:
                   description: SSLDisabled allows to disable SSL and use plain http
@@ -70,8 +60,8 @@ spec:
                   description: TargetBucket is the name of the target S3 bucket
                   type: string
               required:
-              - secret
               - targetBucket
+              - secret
               type: object
             azureBlob:
               description: AzureBlob specifies a backing store of type azure-blob
@@ -80,23 +70,14 @@ spec:
                   description: Secret refers to a secret that provides the credentials
                     The secret should define AccountName and AccountKey as provided
                     by Azure Blob.
-                  properties:
-                    name:
-                      description: Name is unique within a namespace to reference
-                        a secret resource.
-                      type: string
-                    namespace:
-                      description: Namespace defines the space within which the secret
-                        name must be unique.
-                      type: string
                   type: object
                 targetBlobContainer:
                   description: TargetBlobContainer is the name of the target Azure
                     Blob container
                   type: string
               required:
-              - secret
               - targetBlobContainer
+              - secret
               type: object
             googleCloudStorage:
               description: GoogleCloudStorage specifies a backing store of type google-cloud-storage
@@ -105,47 +86,24 @@ spec:
                   description: Secret refers to a secret that provides the credentials
                     The secret should define GoogleServiceAccountPrivateKeyJson containing
                     the entire json string as provided by Google.
-                  properties:
-                    name:
-                      description: Name is unique within a namespace to reference
-                        a secret resource.
-                      type: string
-                    namespace:
-                      description: Namespace defines the space within which the secret
-                        name must be unique.
-                      type: string
                   type: object
                 targetBucket:
                   description: TargetBucket is the name of the target S3 bucket
                   type: string
               required:
-              - secret
               - targetBucket
+              - secret
               type: object
             pvPool:
               description: PVPool specifies a backing store of type pv-pool
               properties:
                 numVolumes:
                   description: NumVolumes is the number of volumes to allocate
+                  format: int64
                   type: integer
                 resources:
                   description: VolumeResources represents the minimum resources each
                     volume should have.
-                  properties:
-                    limits:
-                      additionalProperties:
-                        type: string
-                      description: 'Limits describes the maximum amount of compute
-                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                      type: object
-                    requests:
-                      additionalProperties:
-                        type: string
-                      description: 'Requests describes the minimum amount of compute
-                        resources required. If Requests is omitted for a container,
-                        it defaults to Limits if that is explicitly specified, otherwise
-                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                      type: object
                   type: object
                 storageClass:
                   description: StorageClass is the name of the storage class to use
@@ -163,15 +121,6 @@ spec:
                 secret:
                   description: Secret refers to a secret that provides the credentials
                     The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
-                  properties:
-                    name:
-                      description: Name is unique within a namespace to reference
-                        a secret resource.
-                      type: string
-                    namespace:
-                      description: Namespace defines the space within which the secret
-                        name must be unique.
-                      type: string
                   type: object
                 signatureVersion:
                   description: SignatureVersion specifies the client signature version
@@ -181,9 +130,9 @@ spec:
                   description: TargetBucket is the name of the target S3 bucket
                   type: string
               required:
-              - endpoint
-              - secret
               - targetBucket
+              - secret
+              - endpoint
               type: object
             type:
               description: Type is an enum of supported types
@@ -196,10 +145,8 @@ spec:
           properties:
             conditions:
               description: Conditions is a list of conditions related to operator
-                reconciliation
+                reconciliation +patchMergeKey=type +patchStrategy=merge
               items:
-                description: Condition represents the state of the operator's reconciliation
-                  functionality.
                 properties:
                   lastHeartbeatTime:
                     format: date-time
@@ -214,12 +161,12 @@ spec:
                   status:
                     type: string
                   type:
-                    description: ConditionType is the state of the operator's reconciliation
-                      functionality.
                     type: string
                 required:
-                - status
                 - type
+                - status
+                - lastHeartbeatTime
+                - lastTransitionTime
                 type: object
               type: array
             mode:
@@ -240,45 +187,9 @@ spec:
             relatedObjects:
               description: RelatedObjects is a list of objects related to this operator.
               items:
-                description: ObjectReference contains enough information to let you
-                  inspect or modify the referred object.
-                properties:
-                  apiVersion:
-                    description: API version of the referent.
-                    type: string
-                  fieldPath:
-                    description: 'If referring to a piece of an object instead of
-                      an entire object, this string should contain a valid JSON/Go
-                      field access statement, such as desiredState.manifest.containers[2].
-                      For example, if the object reference is to a container within
-                      a pod, this would take on a value like: "spec.containers{name}"
-                      (where "name" refers to the name of the container that triggered
-                      the event) or if no container name is specified "spec.containers[2]"
-                      (container with index 2 in this pod). This syntax is chosen
-                      only to have some well-defined way of referencing a part of
-                      an object. TODO: this design is not final and this field is
-                      subject to change in the future.'
-                    type: string
-                  kind:
-                    description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-                    type: string
-                  name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                    type: string
-                  namespace:
-                    description: 'Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/'
-                    type: string
-                  resourceVersion:
-                    description: 'Specific resourceVersion to which this reference
-                      is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency'
-                    type: string
-                  uid:
-                    description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
-                    type: string
                 type: object
               type: array
           type: object
-      type: object
   version: v1alpha1
   versions:
   - name: v1alpha1

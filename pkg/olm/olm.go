@@ -173,9 +173,9 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 	util.Panic(err)
 
 	almExamples, err := json.Marshal([]runtime.Object{
-		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml),
-		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml),
-		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml),
+		util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml),
+		util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml),
+		util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_bucketclass_cr_yaml),
 	})
 	util.Panic(err)
 

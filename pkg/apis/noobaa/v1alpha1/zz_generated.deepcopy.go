@@ -93,7 +93,7 @@ func (in *BackingStore) DeepCopyObject() runtime.Object {
 func (in *BackingStoreList) DeepCopyInto(out *BackingStoreList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	out.ListMeta = in.ListMeta
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]BackingStore, len(*in))
@@ -256,7 +256,7 @@ func (in *BucketClass) DeepCopyObject() runtime.Object {
 func (in *BucketClassList) DeepCopyInto(out *BucketClassList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	out.ListMeta = in.ListMeta
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]BucketClass, len(*in))
@@ -426,7 +426,7 @@ func (in *NooBaa) DeepCopyObject() runtime.Object {
 func (in *NooBaaList) DeepCopyInto(out *NooBaaList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	out.ListMeta = in.ListMeta
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]NooBaa, len(*in))

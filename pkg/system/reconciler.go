@@ -104,7 +104,7 @@ func NewReconciler(
 		CoreVersion:         options.ContainerImageTag,
 		Ctx:                 context.TODO(),
 		Logger:              logrus.WithField("sys", req.Namespace+"/"+req.Name),
-		NooBaa:              util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
+		NooBaa:              util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		ServiceAccount:      util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
 		CoreApp:             util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
 		NooBaaDB:            util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet),
@@ -116,8 +116,8 @@ func NewReconciler(
 		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretEndpoints:     util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		CloudCreds:          util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
-		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
-		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
+		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
+		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
 		OBCStorageClass:     util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
 		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		ServiceMonitor:      util.KubeObject(bundle.File_deploy_internal_service_monitor_yaml).(*monitoringv1.ServiceMonitor),
@@ -386,7 +386,8 @@ func (r *Reconciler) reconcileObject(obj runtime.Object, desiredFunc func() erro
 	r.Own(objMeta)
 
 	op, err := controllerutil.CreateOrUpdate(
-		r.Ctx, r.Client, obj.(runtime.Object), func() error {
+		r.Ctx, r.Client, obj.(runtime.Object),
+		func(obj runtime.Object) error {
 			if desiredFunc != nil {
 				if err := desiredFunc(); err != nil {
 					return err
