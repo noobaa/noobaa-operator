@@ -5,7 +5,7 @@ BackingStore CRD represents a storage target to be used as underlying storage fo
 These storage targets are used to store deduped+compressed+encrypted chunks of data (encryption keys are stored separately).
 Backing-stores are referred to by name when defining [BucketClass](bucket-class-crd.md).
 
-Multiple types of backing-stores are currently supported: aws-s3, s3-compatible, google-cloud-storage, azure-blob, pv-pool.
+Multiple types of backing-stores are currently supported: aws-s3, s3-compatible, ibm-cos, google-cloud-storage, azure-blob, pv-pool.
 Backing-store type pv-pool is not yet supported by the operator. Instead, the web management console must be used to administer pv-pool backing-stores.
 Adding support for a new type of backing-store is rather easy as it requires just GET/PUT key-value store, see [Backing-stores supported by NooBaa](https://github.com/noobaa/noobaa-core/tree/master/src/agent/block_store_services).
 
@@ -68,6 +68,33 @@ spec:
     signatureVersion: v4
     targetBucket: BUCKET
   type: s3-compatible
+```
+
+#### IBM-COS type
+
+Create a cloud resource within the NooBaa brain and use IBM COS API for storing encrypted chunks of data in any IBM COS API compatible endpoint.
+```shell
+noobaa -n noobaa backingstore create ibm-cos bs --endpoint ENDPOINT --access-key KEY --secret-key SECRET --target-bucket BUCKET
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  labels:
+    app: noobaa
+  name: bs
+  namespace: noobaa
+spec:
+  s3Compatible:
+    endpoint: ENDPOINT
+    secret:
+      name: backing-store-ibm-cos-bs
+      namespace: noobaa
+    signatureVersion: v2
+    targetBucket: BUCKET
+  type: ibm-cos
 ```
 
 #### GOOGLE-CLOUD-STORAGE type

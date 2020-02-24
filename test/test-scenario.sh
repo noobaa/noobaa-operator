@@ -14,6 +14,17 @@ nb status
 kubectl get backingstore
 kubectl describe backingstore
 
+# IBM-Cos
+nb bucket create second.bucket
+nb backingstore create ibm-cos nb1 --target-bucket first.bucket --endpoint 127.0.0.1:6443 --access-key $AWS_ACCESS_KEY_ID --secret-key $AWS_SECRET_ACCESS_KEY
+nb backingstore create ibm-cos nb2 --target-bucket second.bucket --endpoint 127.0.0.1:6443 --access-key $AWS_ACCESS_KEY_ID --secret-key $AWS_SECRET_ACCESS_KEY
+nb backingstore status nb1
+nb backingstore status nb2
+nb backingstore list
+nb status
+kubectl get backingstore
+kubectl describe backingstore
+
 # AWS-S3
 nb backingstore create aws-s3 aws1 --target-bucket znoobaa --access-key $AWS_ACCESS_KEY_ID --secret-key $AWS_SECRET_ACCESS_KEY
 nb backingstore create aws-s3 aws2 --target-bucket noobaa-qa --access-key $AWS_ACCESS_KEY_ID --secret-key $AWS_SECRET_ACCESS_KEY
