@@ -422,6 +422,8 @@ const (
 	EndpointTypeGoogle EndpointType = "GOOGLE"
 	// EndpointTypeS3Compat enum
 	EndpointTypeS3Compat EndpointType = "S3_COMPATIBLE"
+	// EndpointTypeIBMCos enum
+	EndpointTypeIBMCos EndpointType = "IBM_COS"
 
 	// ExternalConnectionSuccess enum
 	ExternalConnectionSuccess ExternalConnectionStatus = "SUCCESS"
