@@ -568,6 +568,56 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 			conn.Endpoint = u.String()
 		}
 
+	case nbv1.StoreTypeIBMCos:
+		conn.EndpointType = nb.EndpointTypeIBMCos
+		conn.Identity = r.Secret.StringData["IBM_COS_ACCESS_KEY_ID"]
+		conn.Secret = r.Secret.StringData["IBM_COS_SECRET_ACCESS_KEY"]
+		IBMCos := r.BackingStore.Spec.IBMCos
+		if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV4 {
+			conn.AuthMethod = "AWS_V4"
+		} else if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV2 {
+			conn.AuthMethod = "AWS_V2"
+		} else if IBMCos.SignatureVersion != "" {
+			return nil, util.NewPersistentError("InvalidSignatureVersion",
+				fmt.Sprintf("Invalid s3 signature version %q for backing store %q",
+					IBMCos.SignatureVersion, r.BackingStore.Name))
+		}
+		if IBMCos.Endpoint == "" {
+			u := url.URL{
+				Scheme: "https",
+				Host:   fmt.Sprintf("127.0.0.1:6443"),
+			}
+			// if IBMCos.SSLDisabled {
+			// 	u.Scheme = "http"
+			// 	u.Host = fmt.Sprintf("127.0.0.1:6001")
+			// }
+			conn.Endpoint = u.String()
+		} else {
+			match, err := regexp.MatchString(`^\w+://`, IBMCos.Endpoint)
+			if err != nil {
+				return nil, util.NewPersistentError("InvalidEndpoint",
+					fmt.Sprintf("Invalid endpoint url %q: %v", IBMCos.Endpoint, err))
+			}
+			if !match {
+				IBMCos.Endpoint = "https://" + IBMCos.Endpoint
+				// if s3Options.SSLDisabled {
+				// 	u.Scheme = "http"
+				// }
+			}
+			u, err := url.Parse(IBMCos.Endpoint)
+			if err != nil {
+				return nil, util.NewPersistentError("InvalidEndpoint",
+					fmt.Sprintf("Invalid endpoint url %q: %v", IBMCos.Endpoint, err))
+			}
+			if u.Scheme == "" {
+				u.Scheme = "https"
+				// if s3Options.SSLDisabled {
+				// 	u.Scheme = "http"
+				// }
+			}
+			conn.Endpoint = u.String()
+		}
+
 	case nbv1.StoreTypeAzureBlob:
 		conn.EndpointType = nb.EndpointTypeAzure
 		conn.Endpoint = "https://blob.core.windows.net"

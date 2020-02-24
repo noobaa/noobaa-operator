@@ -176,6 +176,31 @@ function check_S3_compatible {
     echo_time "✅  s3 compatible cycle is done"
 }
 
+function check_IBM_cos {
+    echo_time "Staring IBM cos cycle"
+    local cycle
+    local type="ibm-cos"
+    local buckets=("first.bucket" "second.bucket")
+    local backingstore=("ibmcos1" "ibmcos2")
+
+    test_noobaa bucket create ${buckets[1]}
+    for (( cycle=0 ; cycle < ${#backingstore[@]} ; cycle++ ))
+    do
+        test_noobaa backingstore create ${type} ${backingstore[cycle]} \
+            --target-bucket ${buckets[cycle]} \
+            --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
+            --access-key ${AWS_ACCESS_KEY_ID} \
+            --secret-key ${AWS_SECRET_ACCESS_KEY}
+        test_noobaa backingstore status ${backingstore[cycle]}
+    done
+    test_noobaa backingstore list
+    test_noobaa status
+    kuberun get backingstore
+    kuberun describe backingstore
+    echo_time "✅  ibm cos cycle is done"
+}
+
+
 function check_aws_S3 {
     return
     # test_noobaa bucket create second.bucket

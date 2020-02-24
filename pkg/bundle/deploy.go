@@ -89,7 +89,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "e69e698b5f7a8f99dc3439153bb39c231be79427430385579259d82c5da8cabe"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "cb0587fb90b7ca886c92692862a5a08e91d9137346f8be2d09ed7509f4c13455"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -212,6 +212,37 @@ spec:
                   description: TargetBucket is the name of the target S3 bucket
                   type: string
               required:
+              - secret
+              - targetBucket
+              type: object
+            ibmCos:
+              description: IBMCos specifies a backing store of type ibm-cos
+              properties:
+                endpoint:
+                  description: 'Endpoint is the IBM COS compatible endpoint: http(s)://host:port'
+                  type: string
+                secret:
+                  description: Secret refers to a secret that provides the credentials
+                    The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY
+                  properties:
+                    name:
+                      description: Name is unique within a namespace to reference
+                        a secret resource.
+                      type: string
+                    namespace:
+                      description: Namespace defines the space within which the secret
+                        name must be unique.
+                      type: string
+                  type: object
+                signatureVersion:
+                  description: SignatureVersion specifies the client signature version
+                    to use when signing requests.
+                  type: string
+                targetBucket:
+                  description: TargetBucket is the name of the target IBM COS bucket
+                  type: string
+              required:
+              - endpoint
               - secret
               - targetBucket
               type: object
