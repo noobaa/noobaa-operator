@@ -103,15 +103,6 @@ spec:
                 secret:
                   description: Secret refers to a secret that provides the credentials
                     The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY
-                  properties:
-                    name:
-                      description: Name is unique within a namespace to reference
-                        a secret resource.
-                      type: string
-                    namespace:
-                      description: Namespace defines the space within which the secret
-                        name must be unique.
-                      type: string
                   type: object
                 signatureVersion:
                   description: SignatureVersion specifies the client signature version
@@ -121,9 +112,9 @@ spec:
                   description: TargetBucket is the name of the target IBM COS bucket
                   type: string
               required:
-              - endpoint
-              - secret
               - targetBucket
+              - secret
+              - endpoint
               type: object
             pvPool:
               description: PVPool specifies a backing store of type pv-pool

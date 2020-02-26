@@ -107,7 +107,7 @@ spec:
       name: backing-store-secret-aws1
 `
 
-const Sha256_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml = "583f4d7818024cac9d0f787275e0b39769722681a38b916b33fc19845ddfc90f"
+const Sha256_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml = "5abf19b4fc164a524c6bf165ad5ce306427c2cad91cb060ac65711ac46ff24d6"
 
 const File_deploy_crds_noobaa_v1alpha1_backingstore_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -214,15 +214,6 @@ spec:
                 secret:
                   description: Secret refers to a secret that provides the credentials
                     The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY
-                  properties:
-                    name:
-                      description: Name is unique within a namespace to reference
-                        a secret resource.
-                      type: string
-                    namespace:
-                      description: Namespace defines the space within which the secret
-                        name must be unique.
-                      type: string
                   type: object
                 signatureVersion:
                   description: SignatureVersion specifies the client signature version
@@ -232,9 +223,9 @@ spec:
                   description: TargetBucket is the name of the target IBM COS bucket
                   type: string
               required:
-              - endpoint
-              - secret
               - targetBucket
+              - secret
+              - endpoint
               type: object
             pvPool:
               description: PVPool specifies a backing store of type pv-pool
