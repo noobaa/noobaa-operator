@@ -65,6 +65,8 @@ spec:
           value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
         - name: CONTAINER_PLATFORM
           value: KUBERNETES
+        - name: NOOBAA_DISABLE_COMPRESSION 
+          value: "false"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:

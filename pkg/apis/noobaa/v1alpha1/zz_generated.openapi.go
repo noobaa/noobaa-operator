@@ -95,6 +95,12 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref common.ReferenceCallba
 							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.S3CompatibleSpec"),
 						},
 					},
+					"ibmCos": {
+						SchemaProps: spec.SchemaProps{
+							Description: "IBMCos specifies a backing store of type ibm-cos",
+							Ref:         ref("github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.IBMCosSpec"),
+						},
+					},
 					"azureBlob": {
 						SchemaProps: spec.SchemaProps{
 							Description: "AzureBlob specifies a backing store of type azure-blob",
@@ -118,7 +124,7 @@ func schema_pkg_apis_noobaa_v1alpha1_BackingStoreSpec(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AWSS3Spec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AzureBlobSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.GoogleCloudStorageSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.PVPoolSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.S3CompatibleSpec"},
+			"github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AWSS3Spec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.AzureBlobSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.GoogleCloudStorageSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.IBMCosSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.PVPoolSpec", "github.com/noobaa/noobaa-operator/pkg/apis/noobaa/v1alpha1.S3CompatibleSpec"},
 	}
 }
 

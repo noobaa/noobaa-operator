@@ -69,6 +69,10 @@ type BackingStoreSpec struct {
 	// +optional
 	S3Compatible *S3CompatibleSpec `json:"s3Compatible,omitempty"`
 
+	// IBMCos specifies a backing store of type ibm-cos
+	// +optional
+	IBMCos *IBMCosSpec `json:"ibmCos,omitempty"`
+
 	// AzureBlob specifies a backing store of type azure-blob
 	// +optional
 	AzureBlob *AzureBlobSpec `json:"azureBlob,omitempty"`
@@ -137,6 +141,9 @@ const (
 	// StoreTypeS3Compatible is used to connect to S3 compatible storage
 	StoreTypeS3Compatible StoreType = "s3-compatible"
 
+	// StoreTypeIBMCos is used to connect to IBM cos storage
+	StoreTypeIBMCos StoreType = "ibm-cos"
+
 	// StoreTypeGoogleCloudStorage is used to connect to Google Cloud Storage
 	StoreTypeGoogleCloudStorage StoreType = "google-cloud-storage"
 
@@ -177,6 +184,24 @@ type S3CompatibleSpec struct {
 	Secret corev1.SecretReference `json:"secret"`
 
 	// Endpoint is the S3 compatible endpoint: http(s)://host:port
+	Endpoint string `json:"endpoint"`
+
+	// SignatureVersion specifies the client signature version to use when signing requests.
+	// +optional
+	SignatureVersion S3SignatureVersion `json:"signatureVersion,omitempty"`
+}
+
+// IBMCosSpec specifies a backing store of type ibm-cos
+type IBMCosSpec struct {
+
+	// TargetBucket is the name of the target IBM COS bucket
+	TargetBucket string `json:"targetBucket"`
+
+	// Secret refers to a secret that provides the credentials
+	// The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY
+	Secret corev1.SecretReference `json:"secret"`
+
+	// Endpoint is the IBM COS compatible endpoint: http(s)://host:port
 	Endpoint string `json:"endpoint"`
 
 	// SignatureVersion specifies the client signature version to use when signing requests.

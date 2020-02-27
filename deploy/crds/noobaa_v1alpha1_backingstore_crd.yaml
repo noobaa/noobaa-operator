@@ -94,6 +94,28 @@ spec:
               - targetBucket
               - secret
               type: object
+            ibmCos:
+              description: IBMCos specifies a backing store of type ibm-cos
+              properties:
+                endpoint:
+                  description: 'Endpoint is the IBM COS compatible endpoint: http(s)://host:port'
+                  type: string
+                secret:
+                  description: Secret refers to a secret that provides the credentials
+                    The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY
+                  type: object
+                signatureVersion:
+                  description: SignatureVersion specifies the client signature version
+                    to use when signing requests.
+                  type: string
+                targetBucket:
+                  description: TargetBucket is the name of the target IBM COS bucket
+                  type: string
+              required:
+              - targetBucket
+              - secret
+              - endpoint
+              type: object
             pvPool:
               description: PVPool specifies a backing store of type pv-pool
               properties:

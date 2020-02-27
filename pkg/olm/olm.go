@@ -194,7 +194,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 	csv.Spec.CustomResourceDefinitions.Required = []operv1.CRDDescription{}
 	crdDescriptions := map[string]string{
 		"NooBaa": `A NooBaa system - Create this to start`,
-		"BackingStore": `Storage target spec such as aws-s3, s3-compatible, PV's and more. ` +
+		"BackingStore": `Storage target spec such as aws-s3, s3-compatible, ibm-cos, PV's and more. ` +
 			`Used in BacketClass to construct data placement policies.`,
 		"BucketClass": `Storage policy spec  tiering, mirroring, spreading. ` +
 			`Combines BackingStores. Referenced by ObjectBucketClaims.`,
@@ -225,6 +225,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 		uiFieldGroupGoogleCloudStorage = uiFieldGroup + "googleCloudStorage"
 		uiFieldGroupPvPool             = uiFieldGroup + "pvPool"
 		uiFieldGroupS3Compatible       = uiFieldGroup + "s3Compatible"
+		uiFieldGroupIBMCos             = uiFieldGroup + "ibmCos"
 		uiFieldGroupPlacementPolicy    = uiFieldGroup + "placementPolicy"
 	)
 
@@ -376,6 +377,30 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 				Description:  "TargetBucket is the name of the target S3 bucket.",
 				Path:         "s3Compatible.targetBucket",
 				XDescriptors: []string{uiFieldGroupS3Compatible, uiText},
+				DisplayName:  "Target Bucket",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Endpoint is the IBM COS endpoint: http(s)://host:port.",
+				Path:         "IBMCos.endpoint",
+				XDescriptors: []string{uiFieldGroupIBMCos, uiText},
+				DisplayName:  "End Point",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Secret refers to a secret that provides the credentials. The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY.",
+				Path:         "IBMCos.secret",
+				XDescriptors: []string{uiFieldGroupIBMCos, uiK8sSecret},
+				DisplayName:  "Secret",
+			},
+			operv1.SpecDescriptor{
+				Description:  "SignatureVersion specifies the client signature version to use when signing requests.",
+				Path:         "IBMCos.signatureVersion",
+				XDescriptors: []string{uiFieldGroupIBMCos, uiNumber},
+				DisplayName:  "Signature Version",
+			},
+			operv1.SpecDescriptor{
+				Description:  "TargetBucket is the name of the target IBM COS bucket.",
+				Path:         "IBMCos.targetBucket",
+				XDescriptors: []string{uiFieldGroupIBMCos, uiText},
 				DisplayName:  "Target Bucket",
 			},
 		},

@@ -51,6 +51,7 @@ func CmdCreate() *cobra.Command {
 	cmd.AddCommand(
 		CmdCreateAWSS3(),
 		CmdCreateS3Compatible(),
+		CmdCreateIBMCos(),
 		CmdCreateAzureBlob(),
 		CmdCreateGoogleCloudStorage(),
 		CmdCreatePVPool(),
@@ -110,6 +111,32 @@ func CmdCreateS3Compatible() *cobra.Command {
 	cmd.Flags().String(
 		"signature-version", "v4",
 		"The S3 signature version v4|v2",
+	)
+	return cmd
+}
+
+// CmdCreateIBMCos returns a CLI command
+func CmdCreateIBMCos() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "ibm-cos <backing-store-name>",
+		Short: "Create ibm-cos backing store",
+		Run:   RunCreateIBMCos,
+	}
+	cmd.Flags().String(
+		"target-bucket", "",
+		"The target bucket name on the cloud",
+	)
+	cmd.Flags().String(
+		"access-key", "",
+		`Access key for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
+	)
+	cmd.Flags().String(
+		"secret-key", "",
+		`Secret key for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
+	)
+	cmd.Flags().String(
+		"endpoint", "",
+		"The target IBM Cos endpoint",
 	)
 	return cmd
 }
@@ -321,6 +348,28 @@ func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 	})
 }
 
+// RunCreateIBMCos runs a CLI command
+func RunCreateIBMCos(cmd *cobra.Command, args []string) {
+	createCommon(cmd, args, nbv1.StoreTypeIBMCos, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
+		endpoint := util.GetFlagStringOrPrompt(cmd, "endpoint")
+		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
+		accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
+		secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
+		// sigVer, _ := cmd.Flags().GetString("signature-version")
+		secret.StringData["IBM_COS_ACCESS_KEY_ID"] = accessKey
+		secret.StringData["IBM_COS_SECRET_ACCESS_KEY"] = secretKey
+		backStore.Spec.IBMCos = &nbv1.IBMCosSpec{
+			TargetBucket:     targetBucket,
+			Endpoint:         endpoint,
+			SignatureVersion: nbv1.S3SignatureVersion("v2"),
+			Secret: corev1.SecretReference{
+				Name:      secret.Name,
+				Namespace: secret.Namespace,
+			},
+		}
+	})
+}
+
 // RunCreateAzureBlob runs a CLI command
 func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.StoreTypeAzureBlob, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
@@ -437,7 +486,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		if !isRPCErr || rpcErr.RPCCode != "NO_SUCH_POOL" {
 			log.Fatalf(`❌ Failed to read BackingStore info: %s`, err)
 		}
-	} else if poolinfo.Undeletable != "" && poolinfo.Undeletable!="IS_BACKINGSTORE"{
+	} else if poolinfo.Undeletable != "" && poolinfo.Undeletable != "IS_BACKINGSTORE" {
 		switch poolinfo.Undeletable {
 		case "CONNECTED_BUCKET_DELETING":
 			fallthrough
@@ -638,6 +687,8 @@ func GetBackingStoreSecret(bs *nbv1.BackingStore) *corev1.SecretReference {
 		return &bs.Spec.AWSS3.Secret
 	case nbv1.StoreTypeS3Compatible:
 		return &bs.Spec.S3Compatible.Secret
+	case nbv1.StoreTypeIBMCos:
+		return &bs.Spec.IBMCos.Secret
 	case nbv1.StoreTypeAzureBlob:
 		return &bs.Spec.AzureBlob.Secret
 	case nbv1.StoreTypeGoogleCloudStorage:
@@ -654,6 +705,8 @@ func GetBackingStoreTargetBucket(bs *nbv1.BackingStore) string {
 		return bs.Spec.AWSS3.TargetBucket
 	case nbv1.StoreTypeS3Compatible:
 		return bs.Spec.S3Compatible.TargetBucket
+	case nbv1.StoreTypeIBMCos:
+		return bs.Spec.IBMCos.TargetBucket
 	case nbv1.StoreTypeAzureBlob:
 		return bs.Spec.AzureBlob.TargetBlobContainer
 	case nbv1.StoreTypeGoogleCloudStorage:
