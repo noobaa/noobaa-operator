@@ -297,7 +297,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			},
 			operv1.SpecDescriptor{
 				Description:  "Secret refers to a secret that provides the credentials. The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
-				Path:         "awsS3.secret",
+				Path:         "awsS3.secret.name",
 				XDescriptors: []string{uiFieldGroupAwsS3, uiK8sSecret},
 				DisplayName:  "Secret",
 			},
