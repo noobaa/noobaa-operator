@@ -420,8 +420,13 @@ func (r *Reconciler) ReadSystemInfo() error {
 			qty := pvPool.VolumeResources.Requests[corev1.ResourceName(corev1.ResourceStorage)]
 			volumeSize = qty.Value()
 		}
-		if volumeSize == 0 {
-			volumeSize = int64(defaultVolumeSize)
+		if volumeSize < defaultVolumeSize {
+			if volumeSize == 0 {
+				volumeSize = int64(defaultVolumeSize)
+			} else {
+				return util.NewPersistentError("SmallVolumeSize",
+					fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to insufficient size, min is %d", r.BackingStore.Name, defaultVolumeSize))
+			}
 		}
 		r.CreateHostsPoolParams = &nb.CreateHostsPoolParams{
 			Name:       r.BackingStore.Name,
