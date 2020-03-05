@@ -212,6 +212,13 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec
+	if r.NooBaa.Spec.ImagePullSecret == nil {
+		podSpec.ImagePullSecrets =
+			[]corev1.LocalObjectReference{}
+	} else {
+		podSpec.ImagePullSecrets =
+			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
+	}
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
 		switch c.Name {
