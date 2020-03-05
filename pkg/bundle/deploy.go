@@ -2051,7 +2051,7 @@ type: Opaque
 data: {}
 `
 
-const Sha256_deploy_internal_service_db_yaml = "73f358a75a8a89f47f9b1319657ac7e72ab81216369b624f06d2929f6cb45052"
+const Sha256_deploy_internal_service_db_yaml = "64559363daddd9caf781f104b876b33fb63e4f2551570e73bdb2bfae736f33ee"
 
 const File_deploy_internal_service_db_yaml = `apiVersion: v1
 kind: Service
@@ -2059,6 +2059,9 @@ metadata:
   name: noobaa-db
   labels:
     app: noobaa
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: 'noobaa-db-serving-cert'
+    service.alpha.openshift.io/serving-cert-secret-name: 'noobaa-db-serving-cert'
 spec:
   type: ClusterIP
   selector:
@@ -2069,7 +2072,7 @@ spec:
       name: mongodb
 `
 
-const Sha256_deploy_internal_service_mgmt_yaml = "450984e5e72eee3a761e240c6c0731dd14160c5fcb502fc81beb6abe2789e906"
+const Sha256_deploy_internal_service_mgmt_yaml = "3449be462a77ea7e66c529308cbd86fd1c3d18685aa4649aa05514303f23908a"
 
 const File_deploy_internal_service_mgmt_yaml = `apiVersion: v1
 kind: Service
@@ -2082,6 +2085,7 @@ metadata:
     prometheus.io/scheme: http
     prometheus.io/port: "8080"
     service.beta.openshift.io/serving-cert-secret-name: noobaa-mgmt-serving-cert
+    service.alpha.openshift.io/serving-cert-secret-name: noobaa-mgmt-serving-cert
 spec:
   type: LoadBalancer
   selector:
@@ -2116,7 +2120,7 @@ spec:
       app: noobaa
 `
 
-const Sha256_deploy_internal_service_s3_yaml = "9e5b3d6ef68b19be9f431481154faae1ed708b642e760b6cd0bd77eb7fc1d5f0"
+const Sha256_deploy_internal_service_s3_yaml = "49fa69db96f9e06ac46874ec42d1a3bd81cfc7b159d75e2a2870d1f16708eafc"
 
 const File_deploy_internal_service_s3_yaml = `apiVersion: v1
 kind: Service
@@ -2126,6 +2130,7 @@ metadata:
     app: noobaa
   annotations:
     service.beta.openshift.io/serving-cert-secret-name: 'noobaa-s3-serving-cert'
+    service.alpha.openshift.io/serving-cert-secret-name: 'noobaa-s3-serving-cert'
 spec:
   type: LoadBalancer
   selector:

@@ -28,10 +28,10 @@ wget https://github.com/noobaa/noobaa-operator/releases/download/v2.0.9/noobaa-l
 
 # Troubleshooting
 
-- The operator is running, but there is no noobaa-core-0 pod 
+- The operator is running, but there is no noobaa-core-0 pod
 
     Make sure that there is a single default storage class with `oc get sc`. run `oc describe sts` for more information
-    
+
 - The operator is running, but the noobaa-core-0 is pending
 
     Verify that there are enough resources. run `oc describe pod noobaa-core-0` for more information
@@ -51,7 +51,7 @@ Applications
 - Fork and clone the repo: `git clone https://github.com/<username>/noobaa-operator`
 - Use minikube: `minikube start`
 - Use your package manager to install `go` and `python3`.
-- Install operator-sdk 
+- Install operator-sdk
   For Mac:
    ```
     wget https://github.com/operator-framework/operator-sdk/releases/download/v0.13.0/operator-sdk-v0.13.0-x86_64-apple-darwin
@@ -62,13 +62,13 @@ Applications
     ```
 
   For Linux:
-```
+   ```
     wget https://github.com/operator-framework/operator-sdk/releases/download/v0.13.0/operator-sdk-v0.13.0-x86_64-linux-gnu
     chmod +x operator-sdk-v0.13.0-x86_64-linux-gnu
     sudo mv operator-sdk-v0.13.0-x86_64-linux-gnu /usr/local/bin/operator-sdk
-    operator-sdk version    
+    operator-sdk version
 
-```
+    ```
 - Source the devenv into your shell: `. devenv.sh`
 - Build the project: `make`
 - Test with the alias `nb` that runs the local operator from `build/_output/bin` (alias created by devenv)
