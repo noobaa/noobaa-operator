@@ -292,19 +292,16 @@ func (r *Reconciler) ReconcilePhases() error {
 	if err := r.ReconcilePhaseVerifying(); err != nil {
 		return err
 	}
-	r.PrintMemUsage("Verifying")
 	if err := r.ReconcilePhaseCreating(); err != nil {
 		return err
 	}
-	r.PrintMemUsage("Creating")
 	if err := r.ReconcilePhaseConnecting(); err != nil {
 		return err
 	}
-	r.PrintMemUsage("Connecting")
 	if err := r.ReconcilePhaseConfiguring(); err != nil {
 		return err
 	}
-	r.PrintMemUsage("Configuring")
+	r.PrintMemUsage("Finishing")
 	return nil
 }
 
