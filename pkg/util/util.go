@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -50,7 +51,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-const oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
+const (
+	oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
+	serviceCAPath          = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+)
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
 type OAuth2Endpoints struct {
@@ -64,8 +68,37 @@ var (
 	lazyConfig *rest.Config
 	lazyRest   *rest.RESTClient
 	lazyClient client.Client
+
+	// InsecureHTTPTransport is a global insecure http transport
+	InsecureHTTPTransport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	// SecureHTTPTransport is a global secured http transport
+	SecureHTTPTransport = newSecureHTTPTransport()
 )
 
+// newSecureHTTPTransport initializes a secured http transport. http.Transport may cause memory leaks when overused
+func newSecureHTTPTransport() *http.Transport {
+	// Load CA cert
+	caCert, err := ioutil.ReadFile(serviceCAPath)
+	if err != nil {
+		return &http.Transport{}
+	}
+
+	caCertPool, _ := x509.SystemCertPool()
+	if caCertPool == nil {
+		caCertPool = x509.NewCertPool()
+	}
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	// Setup HTTPS client
+	tlsConfig := &tls.Config{
+		RootCAs: caCertPool,
+	}
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	return transport
+
+}
 func init() {
 	Panic(apiextv1beta1.AddToScheme(scheme.Scheme))
 	Panic(nbapis.AddToScheme(scheme.Scheme))
@@ -855,13 +888,16 @@ func PrintThisNoteWhenFinishedApplyingAndStartWaitLoop() {
 // DiscoverOAuthEndpoints uses a well known url to get info on the cluster oauth2 endpoints
 func DiscoverOAuthEndpoints() (*OAuth2Endpoints, error) {
 	client := http.Client{
-		Timeout: 120 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
+		Timeout:   120 * time.Second,
+		Transport: SecureHTTPTransport,
 	}
 
 	res, err := client.Get(oAuthWellKnownEndpoint)
+	defer func() {
+		if res != nil && res.Body != nil {
+			res.Body.Close()
+		}
+	}()
 	if err != nil {
 		return nil, err
 	}

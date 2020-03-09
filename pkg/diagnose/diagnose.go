@@ -120,10 +120,7 @@ func (c *Collector) CollectPodLogs(corePodSelector labels.Selector) {
 
 // 	targetAddress := fmt.Sprintf("%s/metrics/counter", mgmtURL.String())
 // 	log.Printf("JENIA THIS IS THE URL %s", targetAddress)
-// 	tr := &http.Transport{
-// 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-// 	}
-// 	client := &http.Client{Transport: tr}
+// 	client := &http.Client{Transport: util.InsecureHTTPTransport}
 // 	resp, err := client.Get(targetAddress)
 // 	if err != nil {
 // 		log.Printf(`%s`, err)
