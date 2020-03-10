@@ -83,7 +83,9 @@ func KubeConfig() *rest.Config {
 	if lazyConfig == nil {
 		var err error
 		lazyConfig, err = config.GetConfig()
-		Panic(err)
+		if err != nil {
+			log.Fatalf("KubeConfig: %v", err)
+		}
 	}
 	return lazyConfig
 }
@@ -123,7 +125,9 @@ func KubeClient() client.Client {
 		mapper, _ := MapperProvider(config)
 		var err error
 		lazyClient, err = client.New(config, client.Options{Mapper: mapper, Scheme: scheme.Scheme})
-		Panic(err)
+		if err != nil {
+			log.Fatalf("KubeClient: %v", err)
+		}
 	}
 	return lazyClient
 }
@@ -527,7 +531,7 @@ func Panic(err error) {
 // LogError prints the error to the log and continue
 func LogError(err error) {
 	if err != nil {
-		log.Errorf("Error dicovered: %s", err)
+		log.Errorf("Error discovered: %s", err)
 	}
 }
 
