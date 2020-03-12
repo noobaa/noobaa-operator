@@ -1,11 +1,11 @@
 package nb
 
 import (
-	"crypto/tls"
 	"net/http"
 	"strings"
 	"sync"
 
+	util "github.com/noobaa/noobaa-operator/v2/pkg/util"
 	"github.com/sirupsen/logrus"
 )
 
@@ -125,10 +125,7 @@ var _ error = &RPCError{}
 func NewRPC() *RPC {
 	return &RPC{
 		HTTPClient: http.Client{
-			//Timeout: 120 * time.Second,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
+			Transport: util.InsecureHTTPTransport,
 		},
 		ConnMap:     make(map[string]RPCConn),
 		ConnMapLock: sync.Mutex{},
