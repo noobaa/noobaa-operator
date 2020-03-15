@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	math "math"
 	"net/url"
 	"regexp"
 	"time"
@@ -414,18 +415,19 @@ func (r *Reconciler) ReadSystemInfo() error {
 			))
 		}
 		const defaultVolumeSize = int64(21474836480) // 20Gi=20*1024^3
+		const minimalVolumeSize = int64(16000000000) // 16G=16*1000^3
 		var volumeSize int64
 		pvPool := r.BackingStore.Spec.PVPool
 		if pvPool.VolumeResources != nil {
 			qty := pvPool.VolumeResources.Requests[corev1.ResourceName(corev1.ResourceStorage)]
 			volumeSize = qty.Value()
 		}
-		if volumeSize < defaultVolumeSize {
+		if volumeSize < minimalVolumeSize {
 			if volumeSize == 0 {
 				volumeSize = int64(defaultVolumeSize)
 			} else {
 				return util.NewPersistentError("SmallVolumeSize",
-					fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to insufficient size, min is %d", r.BackingStore.Name, defaultVolumeSize))
+					fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to insufficient size, min is %d=%gGB", r.BackingStore.Name, minimalVolumeSize, (float64(minimalVolumeSize)/(math.Pow(1000, 3)))))
 			}
 		}
 		r.CreateHostsPoolParams = &nb.CreateHostsPoolParams{
