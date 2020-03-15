@@ -12,7 +12,7 @@ require (
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/go-openapi/spec v0.19.2
 	github.com/gobuffalo/flect v0.1.6 // indirect
-	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20200107223247-51020689f1fb
+	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20200219192502-02cba53742ae
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
