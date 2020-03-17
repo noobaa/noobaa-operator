@@ -5,7 +5,7 @@ metadata:
     app: noobaa
   name: noobaa-endpoint
 spec:
-  maxReplicas: 1
+  maxReplicas: 3
   minReplicas: 1
   scaleTargetRef:
     apiVersion: apps/v1

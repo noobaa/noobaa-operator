@@ -1846,7 +1846,7 @@ spec:
           timeoutSeconds: 5
 `
 
-const Sha256_deploy_internal_hpa_endpoint_yaml = "7e23ff7cc720e344497e9675e9f514aa5e9fc780c4f572eb40e1be1004e1e6e7"
+const Sha256_deploy_internal_hpa_endpoint_yaml = "5f6d756b2a8a7419b0d3b103c0289e911cba08748da2d36db0c0c7e497e6f423"
 
 const File_deploy_internal_hpa_endpoint_yaml = `apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
@@ -1855,7 +1855,7 @@ metadata:
     app: noobaa
   name: noobaa-endpoint
 spec:
-  maxReplicas: 1
+  maxReplicas: 3
   minReplicas: 1
   scaleTargetRef:
     apiVersion: apps/v1
