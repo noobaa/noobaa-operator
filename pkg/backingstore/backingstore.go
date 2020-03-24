@@ -421,6 +421,10 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 		numVolumes, _ := cmd.Flags().GetUint32("num-volumes")
 		pvSizeGB, _ := cmd.Flags().GetUint32("pv-size-gb")
 		storageClass, _ := cmd.Flags().GetString("storage-class")
+		pvPoolName := args[0]
+		if len(pvPoolName) > 47 {
+			log.Fatalf(`❌ Number of characters in <backing-store-name> should not exceed 63 `)
+		}
 		if numVolumes == 0 {
 			fmt.Printf("Enter number of volumes: ")
 			_, err := fmt.Scan(&numVolumes)
@@ -432,7 +436,7 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 			}
 		}
 		if numVolumes > 20 {
-			log.Fatalf(`❌ Number of volumes seems to be too large %d %s`, numVolumes, cmd.UsageString())
+			log.Fatalf(`❌ Number of volumes seems to be too large %d, maximal size of volumes is 20 %s`, numVolumes, cmd.UsageString())
 		}
 
 		if pvSizeGB == 0 {
