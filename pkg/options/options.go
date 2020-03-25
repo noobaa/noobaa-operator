@@ -79,6 +79,9 @@ var DBStorageClass = ""
 // it can be overridden for testing or different PV providers.
 var PVPoolDefaultStorageClass = ""
 
+// NoobaaDisableCompression (optional) disable compression.
+var NoobaaDisableCompression = ""
+
 // ImagePullSecret is optionally used to authenticate when pulling the container images
 // which is needed when using a private container registry.
 var ImagePullSecret = ""
@@ -136,6 +139,10 @@ func init() {
 	FlagSet.StringVar(
 		&PVPoolDefaultStorageClass, "pv-pool-default-storage-class",
 		PVPoolDefaultStorageClass, "The default storage class name for BackingStores of type pv-pool",
+	)
+	FlagSet.StringVar(
+		&NoobaaDisableCompression, "noobaa-disable-compression",
+		NoobaaDisableCompression, "Disable compression",
 	)
 	FlagSet.StringVar(
 		&ImagePullSecret, "image-pull-secret",

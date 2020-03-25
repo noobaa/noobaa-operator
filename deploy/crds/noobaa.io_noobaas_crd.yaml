@@ -766,6 +766,9 @@ spec:
                     name must be unique.
                   type: string
               type: object
+            noobaaDisableCompression:
+              description: NoobaaDisableCompression (optional) disable compression
+              type: string
             pvPoolDefaultStorageClass:
               description: PVPoolDefaultStorageClass (optional) overrides the default
                 cluster StorageClass for the pv-pool volumes. This affects where the

@@ -268,6 +268,12 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 				DisplayName:  "DB StorageClass",
 			},
 			operv1.SpecDescriptor{
+				Path:         "noobaaDisableCompression",
+				XDescriptors: []string{uiText},
+				Description:  "NoobaaDisableCompression (optional) disable compression",
+				DisplayName:  "NooBaa Disable Compression",
+			},
+			operv1.SpecDescriptor{
 				Path:         "pvPoolDefaultStorageClass",
 				XDescriptors: []string{uiText},
 				Description:  "PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes. This affects where the system stores data chunks (encrypted). Updates to this field will only affect new pv-pools, but updates to existing pools are not supported by the operator.",

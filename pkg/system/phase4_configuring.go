@@ -320,6 +320,13 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					} else {
 						c.Env[j].Value = ""
 					}
+
+				case "NOOBAA_DISABLE_COMPRESSION":
+					if r.NooBaa.Spec.NoobaaDisableCompression != nil {
+						c.Env[j].Value = *r.NooBaa.Spec.NoobaaDisableCompression
+					} else {
+						c.Env[j].Value = "false"
+					}
 				}
 			}
 		}

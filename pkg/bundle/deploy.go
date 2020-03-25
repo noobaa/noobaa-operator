@@ -578,7 +578,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "5ab2a748ff07dcabe35917561ef4eba1facaade26abcbdaf6ae05d17621bb533"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "d4dbbad00f94ec808f8d3121f66c2ce3a4db178848efd42794b26995ea2278f8"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -1348,6 +1348,9 @@ spec:
                     name must be unique.
                   type: string
               type: object
+            noobaaDisableCompression:
+              description: NoobaaDisableCompression (optional) disable compression
+              type: string
             pvPoolDefaultStorageClass:
               description: PVPoolDefaultStorageClass (optional) overrides the default
                 cluster StorageClass for the pv-pool volumes. This affects where the
@@ -1747,7 +1750,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "047a0e1625c3d166bde7792f818db7a412b4fac6d1ee37f75c9f5f4f2618cae9"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "1f0f0d0befc5e4d056b283cd6c34bcafcf3c131d57e36aa4c75b96cb027c5d37"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1809,7 +1812,6 @@ spec:
         - name: LOCAL_N2N_AGENT
         - name: JWT_SECRET
         - name: NOOBAA_DISABLE_COMPRESSION 
-          value: "false"
         - name: NOOBAA_AUTH_TOKEN
           valueFrom:
             secretKeyRef:
@@ -2217,7 +2219,6 @@ spec:
         - name: CONTAINER_PLATFORM
           value: KUBERNETES
         - name: NOOBAA_DISABLE_COMPRESSION 
-          value: "false"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
@@ -3276,4 +3277,3 @@ metadata:
   annotations:
     serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"noobaa-mgmt"}}'
 `
-

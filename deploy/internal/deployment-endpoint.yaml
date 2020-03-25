@@ -58,7 +58,6 @@ spec:
         - name: LOCAL_N2N_AGENT
         - name: JWT_SECRET
         - name: NOOBAA_DISABLE_COMPRESSION 
-          value: "false"
         - name: NOOBAA_AUTH_TOKEN
           valueFrom:
             secretKeyRef:

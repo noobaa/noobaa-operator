@@ -258,6 +258,13 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 					if r.OAuthEndpoints != nil {
 						c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
 					}
+
+				case "NOOBAA_DISABLE_COMPRESSION":
+					if r.NooBaa.Spec.NoobaaDisableCompression != nil {
+						c.Env[j].Value = *r.NooBaa.Spec.NoobaaDisableCompression
+					} else {
+						c.Env[j].Value = "false"
+					}
 				}
 			}
 			if r.NooBaa.Spec.CoreResources != nil {

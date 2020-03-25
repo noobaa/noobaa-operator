@@ -480,6 +480,13 @@ func schema_pkg_apis_noobaa_v1alpha1_NooBaaSpec(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
+					"noobaaDisableCompression": {
+						SchemaProps: spec.SchemaProps{
+							Description: "NoobaaDisableCompression (optional) disable compression",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"tolerations": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{

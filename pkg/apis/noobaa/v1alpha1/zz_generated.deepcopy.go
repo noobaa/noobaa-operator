@@ -537,6 +537,11 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.NoobaaDisableCompression != nil {
+		in, out := &in.NoobaaDisableCompression, &out.NoobaaDisableCompression
+		*out = new(string)
+		**out = **in
+	}
 	if in.Endpoints != nil {
 		in, out := &in.Endpoints, &out.Endpoints
 		*out = new(EndpointsSpec)

@@ -118,6 +118,10 @@ type NooBaaSpec struct {
 	// +optional
 	Region *string `json:"region,omitempty"`
 
+	// NoobaaDisableCompression (optional) disable compression
+	// +optional
+	NoobaaDisableCompression *string `json:"noobaaDisableCompression,omitempty"`
+
 	// Endpoints (optional) sets configuration info for the noobaa endpoint
 	// deployment.
 	// +optional
