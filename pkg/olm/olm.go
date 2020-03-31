@@ -315,7 +315,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			},
 			operv1.SpecDescriptor{
 				Description:  " Secret refers to a secret that provides the credentials. The secret should define AccountName and AccountKey as provided\nby Azure Blob.",
-				Path:         "azureBlob.secret",
+				Path:         "azureBlob.secret.name",
 				XDescriptors: []string{uiFieldGroupAzureBlob, uiK8sSecret},
 				DisplayName:  "Secret",
 			},
@@ -327,7 +327,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			},
 			operv1.SpecDescriptor{
 				Description:  "Secret refers to a secret that provides the credentials. The secret should define GoogleServiceAccountPrivateKeyJson containing\nthe entire json string as provided by Google.",
-				Path:         "googleCloudStorage.secret",
+				Path:         "googleCloudStorage.secret.name",
 				XDescriptors: []string{uiFieldGroupGoogleCloudStorage, uiK8sSecret},
 				DisplayName:  "Secret",
 			},
@@ -363,7 +363,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			},
 			operv1.SpecDescriptor{
 				Description:  "Secret refers to a secret that provides the credentials. The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
-				Path:         "s3Compatible.secret",
+				Path:         "s3Compatible.secret.name",
 				XDescriptors: []string{uiFieldGroupS3Compatible, uiK8sSecret},
 				DisplayName:  "Secret",
 			},
@@ -387,7 +387,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			},
 			operv1.SpecDescriptor{
 				Description:  "Secret refers to a secret that provides the credentials. The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY.",
-				Path:         "IBMCos.secret",
+				Path:         "IBMCos.secret.name",
 				XDescriptors: []string{uiFieldGroupIBMCos, uiK8sSecret},
 				DisplayName:  "Secret",
 			},
