@@ -284,6 +284,66 @@ function obc_cycle {
     echo_time "✅  obc cycle is done"
 }
 
+function crd_cycle {  
+    local crd 
+    echo_time "Starting the crd cycle" 
+    
+    test_noobaa timeout crd create
+    noobaa crd status &>/dev/stdout | grep -v "Already Exists"  
+    if [ $? -ne 0 ]  
+    then           
+        echo_time "crd doesn't exist....."
+        exit 1 
+     else 
+         echo_time "crd already exsists"    
+    fi  
+    kuberun get crd  
+    if [ $? -ne 0 ]
+    then
+        echo_time "kuberun get crd failed"
+        exit 1 
+    else 
+        echo_time "kuberun get crd passed"    
+    fi      
+
+    test_noobaa timeout crd delete
+    noobaa crd status &>/dev/stdout | grep -v "Not Found"  
+    if [ $? -ne 0 ]  
+    then    
+        echo_time "crd deleted"    
+        echo_time "creating crd again for checks..."    
+    else 
+        echo_time "crd still exists....."
+        exit 1 
+    fi  
+
+    test_noobaa crd create 
+    kuberun get crd  
+    if [ $? -ne 0 ]
+    then
+        echo_time "kuberun get crd failed"
+        exit 1 
+    else 
+        echo_time "kuberun get crd passed"    
+    fi 
+
+    crd_array=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))
+    echo_time "${crd_array[@]}"    
+    test_noobaa timeout crd status
+    for crd in ${crd_array[@]}
+    do 
+        kuberun describe crd ${crd} &>/dev/null 
+        if [ $? -ne 0 ]
+        then
+            echo_time " describing crd ${crd} failed"
+            exit 1 
+        else 
+            echo_time "describing crd ${crd} passed"    
+        fi 
+    done        
+    echo_time "✅  crd cycle is done"
+}
+
 function delete_backingstore_path {
     local object_bucket backing_store
     local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
@@ -326,11 +386,6 @@ function check_deletes {
     echo_time "✅  delete cycle is done"
 }
 
-function crd_arr { 
-    crd_array=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))
-    echo_time "${crd_array[*]}"
-}
-
 function noobaa_uninstall {
     check_cleanflag=$((RANDOM%2))
     echo_time ${check_cleanflag}
@@ -347,7 +402,7 @@ function noobaa_uninstall {
 }
 
 function check_if_cleanup {  
-    crd_array_after_Cleanup=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))   
+    crd_array_after_Cleanup=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))  
     for crd_before_clean in ${crd_array[@]}
     do
         if [[ ${crd_array_after_Cleanup[@]} =~ ${crd_before_clean} ]]
@@ -355,7 +410,7 @@ function check_if_cleanup {
             echo_time "${crd_before_clean} is in crd"
             exit 1   
         else         
-            echo_time "${crd_before_clean} is not in crd, deleted with clenaup"
+            echo_time "${crd_before_clean} is not in crd, deleted with cleanup as expected"
         fi               
     done
 
@@ -374,7 +429,7 @@ function check_if_cleanup {
     kubectl get namespace ${NAMESPACE}
     if [ $? -ne 0 ] 
     then   
-        echo_time "namespace doesnt exist" 
+        echo_time "namespace doesn't exist" 
     else
         echo_time "namespace still exists"
         exit 1            

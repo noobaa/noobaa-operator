@@ -69,6 +69,7 @@ function main {
     check_S3_compatible
     bucketclass_cycle
     obc_cycle
+    crd_cycle
     check_deletes
     noobaa_uninstall
  }
