@@ -322,3 +322,52 @@ function check_deletes {
     delete_backingstore_path
     echo_time "✅  delete cycle is done"
 }
+
+function crd_arr { 
+    crd_array=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))
+    echo "${crd_array[*]}"
+  }
+
+function noobaa_uninstall {
+    check_cleanflag=$(( RANDOM%2 ))
+    echo_time $check_cleanflag
+    if [ ${check_cleanflag} -gt 0 ] 
+    then
+        echo_time "Running uninstall with --cleanup”"
+        test_noobaa uninstall --cleanup 
+    else
+        echo_time "Running uninstall without --cleanup”"
+        test_noobaa uninstall 
+    fi  
+}
+function check_if_cleanup {  
+    crd_array_after_Cleanup=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))
+  for empty_crd in ${crd_array[@]}; do
+    in=false
+        for crd_afrer in "${crd_array_after_Cleanup[@]}"; do
+            if [[ $empty_crd == $crd_after ]]; then
+                echo "$empty_crd is in crd"
+                in=true
+                break
+            fi
+        done
+    $in || echo "$empty_crd is not in crd, deleted with clenaup"
+    done
+    for name in ${crd_array[@]} 
+    do
+        noobaa crd status &>/dev/stdout | grep -v "Not Found" | grep -q "$name"
+        if [ $? -ne 0 ]  
+         then    
+            echo "$name crd status empty"     
+        else 
+            echo "$name crd status not empty"    
+        fi
+    done
+    kubectl get namespace ${NAMESPACE}
+    if [ $? -ne 0 ] 
+    then   
+        echo "namespace doesnt exist" 
+    else
+        echo "namespace still exists"           
+    fi    
+} 
