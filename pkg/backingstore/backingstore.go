@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -455,6 +457,22 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 		if pvSizeGB < 16 {
 			log.Fatalf(`❌ PV size seems to be too small (%dGB), minimal size for a pv is 16GB %s`, pvSizeGB, cmd.UsageString())
 		}
+
+		if storageClass != "" {
+			sc := &storagev1.StorageClass{
+				TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
+				ObjectMeta: metav1.ObjectMeta{Name: storageClass},
+			}
+			if !util.KubeCheck(sc) {
+				log.Fatalf(`❌ Could not get StorageClass %q for system in namespace %q`,
+					sc.Name, options.Namespace)
+			}
+			if strings.HasSuffix(sc.Provisioner, "/obc") {
+				log.Fatalf(`❌ Could not set StorageClass %q for system in namespace %q - as this class reserved for obc only`,
+					sc.Name, options.Namespace)
+			}
+		}
+
 		backStore.Spec.PVPool = &nbv1.PVPoolSpec{
 			StorageClass: storageClass,
 			NumVolumes:   int(numVolumes),
