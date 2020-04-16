@@ -129,22 +129,16 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
 	system.CheckSystem(r.NooBaa)
 
-	secretRef := GetBackingStoreSecret(r.BackingStore)
-	if secretRef != nil {
-		r.Secret.Name = secretRef.Name
-		r.Secret.Namespace = secretRef.Namespace
-		if r.Secret.Namespace == "" {
-			r.Secret.Namespace = r.BackingStore.Namespace
+	err := r.LoadBackingStoreSecret()
+
+	if err == nil {
+		if r.BackingStore.DeletionTimestamp != nil {
+			err = r.ReconcileDeletion()
+		} else {
+			err = r.ReconcilePhases()
 		}
-		util.KubeCheck(r.Secret)
 	}
 
-	var err error
-	if r.BackingStore.DeletionTimestamp != nil {
-		err = r.ReconcileDeletion()
-	} else {
-		err = r.ReconcilePhases()
-	}
 	if err != nil {
 		if perr, isPERR := err.(*util.PersistentError); isPERR {
 			r.SetPhase(nbv1.BackingStorePhaseRejected, perr.Reason, perr.Message)
@@ -193,6 +187,24 @@ func (r *Reconciler) ReconcilePhases() error {
 		return err
 	}
 
+	return nil
+}
+
+// LoadBackingStoreSecret loads the secret to the reconciler struct
+func (r *Reconciler) LoadBackingStoreSecret() error {
+	secretRef := GetBackingStoreSecret(r.BackingStore)
+	if secretRef != nil {
+		r.Secret.Name = secretRef.Name
+		r.Secret.Namespace = secretRef.Namespace
+		if r.Secret.Namespace == "" {
+			r.Secret.Namespace = r.BackingStore.Namespace
+		}
+		if r.Secret.Name == "" {
+			return util.NewPersistentError("EmptySecretName",
+				fmt.Sprintf("BackingStore Secret reference has an empty name"))
+		}
+		util.KubeCheck(r.Secret)
+	}
 	return nil
 }
 
