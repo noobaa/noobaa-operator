@@ -322,3 +322,28 @@ function check_deletes {
     delete_backingstore_path
     echo_time "✅  delete cycle is done"
 }
+<<<<<<< HEAD
+=======
+
+function noobaa_uninstall {
+   check_cleanflag=$(( RANDOM*2 / 32767 ))
+    echo_time $check_cleanflag
+    if [ ${check_cleanflag} -gt 0 ] 
+    then
+    echo_time "Running uninstall with --cleanup”"
+    test_noobaa uninstall --cleanup 
+    else
+    echo_time "Running uninstall without --cleanup”"
+    test_noobaa uninstall 
+    fi  
+}
+
+function check_if_cleanup {
+    type test_noobaa uninstall --cleanup  &>/dev/null && echo "cleanup flag used" || echo "cleanup flag not used"
+    type kubectl get namespace test  &>/dev/null && echo "namespace still exists" || echo "namespace cleared"
+    type kubectl get crd  &>/dev/null && echo "crd still exists in kubectl" || echo "crd cleared in kubectl"
+    type noobaa crd status &>/dev/null && echo "crd still exists in noobaa" || echo "crd cleared in noobaa"
+}
+
+
+>>>>>>> 74d301a... uninstall noobaa added with check cleanup flag

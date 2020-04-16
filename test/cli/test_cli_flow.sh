@@ -70,8 +70,13 @@ function main {
     bucketclass_cycle
     obc_cycle
     check_deletes
+<<<<<<< HEAD
     test_noobaa uninstall
 }
+=======
+    noobaa_uninstall
+    check_if_cleanup
+>>>>>>> 74d301a... uninstall noobaa added with check cleanup flag
 
 function usage {
     set +x
