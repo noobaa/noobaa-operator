@@ -185,12 +185,27 @@ spec:
                         to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                       type: object
                   type: object
+                secret:
+                  description: Secret refers to a secret that provides the agent configuration
+                    The secret should define AGENT_CONFIG containing agent_configuration
+                    from noobaa-core.
+                  properties:
+                    name:
+                      description: Name is unique within a namespace to reference
+                        a secret resource.
+                      type: string
+                    namespace:
+                      description: Namespace defines the space within which the secret
+                        name must be unique.
+                      type: string
+                  type: object
                 storageClass:
                   description: StorageClass is the name of the storage class to use
                     for the PV's
                   type: string
               required:
               - numVolumes
+              - secret
               type: object
             s3Compatible:
               description: S3Compatible specifies a backing store of type s3-compatible

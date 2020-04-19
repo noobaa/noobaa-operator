@@ -245,13 +245,29 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	backingStores := &nbv1.BackingStoreList{}
 	util.KubeList(backingStores, &client.ListOptions{Namespace: options.Namespace})
 	for i := range backingStores.Items {
-		obj := &backingStores.Items[i]
-		util.RemoveFinalizer(obj, nbv1.Finalizer)
-		if !util.KubeUpdate(obj) {
-			log.Errorf("BackingStore %q failed to remove finalizer %q",
-				obj.Name, nbv1.Finalizer)
+		bstore := &backingStores.Items[i]
+		if bstore.Spec.Type == nbv1.StoreTypePVPool {
+			pods := &corev1.PodList{}
+			util.KubeList(pods, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": bstore.Name})
+			for i := range pods.Items {
+				pod := &pods.Items[i]
+				util.RemoveFinalizer(pod, nbv1.Finalizer)
+				if !util.KubeUpdate(pod) {
+					log.Errorf("Pod %q failed to remove finalizer %q",
+						pod.Name, nbv1.Finalizer)
+				}
+			}
+			util.KubeDeleteAllOf(&corev1.Pod{}, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": bstore.Name},
+				client.GracePeriodSeconds(0))
+			util.KubeDeleteAllOf(&corev1.PersistentVolumeClaim{}, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": bstore.Name},
+				client.GracePeriodSeconds(0))
 		}
-		util.KubeDelete(obj, client.GracePeriodSeconds(0))
+		util.RemoveFinalizer(bstore, nbv1.Finalizer)
+		if !util.KubeUpdate(bstore) {
+			log.Errorf("BackingStore %q failed to remove finalizer %q",
+				bstore.Name, nbv1.Finalizer)
+		}
+		util.KubeDelete(bstore, client.GracePeriodSeconds(0))
 	}
 
 	objectBucketClaims := &nbv1.ObjectBucketClaimList{}

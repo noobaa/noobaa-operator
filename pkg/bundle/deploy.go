@@ -89,7 +89,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "0843c91a9ee9bce1062068116e97581f24fe59137cd56d85ddb758962bcf187c"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "422b6646ba1e1ed256ef1975f1be00f127af18de2aeca5dc40ed03aec4b498fd"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -278,12 +278,27 @@ spec:
                         to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                       type: object
                   type: object
+                secret:
+                  description: Secret refers to a secret that provides the agent configuration
+                    The secret should define AGENT_CONFIG containing agent_configuration
+                    from noobaa-core.
+                  properties:
+                    name:
+                      description: Name is unique within a namespace to reference
+                        a secret resource.
+                      type: string
+                    namespace:
+                      description: Namespace defines the space within which the secret
+                        name must be unique.
+                      type: string
+                  type: object
                 storageClass:
                   description: StorageClass is the name of the storage class to use
                     for the PV's
                   type: string
               required:
               - numVolumes
+              - secret
               type: object
             s3Compatible:
               description: S3Compatible specifies a backing store of type s3-compatible
@@ -1690,7 +1705,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = "776deb11e769c67bf993ec77762b5375e36607bd4026e4ef20642fde2bd5dc80"
+const Sha256_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = "507d6a8477b6c2073c91d85806dc79b953a5a6e0ac442c2fe337b8f5ce6eaadb"
 
 const File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = `apiVersion: noobaa.io/v1alpha1
 kind: BackingStore
@@ -1701,11 +1716,6 @@ metadata:
   finalizers:
     - noobaa.io/finalizer
 spec:
-  type: aws-s3
-  awsS3:
-    targetBucket: noobaa-aws1
-    secret:
-      name: backing-store-secret-aws1
 `
 
 const Sha256_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = "af1411669ca0b29bdb7836e9e1fc44a0ddb7d4a994266abbae793a7116f6499f"
@@ -1922,6 +1932,56 @@ spec:
   targetCPUUtilizationPercentage: 80
 `
 
+const Sha256_deploy_internal_pod_agent_yaml = "5cfcd3317ec6d748fe34d269fc5fba0c0ad981e7d0b964ca6dad071e3ea41b51"
+
+const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: noobaa
+  name: noobaa-agent
+  finalizers:
+    - noobaa.io/finalizer
+spec:
+  containers:
+    - name: noobaa-agent
+      image: NOOBAA_CORE_IMAGE
+      imagePullPolicy: IfNotPresent
+      resources:
+        # https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+        requests:
+          cpu: "100m"
+          memory: "200Mi"
+        limits:
+          cpu: "100m"
+          memory: "200Mi"
+      env:
+        # Insert the relevant config for the current agent
+        - name: CONTAINER_PLATFORM
+          value: KUBERNETES
+        - name: AGENT_CONFIG
+          valueFrom:
+            secretKeyRef:
+              name: secret-name
+              key: AGENT_CONFIG
+      command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
+      # Insert the relevant image for the agent
+      ports:
+        # This should change according to the allocation from the NooBaa server
+        - containerPort: 60101
+      volumeMounts:
+        - name: noobaastorage
+          mountPath: /noobaa_storage
+        - name: tmp-logs-vol
+          mountPath: /usr/local/noobaa/logs
+  volumes:
+    - name: tmp-logs-vol
+      emptyDir: {}
+    - name: noobaastorage
+      persistentVolumeClaim:
+        claimName: noobaa-pv-claim
+`
+
 const Sha256_deploy_internal_prometheus_rules_yaml = "31412ea08c2c489c6cccdb28acdc1817f7ed97b9f3672b1abf80ab4f4129c39f"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
@@ -2056,6 +2116,22 @@ spec:
         NooBaa_system_capacity == 100
       labels:
         severity: critical
+`
+
+const Sha256_deploy_internal_pvc_agent_yaml = "c76fd98867e2e098204377899568a6e1e60062ece903c7bcbeb3444193ec13f8"
+
+const File_deploy_internal_pvc_agent_yaml = `apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: noobaa
+  name: noobaa-pv-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 30Gi
 `
 
 const Sha256_deploy_internal_route_mgmt_yaml = "52dacfdd2f8f4ddfe56948573ae69277096d971c9274f9afb1046871ed7f9c28"
