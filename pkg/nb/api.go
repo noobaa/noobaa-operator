@@ -16,12 +16,14 @@ type Client interface {
 
 	ListAccountsAPI() (ListAccountsReply, error)
 	ListBucketsAPI() (ListBucketsReply, error)
+	ListHostsAPI(ListHostsParams) (ListHostsReply, error)
 
 	CreateAuthAPI(CreateAuthParams) (CreateAuthReply, error)
 	CreateSystemAPI(CreateSystemParams) (CreateSystemReply, error)
 	CreateAccountAPI(CreateAccountParams) (CreateAccountReply, error)
 	CreateBucketAPI(CreateBucketParams) error
-	CreateHostsPoolAPI(CreateHostsPoolParams) error
+	CreateHostsPoolAPI(CreateHostsPoolParams) (string, error)
+	UpdateHostsPoolAPI(UpdateHostsPoolParams) error
 	CreateCloudPoolAPI(CreateCloudPoolParams) error
 	CreateTierAPI(CreateTierParams) error
 	CreateTieringPolicyAPI(TieringPolicyInfo) error
@@ -122,6 +124,17 @@ func (c *RPCClient) ListBucketsAPI() (ListBucketsReply, error) {
 	return res.Reply, err
 }
 
+// ListHostsAPI calls host_api.list_hosts()
+func (c *RPCClient) ListHostsAPI(params ListHostsParams) (ListHostsReply, error) {
+	req := &RPCMessage{API: "host_api", Method: "list_hosts", Params: params}
+	res := &struct {
+		RPCMessage `json:",inline"`
+		Reply      ListHostsReply `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
+}
+
 // CreateAuthAPI calls auth_api.create_auth()
 func (c *RPCClient) CreateAuthAPI(params CreateAuthParams) (CreateAuthReply, error) {
 	req := &RPCMessage{API: "auth_api", Method: "create_auth", Params: params}
@@ -162,8 +175,19 @@ func (c *RPCClient) CreateBucketAPI(params CreateBucketParams) error {
 }
 
 // CreateHostsPoolAPI calls pool_api.create_hosts_pool()
-func (c *RPCClient) CreateHostsPoolAPI(params CreateHostsPoolParams) error {
+func (c *RPCClient) CreateHostsPoolAPI(params CreateHostsPoolParams) (string, error) {
 	req := &RPCMessage{API: "pool_api", Method: "create_hosts_pool", Params: params}
+	res := &struct {
+		RPCMessage `json:",inline"`
+		Reply      string `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
+}
+
+// UpdateHostsPoolAPI calls pool_api.scale_hosts_pool()
+func (c *RPCClient) UpdateHostsPoolAPI(params UpdateHostsPoolParams) error {
+	req := &RPCMessage{API: "pool_api", Method: "update_hosts_pool", Params: params}
 	return c.Call(req, nil)
 }
 

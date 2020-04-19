@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: noobaa
+  name: noobaa-agent
+  finalizers:
+    - noobaa.io/finalizer
+spec:
+  containers:
+    - name: noobaa-agent
+      image: NOOBAA_CORE_IMAGE
+      imagePullPolicy: IfNotPresent
+      resources:
+        # https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+        requests:
+          cpu: "100m"
+          memory: "200Mi"
+        limits:
+          cpu: "100m"
+          memory: "200Mi"
+      env:
+        # Insert the relevant config for the current agent
+        - name: CONTAINER_PLATFORM
+          value: KUBERNETES
+        - name: AGENT_CONFIG
+          valueFrom:
+            secretKeyRef:
+              name: secret-name
+              key: AGENT_CONFIG
+      command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
+      # Insert the relevant image for the agent
+      ports:
+        # This should change according to the allocation from the NooBaa server
+        - containerPort: 60101
+      volumeMounts:
+        - name: noobaastorage
+          mountPath: /noobaa_storage
+        - name: tmp-logs-vol
+          mountPath: /usr/local/noobaa/logs
+  volumes:
+    - name: tmp-logs-vol
+      emptyDir: {}
+    - name: noobaastorage
+      persistentVolumeClaim:
+        claimName: noobaa-pv-claim
