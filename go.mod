@@ -9,15 +9,13 @@ require (
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/prometheus-operator v0.34.0
 	github.com/docker/distribution v2.7.1+incompatible
-	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
-	github.com/go-openapi/spec v0.19.2
-	github.com/gobuffalo/flect v0.1.6 // indirect
+	github.com/go-openapi/spec v0.19.4
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20200107223247-51020689f1fb
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
 	github.com/operator-framework/operator-lifecycle-manager v0.0.0-20191115003340-16619cd27fa5 // 0.11.0
-	github.com/operator-framework/operator-sdk v0.13.0
+	github.com/operator-framework/operator-sdk v0.16.0
 	github.com/rook/rook v1.1.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
@@ -38,7 +36,7 @@ require (
 	sigs.k8s.io/yaml v1.1.0
 )
 
-/// Pinned to kubernetes-1.16.2
+// Pinned to kubernetes-1.16.2 https://github.com/operator-framework/operator-sdk/blob/v0.16.0/internal/scaffold/go_mod.go
 replace (
 	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20191016113550-5357c4baaf65
@@ -61,5 +59,7 @@ replace (
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20191016115753-cf0698c3a16b
 	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
-	sigs.k8s.io/controller-tools => sigs.k8s.io/controller-tools v0.2.2
 )
+
+// Based on scaffold https://github.com/operator-framework/operator-sdk/blob/v0.16.0/internal/scaffold/go_mod.go
+replace github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309 // Required by Helm

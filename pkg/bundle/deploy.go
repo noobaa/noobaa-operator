@@ -89,7 +89,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "cb0587fb90b7ca886c92692862a5a08e91d9137346f8be2d09ed7509f4c13455"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "b4968c3ebd9bb43bf90e2640ac2d80d95e90a059a6f92ef19eb82d2abd266bcc"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -114,7 +114,7 @@ spec:
     listKind: BackingStoreList
     plural: backingstores
     singular: backingstore
-  scope: ""
+  scope: Namespaced
   subresources:
     status: {}
   validation:
@@ -410,7 +410,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "cbd965f4609883e1dc90aaf228873464cd1598c10dd1880537528f80e12e9abf"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "460cdb16739e5b43301c4ddaa005648610cdb8e29523bba39bc6a517542f0a45"
 
 const File_deploy_crds_noobaa_io_bucketclasses_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -435,7 +435,7 @@ spec:
     listKind: BucketClassList
     plural: bucketclasses
     singular: bucketclass
-  scope: ""
+  scope: Namespaced
   subresources:
     status: {}
   validation:
