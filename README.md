@@ -42,6 +42,78 @@ Notes:
 - minikube: use `noobaa install --mini` in order to allocate less resources.
 - Uninstalling: `noobaa uninstall`
 
+The CLI helps with most management tasks and focuses on ease of use for manual operations or scripts.
+
+Here is the top level usage:
+```bash
+$ noobaa --help
+
+._   _            ______
+| \ | |           | ___ \
+|  \| | ___   ___ | |_/ / __ _  __ _
+| . \ |/ _ \ / _ \| ___ \/ _\ |/ _\ |
+| |\  | (_) | (_) | |_/ / (_| | (_| |
+\_| \_/\___/ \___/\____/ \__,_|\__,_|
+
+Install:
+  install      Install the operator and create the noobaa system
+  uninstall    Uninstall the operator and delete the system
+  status       Status of the operator and the system
+
+Manage:
+  backingstore Manage backing stores
+  bucketclass  Manage bucket classes
+  obc          Manage object bucket claims
+  diagnose     Collect diagnostics
+  ui           Open the NooBaa UI
+
+Advanced:
+  operator     Deployment using operator
+  system       Manage noobaa systems
+  api          Make api call
+  bucket       Manage noobaa buckets
+  pvstore      Manage noobaa pv store
+  crd          Deployment of CRDs
+  olm          OLM related commands
+
+Other Commands:
+  completion   Generates bash completion scripts
+  options      Print the list of global flags
+  version      Show version
+
+Use "noobaa <command> --help" for more information about a given command.
+
+```
+
+```
+$ noobaa options
+
+The following options can be passed to any command:
+
+      --db-image='centos/mongodb-36-centos7': The database container image
+      --db-storage-class='': The database volume storage class name
+      --db-volume-size-gb=0: The database volume size in GB
+      --image-pull-secret='': Image pull secret (must be in same namespace)
+      --kubeconfig='': Paths to a kubeconfig. Only required if out-of-cluster.
+      --master='': The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if
+out-of-cluster.
+      --mini=false: Signal the operator that it is running in a low resource environment
+  -n, --namespace='noobaa': Target namespace
+      --noobaa-image='noobaa/noobaa-core:5.3.0': NooBaa image
+      --operator-image='noobaa/noobaa-operator:2.1.1': Operator image
+      --pv-pool-default-storage-class='': The default storage class name for BackingStores of type pv-pool
+
+```
+
+```shell
+$ noobaa version
+
+INFO[0000] CLI version: 2.1.1
+INFO[0000] noobaa-image: noobaa/noobaa-core:5.3.0
+INFO[0000] operator-image: noobaa/noobaa-operator:2.1.1
+
+```
+
 # Troubleshooting
 
 - Verify that there are enough resources for noobaa pods:
