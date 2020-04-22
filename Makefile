@@ -37,7 +37,7 @@ build: cli image gen-olm
 .PHONY: build
 
 cli: operator-sdk gen
-	operator-sdk up local --operator-flags "version"
+	operator-sdk run --local --operator-flags "version"
 	@echo "✅ cli"
 .PHONY: cli
 
@@ -53,7 +53,7 @@ vendor:
 .PHONY: vendor
 
 run: operator-sdk gen
-	operator-sdk up local --operator-flags "operator run"
+	operator-sdk run --local --operator-flags "operator run"
 .PHONY: run
 
 clean:
@@ -75,7 +75,7 @@ release:
 
 operator-sdk:
 	@echo "checking operator-sdk version"
-	operator-sdk version | grep -q "\"v0.13.0\", commit: \"1af9c95bb51420c55a7f7f2b7fabebda24451276\""
+	operator-sdk version | grep -q "\"v0.16.0\", commit: \"55f1446c5f472e7d8e308dcdf36d0d7fc44fc4fd\""
 	@echo "✅ operator-sdk"
 .PHONY: operator-sdk
 
@@ -107,7 +107,7 @@ gen-api-fail-if-dirty: gen-api
 
 gen-olm: operator-sdk gen
 	rm -rf $(OLM)
-	operator-sdk up local --operator-flags "olm catalog -n my-noobaa-operator --dir $(OLM)"
+	operator-sdk run --local --operator-flags "olm catalog -n my-noobaa-operator --dir $(OLM)"
 	python3 -m venv $(VENV) && \
 		. $(VENV)/bin/activate && \
 		pip3 install --upgrade pip && \
