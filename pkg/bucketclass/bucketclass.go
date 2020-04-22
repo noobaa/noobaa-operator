@@ -346,3 +346,37 @@ func ParseBucketClassType(cmd *cobra.Command) nbv1.StoreType {
 	}
 	return ""
 }
+
+// MapBackingstoreToBucketclasses returns a list of bucketclasses that uses the backingstore in their tiering policy
+// used by bucketclass_contorller to watch backingstore changes
+func MapBackingstoreToBucketclasses(backingstore types.NamespacedName) []reconcile.Request {
+	log := util.Logger()
+	log.Infof("checking which bucketclasses to reconcile. mapping backingstore %v to bucketclasses", backingstore)
+	bucketclassList := &nbv1.BucketClassList{
+		TypeMeta: metav1.TypeMeta{Kind: "BucketClassList"},
+	}
+	if !util.KubeList(bucketclassList, &client.ListOptions{Namespace: backingstore.Namespace}) {
+		log.Infof("did not find backing stores in namespace %q", backingstore.Namespace)
+		return nil
+	}
+
+	reqs := []reconcile.Request{}
+
+	for _, bc := range bucketclassList.Items {
+		for _, tier := range bc.Spec.PlacementPolicy.Tiers {
+			for _, bs := range tier.BackingStores {
+				if bs == backingstore.Name {
+					reqs = append(reqs, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name:      bc.Name,
+							Namespace: bc.Namespace,
+						},
+					})
+				}
+			}
+		}
+	}
+	log.Infof("will reconcile these bucketclasses: %v", reqs)
+
+	return reqs
+}
