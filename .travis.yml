@@ -24,8 +24,8 @@ install:
   - bash .travis/install-minikube.sh
 
 script:
-  - make gen-api-fail-if-dirty --always-make
-  - make build
-  - make test
-  - make test-olm
-  - make test-cli-flow
+  - make gen-api-fail-if-dirty --always-make || exit 1
+  - make build || exit 1
+  - make test || exit 1
+  - make test-olm || exit 1
+  - make test-cli-flow || exit 1
