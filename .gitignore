@@ -1,6 +1,7 @@
 /vendor
 /build/_output
 /build/_test
+/build/_tools
 
 # local folder to save the binaries being released
 build-releases/
