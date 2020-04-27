@@ -23,6 +23,8 @@ BIN ?= $(OUTPUT)/bin
 OLM ?= $(OUTPUT)/olm
 VENV ?= $(OUTPUT)/venv
 
+export OPERATOR_SDK_VERSION ?= v0.16.0
+export OPERATOR_SDK ?= build/_tools/operator-sdk-$(OPERATOR_SDK_VERSION)
 
 #------------#
 #- Building -#
@@ -36,13 +38,13 @@ build: cli image gen-olm
 	@echo "✅ build"
 .PHONY: build
 
-cli: operator-sdk gen
-	operator-sdk run --local --operator-flags "version"
+cli: $(OPERATOR_SDK) gen
+	$(OPERATOR_SDK) run --local --operator-flags "version"
 	@echo "✅ cli"
 .PHONY: cli
 
-image: operator-sdk gen
-	operator-sdk build $(IMAGE)
+image: $(OPERATOR_SDK) gen
+	$(OPERATOR_SDK) build $(IMAGE)
 	@echo "✅ image"
 .PHONY: image
 
@@ -52,8 +54,8 @@ vendor:
 	@echo "✅ vendor"
 .PHONY: vendor
 
-run: operator-sdk gen
-	operator-sdk run --local --operator-flags "operator run"
+run: $(OPERATOR_SDK) gen
+	$(OPERATOR_SDK) run --local --operator-flags "operator run"
 .PHONY: run
 
 clean:
@@ -73,11 +75,10 @@ release:
 	@echo "✅ build-releases/noobaa-mac-v$(VERSION)"
 .PHONY: release
 
-operator-sdk:
-	@echo "checking operator-sdk version"
-	operator-sdk version | grep -q "\"v0.16.0\", commit: \"55f1446c5f472e7d8e308dcdf36d0d7fc44fc4fd\""
-	@echo "✅ operator-sdk"
-.PHONY: operator-sdk
+$(OPERATOR_SDK):
+	bash build/install-operator-sdk.sh
+	@echo "✅ $(OPERATOR_SDK)"
+
 
 #------------#
 #- Generate -#
@@ -91,9 +92,9 @@ pkg/bundle/deploy.go: pkg/bundler/bundler.go version/version.go $(shell find dep
 	mkdir -p pkg/bundle
 	go run pkg/bundler/bundler.go deploy/ pkg/bundle/deploy.go
 
-gen-api: operator-sdk gen
-	$(TIME) operator-sdk generate k8s
-	$(TIME) operator-sdk generate crds
+gen-api: $(OPERATOR_SDK) gen
+	$(TIME) $(OPERATOR_SDK) generate k8s
+	$(TIME) $(OPERATOR_SDK) generate crds
 	@echo "✅ gen-api"
 .PHONY: gen-api
 
@@ -105,9 +106,9 @@ gen-api-fail-if-dirty: gen-api
 	)
 .PHONY: gen-api-fail-if-dirty
 
-gen-olm: operator-sdk gen
+gen-olm: $(OPERATOR_SDK) gen
 	rm -rf $(OLM)
-	operator-sdk run --local --operator-flags "olm catalog -n my-noobaa-operator --dir $(OLM)"
+	$(OPERATOR_SDK) run --local --operator-flags "olm catalog -n my-noobaa-operator --dir $(OLM)"
 	python3 -m venv $(VENV) && \
 		. $(VENV)/bin/activate && \
 		pip3 install --upgrade pip && \
@@ -148,7 +149,7 @@ test-cli-flow:
 .PHONY: test-cli-flow
 
 # test-olm runs tests for the OLM package
-test-olm: operator-sdk gen-olm
+test-olm: $(OPERATOR_SDK) gen-olm
 	$(TIME) ./test/test-olm.sh $(CATALOG_IMAGE)
 	@echo "✅ test-olm"
 .PHONY: test-olm
