@@ -163,15 +163,6 @@ func RunCSV(cmd *cobra.Command, args []string) {
 
 // GenerateCSV creates the CSV
 func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
-
-	install := &unstructured.Unstructured{Object: unObj{
-		"deployments":        unArr{unObj{"name": opConf.Deployment.Name, "spec": opConf.Deployment.Spec}},
-		"permissions":        unArr{unObj{"serviceAccountName": opConf.SA.Name, "rules": opConf.Role.Rules}},
-		"clusterPermissions": unArr{unObj{"serviceAccountName": opConf.SA.Name, "rules": opConf.ClusterRole.Rules}},
-	}}
-	installRaw, err := install.MarshalJSON()
-	util.Panic(err)
-
 	almExamples, err := json.Marshal([]runtime.Object{
 		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml),
 		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml),
@@ -189,7 +180,24 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 	csv.Spec.Version.Version = semver.MustParse(version.Version)
 	csv.Spec.Description = bundle.File_deploy_olm_description_md
 	csv.Spec.Icon[0].Data = bundle.File_deploy_olm_noobaa_icon_base64
-	csv.Spec.InstallStrategy.StrategySpecRaw = installRaw
+	csv.Spec.InstallStrategy.StrategySpec.ClusterPermissions = []operv1.StrategyDeploymentPermissions{}
+	csv.Spec.InstallStrategy.StrategySpec.ClusterPermissions = append(csv.Spec.InstallStrategy.StrategySpec.ClusterPermissions,
+		operv1.StrategyDeploymentPermissions{
+			ServiceAccountName: opConf.SA.Name,
+			Rules:              opConf.ClusterRole.Rules,
+		})
+	csv.Spec.InstallStrategy.StrategySpec.Permissions = []operv1.StrategyDeploymentPermissions{}
+	csv.Spec.InstallStrategy.StrategySpec.Permissions = append(csv.Spec.InstallStrategy.StrategySpec.Permissions,
+		operv1.StrategyDeploymentPermissions{
+			ServiceAccountName: opConf.SA.Name,
+			Rules:              opConf.Role.Rules,
+		})
+	csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs = []operv1.StrategyDeploymentSpec{}
+	csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs = append(csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs,
+		operv1.StrategyDeploymentSpec{
+			Name: opConf.Deployment.Name,
+			Spec: opConf.Deployment.Spec,
+		})
 	csv.Spec.CustomResourceDefinitions.Owned = []operv1.CRDDescription{}
 	csv.Spec.CustomResourceDefinitions.Required = []operv1.CRDDescription{}
 	crdDescriptions := map[string]string{
