@@ -1737,6 +1737,26 @@ spec:
         resource: "*"
 `
 
+const Sha256_deploy_internal_cloud_creds_azure_cr_yaml = "e9a8455b8657869be6e8a107519f3d1cfab36a536c479d6688eef6981262946a"
+
+const File_deploy_internal_cloud_creds_azure_cr_yaml = `apiVersion: cloudcredential.openshift.io/v1
+kind: CredentialsRequest
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: CRED-REQ-NAME
+spec:
+  providerSpec:
+    apiVersion: cloudcredential.openshift.io/v1
+    kind: AzureProviderSpec
+    roleBindings:
+      - role: "Storage Account Contributor"
+      - role: "Storage Blob Data Contributor"
+  secretRef:
+    name: CRED-SECRET-NAME
+    namespace: CRED-SECRET-NAMESPACE
+`
+
 const Sha256_deploy_internal_configmap_empty_yaml = "6405c531c6522ecd54808f5cb531c1001b9ad01a73917427c523a92be44f348f"
 
 const File_deploy_internal_configmap_empty_yaml = `apiVersion: v1

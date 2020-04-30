@@ -307,6 +307,9 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	if util.IsAWSPlatform() {
 		return r.ReconcileAWSCredentials()
 	}
+	if util.IsAzurePlatform() {
+		return r.ReconcileAzureCredentials()
+	}
 	return r.ReconcileRGWCredentials()
 }
 
@@ -351,7 +354,7 @@ func (r *Reconciler) ReconcileRGWCredentials() error {
 func (r *Reconciler) ReconcileAWSCredentials() error {
 	r.Logger.Info("Running in AWS. will create a CredentialsRequest resource")
 	var bucketName string
-	err := r.Client.Get(r.Ctx, util.ObjectKey(r.CloudCreds), r.CloudCreds)
+	err := r.Client.Get(r.Ctx, util.ObjectKey(r.AWSCloudCreds), r.AWSCloudCreds)
 	if err == nil {
 		// credential request alread exist. get the bucket name
 		codec, err := cloudcredsv1.NewCodec()
@@ -360,7 +363,7 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 			return err
 		}
 		awsProviderSpec := &cloudcredsv1.AWSProviderSpec{}
-		err = codec.DecodeProviderSpec(r.CloudCreds.Spec.ProviderSpec, awsProviderSpec)
+		err = codec.DecodeProviderSpec(r.AWSCloudCreds.Spec.ProviderSpec, awsProviderSpec)
 		if err != nil {
 			r.Logger.Error("error decoding providerSpec from cloud credentials request")
 			return err
@@ -386,7 +389,7 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 			return err
 		}
 		awsProviderSpec := &cloudcredsv1.AWSProviderSpec{}
-		err = codec.DecodeProviderSpec(r.CloudCreds.Spec.ProviderSpec, awsProviderSpec)
+		err = codec.DecodeProviderSpec(r.AWSCloudCreds.Spec.ProviderSpec, awsProviderSpec)
 		if err != nil {
 			r.Logger.Error("error decoding providerSpec from cloud credentials request")
 			return err
@@ -399,15 +402,36 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 			r.Logger.Error("error encoding providerSpec for cloud credentials request")
 			return err
 		}
-		r.CloudCreds.Spec.ProviderSpec = updatedProviderSpec
-		r.Own(r.CloudCreds)
-		err = r.Client.Create(r.Ctx, r.CloudCreds)
+		r.AWSCloudCreds.Spec.ProviderSpec = updatedProviderSpec
+		r.Own(r.AWSCloudCreds)
+		err = r.Client.Create(r.Ctx, r.AWSCloudCreds)
 		if err != nil {
 			r.Logger.Errorf("got error when trying to create credentials request for bucket %s. %v", bucketName, err)
 			return err
 		}
 		r.DefaultBackingStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
 			TargetBucket: bucketName,
+		}
+		return nil
+	}
+	return err
+}
+
+// ReconcileAzureCredentials creates a CredentialsRequest resource if cloud credentials operator is available
+func (r *Reconciler) ReconcileAzureCredentials() error {
+	r.Logger.Info("Running in Azure. will create a CredentialsRequest resource")
+	err := r.Client.Get(r.Ctx, util.ObjectKey(r.AzureCloudCreds), r.AzureCloudCreds)
+	if err == nil || meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+		return nil
+	}
+	if errors.IsNotFound(err) {
+		// credential request does not exist. create one
+		r.Logger.Info("Creating CredentialsRequest resource")
+		r.Own(r.AzureCloudCreds)
+		err = r.Client.Create(r.Ctx, r.AzureCloudCreds)
+		if err != nil {
+			r.Logger.Errorf("got error when trying to create credentials request for azure. %v", err)
+			return err
 		}
 		return nil
 	}
