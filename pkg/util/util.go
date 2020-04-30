@@ -796,6 +796,16 @@ func IsAWSPlatform() bool {
 	return isAWS
 }
 
+// IsAzurePlatform returns true if this cluster is running on Azure
+func IsAzurePlatform() bool {
+	nodesList := &corev1.NodeList{}
+	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+		Panic(fmt.Errorf("failed to list kubernetes nodes"))
+	}
+	isAzure := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "azure")
+	return isAzure
+}
+
 // GetAWSRegion parses the region from a node's name
 func GetAWSRegion() (string, error) {
 	// parse the node name to get AWS region according to this:
