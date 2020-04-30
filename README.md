@@ -20,19 +20,31 @@ For Linux
 wget https://github.com/noobaa/noobaa-operator/releases/download/v2.1.1/noobaa-linux-v2.1.1; mv noobaa-linux-* noobaa; chmod +x noobaa
 ```
 
-- Run: `./noobaa --help` for CLI usage
-- Install the operator and noobaa with: `./noobaa install`
-  The install output includes S3 service endpoint and credentials, as well as web management console address with credentials.
-- Getting this information is always available with: `./noobaa status`
-- Remove NooBaa deployment can be done with: `./noobaa uninstall`
+```
+$ noobaa options
+
+The following options can be passed to any command:
+
+      --db-image='centos/mongodb-36-centos7': The database container image
+      --db-storage-class='': The database volume storage class name
+      --db-volume-size-gb=0: The database volume size in GB
+      --image-pull-secret='': Image pull secret (must be in same namespace)
+      --kubeconfig='': Paths to a kubeconfig. Only required if out-of-cluster.
+      --master='': The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if
+out-of-cluster.
+      --mini=false: Signal the operator that it is running in a low resource environment
+  -n, --namespace='noobaa': Target namespace
+      --noobaa-image='noobaa/noobaa-core:5.4.0': NooBaa image
+      --operator-image='noobaa/noobaa-operator:2.2.0': Operator image
+      --pv-pool-default-storage-class='': The default storage class name for BackingStores of type pv-pool
 
 # Troubleshooting
 
 - The operator is running, but there is no noobaa-core-0 pod 
 
-    Make sure that there is a single default storage class with `oc get sc`. run `oc describe sts` for more information
-    
-- The operator is running, but the noobaa-core-0 is pending
+INFO[0000] CLI version: 2.2.0
+INFO[0000] noobaa-image: noobaa/noobaa-core:5.4.0
+INFO[0000] operator-image: noobaa/noobaa-operator:2.2.0
 
     Verify that there are enough resources. run `oc describe pod noobaa-core-0` for more information
 
