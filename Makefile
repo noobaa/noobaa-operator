@@ -87,7 +87,7 @@ gen: vendor pkg/bundle/deploy.go
 	@echo "✅ gen"
 .PHONY: gen
 
-pkg/bundle/deploy.go: pkg/bundler/bundler.go $(shell find deploy/ -type f)
+pkg/bundle/deploy.go: pkg/bundler/bundler.go version/version.go $(shell find deploy/ -type f)
 	mkdir -p pkg/bundle
 	go run pkg/bundler/bundler.go deploy/ pkg/bundle/deploy.go
 
