@@ -3,6 +3,14 @@ module github.com/noobaa/noobaa-operator/v2
 go 1.13
 
 require (
+	cloud.google.com/go v0.39.0 // indirect
+	github.com/Azure/azure-pipeline-go v0.1.9 // indirect
+	github.com/Azure/azure-sdk-for-go v39.2.0+incompatible
+	github.com/Azure/azure-storage-blob-go v0.0.0-20181023070848-cf01652132cc
+	github.com/Azure/go-autorest/autorest v0.9.4
+	github.com/Azure/go-autorest/autorest/adal v0.8.1
+	github.com/Azure/go-autorest/autorest/to v0.3.0
+	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
 	github.com/aws/aws-sdk-go v1.23.8
 	github.com/blang/semver v3.5.1+incompatible
@@ -11,6 +19,7 @@ require (
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/go-openapi/spec v0.19.4
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20200107223247-51020689f1fb
+	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
@@ -21,7 +30,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/multierr v1.2.0 // indirect
-	golang.org/x/crypto v0.0.0-20191119213627-4f8c1d86b1ba
+	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 	k8s.io/api v0.0.0
 	k8s.io/apiextensions-apiserver v0.0.0
 	k8s.io/apimachinery v0.0.0

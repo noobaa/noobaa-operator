@@ -1,0 +1,16 @@
+apiVersion: cloudcredential.openshift.io/v1
+kind: CredentialsRequest
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: CRED-REQ-NAME
+spec:
+  providerSpec:
+    apiVersion: cloudcredential.openshift.io/v1
+    kind: AzureProviderSpec
+    roleBindings:
+      - role: "Storage Account Contributor"
+      - role: "Storage Blob Data Contributor"
+  secretRef:
+    name: CRED-SECRET-NAME
+    namespace: CRED-SECRET-NAMESPACE
