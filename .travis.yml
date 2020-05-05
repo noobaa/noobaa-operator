@@ -19,7 +19,6 @@ env:
 
 install:
   - bash .travis/install-tools.sh
-  - bash .travis/install-operator-sdk.sh
   - bash .travis/install-python.sh
   - bash .travis/install-minikube.sh
 
