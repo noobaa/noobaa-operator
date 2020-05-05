@@ -23,7 +23,7 @@ BIN ?= $(OUTPUT)/bin
 OLM ?= $(OUTPUT)/olm
 VENV ?= $(OUTPUT)/venv
 
-export OPERATOR_SDK_VERSION ?= v0.16.0
+export OPERATOR_SDK_VERSION ?= v0.17.0
 export OPERATOR_SDK ?= build/_tools/operator-sdk-$(OPERATOR_SDK_VERSION)
 
 #------------#

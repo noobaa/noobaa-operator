@@ -160,6 +160,10 @@ function check_S3_compatible {
     local backingstore=("compatible1" "compatible2")
 
     test_noobaa bucket create ${buckets[1]}
+    test_noobaa backingstore create pv-pool pvpool1 \
+            --num-volumes 1 \
+            --pv-size-gb 50
+
     for (( cycle=0 ; cycle < ${#backingstore[@]} ; cycle++ ))
     do
         test_noobaa backingstore create ${type} ${backingstore[cycle]} \
