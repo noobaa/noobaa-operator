@@ -70,8 +70,8 @@ function main {
     bucketclass_cycle
     obc_cycle
     check_deletes
-    test_noobaa uninstall
-}
+    noobaa_uninstall
+ }
 
 function usage {
     set +x
