@@ -129,6 +129,11 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 
 	podSpec := &r.NooBaaDB.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa"
+
+	// set security context to run as a constant uid in kubernetes or openshift with anyuid scc
+	runAsUser := int64(10001)
+	podSpec.SecurityContext = &corev1.PodSecurityContext{RunAsUser: &runAsUser}
+
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
 		if c.Name == "init" {

@@ -2318,7 +2318,7 @@ spec:
               resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_db_yaml = "5916e76021db87d379658147871643bfa6e0f016a53e63afefac36ea9cbe62e3"
+const Sha256_deploy_internal_statefulset_db_yaml = "d704f723394443041084acf32922ebe30c35ea0388b4f7015c1a67a57b674dc0"
 
 const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2359,7 +2359,7 @@ spec:
             memory: "500Mi"
         volumeMounts:
         - name: db
-          mountPath: /mongo_data
+          mountPath: /data
       containers:
       #--------------------#
       # DATABASE CONTAINER #

@@ -37,7 +37,7 @@ spec:
             memory: "500Mi"
         volumeMounts:
         - name: db
-          mountPath: /mongo_data
+          mountPath: /data
       containers:
       #--------------------#
       # DATABASE CONTAINER #
