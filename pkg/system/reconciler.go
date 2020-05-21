@@ -26,6 +26,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -243,6 +244,10 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return res, nil
 	}
+	if err := r.VerifyObjectBucketCleanup(); err != nil {
+		r.SetPhase("", "TemporaryError", err.Error())
+		log.Warnf("⏳ Temporary Error: %s", err)
+	}
 
 	if r.NooBaa.Spec.JoinSecret != nil {
 		r.JoinSecret = &corev1.Secret{
@@ -284,6 +289,44 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
 	r.UpdateStatus()
 	return res, nil
+}
+
+// VerifyObjectBucketCleanup checks if the uninstallation is in mode graceful and
+// if OBs still exist in the system the operator will wait
+// and the finalizer on noobaa CR won't be reomved
+func (r *Reconciler) VerifyObjectBucketCleanup() error {
+	log := r.Logger
+
+	if r.NooBaa.DeletionTimestamp != nil {
+		finalizersArray := r.NooBaa.GetFinalizers()
+
+		if util.Contains("noobaa.io/graceful_finalizer", finalizersArray) {
+
+			obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
+			objectBuckets := &nbv1.ObjectBucketList{}
+			util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
+
+			if len(objectBuckets.Items) == 0 {
+				log.Infof("All object buckets deleted in namespace %q", r.NooBaa.Namespace)
+				util.RemoveFinalizer(r.NooBaa, nbv1.GracefulFinalizer)
+				if !util.KubeUpdate(r.NooBaa) {
+					log.Errorf("NooBaa %q failed to remove finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
+				}
+
+			} else {
+				var bucketNames []string
+				for i := range objectBuckets.Items {
+					ob := &objectBuckets.Items[i]
+					bucketNames = append(bucketNames, ob.Name)
+				}
+				msg := fmt.Sprintf("Failed to delete NooBaa. object buckets in namespace %q are not cleaned up. remaining buckets: %+v",
+					r.NooBaa.Namespace, bucketNames)
+				log.Errorf(msg)
+				return fmt.Errorf(msg)
+			}
+		}
+	}
+	return nil
 }
 
 // bToMb convert bytes to megabytes
