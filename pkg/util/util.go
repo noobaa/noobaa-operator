@@ -1023,3 +1023,13 @@ func WriteYamlFile(name string, obj runtime.Object, moreObjects ...runtime.Objec
 
 	return nil
 }
+
+// Contains checks if string array arr contains string s
+func Contains(s string, arr []string) bool {
+	for _, b := range arr {
+		if b == s {
+			return true
+		}
+	}
+	return false
+}

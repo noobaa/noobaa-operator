@@ -311,4 +311,7 @@ type EndpointsStatus struct {
 const (
 	// Finalizer is the name of the noobaa finalizer
 	Finalizer = "noobaa.io/finalizer"
+
+	// GracefulFinalizer is the name of the noobaa graceful finalizer
+	GracefulFinalizer = "noobaa.io/graceful_finalizer"
 )
