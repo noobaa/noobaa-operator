@@ -160,6 +160,10 @@ function check_S3_compatible {
     local backingstore=("compatible1" "compatible2")
 
     test_noobaa bucket create ${buckets[1]}
+    test_noobaa backingstore create pv-pool pvpool1 \
+            --num-volumes 1 \
+            --pv-size-gb 50
+
     for (( cycle=0 ; cycle < ${#backingstore[@]} ; cycle++ ))
     do
         test_noobaa backingstore create ${type} ${backingstore[cycle]} \
@@ -199,7 +203,6 @@ function check_IBM_cos {
     kuberun describe backingstore
     echo_time "✅  ibm cos cycle is done"
 }
-
 
 function check_aws_S3 {
     return
@@ -322,3 +325,58 @@ function check_deletes {
     delete_backingstore_path
     echo_time "✅  delete cycle is done"
 }
+
+function crd_arr { 
+    crd_array=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))
+    echo_time "${crd_array[*]}"
+}
+
+function noobaa_uninstall {
+    check_cleanflag=$((RANDOM%2))
+    echo_time ${check_cleanflag}
+    
+    if [ ${check_cleanflag} -gt 0 ] 
+    then
+        echo_time "Running uninstall with --cleanup”"
+        test_noobaa uninstall --cleanup 
+        check_if_cleanup
+    else
+        echo_time "Running uninstall without --cleanup”"
+        test_noobaa uninstall 
+    fi  
+}
+
+function check_if_cleanup {  
+    crd_array_after_Cleanup=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))   
+    for crd_before_clean in ${crd_array[@]}
+    do
+        if [[ ${crd_array_after_Cleanup[@]} =~ ${crd_before_clean} ]]
+        then
+            echo_time "${crd_before_clean} is in crd"
+            exit 1   
+        else         
+            echo_time "${crd_before_clean} is not in crd, deleted with clenaup"
+        fi               
+    done
+
+    for name in ${crd_array[@]} 
+    do
+        noobaa crd status &>/dev/stdout | grep -v "Not Found" | grep -q "${name}"
+        if [ $? -ne 0 ]  
+        then    
+            echo_time "${name} crd status empty"     
+        else 
+            echo_time "${name} crd status not empty" 
+            exit 1    
+        fi
+    done
+    
+    kubectl get namespace ${NAMESPACE}
+    if [ $? -ne 0 ] 
+    then   
+        echo_time "namespace doesnt exist" 
+    else
+        echo_time "namespace still exists"
+        exit 1            
+    fi
+} 

@@ -442,10 +442,17 @@ func (r *Reconciler) ReadSystemInfo() error {
 					fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to insufficient size, min is %d=%gGB", r.BackingStore.Name, minimalVolumeSize, (float64(minimalVolumeSize)/(math.Pow(1000, 3)))))
 			}
 		}
+		const maxNumVolumes = int(20)
+		var numVolumes = int(pvPool.NumVolumes)
+		if numVolumes > maxNumVolumes {
+			return util.NewPersistentError("MaxNumVolumes",
+				fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to large amount of volumes, max is %d", r.BackingStore.Name, maxNumVolumes))
+		}
+
 		r.CreateHostsPoolParams = &nb.CreateHostsPoolParams{
 			Name:       r.BackingStore.Name,
 			IsManaged:  true,
-			HostCount:  int(pvPool.NumVolumes),
+			HostCount:  numVolumes,
 			HostConfig: nb.PoolHostsInfo{VolumeSize: volumeSize},
 			Backingstore: &nb.BackingStoreInfo{
 				Name:      r.BackingStore.Name,

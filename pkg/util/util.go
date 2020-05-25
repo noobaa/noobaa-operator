@@ -796,6 +796,16 @@ func IsAWSPlatform() bool {
 	return isAWS
 }
 
+// IsAzurePlatform returns true if this cluster is running on Azure
+func IsAzurePlatform() bool {
+	nodesList := &corev1.NodeList{}
+	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+		Panic(fmt.Errorf("failed to list kubernetes nodes"))
+	}
+	isAzure := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "azure")
+	return isAzure
+}
+
 // GetAWSRegion parses the region from a node's name
 func GetAWSRegion() (string, error) {
 	// parse the node name to get AWS region according to this:
@@ -1012,4 +1022,14 @@ func WriteYamlFile(name string, obj runtime.Object, moreObjects ...runtime.Objec
 	}
 
 	return nil
+}
+
+// Contains checks if string array arr contains string s
+func Contains(s string, arr []string) bool {
+	for _, b := range arr {
+		if b == s {
+			return true
+		}
+	}
+	return false
 }

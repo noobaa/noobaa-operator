@@ -7,7 +7,7 @@ export PS4='\e[36m+ ${FUNCNAME:-main}\e[0m@\e[32m${BASH_SOURCE}:\e[35m${LINENO} 
 
 NAMESPACE='test'
 #the timeout is that big because it sometimes take a while to get pvc
-DEFAULT_TIMEOUT=120
+DEFAULT_TIMEOUT=180
 
 directory=$(dirname ${0})
 . ${directory}/test_cli_functions.sh
@@ -70,8 +70,8 @@ function main {
     bucketclass_cycle
     obc_cycle
     check_deletes
-    test_noobaa uninstall
-}
+    noobaa_uninstall
+ }
 
 function usage {
     set +x
