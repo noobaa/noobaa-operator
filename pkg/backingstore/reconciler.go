@@ -6,6 +6,7 @@ import (
 	"fmt"
 	math "math"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -37,22 +38,22 @@ func init() {
 
 func modeToPhaseMap() map[string]nbv1.BackingStorePhaseInfo {
 	return map[string]nbv1.BackingStorePhaseInfo{
-		"INITIALIZING":        nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: INITALIZING"},
-		"DELETING":            nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: DELETING"},
-		"SCALING":             nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: SCALING"},
-		"MOST_NODES_ISSUES":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_NODES_ISSUES"},
-		"MANY_NODES_ISSUES":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_ISSUES"},
-		"MOST_STORAGE_ISSUES": nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_STORAGE_ISSUES"},
-		"MANY_STORAGE_ISSUES": nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_STORAGE_ISSUES"},
-		"MANY_NODES_OFFLINE":  nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_OFFLINE"},
-		"LOW_CAPACITY":        nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: LOW_CAPACITY"},
-		"OPTIMAL":             nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: OPTIMAL"},
-		"HAS_NO_NODES":        nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: HAS_NO_NODES"},
-		"ALL_NODES_OFFLINE":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: ALL_NODES_OFFLINE"},
-		"NO_CAPACITY":         nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: NO_CAPACITY"},
-		"IO_ERRORS":           nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: IO_ERRORS"},
-		"STORAGE_NOT_EXIST":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: STORAGE_NOT_EXIST"},
-		"AUTH_FAILED":         nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: AUTH_FAILED"},
+		"INITIALIZING":        {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: INITALIZING"},
+		"DELETING":            {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: DELETING"},
+		"SCALING":             {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: SCALING"},
+		"MOST_NODES_ISSUES":   {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_NODES_ISSUES"},
+		"MANY_NODES_ISSUES":   {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_ISSUES"},
+		"MOST_STORAGE_ISSUES": {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_STORAGE_ISSUES"},
+		"MANY_STORAGE_ISSUES": {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_STORAGE_ISSUES"},
+		"MANY_NODES_OFFLINE":  {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_OFFLINE"},
+		"LOW_CAPACITY":        {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: LOW_CAPACITY"},
+		"OPTIMAL":             {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: OPTIMAL"},
+		"HAS_NO_NODES":        {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: HAS_NO_NODES"},
+		"ALL_NODES_OFFLINE":   {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: ALL_NODES_OFFLINE"},
+		"NO_CAPACITY":         {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: NO_CAPACITY"},
+		"IO_ERRORS":           {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: IO_ERRORS"},
+		"STORAGE_NOT_EXIST":   {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: STORAGE_NOT_EXIST"},
+		"AUTH_FAILED":         {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: AUTH_FAILED"},
 	}
 }
 
@@ -890,6 +891,23 @@ func (r *Reconciler) reconcileExistingPods(podsList *corev1.PodList) error {
 	noneAttachingAgents := 0
 	failedAttachingAgents := 0
 	for _, pod := range podsList.Items {
+
+		// GAP: reconcile proxy env vars.
+		// The only thing that can be changed on a pod spec is the image
+		// trying to change anything else, including env vars, will create a panic.
+		// Deployment and Statefulset are handling this by taking down the pod and
+		// starting a new one.
+		// In order to support reconciling changes to the proxy env we need to mimic
+		// this behaviour which is not trival in the case of agent pods.
+		var c = &pod.Spec.Containers[0]
+		for _, name := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
+			envVar := util.GetEnvVariable(&c.Env, name)
+			val, ok := os.LookupEnv(name)
+			if (envVar == nil && ok) || (envVar != nil && (!ok || envVar.Value != val)) {
+				r.Logger.Warnf("Pod's env variable %s does not match operator's env variable with the same name", name)
+			}
+		}
+
 		if !r.isPodinNoobaa(&pod) {
 			noneAttachingAgents++
 			if time.Since(pod.CreationTimestamp.Time) > 10*time.Minute {
@@ -900,9 +918,9 @@ func (r *Reconciler) reconcileExistingPods(podsList *corev1.PodList) error {
 			}
 		} else {
 			r.Logger.Infof("Check if pod need upgrade, pod version:%s noobaa version:%s",
-				pod.Spec.Containers[0].Image, r.NooBaa.Status.ActualImage)
-			if pod.Spec.Containers[0].Image != r.NooBaa.Status.ActualImage {
-				pod.Spec.Containers[0].Image = r.NooBaa.Status.ActualImage
+				c.Image, r.NooBaa.Status.ActualImage)
+			if c.Image != r.NooBaa.Status.ActualImage {
+				c.Image = r.NooBaa.Status.ActualImage
 				if r.NooBaa.Spec.ImagePullSecret == nil {
 					pod.Spec.ImagePullSecrets =
 						[]corev1.LocalObjectReference{}
@@ -967,15 +985,26 @@ func (r *Reconciler) updatePodTemplate() error {
 		return util.NewPersistentError("No AgentConfig - Can't add Missing Agents",
 			fmt.Sprintf("Current Backing store spec is: %q", r.BackingStore.Spec.PVPool))
 	}
-	r.PodAgentTemplate.Spec.Containers[0].Env[1].ValueFrom = &corev1.EnvVarSource{
-		SecretKeyRef: &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: r.Secret.Name,
-			},
-			Key: "AGENT_CONFIG",
-		},
+
+	c := &r.PodAgentTemplate.Spec.Containers[0]
+	for j := range c.Env {
+		switch c.Env[j].Name {
+		case "AGENT_CONFIG":
+			c.Env[j].ValueFrom = &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: r.Secret.Name,
+					},
+					Key: "AGENT_CONFIG",
+				},
+			}
+		}
 	}
-	r.PodAgentTemplate.Spec.Containers[0].Image = r.NooBaa.Status.ActualImage
+	util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
+	util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
+	util.ReflectEnvVariable(&c.Env, "NO_PROXY")
+
+	c.Image = r.NooBaa.Status.ActualImage
 	if r.NooBaa.Spec.ImagePullSecret == nil {
 		r.PodAgentTemplate.Spec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{}
