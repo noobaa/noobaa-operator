@@ -1982,7 +1982,7 @@ spec:
         claimName: noobaa-pv-claim
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "31412ea08c2c489c6cccdb28acdc1817f7ed97b9f3672b1abf80ab4f4129c39f"
+const Sha256_deploy_internal_prometheus_rules_yaml = "c97955aecaa1afefc9e19db2d15ec6aab49dfe2c0471430fef203ea469aef17c"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -1991,6 +1991,7 @@ metadata:
     prometheus: k8s
     role: alert-rules
   name: prometheus-noobaa-rules
+  namespace: default
 spec:
   groups:
   - name: noobaa-telemeter.rules
@@ -2015,13 +2016,13 @@ spec:
     - alert: NooBaaBucketErrorState
       annotations:
         description: A NooBaa bucket {{ $labels.bucket_name }} is in error state for
-          more than 6m
+          more than 5m
         message: A NooBaa Bucket Is In Error State
         severity_level: warning
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_status{bucket_name=~".*"} == 0
-      for: 6m
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketReachingQuotaState
@@ -2033,6 +2034,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_quota{bucket_name=~".*"} > 80
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketExceedingQuotaState
@@ -2044,6 +2046,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_quota{bucket_name=~".*"} >= 100
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketLowCapacityState
@@ -2055,6 +2058,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_capacity{bucket_name=~".*"} > 80
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketNoCapacityState
@@ -2066,6 +2070,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_capacity{bucket_name=~".*"} > 95
+      for: 5m
       labels:
         severity: warning
   - name: resource-state-alert.rules
@@ -2073,13 +2078,13 @@ spec:
     - alert: NooBaaResourceErrorState
       annotations:
         description: A NooBaa resource {{ $labels.resource_name }} is in error state
-          for more than 6m
+          for more than 5m
         message: A NooBaa Resource Is In Error State
         severity_level: warning
         storage_type: NooBaa
       expr: |
         NooBaa_resource_status{resource_name=~".*"} == 0
-      for: 6m
+      for: 5m
       labels:
         severity: warning
   - name: system-capacity-alert.rules
@@ -2093,6 +2098,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_system_capacity > 85
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaSystemCapacityWarning95
@@ -2104,6 +2110,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_system_capacity > 95
+      for: 5m
       labels:
         severity: critical
     - alert: NooBaaSystemCapacityWarning100
@@ -2114,6 +2121,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_system_capacity == 100
+      for: 5m
       labels:
         severity: critical
 `
