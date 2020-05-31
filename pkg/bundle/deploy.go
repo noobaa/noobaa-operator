@@ -1815,7 +1815,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "047a0e1625c3d166bde7792f818db7a412b4fac6d1ee37f75c9f5f4f2618cae9"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "69904dce2544a67df1305795b701c840968e5a4a9736f18b659e3a8fa48711fe"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1876,7 +1876,7 @@ spec:
         - name: LOCAL_MD_SERVER
         - name: LOCAL_N2N_AGENT
         - name: JWT_SECRET
-        - name: NOOBAA_DISABLE_COMPRESSION 
+        - name: NOOBAA_DISABLE_COMPRESSION
           value: "false"
         - name: NOOBAA_AUTH_TOKEN
           valueFrom:
@@ -1932,7 +1932,7 @@ spec:
   targetCPUUtilizationPercentage: 80
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "5cfcd3317ec6d748fe34d269fc5fba0c0ad981e7d0b964ca6dad071e3ea41b51"
+const Sha256_deploy_internal_pod_agent_yaml = "af92f0db07b5645470bc390d759c2a0014ee9fb0467984dd3f1c91d2133372c5"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -1960,10 +1960,6 @@ spec:
         - name: CONTAINER_PLATFORM
           value: KUBERNETES
         - name: AGENT_CONFIG
-          valueFrom:
-            secretKeyRef:
-              name: secret-name
-              key: AGENT_CONFIG
       command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
       # Insert the relevant image for the agent
       ports:
@@ -2289,7 +2285,7 @@ spec:
 
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "a30bceca14204013e94623f8ce7855febeafeff018a65cf0b019b698fd397184"
+const Sha256_deploy_internal_statefulset_core_yaml = "6824b5cfdac6b09405c473c31ca9cc03e0ebe198e6c86d4f5d7ca9a9d7ed1b4f"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2358,7 +2354,7 @@ spec:
           value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
         - name: CONTAINER_PLATFORM
           value: KUBERNETES
-        - name: NOOBAA_DISABLE_COMPRESSION 
+        - name: NOOBAA_DISABLE_COMPRESSION
           value: "false"
         - name: JWT_SECRET
           valueFrom:
