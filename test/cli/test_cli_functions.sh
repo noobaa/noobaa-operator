@@ -119,7 +119,11 @@ function timeout {
 }
 
 function install {
-    test_noobaa install --mini
+    local use-obc-cleanup-policy
+    
+    [ $((RANDOM%2)) -gt 0 ] && use-obc-cleanup-policy="--use-obc-cleanup-policy"
+    test_noobaa install --mini ${use-obc-cleanup-policy}
+
     local status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
     while [ "${status}" != "Ready" ]
     do
@@ -330,20 +334,20 @@ function crd_arr {
     crd_array=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))
     echo_time "${crd_array[*]}"
 }
-
 function noobaa_uninstall {
-    check_cleanflag=$((RANDOM%2))
-    echo_time ${check_cleanflag}
-    
-    if [ ${check_cleanflag} -gt 0 ] 
+    local cleanup cleanup_data
+    local check_cleanflag=$((RANDOM%2))
+    local check_cleanup_data_flag=$((RANDOM%2))
+
+    [ ${check_cleanflag} -eq 0 ] &&  cleanup="--cleanup"
+    [ ${check_cleanup_data_flag} -eq 0 ] && cleanup_data="--cleanup_data"
+
+    echo_time "Running uninstall ${cleanup} ${cleanup_data}"
+    test_noobaa uninstall ${cleanup} ${cleanup_data}
+    if [ ${check_cleanflag} -eq 0 ]
     then
-        echo_time "Running uninstall with --cleanup”"
-        test_noobaa uninstall --cleanup 
         check_if_cleanup
-    else
-        echo_time "Running uninstall without --cleanup”"
-        test_noobaa uninstall 
-    fi  
+    fi
 }
 
 function check_if_cleanup {  

@@ -56,6 +56,7 @@ func CmdCreate() *cobra.Command {
 	cmd.Flags().String("core-resources", "", "Core resources JSON")
 	cmd.Flags().String("db-resources", "", "DB resources JSON")
 	cmd.Flags().String("endpoint-resources", "", "Endpoint resources JSON")
+	cmd.Flags().Bool("obc-clenup-policy", false, "Create NooBaa system with obc cleanup policy")
 	return cmd
 }
 
@@ -66,6 +67,7 @@ func CmdDelete() *cobra.Command {
 		Short: "Delete a noobaa system",
 		Run:   RunDelete,
 	}
+	cmd.Flags().Bool("cleanup_data", false, "clean object buckets")
 	return cmd
 }
 
@@ -116,6 +118,8 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	sys := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa)
 	sys.Namespace = options.Namespace
 	sys.Name = options.SystemName
+	sys.Finalizers = []string{nbv1.GracefulFinalizer}
+
 	if options.NooBaaImage != "" {
 		image := options.NooBaaImage
 		sys.Spec.Image = &image
@@ -192,7 +196,10 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	coreResourcesJSON, _ := cmd.Flags().GetString("core-resources")
 	dbResourcesJSON, _ := cmd.Flags().GetString("db-resources")
 	endpointResourcesJSON, _ := cmd.Flags().GetString("endpoint-resources")
-
+	useOBCCleanupPolicy, _ := cmd.Flags().GetBool("use-obc-cleanup-policy")
+	if useOBCCleanupPolicy {
+		sys.Spec.CleanupPolicy.Confirmation = nbv1.DeleteOBCConfirmation
+	}
 	if coreResourcesJSON != "" {
 		util.Panic(json.Unmarshal([]byte(coreResourcesJSON), &sys.Spec.CoreResources))
 	}
@@ -225,6 +232,30 @@ func RunDelete(cmd *cobra.Command, args []string) {
 			Name:      options.SystemName,
 			Namespace: options.Namespace,
 		},
+	}
+
+	util.KubeCheck(sys)
+
+	cleanupData, _ := cmd.Flags().GetBool("cleanup_data")
+	objectBuckets := &nbv1.ObjectBucketList{}
+	obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
+	util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
+	finalizersArray := sys.GetFinalizers()
+
+	if util.Contains(nbv1.GracefulFinalizer, finalizersArray) {
+
+		confirm := sys.Spec.CleanupPolicy.Confirmation
+		if !cleanupData && len(objectBuckets.Items) != 0 && confirm != nbv1.DeleteOBCConfirmation {
+			log.Fatalf(`❌ %s`, fmt.Sprintf("Failed to delete NooBaa. object buckets in namespace %q are not cleaned up.", options.Namespace))
+
+		} else {
+			log.Infof("Deleting All object buckets in namespace %q", options.Namespace)
+
+			util.RemoveFinalizer(sys, nbv1.GracefulFinalizer)
+			if !util.KubeUpdate(sys) {
+				log.Errorf("NooBaa %q failed to remove finalizer %q", options.SystemName, nbv1.GracefulFinalizer)
+			}
+		}
 	}
 
 	util.KubeDelete(sys)
@@ -269,15 +300,11 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		}
 		util.KubeDelete(bstore, client.GracePeriodSeconds(0))
 	}
-
 	objectBucketClaims := &nbv1.ObjectBucketClaimList{}
-	objectBuckets := &nbv1.ObjectBucketList{}
 	configMaps := &corev1.ConfigMapList{}
 	secrets := &corev1.SecretList{}
-	obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
 
 	util.KubeList(objectBucketClaims, &client.ListOptions{LabelSelector: obcSelector})
-	util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
 	util.KubeList(configMaps, &client.ListOptions{LabelSelector: obcSelector})
 	util.KubeList(secrets, &client.ListOptions{LabelSelector: obcSelector})
 
