@@ -5,6 +5,7 @@ metadata:
     prometheus: k8s
     role: alert-rules
   name: prometheus-noobaa-rules
+  namespace: default
 spec:
   groups:
   - name: noobaa-telemeter.rules
@@ -29,13 +30,13 @@ spec:
     - alert: NooBaaBucketErrorState
       annotations:
         description: A NooBaa bucket {{ $labels.bucket_name }} is in error state for
-          more than 6m
+          more than 5m
         message: A NooBaa Bucket Is In Error State
         severity_level: warning
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_status{bucket_name=~".*"} == 0
-      for: 6m
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketReachingQuotaState
@@ -47,6 +48,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_quota{bucket_name=~".*"} > 80
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketExceedingQuotaState
@@ -58,6 +60,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_quota{bucket_name=~".*"} >= 100
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketLowCapacityState
@@ -69,6 +72,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_capacity{bucket_name=~".*"} > 80
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketNoCapacityState
@@ -80,6 +84,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_capacity{bucket_name=~".*"} > 95
+      for: 5m
       labels:
         severity: warning
   - name: resource-state-alert.rules
@@ -87,13 +92,13 @@ spec:
     - alert: NooBaaResourceErrorState
       annotations:
         description: A NooBaa resource {{ $labels.resource_name }} is in error state
-          for more than 6m
+          for more than 5m
         message: A NooBaa Resource Is In Error State
         severity_level: warning
         storage_type: NooBaa
       expr: |
         NooBaa_resource_status{resource_name=~".*"} == 0
-      for: 6m
+      for: 5m
       labels:
         severity: warning
   - name: system-capacity-alert.rules
@@ -107,6 +112,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_system_capacity > 85
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaSystemCapacityWarning95
@@ -118,6 +124,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_system_capacity > 95
+      for: 5m
       labels:
         severity: critical
     - alert: NooBaaSystemCapacityWarning100
@@ -128,5 +135,6 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_system_capacity == 100
+      for: 5m
       labels:
         severity: critical

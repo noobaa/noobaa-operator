@@ -241,6 +241,10 @@ type PVPoolSpec struct {
 
 	// VolumeResources represents the minimum resources each volume should have.
 	VolumeResources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Secret refers to a secret that provides the agent configuration
+	// The secret should define AGENT_CONFIG containing agent_configuration from noobaa-core.
+	Secret corev1.SecretReference `json:"secret"`
 }
 
 // S3SignatureVersion specifies the client signature version to use when signing requests.

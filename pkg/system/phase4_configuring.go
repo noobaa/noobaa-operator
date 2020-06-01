@@ -323,6 +323,10 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					}
 				}
 			}
+
+			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
+			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
+			util.ReflectEnvVariable(&c.Env, "NO_PROXY")
 		}
 	}
 	return nil

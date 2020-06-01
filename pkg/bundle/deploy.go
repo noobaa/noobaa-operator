@@ -89,7 +89,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "0843c91a9ee9bce1062068116e97581f24fe59137cd56d85ddb758962bcf187c"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "422b6646ba1e1ed256ef1975f1be00f127af18de2aeca5dc40ed03aec4b498fd"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -278,12 +278,27 @@ spec:
                         to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                       type: object
                   type: object
+                secret:
+                  description: Secret refers to a secret that provides the agent configuration
+                    The secret should define AGENT_CONFIG containing agent_configuration
+                    from noobaa-core.
+                  properties:
+                    name:
+                      description: Name is unique within a namespace to reference
+                        a secret resource.
+                      type: string
+                    namespace:
+                      description: Namespace defines the space within which the secret
+                        name must be unique.
+                      type: string
+                  type: object
                 storageClass:
                   description: StorageClass is the name of the storage class to use
                     for the PV's
                   type: string
               required:
               - numVolumes
+              - secret
               type: object
             s3Compatible:
               description: S3Compatible specifies a backing store of type s3-compatible
@@ -1690,7 +1705,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = "776deb11e769c67bf993ec77762b5375e36607bd4026e4ef20642fde2bd5dc80"
+const Sha256_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = "507d6a8477b6c2073c91d85806dc79b953a5a6e0ac442c2fe337b8f5ce6eaadb"
 
 const File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = `apiVersion: noobaa.io/v1alpha1
 kind: BackingStore
@@ -1701,11 +1716,6 @@ metadata:
   finalizers:
     - noobaa.io/finalizer
 spec:
-  type: aws-s3
-  awsS3:
-    targetBucket: noobaa-aws1
-    secret:
-      name: backing-store-secret-aws1
 `
 
 const Sha256_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = "af1411669ca0b29bdb7836e9e1fc44a0ddb7d4a994266abbae793a7116f6499f"
@@ -1805,7 +1815,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "047a0e1625c3d166bde7792f818db7a412b4fac6d1ee37f75c9f5f4f2618cae9"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "69904dce2544a67df1305795b701c840968e5a4a9736f18b659e3a8fa48711fe"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1866,7 +1876,7 @@ spec:
         - name: LOCAL_MD_SERVER
         - name: LOCAL_N2N_AGENT
         - name: JWT_SECRET
-        - name: NOOBAA_DISABLE_COMPRESSION 
+        - name: NOOBAA_DISABLE_COMPRESSION
           value: "false"
         - name: NOOBAA_AUTH_TOKEN
           valueFrom:
@@ -1922,7 +1932,53 @@ spec:
   targetCPUUtilizationPercentage: 80
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "31412ea08c2c489c6cccdb28acdc1817f7ed97b9f3672b1abf80ab4f4129c39f"
+const Sha256_deploy_internal_pod_agent_yaml = "af92f0db07b5645470bc390d759c2a0014ee9fb0467984dd3f1c91d2133372c5"
+
+const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: noobaa
+  name: noobaa-agent
+  finalizers:
+    - noobaa.io/finalizer
+spec:
+  containers:
+    - name: noobaa-agent
+      image: NOOBAA_CORE_IMAGE
+      imagePullPolicy: IfNotPresent
+      resources:
+        # https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+        requests:
+          cpu: "100m"
+          memory: "200Mi"
+        limits:
+          cpu: "100m"
+          memory: "200Mi"
+      env:
+        # Insert the relevant config for the current agent
+        - name: CONTAINER_PLATFORM
+          value: KUBERNETES
+        - name: AGENT_CONFIG
+      command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
+      # Insert the relevant image for the agent
+      ports:
+        # This should change according to the allocation from the NooBaa server
+        - containerPort: 60101
+      volumeMounts:
+        - name: noobaastorage
+          mountPath: /noobaa_storage
+        - name: tmp-logs-vol
+          mountPath: /usr/local/noobaa/logs
+  volumes:
+    - name: tmp-logs-vol
+      emptyDir: {}
+    - name: noobaastorage
+      persistentVolumeClaim:
+        claimName: noobaa-pv-claim
+`
+
+const Sha256_deploy_internal_prometheus_rules_yaml = "c97955aecaa1afefc9e19db2d15ec6aab49dfe2c0471430fef203ea469aef17c"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -1931,6 +1987,7 @@ metadata:
     prometheus: k8s
     role: alert-rules
   name: prometheus-noobaa-rules
+  namespace: default
 spec:
   groups:
   - name: noobaa-telemeter.rules
@@ -1955,13 +2012,13 @@ spec:
     - alert: NooBaaBucketErrorState
       annotations:
         description: A NooBaa bucket {{ $labels.bucket_name }} is in error state for
-          more than 6m
+          more than 5m
         message: A NooBaa Bucket Is In Error State
         severity_level: warning
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_status{bucket_name=~".*"} == 0
-      for: 6m
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketReachingQuotaState
@@ -1973,6 +2030,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_quota{bucket_name=~".*"} > 80
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketExceedingQuotaState
@@ -1984,6 +2042,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_quota{bucket_name=~".*"} >= 100
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketLowCapacityState
@@ -1995,6 +2054,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_capacity{bucket_name=~".*"} > 80
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaBucketNoCapacityState
@@ -2006,6 +2066,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_capacity{bucket_name=~".*"} > 95
+      for: 5m
       labels:
         severity: warning
   - name: resource-state-alert.rules
@@ -2013,13 +2074,13 @@ spec:
     - alert: NooBaaResourceErrorState
       annotations:
         description: A NooBaa resource {{ $labels.resource_name }} is in error state
-          for more than 6m
+          for more than 5m
         message: A NooBaa Resource Is In Error State
         severity_level: warning
         storage_type: NooBaa
       expr: |
         NooBaa_resource_status{resource_name=~".*"} == 0
-      for: 6m
+      for: 5m
       labels:
         severity: warning
   - name: system-capacity-alert.rules
@@ -2033,6 +2094,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_system_capacity > 85
+      for: 5m
       labels:
         severity: warning
     - alert: NooBaaSystemCapacityWarning95
@@ -2044,6 +2106,7 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_system_capacity > 95
+      for: 5m
       labels:
         severity: critical
     - alert: NooBaaSystemCapacityWarning100
@@ -2054,8 +2117,25 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_system_capacity == 100
+      for: 5m
       labels:
         severity: critical
+`
+
+const Sha256_deploy_internal_pvc_agent_yaml = "c76fd98867e2e098204377899568a6e1e60062ece903c7bcbeb3444193ec13f8"
+
+const File_deploy_internal_pvc_agent_yaml = `apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: noobaa
+  name: noobaa-pv-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 30Gi
 `
 
 const Sha256_deploy_internal_route_mgmt_yaml = "52dacfdd2f8f4ddfe56948573ae69277096d971c9274f9afb1046871ed7f9c28"
@@ -2205,7 +2285,7 @@ spec:
 
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "a30bceca14204013e94623f8ce7855febeafeff018a65cf0b019b698fd397184"
+const Sha256_deploy_internal_statefulset_core_yaml = "6824b5cfdac6b09405c473c31ca9cc03e0ebe198e6c86d4f5d7ca9a9d7ed1b4f"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2274,7 +2354,7 @@ spec:
           value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
         - name: CONTAINER_PLATFORM
           value: KUBERNETES
-        - name: NOOBAA_DISABLE_COMPRESSION 
+        - name: NOOBAA_DISABLE_COMPRESSION
           value: "false"
         - name: JWT_SECRET
           valueFrom:

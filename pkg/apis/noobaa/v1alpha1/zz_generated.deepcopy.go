@@ -611,6 +611,7 @@ func (in *PVPoolSpec) DeepCopyInto(out *PVPoolSpec) {
 		*out = new(corev1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
+	out.Secret = in.Secret
 	return
 }
 

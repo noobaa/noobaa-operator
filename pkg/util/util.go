@@ -307,6 +307,23 @@ func KubeDelete(obj runtime.Object, opts ...client.DeleteOption) bool {
 	return deleted
 }
 
+// KubeDeleteAllOf deletes an list of objects and reports the status.
+func KubeDeleteAllOf(obj runtime.Object, opts ...client.DeleteAllOfOption) bool {
+	klient := KubeClient()
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	deleted := false
+
+	err := klient.DeleteAllOf(ctx, obj, opts...)
+	if err == nil {
+		deleted = true
+		log.Printf("🗑️  Deleting All of type: %s\n", gvk.Kind)
+	} else if errors.IsNotFound(err) {
+		return true
+	}
+	Panic(err)
+	return deleted
+}
+
 // KubeUpdate updates an object and reports the object status.
 func KubeUpdate(obj runtime.Object) bool {
 	klient := KubeClient()
@@ -1032,4 +1049,38 @@ func Contains(s string, arr []string) bool {
 		}
 	}
 	return false
+}
+
+// GetEnvVariable is looknig for env variable called name in env and return a pointer to the variable
+func GetEnvVariable(env *[]corev1.EnvVar, name string) *corev1.EnvVar {
+	for i := range *env {
+		e := &(*env)[i]
+		if e.Name == name {
+			return e
+		}
+	}
+	return nil
+}
+
+// ReflectEnvVariable will add, update or remove an env variable base on the existence and value of an
+// env variable with the same name on the container running this function.
+func ReflectEnvVariable(env *[]corev1.EnvVar, name string) {
+	if val, ok := os.LookupEnv(name); ok {
+		envVar := GetEnvVariable(env, name)
+		if envVar != nil {
+			envVar.Value = val
+		} else {
+			*env = append(*env, corev1.EnvVar{
+				Name:  name,
+				Value: val,
+			})
+		}
+	} else {
+		for i, envVar := range *env {
+			if envVar.Name == name {
+				*env = append((*env)[:i], (*env)[i+1:]...)
+				return
+			}
+		}
+	}
 }

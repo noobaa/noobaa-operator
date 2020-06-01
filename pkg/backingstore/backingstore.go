@@ -40,6 +40,7 @@ func Cmd() *cobra.Command {
 		CmdStatus(),
 		CmdList(),
 		CmdReconcile(),
+		CmdRunRemovePendingPods(),
 	)
 	return cmd
 }
@@ -221,6 +222,16 @@ func CmdStatus() *cobra.Command {
 		Use:   "status <backing-store-name>",
 		Short: "Status backing store",
 		Run:   RunStatus,
+	}
+	return cmd
+}
+
+// CmdRunRemovePendingPods returns a CLI command
+func CmdRunRemovePendingPods() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "remove_pending <backing-store-name>",
+		Short: "Deletes all the pending pods that failed to connect to server",
+		Run:   RunRemovePendingPods,
 	}
 	return cmd
 }
@@ -478,8 +489,12 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 			NumVolumes:   int(numVolumes),
 			VolumeResources: &corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: *resource.NewScaledQuantity(int64(pvSizeGB), resource.Giga),
+					corev1.ResourceStorage: *resource.NewQuantity(int64(pvSizeGB)*1024*1024*1024, resource.BinarySI),
 				},
+			},
+			Secret: corev1.SecretReference{
+				Name:      secret.Name,
+				Namespace: secret.Namespace,
 			},
 		}
 	})
@@ -528,6 +543,66 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Could not delete BackingStore %q in namespace %q`,
 			backStore.Name, backStore.Namespace)
 	}
+}
+
+// RunRemovePendingPods runs a CLI command
+func RunRemovePendingPods(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
+	}
+
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml)
+	backStore := o.(*nbv1.BackingStore)
+	backStore.Name = args[0]
+	backStore.Namespace = options.Namespace
+	backStore.Spec = nbv1.BackingStoreSpec{}
+	if !util.KubeCheck(backStore) {
+		log.Fatalf(`❌ Could not get BackingStore %q in namespace %q`,
+			backStore.Name, backStore.Namespace)
+	}
+	if backStore.Spec.Type != nbv1.StoreTypePVPool {
+		log.Fatalf(`❌ Could not get Run this Command on None PV-Pool backingstore`)
+	}
+
+	nbClient := system.GetNBClient()
+	hostsInfo, err := nbClient.ListHostsAPI(nb.ListHostsParams{Query: nb.ListHostsQuery{Pools: []string{backStore.Name}}})
+	if err != nil {
+		rpcErr, isRPCErr := err.(*nb.RPCError)
+		if !isRPCErr || rpcErr.RPCCode != "NO_SUCH_POOL" {
+			log.Fatalf(`❌ Failed to read BackingStore host info: %s`, err)
+		}
+	}
+	podsList := &corev1.PodList{}
+	util.KubeList(podsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": backStore.Name})
+	for _, pod := range podsList.Items {
+		if !isPodinNoobaa(&pod, &hostsInfo.Hosts) {
+			util.RemoveFinalizer(&pod, nbv1.Finalizer)
+			if !util.KubeUpdate(&pod) {
+				log.Errorf("Pod %q failed to remove finalizer %q",
+					pod.Name, nbv1.Finalizer)
+			}
+			pvc := &corev1.PersistentVolumeClaim{
+				TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pod.Spec.Volumes[1].PersistentVolumeClaim.ClaimName,
+					Namespace: options.Namespace,
+				},
+			}
+			util.KubeDelete(&pod)
+			util.KubeDelete(pvc)
+		}
+	}
+}
+
+func isPodinNoobaa(pod *corev1.Pod, hostsInfo *[]nb.HostInfo) bool {
+	for _, host := range *hostsInfo {
+		if strings.HasPrefix(host.Name, pod.Name) {
+			return true
+		}
+	}
+	return false
 }
 
 // RunStatus runs a CLI command
@@ -715,6 +790,8 @@ func GetBackingStoreSecret(bs *nbv1.BackingStore) *corev1.SecretReference {
 		return &bs.Spec.AzureBlob.Secret
 	case nbv1.StoreTypeGoogleCloudStorage:
 		return &bs.Spec.GoogleCloudStorage.Secret
+	case nbv1.StoreTypePVPool:
+		return &bs.Spec.PVPool.Secret
 	default:
 		return nil
 	}
