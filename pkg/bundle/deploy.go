@@ -1815,7 +1815,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "69904dce2544a67df1305795b701c840968e5a4a9736f18b659e3a8fa48711fe"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "ebf49c7b40690cd17bac09af4de7d1551ab38987ee2adc6f3d458d31f315e8fe"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1852,8 +1852,9 @@ spec:
       - name: endpoint
         image: NOOBAA_CORE_IMAGE
         command:
-        - /noobaa_init_files/noobaa_init.sh
-        - init_endpoint
+        - bash
+        - "-c"
+        - "while true ; do /noobaa_init_files/noobaa_init.sh init_endpoint ; done"
         resources:
           requests:
             cpu: "1"

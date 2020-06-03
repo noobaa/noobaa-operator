@@ -33,8 +33,9 @@ spec:
       - name: endpoint
         image: NOOBAA_CORE_IMAGE
         command:
-        - /noobaa_init_files/noobaa_init.sh
-        - init_endpoint
+        - bash
+        - "-c"
+        - "while true ; do /noobaa_init_files/noobaa_init.sh init_endpoint ; done"
         resources:
           requests:
             cpu: "1"
