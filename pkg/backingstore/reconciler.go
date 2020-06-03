@@ -1013,6 +1013,9 @@ func (r *Reconciler) updatePodTemplate() error {
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
 	r.PodAgentTemplate.Labels = map[string]string{"pool": r.BackingStore.Name}
+	if r.NooBaa.Spec.Tolerations != nil {
+		r.PodAgentTemplate.Spec.Tolerations = r.NooBaa.Spec.Tolerations
+	}
 	return nil
 }
 
