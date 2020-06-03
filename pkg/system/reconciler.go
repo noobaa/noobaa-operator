@@ -300,7 +300,7 @@ func (r *Reconciler) VerifyObjectBucketCleanup() error {
 	if r.NooBaa.DeletionTimestamp != nil {
 		finalizersArray := r.NooBaa.GetFinalizers()
 
-		if util.Contains("noobaa.io/graceful_finalizer", finalizersArray) {
+		if util.Contains(nbv1.GracefulFinalizer, finalizersArray) {
 
 			obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
 			objectBuckets := &nbv1.ObjectBucketList{}
