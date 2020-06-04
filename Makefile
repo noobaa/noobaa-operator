@@ -26,6 +26,8 @@ VENV ?= $(OUTPUT)/venv
 export OPERATOR_SDK_VERSION ?= v0.17.0
 export OPERATOR_SDK ?= build/_tools/operator-sdk-$(OPERATOR_SDK_VERSION)
 
+KUBECONFIG ?= build/empty-kubeconfig
+
 #------------#
 #- Building -#
 #------------#
@@ -39,7 +41,7 @@ build: cli image gen-olm
 .PHONY: build
 
 cli: $(OPERATOR_SDK) gen
-	$(OPERATOR_SDK) run --local --operator-flags "version"
+	$(OPERATOR_SDK) run --kubeconfig="$(KUBECONFIG)" --local --operator-flags "version"
 	@echo "✅ cli"
 .PHONY: cli
 
@@ -108,7 +110,7 @@ gen-api-fail-if-dirty: gen-api
 
 gen-olm: $(OPERATOR_SDK) gen
 	rm -rf $(OLM)
-	$(OPERATOR_SDK) run --local --operator-flags "olm catalog -n my-noobaa-operator --dir $(OLM)"
+	$(OPERATOR_SDK) run --kubeconfig="$(KUBECONFIG)" --local --operator-flags "olm catalog -n my-noobaa-operator --dir $(OLM)"
 	python3 -m venv $(VENV) && \
 		. $(VENV)/bin/activate && \
 		pip3 install --upgrade pip && \
