@@ -1,12 +1,12 @@
 #!/bin/bash
 
 if [ -z "${OPERATOR_SDK_VERSION}" ]; then
-    echo "OPERATOR_SDK_VERSION should be defined as an env varialbe (usually in makefile)"
+    echo "OPERATOR_SDK_VERSION should be defined as an env variable (usually in makefile)"
     exit 1
 fi
 
 if [ -z "${OPERATOR_SDK}" ]; then
-    echo "OPERATOR_SDK should be defined as an env varialbe (usually in makefile)"
+    echo "OPERATOR_SDK should be defined as an env variable (usually in makefile)"
     exit 1
 fi
 
