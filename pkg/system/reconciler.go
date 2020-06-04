@@ -244,6 +244,11 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return res, nil
 	}
+
+	if added := util.AddFinalizer(r.NooBaa, nbv1.GracefulFinalizer); added && !util.KubeUpdate(r.NooBaa) {
+		log.Errorf("NooBaa %q failed to add finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
+	}
+
 	if err := r.VerifyObjectBucketCleanup(); err != nil {
 		r.SetPhase("", "TemporaryError", err.Error())
 		log.Warnf("⏳ Temporary Error: %s", err)
@@ -301,9 +306,11 @@ func (r *Reconciler) VerifyObjectBucketCleanup() error {
 		return nil
 	}
 
-	finalizersArray := r.NooBaa.GetFinalizers()
-
-	if ! util.Contains(nbv1.GracefulFinalizer, finalizersArray) {
+	if r.NooBaa.Spec.CleanupPolicy.Confirmation == nbv1.DeleteOBCConfirmation {
+		util.RemoveFinalizer(r.NooBaa, nbv1.GracefulFinalizer)
+		if !util.KubeUpdate(r.NooBaa) {
+			log.Errorf("NooBaa %q failed to remove finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
+		}
 		return nil
 	}
 

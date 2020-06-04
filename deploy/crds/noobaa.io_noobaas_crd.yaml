@@ -625,6 +625,14 @@ spec:
                       type: array
                   type: object
               type: object
+            cleanupPolicy:
+              description: CleanupPolicy (optional) Indicates user's policy for deletion
+              properties:
+                confirmation:
+                  description: CleanupConfirmationProperty is a string that specifies
+                    cleanup confirmation
+                  type: string
+              type: object
             coreResources:
               description: CoreResources (optional) overrides the default resource
                 requirements for the server container
