@@ -123,9 +123,9 @@ function install {
     local status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
     while [ "${status}" != "Ready" ]
     do
-        echo_time "Waiting for status Ready, Status is ${status}"
-        sleep 10
-        status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
+       echo_time "Waiting for status Ready, Status is ${status}"
+       sleep 10
+       status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
     done
 }
 
@@ -228,13 +228,13 @@ function bucketclass_cycle {
     do
         bucketclass_names+=("bucket.class$((number+1))")
         backingstore+=("compatible$((number+1))")
-    done
+     done
 
     test_noobaa bucketclass create ${bucketclass_names[0]} --backingstores ${backingstore[0]}
     # test_noobaa bucketclass create ${bucketclass_names[1]} --placement Mirror --backingstores nb1,aws1 ❌
     # test_noobaa bucketclass create ${bucketclass_names[2]} --placement Spread --backingstores aws1,aws2 ❌
     test_noobaa bucketclass create ${bucketclass_names[3]} --backingstores ${backingstore[0]},${backingstore[1]}
-
+ 
     local bucketclass_list_array=($(test_noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME))
     for bucketclass in ${bucketclass_list_array[@]}
     do
@@ -284,70 +284,89 @@ function obc_cycle {
     echo_time "✅  obc cycle is done"
 }
 
-function crd_cycle {  
-    local crd 
+function crd_cycle {     
     echo_time "Starting the crd cycle" 
+    local crd_create_array=($(test_noobaa silence crd create &>/dev/stdout | awk '{print $6}' | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    local crd_status_array=($(test_noobaa silence crd status &>/dev/stdout | awk '{print $6}' | grep -v "Exists" | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    crd_array=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))
     
-    test_noobaa timeout crd create
-    noobaa crd status &>/dev/stdout | grep -v "Already Exists"  
-    if [ $? -ne 0 ]  
-    then           
-        echo_time "crd doesn't exist....."
-        exit 1 
-     else 
-         echo_time "crd already exsists"    
-    fi  
+    #comparing crd status and create arrays
+    echo_time "checking if crd noobaa create command equals to crd status command"
+    for crd_status_array in ${crd_array[@]}
+    do
+        if [[ ${crd_create_array[@]} =~ ${crd_status_array} ]]
+        then            
+            echo_time "✅ ${crd_status_array} exists in the crds list"
+        else
+            echo_time "❌ ${crd_status_array} is not existed in the crds list"         
+        fi               
+    done
+         
     kuberun get crd  
     if [ $? -ne 0 ]
     then
-        echo_time "kuberun get crd failed"
+        echo_time "❌ kubectl get crd failed"
         exit 1 
     else 
-        echo_time "kuberun get crd passed"    
+        echo_time "✅ kubectl get crd passed"    
     fi      
 
-    test_noobaa timeout crd delete
-    noobaa crd status &>/dev/stdout | grep -v "Not Found"  
-    if [ $? -ne 0 ]  
-    then    
-        echo_time "crd deleted"    
-        echo_time "creating crd again for checks..."    
-    else 
-        echo_time "crd still exists....."
-        exit 1 
-    fi  
-
-    test_noobaa crd create 
+    test_noobaa timeout crd delete 
+    local crd_status_after_delete=($(test_noobaa silence crd status &>/dev/stdout | awk '{print $6}' | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    #checking if crds still exist in the test after the delete
+    for crd in ${crd_array[@]} 
+    do
+        if [[ ${crd_status_after_delete[@]} =~ ${crd} ]]
+        then    
+            echo_time "❌ crd ${crd} still exists in the test. exiting."
+            exit 1       
+        else 
+            echo_time "✅ crd ${crd} deleted from test" 
+        fi
+    done
     kuberun get crd  
     if [ $? -ne 0 ]
     then
-        echo_time "kuberun get crd failed"
+        echo_time "❌ kubectl get crd failed"
         exit 1 
     else 
-        echo_time "kuberun get crd passed"    
+        echo_time "✅ kubectl get crd passed"    
     fi 
 
-    crd_array=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))
-    echo_time "${crd_array[@]}"    
+    echo_time "creating crd again for checks..."     
+    test_noobaa timeout crd create 
+    local crd_after_create=($(test_noobaa silence crd status &>/dev/stdout | awk '{print $6}' | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    #comparing crds after running create command
+    for crd_after_create in ${crd_array[@]}
+    do
+        if [[ ${crd_after_create[@]} =~ ${crd_status_array} ]]
+        then            
+            echo_time "✅ ${crd_after_create} is exsisted in the crds list"
+        else
+            echo_time "❌ ${crd_after_create} is not existed in the crds list"         
+        fi               
+    done
+
+    kuberun get crd  
+    if [ $? -ne 0 ]
+    then
+        echo_time "❌ kubectl get crd failed"
+        exit 1 
+    else 
+        echo_time "✅ kubectl get crd passed"    
+    fi 
+
     test_noobaa timeout crd status
-    for crd in ${crd_array[@]}
-    do 
-        kuberun describe crd ${crd} &>/dev/null 
-        if [ $? -ne 0 ]
-        then
-            echo_time " describing crd ${crd} failed"
-            exit 1 
-        else 
-            echo_time "describing crd ${crd} passed"    
-        fi 
-    done        
+       
     echo_time "✅  crd cycle is done"
 }
 
 function delete_backingstore_path {
     local object_bucket backing_store
     local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
-    local bucketclass=($(test_noobaa silence bucketclass list  | grep ${backingstore[1]} | awk '{print $1}'))
+    local bucketclass=($(test_noobaa bucketclass list  | grep ${backingstore[1]} | awk '{print $1}'))
+    echo "${bucketclass}"
+    #local bucketclass=($(test_noobaa silence bucketclass list  | grep ${backingstore[1]} | awk '{print $1}'))
     local obc=($(test_noobaa silence obc list | grep -v "BUCKET-NAME" | awk '{print $2}'))
     echo_time "Starting the delete related ${backingstore[1]} paths"
 

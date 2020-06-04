@@ -1,5 +1,4 @@
 #!/bin/bash
-
 export PS4='\e[36m+ ${FUNCNAME:-main}\e[0m@\e[32m${BASH_SOURCE}:\e[35m${LINENO} \e[0m'
 
 #In first stage, the script assume that the noobaa cli is installed.
@@ -64,12 +63,12 @@ function clean {
 }
 
 function main {
+    crd_cycle
     noobaa_install
     aws_credentials
     check_S3_compatible
     bucketclass_cycle
     obc_cycle
-    crd_cycle
     check_deletes
     noobaa_uninstall
  }
