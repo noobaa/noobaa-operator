@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -53,7 +52,6 @@ import (
 
 const (
 	oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
-	serviceCAPath          = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -73,32 +71,8 @@ var (
 	InsecureHTTPTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	// SecureHTTPTransport is a global secured http transport
-	SecureHTTPTransport = newSecureHTTPTransport()
 )
 
-// newSecureHTTPTransport initializes a secured http transport. http.Transport may cause memory leaks when overused
-func newSecureHTTPTransport() *http.Transport {
-	// Load CA cert
-	caCert, err := ioutil.ReadFile(serviceCAPath)
-	if err != nil {
-		return &http.Transport{}
-	}
-
-	caCertPool, _ := x509.SystemCertPool()
-	if caCertPool == nil {
-		caCertPool = x509.NewCertPool()
-	}
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	// Setup HTTPS client
-	tlsConfig := &tls.Config{
-		RootCAs: caCertPool,
-	}
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
-	return transport
-
-}
 func init() {
 	Panic(apiextv1beta1.AddToScheme(scheme.Scheme))
 	Panic(nbapis.AddToScheme(scheme.Scheme))
@@ -916,7 +890,7 @@ func PrintThisNoteWhenFinishedApplyingAndStartWaitLoop() {
 func DiscoverOAuthEndpoints() (*OAuth2Endpoints, error) {
 	client := http.Client{
 		Timeout:   120 * time.Second,
-		Transport: SecureHTTPTransport,
+		Transport: InsecureHTTPTransport,
 	}
 
 	res, err := client.Get(oAuthWellKnownEndpoint)
