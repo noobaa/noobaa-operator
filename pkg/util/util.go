@@ -447,6 +447,16 @@ func RemoveFinalizer(obj metav1.Object, finalizer string) bool {
 	return found
 }
 
+// AddFinalizer adds the finalizer to the object if it doesn't contains it already
+func AddFinalizer(obj metav1.Object, finalizer string) bool {
+	if !Contains(finalizer, obj.GetFinalizers()) {
+		finalizers := append(obj.GetFinalizers(), finalizer)
+		obj.SetFinalizers(finalizers)
+		return true
+	}
+	return false
+}
+
 // GetPodStatusLine returns a one liner status for a pod
 func GetPodStatusLine(pod *corev1.Pod) string {
 	s := fmt.Sprintf("Phase=%q. ", pod.Status.Phase)
