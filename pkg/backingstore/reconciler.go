@@ -143,6 +143,10 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
+	if added := util.AddFinalizer(r.BackingStore, nbv1.Finalizer); added && !util.KubeUpdate(r.BackingStore) {
+		log.Errorf("BackingStore %q failed to add finalizer %q", r.BackingStore.Name, nbv1.Finalizer)
+	}
+
 	system.CheckSystem(r.NooBaa)
 
 	oldStatefulSet := &appsv1.StatefulSet{}
@@ -1013,6 +1017,9 @@ func (r *Reconciler) updatePodTemplate() error {
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
 	r.PodAgentTemplate.Labels = map[string]string{"pool": r.BackingStore.Name}
+	if r.NooBaa.Spec.Tolerations != nil {
+		r.PodAgentTemplate.Spec.Tolerations = r.NooBaa.Spec.Tolerations
+	}
 	return nil
 }
 

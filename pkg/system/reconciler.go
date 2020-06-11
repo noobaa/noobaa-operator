@@ -244,6 +244,11 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return res, nil
 	}
+
+	if added := util.AddFinalizer(r.NooBaa, nbv1.GracefulFinalizer); added && !util.KubeUpdate(r.NooBaa) {
+		log.Errorf("NooBaa %q failed to add finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
+	}
+
 	if err := r.VerifyObjectBucketCleanup(); err != nil {
 		r.SetPhase("", "TemporaryError", err.Error())
 		log.Warnf("⏳ Temporary Error: %s", err)
@@ -297,35 +302,40 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 func (r *Reconciler) VerifyObjectBucketCleanup() error {
 	log := r.Logger
 
-	if r.NooBaa.DeletionTimestamp != nil {
-		finalizersArray := r.NooBaa.GetFinalizers()
-
-		if util.Contains("noobaa.io/graceful_finalizer", finalizersArray) {
-
-			obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
-			objectBuckets := &nbv1.ObjectBucketList{}
-			util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
-
-			if len(objectBuckets.Items) == 0 {
-				log.Infof("All object buckets deleted in namespace %q", r.NooBaa.Namespace)
-				util.RemoveFinalizer(r.NooBaa, nbv1.GracefulFinalizer)
-				if !util.KubeUpdate(r.NooBaa) {
-					log.Errorf("NooBaa %q failed to remove finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
-				}
-
-			} else {
-				var bucketNames []string
-				for i := range objectBuckets.Items {
-					ob := &objectBuckets.Items[i]
-					bucketNames = append(bucketNames, ob.Name)
-				}
-				msg := fmt.Sprintf("Failed to delete NooBaa. object buckets in namespace %q are not cleaned up. remaining buckets: %+v",
-					r.NooBaa.Namespace, bucketNames)
-				log.Errorf(msg)
-				return fmt.Errorf(msg)
-			}
-		}
+	if r.NooBaa.DeletionTimestamp == nil {
+		return nil
 	}
+
+	if r.NooBaa.Spec.CleanupPolicy.Confirmation == nbv1.DeleteOBCConfirmation {
+		util.RemoveFinalizer(r.NooBaa, nbv1.GracefulFinalizer)
+		if !util.KubeUpdate(r.NooBaa) {
+			log.Errorf("NooBaa %q failed to remove finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
+		}
+		return nil
+	}
+
+	obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
+	objectBuckets := &nbv1.ObjectBucketList{}
+	util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
+
+	if len(objectBuckets.Items) != 0 {
+		var bucketNames []string
+		for i := range objectBuckets.Items {
+			ob := &objectBuckets.Items[i]
+			bucketNames = append(bucketNames, ob.Name)
+		}
+		msg := fmt.Sprintf("Failed to delete NooBaa. object buckets in namespace %q are not cleaned up. remaining buckets: %+v",
+			r.NooBaa.Namespace, bucketNames)
+		log.Errorf(msg)
+		return fmt.Errorf(msg)
+	}
+
+	log.Infof("All object buckets deleted in namespace %q", r.NooBaa.Namespace)
+	util.RemoveFinalizer(r.NooBaa, nbv1.GracefulFinalizer)
+	if !util.KubeUpdate(r.NooBaa) {
+		log.Errorf("NooBaa %q failed to remove finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
+	}
+
 	return nil
 }
 
