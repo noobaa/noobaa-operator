@@ -6,6 +6,7 @@ NooBaa CRD represents a single installation of NooBaa that includes a set of sub
 
 # Definitions
 
+- Kubebuilder types: [noobaa_types.go](../pkg/apis/noobaa/v1alpha1/noobaa_types.go)
 - CRD: [noobaa.io_noobaas_crd.yaml](../deploy/crds/noobaa.io_noobaas_crd.yaml)
 - CR: [noobaa.io_v1alpha1_noobaa_cr.yaml](../deploy/crds/noobaa.io_v1alpha1_noobaa_cr.yaml)
 
@@ -138,6 +139,78 @@ Management
       - https://1.1.1.1:6443
   ```
 
+# Custom Images
+
+The NooBaa spec below shows how to override the noobaa-core image used for the system deployment. Another way to change the default image is to set the env `NOOBAA_CORE_IMAGE` on the operator pod (on its deployment) which makes the operator assume a different default core image even when the NooBaa spec is not specifying it. In any case when using custom images, you will have to make sure the operator and core images are compatible with eachother.
+
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: NooBaa
+metadata:
+  name: noobaa
+  namespace: noobaa
+spec:
+  image: noobaa/noobaa-core:v9999.9.9
+```
+
+# Private Image Registry
+
+See below how to set `spec.imagePullSecret` in order to [pull from a private image repository](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
+
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: NooBaa
+metadata:
+  name: noobaa
+  namespace: noobaa
+spec:
+  image: noobaa/noobaa-core:v9999.9.9
+  dbImage: centos/mongodb-36-centos7
+  imagePullSecret:
+    name: <SECRET-NAME>
+```
+
+# Custom CPU and Memory Resources
+
+The NooBaa spec can be used to control the resources of each component. Below is an example of how to set the spec to use custom compute resources. 
+
+Keep the following in mind when choosing your custom resources values:
+- Endpoints are deployed as a deployment with autoscaling, so the `minCount`/`maxCount` values should be used to set a range for the autoscaler to use, and this is typically how you can increase the system's S3 throughput. It should be preferred to increase the number of endpoints rather than increasing the resources for each endpoint.
+- Setting `requests` and `limits` to the same exact value will make the pods get a "Guaranteed" QoS class - see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/.
+- When running on minikube or other small environments, the noobaa cli provides a `--mini` flag that sets a spec of minimal resources.
+
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: NooBaa
+metadata:
+  name: noobaa
+  namespace: noobaa
+spec:
+  coreResources:
+    requests:
+      cpu: "8"
+      memory: "16Gi"
+    limits:
+      cpu: "8"
+      memory: "16Gi"
+  dbResources:
+    requests:
+      cpu: "8"
+      memory: "16Gi"
+    limits:
+      cpu: "8"
+      memory: "16Gi"
+  endpoints:
+    minCount: 4
+    maxCount: 4
+    resources:
+      requests:
+        cpu: "2"
+        memory: "4Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+```
 
 # Delete
 
