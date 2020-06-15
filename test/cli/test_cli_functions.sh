@@ -123,9 +123,9 @@ function install {
     local status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
     while [ "${status}" != "Ready" ]
     do
-        echo_time "Waiting for status Ready, Status is ${status}"
-        sleep 10
-        status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
+       echo_time "Waiting for status Ready, Status is ${status}"
+       sleep 10
+       status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
     done
 }
 
@@ -234,7 +234,6 @@ function bucketclass_cycle {
     # test_noobaa bucketclass create ${bucketclass_names[1]} --placement Mirror --backingstores nb1,aws1 ❌
     # test_noobaa bucketclass create ${bucketclass_names[2]} --placement Spread --backingstores aws1,aws2 ❌
     test_noobaa bucketclass create ${bucketclass_names[3]} --backingstores ${backingstore[0]},${backingstore[1]}
-
     local bucketclass_list_array=($(test_noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME))
     for bucketclass in ${bucketclass_list_array[@]}
     do
@@ -284,6 +283,56 @@ function obc_cycle {
     echo_time "✅  obc cycle is done"
 }
 
+function crd_cycle {     
+    echo_time "Starting the crd cycle" 
+    local crd_create_array=($(test_noobaa silence crd create &>/dev/stdout | awk '{print $7}' | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    local crd_status_array=($(test_noobaa silence crd status &>/dev/stdout | awk '{print $6}' | grep -v "Exists" | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    crd_array=($(kubectl get crd | awk '{print $1}' | grep -v "NAME" | grep -e "noobaa" -e "objectbucket"))
+
+    #comparing crd status and create arrays
+    echo_time "checking if crds match in two noobaa crd commands"
+    for crd_status_array in ${crd_array[@]}
+    do
+        if [[ ${crd_create_array[@]} =~ ${crd_status_array} ]]
+        then            
+            echo_time "✅ ${crd_status_array} exists in the crds list"
+        else
+            echo_time "❌ ${crd_status_array} is not existed in the crds list"         
+        fi               
+    done  
+
+    #find a way to make delete work after noobaa install 
+    #test_noobaa timeout crd delete 
+    #local crd_status_after_delete=($(test_noobaa silence crd status &>/dev/stdout | awk '{print $6}' | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    #checking if crds still exist in the test after the delete
+    #for crd in ${crd_array[@]} 
+    #do
+    #    if [[ ${crd_status_after_delete[@]} =~ ${crd_status_array} ]]
+    #    then    
+    #        echo_time "❌ crd ${crd} still exists in the test. exiting."
+    #        exit 1       
+    #    else 
+    #        echo_time "✅ crd ${crd} deleted from test" 
+    #    fi
+    #done
+
+    #echo_time "creating crd again for checks..."     
+    test_noobaa timeout crd create 
+    local crd_after_create=($(test_noobaa silence crd status &>/dev/stdout | awk '{print $6}' | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    #comparing crds after running create command
+    for crd_after_create in ${crd_array[@]}
+    do
+        if [[ ${crd_after_create[@]} =~ ${crd_status_array} ]]
+        then            
+            echo_time "✅ ${crd_after_create} is exsisted in the crds list"
+        else
+            echo_time "❌ ${crd_after_create} is not existed in the crds list"         
+        fi               
+    done
+       
+    echo_time "✅  crd cycle is done"
+}
+
 function delete_backingstore_path {
     local object_bucket backing_store
     local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
@@ -326,11 +375,6 @@ function check_deletes {
     echo_time "✅  delete cycle is done"
 }
 
-function crd_arr { 
-    crd_array=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))
-    echo_time "${crd_array[*]}"
-}
-
 function noobaa_uninstall {
     check_cleanflag=$((RANDOM%2))
     echo_time ${check_cleanflag}
@@ -347,7 +391,7 @@ function noobaa_uninstall {
 }
 
 function check_if_cleanup {  
-    crd_array_after_Cleanup=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))   
+    crd_array_after_Cleanup=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))  
     for crd_before_clean in ${crd_array[@]}
     do
         if [[ ${crd_array_after_Cleanup[@]} =~ ${crd_before_clean} ]]
@@ -355,7 +399,7 @@ function check_if_cleanup {
             echo_time "${crd_before_clean} is in crd"
             exit 1   
         else         
-            echo_time "${crd_before_clean} is not in crd, deleted with clenaup"
+            echo_time "${crd_before_clean} is not in crd, deleted with cleanup as expected"
         fi               
     done
 
@@ -374,7 +418,7 @@ function check_if_cleanup {
     kubectl get namespace ${NAMESPACE}
     if [ $? -ne 0 ] 
     then   
-        echo_time "namespace doesnt exist" 
+        echo_time "namespace doesn't exist" 
     else
         echo_time "namespace still exists"
         exit 1            
