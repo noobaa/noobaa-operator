@@ -89,7 +89,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "422b6646ba1e1ed256ef1975f1be00f127af18de2aeca5dc40ed03aec4b498fd"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "8abfa87b27f19b77f88b463a0fd7b3984f7ca40474f9198f9a043dcbbfcc99d5"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -298,7 +298,6 @@ spec:
                   type: string
               required:
               - numVolumes
-              - secret
               type: object
             s3Compatible:
               description: S3Compatible specifies a backing store of type s3-compatible
