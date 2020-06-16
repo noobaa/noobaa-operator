@@ -226,8 +226,21 @@ func (r *Reconciler) LoadBackingStoreSecret() error {
 			r.Secret.Namespace = r.BackingStore.Namespace
 		}
 		if r.Secret.Name == "" {
-			return util.NewPersistentError("EmptySecretName",
-				fmt.Sprintf("BackingStore Secret reference has an empty name"))
+			if r.BackingStore.Spec.Type != nbv1.StoreTypePVPool {
+				return util.NewPersistentError("EmptySecretName",
+					fmt.Sprintf("BackingStore Secret reference has an empty name"))
+			}
+			r.Secret.Name = fmt.Sprintf("backing-store-%s-%s", nbv1.StoreTypePVPool, r.BackingStore.Name)
+			r.Secret.Namespace = r.BackingStore.Namespace
+			r.Secret.StringData = map[string]string{}
+			r.Secret.Data = nil
+
+			if !util.KubeCheck(r.Secret) {
+				if !util.KubeCreateSkipExisting(r.Secret) {
+					return util.NewPersistentError("EmptySecretName",
+						fmt.Sprintf("Could not create Secret %q in Namespace %q (conflict)", r.Secret.Name, r.Secret.Namespace))
+				}
+			}
 		}
 		util.KubeCheck(r.Secret)
 	}
