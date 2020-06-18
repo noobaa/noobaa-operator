@@ -15,6 +15,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -425,14 +426,34 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 			return err
 		}
 	} else {
-
-		return nil
+		minutesSinceCreation := time.Since(r.NooBaa.CreationTimestamp.Time).Minutes()
+		if minutesSinceCreation < 2 {
+			return nil
+		}
+		if err := r.preparePVoolBackingStore(); err != nil {
+			return err
+		}
 	}
 
 	r.Own(r.DefaultBackingStore)
 	if err := r.Client.Create(r.Ctx, r.DefaultBackingStore); err != nil {
 		log.Errorf("got error on DefaultBackingStore creation. error: %v", err)
 		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) preparePVoolBackingStore() error {
+
+	// create backing store
+	defaultPVSize := int64(50) * 1024 * 1024 * 1024 // 50GB
+	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypePVPool
+	r.DefaultBackingStore.Spec.PVPool = &nbv1.PVPoolSpec{}
+	r.DefaultBackingStore.Spec.PVPool.NumVolumes = 1
+	r.DefaultBackingStore.Spec.PVPool.VolumeResources = &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceStorage: *resource.NewQuantity(defaultPVSize, resource.BinarySI),
+		},
 	}
 	return nil
 }

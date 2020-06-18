@@ -244,6 +244,7 @@ type PVPoolSpec struct {
 
 	// Secret refers to a secret that provides the agent configuration
 	// The secret should define AGENT_CONFIG containing agent_configuration from noobaa-core.
+	// +optional
 	Secret corev1.SecretReference `json:"secret"`
 }
 
