@@ -100,7 +100,7 @@ out-of-cluster.
       --mini=false: Signal the operator that it is running in a low resource environment
   -n, --namespace='noobaa': Target namespace
       --noobaa-image='noobaa/noobaa-core:5.5.0-rc2': NooBaa image
-      --operator-image='noobaa/noobaa-operator:2.3.0': Operator image
+      --operator-image='noobaa/noobaa-operator:5.6.0': Operator image
       --pv-pool-default-storage-class='': The default storage class name for BackingStores of type pv-pool
 
 ```
@@ -108,9 +108,9 @@ out-of-cluster.
 ```shell
 $ noobaa version
 
-INFO[0000] CLI version: 2.3.0
+INFO[0000] CLI version: 5.6.0
 INFO[0000] noobaa-image: noobaa/noobaa-core:5.5.0-rc2
-INFO[0000] operator-image: noobaa/noobaa-operator:2.3.0
+INFO[0000] operator-image: noobaa/noobaa-operator:5.6.0
 
 ```
 
