@@ -236,11 +236,13 @@ func (r *Reconciler) LoadBackingStoreSecret() error {
 			r.Secret.Data = nil
 
 			if !util.KubeCheck(r.Secret) {
+				r.Own(r.Secret)
 				if !util.KubeCreateSkipExisting(r.Secret) {
 					return util.NewPersistentError("EmptySecretName",
 						fmt.Sprintf("Could not create Secret %q in Namespace %q (conflict)", r.Secret.Name, r.Secret.Namespace))
 				}
 			}
+
 		}
 		util.KubeCheck(r.Secret)
 	}
