@@ -212,6 +212,9 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec
+	if r.NooBaa.Spec.Tolerations != nil {
+		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
+	}
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
 		switch c.Name {
