@@ -600,7 +600,17 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		return fmt.Errorf("Ceph object user secret %q is not ready yet", secretName)
 	}
 
-	endpoint := "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
+	endpoint := ""
+	if r.CephObjectstoreUser.Spec.Store != "" {
+		endpoint = "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
+
+	} else if r.NooBaa.Labels != nil && r.NooBaa.Labels["rgw-endpoint"] != "" {
+		endpoint = fmt.Sprintf("http://%s", r.NooBaa.Labels["rgw-endpoint"])
+
+	} else {
+		return fmt.Errorf("Ceph RGW endpoint address is not available")
+	}
+
 	region := "us-east-1"
 	forcePathStyle := true
 	s3Config := &aws.Config{
