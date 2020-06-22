@@ -22,6 +22,7 @@ func CmdInstall() *cobra.Command {
 		Short: "Install the operator and create the noobaa system",
 		Run:   RunInstall,
 	}
+	cmd.Flags().Bool("use-obc-cleanup-policy", false, "Create NooBaa system with obc cleanup policy")
 	return cmd
 }
 
@@ -33,6 +34,7 @@ func CmdUninstall() *cobra.Command {
 		Run:   RunUninstall,
 	}
 	cmd.Flags().Bool("cleanup", false, "Enable deletion of Namespace and CRD's")
+	cmd.Flags().Bool("cleanup_data", false, "Clean object buckets")
 	return cmd
 }
 
