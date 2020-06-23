@@ -347,8 +347,8 @@ func (r *Reconciler) ReconcileRGWCredentials() error {
 	}
 
 	if r.CephObjectstoreUser.Spec.Store == "" {
-		if r.NooBaa.Labels == nil || r.NooBaa.Labels["rgw-endpoint"] == "" {
-			r.Logger.Warnf("did not find an rgw-endpoint label on the noobaa CR")
+		if r.NooBaa.Labels == nil || r.NooBaa.Labels["rgw-endpoint-base64"] == "" {
+			r.Logger.Warnf("did not find an rgw-endpoint-base64 label on the noobaa CR")
 			return nil
 		}
 	}
