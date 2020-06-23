@@ -158,10 +158,10 @@ function timeout {
 }
 
 function install {
-    local use-obc-cleanup-policy
+    local use_obc_cleanup_policy
     
-    [ $((RANDOM%2)) -gt 0 ] && use-obc-cleanup-policy="--use-obc-cleanup-policy"
-    test_noobaa install --mini ${use-obc-cleanup-policy}
+    [ $((RANDOM%2)) -gt 0 ] && use_obc_cleanup_policy="--use-obc-cleanup-policy"
+    test_noobaa install --mini ${use_obc_cleanup_policy}
 
     local status=$(kuberun silence get noobaa noobaa -o 'jsonpath={.status.phase}')
     while [ "${status}" != "Ready" ]
