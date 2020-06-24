@@ -125,6 +125,7 @@ gen-olm: $(OPERATOR_SDK) gen
 #- Testing -#
 #-----------#
 
+
 test: lint test-go
 	@echo "✅ test"
 .PHONY: test
