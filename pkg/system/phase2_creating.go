@@ -321,13 +321,19 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 // ReconcileRGWCredentials creates a ceph objectstore user if a ceph objectstore exists in the same namespace
 func (r *Reconciler) ReconcileRGWCredentials() error {
 	r.Logger.Info("Not running in AWS. will attempt to create a ceph objectstore user")
-	util.KubeCheck(r.CephObjectstoreUser)
+
+	// load the user and skip in case of an error, in the majority of cases an error will happen
+	// because the CRD is not installed in the cluster.
+	if !util.KubeCheck(r.CephObjectstoreUser) {
+		return nil
+	}
+
+	// If a user already exists then skip
 	if r.CephObjectstoreUser.UID != "" {
 		return nil
 	}
 
-	// create user if not already exists
-	// list ceph objectstores and pick the first one
+	// Try to get a store name if exsits, list ceph objectstores and pick the first one
 	r.CephObjectstoreUser.Spec.Store = ""
 	cephObjectStoresList := &cephv1.CephObjectStoreList{}
 	if util.KubeList(cephObjectStoresList, &client.ListOptions{Namespace: options.Namespace}) {
@@ -341,16 +347,8 @@ func (r *Reconciler) ReconcileRGWCredentials() error {
 		} else {
 			r.Logger.Infof("did not find any ceph objectstore to use as backing store, assuming independent mode")
 		}
-
 	} else {
 		r.Logger.Infof("failed to list ceph objectstore to use as backing store, assuming independent mode")
-	}
-
-	if r.CephObjectstoreUser.Spec.Store == "" {
-		if r.NooBaa.Labels == nil || r.NooBaa.Labels["rgw-endpoint-base64"] == "" {
-			r.Logger.Warnf("did not find an rgw-endpoint-base64 label on the noobaa CR")
-			return nil
-		}
 	}
 
 	r.Own(r.CephObjectstoreUser)

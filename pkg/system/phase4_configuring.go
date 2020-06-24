@@ -582,7 +582,27 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 }
 
 func (r *Reconciler) prepareCephBackingStore() error {
+	// Try to get an RGW endpoint address, if we cannot we return an error to indicate that the existance of a
+	// CephOBjectStoreUser without an available endpoint is an erroneous state.
+	endpoint := ""
+	if r.CephObjectstoreUser.Spec.Store != "" {
+		endpoint = "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
 
+	} else if r.NooBaa.Labels != nil && r.NooBaa.Labels["rgw-endpoint-base64"] != "" {
+		decodedEndpoint, err := base64.StdEncoding.DecodeString(r.NooBaa.Labels["rgw-endpoint-base64"])
+		if err == nil {
+			endpoint = fmt.Sprintf("http://%s", string(decodedEndpoint))
+		} else {
+			return fmt.Errorf("Ceph RGW endpoint base64 address failed to be decoded. base64=%q", r.NooBaa.Labels["rgw-endpoint-base64"])
+		}
+
+	} else {
+		return fmt.Errorf("Ceph RGW endpoint address is not available")
+	}
+
+	// In independent mode the store name will be empty and the name will include "--" this is expected.
+	// In future versions of the noobaa-operator we will read the secret name from the status of the CephObjectstoreUser
+	// object (after rook-ceph will implement it).
 	secretName := "rook-ceph-object-user-" + r.CephObjectstoreUser.Spec.Store + "-" + r.CephObjectstoreUser.Name
 
 	// get access\secret keys from user secret
@@ -593,28 +613,11 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		},
 	}
 
-	util.KubeCheck(cephObjectUserSecret)
-	if cephObjectUserSecret.UID == "" {
+	if !util.KubeCheck(cephObjectUserSecret) || cephObjectUserSecret.UID == "" {
 		// TODO: we need to figure out why secret is not created, and react accordingly
 		// e.g. maybe we are running on azure but our CredentialsRequest is for AWS
 		r.Logger.Infof("Ceph object user secret %q was not created yet. retry on next reconcile..", secretName)
 		return fmt.Errorf("Ceph object user secret %q is not ready yet", secretName)
-	}
-
-	endpoint := ""
-	if r.CephObjectstoreUser.Spec.Store != "" {
-		endpoint = "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
-
-	} else if r.NooBaa.Labels != nil && r.NooBaa.Labels["rgw-endpoint-base64"] != "" {
-		decodedEndpoint, err := base64.StdEncoding.DecodeString(r.NooBaa.Labels["rgw-endpoint-base64"])
-		if err != nil {
-			r.Logger.Infof("Ceph RGW endpoint base64 address failed to be decoded. base64=%q", r.NooBaa.Labels["rgw-endpoint-base64"])
-			return nil
-		}
-		endpoint = fmt.Sprintf("http://%s", string(decodedEndpoint))
-
-	} else {
-		return fmt.Errorf("Ceph RGW endpoint address is not available")
 	}
 
 	region := "us-east-1"
