@@ -1041,6 +1041,8 @@ func (r *Reconciler) updatePodTemplate() error {
 func (r *Reconciler) updatePvcTemplate() error {
 	if r.BackingStore.Spec.PVPool.StorageClass != "" {
 		r.PvcAgentTemplate.Spec.StorageClassName = &r.BackingStore.Spec.PVPool.StorageClass
+	} else if r.NooBaa.Spec.PVPoolDefaultStorageClass != nil {
+		r.PvcAgentTemplate.Spec.StorageClassName = r.NooBaa.Spec.PVPoolDefaultStorageClass
 	}
 	r.PvcAgentTemplate.Spec.Resources = *r.BackingStore.Spec.PVPool.VolumeResources
 	r.PvcAgentTemplate.Labels = map[string]string{"pool": r.BackingStore.Name}
