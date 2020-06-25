@@ -331,6 +331,58 @@ function obc_cycle {
     echo_time "✅  obc cycle is done"
 }
 
+function crd_cycle {     
+    echo_time "Starting the crd cycle" 
+    local crd_create_array=($(test_noobaa silence crd create &>/dev/stdout | awk '{print $7}' | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    local crd_status_array=($(test_noobaa silence crd status &>/dev/stdout | awk '{print $6}' | grep -v "Exists" | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    crd_array=($(kubectl get crd | awk '{print $1}' | grep -v "NAME" | grep -e "noobaa" -e "objectbucket"))
+
+    #comparing crd status and create arrays
+    echo_time "checking if crds match in two noobaa crd commands"
+    for crd_status_array in ${crd_array[@]}
+    do
+        if [[ ${crd_create_array[@]} =~ ${crd_status_array} ]]
+        then            
+            echo_time "✅ ${crd_status_array} exists in the crds list"
+        else
+            echo_time "❌ ${crd_status_array} is not existed in the crds list"
+            exit 1  
+         fi               
+    done  
+
+    #TODO:find a way to ac tivate CRD delete flow after noobaa install 
+    #test_noobaa crd delete 
+    #local crd_status_after_delete=($(test_noobaa silence crd status &>/dev/stdout | awk '{print $6}' | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    #checking if crds still exist in the test after the delete
+    #for crd in ${crd_array[@]} 
+    #do
+    #    if [[ ${crd_status_after_delete[@]} =~ ${crd_status_array} ]]
+    #    then    
+    #        echo_time "❌ crd ${crd} still exists in the test. exiting."
+    #        exit 1       
+    #    else 
+    #        echo_time "✅ crd ${crd} deleted from test" 
+    #    fi
+    #done
+
+    echo_time "creating crd again for checks..."     
+    test_noobaa crd create 
+    local crd_after_create=($(test_noobaa silence crd status &>/dev/stdout | awk '{print $6}' | sed -e 's/[""\\]//g' | sed 's/.$//'))
+    #comparing crds after running create command
+    for crd_after_create in ${crd_array[@]}
+    do
+        if [[ ${crd_after_create[@]} =~ ${crd_status_array} ]]
+        then            
+            echo_time "✅ ${crd_after_create} is exsisted in the crds list"
+        else
+            echo_time "❌ ${crd_after_create} is not existed in the crds list"
+            exit 1         
+        fi               
+    done
+
+    echo_time "✅  crd cycle is done"
+}
+
 function delete_backingstore_path {
     local object_bucket backing_store
     local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
@@ -373,10 +425,6 @@ function check_deletes {
     echo_time "✅  delete cycle is done"
 }
 
-function crd_arr { 
-    crd_array=($(kubectl get crd | awk '{print $1}' | grep -v "NAME"))
-    echo_time "${crd_array[*]}"
-}
 function noobaa_uninstall {
     local cleanup cleanup_data
     local check_cleanflag=$((RANDOM%2))
