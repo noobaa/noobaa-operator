@@ -125,6 +125,10 @@ type NooBaaSpec struct {
 	// and point to a secret that holds the join information
 	// +optional
 	JoinSecret *corev1.SecretReference `json:"joinSecret,omitempty"`
+
+	// CleanupPolicy (optional) Indicates user's policy for deletion
+	// +optional
+	CleanupPolicy CleanupPolicySpec `json:"cleanupPolicy,omitempty"`
 }
 
 // EndpointsSpec defines the desired state of noobaa endpoint deployment
@@ -308,10 +312,21 @@ type EndpointsStatus struct {
 	VirtualHosts []string `json:"virtualHosts"`
 }
 
+// CleanupPolicySpec specifies the cleanup policy
+type CleanupPolicySpec struct {
+	Confirmation CleanupConfirmationProperty `json:"confirmation,omitempty"`
+}
+
+// CleanupConfirmationProperty is a string that specifies cleanup confirmation
+type CleanupConfirmationProperty string
+
 const (
 	// Finalizer is the name of the noobaa finalizer
 	Finalizer = "noobaa.io/finalizer"
 
 	// GracefulFinalizer is the name of the noobaa graceful finalizer
 	GracefulFinalizer = "noobaa.io/graceful_finalizer"
+
+	// DeleteOBCConfirmation represents the validation to destry obc
+	DeleteOBCConfirmation CleanupConfirmationProperty = "yes-really-destroy-obc"
 )

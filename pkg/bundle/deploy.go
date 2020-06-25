@@ -1,6 +1,6 @@
 package bundle
 
-const Version = "2.3.0"
+const Version = "5.6.0"
 
 const Sha256_deploy_cluster_role_yaml = "349e613915ed288629c4926e22cd42f4a3776ed38dfbc9e814a9b28211a67b3c"
 
@@ -89,7 +89,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "422b6646ba1e1ed256ef1975f1be00f127af18de2aeca5dc40ed03aec4b498fd"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "8abfa87b27f19b77f88b463a0fd7b3984f7ca40474f9198f9a043dcbbfcc99d5"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -298,7 +298,6 @@ spec:
                   type: string
               required:
               - numVolumes
-              - secret
               type: object
             s3Compatible:
               description: S3Compatible specifies a backing store of type s3-compatible
@@ -600,7 +599,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "dd607215790607ddbab913dc18715e8d6833284641e056b480c1983252a98a5b"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "56aae3e1d98a7194df57733855733d9e07fb6e7f1883d3b20a95c23e73b2a193"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -1228,6 +1227,14 @@ spec:
                         type: object
                       type: array
                   type: object
+              type: object
+            cleanupPolicy:
+              description: CleanupPolicy (optional) Indicates user's policy for deletion
+              properties:
+                confirmation:
+                  description: CleanupConfirmationProperty is a string that specifies
+                    cleanup confirmation
+                  type: string
               type: object
             coreResources:
               description: CoreResources (optional) overrides the default resource

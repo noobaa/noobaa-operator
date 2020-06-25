@@ -143,6 +143,10 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
+	if added := util.AddFinalizer(r.BackingStore, nbv1.Finalizer); added && !util.KubeUpdate(r.BackingStore) {
+		log.Errorf("BackingStore %q failed to add finalizer %q", r.BackingStore.Name, nbv1.Finalizer)
+	}
+
 	system.CheckSystem(r.NooBaa)
 
 	oldStatefulSet := &appsv1.StatefulSet{}
@@ -222,8 +226,23 @@ func (r *Reconciler) LoadBackingStoreSecret() error {
 			r.Secret.Namespace = r.BackingStore.Namespace
 		}
 		if r.Secret.Name == "" {
-			return util.NewPersistentError("EmptySecretName",
-				fmt.Sprintf("BackingStore Secret reference has an empty name"))
+			if r.BackingStore.Spec.Type != nbv1.StoreTypePVPool {
+				return util.NewPersistentError("EmptySecretName",
+					fmt.Sprintf("BackingStore Secret reference has an empty name"))
+			}
+			r.Secret.Name = fmt.Sprintf("backing-store-%s-%s", nbv1.StoreTypePVPool, r.BackingStore.Name)
+			r.Secret.Namespace = r.BackingStore.Namespace
+			r.Secret.StringData = map[string]string{}
+			r.Secret.Data = nil
+
+			if !util.KubeCheck(r.Secret) {
+				r.Own(r.Secret)
+				if !util.KubeCreateSkipExisting(r.Secret) {
+					return util.NewPersistentError("EmptySecretName",
+						fmt.Sprintf("Could not create Secret %q in Namespace %q (conflict)", r.Secret.Name, r.Secret.Namespace))
+				}
+			}
+
 		}
 		util.KubeCheck(r.Secret)
 	}
@@ -1022,6 +1041,8 @@ func (r *Reconciler) updatePodTemplate() error {
 func (r *Reconciler) updatePvcTemplate() error {
 	if r.BackingStore.Spec.PVPool.StorageClass != "" {
 		r.PvcAgentTemplate.Spec.StorageClassName = &r.BackingStore.Spec.PVPool.StorageClass
+	} else if r.NooBaa.Spec.PVPoolDefaultStorageClass != nil {
+		r.PvcAgentTemplate.Spec.StorageClassName = r.NooBaa.Spec.PVPoolDefaultStorageClass
 	}
 	r.PvcAgentTemplate.Spec.Resources = *r.BackingStore.Spec.PVPool.VolumeResources
 	r.PvcAgentTemplate.Labels = map[string]string{"pool": r.BackingStore.Name}

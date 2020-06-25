@@ -328,22 +328,30 @@ func (r *Reconciler) ReconcileRGWCredentials() error {
 
 	// create user if not already exists
 	// list ceph objectstores and pick the first one
+	r.CephObjectstoreUser.Spec.Store = ""
 	cephObjectStoresList := &cephv1.CephObjectStoreList{}
-	if !util.KubeList(cephObjectStoresList, &client.ListOptions{Namespace: options.Namespace}) {
-		r.Logger.Warn("failed to list ceph objectstore to use as backing store")
-		// no object stores
-		return nil
+	if util.KubeList(cephObjectStoresList, &client.ListOptions{Namespace: options.Namespace}) {
+		if len(cephObjectStoresList.Items) > 0 {
+			r.Logger.Infof("found %d ceph objectstores: %v", len(cephObjectStoresList.Items), cephObjectStoresList.Items)
+			// for now take the first one. need to decide what to do if multiple objectstores in one namespace
+			storeName := cephObjectStoresList.Items[0].ObjectMeta.Name
+			r.Logger.Infof("using objectstore %q as a default backing store", storeName)
+			r.CephObjectstoreUser.Spec.Store = storeName
+
+		} else {
+			r.Logger.Infof("did not find any ceph objectstore to use as backing store, assuming independent mode")
+		}
+
+	} else {
+		r.Logger.Infof("failed to list ceph objectstore to use as backing store, assuming independent mode")
 	}
-	if len(cephObjectStoresList.Items) == 0 {
-		r.Logger.Warn("did not find any ceph objectstore to use as backing store")
-		// no object stores
-		return nil
+
+	if r.CephObjectstoreUser.Spec.Store == "" {
+		if r.NooBaa.Labels == nil || r.NooBaa.Labels["rgw-endpoint-base64"] == "" {
+			r.Logger.Warnf("did not find an rgw-endpoint-base64 label on the noobaa CR")
+			return nil
+		}
 	}
-	r.Logger.Infof("found %d ceph objectstores: %v", len(cephObjectStoresList.Items), cephObjectStoresList.Items)
-	// for now take the first one. need to decide what to do if multiple objectstores in one namespace
-	storeName := cephObjectStoresList.Items[0].ObjectMeta.Name
-	r.Logger.Infof("using objectstore %q as a default backing store", storeName)
-	r.CephObjectstoreUser.Spec.Store = storeName
 
 	r.Own(r.CephObjectstoreUser)
 	// create ceph objectstore user
