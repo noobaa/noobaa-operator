@@ -301,7 +301,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	return nil
 }
 
-// ReconcileBackingStoreCredentials creates a CredentialsRequest resource if neccesary and returns
+// ReconcileBackingStoreCredentials creates a CredentialsRequest resource if necessary and returns
 // the bucket name allowed for the credentials. nil is returned if cloud credentials are not supported
 func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	// Skip if joining another NooBaa

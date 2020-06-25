@@ -475,7 +475,7 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.AWSCloudCreds.Spec.SecretRef.Name)
 		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.AWSCloudCreds.Spec.SecretRef.Name)
 	}
-	r.Logger.Infof("Secret %s was created succesfully by cloud-credentials operator", r.AWSCloudCreds.Spec.SecretRef.Name)
+	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", r.AWSCloudCreds.Spec.SecretRef.Name)
 
 	// create the acutual S3 bucket
 	region, err := util.GetAWSRegion()
@@ -523,7 +523,7 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.AzureCloudCreds.Spec.SecretRef.Name)
 		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.AzureCloudCreds.Spec.SecretRef.Name)
 	}
-	r.Logger.Infof("Secret %s was created succesfully by cloud-credentials operator", r.AzureCloudCreds.Spec.SecretRef.Name)
+	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", r.AzureCloudCreds.Spec.SecretRef.Name)
 
 	util.KubeCheck(r.AzureContainerCreds)
 	if r.AzureContainerCreds.UID == "" {
@@ -536,7 +536,7 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 			return fmt.Errorf("got error on AzureContainerCreds creation. error: %v", err)
 		}
 	}
-	r.Logger.Infof("Secret %s was created succesfully", r.AzureContainerCreds.Name)
+	r.Logger.Infof("Secret %s was created successfully", r.AzureContainerCreds.Name)
 
 	var azureGroupName = r.AzureContainerCreds.StringData["azure_resourcegroup"]
 
