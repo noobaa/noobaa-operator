@@ -6,7 +6,9 @@ import (
 	"fmt"
 	math "math"
 	"net/url"
+	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
@@ -17,11 +19,14 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
 	"github.com/sirupsen/logrus"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -33,22 +38,22 @@ func init() {
 
 func modeToPhaseMap() map[string]nbv1.BackingStorePhaseInfo {
 	return map[string]nbv1.BackingStorePhaseInfo{
-		"INITIALIZING":        nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: INITALIZING"},
-		"DELETING":            nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: DELETING"},
-		"SCALING":             nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: SCALING"},
-		"MOST_NODES_ISSUES":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_NODES_ISSUES"},
-		"MANY_NODES_ISSUES":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_ISSUES"},
-		"MOST_STORAGE_ISSUES": nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_STORAGE_ISSUES"},
-		"MANY_STORAGE_ISSUES": nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_STORAGE_ISSUES"},
-		"MANY_NODES_OFFLINE":  nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_OFFLINE"},
-		"LOW_CAPACITY":        nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: LOW_CAPACITY"},
-		"OPTIMAL":             nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: OPTIMAL"},
-		"HAS_NO_NODES":        nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: HAS_NO_NODES"},
-		"ALL_NODES_OFFLINE":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: ALL_NODES_OFFLINE"},
-		"NO_CAPACITY":         nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: NO_CAPACITY"},
-		"IO_ERRORS":           nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: IO_ERRORS"},
-		"STORAGE_NOT_EXIST":   nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: STORAGE_NOT_EXIST"},
-		"AUTH_FAILED":         nbv1.BackingStorePhaseInfo{nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: AUTH_FAILED"},
+		"INITIALIZING":        {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: INITALIZING"},
+		"DELETING":            {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: DELETING"},
+		"SCALING":             {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: SCALING"},
+		"MOST_NODES_ISSUES":   {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_NODES_ISSUES"},
+		"MANY_NODES_ISSUES":   {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_ISSUES"},
+		"MOST_STORAGE_ISSUES": {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_STORAGE_ISSUES"},
+		"MANY_STORAGE_ISSUES": {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_STORAGE_ISSUES"},
+		"MANY_NODES_OFFLINE":  {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_OFFLINE"},
+		"LOW_CAPACITY":        {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: LOW_CAPACITY"},
+		"OPTIMAL":             {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: OPTIMAL"},
+		"HAS_NO_NODES":        {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: HAS_NO_NODES"},
+		"ALL_NODES_OFFLINE":   {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: ALL_NODES_OFFLINE"},
+		"NO_CAPACITY":         {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: NO_CAPACITY"},
+		"IO_ERRORS":           {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: IO_ERRORS"},
+		"STORAGE_NOT_EXIST":   {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: STORAGE_NOT_EXIST"},
+		"AUTH_FAILED":         {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: AUTH_FAILED"},
 	}
 }
 
@@ -62,17 +67,26 @@ type Reconciler struct {
 	Recorder record.EventRecorder
 	NBClient nb.Client
 
-	BackingStore *nbv1.BackingStore
-	NooBaa       *nbv1.NooBaa
-	Secret       *corev1.Secret
+	BackingStore     *nbv1.BackingStore
+	NooBaa           *nbv1.NooBaa
+	Secret           *corev1.Secret
+	PodAgentTemplate *corev1.Pod
+	PvcAgentTemplate *corev1.PersistentVolumeClaim
 
 	SystemInfo             *nb.SystemInfo
 	ExternalConnectionInfo *nb.ExternalConnectionInfo
 	PoolInfo               *nb.PoolInfo
+	HostsInfo              *[]nb.HostInfo
 
 	AddExternalConnectionParams *nb.AddExternalConnectionParams
 	CreateCloudPoolParams       *nb.CreateCloudPoolParams
 	CreateHostsPoolParams       *nb.CreateHostsPoolParams
+	UpdateHostsPoolParams       *nb.UpdateHostsPoolParams
+}
+
+// Own sets the object owner references to the backingstore
+func (r *Reconciler) Own(obj metav1.Object) {
+	util.Panic(controllerutil.SetControllerReference(r.BackingStore, obj, r.Scheme))
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a backing store
@@ -84,15 +98,17 @@ func NewReconciler(
 ) *Reconciler {
 
 	r := &Reconciler{
-		Request:      req,
-		Client:       client,
-		Scheme:       scheme,
-		Recorder:     recorder,
-		Ctx:          context.TODO(),
-		Logger:       logrus.WithField("backingstore", req.Namespace+"/"+req.Name),
-		BackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
-		NooBaa:       util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
-		Secret:       util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		Request:          req,
+		Client:           client,
+		Scheme:           scheme,
+		Recorder:         recorder,
+		Ctx:              context.TODO(),
+		Logger:           logrus.WithField("backingstore", req.Namespace+"/"+req.Name),
+		BackingStore:     util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
+		NooBaa:           util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
+		Secret:           util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		PodAgentTemplate: util.KubeObject(bundle.File_deploy_internal_pod_agent_yaml).(*corev1.Pod),
+		PvcAgentTemplate: util.KubeObject(bundle.File_deploy_internal_pvc_agent_yaml).(*corev1.PersistentVolumeClaim),
 	}
 
 	// Set Namespace
@@ -127,10 +143,20 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
+	if added := util.AddFinalizer(r.BackingStore, nbv1.Finalizer); added && !util.KubeUpdate(r.BackingStore) {
+		log.Errorf("BackingStore %q failed to add finalizer %q", r.BackingStore.Name, nbv1.Finalizer)
+	}
+
 	system.CheckSystem(r.NooBaa)
 
-	err := r.LoadBackingStoreSecret()
+	oldStatefulSet := &appsv1.StatefulSet{}
+	oldStatefulSet.Name = fmt.Sprintf("%s-%s-noobaa", r.BackingStore.Name, options.SystemName)
+	oldStatefulSet.Namespace = r.Request.Namespace
+	if util.KubeCheck(oldStatefulSet) {
+		r.upgradeBackingStore(oldStatefulSet)
+	}
 
+	err := r.LoadBackingStoreSecret()
 	if err == nil {
 		if r.BackingStore.DeletionTimestamp != nil {
 			err = r.ReconcileDeletion()
@@ -200,8 +226,23 @@ func (r *Reconciler) LoadBackingStoreSecret() error {
 			r.Secret.Namespace = r.BackingStore.Namespace
 		}
 		if r.Secret.Name == "" {
-			return util.NewPersistentError("EmptySecretName",
-				fmt.Sprintf("BackingStore Secret reference has an empty name"))
+			if r.BackingStore.Spec.Type != nbv1.StoreTypePVPool {
+				return util.NewPersistentError("EmptySecretName",
+					fmt.Sprintf("BackingStore Secret reference has an empty name"))
+			}
+			r.Secret.Name = fmt.Sprintf("backing-store-%s-%s", nbv1.StoreTypePVPool, r.BackingStore.Name)
+			r.Secret.Namespace = r.BackingStore.Namespace
+			r.Secret.StringData = map[string]string{}
+			r.Secret.Data = nil
+
+			if !util.KubeCheck(r.Secret) {
+				r.Own(r.Secret)
+				if !util.KubeCreateSkipExisting(r.Secret) {
+					return util.NewPersistentError("EmptySecretName",
+						fmt.Sprintf("Could not create Secret %q in Namespace %q (conflict)", r.Secret.Name, r.Secret.Namespace))
+				}
+			}
+
 		}
 		util.KubeCheck(r.Secret)
 	}
@@ -316,6 +357,9 @@ func (r *Reconciler) ReconcileDeletion() error {
 
 	if r.NooBaa.UID == "" {
 		r.Logger.Infof("BackingStore %q remove finalizer because NooBaa system is already deleted", r.BackingStore.Name)
+		if r.BackingStore.Spec.Type == nbv1.StoreTypePVPool {
+			r.deletePvPool()
+		}
 		return r.FinalizeDeletion()
 	}
 
@@ -362,6 +406,13 @@ func (r *Reconciler) ReconcileDeletion() error {
 						fmt.Sprintf("DeletePoolAPI cannot complete because pool %q has buckets attached", r.PoolInfo.Name))
 				}
 			}
+			return err
+		}
+	}
+
+	if r.BackingStore.Spec.Type == nbv1.StoreTypePVPool {
+		err := r.deletePvPool()
+		if err != nil {
 			return err
 		}
 	}
@@ -442,16 +493,43 @@ func (r *Reconciler) ReadSystemInfo() error {
 					fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to insufficient size, min is %d=%gGB", r.BackingStore.Name, minimalVolumeSize, (float64(minimalVolumeSize)/(math.Pow(1000, 3)))))
 			}
 		}
-		r.CreateHostsPoolParams = &nb.CreateHostsPoolParams{
-			Name:       r.BackingStore.Name,
-			IsManaged:  true,
-			HostCount:  int(pvPool.NumVolumes),
-			HostConfig: nb.PoolHostsInfo{VolumeSize: volumeSize},
-			Backingstore: &nb.BackingStoreInfo{
-				Name:      r.BackingStore.Name,
-				Namespace: r.NooBaa.Namespace,
-			},
+
+		const maxNumVolumes = int(20)
+		var numVolumes = int(pvPool.NumVolumes)
+		if numVolumes > maxNumVolumes {
+			return util.NewPersistentError("MaxNumVolumes",
+				fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to large amount of volumes, max is %d", r.BackingStore.Name, maxNumVolumes))
 		}
+
+		if pool == nil {
+			r.CreateHostsPoolParams = &nb.CreateHostsPoolParams{
+				Name:       r.BackingStore.Name,
+				IsManaged:  true,
+				HostCount:  int(pvPool.NumVolumes),
+				HostConfig: nb.PoolHostsInfo{VolumeSize: volumeSize},
+				Backingstore: &nb.BackingStoreInfo{
+					Name:      r.BackingStore.Name,
+					Namespace: r.NooBaa.Namespace,
+				},
+			}
+			r.HostsInfo = &[]nb.HostInfo{}
+		} else {
+			hostsInfo, err := r.NBClient.ListHostsAPI(nb.ListHostsParams{Query: nb.ListHostsQuery{Pools: []string{r.BackingStore.Name}}})
+			if err != nil {
+				return err
+			}
+			if len(hostsInfo.Hosts) > pvPool.NumVolumes { // scaling down - not supported
+				return util.NewPersistentError("InvalidBackingStore", fmt.Sprintf(
+					"Scaling down the number of nodes is not currently supported"))
+			}
+			if pvPool.NumVolumes != int(pool.Hosts.ConfiguredCount) {
+				r.UpdateHostsPoolParams = &nb.UpdateHostsPoolParams{ // update core
+					Name: r.BackingStore.Name,
+				}
+			}
+			r.HostsInfo = &hostsInfo.Hosts
+		}
+
 		return nil
 	}
 
@@ -761,19 +839,42 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 // ReconcilePool handles the pool using noobaa api
 func (r *Reconciler) ReconcilePool() error {
 
-	// TODO we only support creation here, but not updates
+	// TODO we only support creation here, but not updates - just for pvpool
 	if r.PoolInfo != nil {
+		if r.BackingStore.Spec.Type == nbv1.StoreTypePVPool {
+			if r.UpdateHostsPoolParams != nil {
+				err := r.NBClient.UpdateHostsPoolAPI(*r.UpdateHostsPoolParams)
+				if err != nil {
+					return err
+				}
+			}
+			return r.reconcilePvPool()
+		}
 		return nil
 	}
 
 	poolName := ""
 
 	if r.CreateHostsPoolParams != nil {
-		err := r.NBClient.CreateHostsPoolAPI(*r.CreateHostsPoolParams)
+		res, err := r.NBClient.CreateHostsPoolAPI(*r.CreateHostsPoolParams)
 		if err != nil {
 			return err
 		}
-		poolName = r.CreateHostsPoolParams.Name
+		if r.Secret.StringData["AGENT_CONFIG"] == "" {
+			r.Secret.StringData["AGENT_CONFIG"] = res
+			util.KubeUpdate(r.Secret)
+		}
+		err = r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultPoolParams{
+			PoolName: r.CreateHostsPoolParams.Name,
+		})
+		if err != nil {
+			return err
+		}
+		err = r.reconcilePvPool()
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	if r.CreateCloudPoolParams != nil {
@@ -793,5 +894,221 @@ func (r *Reconciler) ReconcilePool() error {
 		}
 	}
 
+	return nil
+}
+
+func (r *Reconciler) reconcilePvPool() error {
+	podsList := &corev1.PodList{}
+	util.KubeList(podsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
+	if len(podsList.Items) < r.BackingStore.Spec.PVPool.NumVolumes {
+		r.reconcileMissingPods(podsList)
+	}
+	return r.reconcileExistingPods(podsList)
+}
+
+func (r *Reconciler) reconcileExistingPods(podsList *corev1.PodList) error {
+	noneAttachingAgents := 0
+	failedAttachingAgents := 0
+	for _, pod := range podsList.Items {
+
+		// GAP: reconcile proxy env vars.
+		// The only thing that can be changed on a pod spec is the image
+		// trying to change anything else, including env vars, will create a panic.
+		// Deployment and Statefulset are handling this by taking down the pod and
+		// starting a new one.
+		// In order to support reconciling changes to the proxy env we need to mimic
+		// this behaviour which is not trival in the case of agent pods.
+		var c = &pod.Spec.Containers[0]
+		for _, name := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
+			envVar := util.GetEnvVariable(&c.Env, name)
+			val, ok := os.LookupEnv(name)
+			if (envVar == nil && ok) || (envVar != nil && (!ok || envVar.Value != val)) {
+				r.Logger.Warnf("Pod's env variable %s does not match operator's env variable with the same name", name)
+			}
+		}
+
+		if !r.isPodinNoobaa(&pod) {
+			noneAttachingAgents++
+			if time.Since(pod.CreationTimestamp.Time) > 10*time.Minute {
+				failedAttachingAgents++
+				r.Logger.Errorf("Pod %s didn't attach to noobaa system for more than 10 minutes", pod.Name)
+			} else {
+				r.Logger.Warnf("Pod %s didn't attach yet to noobaa system", pod.Name)
+			}
+		} else {
+			r.Logger.Infof("Check if pod need upgrade, pod version:%s noobaa version:%s",
+				c.Image, r.NooBaa.Status.ActualImage)
+			if c.Image != r.NooBaa.Status.ActualImage {
+				c.Image = r.NooBaa.Status.ActualImage
+				if r.NooBaa.Spec.ImagePullSecret == nil {
+					pod.Spec.ImagePullSecrets =
+						[]corev1.LocalObjectReference{}
+				} else {
+					pod.Spec.ImagePullSecrets =
+						[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
+				}
+				util.KubeUpdate(&pod)
+			}
+		}
+	}
+	if len(podsList.Items) < r.BackingStore.Spec.PVPool.NumVolumes {
+		return fmt.Errorf("BackingStore Still didn't start all the pods. %d from %d has started",
+			len(podsList.Items), r.BackingStore.Spec.PVPool.NumVolumes)
+	}
+	attachedAgents := len(podsList.Items) - noneAttachingAgents
+	if attachedAgents < r.BackingStore.Spec.PVPool.NumVolumes {
+		if failedAttachingAgents == noneAttachingAgents {
+			return util.NewPersistentError("Failed connecting all pods in backingstore for more than 10 minutes",
+				fmt.Sprintf("Current failing: %d from requested: %d",
+					failedAttachingAgents, r.BackingStore.Spec.PVPool.NumVolumes))
+		}
+		return fmt.Errorf("BackingStore Still didn't connect all requested pods. %d from %d are pending",
+			noneAttachingAgents, r.BackingStore.Spec.PVPool.NumVolumes)
+	}
+	return nil
+}
+
+func (r *Reconciler) reconcileMissingPods(podsList *corev1.PodList) error {
+	r.updatePodTemplate() // Adding Missing Agents
+	r.updatePvcTemplate()
+	for i := len(podsList.Items); i < r.BackingStore.Spec.PVPool.NumVolumes; i++ {
+		postfix := util.RandomHex(4)
+		pvcName := fmt.Sprintf("%s-%s-pvc-%s", r.BackingStore.Name, options.SystemName, postfix)
+		newPvc := r.PvcAgentTemplate.DeepCopy()
+		newPvc.Name = pvcName
+		newPvc.Namespace = options.Namespace
+		r.Own(newPvc)
+		util.KubeCreateSkipExisting(newPvc)
+
+		r.PodAgentTemplate.Name = fmt.Sprintf("%s-%s-pod-%s", r.BackingStore.Name, options.SystemName, postfix)
+		r.PodAgentTemplate.Namespace = options.Namespace
+		newPod := r.PodAgentTemplate.DeepCopy()
+		newPod.Spec.Volumes[1].PersistentVolumeClaim.ClaimName = pvcName
+		r.Own(newPod)
+		util.KubeCreateSkipExisting(newPod)
+	}
+	return nil
+}
+
+func (r *Reconciler) isPodinNoobaa(pod *corev1.Pod) bool {
+	for _, host := range *r.HostsInfo {
+		if strings.HasPrefix(host.Name, pod.Name) {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *Reconciler) updatePodTemplate() error {
+	if r.Secret.StringData["AGENT_CONFIG"] == "" {
+		return util.NewPersistentError("No AgentConfig - Can't add Missing Agents",
+			fmt.Sprintf("Current Backing store spec is: %q", r.BackingStore.Spec.PVPool))
+	}
+
+	c := &r.PodAgentTemplate.Spec.Containers[0]
+	for j := range c.Env {
+		switch c.Env[j].Name {
+		case "AGENT_CONFIG":
+			c.Env[j].ValueFrom = &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: r.Secret.Name,
+					},
+					Key: "AGENT_CONFIG",
+				},
+			}
+		}
+	}
+	util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
+	util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
+	util.ReflectEnvVariable(&c.Env, "NO_PROXY")
+
+	c.Image = r.NooBaa.Status.ActualImage
+	if r.NooBaa.Spec.ImagePullSecret == nil {
+		r.PodAgentTemplate.Spec.ImagePullSecrets =
+			[]corev1.LocalObjectReference{}
+	} else {
+		r.PodAgentTemplate.Spec.ImagePullSecrets =
+			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
+	}
+	r.PodAgentTemplate.Labels = map[string]string{"pool": r.BackingStore.Name}
+	if r.NooBaa.Spec.Tolerations != nil {
+		r.PodAgentTemplate.Spec.Tolerations = r.NooBaa.Spec.Tolerations
+	}
+	return nil
+}
+
+func (r *Reconciler) updatePvcTemplate() error {
+	if r.BackingStore.Spec.PVPool.StorageClass != "" {
+		r.PvcAgentTemplate.Spec.StorageClassName = &r.BackingStore.Spec.PVPool.StorageClass
+	} else if r.NooBaa.Spec.PVPoolDefaultStorageClass != nil {
+		r.PvcAgentTemplate.Spec.StorageClassName = r.NooBaa.Spec.PVPoolDefaultStorageClass
+	}
+	r.PvcAgentTemplate.Spec.Resources = *r.BackingStore.Spec.PVPool.VolumeResources
+	r.PvcAgentTemplate.Labels = map[string]string{"pool": r.BackingStore.Name}
+	return nil
+}
+
+func (r *Reconciler) deletePvPool() error {
+	podsList := &corev1.PodList{}
+	util.KubeList(podsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
+	for i := range podsList.Items {
+		pod := &podsList.Items[i]
+		util.RemoveFinalizer(pod, nbv1.Finalizer)
+		if !util.KubeUpdate(pod) {
+			r.Logger.Errorf("Pod %q failed to remove finalizer %q",
+				pod.Name, nbv1.Finalizer)
+		}
+	}
+	util.KubeDeleteAllOf(&corev1.Pod{}, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
+	util.KubeDeleteAllOf(&corev1.PersistentVolumeClaim{}, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
+	return nil
+}
+
+func (r *Reconciler) upgradeBackingStore(sts *appsv1.StatefulSet) error {
+	r.Logger.Infof("Deleting old statefulset: %s", sts.Name)
+	envVar := util.GetEnvVariable(&sts.Spec.Template.Spec.Containers[0].Env, "AGENT_CONFIG")
+	if envVar == nil {
+		return util.NewPersistentError("NoAgentConfig",
+			fmt.Sprintf("Old BackingStore stateful set not having agent config"))
+	}
+	agentConfig := envVar.Value
+	replicas := sts.Spec.Replicas
+	stsName := sts.Name
+	util.KubeDelete(sts, client.PropagationPolicy("Orphan")) // delete STS leave pods behind
+	o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+	secret := o.(*corev1.Secret)
+	secret.Name = fmt.Sprintf("backing-store-%s-%s", nbv1.StoreTypePVPool, r.BackingStore.Name)
+	secret.Namespace = options.Namespace
+	util.KubeCheck(secret)
+	secret.StringData["AGENT_CONFIG"] = agentConfig // update secret for future pods
+	util.KubeUpdate(secret)
+	for i := 0; i < int(*replicas); i++ {
+		pod := &corev1.Pod{}
+		pod.Name = fmt.Sprintf("%s-%d", stsName, i)
+		pod.Namespace = r.BackingStore.Namespace
+		if util.KubeCheck(pod) {
+			pod.Spec.Containers[0].Image = r.NooBaa.Status.ActualImage
+			if r.NooBaa.Spec.ImagePullSecret == nil {
+				pod.Spec.ImagePullSecrets =
+					[]corev1.LocalObjectReference{}
+			} else {
+				pod.Spec.ImagePullSecrets =
+					[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
+			}
+			pod.Labels = map[string]string{"pool": r.BackingStore.Name}
+			finalizers := append(pod.GetFinalizers(), "noobaa.io/finalizer")
+			pod.SetFinalizers(finalizers)
+			r.Own(pod)
+			util.KubeUpdate(pod)
+			pvc := &corev1.PersistentVolumeClaim{}
+			pvc.Name = fmt.Sprintf("noobaastorage-%s", pod.Name)
+			pvc.Namespace = pod.Namespace
+			util.KubeCheck(pvc)
+			pvc.Labels = map[string]string{"pool": r.BackingStore.Name}
+			r.Own(pvc)
+			util.KubeUpdate(pvc)
+		}
+	}
 	return nil
 }

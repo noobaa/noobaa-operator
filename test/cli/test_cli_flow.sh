@@ -6,12 +6,6 @@ export PS4='\e[36m+ ${FUNCNAME:-main}\e[0m@\e[32m${BASH_SOURCE}:\e[35m${LINENO} 
 #Also assuming aws cli is installed
 
 NAMESPACE='test'
-#the timeout is that big because it sometimes take a while to get pvc
-DEFAULT_TIMEOUT=120
-
-directory=$(dirname ${0})
-. ${directory}/test_cli_functions.sh
-unset directory
 
 #FLOW TODO:
 # # AWS-S3 ❌
@@ -57,14 +51,7 @@ unset directory
 
 # AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=YYY aws s3 --endpoint-url XXX ls BUCKETNAME ❌
 
-function clean {
-    PID=$1
-    kill -9 ${PID}
-    exit 0
-}
-
-function main {
-    noobaa_install
+function post_install_tests {
     aws_credentials
     check_S3_compatible
     bucketclass_cycle
@@ -74,16 +61,38 @@ function main {
     noobaa_uninstall
  }
 
+function main {
+    noobaa_install
+    post_install_tests
+    noobaa_uninstall
+ }
+
 function usage {
     set +x
     echo -e "\nUsage: ${0} [options]"
-    echo "--timeout         -   Set Timeout in sec (default: ${DEFAULT_TIMEOUT})"
-    echo "--namespace       -   Change the namespace"
+    echo "--namespace       -   Change the namespace (default: ${NAMESPACE})"
     echo "--mongo-image     -   Change the mongo image"
     echo "--noobaa-image    -   Change the noobaa image"
     echo "--operator-image  -   Change the operator image"
     echo -e "--help         -   print this help\n"
     exit 1
+}
+
+function set_nonstandard_options {
+    if [ ! -z ${MONGO_IMAGE} ]
+    then
+        noobaa+=" --mongo-image ${MONGO_IMAGE}"
+    fi
+
+    if [ ! -z ${NOOBAA_IMAGE} ]
+    then
+        noobaa+=" --noobaa-image ${NOOBAA_IMAGE}"
+    fi
+
+    if [ ! -z ${OPERATOR_IMAGE} ]
+    then
+        noobaa+=" --operator-image ${OPERATOR_IMAGE}"
+    fi
 }
 
 while true
@@ -101,14 +110,6 @@ do
                             shift 2;;
         -n|--namespace)     NAMESPACE=${2}
                             shift 2;;
-        --timeout)          TIMEOUT=${2}
-                            shift 2
-                            number='^[0-9]+$'
-                            if ! [[ ${TIMEOUT} =~ ${number} ]]
-                            then
-                                echo "❌  timeout must be a number, Exiting"
-                                exit 1
-                            fi;;
         -h|--help)          usage;;
         *)                  usage;;
     esac
@@ -120,26 +121,9 @@ done
 #Currently will work only on noobaa-operator-local - need to change it
 noobaa="build/_output/bin/noobaa-operator-local -n ${NAMESPACE}"
 kubectl="kubectl -n ${NAMESPACE}"
+. $(dirname ${0})/test_cli_functions.sh
 
 #Setting the noobaa command with non standard options if needed.
-if [ ! -z ${MONGO_IMAGE} ]
-then
-    noobaa+=" --mongo-image ${MONGO_IMAGE}"
-fi
-
-if [ ! -z ${NOOBAA_IMAGE} ]
-then
-    noobaa+=" --noobaa-image ${NOOBAA_IMAGE}"
-fi
-
-if [ ! -z ${OPERATOR_IMAGE} ]
-then
-    noobaa+=" --operator-image ${OPERATOR_IMAGE}"
-fi
-
-if [ -z ${TIMEOUT} ]
-then
-    TIMEOUT=${DEFAULT_TIMEOUT}
-fi
+set_nonstandard_options
 
 main

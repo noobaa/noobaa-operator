@@ -29,7 +29,6 @@ type NooBaa struct {
 	// Standard type metadata.
 	metav1.TypeMeta `json:",inline"`
 
-	// Standard object metadata.
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -102,7 +101,6 @@ type NooBaaSpec struct {
 
 	// Tolerations (optional) passed through to noobaa's pods
 	// +optional
-	// +listType=set
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// Affinity (optional) passed through to noobaa's pods
@@ -127,6 +125,10 @@ type NooBaaSpec struct {
 	// and point to a secret that holds the join information
 	// +optional
 	JoinSecret *corev1.SecretReference `json:"joinSecret,omitempty"`
+
+	// CleanupPolicy (optional) Indicates user's policy for deletion
+	// +optional
+	CleanupPolicy CleanupPolicySpec `json:"cleanupPolicy,omitempty"`
 }
 
 // EndpointsSpec defines the desired state of noobaa endpoint deployment
@@ -144,7 +146,6 @@ type EndpointsSpec struct {
 	// (on top of the buildin names defined by the cluster: service name, elb name, route name)
 	// to be used as virtual hosts by the the endpoints in the endpoint deployment
 	// +optional
-	// +listType=set
 	AdditionalVirtualHosts []string `json:"additionalVirtualHosts,omitempty"`
 
 	// Resources (optional) overrides the default resource requirements for every endpoint pod
@@ -169,12 +170,10 @@ type NooBaaStatus struct {
 	// +patchMergeKey=type
 	// +patchStrategy=merge
 	// +optional
-	// +listType=set
 	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
 
 	// RelatedObjects is a list of objects related to this operator.
 	// +optional
-	// +listType=set
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 
 	// ActualImage is set to report which image the operator is using
@@ -313,7 +312,21 @@ type EndpointsStatus struct {
 	VirtualHosts []string `json:"virtualHosts"`
 }
 
+// CleanupPolicySpec specifies the cleanup policy
+type CleanupPolicySpec struct {
+	Confirmation CleanupConfirmationProperty `json:"confirmation,omitempty"`
+}
+
+// CleanupConfirmationProperty is a string that specifies cleanup confirmation
+type CleanupConfirmationProperty string
+
 const (
 	// Finalizer is the name of the noobaa finalizer
 	Finalizer = "noobaa.io/finalizer"
+
+	// GracefulFinalizer is the name of the noobaa graceful finalizer
+	GracefulFinalizer = "noobaa.io/graceful_finalizer"
+
+	// DeleteOBCConfirmation represents the validation to destry obc
+	DeleteOBCConfirmation CleanupConfirmationProperty = "yes-really-destroy-obc"
 )

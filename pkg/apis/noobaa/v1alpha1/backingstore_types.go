@@ -26,7 +26,6 @@ type BackingStore struct {
 	// Standard type metadata.
 	metav1.TypeMeta `json:",inline"`
 
-	// Standard object metadata.
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -98,12 +97,10 @@ type BackingStoreStatus struct {
 	// +patchMergeKey=type
 	// +patchStrategy=merge
 	// +optional
-	// +listType=set
 	Conditions []conditionsv1.Condition `json:"conditions,omitempty"  patchStrategy:"merge" patchMergeKey:"type"`
 
 	// RelatedObjects is a list of objects related to this operator.
 	// +optional
-	// +listType=set
 	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 	// Mode specifies the updating mode of a BackingStore
 	// +optional
@@ -244,6 +241,11 @@ type PVPoolSpec struct {
 
 	// VolumeResources represents the minimum resources each volume should have.
 	VolumeResources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Secret refers to a secret that provides the agent configuration
+	// The secret should define AGENT_CONFIG containing agent_configuration from noobaa-core.
+	// +optional
+	Secret corev1.SecretReference `json:"secret"`
 }
 
 // S3SignatureVersion specifies the client signature version to use when signing requests.

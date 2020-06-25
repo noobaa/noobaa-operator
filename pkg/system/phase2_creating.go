@@ -260,6 +260,11 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 					}
 				}
 			}
+
+			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
+			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
+			util.ReflectEnvVariable(&c.Env, "NO_PROXY")
+
 			if r.NooBaa.Spec.CoreResources != nil {
 				c.Resources = *r.NooBaa.Spec.CoreResources
 			}
@@ -307,6 +312,9 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	if util.IsAWSPlatform() {
 		return r.ReconcileAWSCredentials()
 	}
+	if util.IsAzurePlatform() {
+		return r.ReconcileAzureCredentials()
+	}
 	return r.ReconcileRGWCredentials()
 }
 
@@ -320,22 +328,30 @@ func (r *Reconciler) ReconcileRGWCredentials() error {
 
 	// create user if not already exists
 	// list ceph objectstores and pick the first one
+	r.CephObjectstoreUser.Spec.Store = ""
 	cephObjectStoresList := &cephv1.CephObjectStoreList{}
-	if !util.KubeList(cephObjectStoresList, &client.ListOptions{Namespace: options.Namespace}) {
-		r.Logger.Warn("failed to list ceph objectstore to use as backing store")
-		// no object stores
-		return nil
+	if util.KubeList(cephObjectStoresList, &client.ListOptions{Namespace: options.Namespace}) {
+		if len(cephObjectStoresList.Items) > 0 {
+			r.Logger.Infof("found %d ceph objectstores: %v", len(cephObjectStoresList.Items), cephObjectStoresList.Items)
+			// for now take the first one. need to decide what to do if multiple objectstores in one namespace
+			storeName := cephObjectStoresList.Items[0].ObjectMeta.Name
+			r.Logger.Infof("using objectstore %q as a default backing store", storeName)
+			r.CephObjectstoreUser.Spec.Store = storeName
+
+		} else {
+			r.Logger.Infof("did not find any ceph objectstore to use as backing store, assuming independent mode")
+		}
+
+	} else {
+		r.Logger.Infof("failed to list ceph objectstore to use as backing store, assuming independent mode")
 	}
-	if len(cephObjectStoresList.Items) == 0 {
-		r.Logger.Warn("did not find any ceph objectstore to use as backing store")
-		// no object stores
-		return nil
+
+	if r.CephObjectstoreUser.Spec.Store == "" {
+		if r.NooBaa.Labels == nil || r.NooBaa.Labels["rgw-endpoint-base64"] == "" {
+			r.Logger.Warnf("did not find an rgw-endpoint-base64 label on the noobaa CR")
+			return nil
+		}
 	}
-	r.Logger.Infof("found %d ceph objectstores: %v", len(cephObjectStoresList.Items), cephObjectStoresList.Items)
-	// for now take the first one. need to decide what to do if multiple objectstores in one namespace
-	storeName := cephObjectStoresList.Items[0].ObjectMeta.Name
-	r.Logger.Infof("using objectstore %q as a default backing store", storeName)
-	r.CephObjectstoreUser.Spec.Store = storeName
 
 	r.Own(r.CephObjectstoreUser)
 	// create ceph objectstore user
@@ -351,7 +367,7 @@ func (r *Reconciler) ReconcileRGWCredentials() error {
 func (r *Reconciler) ReconcileAWSCredentials() error {
 	r.Logger.Info("Running in AWS. will create a CredentialsRequest resource")
 	var bucketName string
-	err := r.Client.Get(r.Ctx, util.ObjectKey(r.CloudCreds), r.CloudCreds)
+	err := r.Client.Get(r.Ctx, util.ObjectKey(r.AWSCloudCreds), r.AWSCloudCreds)
 	if err == nil {
 		// credential request alread exist. get the bucket name
 		codec, err := cloudcredsv1.NewCodec()
@@ -360,7 +376,7 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 			return err
 		}
 		awsProviderSpec := &cloudcredsv1.AWSProviderSpec{}
-		err = codec.DecodeProviderSpec(r.CloudCreds.Spec.ProviderSpec, awsProviderSpec)
+		err = codec.DecodeProviderSpec(r.AWSCloudCreds.Spec.ProviderSpec, awsProviderSpec)
 		if err != nil {
 			r.Logger.Error("error decoding providerSpec from cloud credentials request")
 			return err
@@ -386,7 +402,7 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 			return err
 		}
 		awsProviderSpec := &cloudcredsv1.AWSProviderSpec{}
-		err = codec.DecodeProviderSpec(r.CloudCreds.Spec.ProviderSpec, awsProviderSpec)
+		err = codec.DecodeProviderSpec(r.AWSCloudCreds.Spec.ProviderSpec, awsProviderSpec)
 		if err != nil {
 			r.Logger.Error("error decoding providerSpec from cloud credentials request")
 			return err
@@ -399,15 +415,36 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 			r.Logger.Error("error encoding providerSpec for cloud credentials request")
 			return err
 		}
-		r.CloudCreds.Spec.ProviderSpec = updatedProviderSpec
-		r.Own(r.CloudCreds)
-		err = r.Client.Create(r.Ctx, r.CloudCreds)
+		r.AWSCloudCreds.Spec.ProviderSpec = updatedProviderSpec
+		r.Own(r.AWSCloudCreds)
+		err = r.Client.Create(r.Ctx, r.AWSCloudCreds)
 		if err != nil {
 			r.Logger.Errorf("got error when trying to create credentials request for bucket %s. %v", bucketName, err)
 			return err
 		}
 		r.DefaultBackingStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
 			TargetBucket: bucketName,
+		}
+		return nil
+	}
+	return err
+}
+
+// ReconcileAzureCredentials creates a CredentialsRequest resource if cloud credentials operator is available
+func (r *Reconciler) ReconcileAzureCredentials() error {
+	r.Logger.Info("Running in Azure. will create a CredentialsRequest resource")
+	err := r.Client.Get(r.Ctx, util.ObjectKey(r.AzureCloudCreds), r.AzureCloudCreds)
+	if err == nil || meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+		return nil
+	}
+	if errors.IsNotFound(err) {
+		// credential request does not exist. create one
+		r.Logger.Info("Creating CredentialsRequest resource")
+		r.Own(r.AzureCloudCreds)
+		err = r.Client.Create(r.Ctx, r.AzureCloudCreds)
+		if err != nil {
+			r.Logger.Errorf("got error when trying to create credentials request for azure. %v", err)
+			return err
 		}
 		return nil
 	}

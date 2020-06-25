@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -53,7 +52,6 @@ import (
 
 const (
 	oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
-	serviceCAPath          = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -73,32 +71,8 @@ var (
 	InsecureHTTPTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	// SecureHTTPTransport is a global secured http transport
-	SecureHTTPTransport = newSecureHTTPTransport()
 )
 
-// newSecureHTTPTransport initializes a secured http transport. http.Transport may cause memory leaks when overused
-func newSecureHTTPTransport() *http.Transport {
-	// Load CA cert
-	caCert, err := ioutil.ReadFile(serviceCAPath)
-	if err != nil {
-		return &http.Transport{}
-	}
-
-	caCertPool, _ := x509.SystemCertPool()
-	if caCertPool == nil {
-		caCertPool = x509.NewCertPool()
-	}
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	// Setup HTTPS client
-	tlsConfig := &tls.Config{
-		RootCAs: caCertPool,
-	}
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
-	return transport
-
-}
 func init() {
 	Panic(apiextv1beta1.AddToScheme(scheme.Scheme))
 	Panic(nbapis.AddToScheme(scheme.Scheme))
@@ -307,6 +281,23 @@ func KubeDelete(obj runtime.Object, opts ...client.DeleteOption) bool {
 	return deleted
 }
 
+// KubeDeleteAllOf deletes an list of objects and reports the status.
+func KubeDeleteAllOf(obj runtime.Object, opts ...client.DeleteAllOfOption) bool {
+	klient := KubeClient()
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	deleted := false
+
+	err := klient.DeleteAllOf(ctx, obj, opts...)
+	if err == nil {
+		deleted = true
+		log.Printf("🗑️  Deleting All of type: %s\n", gvk.Kind)
+	} else if errors.IsNotFound(err) {
+		return true
+	}
+	Panic(err)
+	return deleted
+}
+
 // KubeUpdate updates an object and reports the object status.
 func KubeUpdate(obj runtime.Object) bool {
 	klient := KubeClient()
@@ -454,6 +445,16 @@ func RemoveFinalizer(obj metav1.Object, finalizer string) bool {
 	finalizers = finalizers[:n]
 	obj.SetFinalizers(finalizers)
 	return found
+}
+
+// AddFinalizer adds the finalizer to the object if it doesn't contains it already
+func AddFinalizer(obj metav1.Object, finalizer string) bool {
+	if !Contains(finalizer, obj.GetFinalizers()) {
+		finalizers := append(obj.GetFinalizers(), finalizer)
+		obj.SetFinalizers(finalizers)
+		return true
+	}
+	return false
 }
 
 // GetPodStatusLine returns a one liner status for a pod
@@ -796,6 +797,16 @@ func IsAWSPlatform() bool {
 	return isAWS
 }
 
+// IsAzurePlatform returns true if this cluster is running on Azure
+func IsAzurePlatform() bool {
+	nodesList := &corev1.NodeList{}
+	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+		Panic(fmt.Errorf("failed to list kubernetes nodes"))
+	}
+	isAzure := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "azure")
+	return isAzure
+}
+
 // GetAWSRegion parses the region from a node's name
 func GetAWSRegion() (string, error) {
 	// parse the node name to get AWS region according to this:
@@ -889,7 +900,7 @@ func PrintThisNoteWhenFinishedApplyingAndStartWaitLoop() {
 func DiscoverOAuthEndpoints() (*OAuth2Endpoints, error) {
 	client := http.Client{
 		Timeout:   120 * time.Second,
-		Transport: SecureHTTPTransport,
+		Transport: InsecureHTTPTransport,
 	}
 
 	res, err := client.Get(oAuthWellKnownEndpoint)
@@ -1012,4 +1023,48 @@ func WriteYamlFile(name string, obj runtime.Object, moreObjects ...runtime.Objec
 	}
 
 	return nil
+}
+
+// Contains checks if string array arr contains string s
+func Contains(s string, arr []string) bool {
+	for _, b := range arr {
+		if b == s {
+			return true
+		}
+	}
+	return false
+}
+
+// GetEnvVariable is looknig for env variable called name in env and return a pointer to the variable
+func GetEnvVariable(env *[]corev1.EnvVar, name string) *corev1.EnvVar {
+	for i := range *env {
+		e := &(*env)[i]
+		if e.Name == name {
+			return e
+		}
+	}
+	return nil
+}
+
+// ReflectEnvVariable will add, update or remove an env variable base on the existence and value of an
+// env variable with the same name on the container running this function.
+func ReflectEnvVariable(env *[]corev1.EnvVar, name string) {
+	if val, ok := os.LookupEnv(name); ok {
+		envVar := GetEnvVariable(env, name)
+		if envVar != nil {
+			envVar.Value = val
+		} else {
+			*env = append(*env, corev1.EnvVar{
+				Name:  name,
+				Value: val,
+			})
+		}
+	} else {
+		for i, envVar := range *env {
+			if envVar.Name == name {
+				*env = append((*env)[:i], (*env)[i+1:]...)
+				return
+			}
+		}
+	}
 }

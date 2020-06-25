@@ -86,6 +86,10 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
+	if added := util.AddFinalizer(r.BucketClass, nbv1.Finalizer); added && !util.KubeUpdate(r.BucketClass) {
+		log.Errorf("BucketClass %q failed to add finalizer %q", r.BucketClass.Name, nbv1.Finalizer)
+	}
+
 	system.CheckSystem(r.NooBaa)
 
 	var err error

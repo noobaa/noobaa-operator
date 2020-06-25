@@ -26,6 +26,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -72,7 +73,9 @@ type Reconciler struct {
 	SecretOp            *corev1.Secret
 	SecretAdmin         *corev1.Secret
 	SecretEndpoints     *corev1.Secret
-	CloudCreds          *cloudcredsv1.CredentialsRequest
+	AWSCloudCreds       *cloudcredsv1.CredentialsRequest
+	AzureCloudCreds     *cloudcredsv1.CredentialsRequest
+	AzureContainerCreds *corev1.Secret
 	DefaultBackingStore *nbv1.BackingStore
 	DefaultBucketClass  *nbv1.BucketClass
 	OBCStorageClass     *storagev1.StorageClass
@@ -115,7 +118,9 @@ func NewReconciler(
 		SecretOp:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretEndpoints:     util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		CloudCreds:          util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
+		AzureContainerCreds: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		AWSCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
+		AzureCloudCreds:     util.KubeObject(bundle.File_deploy_internal_cloud_creds_azure_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
 		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
 		OBCStorageClass:     util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
@@ -140,8 +145,11 @@ func NewReconciler(
 	r.SecretOp.Namespace = r.Request.Namespace
 	r.SecretAdmin.Namespace = r.Request.Namespace
 	r.SecretEndpoints.Namespace = r.Request.Namespace
-	r.CloudCreds.Namespace = r.Request.Namespace
-	r.CloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
+	r.AzureContainerCreds.Namespace = r.Request.Namespace
+	r.AWSCloudCreds.Namespace = r.Request.Namespace
+	r.AWSCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
+	r.AzureCloudCreds.Namespace = r.Request.Namespace
+	r.AzureCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
 	r.DefaultBackingStore.Namespace = r.Request.Namespace
 	r.DefaultBucketClass.Namespace = r.Request.Namespace
 	r.PrometheusRule.Namespace = r.Request.Namespace
@@ -164,8 +172,11 @@ func NewReconciler(
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
 	r.SecretEndpoints.Name = r.Request.Name + "-endpoints"
-	r.CloudCreds.Name = r.Request.Name + "-cloud-creds"
-	r.CloudCreds.Spec.SecretRef.Name = r.Request.Name + "-cloud-creds-secret"
+	r.AzureContainerCreds.Name = r.Request.Name + "-azure-container-creds"
+	r.AWSCloudCreds.Name = r.Request.Name + "-aws-cloud-creds"
+	r.AWSCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-aws-cloud-creds-secret"
+	r.AzureCloudCreds.Name = r.Request.Name + "-azure-cloud-creds"
+	r.AzureCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-azure-cloud-creds-secret"
 	r.CephObjectstoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"
@@ -210,7 +221,9 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.DeploymentEndpoint)
 	util.KubeCheck(r.HPAEndpoint)
 	util.KubeCheckOptional(r.DefaultBackingStore)
-	util.KubeCheckOptional(r.CloudCreds)
+	util.KubeCheckOptional(r.AWSCloudCreds)
+	util.KubeCheckOptional(r.AzureCloudCreds)
+	util.KubeCheckOptional(r.AzureContainerCreds)
 	util.KubeCheckOptional(r.PrometheusRule)
 	util.KubeCheckOptional(r.ServiceMonitor)
 	util.KubeCheckOptional(r.RouteMgmt)
@@ -230,6 +243,15 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	if !CheckSystem(r.NooBaa) {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return res, nil
+	}
+
+	if added := util.AddFinalizer(r.NooBaa, nbv1.GracefulFinalizer); added && !util.KubeUpdate(r.NooBaa) {
+		log.Errorf("NooBaa %q failed to add finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
+	}
+
+	if err := r.VerifyObjectBucketCleanup(); err != nil {
+		r.SetPhase("", "TemporaryError", err.Error())
+		log.Warnf("⏳ Temporary Error: %s", err)
 	}
 
 	if r.NooBaa.Spec.JoinSecret != nil {
@@ -272,6 +294,49 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
 	r.UpdateStatus()
 	return res, nil
+}
+
+// VerifyObjectBucketCleanup checks if the uninstallation is in mode graceful and
+// if OBs still exist in the system the operator will wait
+// and the finalizer on noobaa CR won't be reomved
+func (r *Reconciler) VerifyObjectBucketCleanup() error {
+	log := r.Logger
+
+	if r.NooBaa.DeletionTimestamp == nil {
+		return nil
+	}
+
+	if r.NooBaa.Spec.CleanupPolicy.Confirmation == nbv1.DeleteOBCConfirmation {
+		util.RemoveFinalizer(r.NooBaa, nbv1.GracefulFinalizer)
+		if !util.KubeUpdate(r.NooBaa) {
+			log.Errorf("NooBaa %q failed to remove finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
+		}
+		return nil
+	}
+
+	obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
+	objectBuckets := &nbv1.ObjectBucketList{}
+	util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
+
+	if len(objectBuckets.Items) != 0 {
+		var bucketNames []string
+		for i := range objectBuckets.Items {
+			ob := &objectBuckets.Items[i]
+			bucketNames = append(bucketNames, ob.Name)
+		}
+		msg := fmt.Sprintf("Failed to delete NooBaa. object buckets in namespace %q are not cleaned up. remaining buckets: %+v",
+			r.NooBaa.Namespace, bucketNames)
+		log.Errorf(msg)
+		return fmt.Errorf(msg)
+	}
+
+	log.Infof("All object buckets deleted in namespace %q", r.NooBaa.Namespace)
+	util.RemoveFinalizer(r.NooBaa, nbv1.GracefulFinalizer)
+	if !util.KubeUpdate(r.NooBaa) {
+		log.Errorf("NooBaa %q failed to remove finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
+	}
+
+	return nil
 }
 
 // bToMb convert bytes to megabytes

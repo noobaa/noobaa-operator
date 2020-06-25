@@ -224,6 +224,26 @@ type ListBucketsReply struct {
 	} `json:"buckets"`
 }
 
+// ListHostsParams is the params to host_api.list_hosts()
+type ListHostsParams struct {
+	Query ListHostsQuery `json:"query"`
+}
+
+// ListHostsQuery is the query params to host_api.list_hosts()
+type ListHostsQuery struct {
+	Pools []string `json:"pools"`
+}
+
+// ListHostsReply is the reply of host_api.list_hosts()
+type ListHostsReply struct {
+	Hosts []HostInfo `json:"hosts"`
+}
+
+// HostInfo is the information of a host(partial)
+type HostInfo struct {
+	Name string `json:"name"`
+}
+
 // CreateAuthParams is the params of auth_api.create_auth()
 type CreateAuthParams struct {
 	System   string `json:"system"`
@@ -300,6 +320,12 @@ type CreateHostsPoolParams struct {
 	IsManaged    bool              `json:"is_managed"`
 	HostCount    int               `json:"host_count"`
 	HostConfig   PoolHostsInfo     `json:"host_config"`
+	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
+}
+
+// UpdateHostsPoolParams is the params of pool_api.update_hosts_pool()
+type UpdateHostsPoolParams struct {
+	Name         string            `json:"name"`
 	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
 }
 

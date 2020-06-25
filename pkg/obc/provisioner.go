@@ -89,6 +89,14 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 		return nil, err
 	}
 
+	if r.SysClient.NooBaa.DeletionTimestamp != nil {
+		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
+		if util.Contains(nbv1.GracefulFinalizer, finalizersArray) {
+			msg := fmt.Sprintf("NooBaa is in deleting state, new requests will be ignored")
+			log.Errorf(msg)
+			return nil, obErrors.NewBucketExistsError(msg)
+		}
+	}
 	// TODO: we need to better handle the case that a bucket was created, but Provision failed
 	// right now we will fail on create bucket when Provision is called the second time
 	err = r.CreateBucket()
@@ -114,6 +122,15 @@ func (p *Provisioner) Grant(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBuc
 	r, err := NewBucketRequest(p, nil, bucketOptions)
 	if err != nil {
 		return nil, err
+	}
+
+	if r.SysClient.NooBaa.DeletionTimestamp != nil {
+		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
+		if util.Contains(nbv1.GracefulFinalizer, finalizersArray) {
+			msg := fmt.Sprintf("NooBaa is in deleting state, new requests will be ignored")
+			log.Errorf(msg)
+			return nil, obErrors.NewBucketExistsError(msg)
+		}
 	}
 
 	// create account and give permissions for bucket

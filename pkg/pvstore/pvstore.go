@@ -103,11 +103,11 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 
 	gbsize := int64(pvSizeGB) * 1024 * 1024 * 1024
-	err := nbClient.CreateHostsPoolAPI(nb.CreateHostsPoolParams{
+	_, err := nbClient.CreateHostsPoolAPI(nb.CreateHostsPoolParams{
 		Name:       poolName,
 		IsManaged:  true,
 		HostCount:  int(numVolumes),
-		HostConfig: nb.PoolHostsInfo{VolumeSize: gbsize},   
+		HostConfig: nb.PoolHostsInfo{VolumeSize: gbsize},
 	})
 	util.Panic(err)
 }

@@ -1,6 +1,7 @@
 package system
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/url"
@@ -8,12 +9,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/marstr/randname"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -212,6 +215,9 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec
+	if r.NooBaa.Spec.Tolerations != nil {
+		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
+	}
 	if r.NooBaa.Spec.ImagePullSecret == nil {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{}
@@ -322,6 +328,10 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					}
 				}
 			}
+
+			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
+			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
+			util.ReflectEnvVariable(&c.Env, "NO_PROXY")
 		}
 	}
 	return nil
@@ -406,14 +416,24 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		if err := r.prepareCephBackingStore(); err != nil {
 			return err
 		}
-	} else if r.CloudCreds.UID != "" {
-		log.Infof("CredentialsRequest %q created.  creating default backing store on ceph objectstore", r.CloudCreds.Name)
+	} else if r.AWSCloudCreds.UID != "" {
+		log.Infof("CredentialsRequest %q created.  creating default backing store on AWS objectstore", r.AWSCloudCreds.Name)
 		if err := r.prepareAWSBackingStore(); err != nil {
 			return err
 		}
+	} else if r.AzureCloudCreds.UID != "" {
+		log.Infof("CredentialsRequest %q created.  creating default backing store on Azure objectstore", r.AzureCloudCreds.Name)
+		if err := r.prepareAzureBackingStore(); err != nil {
+			return err
+		}
 	} else {
-
-		return nil
+		minutesSinceCreation := time.Since(r.NooBaa.CreationTimestamp.Time).Minutes()
+		if minutesSinceCreation < 2 {
+			return nil
+		}
+		if err := r.preparePVoolBackingStore(); err != nil {
+			return err
+		}
 	}
 
 	r.Own(r.DefaultBackingStore)
@@ -424,12 +444,27 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	return nil
 }
 
+func (r *Reconciler) preparePVoolBackingStore() error {
+
+	// create backing store
+	defaultPVSize := int64(50) * 1024 * 1024 * 1024 // 50GB
+	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypePVPool
+	r.DefaultBackingStore.Spec.PVPool = &nbv1.PVPoolSpec{}
+	r.DefaultBackingStore.Spec.PVPool.NumVolumes = 1
+	r.DefaultBackingStore.Spec.PVPool.VolumeResources = &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceStorage: *resource.NewQuantity(defaultPVSize, resource.BinarySI),
+		},
+	}
+	return nil
+}
+
 func (r *Reconciler) prepareAWSBackingStore() error {
 	// after we have cloud credential request, wait for credentials secret
 	cloudCredsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      r.CloudCreds.Spec.SecretRef.Name,
-			Namespace: r.CloudCreds.Spec.SecretRef.Namespace,
+			Name:      r.AWSCloudCreds.Spec.SecretRef.Name,
+			Namespace: r.AWSCloudCreds.Spec.SecretRef.Namespace,
 		},
 	}
 
@@ -437,10 +472,10 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 	if cloudCredsSecret.UID == "" {
 		// TODO: we need to figure out why secret is not created, and react accordingly
 		// e.g. maybe we are running on azure but our CredentialsRequest is for AWS
-		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.CloudCreds.Spec.SecretRef.Name)
-		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.CloudCreds.Spec.SecretRef.Name)
+		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.AWSCloudCreds.Spec.SecretRef.Name)
+		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.AWSCloudCreds.Spec.SecretRef.Name)
 	}
-	r.Logger.Infof("Secret %s was created succesfully by cloud-credentials operator", r.CloudCreds.Spec.SecretRef.Name)
+	r.Logger.Infof("Secret %s was created succesfully by cloud-credentials operator", r.AWSCloudCreds.Spec.SecretRef.Name)
 
 	// create the acutual S3 bucket
 	region, err := util.GetAWSRegion()
@@ -472,6 +507,80 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 	return nil
 }
 
+func (r *Reconciler) prepareAzureBackingStore() error {
+	// after we have cloud credential request, wait for credentials secret
+	cloudCredsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      r.AzureCloudCreds.Spec.SecretRef.Name,
+			Namespace: r.AzureCloudCreds.Spec.SecretRef.Namespace,
+		},
+	}
+
+	util.KubeCheck(cloudCredsSecret)
+	if cloudCredsSecret.UID == "" {
+		// TODO: we need to figure out why secret is not created, and react accordingly
+		// e.g. maybe we are running on AWS but our CredentialsRequest is for Azure
+		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.AzureCloudCreds.Spec.SecretRef.Name)
+		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.AzureCloudCreds.Spec.SecretRef.Name)
+	}
+	r.Logger.Infof("Secret %s was created succesfully by cloud-credentials operator", r.AzureCloudCreds.Spec.SecretRef.Name)
+
+	util.KubeCheck(r.AzureContainerCreds)
+	if r.AzureContainerCreds.UID == "" {
+		// AzureContainerCreds does not exist. create one
+		r.Logger.Info("Creating AzureContainerCreds secret")
+		r.AzureContainerCreds.StringData = map[string]string{}
+		r.AzureContainerCreds.StringData = cloudCredsSecret.StringData
+		r.Own(r.AzureContainerCreds)
+		if err := r.Client.Create(r.Ctx, r.AzureContainerCreds); err != nil {
+			return fmt.Errorf("got error on AzureContainerCreds creation. error: %v", err)
+		}
+	}
+	r.Logger.Infof("Secret %s was created succesfully", r.AzureContainerCreds.Name)
+
+	var azureGroupName = r.AzureContainerCreds.StringData["azure_resourcegroup"]
+
+	if r.AzureContainerCreds.StringData["AccountName"] == "" {
+		var azureAccountName = strings.ToLower(randname.GenerateWithPrefix("noobaaaccount", 5))
+		_, err := r.CreateStorageAccount(azureAccountName, azureGroupName)
+		if err != nil {
+			return err
+		}
+		r.AzureContainerCreds.StringData["AccountName"] = azureAccountName
+	}
+
+	if r.AzureContainerCreds.StringData["AccountKey"] == "" {
+		var azureAccountName = r.AzureContainerCreds.StringData["AccountName"]
+		key := r.getAccountPrimaryKey(azureAccountName, azureGroupName)
+		r.AzureContainerCreds.StringData["AccountKey"] = key
+	}
+
+	if r.AzureContainerCreds.StringData["targetBlobContainer"] == "" {
+		var azureContainerName = strings.ToLower(randname.GenerateWithPrefix("noobaacontainer", 5))
+		_, err := r.CreateContainer(r.AzureContainerCreds.StringData["AccountName"], azureGroupName, azureContainerName)
+		if err != nil {
+			return err
+		}
+		r.AzureContainerCreds.StringData["targetBlobContainer"] = azureContainerName
+	}
+
+	if errUpdate := r.Client.Update(r.Ctx, r.AzureContainerCreds); errUpdate != nil {
+		return fmt.Errorf("got error on AzureContainerCreds update. error: %v", errUpdate)
+	}
+
+	// create backing store
+	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeAzureBlob
+	r.DefaultBackingStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
+		TargetBlobContainer: r.AzureContainerCreds.StringData["targetBlobContainer"],
+		Secret: corev1.SecretReference{
+			Name:      r.AzureContainerCreds.Name,
+			Namespace: r.AzureContainerCreds.Namespace,
+		},
+	}
+
+	return nil
+}
+
 func (r *Reconciler) prepareCephBackingStore() error {
 
 	secretName := "rook-ceph-object-user-" + r.CephObjectstoreUser.Spec.Store + "-" + r.CephObjectstoreUser.Name
@@ -492,7 +601,22 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		return fmt.Errorf("Ceph object user secret %q is not ready yet", secretName)
 	}
 
-	endpoint := "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
+	endpoint := ""
+	if r.CephObjectstoreUser.Spec.Store != "" {
+		endpoint = "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
+
+	} else if r.NooBaa.Labels != nil && r.NooBaa.Labels["rgw-endpoint-base64"] != "" {
+		decodedEndpoint, err := base64.StdEncoding.DecodeString(r.NooBaa.Labels["rgw-endpoint-base64"])
+		if err != nil {
+			r.Logger.Infof("Ceph RGW endpoint base64 address failed to be decoded. base64=%q", r.NooBaa.Labels["rgw-endpoint-base64"])
+			return nil
+		}
+		endpoint = fmt.Sprintf("http://%s", string(decodedEndpoint))
+
+	} else {
+		return fmt.Errorf("Ceph RGW endpoint address is not available")
+	}
+
 	region := "us-east-1"
 	forcePathStyle := true
 	s3Config := &aws.Config{
