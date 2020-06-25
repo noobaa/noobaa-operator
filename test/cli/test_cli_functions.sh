@@ -1,5 +1,18 @@
 #!/bin/bash
 
+function clean {
+    local PID=$1
+    kill -9 ${PID}
+    echo_time "Searching for running noobaa and killing it."
+    local process=${noobaa// */}
+    local kill_noobaa_cli_pid=($(ps -ef | grep ${process} | grep -v grep | awk '{print $2}'| xargs))
+    if [ -z ${kill_noobaa_cli_pid} ]
+    then
+        kill -9 ${kill_noobaa_cli_pid[@]}
+    fi
+    exit 0
+}
+
 function kuberun {
     if [ "${1}" == "silence" ]
     then
@@ -28,40 +41,48 @@ echo_time() {
 }
 
 function test_noobaa {
-    local rc
-    local run_with_timeout=false
-    local should_fail=false
-    local silence=false
-    if [ "${1}" == "failure" ]
+    local rc func timeout_in_sec
+    local {timeout,should_fail,silence}=false
+
+    if [[ "${1}" =~ ("should_fail"|"silence") ]]
     then
-        should_fail=true
+        eval ${1}=true
         shift
     fi
-    if [ "${1}" == "timeout" ]
-    then
-        run_with_timeout=true
-        shift
-    fi
-    if [ "${1}" == "silence" ]
-    then
-        silence=true
-        shift
-    fi
+
+    while true
+    do
+        if [[ ! "${1}" =~ "--" ]]
+        then
+            break
+        fi
+
+        case ${1} in
+            --func)         func="--func ${2}"
+                            shift 2;;
+            --timeout)      timeout=true
+                            if [[ "${2}" =~ "--" ]] || [[ ! "${2}" =~ ^[0-9]+$ ]]
+                            then
+                                shift 1
+                            else
+                                timeout_in_sec="--timeout ${2}"
+                                shift 2
+                            fi;;
+            *)              echo_time "❌  Unknown test_noobaa option, Exiting."
+                            exit 1;;
+        esac
+    done
+
     local options=$*
 
-    if [ -z "${noobaa}" ]
-    then
-        echo_time "❌  The noobaa variable must be define in the shell"
-        exit 1
-    fi
-    if ${run_with_timeout}
+    if ${timeout}
     then
         ${noobaa} ${options} &
-        PID=$!
+        local PID=$!
         # We are trapping SIGHUP and SIGINT for clean exit.
         trap "clean ${PID}" 1 2
         # When we are running with timeout because the command runs in the background
-        timeout ${PID} ${options}
+        timeout --PID ${PID} ${timeout_in_sec} ${func} ${options}
     else
         ${noobaa} ${options}
         if [ $? -ne 0 ]
@@ -87,16 +108,29 @@ function test_noobaa {
 }
 
 function timeout {
-    local PID=${1}
-    shift
+    local PID func
+    #the timeout is that big because it sometimes take a while to get pvc
+    local TIMEOUT=180
+    while true
+    do
+        if [[ ! "${1}" =~ "--" ]]
+        then
+            break
+        fi
+
+        case ${1} in
+            --PID)      PID=${2}
+                        shift 2;;
+            --func)     func=${2}
+                        shift 2;;
+            --timeout)  TIMEOUT=${2}
+                        shift 2;;
+            *)          echo_time "❌  Unknown timeout option, Exiting."
+                        exit 1;;
+        esac
+    done
     local options=$*
     local START_TIME=${SECONDS}
-
-    if [ -z "${TIMEOUT}" ]
-    then
-        cho "❌  The TIMEOUT variable must be define in the shell"
-        exit 1
-    fi
 
     while true
     do
@@ -112,6 +146,11 @@ function timeout {
             sleep 5
         else
             kill -9 ${PID}
+            if [ ! -z ${func} ]
+            then
+                echo_time "${noobaa} ${options} reached timeout, Running ${func}"
+                ${func}
+            fi 
             echo_time "❌  ${noobaa} ${options} reached timeout, Exiting"
             exit 1
         fi
@@ -119,17 +158,17 @@ function timeout {
 }
 
 function install {
-    local use-obc-cleanup-policy
+    local use_obc_cleanup_policy
     
-    [ $((RANDOM%2)) -gt 0 ] && use-obc-cleanup-policy="--use-obc-cleanup-policy"
-    test_noobaa install --mini ${use-obc-cleanup-policy}
+    [ $((RANDOM%2)) -gt 0 ] && use_obc_cleanup_policy="--use-obc-cleanup-policy"
+    test_noobaa install --mini ${use_obc_cleanup_policy}
 
-    local status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
+    local status=$(kuberun silence get noobaa noobaa -o 'jsonpath={.status.phase}')
     while [ "${status}" != "Ready" ]
     do
-        echo_time "Waiting for status Ready, Status is ${status}"
+        echo_time "💬  Waiting for status Ready, Status is ${status}"
         sleep 10
-        status=$(kuberun get noobaa noobaa -o json | jq -r '.status.phase' 2> /dev/null)
+        status=$(kuberun silence get noobaa noobaa -o 'jsonpath={.status.phase}')
     done
 }
 
@@ -157,7 +196,7 @@ function aws_credentials {
 }
 
 function check_S3_compatible {
-    echo_time "Staring compatible cycle"
+    echo_time "💬  Staring compatible cycle"
     local cycle
     local type="s3-compatible"
     local buckets=("first.bucket" "second.bucket")
@@ -185,7 +224,7 @@ function check_S3_compatible {
 }
 
 function check_IBM_cos {
-    echo_time "Staring IBM cos cycle"
+    echo_time "💬  Staring IBM cos cycle"
     local cycle
     local type="ibm-cos"
     local buckets=("first.bucket" "second.bucket")
@@ -222,7 +261,7 @@ function check_aws_S3 {
 }
 
 function bucketclass_cycle {
-    echo_time "Starting the bucketclass cycle"
+    echo_time "💬  Starting the bucketclass cycle"
     local bucketclass
     local bucketclass_names=()
     local backingstore=()
@@ -259,9 +298,20 @@ function bucketclass_cycle {
     echo_time "✅  bucketclass cycle is done"
 }
 
-function obc_cycle {
-    echo_time "Starting the obc cycle"
+function check_obc {
     local bucket
+    test_noobaa obc list
+    for bucket in ${buckets[@]}
+    do
+        test_noobaa --timeout obc status ${bucket}
+    done
+    kuberun get obc
+    kuberun describe obc
+    kuberun get obc,ob,secret,cm -l noobaa-obc
+}
+
+function obc_cycle {
+    echo_time "💬  Starting the obc cycle"
     local buckets=()
 
     local bucketclass_list_array=($(test_noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME | grep -v noobaa-default-bucket-class))
@@ -272,17 +322,10 @@ function obc_cycle {
         then
             flag="--app-namespace default"
         fi
-        test_noobaa timeout obc create ${buckets[$((${#buckets[@]}-1))]} --bucketclass ${bucketclass} ${flag}
+        test_noobaa --timeout --func check_obc obc create ${buckets[$((${#buckets[@]}-1))]} --bucketclass ${bucketclass} ${flag}
         unset flag
     done
-    test_noobaa obc list
-    for bucket in ${buckets[@]}
-    do
-        test_noobaa timeout obc status ${bucket}
-    done
-    kuberun get obc
-    kuberun describe obc
-    kuberun get obc,ob,secret,cm -l noobaa-obc
+    check_obc
 
     # aws s3 --endpoint-url XXX ls
     echo_time "✅  obc cycle is done"
@@ -293,9 +336,9 @@ function delete_backingstore_path {
     local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
     local bucketclass=($(test_noobaa silence bucketclass list  | grep ${backingstore[1]} | awk '{print $1}'))
     local obc=($(test_noobaa silence obc list | grep -v "BUCKET-NAME" | awk '{print $2}'))
-    echo_time "Starting the delete related ${backingstore[1]} paths"
+    echo_time "💬  Starting the delete related ${backingstore[1]} paths"
 
-    test_noobaa failure backingstore delete ${backingstore[1]}
+    test_noobaa should_fail backingstore delete ${backingstore[1]}
     if [ ${#obc[@]} -ne 0 ]
     then
         for object_bucket in ${obc[@]}
@@ -314,12 +357,12 @@ function delete_backingstore_path {
     local buckets=($(test_noobaa silence bucket list  | grep -v "BUCKET-NAME" | awk '{print $1}'))
     echo_time "✅  buckets in system: ${buckets}"
     test_noobaa backingstore delete ${backingstore[1]}
-    test_noobaa failure backingstore delete ${backingstore[0]}
+    test_noobaa should_fail backingstore delete ${backingstore[0]}
     echo_time "✅  delete ${backingstore[1]} path is done"
 }
 
 function check_deletes {
-    echo_time "Starting the delete cycle"
+    echo_time "💬  Starting the delete cycle"
     local obc=($(test_noobaa silence obc list | grep -v "NAME\|default" | awk '{print $2}'))
     local bucketclass=($(test_noobaa silence bucketclass list  | grep -v NAME | awk '{print $1}'))
     local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
@@ -342,8 +385,8 @@ function noobaa_uninstall {
     [ ${check_cleanflag} -eq 0 ] &&  cleanup="--cleanup"
     [ ${check_cleanup_data_flag} -eq 0 ] && cleanup_data="--cleanup_data"
 
-    echo_time "Running uninstall ${cleanup} ${cleanup_data}"
-    test_noobaa uninstall ${cleanup} ${cleanup_data}
+    echo_time "💬  Running uninstall ${cleanup} ${cleanup_data}"
+    test_noobaa --timeout uninstall ${cleanup} ${cleanup_data}
     if [ ${check_cleanflag} -eq 0 ]
     then
         check_if_cleanup
@@ -384,3 +427,9 @@ function check_if_cleanup {
         exit 1            
     fi
 } 
+
+if [ -z "${noobaa}" ]
+then
+    echo_time "❌  The noobaa variable must be define in the shell"
+    exit 1
+fi
