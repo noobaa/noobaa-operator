@@ -117,19 +117,6 @@ type BackingStoreMode struct {
 	TimeStamp string `json:"timeStamp,omitempty"`
 }
 
-// BackingStorePhaseInfo defines the phase and the updated Mode of BackingStore
-type BackingStorePhaseInfo struct {
-	// Phase specifies the phase of backingstore
-	// +optional
-	Phase BackingStorePhase `json:"phase,omitempty"`
-	// Reason specifies the reason of backingstore phase
-	// +optional
-	Reason string `json:"reason,omitempty"`
-	// Message specifies the message of backingstore phase
-	// +optional
-	Message string `json:"message,omitempty"`
-}
-
 // StoreType is the backing store type enum
 type StoreType string
 
