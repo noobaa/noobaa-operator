@@ -30,30 +30,36 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var bsModeToPhaseMap map[string]nbv1.BackingStorePhaseInfo
-
-func init() {
-	bsModeToPhaseMap = modeToPhaseMap()
+// ModeInfo holds local information for a backing store mode.
+type ModeInfo struct {
+	Phase    nbv1.BackingStorePhase
+	Severity string
 }
 
-func modeToPhaseMap() map[string]nbv1.BackingStorePhaseInfo {
-	return map[string]nbv1.BackingStorePhaseInfo{
-		"INITIALIZING":        {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: INITALIZING"},
-		"DELETING":            {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: DELETING"},
-		"SCALING":             {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: SCALING"},
-		"MOST_NODES_ISSUES":   {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_NODES_ISSUES"},
-		"MANY_NODES_ISSUES":   {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_ISSUES"},
-		"MOST_STORAGE_ISSUES": {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MOST_STORAGE_ISSUES"},
-		"MANY_STORAGE_ISSUES": {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_STORAGE_ISSUES"},
-		"MANY_NODES_OFFLINE":  {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: MANY_NODES_OFFLINE"},
-		"LOW_CAPACITY":        {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: LOW_CAPACITY"},
-		"OPTIMAL":             {nbv1.BackingStorePhaseReady, "BackingStorePhaseReady", "Backing store mode: OPTIMAL"},
-		"HAS_NO_NODES":        {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: HAS_NO_NODES"},
-		"ALL_NODES_OFFLINE":   {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: ALL_NODES_OFFLINE"},
-		"NO_CAPACITY":         {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: NO_CAPACITY"},
-		"IO_ERRORS":           {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: IO_ERRORS"},
-		"STORAGE_NOT_EXIST":   {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: STORAGE_NOT_EXIST"},
-		"AUTH_FAILED":         {nbv1.BackingStorePhaseRejected, "BackingStorePhaseRejected", "Backing store mode: AUTH_FAILED"},
+var bsModeInfoMap map[string]ModeInfo
+
+func init() {
+	bsModeInfoMap = modeInfoMap()
+}
+
+func modeInfoMap() map[string]ModeInfo {
+	return map[string]ModeInfo{
+		"INITIALIZING":        {nbv1.BackingStorePhaseReady, corev1.EventTypeNormal},
+		"DELETING":            {nbv1.BackingStorePhaseReady, corev1.EventTypeNormal},
+		"SCALING":             {nbv1.BackingStorePhaseReady, corev1.EventTypeNormal},
+		"MOST_NODES_ISSUES":   {nbv1.BackingStorePhaseReady, corev1.EventTypeWarning},
+		"MANY_NODES_ISSUES":   {nbv1.BackingStorePhaseReady, corev1.EventTypeWarning},
+		"MOST_STORAGE_ISSUES": {nbv1.BackingStorePhaseReady, corev1.EventTypeWarning},
+		"MANY_STORAGE_ISSUES": {nbv1.BackingStorePhaseReady, corev1.EventTypeWarning},
+		"MANY_NODES_OFFLINE":  {nbv1.BackingStorePhaseReady, corev1.EventTypeWarning},
+		"LOW_CAPACITY":        {nbv1.BackingStorePhaseReady, corev1.EventTypeWarning},
+		"OPTIMAL":             {nbv1.BackingStorePhaseReady, corev1.EventTypeNormal},
+		"HAS_NO_NODES":        {nbv1.BackingStorePhaseRejected, corev1.EventTypeWarning},
+		"ALL_NODES_OFFLINE":   {nbv1.BackingStorePhaseRejected, corev1.EventTypeWarning},
+		"NO_CAPACITY":         {nbv1.BackingStorePhaseRejected, corev1.EventTypeWarning},
+		"IO_ERRORS":           {nbv1.BackingStorePhaseRejected, corev1.EventTypeWarning},
+		"STORAGE_NOT_EXIST":   {nbv1.BackingStorePhaseRejected, corev1.EventTypeWarning},
+		"AUTH_FAILED":         {nbv1.BackingStorePhaseRejected, corev1.EventTypeWarning},
 	}
 }
 
@@ -179,12 +185,15 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			log.Warnf("⏳ Temporary Error: %s", err)
 		}
 	} else {
-		bsPhase, exist := bsModeToPhaseMap[r.BackingStore.Status.Mode.ModeCode]
+		mode := r.BackingStore.Status.Mode.ModeCode
+		phaseInfo, exist := bsModeInfoMap[mode]
 
-		if exist && bsPhase.Phase != r.BackingStore.Status.Phase {
-			r.SetPhase(bsPhase.Phase, bsPhase.Message, bsPhase.Reason)
+		if exist && phaseInfo.Phase != r.BackingStore.Status.Phase {
+			phaseName := fmt.Sprintf("BackingStorePhase%s", phaseInfo.Phase)
+			desc := fmt.Sprintf("Backing store mode: %s", mode)
+			r.SetPhase(phaseInfo.Phase, desc, phaseName)
 			if r.Recorder != nil {
-				r.Recorder.Eventf(r.BackingStore, corev1.EventTypeWarning, bsPhase.Reason, bsPhase.Message)
+				r.Recorder.Eventf(r.BackingStore, phaseInfo.Severity, phaseName, desc)
 			}
 		} else {
 			r.SetPhase(
