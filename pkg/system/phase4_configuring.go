@@ -126,30 +126,15 @@ func (r *Reconciler) SetDesiredSecretOp() error {
 		return nil
 	}
 
+	// Local noobaa case
 	if r.JoinSecret == nil {
-		// Trying to create token for admin so we could use it to create
-		// a token for the operator account
-		res1, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-			System:   r.Request.Name,
-			Role:     "admin",
-			Email:    r.SecretAdmin.StringData["email"],
-			Password: r.SecretAdmin.StringData["password"],
-		})
-		if err == nil {
-			r.NBClient.SetAuthToken(res1.Token)
-			res2, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-				System: r.Request.Name,
-				Role:   "operator",
-				Email:  options.OperatorAccountEmail,
-			})
-			if err != nil {
-				return fmt.Errorf("cannot create an auth token for operator, error: %v", err)
-			}
-			r.SecretOp.StringData["auth_token"] = res2.Token
+		res1, err := r.NBClient.ReadSystemStatusAPI()
+		if err != nil {
+			return fmt.Errorf("Could not read the system status, error: %v", err)
+		}
 
-		} else {
-			// A failure to create a token for admin usually means that a system need to be created
-			res3, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
+		if res1.State == "DOES_NOT_EXIST" {
+			res2, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
 				Name:     r.Request.Name,
 				Email:    r.SecretAdmin.StringData["email"],
 				Password: r.SecretAdmin.StringData["password"],
@@ -157,8 +142,40 @@ func (r *Reconciler) SetDesiredSecretOp() error {
 			if err != nil {
 				return fmt.Errorf("system creation failed, error: %v", err)
 			}
-			r.SecretOp.StringData["auth_token"] = res3.OperatorToken
+
+			r.SecretOp.StringData["auth_token"] = res2.OperatorToken
+
+		} else if res1.State == "COULD_NOT_INITIALIZE" {
+			// TODO: Try to recover from this situation, maybe delete the system.
+			return util.NewPersistentError("SystemCouldNotInitialize",
+				"Something went wrong during system initialization")
+
+		} else if res1.State == "READY" {
+			// Trying to create token for admin so we could use it to create
+			// a token for the operator account
+			res3, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+				System:   r.Request.Name,
+				Role:     "admin",
+				Email:    r.SecretAdmin.StringData["email"],
+				Password: r.SecretAdmin.StringData["password"],
+			})
+			if err != nil {
+				return fmt.Errorf("cannot create an auth token for admin, error: %v", err)
+			}
+
+			r.NBClient.SetAuthToken(res3.Token)
+			res4, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+				System: r.Request.Name,
+				Role:   "operator",
+				Email:  options.OperatorAccountEmail,
+			})
+			if err != nil {
+				return fmt.Errorf("cannot create an auth token for operator, error: %v", err)
+			}
+			r.SecretOp.StringData["auth_token"] = res4.Token
 		}
+
+		// Remote noobaa case
 	} else {
 		// Set the operator secret from the join secret
 		r.SecretOp.StringData["auth_token"] = r.JoinSecret.StringData["auth_token"]
