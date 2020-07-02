@@ -303,6 +303,7 @@ type CreateAccountParams struct {
 	AllowBucketCreate bool                  `json:"allow_bucket_creation"`
 	AllowedBuckets    AccountAllowedBuckets `json:"allowed_buckets"`
 	DefaultPool       string                `json:"default_pool,omitempty"`
+	BucketClaimOwner  string                `json:"bucket_claim_owner,omitempty"`
 }
 
 // CreateAccountReply is the reply of account_api.create_account()
