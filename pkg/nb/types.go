@@ -212,6 +212,11 @@ type ReadPoolParams struct {
 	Name string `json:"name"`
 }
 
+// ReadySystemStatusReply is the reply to system_pai.get_system_status()
+type ReadySystemStatusReply struct {
+	State string `json:"state,omitempty"`
+}
+
 // ListAccountsReply is the reply to account_api.list_accounts()
 type ListAccountsReply struct {
 	Accounts []*AccountInfo `json:"accounts"`

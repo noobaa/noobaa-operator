@@ -10,6 +10,7 @@ type Client interface {
 
 	ReadAuthAPI() (ReadAuthReply, error)
 	ReadAccountAPI(ReadAccountParams) (AccountInfo, error)
+	ReadSystemStatusAPI() (ReadySystemStatusReply, error)
 	ReadSystemAPI() (SystemInfo, error)
 	ReadBucketAPI(ReadBucketParams) (BucketInfo, error)
 	ReadPoolAPI(ReadPoolParams) (PoolInfo, error)
@@ -62,6 +63,17 @@ func (c *RPCClient) ReadAccountAPI(params ReadAccountParams) (AccountInfo, error
 	res := &struct {
 		RPCMessage `json:",inline"`
 		Reply      AccountInfo `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
+}
+
+// ReadSystemStatusAPI calls system_api.get_system_status()
+func (c *RPCClient) ReadSystemStatusAPI() (ReadySystemStatusReply, error) {
+	req := &RPCMessage{API: "system_api", Method: "get_system_status"}
+	res := &struct {
+		RPCMessage `json:",inline"`
+		Reply      ReadySystemStatusReply `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
