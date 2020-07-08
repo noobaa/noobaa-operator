@@ -1751,14 +1751,13 @@ metadata:
 spec: {}
 `
 
-const Sha256_deploy_internal_ceph_objectstore_user_yaml = "9b60853f585d771e484854e34fc59adf56a6edb6acb1315eb2ea02b59d213755"
+const Sha256_deploy_internal_ceph_objectstore_user_yaml = "655f33a1e3053847a298294d67d7db647d26fd11d1df7e229af718a8308bbd8e"
 
 const File_deploy_internal_ceph_objectstore_user_yaml = `apiVersion: ceph.rook.io/v1
 kind: CephObjectStoreUser
 metadata:
   name: CEPH_OBJ_USER_NAME
 spec:
-  store: STORE_NAME
   displayName: my display name
 `
 
