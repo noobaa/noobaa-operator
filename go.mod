@@ -3,6 +3,7 @@ module github.com/noobaa/noobaa-operator/v2
 go 1.15
 
 require (
+	cloud.google.com/go/storage v1.3.0
 	github.com/Azure/azure-sdk-for-go v39.2.0+incompatible
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/Azure/go-autorest/autorest v0.9.4
@@ -31,6 +32,7 @@ require (
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/tools v0.0.0-20200915031644-64986481280e // indirect
+	google.golang.org/api v0.14.0
 	k8s.io/api v0.17.4
 	k8s.io/apiextensions-apiserver v0.17.4
 	k8s.io/apimachinery v0.17.4
