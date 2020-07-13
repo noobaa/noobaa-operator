@@ -805,6 +805,16 @@ func IsAzurePlatform() bool {
 	return isAzure
 }
 
+// IsGCPPlatform returns true if this cluster is running on GCP
+func IsGCPPlatform() bool {
+	nodesList := &corev1.NodeList{}
+	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+		Panic(fmt.Errorf("failed to list kubernetes nodes"))
+	}
+	isGCP := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "gce")
+	return isGCP
+}
+
 // IsIBMPlatform returns true if this cluster is running on IBM Cloud
 func IsIBMPlatform() bool {
 	nodesList := &corev1.NodeList{}

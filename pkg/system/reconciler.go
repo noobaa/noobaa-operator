@@ -78,6 +78,8 @@ type Reconciler struct {
 	AzureCloudCreds     *cloudcredsv1.CredentialsRequest
 	IBMCloudCreds       *cloudcredsv1.CredentialsRequest
 	AzureContainerCreds *corev1.Secret
+	GCPBucketCreds      *corev1.Secret
+	GCPCloudCreds       *cloudcredsv1.CredentialsRequest
 	DefaultBackingStore *nbv1.BackingStore
 	DefaultBucketClass  *nbv1.BucketClass
 	OBCStorageClass     *storagev1.StorageClass
@@ -123,8 +125,10 @@ func NewReconciler(
 		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretEndpoints:     util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AzureContainerCreds: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		GCPBucketCreds:      util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AWSCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		AzureCloudCreds:     util.KubeObject(bundle.File_deploy_internal_cloud_creds_azure_cr_yaml).(*cloudcredsv1.CredentialsRequest),
+		GCPCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_gcp_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		IBMCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
 		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
@@ -153,12 +157,15 @@ func NewReconciler(
 	r.SecretAdmin.Namespace = r.Request.Namespace
 	r.SecretEndpoints.Namespace = r.Request.Namespace
 	r.AzureContainerCreds.Namespace = r.Request.Namespace
+	r.GCPBucketCreds.Namespace = r.Request.Namespace
 	r.AWSCloudCreds.Namespace = r.Request.Namespace
 	r.AWSCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
-	r.IBMCloudCreds.Namespace = r.Request.Namespace
-	r.IBMCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
 	r.AzureCloudCreds.Namespace = r.Request.Namespace
 	r.AzureCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
+	r.GCPCloudCreds.Namespace = r.Request.Namespace
+	r.GCPCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
+	r.IBMCloudCreds.Namespace = r.Request.Namespace
+	r.IBMCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
 	r.DefaultBackingStore.Namespace = r.Request.Namespace
 	r.DefaultBucketClass.Namespace = r.Request.Namespace
 	r.PrometheusRule.Namespace = r.Request.Namespace
@@ -183,13 +190,16 @@ func NewReconciler(
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
 	r.SecretEndpoints.Name = r.Request.Name + "-endpoints"
-	r.AzureContainerCreds.Name = r.Request.Name + "-azure-container-creds"
 	r.AWSCloudCreds.Name = r.Request.Name + "-aws-cloud-creds"
 	r.AWSCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-aws-cloud-creds-secret"
-	r.IBMCloudCreds.Name = r.Request.Name + "-ibm-cloud-creds"
-	r.IBMCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-ibm-cloud-creds-secret"
+	r.AzureContainerCreds.Name = r.Request.Name + "-azure-container-creds"
 	r.AzureCloudCreds.Name = r.Request.Name + "-azure-cloud-creds"
 	r.AzureCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-azure-cloud-creds-secret"
+	r.GCPBucketCreds.Name = r.Request.Name + "-gcp-bucket-creds"
+	r.GCPCloudCreds.Name = r.Request.Name + "-gcp-cloud-creds"
+	r.GCPCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-gcp-cloud-creds-secret"
+	r.IBMCloudCreds.Name = r.Request.Name + "-ibm-cloud-creds"
+	r.IBMCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-ibm-cloud-creds-secret"
 	r.CephObjectstoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"
@@ -243,6 +253,8 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheckOptional(r.AWSCloudCreds)
 	util.KubeCheckOptional(r.AzureCloudCreds)
 	util.KubeCheckOptional(r.AzureContainerCreds)
+	util.KubeCheckOptional(r.GCPBucketCreds)
+	util.KubeCheckOptional(r.GCPCloudCreds)
 	util.KubeCheckOptional(r.PrometheusRule)
 	util.KubeCheckOptional(r.ServiceMonitorMgmt)
 	util.KubeCheckOptional(r.ServiceMonitorS3)

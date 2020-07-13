@@ -310,6 +310,9 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	if r.NooBaa.Spec.Tolerations != nil {
 		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
 	}
+	if r.NooBaa.Spec.Affinity != nil {
+		podSpec.Affinity = r.NooBaa.Spec.Affinity
+	}
 
 	if r.CoreApp.UID == "" {
 		// generate info event for the first creation of noobaa
@@ -345,6 +348,9 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	}
 	if util.IsAzurePlatform() {
 		return r.ReconcileAzureCredentials()
+	}
+	if util.IsGCPPlatform() {
+		return r.ReconcileGCPCredentials()
 	}
 	if util.IsIBMPlatform() {
 		return r.ReconcileIBMCredentials()
@@ -478,6 +484,27 @@ func (r *Reconciler) ReconcileAzureCredentials() error {
 		err = r.Client.Create(r.Ctx, r.AzureCloudCreds)
 		if err != nil {
 			r.Logger.Errorf("got error when trying to create credentials request for azure. %v", err)
+			return err
+		}
+		return nil
+	}
+	return err
+}
+
+// ReconcileGCPCredentials creates a CredentialsRequest resource if cloud credentials operator is available
+func (r *Reconciler) ReconcileGCPCredentials() error {
+	r.Logger.Info("Running on GCP. will create a CredentialsRequest resource")
+	err := r.Client.Get(r.Ctx, util.ObjectKey(r.GCPCloudCreds), r.GCPCloudCreds)
+	if err == nil || meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+		return nil
+	}
+	if errors.IsNotFound(err) {
+		// credential request does not exist. create one
+		r.Logger.Info("Creating CredentialsRequest resource")
+		r.Own(r.GCPCloudCreds)
+		err = r.Client.Create(r.Ctx, r.GCPCloudCreds)
+		if err != nil {
+			r.Logger.Errorf("got error when trying to create credentials request for GCP. %v", err)
 			return err
 		}
 		return nil
