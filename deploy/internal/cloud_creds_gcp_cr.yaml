@@ -1,0 +1,17 @@
+apiVersion: cloudcredential.openshift.io/v1
+kind: CredentialsRequest
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: CRED-REQ-NAME
+  namespace: CRED-REQ-NAMESPACE
+spec:
+  secretRef:
+    name: CRED-SECRET-NAME
+    namespace: CRED-SECRET-NAMESPACE
+  providerSpec:
+    apiVersion: cloudcredential.openshift.io/v1
+    kind: GCPProviderSpec
+    predefinedRoles:
+    - roles/storage.admin
+    skipServiceCheck: true
