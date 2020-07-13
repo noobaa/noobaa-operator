@@ -1,6 +1,7 @@
 package system
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/marstr/randname"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
@@ -442,6 +444,11 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		if err := r.prepareAzureBackingStore(); err != nil {
 			return err
 		}
+	} else if r.GCPCloudCreds.UID != "" {
+		log.Infof("CredentialsRequest %q created.  creating default backing store on GCP objectstore", r.GCPCloudCreds.Name)
+		if err := r.prepareGCPBackingStore(); err != nil {
+			return err
+		}
 	} else {
 		minutesSinceCreation := time.Since(r.NooBaa.CreationTimestamp.Time).Minutes()
 		if minutesSinceCreation < 2 {
@@ -594,6 +601,60 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		},
 	}
 
+	return nil
+}
+
+func (r *Reconciler) prepareGCPBackingStore() error {
+	// after we have cloud credential request, wait for credentials secret
+	cloudCredsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      r.GCPCloudCreds.Spec.SecretRef.Name,
+			Namespace: r.GCPCloudCreds.Spec.SecretRef.Namespace,
+		},
+	}
+
+	util.KubeCheck(cloudCredsSecret)
+	if cloudCredsSecret.UID == "" {
+		// TODO: we need to figure out why secret is not created, and react accordingly
+		// e.g. maybe we are running on AWS but our CredentialsRequest is for Azure
+		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.GCPCloudCreds.Spec.SecretRef.Name)
+		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.GCPCloudCreds.Spec.SecretRef.Name)
+	}
+	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", r.GCPCloudCreds.Spec.SecretRef.Name)
+	// create bucket in GCP
+	// TODO
+	projectID := cloudCredsSecret.StringData["project_id"]
+	ctx := context.Background()
+	gcpclient, err := storage.NewClient(ctx)
+	if err != nil {
+		r.Logger.Info(err)
+	}
+	var bucketName = strings.ToLower(randname.GenerateWithPrefix("noobaacontainer", 5))
+	if err := createGCPBucket(gcpclient, projectID, bucketName); err != nil {
+		r.Logger.Info(err)
+	}
+	// create backing store
+	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeGoogleCloudStorage
+	r.DefaultBackingStore.Spec.GoogleCloudStorage = &nbv1.GoogleCloudStorageSpec{
+		TargetBucket: bucketName,
+		Secret: corev1.SecretReference{
+			Name:      cloudCredsSecret.Name,
+			Namespace: cloudCredsSecret.Namespace,
+		},
+	}
+	return nil
+}
+
+func createGCPBucket(client *storage.Client, projectID, bucketName string) error {
+	// [START create_bucket]
+	ctx := context.Background()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+	if err := client.Bucket(bucketName).Create(ctx, projectID, nil); err != nil {
+		return err
+	}
+	// [END create_bucket]
 	return nil
 }
 

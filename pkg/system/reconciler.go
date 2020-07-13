@@ -76,6 +76,7 @@ type Reconciler struct {
 	AWSCloudCreds       *cloudcredsv1.CredentialsRequest
 	AzureCloudCreds     *cloudcredsv1.CredentialsRequest
 	AzureContainerCreds *corev1.Secret
+	GCPCloudCreds       *cloudcredsv1.CredentialsRequest
 	DefaultBackingStore *nbv1.BackingStore
 	DefaultBucketClass  *nbv1.BucketClass
 	OBCStorageClass     *storagev1.StorageClass
@@ -121,6 +122,7 @@ func NewReconciler(
 		AzureContainerCreds: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AWSCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		AzureCloudCreds:     util.KubeObject(bundle.File_deploy_internal_cloud_creds_azure_cr_yaml).(*cloudcredsv1.CredentialsRequest),
+		GCPCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_gcp_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
 		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
 		OBCStorageClass:     util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
@@ -150,6 +152,8 @@ func NewReconciler(
 	r.AWSCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
 	r.AzureCloudCreds.Namespace = r.Request.Namespace
 	r.AzureCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
+	r.GCPCloudCreds.Namespace = r.Request.Namespace
+	r.GCPCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
 	r.DefaultBackingStore.Namespace = r.Request.Namespace
 	r.DefaultBucketClass.Namespace = r.Request.Namespace
 	r.PrometheusRule.Namespace = r.Request.Namespace
@@ -177,6 +181,8 @@ func NewReconciler(
 	r.AWSCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-aws-cloud-creds-secret"
 	r.AzureCloudCreds.Name = r.Request.Name + "-azure-cloud-creds"
 	r.AzureCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-azure-cloud-creds-secret"
+	r.GCPCloudCreds.Name = r.Request.Name + "-gcp-cloud-creds"
+	r.GCPCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-gcp-cloud-creds-secret"
 	r.CephObjectstoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"
@@ -224,6 +230,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheckOptional(r.AWSCloudCreds)
 	util.KubeCheckOptional(r.AzureCloudCreds)
 	util.KubeCheckOptional(r.AzureContainerCreds)
+	util.KubeCheckOptional(r.GCPCloudCreds)
 	util.KubeCheckOptional(r.PrometheusRule)
 	util.KubeCheckOptional(r.ServiceMonitor)
 	util.KubeCheckOptional(r.RouteMgmt)

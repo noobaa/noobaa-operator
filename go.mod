@@ -3,6 +3,7 @@ module github.com/noobaa/noobaa-operator/v2
 go 1.13
 
 require (
+	cloud.google.com/go/storage v1.3.0
 	github.com/Azure/azure-sdk-for-go v39.2.0+incompatible
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/Azure/go-autorest/autorest v0.9.4

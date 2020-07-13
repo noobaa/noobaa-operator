@@ -1,0 +1,17 @@
+apiVersion: cloudcredential.openshift.io/v1
+kind: CredentialsRequest
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: openshift-ingress-gcp
+  namespace: openshift-cloud-credential-operator
+spec:
+  secretRef:
+    name: cloud-credentials
+    namespace: openshift-ingress-operator
+  providerSpec:
+    apiVersion: cloudcredential.openshift.io/v1
+    kind: GCPProviderSpec
+    predefinedRoles:
+    - roles/storage.admin
+    skipServiceCheck: true

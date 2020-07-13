@@ -1811,6 +1811,26 @@ spec:
     namespace: CRED-SECRET-NAMESPACE
 `
 
+const Sha256_deploy_internal_cloud_creds_gcp_cr_yaml = "de76f08169fe3cf2e35e0cb04765bd53e2598f8a35f105252b922799b2960d59"
+
+const File_deploy_internal_cloud_creds_gcp_cr_yaml = `apiVersion: cloudcredential.openshift.io/v1
+kind: CredentialsRequest
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: openshift-ingress-gcp
+  namespace: openshift-cloud-credential-operator
+spec:
+  secretRef:
+    name: cloud-credentials
+    namespace: openshift-ingress-operator
+  providerSpec:
+    apiVersion: cloudcredential.openshift.io/v1
+    kind: GCPProviderSpec
+    predefinedRoles:
+    - roles/storage.admin
+    skipServiceCheck: true`
+
 const Sha256_deploy_internal_configmap_empty_yaml = "6405c531c6522ecd54808f5cb531c1001b9ad01a73917427c523a92be44f348f"
 
 const File_deploy_internal_configmap_empty_yaml = `apiVersion: v1
