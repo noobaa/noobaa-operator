@@ -3241,7 +3241,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "3030f31026433e2737957a3f153739ce3d1a69cf11813d27b4fd95e7452ee3df"
+const Sha256_deploy_operator_yaml = "96d15bbdbd5ce7f8a38da8a1008ed10d8e40a19a5014c0e44c79365cb122347b"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3269,6 +3269,8 @@ spec:
           env:
             - name: OPERATOR_NAME
               value: noobaa-operator
+            - name: OPERATOR_DEPLOYMENT
+              value: cluster
             - name: POD_NAME
               valueFrom:
                 fieldRef:

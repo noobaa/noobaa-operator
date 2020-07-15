@@ -24,6 +24,8 @@ spec:
           env:
             - name: OPERATOR_NAME
               value: noobaa-operator
+            - name: OPERATOR_DEPLOYMENT
+              value: cluster
             - name: POD_NAME
               valueFrom:
                 fieldRef:
