@@ -478,7 +478,7 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 				log.Fatalf(`❌ Could not get StorageClass %q for system in namespace %q`,
 					sc.Name, options.Namespace)
 			}
-			if strings.HasSuffix(sc.Provisioner, "/obc") {
+			if strings.HasSuffix(sc.Provisioner, "/obc") || strings.HasSuffix(sc.Provisioner, "/bucket") {
 				log.Fatalf(`❌ Could not set StorageClass %q for system in namespace %q - as this class reserved for obc only`,
 					sc.Name, options.Namespace)
 			}
