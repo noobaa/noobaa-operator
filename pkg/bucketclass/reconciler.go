@@ -86,8 +86,13 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
-	if added := util.AddFinalizer(r.BucketClass, nbv1.Finalizer); added && !util.KubeUpdate(r.BucketClass) {
-		log.Errorf("BucketClass %q failed to add finalizer %q", r.BucketClass.Name, nbv1.Finalizer)
+	if util.EnsureCommonMetaFields(r.BucketClass, nbv1.Finalizer) {
+		if !util.KubeUpdate(r.BucketClass) {
+			log.Errorf("❌ BucketClass %q failed to add mandatory meta fields", r.BucketClass.Name)
+
+			res.RequeueAfter = 3 * time.Second
+			return res, nil
+		}
 	}
 
 	system.CheckSystem(r.NooBaa)
