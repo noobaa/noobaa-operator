@@ -149,8 +149,13 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
-	if added := util.AddFinalizer(r.BackingStore, nbv1.Finalizer); added && !util.KubeUpdate(r.BackingStore) {
-		log.Errorf("BackingStore %q failed to add finalizer %q", r.BackingStore.Name, nbv1.Finalizer)
+	if util.EnsureCommonMetaFields(r.BackingStore, nbv1.Finalizer) {
+		if !util.KubeUpdate(r.BackingStore) {
+			log.Errorf("❌ BackingStore %q failed to add mandatory meta fields", r.BackingStore.Name)
+
+			res.RequeueAfter = 3 * time.Second
+			return res, nil
+		}
 	}
 
 	system.CheckSystem(r.NooBaa)

@@ -245,8 +245,13 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return res, nil
 	}
 
-	if added := util.AddFinalizer(r.NooBaa, nbv1.GracefulFinalizer); added && !util.KubeUpdate(r.NooBaa) {
-		log.Errorf("NooBaa %q failed to add finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
+	if util.EnsureCommonMetaFields(r.NooBaa, nbv1.GracefulFinalizer) {
+		if !util.KubeUpdate(r.NooBaa) {
+			log.Errorf("❌ NooBaa %q failed to add mandatory meta fields", r.NooBaa.Name)
+
+			res.RequeueAfter = 3 * time.Second
+			return res, nil
+		}
 	}
 
 	if err := r.VerifyObjectBucketCleanup(); err != nil {
