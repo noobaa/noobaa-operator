@@ -339,16 +339,16 @@ func (r *Reconciler) ReconcileRGWCredentials() error {
 			r.CephObjectstoreUser.Spec.Store = storeName
 
 		} else {
-			r.Logger.Infof("did not find any ceph objectstore to use as backing store, assuming independent mode")
+			r.Logger.Info("did not find any ceph objectstore to use as backing store, assuming independent mode")
 		}
 
 	} else {
-		r.Logger.Infof("failed to list ceph objectstore to use as backing store, assuming independent mode")
+		r.Logger.Info("failed to list ceph objectstore to use as backing store, assuming independent mode")
 	}
 
 	if r.CephObjectstoreUser.Spec.Store == "" {
-		if r.NooBaa.Labels == nil || r.NooBaa.Labels["rgw-endpoint-base64"] == "" {
-			r.Logger.Warnf("did not find an rgw-endpoint-base64 label on the noobaa CR")
+		if r.NooBaa.Labels == nil || r.NooBaa.Labels["rgw-endpoint"] == "" {
+			r.Logger.Warn("did not find an rgw-endpoint label on the noobaa CR")
 			return nil
 		}
 	}

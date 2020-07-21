@@ -1068,3 +1068,27 @@ func ReflectEnvVariable(env *[]corev1.EnvVar, name string) {
 		}
 	}
 }
+
+// EnsureCommonMetaFields ensures that the resource has all mandatory meta fields
+func EnsureCommonMetaFields(object metav1.Object, finalizer string) bool {
+	updated := false
+
+	labels := object.GetLabels()
+	if labels == nil {
+		object.SetLabels(map[string]string{
+			"app": "noobaa",
+		})
+		updated = true
+
+	} else if labels["app"] != "noobaa" {
+		labels["app"] = "noobaa"
+		object.SetLabels(labels)
+		updated = true
+
+	}
+	if AddFinalizer(object, finalizer) {
+		updated = true
+
+	}
+	return updated
+}

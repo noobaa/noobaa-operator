@@ -1712,27 +1712,21 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = "507d6a8477b6c2073c91d85806dc79b953a5a6e0ac442c2fe337b8f5ce6eaadb"
+const Sha256_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = "84ca6f2a35a413e74a51375bd0ec31c33bb76a00de8e0ef8d02a7798e02ec460"
 
 const File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = `apiVersion: noobaa.io/v1alpha1
 kind: BackingStore
 metadata:
-  name: aws1
-  labels:
-    app: noobaa
-  finalizers:
-    - noobaa.io/finalizer
+  name: default
 spec:
 `
 
-const Sha256_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = "af1411669ca0b29bdb7836e9e1fc44a0ddb7d4a994266abbae793a7116f6499f"
+const Sha256_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = "d781b04f37c9f376a52c71a1c5abd6acf78fc825fe7f2058d2bb9892afbbd6df"
 
 const File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = `apiVersion: noobaa.io/v1alpha1
 kind: BucketClass
 metadata:
   name: default
-  labels:
-    app: noobaa
 spec:
   placementPolicy:
     tiers:
@@ -1740,25 +1734,22 @@ spec:
       - aws1
 `
 
-const Sha256_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml = "0e1f573b02ad8f9f1e4e8bed5fe47e4651040277e0accf1e30b1369745371483"
+const Sha256_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml = "498c2013757409432cfd98b21a5934bccf506f1af1b885241db327024aa450fd"
 
 const File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml = `apiVersion: noobaa.io/v1alpha1
 kind: NooBaa
 metadata:
   name: noobaa
-  labels:
-    app: noobaa
 spec: {}
 `
 
-const Sha256_deploy_internal_ceph_objectstore_user_yaml = "9b60853f585d771e484854e34fc59adf56a6edb6acb1315eb2ea02b59d213755"
+const Sha256_deploy_internal_ceph_objectstore_user_yaml = "655f33a1e3053847a298294d67d7db647d26fd11d1df7e229af718a8308bbd8e"
 
 const File_deploy_internal_ceph_objectstore_user_yaml = `apiVersion: ceph.rook.io/v1
 kind: CephObjectStoreUser
 metadata:
   name: CEPH_OBJ_USER_NAME
 spec:
-  store: STORE_NAME
   displayName: my display name
 `
 

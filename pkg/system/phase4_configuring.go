@@ -1,7 +1,6 @@
 package system
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net"
 	"net/url"
@@ -622,13 +621,10 @@ func (r *Reconciler) prepareCephBackingStore() error {
 	if r.CephObjectstoreUser.Spec.Store != "" {
 		endpoint = "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
 
-	} else if r.NooBaa.Labels != nil && r.NooBaa.Labels["rgw-endpoint-base64"] != "" {
-		decodedEndpoint, err := base64.StdEncoding.DecodeString(r.NooBaa.Labels["rgw-endpoint-base64"])
-		if err != nil {
-			r.Logger.Infof("Ceph RGW endpoint base64 address failed to be decoded. base64=%q", r.NooBaa.Labels["rgw-endpoint-base64"])
-			return nil
-		}
-		endpoint = fmt.Sprintf("http://%s", string(decodedEndpoint))
+	} else if r.NooBaa.Labels != nil && r.NooBaa.Labels["rgw-endpoint"] != "" {
+		raw := r.NooBaa.Labels["rgw-endpoint"]
+		i := strings.LastIndex(raw, "_")
+		endpoint = fmt.Sprintf("http://%s:%s", raw[:i], raw[i+1:])
 
 	} else {
 		return fmt.Errorf("Ceph RGW endpoint address is not available")

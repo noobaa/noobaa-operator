@@ -1,9 +1,5 @@
 apiVersion: noobaa.io/v1alpha1
 kind: BackingStore
 metadata:
-  name: aws1
-  labels:
-    app: noobaa
-  finalizers:
-    - noobaa.io/finalizer
+  name: default
 spec:
