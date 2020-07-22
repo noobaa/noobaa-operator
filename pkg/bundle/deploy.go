@@ -1721,7 +1721,7 @@ metadata:
 spec:
 `
 
-const Sha256_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = "d781b04f37c9f376a52c71a1c5abd6acf78fc825fe7f2058d2bb9892afbbd6df"
+const Sha256_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = "e18cf92f884bf22e2737df5682f7f9ac9978e97abc124fc49851c9f58d662012"
 
 const File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = `apiVersion: noobaa.io/v1alpha1
 kind: BucketClass
@@ -1730,8 +1730,7 @@ metadata:
 spec:
   placementPolicy:
     tiers:
-    - backingStores:
-      - aws1
+      - backingStores:
 `
 
 const Sha256_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml = "498c2013757409432cfd98b21a5934bccf506f1af1b885241db327024aa450fd"

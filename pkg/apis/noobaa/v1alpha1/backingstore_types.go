@@ -64,6 +64,10 @@ type BackingStoreSpec struct {
 	// +optional
 	AWSS3 *AWSS3Spec `json:"awsS3,omitempty"`
 
+	// NS specifies a backing store of type namespace
+	// +optional
+	NS *NSSpec `json:"ns,omitempty"`
+
 	// S3Compatible specifies a backing store of type s3-compatible
 	// +optional
 	S3Compatible *S3CompatibleSpec `json:"s3Compatible,omitempty"`
@@ -124,6 +128,9 @@ const (
 	// StoreTypeAWSS3 is used to connect to AWS S3
 	StoreTypeAWSS3 StoreType = "aws-s3"
 
+	// StoreTypeNS is used to connect to namespace resource
+	StoreTypeNS StoreType = "ns"
+
 	// StoreTypeS3Compatible is used to connect to S3 compatible storage
 	StoreTypeS3Compatible StoreType = "s3-compatible"
 
@@ -157,6 +164,27 @@ type AWSS3Spec struct {
 	// SSLDisabled allows to disable SSL and use plain http
 	// +optional
 	SSLDisabled bool `json:"sslDisabled,omitempty"`
+}
+
+// NSSpec specifies a backing store of type NS (namespace)
+type NSSpec struct {
+
+	// Service is an enum of supported services
+	Service StoreType `json:"service"`
+
+	// TargetBucket is the name of the target bucket
+	TargetBucket string `json:"targetBucket"`
+
+	// Secret refers to a secret that provides the credentials
+	// The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+	Secret corev1.SecretReference `json:"secret"`
+
+	// Endpoint is the S3 compatible endpoint: http(s)://host:port
+	Endpoint string `json:"endpoint"`
+
+	// SignatureVersion specifies the client signature version to use when signing requests.
+	// +optional
+	SignatureVersion S3SignatureVersion `json:"signatureVersion,omitempty"`
 }
 
 // S3CompatibleSpec specifies a backing store of type s3-compatible

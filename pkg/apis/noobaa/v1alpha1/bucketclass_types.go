@@ -58,7 +58,12 @@ type BucketClassList struct {
 type BucketClassSpec struct {
 
 	// PlacementPolicy specifies the placement policy for the bucket class
+	// +optional
 	PlacementPolicy PlacementPolicy `json:"placementPolicy"`
+
+	// NamespacePolicy specifies the namespace policy for the bucket class
+	// +optional
+	NamespacePolicy NamespacePolicy `json:"namespacePolicy"`
 }
 
 // BucketClassStatus defines the observed state of BucketClass
@@ -89,6 +94,30 @@ type PlacementPolicy struct {
 	// The model is a waterfall - push to first tier by default,
 	// and when no more space spill "cold" storage to next tier.
 	Tiers []Tier `json:"tiers"`
+}
+
+// NamespacePolicy specifies the namespace policy for the bucket class
+type NamespacePolicy struct {
+
+	// ReadResources is an ordered list of read resources names to use
+	ReadResources []string `json:"readResources"`
+
+	// WriteResource is the write resource name to use
+	WriteResource string `json:"writeResource"`
+
+	// Cache is the cache specification for the ns policy
+	// +optional
+	Cache CacheSpec `json:"cache,omitempty"`
+}
+
+// CacheSpec specifies the cache specifications for the bucket class
+type CacheSpec struct {
+
+	// TTL specifies the cache ttl
+	TTL int `json:"ttl"`
+
+	// Prefix is prefix of the future cached data
+	Prefix string `json:"prefix,omitempty"`
 }
 
 // Tier specifies a storage tier

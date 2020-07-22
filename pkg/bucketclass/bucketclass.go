@@ -43,6 +43,14 @@ func CmdCreate() *cobra.Command {
 		Short: "Create bucket class",
 		Run:   RunCreate,
 	}
+	cmd.Flags().String("ns-write-resource", "",
+		"Set the namespace write resource")
+	cmd.Flags().StringSlice("ns-read-resources", nil,
+		"Set the namespace read resources")
+	cmd.Flags().Uint32("cache-ttl", 60000,
+		"Set the namespace cache ttl")
+	cmd.Flags().String("cache-prefix", "",
+		"Set the namespace cache prefix")
 	cmd.Flags().String("placement", "",
 		"Set first tier placement policy - Mirror | Spread | \"\" (empty defaults to single backing store)")
 	cmd.Flags().StringSlice("backingstores", nil,
@@ -106,9 +114,14 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Must provide valid placement: Mirror | Spread | ""`)
 	}
 	backingStores, _ := cmd.Flags().GetStringSlice("backingstores")
-	if len(backingStores) == 0 {
+	if placement != "" && len(backingStores) == 0 {
 		log.Fatalf(`❌ Must provide at least one backing store`)
 	}
+
+	writeResource, _ := cmd.Flags().GetString("ns-write-resource")
+	readResources, _ := cmd.Flags().GetStringSlice("ns-read-resources")
+	cacheTTL, _ := cmd.Flags().GetUint32("cache-ttl")
+	cachePrefix, _ := cmd.Flags().GetString("cache-prefix")
 
 	// Check and get system
 	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
@@ -120,8 +133,16 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	bucketClass := o.(*nbv1.BucketClass)
 	bucketClass.Name = name
 	bucketClass.Namespace = options.Namespace
-	bucketClass.Spec.PlacementPolicy.Tiers[0].Placement = nbv1.TierPlacement(placement)
-	bucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores = backingStores
+	if placement != "" && len(backingStores) > 0 {
+		log.Infof(`creating backingstore with placement and tiers %s in namespace %+v`, placement, backingStores)
+		bucketClass.Spec.PlacementPolicy.Tiers[0].Placement = nbv1.TierPlacement(placement)
+		bucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores = backingStores
+	}
+
+	bucketClass.Spec.NamespacePolicy.WriteResource = writeResource
+	bucketClass.Spec.NamespacePolicy.ReadResources = readResources
+	bucketClass.Spec.NamespacePolicy.Cache.TTL = int(cacheTTL)
+	bucketClass.Spec.NamespacePolicy.Cache.Prefix = cachePrefix
 
 	if !util.KubeCheck(sys) {
 		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
@@ -134,6 +155,22 @@ func RunCreate(cmd *cobra.Command, args []string) {
 
 	// check that backing stores exists
 	for _, name := range backingStores {
+		backStore := &nbv1.BackingStore{
+			TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: options.Namespace,
+			},
+		}
+		if !util.KubeCheck(backStore) {
+			log.Fatalf(`❌ Could not get BackingStore %q in namespace %q`,
+				backStore.Name, backStore.Namespace)
+		}
+	}
+
+	nsResources := append(readResources, writeResource)
+	// check that backing stores exists
+	for _, name := range nsResources {
 		backStore := &nbv1.BackingStore{
 			TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
 			ObjectMeta: metav1.ObjectMeta{

@@ -44,6 +44,35 @@ spec:
         spec:
           description: Specification of the desired behavior of the noobaa BucketClass.
           properties:
+            namespacePolicy:
+              description: NamespacePolicy specifies the namespace policy for the
+                bucket class
+              properties:
+                cache:
+                  description: Cache is the cache specification for the ns policy
+                  properties:
+                    prefix:
+                      description: Prefix is prefix of the future cached data
+                      type: string
+                    ttl:
+                      description: TTL specifies the cache ttl
+                      type: integer
+                  required:
+                  - ttl
+                  type: object
+                readResources:
+                  description: ReadResources is an ordered list of read resources
+                    names to use
+                  items:
+                    type: string
+                  type: array
+                writeResource:
+                  description: WriteResource is the write resource name to use
+                  type: string
+              required:
+              - readResources
+              - writeResource
+              type: object
             placementPolicy:
               description: PlacementPolicy specifies the placement policy for the
                 bucket class
@@ -73,8 +102,6 @@ spec:
               required:
               - tiers
               type: object
-          required:
-          - placementPolicy
           type: object
         status:
           description: Most recently observed status of the noobaa BackingStore.
