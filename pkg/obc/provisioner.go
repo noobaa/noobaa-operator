@@ -305,45 +305,61 @@ func (r *BucketRequest) CreateBucket() error {
 	if r.BucketClass == nil {
 		return fmt.Errorf("BucketClass not loaded %#v", r)
 	}
-
-	tierName := fmt.Sprintf("%s.%x", r.BucketName, time.Now().Unix())
-	tiers := []nb.TierItem{}
-
-	for i := range r.BucketClass.Spec.PlacementPolicy.Tiers {
-		tier := &r.BucketClass.Spec.PlacementPolicy.Tiers[i]
-		name := fmt.Sprintf("%s.%d", tierName, i)
-		tiers = append(tiers, nb.TierItem{Order: int64(i), Tier: name})
-		// we assume either mirror or spread but no mix and the bucket class controller rejects mixed classes.
-		placement := "SPREAD"
-		if tier.Placement == nbv1.TierPlacementMirror {
-			placement = "MIRROR"
-		}
-		err := r.SysClient.NBClient.CreateTierAPI(nb.CreateTierParams{
-			Name:          name,
-			AttachedPools: tier.BackingStores,
-			DataPlacement: placement,
-		})
-		if err != nil {
-			return fmt.Errorf("Failed to create tier %q with error: %v", name, err)
-		}
-	}
-
-	err = r.SysClient.NBClient.CreateTieringPolicyAPI(nb.TieringPolicyInfo{
-		Name:  tierName,
-		Tiers: tiers,
-	})
-	if err != nil {
-		return fmt.Errorf("Failed to create tier %q with error: %v", tierName, err)
-	}
-
-	err = r.SysClient.NBClient.CreateBucketAPI(nb.CreateBucketParams{
-		Name:    r.BucketName,
-		Tiering: tierName,
+	createBucketParams := &nb.CreateBucketParams{
+		Name: r.BucketName,
 		BucketClaim: &nb.BucketClaimInfo{
 			BucketClass: r.BucketClass.Name,
 			Namespace:   r.OBC.Namespace,
 		},
-	})
+	}
+
+	// create NS bucket
+	if r.BucketClass.Spec.NamespacePolicy.WriteResource != "" {
+		writeResource := r.BucketClass.Spec.NamespacePolicy.WriteResource
+		readResources := r.BucketClass.Spec.NamespacePolicy.ReadResources
+		cacheTTL := r.BucketClass.Spec.NamespacePolicy.Cache.TTL
+		cachePrefix := r.BucketClass.Spec.NamespacePolicy.Cache.Prefix
+
+		createBucketParams.Namespace = &nb.NamespaceBucketInfo{
+			WriteResource: writeResource,
+			ReadResources: readResources,
+			Caching:       nb.CacheSpec{TTLMs: cacheTTL, Prefix: cachePrefix, Fetched: false},
+		}
+	}
+
+	if r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores != nil && len(r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores) > 0 {
+		tierName := fmt.Sprintf("%s.%x", r.BucketName, time.Now().Unix())
+		tiers := []nb.TierItem{}
+
+		for i := range r.BucketClass.Spec.PlacementPolicy.Tiers {
+			tier := &r.BucketClass.Spec.PlacementPolicy.Tiers[i]
+			name := fmt.Sprintf("%s.%d", tierName, i)
+			tiers = append(tiers, nb.TierItem{Order: int64(i), Tier: name})
+			// we assume either mirror or spread but no mix and the bucket class controller rejects mixed classes.
+			placement := "SPREAD"
+			if tier.Placement == nbv1.TierPlacementMirror {
+				placement = "MIRROR"
+			}
+			err := r.SysClient.NBClient.CreateTierAPI(nb.CreateTierParams{
+				Name:          name,
+				AttachedPools: tier.BackingStores,
+				DataPlacement: placement,
+			})
+			if err != nil {
+				return fmt.Errorf("Failed to create tier %q with error: %v", name, err)
+			}
+		}
+		err = r.SysClient.NBClient.CreateTieringPolicyAPI(nb.TieringPolicyInfo{
+			Name:  tierName,
+			Tiers: tiers,
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to create tier %q with error: %v", tierName, err)
+		}
+		createBucketParams.Tiering = tierName
+	}
+	err = r.SysClient.NBClient.CreateBucketAPI(*createBucketParams)
+
 	if err != nil {
 		if nbErr, ok := err.(*nb.RPCError); ok {
 			if nbErr.RPCCode == "BUCKET_ALREADY_EXISTS" {
@@ -363,7 +379,10 @@ func (r *BucketRequest) CreateBucket() error {
 func (r *BucketRequest) CreateAccount() error {
 
 	log := r.Provisioner.Logger
-	defaultPool := r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores[0]
+	var defaultPool string
+	if r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores != nil && len(r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores) > 0 {
+		defaultPool = r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores[0]
+	}
 	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{
 		Name:              r.AccountName,
 		Email:             r.AccountName,

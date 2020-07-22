@@ -83,11 +83,13 @@ type Reconciler struct {
 	ExternalConnectionInfo *nb.ExternalConnectionInfo
 	PoolInfo               *nb.PoolInfo
 	HostsInfo              *[]nb.HostInfo
+	NamespaceResourceInfo  *nb.NamespaceResourceInfo
 
-	AddExternalConnectionParams *nb.AddExternalConnectionParams
-	CreateCloudPoolParams       *nb.CreateCloudPoolParams
-	CreateHostsPoolParams       *nb.CreateHostsPoolParams
-	UpdateHostsPoolParams       *nb.UpdateHostsPoolParams
+	AddExternalConnectionParams   *nb.AddExternalConnectionParams
+	CreateCloudPoolParams         *nb.CreateCloudPoolParams
+	CreateHostsPoolParams         *nb.CreateHostsPoolParams
+	UpdateHostsPoolParams         *nb.UpdateHostsPoolParams
+	CreateNamespaceResourceParams *nb.CreateNamespaceResourceParams
 }
 
 // Own sets the object owner references to the backingstore
@@ -474,15 +476,26 @@ func (r *Reconciler) ReadSystemInfo() error {
 	}
 	r.SystemInfo = &systemInfo
 
-	// Check if pool exists
-	for i := range r.SystemInfo.Pools {
-		p := &r.SystemInfo.Pools[i]
-		if p.Name == r.BackingStore.Name {
-			r.PoolInfo = p
-			break
+	if r.BackingStore.Spec.Type == nbv1.StoreTypeNS {
+		// Check if ns resource exists
+		for i := range r.SystemInfo.NamespaceResources {
+			p := &r.SystemInfo.NamespaceResources[i]
+			if p.Name == r.BackingStore.Name {
+				r.NamespaceResourceInfo = p
+				break
+			}
+		}
+	} else {
+		// Check if pool exists
+		for i := range r.SystemInfo.Pools {
+			p := &r.SystemInfo.Pools[i]
+			if p.Name == r.BackingStore.Name {
+				r.PoolInfo = p
+				break
+			}
 		}
 	}
-
+	namespaceResource := r.NamespaceResourceInfo
 	pool := r.PoolInfo
 	if r.BackingStore.Spec.Type == nbv1.StoreTypePVPool {
 		if pool != nil && pool.ResourceType != "HOSTS" {
@@ -587,16 +600,26 @@ func (r *Reconciler) ReadSystemInfo() error {
 
 	r.AddExternalConnectionParams = conn
 
-	r.CreateCloudPoolParams = &nb.CreateCloudPoolParams{
-		Name:         r.BackingStore.Name,
-		Connection:   conn.Name,
-		TargetBucket: GetBackingStoreTargetBucket(r.BackingStore),
-		Backingstore: &nb.BackingStoreInfo{
-			Name:      r.BackingStore.Name,
-			Namespace: r.NooBaa.Namespace,
-		},
+	if r.BackingStore.Spec.Type == nbv1.StoreTypeNS {
+		if namespaceResource == nil {
+			r.CreateNamespaceResourceParams = &nb.CreateNamespaceResourceParams{
+				Name:         r.BackingStore.Name,
+				Connection:   conn.Name,
+				TargetBucket: GetBackingStoreTargetBucket(r.BackingStore),
+				// TODO: need to add backingstore info as in cloudPoolParams
+			}
+		}
+	} else {
+		r.CreateCloudPoolParams = &nb.CreateCloudPoolParams{
+			Name:         r.BackingStore.Name,
+			Connection:   conn.Name,
+			TargetBucket: GetBackingStoreTargetBucket(r.BackingStore),
+			Backingstore: &nb.BackingStoreInfo{
+				Name:      r.BackingStore.Name,
+				Namespace: r.NooBaa.Namespace,
+			},
+		}
 	}
-
 	return nil
 }
 
@@ -607,133 +630,144 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 	conn := &nb.AddExternalConnectionParams{
 		Name: r.BackingStore.Name,
 	}
-
+	var err error
 	r.fixAlternateKeysNames()
 
 	switch r.BackingStore.Spec.Type {
 
 	case nbv1.StoreTypeAWSS3:
-		conn.EndpointType = nb.EndpointTypeAws
-		conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
-		conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
-		awsS3 := r.BackingStore.Spec.AWSS3
-		u := url.URL{
-			Scheme: "https",
-			Host:   "s3.amazonaws.com",
+		conn = r.GetAWSConnection(conn)
+		// conn.EndpointType = nb.EndpointTypeAws
+		// conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
+		// conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+		// awsS3 := r.BackingStore.Spec.AWSS3
+		// u := url.URL{
+		// 	Scheme: "https",
+		// 	Host:   "s3.amazonaws.com",
+		// }
+		// if awsS3.SSLDisabled {
+		// 	u.Scheme = "http"
+		// }
+		// if awsS3.Region != "" {
+		// 	u.Host = fmt.Sprintf("s3.%s.amazonaws.com", awsS3.Region)
+		// }
+		// conn.Endpoint = u.String()
+	case nbv1.StoreTypeNS:
+		if conn, err = r.GetNSResourceConnection(conn); err != nil {
+			return nil, err
 		}
-		if awsS3.SSLDisabled {
-			u.Scheme = "http"
-		}
-		if awsS3.Region != "" {
-			u.Host = fmt.Sprintf("s3.%s.amazonaws.com", awsS3.Region)
-		}
-		conn.Endpoint = u.String()
-
 	case nbv1.StoreTypeS3Compatible:
-		conn.EndpointType = nb.EndpointTypeS3Compat
-		conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
-		conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
-		s3Compatible := r.BackingStore.Spec.S3Compatible
-		if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV4 {
-			conn.AuthMethod = "AWS_V4"
-		} else if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV2 {
-			conn.AuthMethod = "AWS_V2"
-		} else if s3Compatible.SignatureVersion != "" {
-			return nil, util.NewPersistentError("InvalidSignatureVersion",
-				fmt.Sprintf("Invalid s3 signature version %q for backing store %q",
-					s3Compatible.SignatureVersion, r.BackingStore.Name))
+		if conn, err = r.GetS3CompatibleConnection(conn); err != nil {
+			return nil, err
 		}
-		if s3Compatible.Endpoint == "" {
-			u := url.URL{
-				Scheme: "https",
-				Host:   fmt.Sprintf("127.0.0.1:6443"),
-			}
-			// if s3Compatible.SSLDisabled {
-			// 	u.Scheme = "http"
-			// 	u.Host = fmt.Sprintf("127.0.0.1:6001")
-			// }
-			conn.Endpoint = u.String()
-		} else {
-			match, err := regexp.MatchString(`^\w+://`, s3Compatible.Endpoint)
-			if err != nil {
-				return nil, util.NewPersistentError("InvalidEndpoint",
-					fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
-			}
-			if !match {
-				s3Compatible.Endpoint = "https://" + s3Compatible.Endpoint
-				// if s3Options.SSLDisabled {
-				// 	u.Scheme = "http"
-				// }
-			}
-			u, err := url.Parse(s3Compatible.Endpoint)
-			if err != nil {
-				return nil, util.NewPersistentError("InvalidEndpoint",
-					fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
-			}
-			if u.Scheme == "" {
-				u.Scheme = "https"
-				// if s3Options.SSLDisabled {
-				// 	u.Scheme = "http"
-				// }
-			}
-			conn.Endpoint = u.String()
-		}
+		// conn.EndpointType = nb.EndpointTypeS3Compat
+		// conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
+		// conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+		// s3Compatible := r.BackingStore.Spec.S3Compatible
+		// if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV4 {
+		// 	conn.AuthMethod = "AWS_V4"
+		// } else if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV2 {
+		// 	conn.AuthMethod = "AWS_V2"
+		// } else if s3Compatible.SignatureVersion != "" {
+		// 	return nil, util.NewPersistentError("InvalidSignatureVersion",
+		// 		fmt.Sprintf("Invalid s3 signature version %q for backing store %q",
+		// 			s3Compatible.SignatureVersion, r.BackingStore.Name))
+		// }
+		// if s3Compatible.Endpoint == "" {
+		// 	u := url.URL{
+		// 		Scheme: "https",
+		// 		Host:   fmt.Sprintf("127.0.0.1:6443"),
+		// 	}
+		// 	// if s3Compatible.SSLDisabled {
+		// 	// 	u.Scheme = "http"
+		// 	// 	u.Host = fmt.Sprintf("127.0.0.1:6001")
+		// 	// }
+		// 	conn.Endpoint = u.String()
+		// } else {
+		// 	match, err := regexp.MatchString(`^\w+://`, s3Compatible.Endpoint)
+		// 	if err != nil {
+		// 		return nil, util.NewPersistentError("InvalidEndpoint",
+		// 			fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
+		// 	}
+		// 	if !match {
+		// 		s3Compatible.Endpoint = "https://" + s3Compatible.Endpoint
+		// 		// if s3Options.SSLDisabled {
+		// 		// 	u.Scheme = "http"
+		// 		// }
+		// 	}
+		// 	u, err := url.Parse(s3Compatible.Endpoint)
+		// 	if err != nil {
+		// 		return nil, util.NewPersistentError("InvalidEndpoint",
+		// 			fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
+		// 	}
+		// 	if u.Scheme == "" {
+		// 		u.Scheme = "https"
+		// 		// if s3Options.SSLDisabled {
+		// 		// 	u.Scheme = "http"
+		// 		// }
+		// 	}
+		// 	conn.Endpoint = u.String()
+		//}
 
 	case nbv1.StoreTypeIBMCos:
-		conn.EndpointType = nb.EndpointTypeIBMCos
-		conn.Identity = r.Secret.StringData["IBM_COS_ACCESS_KEY_ID"]
-		conn.Secret = r.Secret.StringData["IBM_COS_SECRET_ACCESS_KEY"]
-		IBMCos := r.BackingStore.Spec.IBMCos
-		if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV4 {
-			conn.AuthMethod = "AWS_V4"
-		} else if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV2 {
-			conn.AuthMethod = "AWS_V2"
-		} else if IBMCos.SignatureVersion != "" {
-			return nil, util.NewPersistentError("InvalidSignatureVersion",
-				fmt.Sprintf("Invalid s3 signature version %q for backing store %q",
-					IBMCos.SignatureVersion, r.BackingStore.Name))
+		if conn, err = r.GetIBMCosConnection(conn); err != nil {
+			return nil, err
 		}
-		if IBMCos.Endpoint == "" {
-			u := url.URL{
-				Scheme: "https",
-				Host:   fmt.Sprintf("127.0.0.1:6443"),
-			}
-			// if IBMCos.SSLDisabled {
-			// 	u.Scheme = "http"
-			// 	u.Host = fmt.Sprintf("127.0.0.1:6001")
-			// }
-			conn.Endpoint = u.String()
-		} else {
-			match, err := regexp.MatchString(`^\w+://`, IBMCos.Endpoint)
-			if err != nil {
-				return nil, util.NewPersistentError("InvalidEndpoint",
-					fmt.Sprintf("Invalid endpoint url %q: %v", IBMCos.Endpoint, err))
-			}
-			if !match {
-				IBMCos.Endpoint = "https://" + IBMCos.Endpoint
-				// if s3Options.SSLDisabled {
-				// 	u.Scheme = "http"
-				// }
-			}
-			u, err := url.Parse(IBMCos.Endpoint)
-			if err != nil {
-				return nil, util.NewPersistentError("InvalidEndpoint",
-					fmt.Sprintf("Invalid endpoint url %q: %v", IBMCos.Endpoint, err))
-			}
-			if u.Scheme == "" {
-				u.Scheme = "https"
-				// if s3Options.SSLDisabled {
-				// 	u.Scheme = "http"
-				// }
-			}
-			conn.Endpoint = u.String()
-		}
+		// conn.EndpointType = nb.EndpointTypeIBMCos
+		// conn.Identity = r.Secret.StringData["IBM_COS_ACCESS_KEY_ID"]
+		// conn.Secret = r.Secret.StringData["IBM_COS_SECRET_ACCESS_KEY"]
+		// IBMCos := r.BackingStore.Spec.IBMCos
+		// if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV4 {
+		// 	conn.AuthMethod = "AWS_V4"
+		// } else if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV2 {
+		// 	conn.AuthMethod = "AWS_V2"
+		// } else if IBMCos.SignatureVersion != "" {
+		// 	return nil, util.NewPersistentError("InvalidSignatureVersion",
+		// 		fmt.Sprintf("Invalid s3 signature version %q for backing store %q",
+		// 			IBMCos.SignatureVersion, r.BackingStore.Name))
+		// }
+		// if IBMCos.Endpoint == "" {
+		// 	u := url.URL{
+		// 		Scheme: "https",
+		// 		Host:   fmt.Sprintf("127.0.0.1:6443"),
+		// 	}
+		// 	// if IBMCos.SSLDisabled {
+		// 	// 	u.Scheme = "http"
+		// 	// 	u.Host = fmt.Sprintf("127.0.0.1:6001")
+		// 	// }
+		// 	conn.Endpoint = u.String()
+		// } else {
+		// 	match, err := regexp.MatchString(`^\w+://`, IBMCos.Endpoint)
+		// 	if err != nil {
+		// 		return nil, util.NewPersistentError("InvalidEndpoint",
+		// 			fmt.Sprintf("Invalid endpoint url %q: %v", IBMCos.Endpoint, err))
+		// 	}
+		// 	if !match {
+		// 		IBMCos.Endpoint = "https://" + IBMCos.Endpoint
+		// 		// if s3Options.SSLDisabled {
+		// 		// 	u.Scheme = "http"
+		// 		// }
+		// 	}
+		// 	u, err := url.Parse(IBMCos.Endpoint)
+		// 	if err != nil {
+		// 		return nil, util.NewPersistentError("InvalidEndpoint",
+		// 			fmt.Sprintf("Invalid endpoint url %q: %v", IBMCos.Endpoint, err))
+		// 	}
+		// 	if u.Scheme == "" {
+		// 		u.Scheme = "https"
+		// 		// if s3Options.SSLDisabled {
+		// 		// 	u.Scheme = "http"
+		// 		// }
+		// 	}
+		// 	conn.Endpoint = u.String()
+		// }
 
 	case nbv1.StoreTypeAzureBlob:
-		conn.EndpointType = nb.EndpointTypeAzure
-		conn.Endpoint = "https://blob.core.windows.net"
-		conn.Identity = r.Secret.StringData["AccountName"]
-		conn.Secret = r.Secret.StringData["AccountKey"]
+		conn = r.GetAzureBlobConnection(conn)
+		// conn.EndpointType = nb.EndpointTypeAzure
+		// conn.Endpoint = "https://blob.core.windows.net"
+		// conn.Identity = r.Secret.StringData["AccountName"]
+		// conn.Secret = r.Secret.StringData["AccountKey"]
 
 	case nbv1.StoreTypeGoogleCloudStorage:
 		conn.EndpointType = nb.EndpointTypeGoogle
@@ -897,6 +931,13 @@ func (r *Reconciler) ReconcilePool() error {
 			return err
 		}
 		poolName = r.CreateCloudPoolParams.Name
+	}
+
+	if r.CreateNamespaceResourceParams != nil {
+		err := r.NBClient.CreateNamespaceResourceAPI(*r.CreateNamespaceResourceParams)
+		if err != nil {
+			return err
+		}
 	}
 
 	if poolName != "" {
@@ -1125,4 +1166,230 @@ func (r *Reconciler) upgradeBackingStore(sts *appsv1.StatefulSet) error {
 		}
 	}
 	return nil
+}
+
+// GetAWSConnection translates the AWS S3 backing store spec and secret,
+// to noobaa api structures to be used for creating/updating external connetion and pool
+func (r *Reconciler) GetAWSConnection(conn *nb.AddExternalConnectionParams) *nb.AddExternalConnectionParams {
+
+	conn.EndpointType = nb.EndpointTypeAws
+	conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
+	conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+
+	u := url.URL{
+		Scheme: "https",
+		Host:   "s3.amazonaws.com",
+	}
+	awsS3 := r.BackingStore.Spec.AWSS3
+	if awsS3 != nil {
+		if awsS3.SSLDisabled {
+			u.Scheme = "http"
+		}
+		if awsS3.Region != "" {
+			u.Host = fmt.Sprintf("s3.%s.amazonaws.com", awsS3.Region)
+		}
+	}
+	conn.Endpoint = u.String()
+	r.Logger.Infof("GET_AWS_CONN:  %+v %s %s", conn, r.Secret.StringData["AWS_ACCESS_KEY_ID"], r.Secret.StringData["AWS_SECRET_ACCESS_KEY"])
+
+	return conn
+}
+
+// GetS3CompatibleConnection translates the  backing store spec and secret,
+// to noobaa api structures to be used for creating/updating external connetion and pool
+func (r *Reconciler) GetS3CompatibleConnection(conn *nb.AddExternalConnectionParams) (*nb.AddExternalConnectionParams, error) {
+
+	conn.EndpointType = nb.EndpointTypeS3Compat
+	conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
+	conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+	s3Compatible := r.BackingStore.Spec.S3Compatible
+	if s3Compatible == nil {
+		s3Compatible := r.BackingStore.Spec.NS
+		if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV4 {
+			conn.AuthMethod = "AWS_V4"
+		} else if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV2 {
+			conn.AuthMethod = "AWS_V2"
+		} else if s3Compatible.SignatureVersion != "" {
+			return nil, util.NewPersistentError("InvalidSignatureVersion",
+				fmt.Sprintf("Invalid s3 signature version %q for backing store %q",
+					s3Compatible.SignatureVersion, r.BackingStore.Name))
+		}
+		if s3Compatible.Endpoint == "" {
+			u := url.URL{
+				Scheme: "https",
+				Host:   fmt.Sprintf("127.0.0.1:6443"),
+			}
+			// if s3Compatible.SSLDisabled {
+			// 	u.Scheme = "http"
+			// 	u.Host = fmt.Sprintf("127.0.0.1:6001")
+			// }
+			conn.Endpoint = u.String()
+		} else {
+			match, err := regexp.MatchString(`^\w+://`, s3Compatible.Endpoint)
+			if err != nil {
+				return nil, util.NewPersistentError("InvalidEndpoint",
+					fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
+			}
+			if !match {
+				s3Compatible.Endpoint = "https://" + s3Compatible.Endpoint
+				// if s3Options.SSLDisabled {
+				// 	u.Scheme = "http"
+				// }
+			}
+			u, err := url.Parse(s3Compatible.Endpoint)
+			if err != nil {
+				return nil, util.NewPersistentError("InvalidEndpoint",
+					fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
+			}
+			if u.Scheme == "" {
+				u.Scheme = "https"
+				// if s3Options.SSLDisabled {
+				// 	u.Scheme = "http"
+				// }
+			}
+			conn.Endpoint = u.String()
+		}
+		return conn, nil
+	}
+	if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV4 {
+		conn.AuthMethod = "AWS_V4"
+	} else if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV2 {
+		conn.AuthMethod = "AWS_V2"
+	} else if s3Compatible.SignatureVersion != "" {
+		return nil, util.NewPersistentError("InvalidSignatureVersion",
+			fmt.Sprintf("Invalid s3 signature version %q for backing store %q",
+				s3Compatible.SignatureVersion, r.BackingStore.Name))
+	}
+	if s3Compatible.Endpoint == "" {
+		u := url.URL{
+			Scheme: "https",
+			Host:   fmt.Sprintf("127.0.0.1:6443"),
+		}
+		// if s3Compatible.SSLDisabled {
+		// 	u.Scheme = "http"
+		// 	u.Host = fmt.Sprintf("127.0.0.1:6001")
+		// }
+		conn.Endpoint = u.String()
+	} else {
+		match, err := regexp.MatchString(`^\w+://`, s3Compatible.Endpoint)
+		if err != nil {
+			return nil, util.NewPersistentError("InvalidEndpoint",
+				fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
+		}
+		if !match {
+			s3Compatible.Endpoint = "https://" + s3Compatible.Endpoint
+			// if s3Options.SSLDisabled {
+			// 	u.Scheme = "http"
+			// }
+		}
+		u, err := url.Parse(s3Compatible.Endpoint)
+		if err != nil {
+			return nil, util.NewPersistentError("InvalidEndpoint",
+				fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
+		}
+		if u.Scheme == "" {
+			u.Scheme = "https"
+			// if s3Options.SSLDisabled {
+			// 	u.Scheme = "http"
+			// }
+		}
+		conn.Endpoint = u.String()
+	}
+	return conn, nil
+}
+
+// GetIBMCosConnection translates the IBM cos backing store spec and secret,
+// to noobaa api structures to be used for creating/updating external connetion and pool
+func (r *Reconciler) GetIBMCosConnection(conn *nb.AddExternalConnectionParams) (*nb.AddExternalConnectionParams, error) {
+	conn.EndpointType = nb.EndpointTypeIBMCos
+	conn.Identity = r.Secret.StringData["IBM_COS_ACCESS_KEY_ID"]
+	conn.Secret = r.Secret.StringData["IBM_COS_SECRET_ACCESS_KEY"]
+	IBMCos := r.BackingStore.Spec.IBMCos
+	if IBMCos != nil {
+		if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV4 {
+			conn.AuthMethod = "AWS_V4"
+		} else if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV2 {
+			conn.AuthMethod = "AWS_V2"
+		} else if IBMCos.SignatureVersion != "" {
+			return nil, util.NewPersistentError("InvalidSignatureVersion",
+				fmt.Sprintf("Invalid s3 signature version %q for backing store %q",
+					IBMCos.SignatureVersion, r.BackingStore.Name))
+		}
+		if IBMCos.Endpoint == "" {
+			u := url.URL{
+				Scheme: "https",
+				Host:   fmt.Sprintf("127.0.0.1:6443"),
+			}
+			// if IBMCos.SSLDisabled {
+			// 	u.Scheme = "http"
+			// 	u.Host = fmt.Sprintf("127.0.0.1:6001")
+			// }
+			conn.Endpoint = u.String()
+		} else {
+			match, err := regexp.MatchString(`^\w+://`, IBMCos.Endpoint)
+			if err != nil {
+				return nil, util.NewPersistentError("InvalidEndpoint",
+					fmt.Sprintf("Invalid endpoint url %q: %v", IBMCos.Endpoint, err))
+			}
+			if !match {
+				IBMCos.Endpoint = "https://" + IBMCos.Endpoint
+				// if s3Options.SSLDisabled {
+				// 	u.Scheme = "http"
+				// }
+			}
+			u, err := url.Parse(IBMCos.Endpoint)
+			if err != nil {
+				return nil, util.NewPersistentError("InvalidEndpoint",
+					fmt.Sprintf("Invalid endpoint url %q: %v", IBMCos.Endpoint, err))
+			}
+			if u.Scheme == "" {
+				u.Scheme = "https"
+				// if s3Options.SSLDisabled {
+				// 	u.Scheme = "http"
+				// }
+			}
+			conn.Endpoint = u.String()
+		}
+	}
+	return conn, nil
+}
+
+// GetAzureBlobConnection translates the Azure Blob backing store spec and secret,
+// to noobaa api structures to be used for creating/updating external connetion and pool
+func (r *Reconciler) GetAzureBlobConnection(conn *nb.AddExternalConnectionParams) *nb.AddExternalConnectionParams {
+
+	conn.EndpointType = nb.EndpointTypeAzure
+	conn.Endpoint = "https://blob.core.windows.net"
+	conn.Identity = r.Secret.StringData["AccountName"]
+	conn.Secret = r.Secret.StringData["AccountKey"]
+
+	return conn
+}
+
+// GetNSResourceConnection translates the AWS S3 backing store spec and secret,
+// to noobaa api structures to be used for creating/updating external connetion and pool
+func (r *Reconciler) GetNSResourceConnection(conn *nb.AddExternalConnectionParams) (*nb.AddExternalConnectionParams, error) {
+
+	var err error
+	switch r.BackingStore.Spec.NS.Service {
+	case nbv1.StoreTypeAWSS3:
+		conn = r.GetAWSConnection(conn)
+	case nbv1.StoreTypeS3Compatible:
+		if conn, err = r.GetS3CompatibleConnection(conn); err != nil {
+			return nil, err
+		}
+	case nbv1.StoreTypeIBMCos:
+		if conn, err = r.GetIBMCosConnection(conn); err != nil {
+			return nil, err
+		}
+	case nbv1.StoreTypeAzureBlob:
+		conn = r.GetAzureBlobConnection(conn)
+
+	default:
+		return nil, util.NewPersistentError("InvalidType",
+			fmt.Sprintf("Invalid namespace resource service type %q", r.BackingStore.Spec.Type))
+	}
+	// TODO -  delete the connection print!
+	r.Logger.Infof("created NS connection %+v to service %s", conn, r.BackingStore.Spec.NS.Service)
+	return conn, nil
 }

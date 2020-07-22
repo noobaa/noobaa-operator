@@ -58,6 +58,7 @@ func CmdCreate() *cobra.Command {
 		CmdCreateAzureBlob(),
 		CmdCreateGoogleCloudStorage(),
 		CmdCreatePVPool(),
+		CmdCreateNS(),
 	)
 	return cmd
 }
@@ -84,6 +85,40 @@ func CmdCreateAWSS3() *cobra.Command {
 	cmd.Flags().String(
 		"region", "",
 		"The AWS bucket region",
+	)
+	return cmd
+}
+
+// CmdCreateNS returns a CLI command
+func CmdCreateNS() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "ns <backing-store-type>",
+		Short: "Create namespace resource backing store",
+		Run:   RunCreateNS,
+	}
+	cmd.Flags().String(
+		"service", "",
+		"The target service",
+	)
+	cmd.Flags().String(
+		"target-bucket", "",
+		"The target bucket name on the cloud",
+	)
+	cmd.Flags().String(
+		"access-key", "",
+		`Access key for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
+	)
+	cmd.Flags().String(
+		"secret-key", "",
+		`Secret key for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
+	)
+	cmd.Flags().String(
+		"endpoint", "",
+		"The target S3 endpoint",
+	)
+	cmd.Flags().String(
+		"signature-version", "v4",
+		"The S3 signature version v4|v2",
 	)
 	return cmd
 }
@@ -335,6 +370,54 @@ func RunCreateAWSS3(cmd *cobra.Command, args []string) {
 				Name:      secret.Name,
 				Namespace: secret.Namespace,
 			},
+		}
+	})
+}
+
+// RunCreateNS runs a CLI command
+func RunCreateNS(cmd *cobra.Command, args []string) {
+	createCommon(cmd, args, nbv1.StoreTypeNS, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
+		serviceString := util.GetFlagStringOrPrompt(cmd, "service")
+		service := nbv1.StoreType(serviceString)
+
+		endpoint, _ := cmd.Flags().GetString("endpoint")
+		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
+		accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
+		secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
+		sigVer, _ := cmd.Flags().GetString("signature-version")
+
+		// secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
+		// secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
+
+		switch service {
+		case nbv1.StoreTypeAWSS3:
+			fallthrough
+		case nbv1.StoreTypeS3Compatible:
+			secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
+			secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
+
+		case nbv1.StoreTypeIBMCos:
+			secret.StringData["IBM_COS_ACCESS_KEY_ID"] = accessKey
+			secret.StringData["IBM_COS_SECRET_KEY_ID"] = secretKey
+			sigVer = "v2"
+		}
+		// case nbv1.StoreTypeAzureBlob:
+		// 	targetBucket = util.GetFlagStringOrPrompt(cmd, "target-blob-container")
+		// 	accessKey := util.GetFlagStringOrPromptPassword(cmd, "account-name")
+		// 	secretKey := util.GetFlagStringOrPromptPassword(cmd, "account-key")
+		// 	secret.StringData["AccountName"] = accessKey
+		// 	secret.StringData["AccountKey"] = secretKey
+		// }
+
+		backStore.Spec.NS = &nbv1.NSSpec{
+			Service:      service,
+			TargetBucket: targetBucket,
+			Secret: corev1.SecretReference{
+				Name:      secret.Name,
+				Namespace: secret.Namespace,
+			},
+			Endpoint:         endpoint,
+			SignatureVersion: nbv1.S3SignatureVersion(sigVer),
 		}
 	})
 }
@@ -782,6 +865,8 @@ func GetBackingStoreSecret(bs *nbv1.BackingStore) *corev1.SecretReference {
 	switch bs.Spec.Type {
 	case nbv1.StoreTypeAWSS3:
 		return &bs.Spec.AWSS3.Secret
+	case nbv1.StoreTypeNS:
+		return &bs.Spec.NS.Secret
 	case nbv1.StoreTypeS3Compatible:
 		return &bs.Spec.S3Compatible.Secret
 	case nbv1.StoreTypeIBMCos:
@@ -802,6 +887,8 @@ func GetBackingStoreTargetBucket(bs *nbv1.BackingStore) string {
 	switch bs.Spec.Type {
 	case nbv1.StoreTypeAWSS3:
 		return bs.Spec.AWSS3.TargetBucket
+	case nbv1.StoreTypeNS:
+		return bs.Spec.NS.TargetBucket
 	case nbv1.StoreTypeS3Compatible:
 		return bs.Spec.S3Compatible.TargetBucket
 	case nbv1.StoreTypeIBMCos:

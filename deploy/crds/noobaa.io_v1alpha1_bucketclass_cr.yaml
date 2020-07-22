@@ -5,5 +5,4 @@ metadata:
 spec:
   placementPolicy:
     tiers:
-    - backingStores:
-      - aws1
+      - backingStores:
