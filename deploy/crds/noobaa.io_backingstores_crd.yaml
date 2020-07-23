@@ -152,6 +152,41 @@ spec:
               - secret
               - targetBucket
               type: object
+            ns:
+              description: NS specifies a backing store of type namespace
+              properties:
+                endpoint:
+                  description: 'Endpoint is the S3 compatible endpoint: http(s)://host:port'
+                  type: string
+                secret:
+                  description: Secret refers to a secret that provides the credentials
+                    The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                  properties:
+                    name:
+                      description: Name is unique within a namespace to reference
+                        a secret resource.
+                      type: string
+                    namespace:
+                      description: Namespace defines the space within which the secret
+                        name must be unique.
+                      type: string
+                  type: object
+                service:
+                  description: Service is an enum of supported services
+                  type: string
+                signatureVersion:
+                  description: SignatureVersion specifies the client signature version
+                    to use when signing requests.
+                  type: string
+                targetBucket:
+                  description: TargetBucket is the name of the target bucket
+                  type: string
+              required:
+              - endpoint
+              - secret
+              - service
+              - targetBucket
+              type: object
             pvPool:
               description: PVPool specifies a backing store of type pv-pool
               properties:

@@ -705,7 +705,9 @@ func (r *Reconciler) ReconcileDefaultBucketClass() error {
 			},
 		}},
 	}
-
+	r.DefaultBucketClass.Spec.NamespacePolicy = nbv1.NamespacePolicy{
+		ReadResources: []string{},
+	}
 	r.Own(r.DefaultBucketClass)
 
 	err := r.Client.Create(r.Ctx, r.DefaultBucketClass)

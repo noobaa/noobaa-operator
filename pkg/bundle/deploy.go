@@ -89,7 +89,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "8abfa87b27f19b77f88b463a0fd7b3984f7ca40474f9198f9a043dcbbfcc99d5"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "9618b30989700d6f3bb1ad38593a72c86cd7e3164a224778f869bb7ef2e80d99"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -243,6 +243,41 @@ spec:
               required:
               - endpoint
               - secret
+              - targetBucket
+              type: object
+            ns:
+              description: NS specifies a backing store of type namespace
+              properties:
+                endpoint:
+                  description: 'Endpoint is the S3 compatible endpoint: http(s)://host:port'
+                  type: string
+                secret:
+                  description: Secret refers to a secret that provides the credentials
+                    The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                  properties:
+                    name:
+                      description: Name is unique within a namespace to reference
+                        a secret resource.
+                      type: string
+                    namespace:
+                      description: Namespace defines the space within which the secret
+                        name must be unique.
+                      type: string
+                  type: object
+                service:
+                  description: Service is an enum of supported services
+                  type: string
+                signatureVersion:
+                  description: SignatureVersion specifies the client signature version
+                    to use when signing requests.
+                  type: string
+                targetBucket:
+                  description: TargetBucket is the name of the target bucket
+                  type: string
+              required:
+              - endpoint
+              - secret
+              - service
               - targetBucket
               type: object
             pvPool:
@@ -431,7 +466,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "460cdb16739e5b43301c4ddaa005648610cdb8e29523bba39bc6a517542f0a45"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "020fc21ae25858ac298e08a87319acc08744221cc98f6df1b326cc17723e8c17"
 
 const File_deploy_crds_noobaa_io_bucketclasses_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -479,6 +514,35 @@ spec:
         spec:
           description: Specification of the desired behavior of the noobaa BucketClass.
           properties:
+            namespacePolicy:
+              description: NamespacePolicy specifies the namespace policy for the
+                bucket class
+              properties:
+                cache:
+                  description: Cache is the cache specification for the ns policy
+                  properties:
+                    prefix:
+                      description: Prefix is prefix of the future cached data
+                      type: string
+                    ttl:
+                      description: TTL specifies the cache ttl
+                      type: integer
+                  required:
+                  - ttl
+                  type: object
+                readResources:
+                  description: ReadResources is an ordered list of read resources
+                    names to use
+                  items:
+                    type: string
+                  type: array
+                writeResource:
+                  description: WriteResource is the write resource name to use
+                  type: string
+              required:
+              - readResources
+              - writeResource
+              type: object
             placementPolicy:
               description: PlacementPolicy specifies the placement policy for the
                 bucket class
@@ -508,8 +572,6 @@ spec:
               required:
               - tiers
               type: object
-          required:
-          - placementPolicy
           type: object
         status:
           description: Most recently observed status of the noobaa BackingStore.
@@ -1721,7 +1783,7 @@ metadata:
 spec:
 `
 
-const Sha256_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = "d781b04f37c9f376a52c71a1c5abd6acf78fc825fe7f2058d2bb9892afbbd6df"
+const Sha256_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = "e18cf92f884bf22e2737df5682f7f9ac9978e97abc124fc49851c9f58d662012"
 
 const File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = `apiVersion: noobaa.io/v1alpha1
 kind: BucketClass
@@ -1730,8 +1792,7 @@ metadata:
 spec:
   placementPolicy:
     tiers:
-    - backingStores:
-      - aws1
+      - backingStores:
 `
 
 const Sha256_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml = "498c2013757409432cfd98b21a5934bccf506f1af1b885241db327024aa450fd"
