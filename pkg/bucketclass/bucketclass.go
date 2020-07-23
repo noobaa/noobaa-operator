@@ -133,7 +133,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	bucketClass := o.(*nbv1.BucketClass)
 	bucketClass.Name = name
 	bucketClass.Namespace = options.Namespace
-	if placement != "" && len(backingStores) > 0 {
+	if len(backingStores) > 0 {
 		log.Infof(`creating backingstore with placement and tiers %s in namespace %+v`, placement, backingStores)
 		bucketClass.Spec.PlacementPolicy.Tiers[0].Placement = nbv1.TierPlacement(placement)
 		bucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores = backingStores
@@ -168,7 +168,10 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	nsResources := append(readResources, writeResource)
+	var nsResources []string
+	if writeResource != "" && len(readResources) > 0 {
+		nsResources = append(readResources, writeResource)
+	}
 	// check that backing stores exists
 	for _, name := range nsResources {
 		backStore := &nbv1.BackingStore{
