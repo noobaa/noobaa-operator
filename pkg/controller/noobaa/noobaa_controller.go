@@ -5,6 +5,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/system"
+	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	"github.com/sirupsen/logrus"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -53,33 +54,43 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 
-	// Watch for changes on resources to trigger reconcile
+	// Predicate that allow us to log event that are being queued
+	logEventsPredicate := util.LogEventsPredicate{}
 
+	// Predicate that allows events that only change spec, labels or finalizers will log any allowed events
+	// This will stop infinite reconciles that triggered by status or irrelevant metadata changes
+	noobaaPredicate := util.ComposePredicates(
+		predicate.GenerationChangedPredicate{},
+		util.LabelsChangedPredicate{},
+		util.FinalizersChangedPredicate{},
+	)
+
+	// Watch for changes on resources to trigger reconcile
 	ownerHandler := &handler.EnqueueRequestForOwner{IsController: true, OwnerType: &nbv1.NooBaa{}}
 
-	err = c.Watch(&source.Kind{Type: &nbv1.NooBaa{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &nbv1.NooBaa{}}, &handler.EnqueueRequestForObject{},
+		noobaaPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, ownerHandler)
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, ownerHandler, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, ownerHandler)
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, ownerHandler, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, ownerHandler)
+	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, ownerHandler, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, ownerHandler)
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, ownerHandler, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
 
-	// Watch for StorageClass changes to trigger reconcile and recreate it when deleted
-	err = c.Watch(&source.Kind{Type: &storagev1.StorageClass{}}, &handler.EnqueueRequestsFromMapFunc{
+	storageClassHandler := handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(mo handler.MapObject) []reconcile.Request {
 			sc, ok := mo.Object.(*storagev1.StorageClass)
 			if !ok || sc.Provisioner != options.ObjectBucketProvisionerName() {
@@ -92,7 +103,9 @@ func Add(mgr manager.Manager) error {
 				},
 			}}
 		}),
-	})
+	}
+	// Watch for StorageClass changes to trigger reconcile and recreate it when deleted
+	err = c.Watch(&source.Kind{Type: &storagev1.StorageClass{}}, &storageClassHandler, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
@@ -102,6 +115,7 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
+
 	// handler for global RPC message and ,simply trigger a reconcile on every message
 	nb.GlobalRPC.Handler = func(req *nb.RPCMessage) (interface{}, error) {
 		logrus.Infof("RPC Handle: %+v", req)
