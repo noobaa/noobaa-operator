@@ -2,7 +2,6 @@ package operator
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/system"
@@ -42,14 +41,11 @@ func RunOperator(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed to become leader: %s", err)
 	}
 
-	recocileDelta := time.Duration(5 * 60) // 5 minutes
-
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(config, manager.Options{
 		Namespace:          options.Namespace,
 		MapperProvider:     util.MapperProvider, // restmapper.NewDynamicRESTMapper,
 		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
-		SyncPeriod:         &recocileDelta,
 	})
 	if err != nil {
 		log.Fatalf("Failed to create manager: %s", err)
