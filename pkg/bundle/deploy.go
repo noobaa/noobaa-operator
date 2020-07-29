@@ -599,7 +599,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "56aae3e1d98a7194df57733855733d9e07fb6e7f1883d3b20a95c23e73b2a193"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a1b3661d6614535e354be74f26896004f24236b94277fd5858b65cb57810cfe6"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -1266,6 +1266,9 @@ spec:
             dbImage:
               description: DBImage (optional) overrides the default image for the
                 db container
+              enum:
+                  - mongodb
+                  - postgres
               type: string
             dbResources:
               description: DBResources (optional) overrides the default resource requirements
@@ -1300,6 +1303,13 @@ spec:
                 is immutable and can only be set on system creation. This affects
                 where the system stores its database which contains system config,
                 buckets, objects meta-data and mapping file parts to storage locations.
+              type: string
+            dbType:
+              description: DBType (optional) overrides the default type image for
+                the db container
+              enum:
+              - mongodb
+              - postgres
               type: string
             dbVolumeResources:
               description: 'DBVolumeResources (optional) overrides the default PVC
@@ -1338,7 +1348,7 @@ spec:
               properties:
                 additionalVirtualHosts:
                   description: 'AdditionalVirtualHosts (optional) provide a list of
-                    additional hostnames (on top of the buildin names defined by the
+                    additional hostnames (on top of the builtin names defined by the
                     cluster: service name, elb name, route name) to be used as virtual
                     hosts by the the endpoints in the endpoint deployment'
                   items:
@@ -3412,4 +3422,3 @@ metadata:
   annotations:
     serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"noobaa-mgmt"}}'
 `
-
