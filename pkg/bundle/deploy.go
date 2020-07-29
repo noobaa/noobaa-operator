@@ -1266,9 +1266,6 @@ spec:
             dbImage:
               description: DBImage (optional) overrides the default image for the
                 db container
-              enum:
-                  - mongodb
-                  - postgres
               type: string
             dbResources:
               description: DBResources (optional) overrides the default resource requirements
@@ -2197,7 +2194,7 @@ type: Opaque
 data: {}
 `
 
-const Sha256_deploy_internal_service_db_yaml = "64559363daddd9caf781f104b876b33fb63e4f2551570e73bdb2bfae736f33ee"
+const Sha256_deploy_internal_service_db_yaml = "1311347228500f932ec5d0fa18c5ac6df0040bd98444862b04506012eceb0542"
 
 const File_deploy_internal_service_db_yaml = `apiVersion: v1
 kind: Service
@@ -2216,6 +2213,9 @@ spec:
     - port: 27017
       targetPort: 27017
       name: mongodb
+    - port: 5432
+      targetPort: 5432
+      name: postgres
 `
 
 const Sha256_deploy_internal_service_mgmt_yaml = "3449be462a77ea7e66c529308cbd86fd1c3d18685aa4649aa05514303f23908a"
@@ -2479,6 +2479,88 @@ spec:
       resources:
         requests:
           storage: 50Gi
+`
+
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "168164c02237ca8a65f623b9d5267823080e3a3e7b607449a9b9e5a5f3e8f44b"
+
+const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: noobaa-db
+  labels:
+    app: noobaa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      noobaa-db: noobaa
+  serviceName: noobaa-db
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: noobaa
+        noobaa-db: noobaa
+    spec:
+      serviceAccountName: noobaa
+      initContainers:
+        #----------------#
+        # INIT CONTAINER #
+        #----------------#
+        - name: init
+          image: NOOBAA_CORE_IMAGE
+          command:
+            - /noobaa_init_files/noobaa_init.sh
+            - init_mongo
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "500Mi"
+            limits:
+              cpu: "500m"
+              memory: "500Mi"
+          volumeMounts:
+            - name: db
+              mountPath: /mongo_data
+      containers:
+        #--------------------#
+        # Postgres CONTAINER #
+        #--------------------#
+        - name: db
+          image: NOOBAA_DB_IMAGE
+          env:
+            - name: POSTGRES_DB
+              value: nbcore
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: noobaa
+          magePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          resources:
+            requests:
+              cpu: "2"
+              memory: "4Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          volumeMounts:
+            - name: db
+              # mountPath: /var/lib/postgresql/data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: db
+        labels:
+          app: noobaa
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
 `
 
 const Sha256_deploy_internal_text_system_status_readme_progress_tmpl = "d26aa1028e4a235018cc46e00392d3209d3e09e8320f3692be6346a9cfdf289a"
@@ -3422,3 +3504,4 @@ metadata:
   annotations:
     serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"noobaa-mgmt"}}'
 `
+
