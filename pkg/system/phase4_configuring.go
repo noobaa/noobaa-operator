@@ -290,7 +290,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 				case "MONGODB_URL":
 					if r.JoinSecret == nil {
 						c.Env[j].Value = fmt.Sprintf(`mongodb://%s-0.%s/nbcore`,
-							r.NooBaaDB.Name, r.NooBaaDB.Spec.ServiceName)
+							r.NooBaaMongoDB.Name, r.NooBaaMongoDB.Spec.ServiceName)
 					}
 				case "LOCAL_MD_SERVER":
 					if r.JoinSecret == nil {
@@ -447,7 +447,7 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		if minutesSinceCreation < 2 {
 			return nil
 		}
-		if err := r.preparePVoolBackingStore(); err != nil {
+		if err := r.preparePVPoolBackingStore(); err != nil {
 			return err
 		}
 	}
@@ -460,7 +460,7 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	return nil
 }
 
-func (r *Reconciler) preparePVoolBackingStore() error {
+func (r *Reconciler) preparePVPoolBackingStore() error {
 
 	// create backing store
 	defaultPVSize := int64(50) * 1024 * 1024 * 1024 // 50GB
@@ -491,9 +491,9 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.AWSCloudCreds.Spec.SecretRef.Name)
 		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.AWSCloudCreds.Spec.SecretRef.Name)
 	}
-	r.Logger.Infof("Secret %s was created succesfully by cloud-credentials operator", r.AWSCloudCreds.Spec.SecretRef.Name)
+	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", r.AWSCloudCreds.Spec.SecretRef.Name)
 
-	// create the acutual S3 bucket
+	// create the actual S3 bucket
 	region, err := util.GetAWSRegion()
 	if err != nil {
 		r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DefaultBackingStoreFailure",
@@ -539,7 +539,7 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.AzureCloudCreds.Spec.SecretRef.Name)
 		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.AzureCloudCreds.Spec.SecretRef.Name)
 	}
-	r.Logger.Infof("Secret %s was created succesfully by cloud-credentials operator", r.AzureCloudCreds.Spec.SecretRef.Name)
+	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", r.AzureCloudCreds.Spec.SecretRef.Name)
 
 	util.KubeCheck(r.AzureContainerCreds)
 	if r.AzureContainerCreds.UID == "" {
@@ -552,7 +552,7 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 			return fmt.Errorf("got error on AzureContainerCreds creation. error: %v", err)
 		}
 	}
-	r.Logger.Infof("Secret %s was created succesfully", r.AzureContainerCreds.Name)
+	r.Logger.Infof("Secret %s was created successfully", r.AzureContainerCreds.Name)
 
 	var azureGroupName = r.AzureContainerCreds.StringData["azure_resourcegroup"]
 

@@ -77,7 +77,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}
-	if err := r.ReconcileObject(r.NooBaaDB, r.SetDesiredNooBaaDB); err != nil {
+	if err := r.ReconcileDB(); err != nil {
 		return err
 	}
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
@@ -123,11 +123,17 @@ func (r *Reconciler) SetDesiredServiceDB() error {
 
 // SetDesiredNooBaaDB updates the NooBaaDB as desired for reconciling
 func (r *Reconciler) SetDesiredNooBaaDB() error {
-	r.NooBaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
-	r.NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
-	r.NooBaaDB.Spec.ServiceName = r.ServiceDb.Name
+	var NooBaaDB *appsv1.StatefulSet = nil
+	if r.NooBaa.Spec.DBType == "postgres" {
+		NooBaaDB = r.NooBaaPostgresDB
+	} else {
+		NooBaaDB = r.NooBaaMongoDB
+	}
+	NooBaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
+	NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
+	NooBaaDB.Spec.ServiceName = r.ServiceDb.Name
 
-	podSpec := &r.NooBaaDB.Spec.Template.Spec
+	podSpec := &NooBaaDB.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa"
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
@@ -167,12 +173,12 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 		podSpec.Affinity = r.NooBaa.Spec.Affinity
 	}
 
-	if r.NooBaaDB.UID == "" {
-		for i := range r.NooBaaDB.Spec.VolumeClaimTemplates {
-			pvc := &r.NooBaaDB.Spec.VolumeClaimTemplates[i]
-			pvc.Namespace = r.NooBaaDB.Namespace
+	if NooBaaDB.UID == "" {
+		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
+			pvc := &NooBaaDB.Spec.VolumeClaimTemplates[i]
+			pvc.Namespace = NooBaaDB.Namespace
 			r.Own(pvc)
-			// unsetting BlockOwnerDeletion to acoid error when trying to own pvc:
+			// unsetting BlockOwnerDeletion to avoid error when trying to own pvc:
 			// "cannot set blockOwnerDeletion if an ownerReference refers to a resource you can't set finalizers on"
 			pvc.OwnerReferences[0].BlockOwnerDeletion = nil
 			switch pvc.Name {
@@ -190,8 +196,8 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 
 		// when already exists we check that there is no update requested to the volumes
 		// otherwise we report that volume update is unsupported
-		for i := range r.NooBaaDB.Spec.VolumeClaimTemplates {
-			pvc := &r.NooBaaDB.Spec.VolumeClaimTemplates[i]
+		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
+			pvc := &NooBaaDB.Spec.VolumeClaimTemplates[i]
 			switch pvc.Name {
 			case "db":
 				currentClass := ""
@@ -247,7 +253,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 					c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
 
 				case "MONGODB_URL":
-					c.Env[j].Value = "mongodb://" + r.NooBaaDB.Name + "-0." + r.NooBaaDB.Spec.ServiceName + "/nbcore"
+					c.Env[j].Value = "mongodb://" + r.NooBaaMongoDB.Name + "-0." + r.NooBaaMongoDB.Spec.ServiceName + "/nbcore"
 
 				case "OAUTH_AUTHORIZATION_ENDPOINT":
 					if r.OAuthEndpoints != nil {
@@ -301,7 +307,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	return nil
 }
 
-// ReconcileBackingStoreCredentials creates a CredentialsRequest resource if neccesary and returns
+// ReconcileBackingStoreCredentials creates a CredentialsRequest resource if necessary and returns
 // the bucket name allowed for the credentials. nil is returned if cloud credentials are not supported
 func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	// Skip if joining another NooBaa
@@ -369,7 +375,7 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 	var bucketName string
 	err := r.Client.Get(r.Ctx, util.ObjectKey(r.AWSCloudCreds), r.AWSCloudCreds)
 	if err == nil {
-		// credential request alread exist. get the bucket name
+		// credential request already exist. get the bucket name
 		codec, err := cloudcredsv1.NewCodec()
 		if err != nil {
 			r.Logger.Error("error creating codec for cloud credentials providerSpec")
@@ -469,6 +475,17 @@ func (r *Reconciler) SetDesiredAgentProfile(profileString string) string {
 	return string(profileBytes)
 }
 
+// ReconcileDB choose between different types of DB
+func (r *Reconciler) ReconcileDB() error {
+	var err error = nil
+	if r.NooBaa.Spec.DBType == "postgres" {
+		err = r.ReconcileObject(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB)
+	} else {
+		err = r.ReconcileObject(r.NooBaaMongoDB, r.SetDesiredNooBaaDB)
+	}
+	return err
+}
+
 // UpgradeSplitDB removes the old pvc and create a  new one with the same PV
 func (r *Reconciler) UpgradeSplitDB() error {
 	oldPvc := &corev1.PersistentVolumeClaim{
@@ -531,7 +548,7 @@ func (r *Reconciler) UpgradeSplitDBCreateNewPVC(oldPvc *corev1.PersistentVolumeC
 	newPvc := &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "db-" + r.NooBaaDB.Name + "-0",
+			Name:      "db-" + r.NooBaaMongoDB.Name + "-0",
 			Namespace: options.Namespace,
 		},
 		Spec: oldPvc.Spec,

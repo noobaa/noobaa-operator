@@ -56,7 +56,7 @@ func CmdCreate() *cobra.Command {
 	cmd.Flags().String("core-resources", "", "Core resources JSON")
 	cmd.Flags().String("db-resources", "", "DB resources JSON")
 	cmd.Flags().String("endpoint-resources", "", "Endpoint resources JSON")
-	cmd.Flags().Bool("obc-clenup-policy", false, "Create NooBaa system with obc cleanup policy")
+	cmd.Flags().Bool("use-obc-cleanup-policy", false, "Create NooBaa system with obc cleanup policy")
 	return cmd
 }
 
@@ -119,6 +119,8 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	sys.Namespace = options.Namespace
 	sys.Name = options.SystemName
 	sys.Finalizers = []string{nbv1.GracefulFinalizer}
+	dbType := options.DBType
+	sys.Spec.DBType = nbv1.DBTypes(dbType)
 
 	if options.NooBaaImage != "" {
 		image := options.NooBaaImage
@@ -130,6 +132,11 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	if options.DBImage != "" {
 		dbImage := options.DBImage
 		sys.Spec.DBImage = &dbImage
+	}
+	//  naively changing the db postgres image to the hardcoded one if the db type is postgres
+	if options.DBType == "postgres" {
+		dbPostgresImage := options.DBPostgresImage
+		sys.Spec.DBImage = &dbPostgresImage
 	}
 	if options.DBVolumeSizeGB != 0 {
 		sys.Spec.DBVolumeResources = &corev1.ResourceRequirements{
@@ -402,9 +409,15 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	sysKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
 	r := NewReconciler(sysKey, klient, scheme.Scheme, nil)
 	r.CheckAll()
+	var NooBaaDB *appsv1.StatefulSet = nil
+	if r.NooBaa.Spec.DBType == "postgres" {
+		NooBaaDB = r.NooBaaPostgresDB
+	} else {
+		NooBaaDB = r.NooBaaMongoDB
+	}
 	// NobbaaDB
-	for i := range r.NooBaaDB.Spec.VolumeClaimTemplates {
-		t := &r.NooBaaDB.Spec.VolumeClaimTemplates[i]
+	for i := range NooBaaDB.Spec.VolumeClaimTemplates {
+		t := &NooBaaDB.Spec.VolumeClaimTemplates[i]
 		pvc := &corev1.PersistentVolumeClaim{
 			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
 			ObjectMeta: metav1.ObjectMeta{
