@@ -68,6 +68,11 @@ type NooBaaSpec struct {
 	// +optional
 	DBImage *string `json:"dbImage,omitempty"`
 
+	// DBType (optional) overrides the default type image for the db container
+	// +optional
+	// +kubebuilder:validation:Enum=mongodb;postgres
+	DBType DBTypes `json:"dbType,omitempty"`
+
 	// CoreResources (optional) overrides the default resource requirements for the server container
 	// +optional
 	CoreResources *corev1.ResourceRequirements `json:"coreResources,omitempty"`
@@ -143,7 +148,7 @@ type EndpointsSpec struct {
 	MaxCount int32 `json:"maxCount,omitempty"`
 
 	// AdditionalVirtualHosts (optional) provide a list of additional hostnames
-	// (on top of the buildin names defined by the cluster: service name, elb name, route name)
+	// (on top of the builtin names defined by the cluster: service name, elb name, route name)
 	// to be used as virtual hosts by the the endpoints in the endpoint deployment
 	// +optional
 	AdditionalVirtualHosts []string `json:"additionalVirtualHosts,omitempty"`
@@ -329,4 +334,15 @@ const (
 
 	// DeleteOBCConfirmation represents the validation to destry obc
 	DeleteOBCConfirmation CleanupConfirmationProperty = "yes-really-destroy-obc"
+)
+
+// DBTypes is a string enum type for specify the types of DB that are supported.
+type DBTypes string
+
+// These are the valid DB types:
+const (
+	// DBTypeMongo is mongodb
+	DBTypeMongo DBTypes = "mongodb"
+	// DBTypePostgres is postgres
+	DBTypePostgres DBTypes = "postgres"
 )
