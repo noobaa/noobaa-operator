@@ -210,7 +210,13 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	r.UpdateStatus()
+	err = r.UpdateStatus()
+	if err != nil {
+		res.RequeueAfter = 3 * time.Second
+		// leave current phase as is
+		r.SetPhase("", "TemporaryError", err.Error())
+		log.Warnf("⏳ Temporary Error: %s", err)
+	}
 	return res, nil
 }
 
@@ -287,13 +293,14 @@ func (r *Reconciler) SetPhase(phase nbv1.BackingStorePhase, reason string, messa
 }
 
 // UpdateStatus updates the backing store status in kubernetes from the memory
-func (r *Reconciler) UpdateStatus() {
+func (r *Reconciler) UpdateStatus() error {
 	err := r.Client.Status().Update(r.Ctx, r.BackingStore)
 	if err != nil {
 		r.Logger.Errorf("UpdateStatus: %s", err)
-	} else {
-		r.Logger.Infof("UpdateStatus: Done")
+		return err
 	}
+	r.Logger.Infof("UpdateStatus: Done")
+	return nil
 }
 
 // ReconcilePhaseVerifying checks that we have the system and secret needed to reconcile
