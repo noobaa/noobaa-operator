@@ -297,7 +297,13 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		log.Infof("✅ Done")
 	}
 
-	r.UpdateStatus()
+	err = r.UpdateStatus()
+	if err != nil {
+		res.RequeueAfter = 3 * time.Second
+		// leave current phase as is
+		r.SetPhase("", "TemporaryError", err.Error())
+		log.Warnf("⏳ Temporary Error: %s", err)
+	}
 	return res, nil
 }
 
@@ -424,14 +430,15 @@ func (r *Reconciler) SetReadme(t *template.Template) {
 }
 
 // UpdateStatus updates the system status in kubernetes from the memory
-func (r *Reconciler) UpdateStatus() {
+func (r *Reconciler) UpdateStatus() error {
 	r.NooBaa.Status.ObservedGeneration = r.NooBaa.Generation
 	err := r.Client.Status().Update(r.Ctx, r.NooBaa)
 	if err != nil {
 		r.Logger.Errorf("UpdateStatus: %s", err)
-	} else {
-		r.Logger.Infof("UpdateStatus: Done generation %d", r.NooBaa.Generation)
+		return err
 	}
+	r.Logger.Infof("UpdateStatus: Done generation %d", r.NooBaa.Generation)
+	return nil
 }
 
 // ReconcileObject is a generic call to reconcile a kubernetes object
