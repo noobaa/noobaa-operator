@@ -76,7 +76,7 @@ func RunInstall(cmd *cobra.Command, args []string) {
 // RunUninstall runs a CLI command
 func RunUninstall(cmd *cobra.Command, args []string) {
 	log := util.Logger()
-	version.RunVersion(cmd, args)
+	system.RunSystemVersionsStatus(cmd, args)
 	log.Printf("Namespace: %s", options.Namespace)
 	log.Printf("")
 	log.Printf("System Delete:")
@@ -99,7 +99,8 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 // RunStatus runs a CLI command
 func RunStatus(cmd *cobra.Command, args []string) {
 	log := util.Logger()
-	version.RunVersion(cmd, args)
+
+	system.RunSystemVersionsStatus(cmd, args)
 	log.Printf("Namespace: %s", options.Namespace)
 	log.Printf("")
 	log.Printf("CRD Status:")

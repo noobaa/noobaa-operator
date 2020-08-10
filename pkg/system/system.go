@@ -13,6 +13,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	"github.com/noobaa/noobaa-operator/v2/version"
 
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
@@ -399,6 +400,89 @@ func RunYaml(cmd *cobra.Command, args []string) {
 	sys := LoadSystemDefaults()
 	p := printers.YAMLPrinter{}
 	util.Panic(p.PrintObj(sys, os.Stdout))
+}
+
+// CheckNooBaaImages runs a CLI command
+func CheckNooBaaImages(cmd *cobra.Command, sys *nbv1.NooBaa, args []string) string {
+	log := util.Logger()
+
+	desiredImage := ""
+	runningImage := ""
+	if sys.Status.ActualImage != "" {
+		desiredImage = sys.Status.ActualImage
+	} else if sys.Spec.Image != nil {
+		desiredImage = *sys.Spec.DBImage
+	}
+	sts := util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet)
+	sts.Namespace = options.Namespace
+	if util.KubeCheckQuiet(sts) {
+		runningImage = sts.Spec.Template.Spec.Containers[0].Image
+	}
+	if desiredImage != "" && runningImage != "" && desiredImage != runningImage {
+		log.Warnf("⚠️  The desired noobaa image and the running image are not the same")
+	}
+	return runningImage
+}
+
+// CheckNooBaaDBImages runs a CLI command
+func CheckNooBaaDBImages(cmd *cobra.Command, sys *nbv1.NooBaa, args []string) string {
+	log := util.Logger()
+
+	desiredImage := ""
+	runningImage := ""
+	if sys.Spec.DBImage != nil {
+		desiredImage = *sys.Spec.DBImage
+	}
+	sts := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
+	sts.Namespace = options.Namespace
+	if util.KubeCheckQuiet(sts) {
+		runningImage = sts.Spec.Template.Spec.Containers[0].Image
+	}
+	if desiredImage != "" && runningImage != "" && desiredImage != runningImage {
+		log.Warnf("⚠️  The desired db image and the running db image are not the same")
+	}
+	return runningImage
+}
+
+// CheckOperatorImage runs a CLI command
+func CheckOperatorImage(cmd *cobra.Command, args []string) string {
+	runningImage := ""
+	deployment := util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
+	deployment.Namespace = options.Namespace
+	if util.KubeCheckQuiet(deployment) {
+		runningImage = deployment.Spec.Template.Spec.Containers[0].Image
+	}
+	return runningImage
+}
+
+// RunSystemVersionsStatus runs a CLI command
+func RunSystemVersionsStatus(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	sys := o.(*nbv1.NooBaa)
+	sys.Name = options.SystemName
+	sys.Namespace = options.Namespace
+	isSystemExists := util.KubeCheckQuiet(sys)
+
+	noobaaImage := ""
+	noobaaDbImage := ""
+	noobaaOperatorImage := ""
+
+	if isSystemExists {
+		noobaaImage = CheckNooBaaImages(cmd, sys, args)
+		noobaaDbImage = CheckNooBaaDBImages(cmd, sys, args)
+		noobaaOperatorImage = CheckOperatorImage(cmd, args)
+	} else {
+		noobaaImage = options.NooBaaImage
+		noobaaDbImage = options.DBImage
+		noobaaOperatorImage = options.OperatorImage
+	}
+
+	log.Printf("CLI version: %s\n", version.Version)
+	log.Printf("noobaa-image: %s\n", noobaaImage)
+	log.Printf("operator-image: %s\n", noobaaOperatorImage)
+	log.Printf("noobaa-db-image: %s\n", noobaaDbImage)
 }
 
 // RunStatus runs a CLI command
