@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -45,6 +46,7 @@ func Add(mgr manager.Manager) error {
 		predicate.GenerationChangedPredicate{},
 		util.LabelsChangedPredicate{},
 		util.FinalizersChangedPredicate{},
+		backingStoreModeChangedPredicate{},
 	)
 
 	// Watch for changes on resources to trigger reconcile
@@ -65,4 +67,23 @@ func Add(mgr manager.Manager) error {
 	}
 
 	return nil
+}
+
+// backingStoreModeChangedPredicate will only allow events that changed Status.Mode.ModeCode.
+// This predicate should be used only for BackingsStore objects!
+type backingStoreModeChangedPredicate struct {
+	predicate.Funcs
+}
+
+// Update implements the update event trap for LabelsChangedPredicate
+func (p backingStoreModeChangedPredicate) Update(e event.UpdateEvent) bool {
+	if e.ObjectOld == nil || e.ObjectNew == nil {
+		return false
+	}
+	oldBackingStore, oldCastOk := e.ObjectOld.(*nbv1.BackingStore)
+	newBackingStore, newCastOk := e.ObjectNew.(*nbv1.BackingStore)
+	if !oldCastOk || !newCastOk {
+		return false
+	}
+	return oldBackingStore.Status.Mode.ModeCode != newBackingStore.Status.Mode.ModeCode
 }
