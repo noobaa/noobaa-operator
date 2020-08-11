@@ -698,6 +698,13 @@ spec:
                 where the system stores its database which contains system config,
                 buckets, objects meta-data and mapping file parts to storage locations.
               type: string
+            dbType:
+              description: DBType (optional) overrides the default type image for
+                the db container
+              enum:
+              - mongodb
+              - postgres
+              type: string
             dbVolumeResources:
               description: 'DBVolumeResources (optional) overrides the default PVC
                 resource requirements for the database volume. For the time being
@@ -735,7 +742,7 @@ spec:
               properties:
                 additionalVirtualHosts:
                   description: 'AdditionalVirtualHosts (optional) provide a list of
-                    additional hostnames (on top of the buildin names defined by the
+                    additional hostnames (on top of the builtin names defined by the
                     cluster: service name, elb name, route name) to be used as virtual
                     hosts by the the endpoints in the endpoint deployment'
                   items:
