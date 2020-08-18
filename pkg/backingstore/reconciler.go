@@ -7,6 +7,7 @@ import (
 	math "math"
 	"net/url"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -78,6 +79,7 @@ type Reconciler struct {
 	Secret           *corev1.Secret
 	PodAgentTemplate *corev1.Pod
 	PvcAgentTemplate *corev1.PersistentVolumeClaim
+	ServiceAccount   *corev1.ServiceAccount
 
 	SystemInfo             *nb.SystemInfo
 	ExternalConnectionInfo *nb.ExternalConnectionInfo
@@ -113,6 +115,7 @@ func NewReconciler(
 		BackingStore:     util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
 		NooBaa:           util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		Secret:           util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		ServiceAccount:   util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
 		PodAgentTemplate: util.KubeObject(bundle.File_deploy_internal_pod_agent_yaml).(*corev1.Pod),
 		PvcAgentTemplate: util.KubeObject(bundle.File_deploy_internal_pvc_agent_yaml).(*corev1.PersistentVolumeClaim),
 	}
@@ -120,10 +123,12 @@ func NewReconciler(
 	// Set Namespace
 	r.BackingStore.Namespace = r.Request.Namespace
 	r.NooBaa.Namespace = r.Request.Namespace
+	r.ServiceAccount.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.BackingStore.Name = r.Request.Name
 	r.NooBaa.Name = options.SystemName
+	r.ServiceAccount.Name = options.SystemName
 
 	// Set secret names to empty
 	r.Secret.Namespace = ""
@@ -920,55 +925,63 @@ func (r *Reconciler) ReconcilePool() error {
 
 func (r *Reconciler) reconcilePvPool() error {
 	podsList := &corev1.PodList{}
+	pvcsList := &corev1.PersistentVolumeClaimList{}
 	util.KubeList(podsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
-	if len(podsList.Items) < r.BackingStore.Spec.PVPool.NumVolumes {
-		r.reconcileMissingPods(podsList)
+	util.KubeList(pvcsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
+	if len(pvcsList.Items) < r.BackingStore.Spec.PVPool.NumVolumes {
+		r.reconcileMissingPvcs(pvcsList)
+		util.KubeList(pvcsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
+	}
+	if len(podsList.Items) < len(pvcsList.Items) {
+		r.reconcileMissingPods(podsList, pvcsList)
 	}
 	return r.reconcileExistingPods(podsList)
+}
+
+func contains(slice []string, str string) bool {
+	for _, s := range slice {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *Reconciler) reconcileMissingPods(podsList *corev1.PodList, pvcsList *corev1.PersistentVolumeClaimList) error {
+	claimNames := []string{}
+	for _, pod := range podsList.Items {
+		claimNames = append(claimNames, pod.Spec.Volumes[1].PersistentVolumeClaim.ClaimName)
+	}
+	r.updatePodTemplate()
+	for _, pvc := range pvcsList.Items {
+		if !contains(claimNames, pvc.Name) {
+			i := strings.LastIndex(pvc.Name, "-")
+			postfix := pvc.Name[i+1:]
+			newPod := r.PodAgentTemplate.DeepCopy()
+			newPod.Name = fmt.Sprintf("%s-%s-pod-%s", r.BackingStore.Name, options.SystemName, postfix)
+			newPod.Namespace = options.Namespace
+			newPod.Spec.Volumes[1].PersistentVolumeClaim.ClaimName = pvc.Name
+			r.Own(newPod)
+			util.KubeCreateSkipExisting(newPod)
+		}
+	}
+	return nil
 }
 
 func (r *Reconciler) reconcileExistingPods(podsList *corev1.PodList) error {
 	noneAttachingAgents := 0
 	failedAttachingAgents := 0
 	for _, pod := range podsList.Items {
-
-		// GAP: reconcile proxy env vars.
-		// The only thing that can be changed on a pod spec is the image
-		// trying to change anything else, including env vars, will create a panic.
-		// Deployment and Statefulset are handling this by taking down the pod and
-		// starting a new one.
-		// In order to support reconciling changes to the proxy env we need to mimic
-		// this behavior which is not trivial in the case of agent pods.
-		var c = &pod.Spec.Containers[0]
-		for _, name := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
-			envVar := util.GetEnvVariable(&c.Env, name)
-			val, ok := os.LookupEnv(name)
-			if (envVar == nil && ok) || (envVar != nil && (!ok || envVar.Value != val)) {
-				r.Logger.Warnf("Pod's env variable %s does not match operator's env variable with the same name", name)
-			}
-		}
-
-		if !r.isPodinNoobaa(&pod) {
+		// check if pod need to be updated and deleted
+		if r.needUpdate(&pod) {
+			util.KubeDelete(&pod)
+		} else if !r.isPodinNoobaa(&pod) {
 			noneAttachingAgents++
 			if time.Since(pod.CreationTimestamp.Time) > 10*time.Minute {
 				failedAttachingAgents++
 				r.Logger.Errorf("Pod %s didn't attach to noobaa system for more than 10 minutes", pod.Name)
 			} else {
 				r.Logger.Warnf("Pod %s didn't attach yet to noobaa system", pod.Name)
-			}
-		} else {
-			r.Logger.Infof("Check if pod need upgrade, pod version:%s noobaa version:%s",
-				c.Image, r.NooBaa.Status.ActualImage)
-			if c.Image != r.NooBaa.Status.ActualImage {
-				c.Image = r.NooBaa.Status.ActualImage
-				if r.NooBaa.Spec.ImagePullSecret == nil {
-					pod.Spec.ImagePullSecrets =
-						[]corev1.LocalObjectReference{}
-				} else {
-					pod.Spec.ImagePullSecrets =
-						[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
-				}
-				util.KubeUpdate(&pod)
 			}
 		}
 	}
@@ -989,10 +1002,40 @@ func (r *Reconciler) reconcileExistingPods(podsList *corev1.PodList) error {
 	return nil
 }
 
-func (r *Reconciler) reconcileMissingPods(podsList *corev1.PodList) error {
-	r.updatePodTemplate() // Adding Missing Agents
+func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
+	var c = &pod.Spec.Containers[0]
+	for _, name := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
+		envVar := util.GetEnvVariable(&c.Env, name)
+		val, ok := os.LookupEnv(name)
+		if (envVar == nil && ok) || (envVar != nil && (!ok || envVar.Value != val)) {
+			r.Logger.Warnf("Change in Env varaibles detected: os(%s) container(%v)", val, envVar)
+			return true
+		}
+	}
+	if c.Image != r.NooBaa.Status.ActualImage {
+		r.Logger.Warnf("Change in Image detected: current image(%v) noobaa image(%v)", c.Image, r.NooBaa.Status.ActualImage)
+		return true
+	}
+	podSecrets := pod.Spec.ImagePullSecrets
+	noobaaSecret := r.NooBaa.Spec.ImagePullSecret
+	if noobaaSecret == nil {
+		sa := util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount)
+		sa.Name = pod.Spec.ServiceAccountName
+		sa.Namespace = options.Namespace
+		if util.KubeCheck(sa) && !reflect.DeepEqual(sa.ImagePullSecrets, podSecrets) {
+			r.Logger.Warnf("Change in Image Pull Secrets detected: SA(%v) Spec(%v)", sa.ImagePullSecrets, podSecrets)
+			return true
+		}
+	} else if podSecrets == nil || len(podSecrets) == 0 || !reflect.DeepEqual(noobaaSecret, podSecrets[0]) {
+		r.Logger.Warnf("Change in Image Pull Secrets detected: NoobaaSecret(%v) Spec(%v)", noobaaSecret, podSecrets)
+		return true
+	}
+	return false
+}
+
+func (r *Reconciler) reconcileMissingPvcs(pvcsList *corev1.PersistentVolumeClaimList) error {
 	r.updatePvcTemplate()
-	for i := len(podsList.Items); i < r.BackingStore.Spec.PVPool.NumVolumes; i++ {
+	for i := len(pvcsList.Items); i < r.BackingStore.Spec.PVPool.NumVolumes; i++ {
 		postfix := util.RandomHex(4)
 		pvcName := fmt.Sprintf("%s-%s-pvc-%s", r.BackingStore.Name, options.SystemName, postfix)
 		newPvc := r.PvcAgentTemplate.DeepCopy()
@@ -1000,13 +1043,6 @@ func (r *Reconciler) reconcileMissingPods(podsList *corev1.PodList) error {
 		newPvc.Namespace = options.Namespace
 		r.Own(newPvc)
 		util.KubeCreateSkipExisting(newPvc)
-
-		r.PodAgentTemplate.Name = fmt.Sprintf("%s-%s-pod-%s", r.BackingStore.Name, options.SystemName, postfix)
-		r.PodAgentTemplate.Namespace = options.Namespace
-		newPod := r.PodAgentTemplate.DeepCopy()
-		newPod.Spec.Volumes[1].PersistentVolumeClaim.ClaimName = pvcName
-		r.Own(newPod)
-		util.KubeCreateSkipExisting(newPod)
 	}
 	return nil
 }
@@ -1073,14 +1109,6 @@ func (r *Reconciler) updatePvcTemplate() error {
 func (r *Reconciler) deletePvPool() error {
 	podsList := &corev1.PodList{}
 	util.KubeList(podsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
-	for i := range podsList.Items {
-		pod := &podsList.Items[i]
-		util.RemoveFinalizer(pod, nbv1.Finalizer)
-		if !util.KubeUpdate(pod) {
-			r.Logger.Errorf("Pod %q failed to remove finalizer %q",
-				pod.Name, nbv1.Finalizer)
-		}
-	}
 	util.KubeDeleteAllOf(&corev1.Pod{}, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
 	util.KubeDeleteAllOf(&corev1.PersistentVolumeClaim{}, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
 	return nil
@@ -1118,8 +1146,6 @@ func (r *Reconciler) upgradeBackingStore(sts *appsv1.StatefulSet) error {
 					[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 			}
 			pod.Labels = map[string]string{"pool": r.BackingStore.Name}
-			finalizers := append(pod.GetFinalizers(), "noobaa.io/finalizer")
-			pod.SetFinalizers(finalizers)
 			r.Own(pod)
 			util.KubeUpdate(pod)
 			pvc := &corev1.PersistentVolumeClaim{}
