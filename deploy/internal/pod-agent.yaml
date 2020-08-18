@@ -4,8 +4,6 @@ metadata:
   labels:
     app: noobaa
   name: noobaa-agent
-  finalizers:
-    - noobaa.io/finalizer
 spec:
   containers:
     - name: noobaa-agent
