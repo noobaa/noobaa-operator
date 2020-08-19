@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: noobaa-db
+  labels:
+    app: noobaa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      noobaa-db: noobaa
+  serviceName: noobaa-db
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: noobaa
+        noobaa-db: noobaa
+    spec:
+      serviceAccountName: noobaa
+      initContainers:
+        #----------------#
+        # INIT CONTAINER #
+        #----------------#
+        - name: init
+          image: NOOBAA_CORE_IMAGE
+          command:
+            - /noobaa_init_files/noobaa_init.sh
+            - init_mongo
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "500Mi"
+            limits:
+              cpu: "500m"
+              memory: "500Mi"
+          volumeMounts:
+            - name: db
+              mountPath: /mongo_data
+      containers:
+        #--------------------#
+        # Postgres CONTAINER #
+        #--------------------#
+        - name: db
+          image: NOOBAA_DB_IMAGE
+          env:
+            - name: POSTGRES_DB
+              value: nbcore
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: noobaa
+          magePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          resources:
+            requests:
+              cpu: "2"
+              memory: "4Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          volumeMounts:
+            - name: db
+              # mountPath: /var/lib/postgresql/data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: db
+        labels:
+          app: noobaa
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi

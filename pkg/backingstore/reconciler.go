@@ -211,10 +211,10 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	err = r.UpdateStatus()
+	// if updateStatus will fail to update the CR for any reason we will continue to requeue the reconcile
+	// until the spec status will reflect the actual status of the backingstore
 	if err != nil {
 		res.RequeueAfter = 3 * time.Second
-		// leave current phase as is
-		r.SetPhase("", "TemporaryError", err.Error())
 		log.Warnf("⏳ Temporary Error: %s", err)
 	}
 	return res, nil
@@ -938,7 +938,7 @@ func (r *Reconciler) reconcileExistingPods(podsList *corev1.PodList) error {
 		// Deployment and Statefulset are handling this by taking down the pod and
 		// starting a new one.
 		// In order to support reconciling changes to the proxy env we need to mimic
-		// this behaviour which is not trival in the case of agent pods.
+		// this behavior which is not trivial in the case of agent pods.
 		var c = &pod.Spec.Containers[0]
 		for _, name := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
 			envVar := util.GetEnvVariable(&c.Env, name)

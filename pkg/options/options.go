@@ -68,6 +68,14 @@ var NooBaaImage = ContainerImage
 // it can be overridden for testing or different registry locations.
 var DBImage = "centos/mongodb-36-centos7"
 
+// DBPostgresImage is the default postgres db image url
+// currently it can not be overridden.
+var DBPostgresImage = "postgres:12.3"
+
+// DBType is the default db image type
+// it can be overridden for testing or different types.
+var DBType = "mongodb"
+
 // DBVolumeSizeGB can be used to override the default database volume size
 var DBVolumeSizeGB = 0
 
@@ -83,7 +91,7 @@ var PVPoolDefaultStorageClass = ""
 // which is needed when using a private container registry.
 var ImagePullSecret = ""
 
-// MiniEnv setting this option indicates to the operator that it is deployed on low reosurce environment
+// MiniEnv setting this option indicates to the operator that it is deployed on low resource environment
 // This info is used by the operator for environment based decisions (e.g. number of resources to request per
 // pod)
 var MiniEnv = false
@@ -124,6 +132,10 @@ func init() {
 	FlagSet.StringVar(
 		&DBImage, "db-image",
 		DBImage, "The database container image",
+	)
+	FlagSet.StringVar(
+		&DBType, "db-type",
+		DBType, "The type of database container image (mongodb, postgres)",
 	)
 	FlagSet.IntVar(
 		&DBVolumeSizeGB, "db-volume-size-gb",
