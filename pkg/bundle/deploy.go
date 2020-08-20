@@ -1937,7 +1937,7 @@ spec:
   targetCPUUtilizationPercentage: 80
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "af92f0db07b5645470bc390d759c2a0014ee9fb0467984dd3f1c91d2133372c5"
+const Sha256_deploy_internal_pod_agent_yaml = "a111e68beec272ac08d240755904bfde4df9b4e64783c67dd4289450e55b02bc"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -1945,8 +1945,6 @@ metadata:
   labels:
     app: noobaa
   name: noobaa-agent
-  finalizers:
-    - noobaa.io/finalizer
 spec:
   containers:
     - name: noobaa-agent
