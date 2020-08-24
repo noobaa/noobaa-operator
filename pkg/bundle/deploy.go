@@ -2192,7 +2192,7 @@ type: Opaque
 data: {}
 `
 
-const Sha256_deploy_internal_service_db_yaml = "1311347228500f932ec5d0fa18c5ac6df0040bd98444862b04506012eceb0542"
+const Sha256_deploy_internal_service_db_yaml = "64559363daddd9caf781f104b876b33fb63e4f2551570e73bdb2bfae736f33ee"
 
 const File_deploy_internal_service_db_yaml = `apiVersion: v1
 kind: Service
@@ -2211,9 +2211,6 @@ spec:
     - port: 27017
       targetPort: 27017
       name: mongodb
-    - port: 5432
-      targetPort: 5432
-      name: postgres
 `
 
 const Sha256_deploy_internal_service_mgmt_yaml = "3449be462a77ea7e66c529308cbd86fd1c3d18685aa4649aa05514303f23908a"
@@ -2291,7 +2288,7 @@ spec:
 
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "6824b5cfdac6b09405c473c31ca9cc03e0ebe198e6c86d4f5d7ca9a9d7ed1b4f"
+const Sha256_deploy_internal_statefulset_core_yaml = "560ee00673fd2c3559559fd69232bd39401178ae8f79531e910a037dcfa51909"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2358,6 +2355,16 @@ spec:
         env:
         - name: MONGODB_URL
           value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
+        - name: POSTGRES_HOST
+          value: "noobaa-db-0.noobaa-db"
+        - name: POSTGRES_DBNAME
+          value: nbcore
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          value: noobaa
+        - name: DB_TYPE
+          value: mongodb
         - name: CONTAINER_PLATFORM
           value: KUBERNETES
         - name: NOOBAA_DISABLE_COMPRESSION
@@ -2479,7 +2486,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "168164c02237ca8a65f623b9d5267823080e3a3e7b607449a9b9e5a5f3e8f44b"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "2d25c5ac73690aceea74d8d17853999b1b9a1a05f0342c12d80aa8056ad6f206"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2499,28 +2506,9 @@ spec:
     metadata:
       labels:
         app: noobaa
-        noobaa-db: noobaa
+        noobaa-db: postgres
     spec:
       serviceAccountName: noobaa
-      initContainers:
-        #----------------#
-        # INIT CONTAINER #
-        #----------------#
-        - name: init
-          image: NOOBAA_CORE_IMAGE
-          command:
-            - /noobaa_init_files/noobaa_init.sh
-            - init_mongo
-          resources:
-            requests:
-              cpu: "500m"
-              memory: "500Mi"
-            limits:
-              cpu: "500m"
-              memory: "500Mi"
-          volumeMounts:
-            - name: db
-              mountPath: /mongo_data
       containers:
         #--------------------#
         # Postgres CONTAINER #
@@ -2528,11 +2516,11 @@ spec:
         - name: db
           image: NOOBAA_DB_IMAGE
           env:
-            - name: POSTGRES_DB
+            - name: POSTGRESQL_DATABASE
               value: nbcore
-            - name: POSTGRES_USER
+            - name: POSTGRESQL_USER
               value: postgres
-            - name: POSTGRES_PASSWORD
+            - name: POSTGRESQL_PASSWORD
               value: noobaa
           magePullPolicy: "IfNotPresent"
           ports:
@@ -2546,8 +2534,7 @@ spec:
               memory: "4Gi"
           volumeMounts:
             - name: db
-              # mountPath: /var/lib/postgresql/data
-              mountPath: /data
+              mountPath: /var/lib/pgsql
   volumeClaimTemplates:
     - metadata:
         name: db
