@@ -63,6 +63,16 @@ spec:
         env:
         - name: MONGODB_URL
           value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
+        - name: POSTGRES_HOST
+          value: "noobaa-db-0.noobaa-db"
+        - name: POSTGRES_DBNAME
+          value: nbcore
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          value: noobaa
+        - name: DB_TYPE
+          value: mongodb
         - name: CONTAINER_PLATFORM
           value: KUBERNETES
         - name: NOOBAA_DISABLE_COMPRESSION

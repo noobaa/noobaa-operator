@@ -16,28 +16,9 @@ spec:
     metadata:
       labels:
         app: noobaa
-        noobaa-db: noobaa
+        noobaa-db: postgres
     spec:
       serviceAccountName: noobaa
-      initContainers:
-        #----------------#
-        # INIT CONTAINER #
-        #----------------#
-        - name: init
-          image: NOOBAA_CORE_IMAGE
-          command:
-            - /noobaa_init_files/noobaa_init.sh
-            - init_mongo
-          resources:
-            requests:
-              cpu: "500m"
-              memory: "500Mi"
-            limits:
-              cpu: "500m"
-              memory: "500Mi"
-          volumeMounts:
-            - name: db
-              mountPath: /mongo_data
       containers:
         #--------------------#
         # Postgres CONTAINER #
@@ -45,11 +26,11 @@ spec:
         - name: db
           image: NOOBAA_DB_IMAGE
           env:
-            - name: POSTGRES_DB
+            - name: POSTGRESQL_DATABASE
               value: nbcore
-            - name: POSTGRES_USER
+            - name: POSTGRESQL_USER
               value: postgres
-            - name: POSTGRES_PASSWORD
+            - name: POSTGRESQL_PASSWORD
               value: noobaa
           magePullPolicy: "IfNotPresent"
           ports:
@@ -63,8 +44,7 @@ spec:
               memory: "4Gi"
           volumeMounts:
             - name: db
-              # mountPath: /var/lib/postgresql/data
-              mountPath: /data
+              mountPath: /var/lib/pgsql
   volumeClaimTemplates:
     - metadata:
         name: db
