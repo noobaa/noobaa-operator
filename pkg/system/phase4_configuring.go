@@ -385,7 +385,7 @@ func (r *Reconciler) ReconcileHPAEndpoint() error {
 // SetDesiredHPAEndpoint updates the endpoint horizontal pod autoscaler as desired for reconciling
 func (r *Reconciler) SetDesiredHPAEndpoint() error {
 	var minReplicas int32 = 1
-	var maxReplicas int32 = 3
+	var maxReplicas int32 = 2
 
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	if endpointsSpec != nil {

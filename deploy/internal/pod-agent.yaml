@@ -4,8 +4,6 @@ metadata:
   labels:
     app: noobaa
   name: noobaa-agent
-  finalizers:
-    - noobaa.io/finalizer
 spec:
   containers:
     - name: noobaa-agent
@@ -15,10 +13,10 @@ spec:
         # https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
         requests:
           cpu: "100m"
-          memory: "200Mi"
+          memory: "400Mi"
         limits:
           cpu: "100m"
-          memory: "200Mi"
+          memory: "400Mi"
       env:
         # Insert the relevant config for the current agent
         - name: CONTAINER_PLATFORM

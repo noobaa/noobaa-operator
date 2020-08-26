@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -117,7 +118,17 @@ func (r *Reconciler) SetDesiredServiceS3() error {
 
 // SetDesiredServiceDB updates the ServiceS3 as desired for reconciling
 func (r *Reconciler) SetDesiredServiceDB() error {
-	r.ServiceDb.Spec.Selector["noobaa-db"] = r.Request.Name
+	if r.NooBaa.Spec.DBType == "postgres" {
+		r.ServiceDb.Spec.Selector["noobaa-db"] = "postgres"
+		r.ServiceDb.Spec.Ports[0].Name = "postgres"
+		r.ServiceDb.Spec.Ports[0].Port = 5432
+		r.ServiceDb.Spec.Ports[0].TargetPort = intstr.FromInt(5432)
+	} else {
+		r.ServiceDb.Spec.Selector["noobaa-db"] = r.Request.Name
+		r.ServiceDb.Spec.Ports[0].Name = "mongodb"
+		r.ServiceDb.Spec.Ports[0].Port = 27017
+		r.ServiceDb.Spec.Ports[0].TargetPort = intstr.FromInt(27017)
+	}
 	return nil
 }
 
@@ -254,6 +265,14 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 
 				case "MONGODB_URL":
 					c.Env[j].Value = "mongodb://" + r.NooBaaMongoDB.Name + "-0." + r.NooBaaMongoDB.Spec.ServiceName + "/nbcore"
+
+				case "POSTGRES_HOST":
+					c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
+
+				case "DB_TYPE":
+					if r.NooBaa.Spec.DBType == "postgres" {
+						c.Env[j].Value = "postgres"
+					}
 
 				case "OAUTH_AUTHORIZATION_ENDPOINT":
 					if r.OAuthEndpoints != nil {
@@ -480,8 +499,10 @@ func (r *Reconciler) ReconcileDB() error {
 	var err error = nil
 	if r.NooBaa.Spec.DBType == "postgres" {
 		err = r.ReconcileObject(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB)
-	} else {
+	} else if r.NooBaa.Spec.DBType == "mongodb" {
 		err = r.ReconcileObject(r.NooBaaMongoDB, r.SetDesiredNooBaaDB)
+	} else {
+		err = util.NewPersistentError("UnknownDBType", "Unknown dbType is specified in NooBaa spec")
 	}
 	return err
 }
