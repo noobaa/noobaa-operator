@@ -1930,7 +1930,7 @@ spec:
   targetCPUUtilizationPercentage: 80
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "a111e68beec272ac08d240755904bfde4df9b4e64783c67dd4289450e55b02bc"
+const Sha256_deploy_internal_pod_agent_yaml = "204e11eea569564b507010d13c43a2d3ad5feae9e86666a08904508eab231830"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -1947,10 +1947,10 @@ spec:
         # https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
         requests:
           cpu: "100m"
-          memory: "200Mi"
+          memory: "400Mi"
         limits:
           cpu: "100m"
-          memory: "200Mi"
+          memory: "400Mi"
       env:
         # Insert the relevant config for the current agent
         - name: CONTAINER_PLATFORM
