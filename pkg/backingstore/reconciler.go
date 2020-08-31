@@ -838,6 +838,10 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 		}
 		fallthrough
 	case nb.ExternalConnectionInvalidEndpoint:
+		if time.Since(r.BackingStore.CreationTimestamp.Time) < 5*time.Minute {
+			r.Logger.Infof("got invalid endopint. requeuing for 5 minutes to make sure it is not a temporary connection issue")
+			return fmt.Errorf("got invalid endopint. requeue again")
+		}
 		fallthrough
 	case nb.ExternalConnectionTimeSkew:
 		fallthrough
