@@ -24,6 +24,7 @@ type Client interface {
 	CreateAccountAPI(CreateAccountParams) (CreateAccountReply, error)
 	CreateBucketAPI(CreateBucketParams) error
 	CreateHostsPoolAPI(CreateHostsPoolParams) (string, error)
+	GetHostsPoolAgentConfigAPI(GetHostsPoolAgentConfigParams) (string, error)
 	UpdateHostsPoolAPI(UpdateHostsPoolParams) error
 	CreateCloudPoolAPI(CreateCloudPoolParams) error
 	CreateTierAPI(CreateTierParams) error
@@ -189,6 +190,17 @@ func (c *RPCClient) CreateBucketAPI(params CreateBucketParams) error {
 // CreateHostsPoolAPI calls pool_api.create_hosts_pool()
 func (c *RPCClient) CreateHostsPoolAPI(params CreateHostsPoolParams) (string, error) {
 	req := &RPCMessage{API: "pool_api", Method: "create_hosts_pool", Params: params}
+	res := &struct {
+		RPCMessage `json:",inline"`
+		Reply      string `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
+}
+
+// GetHostsPoolAgentConfigAPI calls pool_api.get_hosts_pool_agent_config()
+func (c *RPCClient) GetHostsPoolAgentConfigAPI(params GetHostsPoolAgentConfigParams) (string, error) {
+	req := &RPCMessage{API: "pool_api", Method: "get_hosts_pool_agent_config", Params: params}
 	res := &struct {
 		RPCMessage `json:",inline"`
 		Reply      string `json:"reply"`

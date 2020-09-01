@@ -928,6 +928,16 @@ func (r *Reconciler) ReconcilePool() error {
 }
 
 func (r *Reconciler) reconcilePvPool() error {
+	if r.Secret.StringData["AGENT_CONFIG"] == "" {
+		res, err := r.NBClient.GetHostsPoolAgentConfigAPI(nb.GetHostsPoolAgentConfigParams{
+			Name: r.BackingStore.Name,
+		})
+		if err != nil {
+			return err
+		}
+		r.Secret.StringData["AGENT_CONFIG"] = res
+		util.KubeUpdate(r.Secret)
+	}
 	podsList := &corev1.PodList{}
 	pvcsList := &corev1.PersistentVolumeClaimList{}
 	util.KubeList(podsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
@@ -1060,12 +1070,7 @@ func (r *Reconciler) isPodinNoobaa(pod *corev1.Pod) bool {
 	return false
 }
 
-func (r *Reconciler) updatePodTemplate() error {
-	if r.Secret.StringData["AGENT_CONFIG"] == "" {
-		return util.NewPersistentError("No AgentConfig - Can't add Missing Agents",
-			fmt.Sprintf("Current Backing store spec is: %q", r.BackingStore.Spec.PVPool))
-	}
-
+func (r *Reconciler) updatePodTemplate() {
 	c := &r.PodAgentTemplate.Spec.Containers[0]
 	for j := range c.Env {
 		switch c.Env[j].Name {
@@ -1096,10 +1101,9 @@ func (r *Reconciler) updatePodTemplate() error {
 	if r.NooBaa.Spec.Tolerations != nil {
 		r.PodAgentTemplate.Spec.Tolerations = r.NooBaa.Spec.Tolerations
 	}
-	return nil
 }
 
-func (r *Reconciler) updatePvcTemplate() error {
+func (r *Reconciler) updatePvcTemplate() {
 	if r.BackingStore.Spec.PVPool.StorageClass != "" {
 		r.PvcAgentTemplate.Spec.StorageClassName = &r.BackingStore.Spec.PVPool.StorageClass
 	} else if r.NooBaa.Spec.PVPoolDefaultStorageClass != nil {
@@ -1107,7 +1111,6 @@ func (r *Reconciler) updatePvcTemplate() error {
 	}
 	r.PvcAgentTemplate.Spec.Resources = *r.BackingStore.Spec.PVPool.VolumeResources
 	r.PvcAgentTemplate.Labels = map[string]string{"pool": r.BackingStore.Name}
-	return nil
 }
 
 func (r *Reconciler) deletePvPool() error {
