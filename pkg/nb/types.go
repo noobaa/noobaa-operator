@@ -328,6 +328,12 @@ type CreateHostsPoolParams struct {
 	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
 }
 
+// GetHostsPoolAgentConfigParams is the params of pool_api.get_hosts_pool_agent_config()
+type GetHostsPoolAgentConfigParams struct {
+	Name         string            `json:"name"`
+	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
+}
+
 // UpdateHostsPoolParams is the params of pool_api.update_hosts_pool()
 type UpdateHostsPoolParams struct {
 	Name         string            `json:"name"`
