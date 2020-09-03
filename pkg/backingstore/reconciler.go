@@ -1097,7 +1097,10 @@ func (r *Reconciler) updatePodTemplate() {
 		r.PodAgentTemplate.Spec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
-	r.PodAgentTemplate.Labels = map[string]string{"pool": r.BackingStore.Name}
+	r.PodAgentTemplate.Labels = map[string]string{
+		"app":  "noobaa",
+		"pool": r.BackingStore.Name,
+	}
 	if r.NooBaa.Spec.Tolerations != nil {
 		r.PodAgentTemplate.Spec.Tolerations = r.NooBaa.Spec.Tolerations
 	}
@@ -1110,7 +1113,10 @@ func (r *Reconciler) updatePvcTemplate() {
 		r.PvcAgentTemplate.Spec.StorageClassName = r.NooBaa.Spec.PVPoolDefaultStorageClass
 	}
 	r.PvcAgentTemplate.Spec.Resources = *r.BackingStore.Spec.PVPool.VolumeResources
-	r.PvcAgentTemplate.Labels = map[string]string{"pool": r.BackingStore.Name}
+	r.PvcAgentTemplate.Labels = map[string]string{
+		"app":  "noobaa",
+		"pool": r.BackingStore.Name,
+	}
 }
 
 func (r *Reconciler) deletePvPool() error {
