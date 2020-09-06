@@ -499,7 +499,7 @@ func (r *Reconciler) ReconcileDB() error {
 	var err error = nil
 	if r.NooBaa.Spec.DBType == "postgres" {
 		err = r.ReconcileObject(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB)
-	} else if r.NooBaa.Spec.DBType == "mongodb" {
+	} else if r.NooBaa.Spec.DBType == "" || r.NooBaa.Spec.DBType == "mongodb" {
 		err = r.ReconcileObject(r.NooBaaMongoDB, r.SetDesiredNooBaaDB)
 	} else {
 		err = util.NewPersistentError("UnknownDBType", "Unknown dbType is specified in NooBaa spec")
