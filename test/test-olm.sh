@@ -23,7 +23,7 @@ fi
 
 function install_olm() {
     echo "----> Install OLM and Operator Marketplace ..."
-    ${OPERATOR_SDK} olm install || true
+    ${OPERATOR_SDK} olm install --version 0.14.1 || true
     # kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.10.0/crds.yaml
     # kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.10.0/olm.yaml
     # kubectl apply -f https://github.com/operator-framework/operator-marketplace/raw/master/deploy/upstream/01_namespace.yaml
