@@ -203,7 +203,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 	crdDescriptions := map[string]string{
 		"NooBaa": `A NooBaa system - Create this to start`,
 		"BackingStore": `Storage target spec such as aws-s3, s3-compatible, ibm-cos, PV's and more. ` +
-			`Used in BacketClass to construct data placement policies.`,
+			`Used in BucketClass to construct data placement policies.`,
 		"BucketClass": `Storage policy spec  tiering, mirroring, spreading. ` +
 			`Combines BackingStores. Referenced by ObjectBucketClaims.`,
 		"ObjectBucketClaim": `Claim a bucket just like claiming a PV. ` +
