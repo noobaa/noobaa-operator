@@ -1841,7 +1841,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "69904dce2544a67df1305795b701c840968e5a4a9736f18b659e3a8fa48711fe"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "6116310fbe0a22fd3ab3af4b1cd6f0828969fb14cb2443cc999a6fc47cc0dc6d"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -1866,78 +1866,83 @@ spec:
     spec:
       serviceAccountName: noobaa
       volumes:
-      - name: mgmt-secret
-        secret:
-          secretName: noobaa-mgmt-serving-cert
-          optional: true
-      - name: s3-secret
-        secret:
-          secretName: noobaa-s3-serving-cert
-          optional: true
-      containers:
-      - name: endpoint
-        image: NOOBAA_CORE_IMAGE
-        command:
-        - /noobaa_init_files/noobaa_init.sh
-        - init_endpoint
-        resources:
-          requests:
-            cpu: "1"
-            memory: "2Gi"
-          limits:
-            cpu: "1"
-            memory: "2Gi"
-        ports:
-        - containerPort: 6001
-        - containerPort: 6443
-        env:
-        - name: MGMT_ADDR
-        - name: BG_ADDR
-        - name: MD_ADDR
-        - name: HOSTED_AGENTS_ADDR
-        - name: MONGODB_URL
-        - name: VIRTUAL_HOSTS
-        - name: REGION
-        - name: ENDPOINT_GROUP_ID
-        - name: LOCAL_MD_SERVER
-        - name: LOCAL_N2N_AGENT
-        - name: JWT_SECRET
-        - name: NOOBAA_DISABLE_COMPRESSION
-          value: "false"
-        - name: NOOBAA_AUTH_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: noobaa-endpoints
-              key: auth_token
-        - name: CONTAINER_CPU_REQUEST
-          valueFrom:
-            resourceFieldRef:
-              resource: requests.cpu
-        - name: CONTAINER_MEM_REQUEST
-          valueFrom:
-            resourceFieldRef:
-              resource: requests.memory
-        - name: CONTAINER_CPU_LIMIT
-          valueFrom:
-            resourceFieldRef:
-              resource: limits.cpu
-        - name: CONTAINER_MEM_LIMIT
-          valueFrom:
-            resourceFieldRef:
-              resource: limits.memory
-        volumeMounts:
-        # curently ssl_utils expects both secrets to be configured in order to use
-        # certificates. TODO: Allow each secret to be configured by intself.
         - name: mgmt-secret
-          mountPath: /etc/mgmt-secret
-          readOnly: true
+          secret:
+            secretName: noobaa-mgmt-serving-cert
+            optional: true
         - name: s3-secret
-          mountPath: /etc/s3-secret
-          readOnly: true
-        readinessProbe: # must be configured to support rolling updates
-          tcpSocket:
-            port: 6001 # ready when s3 port is open
-          timeoutSeconds: 5
+          secret:
+            secretName: noobaa-s3-serving-cert
+            optional: true
+      containers:
+        - name: endpoint
+          image: NOOBAA_CORE_IMAGE
+          command:
+            - /noobaa_init_files/noobaa_init.sh
+            - init_endpoint
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+          ports:
+            - containerPort: 6001
+            - containerPort: 6443
+          env:
+            - name: MGMT_ADDR
+            - name: BG_ADDR
+            - name: MD_ADDR
+            - name: HOSTED_AGENTS_ADDR
+            - name: MONGODB_URL
+            - name: VIRTUAL_HOSTS
+            - name: REGION
+            - name: ENDPOINT_GROUP_ID
+            - name: LOCAL_MD_SERVER
+            - name: LOCAL_N2N_AGENT
+            - name: JWT_SECRET
+            - name: NOOBAA_ROOT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-root-master-key
+                  key: cipher_key_b64
+            - name: NOOBAA_DISABLE_COMPRESSION
+              value: "false"
+            - name: NOOBAA_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-endpoints
+                  key: auth_token
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+          volumeMounts:
+            # curently ssl_utils expects both secrets to be configured in order to use
+            # certificates. TODO: Allow each secret to be configured by intself.
+            - name: mgmt-secret
+              mountPath: /etc/mgmt-secret
+              readOnly: true
+            - name: s3-secret
+              mountPath: /etc/s3-secret
+              readOnly: true
+          readinessProbe: # must be configured to support rolling updates
+            tcpSocket:
+              port: 6001 # ready when s3 port is open
+            timeoutSeconds: 5
 `
 
 const Sha256_deploy_internal_hpa_endpoint_yaml = "5f6d756b2a8a7419b0d3b103c0289e911cba08748da2d36db0c0c7e497e6f423"
@@ -2337,7 +2342,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "560ee00673fd2c3559559fd69232bd39401178ae8f79531e910a037dcfa51909"
+const Sha256_deploy_internal_statefulset_core_yaml = "2789548c2f42e0faa3e2b7d5065ab541ae4b09f050dc17a8020e0dfa57ccdac1"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2362,102 +2367,107 @@ spec:
     spec:
       serviceAccountName: noobaa
       volumes:
-      - name: logs
-        emptyDir: {}
-      - name: mgmt-secret
-        secret:
-          secretName: noobaa-mgmt-serving-cert
-          optional: true
-      - name: s3-secret
-        secret:
-          secretName: noobaa-s3-serving-cert
-          optional: true
-      containers:
-#----------------#
-# CORE CONTAINER #
-#----------------#
-      - name: core
-        image: NOOBAA_CORE_IMAGE
-        volumeMounts:
         - name: logs
-          mountPath: /log
+          emptyDir: {}
         - name: mgmt-secret
-          mountPath: /etc/mgmt-secret
-          readOnly: true
+          secret:
+            secretName: noobaa-mgmt-serving-cert
+            optional: true
         - name: s3-secret
-          mountPath: /etc/s3-secret
-          readOnly: true
-        resources:
-          requests:
-            cpu: "1"
-            memory: "4Gi"
-          limits:
-            cpu: "1"
-            memory: "4Gi"
-        ports:
-        - containerPort: 8080
-        - containerPort: 8443
-        - containerPort: 8444
-        - containerPort: 8445
-        - containerPort: 8446
-        - containerPort: 60100
-        env:
-        - name: MONGODB_URL
-          value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
-        - name: POSTGRES_HOST
-          value: "noobaa-db-0.noobaa-db"
-        - name: POSTGRES_DBNAME
-          value: nbcore
-        - name: POSTGRES_USER
-          value: postgres
-        - name: POSTGRES_PASSWORD
-          value: noobaa
-        - name: DB_TYPE
-          value: mongodb
-        - name: CONTAINER_PLATFORM
-          value: KUBERNETES
-        - name: NOOBAA_DISABLE_COMPRESSION
-          value: "false"
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: noobaa-server
-              key: jwt
-        - name: SERVER_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: noobaa-server
-              key: server_secret
-        - name: AGENT_PROFILE
-          value: VALUE_AGENT_PROFILE
-        - name: DISABLE_DEV_RANDOM_SEED
-          value: "true"
-        - name: OAUTH_AUTHORIZATION_ENDPOINT
-          value: ""
-        - name: OAUTH_TOKEN_ENDPOINT
-          value: ""
-        - name: NOOBAA_SERVICE_ACCOUNT
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.serviceAccountName
-        - name: container_dbg
-          value: "" # any non-empty value will set the container to dbg mode
-        - name: CONTAINER_CPU_REQUEST
-          valueFrom:
-            resourceFieldRef:
-              resource: requests.cpu
-        - name: CONTAINER_MEM_REQUEST
-          valueFrom:
-            resourceFieldRef:
-              resource: requests.memory
-        - name: CONTAINER_CPU_LIMIT
-          valueFrom:
-            resourceFieldRef:
-              resource: limits.cpu
-        - name: CONTAINER_MEM_LIMIT
-          valueFrom:
-            resourceFieldRef:
-              resource: limits.memory
+          secret:
+            secretName: noobaa-s3-serving-cert
+            optional: true
+      containers:
+        #----------------#
+        # CORE CONTAINER #
+        #----------------#
+        - name: core
+          image: NOOBAA_CORE_IMAGE
+          volumeMounts:
+            - name: logs
+              mountPath: /log
+            - name: mgmt-secret
+              mountPath: /etc/mgmt-secret
+              readOnly: true
+            - name: s3-secret
+              mountPath: /etc/s3-secret
+              readOnly: true
+          resources:
+            requests:
+              cpu: "1"
+              memory: "4Gi"
+            limits:
+              cpu: "1"
+              memory: "4Gi"
+          ports:
+            - containerPort: 8080
+            - containerPort: 8443
+            - containerPort: 8444
+            - containerPort: 8445
+            - containerPort: 8446
+            - containerPort: 60100
+          env:
+            - name: MONGODB_URL
+              value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
+            - name: POSTGRES_HOST
+              value: "noobaa-db-0.noobaa-db"
+            - name: POSTGRES_DBNAME
+              value: nbcore
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: noobaa
+            - name: DB_TYPE
+              value: mongodb
+            - name: CONTAINER_PLATFORM
+              value: KUBERNETES
+            - name: NOOBAA_DISABLE_COMPRESSION
+              value: "false"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-server
+                  key: jwt
+            - name: SERVER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-server
+                  key: server_secret
+            - name: NOOBAA_ROOT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-root-master-key
+                  key: cipher_key_b64
+            - name: AGENT_PROFILE
+              value: VALUE_AGENT_PROFILE
+            - name: DISABLE_DEV_RANDOM_SEED
+              value: "true"
+            - name: OAUTH_AUTHORIZATION_ENDPOINT
+              value: ""
+            - name: OAUTH_TOKEN_ENDPOINT
+              value: ""
+            - name: NOOBAA_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: container_dbg
+              value: "" # any non-empty value will set the container to dbg mode
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
 `
 
 const Sha256_deploy_internal_statefulset_db_yaml = "1da335367274e61427cd7cea453de205973c48bcbf26bcbd5473c0064df5ff47"

@@ -21,99 +21,104 @@ spec:
     spec:
       serviceAccountName: noobaa
       volumes:
-      - name: logs
-        emptyDir: {}
-      - name: mgmt-secret
-        secret:
-          secretName: noobaa-mgmt-serving-cert
-          optional: true
-      - name: s3-secret
-        secret:
-          secretName: noobaa-s3-serving-cert
-          optional: true
-      containers:
-#----------------#
-# CORE CONTAINER #
-#----------------#
-      - name: core
-        image: NOOBAA_CORE_IMAGE
-        volumeMounts:
         - name: logs
-          mountPath: /log
+          emptyDir: {}
         - name: mgmt-secret
-          mountPath: /etc/mgmt-secret
-          readOnly: true
+          secret:
+            secretName: noobaa-mgmt-serving-cert
+            optional: true
         - name: s3-secret
-          mountPath: /etc/s3-secret
-          readOnly: true
-        resources:
-          requests:
-            cpu: "1"
-            memory: "4Gi"
-          limits:
-            cpu: "1"
-            memory: "4Gi"
-        ports:
-        - containerPort: 8080
-        - containerPort: 8443
-        - containerPort: 8444
-        - containerPort: 8445
-        - containerPort: 8446
-        - containerPort: 60100
-        env:
-        - name: MONGODB_URL
-          value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
-        - name: POSTGRES_HOST
-          value: "noobaa-db-0.noobaa-db"
-        - name: POSTGRES_DBNAME
-          value: nbcore
-        - name: POSTGRES_USER
-          value: postgres
-        - name: POSTGRES_PASSWORD
-          value: noobaa
-        - name: DB_TYPE
-          value: mongodb
-        - name: CONTAINER_PLATFORM
-          value: KUBERNETES
-        - name: NOOBAA_DISABLE_COMPRESSION
-          value: "false"
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: noobaa-server
-              key: jwt
-        - name: SERVER_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: noobaa-server
-              key: server_secret
-        - name: AGENT_PROFILE
-          value: VALUE_AGENT_PROFILE
-        - name: DISABLE_DEV_RANDOM_SEED
-          value: "true"
-        - name: OAUTH_AUTHORIZATION_ENDPOINT
-          value: ""
-        - name: OAUTH_TOKEN_ENDPOINT
-          value: ""
-        - name: NOOBAA_SERVICE_ACCOUNT
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.serviceAccountName
-        - name: container_dbg
-          value: "" # any non-empty value will set the container to dbg mode
-        - name: CONTAINER_CPU_REQUEST
-          valueFrom:
-            resourceFieldRef:
-              resource: requests.cpu
-        - name: CONTAINER_MEM_REQUEST
-          valueFrom:
-            resourceFieldRef:
-              resource: requests.memory
-        - name: CONTAINER_CPU_LIMIT
-          valueFrom:
-            resourceFieldRef:
-              resource: limits.cpu
-        - name: CONTAINER_MEM_LIMIT
-          valueFrom:
-            resourceFieldRef:
-              resource: limits.memory
+          secret:
+            secretName: noobaa-s3-serving-cert
+            optional: true
+      containers:
+        #----------------#
+        # CORE CONTAINER #
+        #----------------#
+        - name: core
+          image: NOOBAA_CORE_IMAGE
+          volumeMounts:
+            - name: logs
+              mountPath: /log
+            - name: mgmt-secret
+              mountPath: /etc/mgmt-secret
+              readOnly: true
+            - name: s3-secret
+              mountPath: /etc/s3-secret
+              readOnly: true
+          resources:
+            requests:
+              cpu: "1"
+              memory: "4Gi"
+            limits:
+              cpu: "1"
+              memory: "4Gi"
+          ports:
+            - containerPort: 8080
+            - containerPort: 8443
+            - containerPort: 8444
+            - containerPort: 8445
+            - containerPort: 8446
+            - containerPort: 60100
+          env:
+            - name: MONGODB_URL
+              value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
+            - name: POSTGRES_HOST
+              value: "noobaa-db-0.noobaa-db"
+            - name: POSTGRES_DBNAME
+              value: nbcore
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: noobaa
+            - name: DB_TYPE
+              value: mongodb
+            - name: CONTAINER_PLATFORM
+              value: KUBERNETES
+            - name: NOOBAA_DISABLE_COMPRESSION
+              value: "false"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-server
+                  key: jwt
+            - name: SERVER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-server
+                  key: server_secret
+            - name: NOOBAA_ROOT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noobaa-root-master-key
+                  key: cipher_key_b64
+            - name: AGENT_PROFILE
+              value: VALUE_AGENT_PROFILE
+            - name: DISABLE_DEV_RANDOM_SEED
+              value: "true"
+            - name: OAUTH_AUTHORIZATION_ENDPOINT
+              value: ""
+            - name: OAUTH_TOKEN_ENDPOINT
+              value: ""
+            - name: NOOBAA_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: container_dbg
+              value: "" # any non-empty value will set the container to dbg mode
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
