@@ -72,6 +72,9 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
 		return err
 	}
+	if err := r.ReconcileObject(r.SecretRootMasterKey, nil); err != nil {
+		return err
+	}
 	if err := r.UpgradeSplitDB(); err != nil {
 		return err
 	}

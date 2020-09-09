@@ -74,6 +74,7 @@ type Reconciler struct {
 	SecretOp            *corev1.Secret
 	SecretAdmin         *corev1.Secret
 	SecretEndpoints     *corev1.Secret
+	SecretRootMasterKey *corev1.Secret
 	AWSCloudCreds       *cloudcredsv1.CredentialsRequest
 	AzureCloudCreds     *cloudcredsv1.CredentialsRequest
 	AzureContainerCreds *corev1.Secret
@@ -123,6 +124,7 @@ func NewReconciler(
 		SecretOp:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretEndpoints:     util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretRootMasterKey: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AzureContainerCreds: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		GCPBucketCreds:      util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AWSCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
@@ -154,6 +156,7 @@ func NewReconciler(
 	r.SecretOp.Namespace = r.Request.Namespace
 	r.SecretAdmin.Namespace = r.Request.Namespace
 	r.SecretEndpoints.Namespace = r.Request.Namespace
+	r.SecretRootMasterKey.Namespace = r.Request.Namespace
 	r.AzureContainerCreds.Namespace = r.Request.Namespace
 	r.GCPBucketCreds.Namespace = r.Request.Namespace
 	r.AWSCloudCreds.Namespace = r.Request.Namespace
@@ -186,6 +189,7 @@ func NewReconciler(
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
 	r.SecretEndpoints.Name = r.Request.Name + "-endpoints"
+	r.SecretRootMasterKey.Name = r.Request.Name + "-root-master-key"
 	r.AWSCloudCreds.Name = r.Request.Name + "-aws-cloud-creds"
 	r.AWSCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-aws-cloud-creds-secret"
 	r.AzureContainerCreds.Name = r.Request.Name + "-azure-container-creds"
@@ -219,6 +223,8 @@ func NewReconciler(
 	r.SecretServer.StringData["jwt"] = util.RandomBase64(16)
 	r.SecretServer.StringData["server_secret"] = util.RandomHex(4)
 
+	// set noobaa root master key secret
+	r.SecretRootMasterKey.StringData["cipher_key_b64"] = util.RandomBase64(32)
 	return r
 }
 
@@ -239,6 +245,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.SecretOp)
 	util.KubeCheck(r.SecretEndpoints)
 	util.KubeCheck(r.SecretAdmin)
+	util.KubeCheck(r.SecretRootMasterKey)
 	util.KubeCheck(r.OBCStorageClass)
 	util.KubeCheck(r.DefaultBucketClass)
 	util.KubeCheck(r.DeploymentEndpoint)
