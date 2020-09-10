@@ -375,6 +375,7 @@ func (r *BucketRequest) CreateAccount() error {
 			FullPermission: false,
 			PermissionList: []string{r.BucketName},
 		},
+		BucketClaimOwner: r.BucketName,
 	})
 	if err != nil {
 		return err
