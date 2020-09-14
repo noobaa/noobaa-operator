@@ -1,6 +1,6 @@
 module github.com/noobaa/noobaa-operator/v2
 
-go 1.13
+go 1.15
 
 require (
 	github.com/Azure/azure-sdk-for-go v39.2.0+incompatible
@@ -28,6 +28,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
+	golang.org/x/text v0.3.3 // indirect
 	k8s.io/api v0.17.4
 	k8s.io/apiextensions-apiserver v0.17.4
 	k8s.io/apimachinery v0.17.4
