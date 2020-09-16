@@ -622,17 +622,17 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		// first look for the endpoint in the secret
 		endpoint = cephObjectUserSecret.StringData["Endpoint"]
 		r.Logger.Infof("Found RGW endpoint in cephObjectUserSecret %q",secretName)
-	} else if r.CephObjectstoreUser.Spec.Store != "" {
-		// if not found in the secret compose from the ceph-object-store name
-		endpoint = "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
-		r.Logger.Infof("Found RGW endpoint in CephObjectstoreUser %q",r.CephObjectstoreUser.Name)
 	} else if r.NooBaa.Labels != nil && r.NooBaa.Labels["rgw-endpoint"] != "" {
 		// take from label if not found so far
 		raw := r.NooBaa.Labels["rgw-endpoint"]
 		i := strings.LastIndex(raw, "_")
 		endpoint = fmt.Sprintf("http://%s:%s", raw[:i], raw[i+1:])
 		r.Logger.Info("Found RGW endpoint in noobaa label \"endpoint\"")
-	} else {
+	} else if r.CephObjectstoreUser.Spec.Store != "" {
+		// if not found in the secret compose from the ceph-object-store name
+		endpoint = "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
+		r.Logger.Infof("Found RGW endpoint in CephObjectstoreUser %q",r.CephObjectstoreUser.Name)
+	}  else {
 		return fmt.Errorf("Ceph RGW endpoint address is not available")
 	}
 	r.Logger.Infof("RGW endpoint %q",endpoint)
