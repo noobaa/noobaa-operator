@@ -130,11 +130,12 @@ test: lint test-go
 .PHONY: test
 
 lint: gen
-	$(TIME) go run golang.org/x/lint/golint \
+	GO111MODULE=off go get -u -a golang.org/x/lint/golint
+	GO111MODULE=off go run golang.org/x/lint/golint \
 		-set_exit_status=1 \
 		$$(go list ./... | cut -d'/' -f5- | sed 's/^\(.*\)$$/\.\/\1\//' | grep -v ./pkg/apis/noobaa/v1alpha1/ | grep -v ./pkg/bundle/)
 	@echo
-	$(TIME) go run golang.org/x/lint/golint \
+	GO111MODULE=off go run golang.org/x/lint/golint \
 		-set_exit_status=1 \
 		$$(echo ./pkg/apis/noobaa/v1alpha1/* | tr ' ' '\n' | grep -v '/zz_generated')
 	@echo "✅ lint"
