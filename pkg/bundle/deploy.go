@@ -2213,7 +2213,7 @@ spec:
       name: mongodb
 `
 
-const Sha256_deploy_internal_service_mgmt_yaml = "3449be462a77ea7e66c529308cbd86fd1c3d18685aa4649aa05514303f23908a"
+const Sha256_deploy_internal_service_mgmt_yaml = "89c34cdc0078bec5fdd4146775838248fccfb30032ffe8279e62b460a3856204"
 
 const File_deploy_internal_service_mgmt_yaml = `apiVersion: v1
 kind: Service
@@ -2221,6 +2221,7 @@ metadata:
   name: SYSNAME-mgmt
   labels:
     app: noobaa
+    noobaa-mgmt-svc: "true"
   annotations:
     prometheus.io/scrape: "true"
     prometheus.io/scheme: http
@@ -2244,24 +2245,7 @@ spec:
       name: hosted-agents-https
 `
 
-const Sha256_deploy_internal_service_monitor_yaml = "224b1ce993c390fa80898dedfee8380f2d0209d3702eb0b8b514dd380ade453c"
-
-const File_deploy_internal_service_monitor_yaml = `apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: noobaa-mgmt-service-monitor
-  labels:
-    app: noobaa
-spec:
-  endpoints:
-  - port: mgmt
-  namespaceSelector: {}
-  selector:
-    matchLabels:
-      app: noobaa
-`
-
-const Sha256_deploy_internal_service_s3_yaml = "49fa69db96f9e06ac46874ec42d1a3bd81cfc7b159d75e2a2870d1f16708eafc"
+const Sha256_deploy_internal_service_s3_yaml = "df7d8c8ee81b820678b7d8648b26c6cf86da6be00caedad052c3848db5480c37"
 
 const File_deploy_internal_service_s3_yaml = `apiVersion: v1
 kind: Service
@@ -2269,6 +2253,7 @@ metadata:
   name: s3
   labels:
     app: noobaa
+    noobaa-s3-svc: "true"
   annotations:
     service.beta.openshift.io/serving-cert-secret-name: 'noobaa-s3-serving-cert'
     service.alpha.openshift.io/serving-cert-secret-name: 'noobaa-s3-serving-cert'
@@ -2285,7 +2270,49 @@ spec:
       name: s3-https
     - port: 8444
       name: md-https
+    - port: 7004
+      name: metrics
 
+`
+
+const Sha256_deploy_internal_servicemonitor_mgmt_yaml = "172b25b71872e74fb32ecf32b9c68d41cc60d155cb469ed5ecf7ad282f3e597a"
+
+const File_deploy_internal_servicemonitor_mgmt_yaml = `apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noobaa-mgmt-service-monitor
+  labels:
+    app: noobaa
+spec:
+  endpoints:
+  - port: mgmt
+    path: /metrics/web_server
+  - port: mgmt
+    path: /metrics/bg_workers
+  - port: mgmt
+    path: /metrics/hosted_agents
+  namespaceSelector: {}
+  selector:
+    matchLabels:
+      noobaa-mgmt-svc: "true"
+`
+
+const Sha256_deploy_internal_servicemonitor_s3_yaml = "e3940bdfdfbaf5cacefa51f92623ffb00e5360e58640c67558b5cf5135edd57f"
+
+const File_deploy_internal_servicemonitor_s3_yaml = `apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noobaa-s3-service-monitor
+  labels:
+    app: noobaa
+spec:
+  endpoints:
+  - port: metrics
+    path: /
+  namespaceSelector: {}
+  selector:
+    matchLabels:
+      noobaa-s3-svc: "true"
 `
 
 const Sha256_deploy_internal_statefulset_core_yaml = "560ee00673fd2c3559559fd69232bd39401178ae8f79531e910a037dcfa51909"

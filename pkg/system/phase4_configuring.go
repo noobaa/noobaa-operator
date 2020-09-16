@@ -59,7 +59,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcilePrometheusRule(); err != nil {
 		return err
 	}
-	if err := r.ReconcileServiceMonitor(); err != nil {
+	if err := r.ReconcileServiceMonitors(); err != nil {
 		return err
 	}
 	if err := r.ReconcileReadSystem(); err != nil {
@@ -780,14 +780,20 @@ func (r *Reconciler) ReconcilePrometheusRule() error {
 	return r.ReconcileObjectOptional(r.PrometheusRule, nil)
 }
 
-// ReconcileServiceMonitor reconciles service monitor
-func (r *Reconciler) ReconcileServiceMonitor() error {
+// ReconcileServiceMonitors reconciles service monitors
+func (r *Reconciler) ReconcileServiceMonitors() error {
 	// Skip if joining another NooBaa
 	if r.JoinSecret != nil {
 		return nil
 	}
 
-	return r.ReconcileObjectOptional(r.ServiceMonitor, nil)
+	if err := r.ReconcileObjectOptional(r.ServiceMonitorMgmt, nil); err != nil {
+		return err
+	}
+	if err := r.ReconcileObjectOptional(r.ServiceMonitorS3, nil); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ReconcileReadSystem calls read_system on noobaa server and stores the result
