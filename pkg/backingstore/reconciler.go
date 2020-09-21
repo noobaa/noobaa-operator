@@ -503,8 +503,8 @@ func (r *Reconciler) ReadSystemInfo() error {
 				r.BackingStore.Name, pool, pool.ResourceType,
 			))
 		}
-		const defaultVolumeSize = int64(21474836480) // 20Gi=20*1024^3
-		const minimalVolumeSize = int64(16000000000) // 16G=16*1000^3
+		const defaultVolumeSize = int64(20 * 1024 * 1024 * 1024) // 20Gi=20*1024^3
+		const minimalVolumeSize = int64(16 * 1024 * 1024 * 1024) // 16Gi=16*1024^3
 		var volumeSize int64
 		pvPool := r.BackingStore.Spec.PVPool
 		if pvPool.VolumeResources != nil {
@@ -516,7 +516,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 				volumeSize = int64(defaultVolumeSize)
 			} else {
 				return util.NewPersistentError("SmallVolumeSize",
-					fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to insufficient size, min is %d=%gGB", r.BackingStore.Name, minimalVolumeSize, (float64(minimalVolumeSize)/(math.Pow(1000, 3)))))
+					fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to insufficient size, min is %d=%gGB", r.BackingStore.Name, minimalVolumeSize, (float64(minimalVolumeSize)/(math.Pow(1024, 3)))))
 			}
 		}
 
