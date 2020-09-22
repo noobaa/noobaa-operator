@@ -81,7 +81,8 @@ type Reconciler struct {
 	DefaultBucketClass  *nbv1.BucketClass
 	OBCStorageClass     *storagev1.StorageClass
 	PrometheusRule      *monitoringv1.PrometheusRule
-	ServiceMonitor      *monitoringv1.ServiceMonitor
+	ServiceMonitorMgmt  *monitoringv1.ServiceMonitor
+	ServiceMonitorS3    *monitoringv1.ServiceMonitor
 	SystemInfo          *nb.SystemInfo
 	CephObjectstoreUser *cephv1.CephObjectStoreUser
 	RouteMgmt           *routev1.Route
@@ -127,7 +128,8 @@ func NewReconciler(
 		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
 		OBCStorageClass:     util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
 		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
-		ServiceMonitor:      util.KubeObject(bundle.File_deploy_internal_service_monitor_yaml).(*monitoringv1.ServiceMonitor),
+		ServiceMonitorMgmt:  util.KubeObject(bundle.File_deploy_internal_servicemonitor_mgmt_yaml).(*monitoringv1.ServiceMonitor),
+		ServiceMonitorS3:    util.KubeObject(bundle.File_deploy_internal_servicemonitor_s3_yaml).(*monitoringv1.ServiceMonitor),
 		CephObjectstoreUser: util.KubeObject(bundle.File_deploy_internal_ceph_objectstore_user_yaml).(*cephv1.CephObjectStoreUser),
 		RouteMgmt:           util.KubeObject(bundle.File_deploy_internal_route_mgmt_yaml).(*routev1.Route),
 		RouteS3:             util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
@@ -156,7 +158,8 @@ func NewReconciler(
 	r.DefaultBackingStore.Namespace = r.Request.Namespace
 	r.DefaultBucketClass.Namespace = r.Request.Namespace
 	r.PrometheusRule.Namespace = r.Request.Namespace
-	r.ServiceMonitor.Namespace = r.Request.Namespace
+	r.ServiceMonitorMgmt.Namespace = r.Request.Namespace
+	r.ServiceMonitorS3.Namespace = r.Request.Namespace
 	r.CephObjectstoreUser.Namespace = r.Request.Namespace
 	r.RouteMgmt.Namespace = r.Request.Namespace
 	r.RouteS3.Namespace = r.Request.Namespace
@@ -185,7 +188,8 @@ func NewReconciler(
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"
 	r.PrometheusRule.Name = r.Request.Name + "-prometheus-rules"
-	r.ServiceMonitor.Name = r.Request.Name + "-service-monitor"
+	r.ServiceMonitorMgmt.Name = r.ServiceMgmt.Name + "-service-monitor"
+	r.ServiceMonitorS3.Name = r.ServiceS3.Name + "-service-monitor"
 	r.RouteMgmt.Name = r.ServiceMgmt.Name
 	r.RouteS3.Name = r.ServiceS3.Name
 	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
@@ -234,7 +238,8 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheckOptional(r.AzureCloudCreds)
 	util.KubeCheckOptional(r.AzureContainerCreds)
 	util.KubeCheckOptional(r.PrometheusRule)
-	util.KubeCheckOptional(r.ServiceMonitor)
+	util.KubeCheckOptional(r.ServiceMonitorMgmt)
+	util.KubeCheckOptional(r.ServiceMonitorS3)
 	util.KubeCheckOptional(r.RouteMgmt)
 	util.KubeCheckOptional(r.RouteS3)
 }

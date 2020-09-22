@@ -4,6 +4,7 @@ metadata:
   name: SYSNAME-mgmt
   labels:
     app: noobaa
+    noobaa-mgmt-svc: "true"
   annotations:
     prometheus.io/scrape: "true"
     prometheus.io/scheme: http
