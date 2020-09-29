@@ -888,6 +888,12 @@ func (r *Reconciler) ReconcilePool() error {
 	if r.CreateHostsPoolParams != nil {
 		res, err := r.NBClient.CreateHostsPoolAPI(*r.CreateHostsPoolParams)
 		if err != nil {
+			if nbErr, ok := err.(*nb.RPCError); ok {
+				if nbErr.RPCCode == "BAD_REQUEST" {
+					msg := fmt.Sprintf("NooBaa BackingStore is in rejected phase due to %s", nbErr.Message)
+					return util.NewPersistentError("SmallVolumeSize", msg)
+				}
+			}
 			return err
 		}
 		if r.Secret.StringData["AGENT_CONFIG"] == "" {
