@@ -19,6 +19,7 @@ spec:
         noobaa-db: noobaa
     spec:
       serviceAccountName: noobaa
+      terminationGracePeriodSeconds: 60
       initContainers:
       #----------------#
       # INIT CONTAINER #
