@@ -9,6 +9,7 @@ spec:
     targetPort: mgmt-https
   tls:
     termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
   to:
     kind: Service
     name: noobaa-mgmt
