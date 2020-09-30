@@ -168,11 +168,15 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	oldStatefulSet := &appsv1.StatefulSet{}
 	oldStatefulSet.Name = fmt.Sprintf("%s-%s-noobaa", r.BackingStore.Name, options.SystemName)
 	oldStatefulSet.Namespace = r.Request.Namespace
+	var err error
 	if util.KubeCheck(oldStatefulSet) {
-		r.upgradeBackingStore(oldStatefulSet)
+		err = r.upgradeBackingStore(oldStatefulSet)
 	}
 
-	err := r.LoadBackingStoreSecret()
+	if err == nil {
+		err = r.LoadBackingStoreSecret()
+	}
+
 	if err == nil {
 		if r.BackingStore.DeletionTimestamp != nil {
 			err = r.ReconcileDeletion()
@@ -253,7 +257,7 @@ func (r *Reconciler) LoadBackingStoreSecret() error {
 		if r.Secret.Name == "" {
 			if r.BackingStore.Spec.Type != nbv1.StoreTypePVPool {
 				return util.NewPersistentError("EmptySecretName",
-					fmt.Sprintf("BackingStore Secret reference has an empty name"))
+					"BackingStore Secret reference has an empty name")
 			}
 			r.Secret.Name = fmt.Sprintf("backing-store-%s-%s", nbv1.StoreTypePVPool, r.BackingStore.Name)
 			r.Secret.Namespace = r.BackingStore.Namespace
@@ -378,13 +382,19 @@ func (r *Reconciler) ReconcileDeletion() error {
 			"BackingStorePhaseDeleting",
 			"noobaa operator started deletion",
 		)
-		r.UpdateStatus()
+		err := r.UpdateStatus()
+		if err != nil {
+			return err
+		}
 	}
 
 	if r.NooBaa.UID == "" {
 		r.Logger.Infof("BackingStore %q remove finalizer because NooBaa system is already deleted", r.BackingStore.Name)
 		if r.BackingStore.Spec.Type == nbv1.StoreTypePVPool {
-			r.deletePvPool()
+			err := r.deletePvPool()
+			if err != nil {
+				return err
+			}
 		}
 		return r.FinalizeDeletion()
 	}
@@ -544,9 +554,10 @@ func (r *Reconciler) ReadSystemInfo() error {
 			if err != nil {
 				return err
 			}
+
 			if len(hostsInfo.Hosts) > pvPool.NumVolumes { // scaling down - not supported
-				return util.NewPersistentError("InvalidBackingStore", fmt.Sprintf(
-					"Scaling down the number of nodes is not currently supported"))
+				return util.NewPersistentError("InvalidBackingStore",
+					"Scaling down the number of nodes is not currently supported")
 			}
 			if pvPool.NumVolumes != int(pool.Hosts.ConfiguredCount) {
 				r.UpdateHostsPoolParams = &nb.UpdateHostsPoolParams{ // update core
@@ -658,7 +669,7 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		if s3Compatible.Endpoint == "" {
 			u := url.URL{
 				Scheme: "https",
-				Host:   fmt.Sprintf("127.0.0.1:6443"),
+				Host:   "127.0.0.1:6443",
 			}
 			// if s3Compatible.SSLDisabled {
 			// 	u.Scheme = "http"
@@ -708,7 +719,7 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		if IBMCos.Endpoint == "" {
 			u := url.URL{
 				Scheme: "https",
-				Host:   fmt.Sprintf("127.0.0.1:6443"),
+				Host:   "127.0.0.1:6443",
 			}
 			// if IBMCos.SSLDisabled {
 			// 	u.Scheme = "http"
@@ -949,11 +960,17 @@ func (r *Reconciler) reconcilePvPool() error {
 	util.KubeList(podsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
 	util.KubeList(pvcsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
 	if len(pvcsList.Items) < r.BackingStore.Spec.PVPool.NumVolumes {
-		r.reconcileMissingPvcs(pvcsList)
+		err := r.reconcileMissingPvcs(pvcsList)
+		if err != nil {
+			return err
+		}
 		util.KubeList(pvcsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
 	}
 	if len(podsList.Items) < len(pvcsList.Items) {
-		r.reconcileMissingPods(podsList, pvcsList)
+		err := r.reconcileMissingPods(podsList, pvcsList)
+		if err != nil {
+			return err
+		}
 	}
 	return r.reconcileExistingPods(podsList)
 }
@@ -1046,7 +1063,7 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 			r.Logger.Warnf("Change in Image Pull Secrets detected: SA(%v) Spec(%v)", sa.ImagePullSecrets, podSecrets)
 			return true
 		}
-	} else if podSecrets == nil || len(podSecrets) == 0 || !reflect.DeepEqual(noobaaSecret, podSecrets[0]) {
+	} else if len(podSecrets) == 0 || !reflect.DeepEqual(noobaaSecret, podSecrets[0]) {
 		r.Logger.Warnf("Change in Image Pull Secrets detected: NoobaaSecret(%v) Spec(%v)", noobaaSecret, podSecrets)
 		return true
 	}
@@ -1137,8 +1154,7 @@ func (r *Reconciler) upgradeBackingStore(sts *appsv1.StatefulSet) error {
 	r.Logger.Infof("Deleting old statefulset: %s", sts.Name)
 	envVar := util.GetEnvVariable(&sts.Spec.Template.Spec.Containers[0].Env, "AGENT_CONFIG")
 	if envVar == nil {
-		return util.NewPersistentError("NoAgentConfig",
-			fmt.Sprintf("Old BackingStore stateful set not having agent config"))
+		return util.NewPersistentError("NoAgentConfig", "Old BackingStore stateful set not having agent config")
 	}
 	agentConfig := envVar.Value
 	replicas := sts.Spec.Replicas

@@ -332,7 +332,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					if endpointsSpec != nil {
 						hosts = append(hosts, endpointsSpec.AdditionalVirtualHosts...)
 					}
-					c.Env[j].Value = fmt.Sprintf(strings.Join(hosts[:], " "))
+					c.Env[j].Value = fmt.Sprint(strings.Join(hosts[:], " "))
 				case "ENDPOINT_GROUP_ID":
 					c.Env[j].Value = fmt.Sprint(r.NooBaa.UID)
 
@@ -621,7 +621,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 	if cephObjectUserSecret.StringData["Endpoint"] != "" {
 		// first look for the endpoint in the secret
 		endpoint = cephObjectUserSecret.StringData["Endpoint"]
-		r.Logger.Infof("Found RGW endpoint in cephObjectUserSecret %q",secretName)
+		r.Logger.Infof("Found RGW endpoint in cephObjectUserSecret %q", secretName)
 	} else if r.NooBaa.Labels != nil && r.NooBaa.Labels["rgw-endpoint"] != "" {
 		// take from label if not found so far
 		raw := r.NooBaa.Labels["rgw-endpoint"]
@@ -631,11 +631,11 @@ func (r *Reconciler) prepareCephBackingStore() error {
 	} else if r.CephObjectstoreUser.Spec.Store != "" {
 		// if not found in the secret compose from the ceph-object-store name
 		endpoint = "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
-		r.Logger.Infof("Found RGW endpoint in CephObjectstoreUser %q",r.CephObjectstoreUser.Name)
-	}  else {
+		r.Logger.Infof("Found RGW endpoint in CephObjectstoreUser %q", r.CephObjectstoreUser.Name)
+	} else {
 		return fmt.Errorf("Ceph RGW endpoint address is not available")
 	}
-	r.Logger.Infof("RGW endpoint %q",endpoint)
+	r.Logger.Infof("RGW endpoint %q", endpoint)
 
 	region := "us-east-1"
 	forcePathStyle := true
@@ -666,7 +666,6 @@ func (r *Reconciler) prepareCephBackingStore() error {
 }
 
 func (r *Reconciler) generateBackingStoreTargetName() string {
-	const MaxNameLength = 63
 	tsMilli := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
 	name := "nb." + tsMilli
 	if r.RouteMgmt.Spec.Host != "" {
@@ -836,7 +835,10 @@ func (r *Reconciler) UpdateBackingStoresPhase(pools []nb.PoolInfo) {
 				bs.Status.Mode.ModeCode = pool.Mode
 				bs.Status.Mode.TimeStamp = fmt.Sprint(time.Now())
 				r.NooBaa.Status.ObservedGeneration = r.NooBaa.Generation
-				r.Client.Status().Update(r.Ctx, bs)
+				err := r.Client.Status().Update(r.Ctx, bs)
+				if err != nil {
+					logrus.Errorf("got error when trying to update status of backingstore %v. %v", bs.Name, err)
+				}
 			}
 		}
 	}
@@ -862,7 +864,10 @@ func (r *Reconciler) UpdateBucketClassesPhase(Buckets []nb.BucketInfo) {
 			if bc.Name == bucketTieringPolicyName && bucket.Tiering.Mode != bc.Status.Mode {
 				bc.Status.Mode = bucket.Tiering.Mode
 				r.NooBaa.Status.ObservedGeneration = r.NooBaa.Generation
-				r.Client.Status().Update(r.Ctx, bc)
+				err := r.Client.Status().Update(r.Ctx, bc)
+				if err != nil {
+					logrus.Errorf("got error when trying to update status of bucket class %v. %v ", bc.Name, err)
+				}
 
 			}
 		}

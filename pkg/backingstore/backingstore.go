@@ -679,10 +679,7 @@ func WaitReady(backStore *nbv1.BackingStore) bool {
 		}
 		return true, nil
 	})
-	if err != nil {
-		return false
-	}
-	return true
+	return (err == nil)
 }
 
 // CheckPhase prints the phase and reason for it

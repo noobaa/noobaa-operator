@@ -42,7 +42,10 @@ func RunUI(cmd *cobra.Command, args []string) {
 	fmt.Printf("\n")
 	fmt.Printf("\n")
 
-	OpenURLInBrowser(mgmtURL)
+	err = OpenURLInBrowser(mgmtURL)
+	if err != nil {
+		log.Fatalf("Encountered error when trying to open management in the browser. %v", err)
+	}
 	stopChan := make(chan int)
 	<-stopChan
 }

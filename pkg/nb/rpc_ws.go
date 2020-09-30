@@ -55,7 +55,10 @@ func (c *RPCConnWS) GetAddress() string {
 func (c *RPCConnWS) Reconnect() {
 	c.Lock.Lock()
 	c.ReconnectDelay = 3 * time.Second
-	c.ConnectUnderLock()
+	err := c.ConnectUnderLock()
+	if err != nil {
+		logrus.Errorf("RPC: Reconnect - got error: %v", err)
+	}
 	c.Lock.Unlock()
 
 }
@@ -330,9 +333,13 @@ func (c *RPCConnWS) HandleResponse(msg *RPCMessage) {
 
 // HandlePing handles an incoming message of type ping
 func (c *RPCConnWS) HandlePing(msg *RPCMessage) {
-	c.SendMessage(&RPCMessage{
+	err := c.SendMessage(&RPCMessage{
 		Op:        "pong",
 		RequestID: msg.RequestID,
 		Took:      0,
 	})
+	if err != nil {
+		logrus.Errorf("RPC: got error in HandlePing: %v", err)
+	}
+
 }

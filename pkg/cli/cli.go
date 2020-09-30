@@ -94,7 +94,11 @@ Load noobaa completion to bash:
 			if alias != "" {
 				rootCmd.Use = alias
 			}
-			rootCmd.GenBashCompletion(os.Stdout)
+			err := rootCmd.GenBashCompletion(os.Stdout)
+			if err != nil {
+				fmt.Printf("got error on GenBashCompletion. %v", err)
+			}
+
 		},
 	}
 	completionCmd.Flags().String("alias", "", "Custom alias name to generate the completion for")

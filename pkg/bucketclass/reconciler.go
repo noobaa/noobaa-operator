@@ -288,7 +288,10 @@ func (r *Reconciler) ReconcileDeletion() error {
 			"BucketClassPhaseDeleting",
 			"noobaa operator started deletion",
 		)
-		r.UpdateStatus()
+		err := r.UpdateStatus()
+		if err != nil {
+			return err
+		}
 	}
 
 	if r.NooBaa.UID == "" {

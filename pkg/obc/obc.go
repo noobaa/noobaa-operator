@@ -372,10 +372,7 @@ func WaitReady(obc *nbv1.ObjectBucketClaim) bool {
 		}
 		return true, nil
 	})
-	if err != nil {
-		return false
-	}
-	return true
+	return (err == nil)
 }
 
 // CheckPhase prints the phase and reason for it

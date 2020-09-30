@@ -496,7 +496,7 @@ func (r *Reconciler) SetDesiredAgentProfile(profileString string) string {
 
 // ReconcileDB choose between different types of DB
 func (r *Reconciler) ReconcileDB() error {
-	var err error = nil
+	var err error
 	if r.NooBaa.Spec.DBType == "postgres" {
 		err = r.ReconcileObject(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB)
 		// Making sure that previous CRs without the value will deploy MongoDB

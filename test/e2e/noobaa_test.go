@@ -42,7 +42,7 @@ func TestNooBaa(t *testing.T) {
 
 func testOperator(t *testing.T) {
 	t.Parallel()
-	ctx := framework.NewTestCtx(t)
+	ctx := framework.NewContext(t)
 	defer ctx.Cleanup()
 
 	err := ctx.InitializeClusterResources(&framework.CleanupOptions{
@@ -75,7 +75,7 @@ func testOperator(t *testing.T) {
 	}
 }
 
-func testInstall(t *testing.T, f *framework.Framework, ctx *framework.TestCtx) error {
+func testInstall(t *testing.T, f *framework.Framework, ctx *framework.Context) error {
 
 	name := "noobaa"
 	namespace, err := ctx.GetNamespace()
@@ -93,7 +93,7 @@ func testInstall(t *testing.T, f *framework.Framework, ctx *framework.TestCtx) e
 		Spec: nbv1.NooBaaSpec{},
 	}
 
-	// use TestCtx's create helper to create the object and add a cleanup function for the new object
+	// use Context's create helper to create the object and add a cleanup function for the new object
 	err = f.Client.Create(
 		context.TODO(),
 		noobaa,
@@ -118,7 +118,7 @@ func testInstall(t *testing.T, f *framework.Framework, ctx *framework.TestCtx) e
 }
 
 // wait for noobaa to reach ready phase
-func waitReadyPhase(t *testing.T, f *framework.Framework, ctx *framework.TestCtx, namespacedName types.NamespacedName) error {
+func waitReadyPhase(t *testing.T, f *framework.Framework, ctx *framework.Context, namespacedName types.NamespacedName) error {
 	return wait.Poll(retryInterval, timeout, func() (bool, error) {
 		currentNooBaa := nbv1.NooBaa{}
 		err := f.Client.Get(context.TODO(), namespacedName, &currentNooBaa)

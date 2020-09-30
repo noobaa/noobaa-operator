@@ -64,7 +64,6 @@ var (
 	ctx        = context.TODO()
 	log        = logrus.WithContext(ctx)
 	lazyConfig *rest.Config
-	lazyRest   *rest.RESTClient
 	lazyClient client.Client
 
 	// InsecureHTTPTransport is a global insecure http transport
@@ -571,8 +570,6 @@ func LogError(err error) {
 
 // IgnoreError do nothing if err is not nil
 func IgnoreError(err error) {
-	if err != nil {
-	}
 }
 
 // InitLogger initializes the logrus logger with defaults
@@ -1013,12 +1010,10 @@ func WriteYamlFile(name string, obj runtime.Object, moreObjects ...runtime.Objec
 		return err
 	}
 
-	if moreObjects != nil {
-		for i := range moreObjects {
-			err = p.PrintObj(moreObjects[i], file)
-			if err != nil {
-				return err
-			}
+	for i := range moreObjects {
+		err = p.PrintObj(moreObjects[i], file)
+		if err != nil {
+			return err
 		}
 	}
 
