@@ -2438,7 +2438,7 @@ spec:
               resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_db_yaml = "5916e76021db87d379658147871643bfa6e0f016a53e63afefac36ea9cbe62e3"
+const Sha256_deploy_internal_statefulset_db_yaml = "1da335367274e61427cd7cea453de205973c48bcbf26bcbd5473c0064df5ff47"
 
 const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2461,6 +2461,7 @@ spec:
         noobaa-db: noobaa
     spec:
       serviceAccountName: noobaa
+      terminationGracePeriodSeconds: 60
       initContainers:
       #----------------#
       # INIT CONTAINER #
