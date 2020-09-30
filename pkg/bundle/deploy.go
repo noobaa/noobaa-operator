@@ -2141,7 +2141,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_route_mgmt_yaml = "52dacfdd2f8f4ddfe56948573ae69277096d971c9274f9afb1046871ed7f9c28"
+const Sha256_deploy_internal_route_mgmt_yaml = "1d462d165da5a660b85900e46a11e4d1a53e1498bf9d086b4b68afdceab08394"
 
 const File_deploy_internal_route_mgmt_yaml = `apiVersion: route.openshift.io/v1
 kind: Route
@@ -2154,6 +2154,7 @@ spec:
     targetPort: mgmt-https
   tls:
     termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
   to:
     kind: Service
     name: noobaa-mgmt
