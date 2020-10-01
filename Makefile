@@ -129,6 +129,11 @@ test: lint test-go
 	@echo "✅ test"
 .PHONY: test
 
+golangci-lint: gen
+	golangci-lint run --disable-all -E varcheck,structcheck,typecheck,errcheck,gosimple,unused,deadcode,ineffassign,staticcheck --timeout=10m
+	@echo "✅ golangci-lint"
+.PHONY: golangci-lint
+
 lint: gen
 	GO111MODULE=off go get -u -a golang.org/x/lint/golint
 	GO111MODULE=off go run golang.org/x/lint/golint \

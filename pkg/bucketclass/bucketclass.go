@@ -235,10 +235,7 @@ func WaitReady(bucketClass *nbv1.BucketClass) bool {
 		}
 		return true, nil
 	})
-	if err != nil {
-		return false
-	}
-	return true
+	return (err == nil)
 }
 
 // CheckPhase prints the phase and reason for it

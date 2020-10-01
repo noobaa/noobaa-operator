@@ -84,7 +84,10 @@ func (c *Collector) CollectCR(list runtime.Object) {
 	list.GetObjectKind().SetGroupVersionKind(gvk)
 
 	targetFile := fmt.Sprintf("%s/%s_crs.yaml", c.folderName, gvk.Kind)
-	util.SaveCRsToFile(list, targetFile)
+	err := util.SaveCRsToFile(list, targetFile)
+	if err != nil {
+		c.log.Printf("got error on util.SaveCRsToFile for %v: %v", targetFile, err)
+	}
 }
 
 // CollectPodLogs info
@@ -104,7 +107,11 @@ func (c *Collector) CollectPodLogs(corePodSelector labels.Selector) {
 		podLogs, _ := util.GetPodLogs(*corePod)
 		for containerName, containerLog := range podLogs {
 			targetFile := fmt.Sprintf("%s/%s-%s.log", c.folderName, corePod.Name, containerName)
-			util.SaveStreamToFile(containerLog, targetFile)
+			err := util.SaveStreamToFile(containerLog, targetFile)
+			if err != nil {
+				c.log.Printf("got error on util.SaveStreamToFile for %v: %v", targetFile, err)
+			}
+
 		}
 	}
 }

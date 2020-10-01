@@ -154,7 +154,7 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 		sc := options.PVPoolDefaultStorageClass
 		sys.Spec.PVPoolDefaultStorageClass = &sc
 	}
-	if options.MiniEnv == true {
+	if options.MiniEnv {
 		coreResourceList := corev1.ResourceList{
 			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(100), resource.Milli),
 			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(1), resource.Giga),
@@ -618,10 +618,7 @@ func WaitReady() bool {
 		log.Printf("✅ System Phase is %q.\n", sys.Status.Phase)
 		return true, nil
 	})
-	if err != nil {
-		return false
-	}
-	return true
+	return (err == nil)
 }
 
 // CheckWaitingFor checks what the system deployment is waiting for in order to become ready

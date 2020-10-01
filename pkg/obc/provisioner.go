@@ -92,7 +92,7 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 	if r.SysClient.NooBaa.DeletionTimestamp != nil {
 		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
 		if util.Contains(nbv1.GracefulFinalizer, finalizersArray) {
-			msg := fmt.Sprintf("NooBaa is in deleting state, new requests will be ignored")
+			msg := "NooBaa is in deleting state, new requests will be ignored"
 			log.Errorf(msg)
 			return nil, obErrors.NewBucketExistsError(msg)
 		}
@@ -127,7 +127,7 @@ func (p *Provisioner) Grant(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBuc
 	if r.SysClient.NooBaa.DeletionTimestamp != nil {
 		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
 		if util.Contains(nbv1.GracefulFinalizer, finalizersArray) {
-			msg := fmt.Sprintf("NooBaa is in deleting state, new requests will be ignored")
+			msg := "NooBaa is in deleting state, new requests will be ignored"
 			log.Errorf(msg)
 			return nil, obErrors.NewBucketExistsError(msg)
 		}
