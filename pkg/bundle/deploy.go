@@ -2141,7 +2141,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_route_mgmt_yaml = "52dacfdd2f8f4ddfe56948573ae69277096d971c9274f9afb1046871ed7f9c28"
+const Sha256_deploy_internal_route_mgmt_yaml = "1d462d165da5a660b85900e46a11e4d1a53e1498bf9d086b4b68afdceab08394"
 
 const File_deploy_internal_route_mgmt_yaml = `apiVersion: route.openshift.io/v1
 kind: Route
@@ -2154,6 +2154,7 @@ spec:
     targetPort: mgmt-https
   tls:
     termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
   to:
     kind: Service
     name: noobaa-mgmt
@@ -2411,7 +2412,7 @@ spec:
               resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_db_yaml = "5916e76021db87d379658147871643bfa6e0f016a53e63afefac36ea9cbe62e3"
+const Sha256_deploy_internal_statefulset_db_yaml = "1da335367274e61427cd7cea453de205973c48bcbf26bcbd5473c0064df5ff47"
 
 const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2434,6 +2435,7 @@ spec:
         noobaa-db: noobaa
     spec:
       serviceAccountName: noobaa
+      terminationGracePeriodSeconds: 60
       initContainers:
       #----------------#
       # INIT CONTAINER #
