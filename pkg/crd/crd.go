@@ -97,6 +97,7 @@ type Crds struct {
 	BackingStore      *CRD
 	NamespaceStore    *CRD
 	BucketClass       *CRD
+	NooBaaAccount     *CRD
 	ObjectBucket      *CRD
 	ObjectBucketClaim *CRD
 }
@@ -134,21 +135,24 @@ func LoadCrds() *Crds {
 	o2 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_backingstores_crd_yaml)
 	o3 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_namespacestores_crd_yaml)
 	o4 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_bucketclasses_crd_yaml)
-	o5 := util.KubeObject(bundle.File_deploy_obc_objectbucket_io_objectbucketclaims_crd_yaml)
-	o6 := util.KubeObject(bundle.File_deploy_obc_objectbucket_io_objectbuckets_crd_yaml)
+	o5 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml)
+	o6 := util.KubeObject(bundle.File_deploy_obc_objectbucket_io_objectbucketclaims_crd_yaml)
+	o7 := util.KubeObject(bundle.File_deploy_obc_objectbucket_io_objectbuckets_crd_yaml)
 	crds := &Crds{
 		NooBaa:            o1.(*CRD),
 		BackingStore:      o2.(*CRD),
 		NamespaceStore:    o3.(*CRD),
 		BucketClass:       o4.(*CRD),
-		ObjectBucketClaim: o5.(*CRD),
-		ObjectBucket:      o6.(*CRD),
+		NooBaaAccount:     o5.(*CRD),
+		ObjectBucketClaim: o6.(*CRD),
+		ObjectBucket:      o7.(*CRD),
 	}
 	crds.All = []*CRD{
 		crds.NooBaa,
 		crds.BackingStore,
 		crds.NamespaceStore,
 		crds.BucketClass,
+		crds.NooBaaAccount,
 		crds.ObjectBucketClaim,
 		crds.ObjectBucket,
 	}

@@ -1328,6 +1328,23 @@ func HumanizeDuration(duration time.Duration) string {
 	return builder.String()
 }
 
+// IsStringArrayUnorderedEqual checks if two string arrays has the same members
+func IsStringArrayUnorderedEqual(stringsArrayA, stringsArrayB []string) bool {
+    if len(stringsArrayA) != len(stringsArrayB) {
+        return false
+    }
+    existingStrings := make(map[string]bool)
+    for _, item := range stringsArrayA {
+        existingStrings[item] = true
+    }
+    for _, item := range stringsArrayB {
+        if !existingStrings[item] {
+            return false
+        }
+    }
+    return true
+}
+
 // EnsureCommonMetaFields ensures that the resource has all mandatory meta fields
 func EnsureCommonMetaFields(object metav1.Object, finalizer string) bool {
 	updated := false

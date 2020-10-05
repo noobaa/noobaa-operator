@@ -1,0 +1,5 @@
+apiVersion: noobaa.io/v1alpha1
+kind: NooBaaAccount
+metadata:
+  name: default
+spec: {}

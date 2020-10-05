@@ -62,6 +62,7 @@ function post_install_tests {
     replication_cycle
     check_backingstore
     check_dbdump
+    account_cycle
     check_deletes
     delete_replication_files
 }

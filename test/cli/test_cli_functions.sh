@@ -475,6 +475,19 @@ function obc_cycle {
     echo_time "✅  obc cycle is done"
 }
 
+function account_cycle {
+    local buckets=($(test_noobaa silence bucket list  | grep -v "BUCKET-NAME" | awk '{print $1}'))
+    local backingstores=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
+    test_noobaa account create account1 --allowed_buckets ${buckets[0]} --default_resource ${backingstores[0]}
+    test_noobaa account create account2 --allowed_buckets ${buckets[0]},${buckets[1]} --allow_bucket_create=false # no need for default_resource
+    test_noobaa account create account3 --full_permission # default_resource should be the system default
+    test_noobaa should_fail account create account4 --default_resource ${backingstores[0]} # missing allowed_bucket
+    test_noobaa should_fail account create account5 --full_permission --allowed_buckets ${buckets[0]},${buckets[1]} # can't have both
+    test_noobaa should_fail account create account6 --allowed_buckets no_such_bucket --default_resource ${backingstores[0]}
+    test_noobaa should_fail account create account7 --full_permission --default_resource no_such_backingstore
+    echo_time "✅  noobaa account cycle is done"
+}
+
 function delete_backingstore_path {
     local object_bucket backing_store
     local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
@@ -567,6 +580,15 @@ function delete_namespacestore_path {
     echo_time "✅  delete ${namespacestore[1]} and ${namespacestore[0]} path is done"
 }
 
+function delete_account {
+    local accounts=($(test_noobaa silence accounts list | grep -v "NAME" | awk '{print $1}'))
+    for account in ${accounts[@]}
+    do
+        test_noobaa account delete ${account}
+    done
+    echo_time "✅  delete accounts is done"
+}
+
 function check_deletes {
     echo_time "💬  Starting the delete cycle"
     local obc=($(test_noobaa silence obc list | grep -v "NAME\|default" | awk '{print $2}'))
@@ -577,6 +599,7 @@ function check_deletes {
     test_noobaa backingstore list
     delete_backingstore_path
     delete_namespacestore_path
+    delete_accounts
     echo_time "✅  delete cycle is done"
 }
 
