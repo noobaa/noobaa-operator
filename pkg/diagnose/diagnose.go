@@ -32,11 +32,14 @@ func Cmd() *cobra.Command {
 		Short: "Collect diagnostics",
 		Run:   RunCollect,
 	}
+	cmd.Flags().String("dir", "", "collect noobaa diagnose tar file into destination directory")
 	return cmd
 }
 
 // RunCollect runs a CLI command
 func RunCollect(cmd *cobra.Command, args []string) {
+
+	destDir, _ := cmd.Flags().GetString("dir")
 	c := Collector{
 		folderName: fmt.Sprintf("%s_%s", "noobaa_diagnostics", time.Now().Format(time.RFC3339)),
 		log:        util.Logger(),
@@ -69,7 +72,7 @@ func RunCollect(cmd *cobra.Command, args []string) {
 
 	// collectSystemMetrics()
 
-	c.ExportDiagnostics()
+	c.ExportDiagnostics(destDir)
 }
 
 // CollectCR info
@@ -139,7 +142,7 @@ func (c *Collector) CollectPodLogs(corePodSelector labels.Selector) {
 // }
 
 // ExportDiagnostics info
-func (c *Collector) ExportDiagnostics() {
+func (c *Collector) ExportDiagnostics(destDir string) {
 	targetFile := fmt.Sprintf("%s.tar.gz", c.folderName)
 	fileToWrite, err := os.Create(targetFile)
 	if err != nil {
@@ -150,9 +153,22 @@ func (c *Collector) ExportDiagnostics() {
 	if err != nil {
 		c.log.Fatalf(`❌ Could not compress and package diagnostics, reason: %s`, err)
 	}
-
+	if destDir != "" {
+		if _, err := os.Stat(destDir); os.IsNotExist(err) {
+			err := os.Mkdir(destDir, os.ModePerm)
+			if err != nil {
+				c.log.Fatalf(`❌ Could not create directory %s, reason: %s`, destDir, err)
+			}
+		}
+		newLocation := fmt.Sprintf("%s/%s", destDir, targetFile)
+		err1 := os.Rename(targetFile, newLocation)
+		if err1 != nil {
+			c.log.Fatalf(`❌ Could not move tar file to destination, reason: %s`, err1)
+		}
+	}
 	err = os.RemoveAll(c.folderName)
 	if err != nil {
 		c.log.Fatalf(`❌ Could not delete diagnostics collecting folder %s, reason: %s`, c.folderName, err)
 	}
+
 }
