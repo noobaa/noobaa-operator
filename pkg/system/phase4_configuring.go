@@ -1,12 +1,18 @@
 package system
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"encoding/json"
+
+	"cloud.google.com/go/storage"
+	"google.golang.org/api/option"
 
 	"github.com/marstr/randname"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
@@ -25,6 +31,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
+
+type gcpAuthJSON struct {
+	ProjectID string `json:"project_id"`
+}
 
 // ReconcilePhaseConfiguring runs the reconcile phase
 func (r *Reconciler) ReconcilePhaseConfiguring() error {
@@ -442,6 +452,11 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		if err := r.prepareAzureBackingStore(); err != nil {
 			return err
 		}
+	} else if r.GCPCloudCreds.UID != "" {
+		log.Infof("CredentialsRequest %q created.  creating default backing store on GCP objectstore", r.GCPCloudCreds.Name)
+		if err := r.prepareGCPBackingStore(); err != nil {
+			return err
+		}
 	} else {
 		minutesSinceCreation := time.Since(r.NooBaa.CreationTimestamp.Time).Minutes()
 		if minutesSinceCreation < 2 {
@@ -594,6 +609,81 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		},
 	}
 
+	return nil
+}
+
+func (r *Reconciler) prepareGCPBackingStore() error {
+
+	cloudCredsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      r.GCPCloudCreds.Spec.SecretRef.Name,
+			Namespace: r.GCPCloudCreds.Spec.SecretRef.Namespace,
+		},
+	}
+
+	util.KubeCheck(cloudCredsSecret)
+	if cloudCredsSecret.UID == "" {
+		// TODO: we need to figure out why secret is not created, and react accordingly
+		// e.g. maybe we are running on AWS but our CredentialsRequest is for GCP
+		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.GCPCloudCreds.Spec.SecretRef.Name)
+		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.GCPCloudCreds.Spec.SecretRef.Name)
+	}
+	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", r.GCPCloudCreds.Spec.SecretRef.Name)
+
+	util.KubeCheck(r.GCPBucketCreds)
+	if r.GCPBucketCreds.UID == "" {
+		r.GCPBucketCreds.StringData = cloudCredsSecret.StringData
+		r.Own(r.GCPBucketCreds)
+		if err := r.Client.Create(r.Ctx, r.GCPBucketCreds); err != nil {
+			return fmt.Errorf("got error on GCPBucketCreds creation. error: %v", err)
+		}
+	}
+	authJSON := &gcpAuthJSON{}
+	err := json.Unmarshal([]byte(cloudCredsSecret.StringData["service_account.json"]), authJSON)
+	if err != nil {
+		fmt.Println("Failed to parse secret", err)
+		return err
+	}
+	projectID := authJSON.ProjectID
+	r.GCPBucketCreds.StringData["GoogleServiceAccountPrivateKeyJson"] = cloudCredsSecret.StringData["service_account.json"]
+	ctx := context.Background()
+	gcpclient, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(cloudCredsSecret.StringData["service_account.json"])))
+	if err != nil {
+		r.Logger.Info(err)
+		return err
+	}
+
+	var bucketName = strings.ToLower(randname.GenerateWithPrefix("noobaabucket", 5))
+	if err := r.createGCPBucketForBackingStore(gcpclient, projectID, bucketName); err != nil {
+		r.Logger.Info(err)
+		return err
+	}
+
+	if errUpdate := r.Client.Update(r.Ctx, r.GCPBucketCreds); errUpdate != nil {
+		return fmt.Errorf("got error on GCPBucketCreds update. error: %v", errUpdate)
+	}
+	// create backing store
+	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeGoogleCloudStorage
+	r.DefaultBackingStore.Spec.GoogleCloudStorage = &nbv1.GoogleCloudStorageSpec{
+		TargetBucket: bucketName,
+		Secret: corev1.SecretReference{
+			Name:      r.GCPBucketCreds.Name,
+			Namespace: r.GCPBucketCreds.Namespace,
+		},
+	}
+	return nil
+}
+
+func (r *Reconciler) createGCPBucketForBackingStore(client *storage.Client, projectID, bucketName string) error {
+	// [START create_bucket]
+	ctx := context.Background()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
+	if err := client.Bucket(bucketName).Create(ctx, projectID, nil); err != nil {
+		return err
+	}
+	// [END create_bucket]
 	return nil
 }
 
