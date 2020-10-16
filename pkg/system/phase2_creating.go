@@ -330,6 +330,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 // the bucket name allowed for the credentials. nil is returned if cloud credentials are not supported
 func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	// Skip if joining another NooBaa
+	r.Logger.Info("Reconciling Backing Store Credentials")
 	if r.JoinSecret != nil {
 		return nil
 	}
@@ -339,6 +340,9 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	}
 	if util.IsAzurePlatform() {
 		return r.ReconcileAzureCredentials()
+	}
+	if util.IsIBMPlatform() {
+		return r.ReconcileIBMCredentials()
 	}
 	return r.ReconcileRGWCredentials()
 }
@@ -474,6 +478,17 @@ func (r *Reconciler) ReconcileAzureCredentials() error {
 		return nil
 	}
 	return err
+}
+
+// ReconcileIBMCredentials create dummy request
+func (r *Reconciler) ReconcileIBMCredentials() error {
+	// Currently IBM Cloud is not supported by cloud credential operator
+	// In IBM Cloud, the HMAC keys will be provided through K8S Secret under kube-system namespace
+	r.Logger.Info("Running in IBM Cloud. Expecting Secret: <ibm-cloud-cos-creds> under NS: <kube-system>")
+	r.IBMCloudCreds.Spec.SecretRef.Name = "ibm-cloud-cos-creds"
+	r.IBMCloudCreds.Spec.SecretRef.Namespace = "kube-system"
+	r.IBMCloudCreds.UID = "dummy-uid"
+	return nil
 }
 
 // SetDesiredAgentProfile updates the value of the AGENT_PROFILE env

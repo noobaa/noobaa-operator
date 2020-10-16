@@ -412,6 +412,7 @@ func (r *Reconciler) RegisterToCluster() error {
 // ReconcileDefaultBackingStore attempts to get credentials to cloud storage using the cloud-credentials operator
 // and use it for the default backing store
 func (r *Reconciler) ReconcileDefaultBackingStore() error {
+	r.Logger.Info("ReconcileDefaultBackingStore")
 	// Skip if joining another NooBaa
 	if r.JoinSecret != nil {
 		return nil
@@ -440,6 +441,11 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	} else if r.AzureCloudCreds.UID != "" {
 		log.Infof("CredentialsRequest %q created.  creating default backing store on Azure objectstore", r.AzureCloudCreds.Name)
 		if err := r.prepareAzureBackingStore(); err != nil {
+			return err
+		}
+	} else if r.IBMCloudCreds.UID != "" {
+		log.Infof("CredentialsRequest %q created.  creating default backing store on IBM objectstore", r.IBMCloudCreds.Name)
+		if err := r.prepareIBMBackingStore(); err != nil {
 			return err
 		}
 	} else {
@@ -594,6 +600,104 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		},
 	}
 
+	return nil
+}
+
+func (r *Reconciler) prepareIBMBackingStore() error {
+	r.Logger.Info("Preparing backing store in IBM Cloud")
+
+	var (
+		endpoint string
+		location string
+	)
+
+	cloudCredsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      r.IBMCloudCreds.Spec.SecretRef.Name,
+			Namespace: r.IBMCloudCreds.Spec.SecretRef.Namespace,
+		},
+	}
+
+	util.KubeCheck(cloudCredsSecret)
+	if cloudCredsSecret.UID == "" {
+		// Secret not found
+		r.Logger.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCreds.Spec.SecretRef.Name)
+		return fmt.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCreds.Spec.SecretRef.Name)
+	}
+
+	if val, ok := cloudCredsSecret.StringData["IBM_COS_Endpoint"]; ok {
+		// Use the endpoint provided in the secret
+		endpoint = val
+		r.Logger.Infof("Endpoint provided in secret: %q", endpoint)
+		if val, ok := cloudCredsSecret.StringData["IBM_COS_Location"]; ok {
+			location = val
+		}
+	} else {
+		// Endpoint not provided in the secret, construct one based on the cluster's region
+		// https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints#endpoints
+		region, err := util.GetIBMRegion()
+		if err != nil {
+			r.Logger.Errorf("Failed to get IBM Region. %q", err)
+			return fmt.Errorf("Failed to get IBM Region")
+		}
+		r.Logger.Infof("Constructing endpoint for region: %q", region)
+		// https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-classes#classes-locationconstraint
+		endpoint = "https://s3.direct." + region + ".cloud-object-storage.appdomain.cloud"
+		location = region + "-standard"
+	}
+
+	if _, err := url.Parse(endpoint); err != nil {
+		r.Logger.Errorf("Invalid formate URL %q", endpoint)
+		return fmt.Errorf("Invalid formate URL %q", endpoint)
+	}
+
+	r.Logger.Infof("IBM COS Endpoint: %s   LocationConstraint: %s", endpoint, location)
+
+	var accessKeyID string
+	if val, ok := cloudCredsSecret.StringData["IBM_COS_ACCESS_KEY_ID"]; ok {
+		accessKeyID = val
+	} else {
+		r.Logger.Errorf("Missing IBM_COS_ACCESS_KEY_ID in the secret")
+		return fmt.Errorf("Missing IBM_COS_ACCESS_KEY_ID in the secret")
+	}
+
+	var secretAccessKey string
+	if val, ok := cloudCredsSecret.StringData["IBM_COS_SECRET_ACCESS_KEY"]; ok {
+		secretAccessKey = val
+	} else {
+		r.Logger.Errorf("Missing IBM_COS_SECRET_ACCESS_KEY in the secret")
+		return fmt.Errorf("Missing IBM_COS_SECRET_ACCESS_KEY in the secret")
+	}
+
+	bucketName := r.generateBackingStoreTargetName()
+	r.Logger.Infof("IBM COS Bucket Name: %s", bucketName)
+
+	s3Config := &aws.Config{
+		S3ForcePathStyle: aws.Bool(true),
+		Endpoint:         aws.String(endpoint),
+		Credentials: credentials.NewStaticCredentials(
+			accessKeyID,
+			secretAccessKey,
+			"",
+		),
+		Region: &location,
+	}
+	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
+		return err
+	}
+	r.Logger.Infof("Creadted bucket: %s", bucketName)
+
+	// create backing store
+	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeIBMCos
+	r.DefaultBackingStore.Spec.IBMCos = &nbv1.IBMCosSpec{
+		TargetBucket: bucketName,
+		Secret: corev1.SecretReference{
+			Name:      cloudCredsSecret.Name,
+			Namespace: cloudCredsSecret.Namespace,
+		},
+		Endpoint:         endpoint,
+		SignatureVersion: nbv1.S3SignatureVersionV2,
+	}
 	return nil
 }
 

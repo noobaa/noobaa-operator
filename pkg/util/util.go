@@ -804,6 +804,27 @@ func IsAzurePlatform() bool {
 	return isAzure
 }
 
+// IsIBMPlatform returns true if this cluster is running on IBM Cloud
+func IsIBMPlatform() bool {
+	nodesList := &corev1.NodeList{}
+	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+		Panic(fmt.Errorf("failed to list kubernetes nodes"))
+	}
+	isIBM := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "ibm")
+	return isIBM
+}
+
+// GetIBMRegion returns the cluster's region in IBM Cloud
+func GetIBMRegion() (string, error) {
+	nodesList := &corev1.NodeList{}
+	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+		return "", fmt.Errorf("failed to list kubernetes nodes")
+	}
+	labels := nodesList.Items[0].GetLabels()
+	region := labels["ibm-cloud.kubernetes.io/region"]
+	return region, nil
+}
+
 // GetAWSRegion parses the region from a node's name
 func GetAWSRegion() (string, error) {
 	// parse the node name to get AWS region according to this:

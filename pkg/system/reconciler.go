@@ -76,6 +76,7 @@ type Reconciler struct {
 	SecretEndpoints     *corev1.Secret
 	AWSCloudCreds       *cloudcredsv1.CredentialsRequest
 	AzureCloudCreds     *cloudcredsv1.CredentialsRequest
+	IBMCloudCreds       *cloudcredsv1.CredentialsRequest
 	AzureContainerCreds *corev1.Secret
 	DefaultBackingStore *nbv1.BackingStore
 	DefaultBucketClass  *nbv1.BucketClass
@@ -124,6 +125,7 @@ func NewReconciler(
 		AzureContainerCreds: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AWSCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		AzureCloudCreds:     util.KubeObject(bundle.File_deploy_internal_cloud_creds_azure_cr_yaml).(*cloudcredsv1.CredentialsRequest),
+		IBMCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
 		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
 		OBCStorageClass:     util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
@@ -153,6 +155,8 @@ func NewReconciler(
 	r.AzureContainerCreds.Namespace = r.Request.Namespace
 	r.AWSCloudCreds.Namespace = r.Request.Namespace
 	r.AWSCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
+	r.IBMCloudCreds.Namespace = r.Request.Namespace
+	r.IBMCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
 	r.AzureCloudCreds.Namespace = r.Request.Namespace
 	r.AzureCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
 	r.DefaultBackingStore.Namespace = r.Request.Namespace
@@ -182,6 +186,8 @@ func NewReconciler(
 	r.AzureContainerCreds.Name = r.Request.Name + "-azure-container-creds"
 	r.AWSCloudCreds.Name = r.Request.Name + "-aws-cloud-creds"
 	r.AWSCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-aws-cloud-creds-secret"
+	r.IBMCloudCreds.Name = r.Request.Name + "-ibm-cloud-creds"
+	r.IBMCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-ibm-cloud-creds-secret"
 	r.AzureCloudCreds.Name = r.Request.Name + "-azure-cloud-creds"
 	r.AzureCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-azure-cloud-creds-secret"
 	r.CephObjectstoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
