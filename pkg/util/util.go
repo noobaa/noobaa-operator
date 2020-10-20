@@ -56,6 +56,7 @@ import (
 const (
 	oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
 	rootSecretPath         = "NOOBAA_ROOT_SECRET_PATH"
+	ibmRegion              = "ibm-cloud.kubernetes.io/region"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -817,6 +818,33 @@ func IsGCPPlatform() bool {
 	}
 	isGCP := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "gce")
 	return isGCP
+}
+
+// IsIBMPlatform returns true if this cluster is running on IBM Cloud
+func IsIBMPlatform() bool {
+	nodesList := &corev1.NodeList{}
+	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+		Panic(fmt.Errorf("failed to list kubernetes nodes"))
+	}
+	isIBM := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "ibm")
+	if isIBM {
+		// Incase of Satellite cluster is deplyed in user provided infrastructure
+		if strings.Contains(nodesList.Items[0].Spec.ProviderID, "sat-ibm") {
+			isIBM = false
+		}
+	}
+	return isIBM
+}
+
+// GetIBMRegion returns the cluster's region in IBM Cloud
+func GetIBMRegion() (string, error) {
+	nodesList := &corev1.NodeList{}
+	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+		return "", fmt.Errorf("failed to list kubernetes nodes")
+	}
+	labels := nodesList.Items[0].GetLabels()
+	region := labels[ibmRegion]
+	return region, nil
 }
 
 // GetAWSRegion parses the region from a node's name
