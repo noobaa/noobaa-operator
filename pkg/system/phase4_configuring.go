@@ -26,6 +26,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
+const (
+	ibmEndpoint = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
+	ibmLocation = "%s-standard"
+)
+
 // ReconcilePhaseConfiguring runs the reconcile phase
 func (r *Reconciler) ReconcilePhaseConfiguring() error {
 
@@ -429,22 +434,22 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	}
 
 	if r.CephObjectstoreUser.UID != "" {
-		log.Infof("CephObjectstoreUser %q created.  creating default backing store on ceph objectstore", r.CephObjectstoreUser.Name)
+		log.Infof("CephObjectstoreUser %q created. Creating default backing store on ceph objectstore", r.CephObjectstoreUser.Name)
 		if err := r.prepareCephBackingStore(); err != nil {
 			return err
 		}
 	} else if r.AWSCloudCreds.UID != "" {
-		log.Infof("CredentialsRequest %q created.  creating default backing store on AWS objectstore", r.AWSCloudCreds.Name)
+		log.Infof("CredentialsRequest %q created. Creating default backing store on AWS objectstore", r.AWSCloudCreds.Name)
 		if err := r.prepareAWSBackingStore(); err != nil {
 			return err
 		}
 	} else if r.AzureCloudCreds.UID != "" {
-		log.Infof("CredentialsRequest %q created.  creating default backing store on Azure objectstore", r.AzureCloudCreds.Name)
+		log.Infof("CredentialsRequest %q created. Creating default backing store on Azure objectstore", r.AzureCloudCreds.Name)
 		if err := r.prepareAzureBackingStore(); err != nil {
 			return err
 		}
 	} else if r.IBMCloudCreds.UID != "" {
-		log.Infof("CredentialsRequest %q created.  creating default backing store on IBM objectstore", r.IBMCloudCreds.Name)
+		log.Infof("CredentialsRequest %q created. Creating default backing store on IBM objectstore", r.IBMCloudCreds.Name)
 		if err := r.prepareIBMBackingStore(); err != nil {
 			return err
 		}
@@ -642,8 +647,8 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 		}
 		r.Logger.Infof("Constructing endpoint for region: %q", region)
 		// https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-classes#classes-locationconstraint
-		endpoint = "https://s3.direct." + region + ".cloud-object-storage.appdomain.cloud"
-		location = region + "-standard"
+		endpoint = fmt.Sprintf(ibmEndpoint, region)
+		location = fmt.Sprintf(ibmLocation, region)
 	}
 
 	if _, err := url.Parse(endpoint); err != nil {

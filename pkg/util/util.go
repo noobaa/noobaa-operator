@@ -52,6 +52,7 @@ import (
 
 const (
 	oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
+	ibmRegion              = "ibm-cloud.kubernetes.io/region"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -811,6 +812,12 @@ func IsIBMPlatform() bool {
 		Panic(fmt.Errorf("failed to list kubernetes nodes"))
 	}
 	isIBM := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "ibm")
+	if isIBM {
+		// Incase of Satellite cluster is deplyed in user provided infrastructure
+		if strings.Contains(nodesList.Items[0].Spec.ProviderID, "sat-ibm") {
+			isIBM = false
+		}
+	}
 	return isIBM
 }
 
@@ -821,7 +828,7 @@ func GetIBMRegion() (string, error) {
 		return "", fmt.Errorf("failed to list kubernetes nodes")
 	}
 	labels := nodesList.Items[0].GetLabels()
-	region := labels["ibm-cloud.kubernetes.io/region"]
+	region := labels[ibmRegion]
 	return region, nil
 }
 
