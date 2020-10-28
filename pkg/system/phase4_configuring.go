@@ -440,8 +440,8 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		return nil
 	}
 
-	if r.CephObjectstoreUser.UID != "" {
-		log.Infof("CephObjectstoreUser %q created.  creating default backing store on ceph objectstore", r.CephObjectstoreUser.Name)
+	if r.CephObjectStoreUser.UID != "" {
+		log.Infof("CephObjectStoreUser %q created.  creating default backing store on ceph objectstore", r.CephObjectStoreUser.Name)
 		if err := r.prepareCephBackingStore(); err != nil {
 			return err
 		}
@@ -691,51 +691,40 @@ func (r *Reconciler) createGCPBucketForBackingStore(client *storage.Client, proj
 }
 
 func (r *Reconciler) prepareCephBackingStore() error {
+	util.KubeCheck(r.CephObjectStoreUser)
+	if r.CephObjectStoreUser.UID != "" || r.CephObjectStoreUser.Status.Phase != "Ready" {
+		r.Logger.Infof("Ceph objectstore user %q is not ready. retry on next reconcile..", r.CephObjectStoreUser.Name)
+		return fmt.Errorf("Ceph objectstore user %q is not ready", r.CephObjectStoreUser.Name)
+	}
 
-	secretName := "rook-ceph-object-user-" + r.CephObjectstoreUser.Spec.Store + "-" + r.CephObjectstoreUser.Name
+	secretName := r.CephObjectStoreUser.Status.Info["secretName"]
+	if secretName == "" {
+		return util.NewPersistentError("InvalidCephObjectStoreUser",
+			"Ceph objectstore user is ready but a secret name was not provided")
+	}
 
 	// get access\secret keys from user secret
-	cephObjectUserSecret := &corev1.Secret{
+	cephObjectStoreUserSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
 			Namespace: options.Namespace,
 		},
 	}
-
-	util.KubeCheck(cephObjectUserSecret)
-	if cephObjectUserSecret.UID == "" {
-		// TODO: we need to figure out why secret is not created, and react accordingly
-		// e.g. maybe we are running on azure but our CredentialsRequest is for AWS
-		r.Logger.Infof("Ceph object user secret %q was not created yet. retry on next reconcile..", secretName)
-		return fmt.Errorf("Ceph object user secret %q is not ready yet", secretName)
+	util.KubeCheck(cephObjectStoreUserSecret)
+	if cephObjectStoreUserSecret.UID == "" {
+		r.Logger.Infof("Ceph objectstore user secret %q was not created yet. retry on next reconcile..", secretName)
+		return fmt.Errorf("Ceph objectstore user secret %q is not ready yet", secretName)
 	}
 
-	endpoint := ""
-	if cephObjectUserSecret.StringData["Endpoint"] != "" {
-		// first look for the endpoint in the secret
-		endpoint = cephObjectUserSecret.StringData["Endpoint"]
-		r.Logger.Infof("Found RGW endpoint in cephObjectUserSecret %q", secretName)
-	} else if r.NooBaa.Labels != nil && r.NooBaa.Labels["rgw-endpoint"] != "" {
-		// take from label if not found so far
-		raw := r.NooBaa.Labels["rgw-endpoint"]
-		i := strings.LastIndex(raw, "_")
-		endpoint = fmt.Sprintf("http://%s:%s", raw[:i], raw[i+1:])
-		r.Logger.Info("Found RGW endpoint in noobaa label \"endpoint\"")
-	} else if r.CephObjectstoreUser.Spec.Store != "" {
-		// if not found in the secret compose from the ceph-object-store name
-		endpoint = "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
-		r.Logger.Infof("Found RGW endpoint in CephObjectstoreUser %q", r.CephObjectstoreUser.Name)
-	} else {
-		return fmt.Errorf("Ceph RGW endpoint address is not available")
-	}
-	r.Logger.Infof("RGW endpoint %q", endpoint)
+	endpoint := cephObjectStoreUserSecret.StringData["Endpoint"]
+	r.Logger.Infof("Will connect to RGW at %q", endpoint)
 
 	region := "us-east-1"
 	forcePathStyle := true
 	s3Config := &aws.Config{
 		Credentials: credentials.NewStaticCredentials(
-			cephObjectUserSecret.StringData["AccessKey"],
-			cephObjectUserSecret.StringData["SecretKey"],
+			cephObjectStoreUserSecret.StringData["AccessKey"],
+			cephObjectStoreUserSecret.StringData["SecretKey"],
 			"",
 		),
 		Endpoint:         &endpoint,
@@ -755,6 +744,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		Endpoint:         endpoint,
 		SignatureVersion: nbv1.S3SignatureVersionV4,
 	}
+
 	return nil
 }
 
