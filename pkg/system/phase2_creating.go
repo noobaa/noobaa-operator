@@ -352,43 +352,41 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 // ReconcileRGWCredentials creates a ceph objectstore user if a ceph objectstore exists in the same namespace
 func (r *Reconciler) ReconcileRGWCredentials() error {
 	r.Logger.Info("Not running in AWS. will attempt to create a ceph objectstore user")
-	util.KubeCheck(r.CephObjectstoreUser)
-	if r.CephObjectstoreUser.UID != "" {
+	util.KubeCheck(r.CephObjectStoreUser)
+	if r.CephObjectStoreUser.UID != "" {
 		return nil
 	}
 
-	// create user if not already exists
-	// list ceph objectstores and pick the first one
-	r.CephObjectstoreUser.Spec.Store = ""
-	cephObjectStoresList := &cephv1.CephObjectStoreList{}
-	if util.KubeList(cephObjectStoresList, &client.ListOptions{Namespace: options.Namespace}) {
-		if len(cephObjectStoresList.Items) > 0 {
-			r.Logger.Infof("found %d ceph objectstores: %v", len(cephObjectStoresList.Items), cephObjectStoresList.Items)
-			// for now take the first one. need to decide what to do if multiple objectstores in one namespace
-			storeName := cephObjectStoresList.Items[0].ObjectMeta.Name
-			r.Logger.Infof("using objectstore %q as a default backing store", storeName)
-			r.CephObjectstoreUser.Spec.Store = storeName
-
-		} else {
-			r.Logger.Info("did not find any ceph objectstore to use as backing store, assuming independent mode")
-		}
-
-	} else {
-		r.Logger.Info("failed to list ceph objectstore to use as backing store, assuming independent mode")
+	// Try to list ceph object store users to validate that the CRD is installed in the cluster.
+	cephObjectStoreUserList := &cephv1.CephObjectStoreUserList{}
+	if !util.KubeList(cephObjectStoreUserList, &client.ListOptions{Namespace: options.Namespace}) {
+		r.Logger.Info("failed to list ceph objectstore user, the scrd might not be installed in the cluster")
+		return nil
 	}
 
-	if r.CephObjectstoreUser.Spec.Store == "" {
-		if r.NooBaa.Labels == nil || r.NooBaa.Labels["rgw-endpoint"] == "" {
-			r.Logger.Warn("did not find an rgw-endpoint label on the noobaa CR")
-			return nil
-		}
+	// Try to list the ceph object stores.
+	cephObjectStoreList := &cephv1.CephObjectStoreList{}
+	if !util.KubeList(cephObjectStoreList, &client.ListOptions{Namespace: options.Namespace}) {
+		r.Logger.Info("failed to list ceph objectstore to use as backing store")
+		return nil
+	}
+	if len(cephObjectStoreList.Items) == 0 {
+		r.Logger.Info("did not find any ceph objectstore to use as backing store")
+		return nil
 	}
 
-	r.Own(r.CephObjectstoreUser)
+	// Log all stores and take the first one for not.
+	// TODO: need to decide what to do if multiple objectstores in one namespace
+	r.Logger.Infof("found %d ceph objectstores: %v", len(cephObjectStoreList.Items), cephObjectStoreList.Items)
+	storeName := cephObjectStoreList.Items[0].ObjectMeta.Name
+	r.Logger.Infof("using objectstore %q as a default backing store", storeName)
+
 	// create ceph objectstore user
-	err := r.Client.Create(r.Ctx, r.CephObjectstoreUser)
+	r.CephObjectStoreUser.Spec.Store = storeName
+	r.Own(r.CephObjectStoreUser)
+	err := r.Client.Create(r.Ctx, r.CephObjectStoreUser)
 	if err != nil {
-		r.Logger.Errorf("got error on CephObjectstoreUser creation. error: %v", err)
+		r.Logger.Errorf("got error on CephObjectStoreUser creation. error: %v", err)
 		return err
 	}
 	return nil
