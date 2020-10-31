@@ -127,7 +127,8 @@ INFO[0000] operator-image: noobaa/noobaa-operator:5.6.0
 - [About NooBaa](doc/about-noobaa.md)
 - CRDs
     - [NooBaa](doc/noobaa-crd.md) - The basic CRD to deploy a NooBaa system.
-    - [BackingStore](doc/backing-store-crd.md) - Connection to cloud or local storage to use in policies.
+    - [BackingStore](doc/backing-store-crd.md) - Storage resources.
+    - [NamespaceStore](doc/namespace-store-crd.md) - Data resources.
     - [BucketClass](doc/bucket-class-crd.md) - Policies applied to a class of buckets.
 - [OBC Provisioner](doc/obc-provisioner.md) - Method to claim a new/existing bucket.
 
