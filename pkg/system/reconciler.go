@@ -74,6 +74,7 @@ type Reconciler struct {
 	SecretOp            *corev1.Secret
 	SecretAdmin         *corev1.Secret
 	SecretEndpoints     *corev1.Secret
+	SecretRootMasterKey *corev1.Secret
 	AWSCloudCreds       *cloudcredsv1.CredentialsRequest
 	AzureCloudCreds     *cloudcredsv1.CredentialsRequest
 	AzureContainerCreds *corev1.Secret
@@ -86,7 +87,7 @@ type Reconciler struct {
 	ServiceMonitorMgmt  *monitoringv1.ServiceMonitor
 	ServiceMonitorS3    *monitoringv1.ServiceMonitor
 	SystemInfo          *nb.SystemInfo
-	CephObjectstoreUser *cephv1.CephObjectStoreUser
+	CephObjectStoreUser *cephv1.CephObjectStoreUser
 	RouteMgmt           *routev1.Route
 	RouteS3             *routev1.Route
 	DeploymentEndpoint  *appsv1.Deployment
@@ -123,6 +124,7 @@ func NewReconciler(
 		SecretOp:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretEndpoints:     util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretRootMasterKey: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AzureContainerCreds: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		GCPBucketCreds:      util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AWSCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
@@ -134,7 +136,7 @@ func NewReconciler(
 		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		ServiceMonitorMgmt:  util.KubeObject(bundle.File_deploy_internal_servicemonitor_mgmt_yaml).(*monitoringv1.ServiceMonitor),
 		ServiceMonitorS3:    util.KubeObject(bundle.File_deploy_internal_servicemonitor_s3_yaml).(*monitoringv1.ServiceMonitor),
-		CephObjectstoreUser: util.KubeObject(bundle.File_deploy_internal_ceph_objectstore_user_yaml).(*cephv1.CephObjectStoreUser),
+		CephObjectStoreUser: util.KubeObject(bundle.File_deploy_internal_ceph_objectstore_user_yaml).(*cephv1.CephObjectStoreUser),
 		RouteMgmt:           util.KubeObject(bundle.File_deploy_internal_route_mgmt_yaml).(*routev1.Route),
 		RouteS3:             util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
 		DeploymentEndpoint:  util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
@@ -154,6 +156,7 @@ func NewReconciler(
 	r.SecretOp.Namespace = r.Request.Namespace
 	r.SecretAdmin.Namespace = r.Request.Namespace
 	r.SecretEndpoints.Namespace = r.Request.Namespace
+	r.SecretRootMasterKey.Namespace = r.Request.Namespace
 	r.AzureContainerCreds.Namespace = r.Request.Namespace
 	r.GCPBucketCreds.Namespace = r.Request.Namespace
 	r.AWSCloudCreds.Namespace = r.Request.Namespace
@@ -167,7 +170,7 @@ func NewReconciler(
 	r.PrometheusRule.Namespace = r.Request.Namespace
 	r.ServiceMonitorMgmt.Namespace = r.Request.Namespace
 	r.ServiceMonitorS3.Namespace = r.Request.Namespace
-	r.CephObjectstoreUser.Namespace = r.Request.Namespace
+	r.CephObjectStoreUser.Namespace = r.Request.Namespace
 	r.RouteMgmt.Namespace = r.Request.Namespace
 	r.RouteS3.Namespace = r.Request.Namespace
 	r.DeploymentEndpoint.Namespace = r.Request.Namespace
@@ -186,6 +189,7 @@ func NewReconciler(
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
 	r.SecretEndpoints.Name = r.Request.Name + "-endpoints"
+	r.SecretRootMasterKey.Name = r.Request.Name + "-root-master-key"
 	r.AWSCloudCreds.Name = r.Request.Name + "-aws-cloud-creds"
 	r.AWSCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-aws-cloud-creds-secret"
 	r.AzureContainerCreds.Name = r.Request.Name + "-azure-container-creds"
@@ -194,7 +198,7 @@ func NewReconciler(
 	r.GCPBucketCreds.Name = r.Request.Name + "-gcp-bucket-creds"
 	r.GCPCloudCreds.Name = r.Request.Name + "-gcp-cloud-creds"
 	r.GCPCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-gcp-cloud-creds-secret"
-	r.CephObjectstoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
+	r.CephObjectStoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"
 	r.PrometheusRule.Name = r.Request.Name + "-prometheus-rules"
@@ -219,6 +223,8 @@ func NewReconciler(
 	r.SecretServer.StringData["jwt"] = util.RandomBase64(16)
 	r.SecretServer.StringData["server_secret"] = util.RandomHex(4)
 
+	// set noobaa root master key secret
+	r.SecretRootMasterKey.StringData["cipher_key_b64"] = util.RandomBase64(32)
 	return r
 }
 
@@ -239,6 +245,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.SecretOp)
 	util.KubeCheck(r.SecretEndpoints)
 	util.KubeCheck(r.SecretAdmin)
+	util.KubeCheck(r.SecretRootMasterKey)
 	util.KubeCheck(r.OBCStorageClass)
 	util.KubeCheck(r.DefaultBucketClass)
 	util.KubeCheck(r.DeploymentEndpoint)

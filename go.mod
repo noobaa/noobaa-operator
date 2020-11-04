@@ -15,22 +15,20 @@ require (
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/prometheus-operator v0.38.0
 	github.com/docker/distribution v2.7.1+incompatible
-	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
-	github.com/go-openapi/spec v0.19.4
-	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20200107223247-51020689f1fb
+	github.com/go-openapi/spec v0.19.5
+	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20200610144127-e2eec875d6d1
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
 	github.com/operator-framework/operator-lifecycle-manager v0.0.0-20200321030439-57b580e57e88 // 0.11.0
 	github.com/operator-framework/operator-sdk v0.17.0
-	github.com/rook/rook v1.1.2
+	github.com/rook/rook v1.4.6
 	github.com/sirupsen/logrus v1.5.0
-	github.com/spf13/cobra v0.0.5
+	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/tools v0.0.0-20200915031644-64986481280e // indirect
 	google.golang.org/api v0.14.0
 	k8s.io/api v0.17.4
@@ -40,11 +38,11 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/code-generator v0.17.4
 	k8s.io/gengo v0.0.0-20191010091904-7fa3014cb28f
-	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
+	k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe
 	k8s.io/kubectl v0.17.4
 	nhooyr.io/websocket v1.7.4
 	sigs.k8s.io/controller-runtime v0.5.2
-	sigs.k8s.io/yaml v1.1.0
+	sigs.k8s.io/yaml v1.2.0
 )
 
 // Pinned to kubernetes-1.17.4
