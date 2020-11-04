@@ -137,6 +137,15 @@ func (c *Collector) CollectPodLogs(corePodSelector labels.Selector) {
 // ExportDiagnostics info
 func (c *Collector) ExportDiagnostics(destDir string) {
 	targetFile := fmt.Sprintf("%s.tar.gz", c.folderName)
+	if destDir != "" {
+		if _, err := os.Stat(destDir); os.IsNotExist(err) {
+			err := os.MkdirAll(destDir, os.ModePerm)
+			if err != nil {
+				c.log.Fatalf(`❌ Could not create directory %s, reason: %s`, destDir, err)
+			}
+		}
+		targetFile = fmt.Sprintf("%s/%s", destDir, targetFile)
+	}
 	fileToWrite, err := os.Create(targetFile)
 	if err != nil {
 		c.log.Fatalf(`❌ Could not create target file %s, reason: %s`, targetFile, err)
@@ -146,19 +155,7 @@ func (c *Collector) ExportDiagnostics(destDir string) {
 	if err != nil {
 		c.log.Fatalf(`❌ Could not compress and package diagnostics, reason: %s`, err)
 	}
-	if destDir != "" {
-		if _, err := os.Stat(destDir); os.IsNotExist(err) {
-			err := os.Mkdir(destDir, os.ModePerm)
-			if err != nil {
-				c.log.Fatalf(`❌ Could not create directory %s, reason: %s`, destDir, err)
-			}
-		}
-		newLocation := fmt.Sprintf("%s/%s", destDir, targetFile)
-		err1 := os.Rename(targetFile, newLocation)
-		if err1 != nil {
-			c.log.Fatalf(`❌ Could not move tar file to destination, reason: %s`, err1)
-		}
-	}
+
 	err = os.RemoveAll(c.folderName)
 	if err != nil {
 		c.log.Fatalf(`❌ Could not delete diagnostics collecting folder %s, reason: %s`, c.folderName, err)
