@@ -2342,7 +2342,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "2789548c2f42e0faa3e2b7d5065ab541ae4b09f050dc17a8020e0dfa57ccdac1"
+const Sha256_deploy_internal_statefulset_core_yaml = "d602d62cd0eed9656a96dbef4d8312fa595164178e55474041a258c7e04741bf"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2414,9 +2414,7 @@ spec:
             - name: POSTGRES_DBNAME
               value: nbcore
             - name: POSTGRES_USER
-              value: postgres
             - name: POSTGRES_PASSWORD
-              value: noobaa
             - name: DB_TYPE
               value: mongodb
             - name: CONTAINER_PLATFORM
@@ -2546,7 +2544,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "2d25c5ac73690aceea74d8d17853999b1b9a1a05f0342c12d80aa8056ad6f206"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "a41849d20af288d4e005cb479ceb978891f731ad4d9d5fb9f6824a2dc7d80635"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2579,9 +2577,7 @@ spec:
             - name: POSTGRESQL_DATABASE
               value: nbcore
             - name: POSTGRESQL_USER
-              value: postgres
             - name: POSTGRESQL_PASSWORD
-              value: noobaa
           magePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 5432
