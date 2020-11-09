@@ -36,7 +36,7 @@ const (
 	ibmEndpoint         = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
 	ibmLocation         = "%s-standard"
 	ibmCOSCred          = "ibm-cloud-cos-creds"
-	ibmCOSCredDefaultNS = "kube-system"
+	ibmCOSCredDefaultNS = "openshift-storage"
 )
 
 type gcpAuthJSON struct {
@@ -697,30 +697,26 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 		location string
 	)
 
-	cloudCredsSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      r.IBMCloudCOSCreds.Name,
-			Namespace: r.IBMCloudCOSCreds.Namespace,
-		},
-	}
-
-	util.KubeCheck(cloudCredsSecret)
-	if cloudCredsSecret.UID == "" {
-		// Secret not found, check the default ns
-		cloudCredsSecret.Namespace = ibmCOSCredDefaultNS
-		util.KubeCheck(cloudCredsSecret)
-		if cloudCredsSecret.UID == "" {
-			r.Logger.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
-			return fmt.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
-		}
+	util.KubeCheck(r.IBMCloudCOSCreds)
+	if r.IBMCloudCOSCreds.UID == "" && r.IBMCloudCOSCreds.Namespace != ibmCOSCredDefaultNS {
+		// Secret not found under target ns, check under default ns
+		targetNS := r.IBMCloudCOSCreds.Namespace
 		r.IBMCloudCOSCreds.Namespace = ibmCOSCredDefaultNS
+		util.KubeCheck(r.IBMCloudCOSCreds)
+		if r.IBMCloudCOSCreds.UID != "" {
+			r.IBMCloudCOSCreds.Namespace = targetNS
+		}
+	}
+	if r.IBMCloudCOSCreds.UID == "" {
+		r.Logger.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
+		return fmt.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
 	}
 
-	if val, ok := cloudCredsSecret.StringData["IBM_COS_Endpoint"]; ok {
+	if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_Endpoint"]; ok {
 		// Use the endpoint provided in the secret
 		endpoint = val
 		r.Logger.Infof("Endpoint provided in secret: %q", endpoint)
-		if val, ok := cloudCredsSecret.StringData["IBM_COS_Location"]; ok {
+		if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_Location"]; ok {
 			location = val
 			r.Logger.Infof("Location provided in secret: %q", location)
 		}
@@ -746,7 +742,7 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 	r.Logger.Infof("IBM COS Endpoint: %s   LocationConstraint: %s", endpoint, location)
 
 	var accessKeyID string
-	if val, ok := cloudCredsSecret.StringData["IBM_COS_ACCESS_KEY_ID"]; ok {
+	if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_ACCESS_KEY_ID"]; ok {
 		accessKeyID = val
 	} else {
 		r.Logger.Errorf("Missing IBM_COS_ACCESS_KEY_ID in the secret")
@@ -754,7 +750,7 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 	}
 
 	var secretAccessKey string
-	if val, ok := cloudCredsSecret.StringData["IBM_COS_SECRET_ACCESS_KEY"]; ok {
+	if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_SECRET_ACCESS_KEY"]; ok {
 		secretAccessKey = val
 	} else {
 		r.Logger.Errorf("Missing IBM_COS_SECRET_ACCESS_KEY in the secret")
@@ -784,8 +780,8 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 	r.DefaultBackingStore.Spec.IBMCos = &nbv1.IBMCosSpec{
 		TargetBucket: bucketName,
 		Secret: corev1.SecretReference{
-			Name:      cloudCredsSecret.Name,
-			Namespace: cloudCredsSecret.Namespace,
+			Name:      r.IBMCloudCOSCreds.Name,
+			Namespace: r.IBMCloudCOSCreds.Namespace,
 		},
 		Endpoint:         endpoint,
 		SignatureVersion: nbv1.S3SignatureVersionV2,
