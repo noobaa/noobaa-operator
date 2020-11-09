@@ -703,7 +703,7 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 		targetNS := r.IBMCloudCOSCreds.Namespace
 		r.IBMCloudCOSCreds.Namespace = ibmCOSCredDefaultNS
 		util.KubeCheck(r.IBMCloudCOSCreds)
-		if r.IBMCloudCOSCreds.UID != "" {
+		if r.IBMCloudCOSCreds.UID == "" {
 			r.IBMCloudCOSCreds.Namespace = targetNS
 		}
 	}
