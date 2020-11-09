@@ -23,11 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	ibmCredSecret   = "ibm-cloud-cos-creds"
-	ibmCredSecretNS = "kube-system"
-)
-
 // ReconcilePhaseCreating runs the reconcile phase
 func (r *Reconciler) ReconcilePhaseCreating() error {
 
@@ -512,14 +507,12 @@ func (r *Reconciler) ReconcileGCPCredentials() error {
 	return err
 }
 
-// ReconcileIBMCredentials create dummy request
+// ReconcileIBMCredentials sets IsIBMCloud to indicate operator is running in IBM Cloud
 func (r *Reconciler) ReconcileIBMCredentials() error {
 	// Currently IBM Cloud is not supported by cloud credential operator
-	// In IBM Cloud, the HMAC keys will be provided through K8S Secret under kube-system namespace
-	r.Logger.Info("Running in IBM Cloud. Expecting Secret: <ibm-cloud-cos-creds> under NS: <kube-system>")
-	r.IBMCloudCreds.Spec.SecretRef.Name = ibmCredSecret
-	r.IBMCloudCreds.Spec.SecretRef.Namespace = ibmCredSecretNS
-	r.IBMCloudCreds.UID = "dummy-uid"
+	// In IBM Cloud, the COS Creds will be provided through Secret.
+	r.Logger.Info("Running in IBM Cloud")
+	r.IsIBMCloud = true
 	return nil
 }
 

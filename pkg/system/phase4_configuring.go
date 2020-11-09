@@ -33,8 +33,10 @@ import (
 )
 
 const (
-	ibmEndpoint = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
-	ibmLocation = "%s-standard"
+	ibmEndpoint         = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
+	ibmLocation         = "%s-standard"
+	ibmCOSCred          = "ibm-cloud-cos-creds"
+	ibmCOSCredDefaultNS = "kube-system"
 )
 
 type gcpAuthJSON struct {
@@ -465,8 +467,8 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		if err := r.prepareGCPBackingStore(); err != nil {
 			return err
 		}
-	} else if r.IBMCloudCreds.UID != "" {
-		log.Infof("CredentialsRequest %q created. Creating default backing store on IBM objectstore", r.IBMCloudCreds.Name)
+	} else if r.IsIBMCloud {
+		log.Infof("Running in IBM Cloud. Creating default backing store on IBM objectstore")
 		if err := r.prepareIBMBackingStore(); err != nil {
 			return err
 		}
@@ -697,16 +699,21 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 
 	cloudCredsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      r.IBMCloudCreds.Spec.SecretRef.Name,
-			Namespace: r.IBMCloudCreds.Spec.SecretRef.Namespace,
+			Name:      r.IBMCloudCOSCreds.Name,
+			Namespace: r.IBMCloudCOSCreds.Namespace,
 		},
 	}
 
 	util.KubeCheck(cloudCredsSecret)
 	if cloudCredsSecret.UID == "" {
-		// Secret not found
-		r.Logger.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCreds.Spec.SecretRef.Name)
-		return fmt.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCreds.Spec.SecretRef.Name)
+		// Secret not found, check the default ns
+		cloudCredsSecret.Namespace = ibmCOSCredDefaultNS
+		util.KubeCheck(cloudCredsSecret)
+		if cloudCredsSecret.UID == "" {
+			r.Logger.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
+			return fmt.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
+		}
+		r.IBMCloudCOSCreds.Namespace = ibmCOSCredDefaultNS
 	}
 
 	if val, ok := cloudCredsSecret.StringData["IBM_COS_Endpoint"]; ok {
@@ -715,6 +722,7 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 		r.Logger.Infof("Endpoint provided in secret: %q", endpoint)
 		if val, ok := cloudCredsSecret.StringData["IBM_COS_Location"]; ok {
 			location = val
+			r.Logger.Infof("Location provided in secret: %q", location)
 		}
 	} else {
 		// Endpoint not provided in the secret, construct one based on the cluster's region
