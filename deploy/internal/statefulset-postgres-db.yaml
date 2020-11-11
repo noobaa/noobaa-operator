@@ -29,9 +29,7 @@ spec:
             - name: POSTGRESQL_DATABASE
               value: nbcore
             - name: POSTGRESQL_USER
-              value: postgres
             - name: POSTGRESQL_PASSWORD
-              value: noobaa
           magePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 5432

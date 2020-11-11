@@ -71,6 +71,7 @@ type Reconciler struct {
 	ServiceS3           *corev1.Service
 	ServiceDb           *corev1.Service
 	SecretServer        *corev1.Secret
+	SecretDB            *corev1.Secret
 	SecretOp            *corev1.Secret
 	SecretAdmin         *corev1.Secret
 	SecretEndpoints     *corev1.Secret
@@ -121,6 +122,7 @@ func NewReconciler(
 		ServiceMgmt:         util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
 		ServiceS3:           util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
 		SecretServer:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretDB:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretOp:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretEndpoints:     util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
@@ -153,6 +155,7 @@ func NewReconciler(
 	r.ServiceS3.Namespace = r.Request.Namespace
 	r.ServiceDb.Namespace = r.Request.Namespace
 	r.SecretServer.Namespace = r.Request.Namespace
+	r.SecretDB.Namespace = r.Request.Namespace
 	r.SecretOp.Namespace = r.Request.Namespace
 	r.SecretAdmin.Namespace = r.Request.Namespace
 	r.SecretEndpoints.Namespace = r.Request.Namespace
@@ -186,6 +189,7 @@ func NewReconciler(
 	r.ServiceS3.Name = "s3"
 	r.ServiceDb.Name = r.Request.Name + "-db"
 	r.SecretServer.Name = r.Request.Name + "-server"
+	r.SecretDB.Name = r.Request.Name + "-db"
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
 	r.SecretEndpoints.Name = r.Request.Name + "-endpoints"
@@ -223,6 +227,9 @@ func NewReconciler(
 	r.SecretServer.StringData["jwt"] = util.RandomBase64(16)
 	r.SecretServer.StringData["server_secret"] = util.RandomHex(4)
 
+	r.SecretDB.StringData["user"] = "noobaa"
+	r.SecretDB.StringData["password"] = util.RandomBase64(10)
+
 	// set noobaa root master key secret
 	r.SecretRootMasterKey.StringData["cipher_key_b64"] = util.RandomBase64(32)
 	return r
@@ -236,6 +243,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
 	if r.NooBaa.Spec.DBType == "postgres" {
+		util.KubeCheck(r.SecretDB)
 		util.KubeCheck(r.NooBaaPostgresDB)
 	} else {
 		util.KubeCheck(r.NooBaaMongoDB)
