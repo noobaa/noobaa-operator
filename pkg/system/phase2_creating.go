@@ -72,6 +72,11 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
 		return err
 	}
+	if r.NooBaa.Spec.DBType == "postgres" {
+		if err := r.ReconcileObject(r.SecretDB, nil); err != nil {
+			return err
+		}
+	}
 	if err := r.ReconcileObject(r.SecretRootMasterKey, nil); err != nil {
 		return err
 	}
@@ -140,11 +145,13 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	var NooBaaDB *appsv1.StatefulSet = nil
 	if r.NooBaa.Spec.DBType == "postgres" {
 		NooBaaDB = r.NooBaaPostgresDB
+		NooBaaDB.Spec.Template.Labels["noobaa-db"] = "postgres"
+		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
 	} else {
 		NooBaaDB = r.NooBaaMongoDB
+		NooBaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
+		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
 	}
-	NooBaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
-	NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
 	NooBaaDB.Spec.ServiceName = r.ServiceDb.Name
 
 	podSpec := &NooBaaDB.Spec.Template.Spec
@@ -169,6 +176,31 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 
 			if r.NooBaa.Spec.DBResources != nil {
 				c.Resources = *r.NooBaa.Spec.DBResources
+			}
+			if r.NooBaa.Spec.DBType == "postgres" {
+				for j := range c.Env {
+					switch c.Env[j].Name {
+					case "POSTGRESQL_USER":
+						c.Env[j].ValueFrom = &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: r.SecretDB.Name,
+								},
+								Key: "user",
+							},
+						}
+					case "POSTGRESQL_PASSWORD":
+						c.Env[j].ValueFrom = &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: r.SecretDB.Name,
+								},
+								Key: "password",
+							},
+						}
+					}
+					
+				}
 			}
 		}
 	}
@@ -286,7 +318,30 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 					if r.OAuthEndpoints != nil {
 						c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
 					}
+				case "POSTGRES_USER":
+					if r.NooBaa.Spec.DBType == "postgres" {
+						c.Env[j].ValueFrom = &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: r.SecretDB.Name,
+								},
+								Key: "user",
+							},
+						}
+					}
+				case "POSTGRES_PASSWORD":
+					if r.NooBaa.Spec.DBType == "postgres" {
+						c.Env[j].ValueFrom = &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: r.SecretDB.Name,
+								},
+								Key: "password",
+							},
+						}
+					}
 				}
+						
 			}
 
 			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
