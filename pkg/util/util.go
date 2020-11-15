@@ -482,7 +482,7 @@ func GetPodLogs(pod corev1.Pod) (map[string]io.ReadCloser, error) {
 	for _, container := range allContainers {
 		podLogOpts := corev1.PodLogOptions{Container: container.Name}
 		req := clientset.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOpts)
-		podLogs, err := req.Stream()
+		podLogs, err := req.Stream(ctx)
 		if err != nil {
 			log.Printf(`Could not read logs %s container %s, reason: %s\n`, pod.Name, container.Name, err)
 			continue
