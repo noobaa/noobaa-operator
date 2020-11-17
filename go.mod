@@ -6,8 +6,8 @@ require (
 	cloud.google.com/go/storage v1.3.0
 	github.com/Azure/azure-sdk-for-go v43.0.0+incompatible
 	github.com/Azure/azure-storage-blob-go v0.8.0
-	github.com/Azure/go-autorest/autorest v0.9.6
-	github.com/Azure/go-autorest/autorest/adal v0.8.2
+	github.com/Azure/go-autorest/autorest v0.11.11
+	github.com/Azure/go-autorest/autorest/adal v0.9.5
 	github.com/Azure/go-autorest/autorest/to v0.3.1-0.20191028180845-3492b2aff503
 	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496
 	github.com/aws/aws-sdk-go v1.28.2
@@ -27,7 +27,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/tools v0.0.0-20200915031644-64986481280e // indirect
 	google.golang.org/api v0.15.1
@@ -47,7 +47,6 @@ require (
 
 // Pinned to kubernetes-1.19.3
 replace (
-	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible // Required by OLM
 	github.com/kube-object-storage/lib-bucket-provisioner => github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20201113145926-53eac50605b4
 	github.com/moby/term => github.com/moby/term v0.0.0-20201110203204-bea5bbe245bf // indirect
 	github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v0.18.2
