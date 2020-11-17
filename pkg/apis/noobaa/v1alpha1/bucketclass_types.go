@@ -25,7 +25,6 @@ type BucketClass struct {
 	// Standard type metadata.
 	metav1.TypeMeta `json:",inline"`
 
-	// Standard object metadata.
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
