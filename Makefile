@@ -96,7 +96,7 @@ pkg/bundle/deploy.go: pkg/bundler/bundler.go version/version.go $(shell find dep
 
 gen-api: $(OPERATOR_SDK) gen
 	$(TIME) $(OPERATOR_SDK) generate k8s
-	$(TIME) $(OPERATOR_SDK) generate crds
+	$(TIME) $(OPERATOR_SDK) generate crds --crd-version v1
 	@echo "✅ gen-api"
 .PHONY: gen-api
 
@@ -114,7 +114,7 @@ gen-olm: $(OPERATOR_SDK) gen
 	python3 -m venv $(VENV) && \
 		. $(VENV)/bin/activate && \
 		pip3 install --upgrade pip && \
-		pip3 install operator-courier==2.1.7 && \
+		pip3 install operator-courier==2.1.11 && \
 		operator-courier --verbose verify --ui_validate_io $(OLM)
 	docker build -t $(CATALOG_IMAGE) -f build/catalog-source.Dockerfile .
 	@echo "✅ gen-olm"

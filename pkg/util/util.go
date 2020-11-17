@@ -33,7 +33,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,7 +73,7 @@ var (
 )
 
 func init() {
-	Panic(apiextv1beta1.AddToScheme(scheme.Scheme))
+	Panic(apiextv1.AddToScheme(scheme.Scheme))
 	Panic(nbapis.AddToScheme(scheme.Scheme))
 	Panic(obv1.AddToScheme(scheme.Scheme))
 	Panic(monitoringv1.AddToScheme(scheme.Scheme))
