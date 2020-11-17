@@ -2408,7 +2408,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "d602d62cd0eed9656a96dbef4d8312fa595164178e55474041a258c7e04741bf"
+const Sha256_deploy_internal_statefulset_core_yaml = "696c76b3b74074ccd53c6892821c0d16aedf04cd39ef77e14d7fe13eb0d74205"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2474,7 +2474,6 @@ spec:
             - containerPort: 60100
           env:
             - name: MONGODB_URL
-              value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
             - name: POSTGRES_HOST
               value: "noobaa-db-0.noobaa-db"
             - name: POSTGRES_DBNAME

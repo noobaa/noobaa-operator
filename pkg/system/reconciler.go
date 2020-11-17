@@ -229,6 +229,7 @@ func NewReconciler(
 
 	r.SecretDB.StringData["user"] = "noobaa"
 	r.SecretDB.StringData["password"] = util.RandomBase64(10)
+	r.SecretDB.StringData["url"] = "mongodb://" + r.NooBaaMongoDB.Name + "-0." + r.NooBaaMongoDB.Spec.ServiceName + "/nbcore"
 
 	// set noobaa root master key secret
 	r.SecretRootMasterKey.StringData["cipher_key_b64"] = util.RandomBase64(32)
@@ -242,8 +243,8 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.CoreApp)
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
+	util.KubeCheck(r.SecretDB)
 	if r.NooBaa.Spec.DBType == "postgres" {
-		util.KubeCheck(r.SecretDB)
 		util.KubeCheck(r.NooBaaPostgresDB)
 	} else {
 		util.KubeCheck(r.NooBaaMongoDB)
