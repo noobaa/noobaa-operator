@@ -1104,6 +1104,9 @@ func (r *Reconciler) updatePodTemplate() {
 	if r.NooBaa.Spec.Tolerations != nil {
 		r.PodAgentTemplate.Spec.Tolerations = r.NooBaa.Spec.Tolerations
 	}
+	if r.NooBaa.Spec.Affinity != nil {
+		r.PodAgentTemplate.Spec.Affinity = r.NooBaa.Spec.Affinity
+	}
 }
 
 func (r *Reconciler) updatePvcTemplate() {
