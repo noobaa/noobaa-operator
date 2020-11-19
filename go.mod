@@ -9,37 +9,40 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.11
 	github.com/Azure/go-autorest/autorest/adal v0.9.5
 	github.com/Azure/go-autorest/autorest/to v0.3.1-0.20191028180845-3492b2aff503
-	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496
+	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
 	github.com/aws/aws-sdk-go v1.28.2
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/prometheus-operator v0.38.1-0.20200424145508-7e176fda06cc
 	github.com/docker/distribution v2.7.1+incompatible
+	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
+	github.com/go-logr/zapr v0.1.1 // indirect
 	github.com/go-openapi/spec v0.19.5
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20200610144127-e2eec875d6d1
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
+	github.com/operator-framework/operator-lib v0.2.0
 	github.com/operator-framework/operator-lifecycle-manager v0.0.0-20200321030439-57b580e57e88 // 0.11.0
-	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/rook/rook v1.4.6
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
+	go.uber.org/zap v1.14.1 // indirect
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/tools v0.0.0-20200915031644-64986481280e // indirect
 	google.golang.org/api v0.15.1
 	k8s.io/api v0.19.3
-	k8s.io/apiextensions-apiserver v0.18.6
+	k8s.io/apiextensions-apiserver v0.18.8
 	k8s.io/apimachinery v0.19.3
 	k8s.io/cli-runtime v0.19.3
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/code-generator v0.19.3
 	k8s.io/gengo v0.0.0-20200428234225-8167cfdcfc14
 	k8s.io/kube-openapi v0.0.0-20200805222855-6aeccd4b50c6
-	k8s.io/kubectl v0.18.2
+	k8s.io/kubectl v0.18.8
 	nhooyr.io/websocket v1.7.4
 	sigs.k8s.io/controller-runtime v0.6.3
 	sigs.k8s.io/yaml v1.2.0
@@ -49,7 +52,6 @@ require (
 replace (
 	github.com/kube-object-storage/lib-bucket-provisioner => github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20201113145926-53eac50605b4
 	github.com/moby/term => github.com/moby/term v0.0.0-20201110203204-bea5bbe245bf // indirect
-	github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v0.18.2
 	k8s.io/api => k8s.io/api v0.19.3
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.19.3
 	k8s.io/apimachinery => k8s.io/apimachinery v0.19.3
