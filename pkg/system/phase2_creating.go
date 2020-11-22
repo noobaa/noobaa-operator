@@ -92,8 +92,19 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
 		return err
 	}
-	if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDB); err != nil {
-		return err
+	if r.NooBaa.Spec.DBType == "postgres" {
+		if err := r.ReconcileObject(r.ServiceDbPg, r.SetDesiredServiceDB); err != nil {
+			return err
+		}
+	} else {
+		if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDB); err != nil {
+			return err
+		}
+	}
+	if r.NooBaa.Spec.DBType == "postgres" {
+		if err := r.UpgradeMigrateDB(); err != nil {
+			return err
+		}
 	}
 	if err := r.ReconcileObjectOptional(r.RouteMgmt, nil); err != nil {
 		return err
@@ -127,10 +138,10 @@ func (r *Reconciler) SetDesiredServiceS3() error {
 // SetDesiredServiceDB updates the ServiceS3 as desired for reconciling
 func (r *Reconciler) SetDesiredServiceDB() error {
 	if r.NooBaa.Spec.DBType == "postgres" {
-		r.ServiceDb.Spec.Selector["noobaa-db"] = "postgres"
-		r.ServiceDb.Spec.Ports[0].Name = "postgres"
-		r.ServiceDb.Spec.Ports[0].Port = 5432
-		r.ServiceDb.Spec.Ports[0].TargetPort = intstr.FromInt(5432)
+		r.ServiceDbPg.Spec.Selector["noobaa-db"] = "postgres"
+		r.ServiceDbPg.Spec.Ports[0].Name = "postgres"
+		r.ServiceDbPg.Spec.Ports[0].Port = 5432
+		r.ServiceDbPg.Spec.Ports[0].TargetPort = intstr.FromInt(5432)
 	} else {
 		r.ServiceDb.Spec.Selector["noobaa-db"] = r.Request.Name
 		r.ServiceDb.Spec.Ports[0].Name = "mongodb"
@@ -147,12 +158,13 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 		NooBaaDB = r.NooBaaPostgresDB
 		NooBaaDB.Spec.Template.Labels["noobaa-db"] = "postgres"
 		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
+		NooBaaDB.Spec.ServiceName = r.ServiceDbPg.Name
 	} else {
 		NooBaaDB = r.NooBaaMongoDB
 		NooBaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
 		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
+		NooBaaDB.Spec.ServiceName = r.ServiceDb.Name
 	}
-	NooBaaDB.Spec.ServiceName = r.ServiceDb.Name
 
 	podSpec := &NooBaaDB.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa"
@@ -274,6 +286,59 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	return nil
 }
 
+func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
+	for j := range c.Env {
+		switch c.Env[j].Name {
+		case "AGENT_PROFILE":
+			c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
+
+		case "MONGODB_URL":
+			c.Env[j].Value = "mongodb://" + r.NooBaaMongoDB.Name + "-0." + r.NooBaaMongoDB.Spec.ServiceName + "/nbcore"
+
+		case "POSTGRES_HOST":
+			c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
+
+		case "DB_TYPE":
+			if r.NooBaa.Spec.DBType == "postgres" {
+				c.Env[j].Value = "postgres"
+			}
+
+		case "OAUTH_AUTHORIZATION_ENDPOINT":
+			if r.OAuthEndpoints != nil {
+				c.Env[j].Value = r.OAuthEndpoints.AuthorizationEndpoint
+			}
+
+		case "OAUTH_TOKEN_ENDPOINT":
+			if r.OAuthEndpoints != nil {
+				c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
+			}
+		case "POSTGRES_USER":
+			if r.NooBaa.Spec.DBType == "postgres" {
+				c.Env[j].ValueFrom = &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: r.SecretDB.Name,
+						},
+						Key: "user",
+					},
+				}
+			}
+		case "POSTGRES_PASSWORD":
+			if r.NooBaa.Spec.DBType == "postgres" {
+				c.Env[j].ValueFrom = &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: r.SecretDB.Name,
+						},
+						Key: "password",
+					},
+				}
+			}
+		}
+				
+	}
+}
+
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
 func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.Template.Labels["noobaa-core"] = r.Request.Name
@@ -295,55 +360,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			}
 			// adding the missing Env varibale from default container
 			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env);
-			for j := range c.Env {
-				switch c.Env[j].Name {
-				case "AGENT_PROFILE":
-					c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
-
-				case "MONGODB_URL":
-					c.Env[j].Value = "mongodb://" + r.NooBaaMongoDB.Name + "-0." + r.NooBaaMongoDB.Spec.ServiceName + "/nbcore"
-
-				case "POSTGRES_HOST":
-					c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
-
-				case "DB_TYPE":
-					if r.NooBaa.Spec.DBType == "postgres" {
-						c.Env[j].Value = "postgres"
-					}
-
-				case "OAUTH_AUTHORIZATION_ENDPOINT":
-					if r.OAuthEndpoints != nil {
-						c.Env[j].Value = r.OAuthEndpoints.AuthorizationEndpoint
-					}
-
-				case "OAUTH_TOKEN_ENDPOINT":
-					if r.OAuthEndpoints != nil {
-						c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
-					}
-				case "POSTGRES_USER":
-					if r.NooBaa.Spec.DBType == "postgres" {
-						c.Env[j].ValueFrom = &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: r.SecretDB.Name,
-								},
-								Key: "user",
-							},
-						}
-					}
-				case "POSTGRES_PASSWORD":
-					if r.NooBaa.Spec.DBType == "postgres" {
-						c.Env[j].ValueFrom = &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: r.SecretDB.Name,
-								},
-								Key: "password",
-							},
-						}
-					}
-				}
-			}
+			r.setDesiredCoreEnv(c)
 
 			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
 			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
@@ -385,6 +402,12 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 
 	}
 
+	phase := r.NooBaa.Status.UpgradePhase
+	replicas := int32(1);
+	if (phase == nbv1.UpgradePhasePrepare || phase == nbv1.UpgradePhaseMigrate) {
+		replicas = int32(0)
+	}
+	r.CoreApp.Spec.Replicas = &replicas
 	return nil
 }
 
@@ -696,5 +719,67 @@ func (r *Reconciler) UpgradeSplitDBDeleteOldPVC(oldPVC *corev1.PersistentVolumeC
 	if util.KubeCheck(oldPVC) {
 		return fmt.Errorf("UpgradeSplitDBDeleteOldPVC: Old PVC still exists")
 	}
+	return nil
+}
+
+// UpgradeMigrateDB performs a db upgrade between mongodb to postgres
+func (r *Reconciler) UpgradeMigrateDB() error {
+	phase := r.NooBaa.Status.UpgradePhase
+	if (phase == nbv1.UpgradePhaseFinished || phase == nbv1.UpgradePhaseNone) {
+		return nil
+	}
+	oldSts := &appsv1.StatefulSet{
+		TypeMeta: metav1.TypeMeta{Kind: "StatefulSet"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "noobaa-db",
+			Namespace: options.Namespace,
+		},
+	}
+	if !util.KubeCheck(oldSts) {
+		phase = nbv1.UpgradePhaseNone
+	} else {
+		r.Logger.Infof("UpgradeMigrateDB: Old STS found, upgrading...")
+		if (phase == "") {
+			phase = nbv1.UpgradePhasePrepare
+		}
+		switch phase {
+		case nbv1.UpgradePhasePrepare:
+			util.KubeCheckQuiet(r.CoreApp)
+			if (*r.CoreApp.Spec.Replicas == 0) {
+				phase = nbv1.UpgradePhaseMigrate
+			}
+		case nbv1.UpgradePhaseMigrate: 
+			if err:= r.ReconcileObject(r.UpgradeJob, r.SetDesiredJobUpgradeDB); err != nil {
+				return err
+			}
+			if (r.UpgradeJob.Status.Succeeded > 0) {
+				phase = nbv1.UpgradePhaseClean
+			}
+		case nbv1.UpgradePhaseClean: 
+			if (*oldSts.Spec.Replicas == 0) {
+				phase = nbv1.UpgradePhaseFinished
+			} else {
+				if err:= r.ReconcileObject(oldSts, func () error {
+					replicas := int32(0); // cleaning the pods
+					oldSts.Spec.Replicas = &replicas;
+					return nil;
+				}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	r.NooBaa.Status.UpgradePhase = phase;
+	if err := r.UpdateStatus(); err != nil {
+		return err
+	} 
+	return nil
+}
+
+// SetDesiredJobUpgradeDB updates the UpgradeJob as desired for reconciling
+func (r *Reconciler) SetDesiredJobUpgradeDB() error {
+	r.UpgradeJob.Spec.Template.Spec.Containers[0].Image = r.NooBaa.Status.ActualImage
+	r.UpgradeJob.Spec.Template.Spec.Containers[0].Command = []string{"/noobaa_init_files/noobaa_init.sh", "db_migrate"}
+	r.setDesiredCoreEnv(&r.UpgradeJob.Spec.Template.Spec.Containers[0])
 	return nil
 }

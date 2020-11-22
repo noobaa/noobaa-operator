@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+  labels:
+    app: noobaa
+spec:
+  template:
+    spec:
+      containers:
+      - name: migrate-job
+        image: NOOBAA_CORE_IMAGE
+        command: ["/noobaa_init_files/noobaa_init.sh", "db_migrate"]
+        env:
+          - name: MONGODB_URL
+            value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
+          - name: POSTGRES_HOST
+            value: "noobaa-db-pg-0.noobaa-db-pg"
+          - name: POSTGRES_DBNAME
+            value: nbcore
+          - name: POSTGRES_USER
+          - name: POSTGRES_PASSWORD
+          - name: CONTAINER_PLATFORM
+            value: KUBERNETES
+      restartPolicy: OnFailure

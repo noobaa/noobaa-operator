@@ -262,12 +262,12 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			if endpointsSpec != nil && endpointsSpec.Resources != nil {
 				c.Resources = *endpointsSpec.Resources
 			}
-
 			mgmtBaseAddr := ""
 			s3BaseAddr := ""
 			if r.JoinSecret == nil {
 				mgmtBaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceMgmt.Name, r.Request.Namespace)
 				s3BaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceS3.Name, r.Request.Namespace)
+				r.setDesiredCoreEnv(c);
 			}
 
 			for j := range c.Env {
@@ -299,11 +299,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 						c.Env[j].Value = fmt.Sprintf(`%s:%d`, mgmtBaseAddr, port.Port)
 					} else {
 						c.Env[j].Value = r.JoinSecret.StringData["hosted_agents_addr"]
-					}
-				case "MONGODB_URL":
-					if r.JoinSecret == nil {
-						c.Env[j].Value = fmt.Sprintf(`mongodb://%s-0.%s/nbcore`,
-							r.NooBaaMongoDB.Name, r.NooBaaMongoDB.Spec.ServiceName)
 					}
 				case "LOCAL_MD_SERVER":
 					if r.JoinSecret == nil {
