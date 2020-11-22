@@ -434,6 +434,9 @@ func CheckNooBaaDBImages(cmd *cobra.Command, sys *nbv1.NooBaa, args []string) st
 		desiredImage = *sys.Spec.DBImage
 	}
 	sts := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
+	if (sys.Spec.DBType == "postgres") {
+		sts.Name = "noobaa-db-pg";
+	}
 	sts.Namespace = options.Namespace
 	if util.KubeCheckQuiet(sts) {
 		runningImage = sts.Spec.Template.Spec.Containers[0].Image

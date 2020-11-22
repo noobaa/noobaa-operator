@@ -1150,6 +1150,9 @@ spec:
                 - serviceMgmt
                 - serviceS3
                 type: object
+              upgradePhase:
+                description: Upgrade reports the status of the ongoing upgrade process
+                type: string
             type: object
         type: object
     served: true

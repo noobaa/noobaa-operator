@@ -198,6 +198,10 @@ type NooBaaStatus struct {
 	// +optional
 	Endpoints *EndpointsStatus `json:"endpoints,omitempty"`
 
+	// Upgrade reports the status of the ongoing upgrade process
+	// +optional
+	UpgradePhase UpgradePhase `json:"upgradePhase,omitempty"`
+
 	// Readme is a user readable string with explanations on the system
 	// +optional
 	Readme string `json:"readme,omitempty"`
@@ -316,6 +320,22 @@ type EndpointsStatus struct {
 	ReadyCount   int32    `json:"readyCount"`
 	VirtualHosts []string `json:"virtualHosts"`
 }
+
+// UpgradePhase is a string enum type for upgrade phases
+type UpgradePhase string
+
+// These are the valid phases:
+const (
+	UpgradePhaseNone UpgradePhase = "NoUpgrade"
+
+	UpgradePhasePrepare UpgradePhase = "Preparing"
+
+	UpgradePhaseMigrate UpgradePhase = "Migrating"
+
+	UpgradePhaseClean UpgradePhase = "Cleanning"
+
+	UpgradePhaseFinished UpgradePhase = "DoneUpgrade"
+)
 
 // CleanupPolicySpec specifies the cleanup policy
 type CleanupPolicySpec struct {
