@@ -3,7 +3,6 @@ package options
 import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	"github.com/noobaa/noobaa-operator/v2/version"
-	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -110,7 +109,7 @@ func ObjectBucketProvisionerName() string {
 var FlagSet = pflag.NewFlagSet("noobaa", pflag.ContinueOnError)
 
 func init() {
-	ns, _ := k8sutil.GetWatchNamespace()
+	ns, _ := util.GetWatchNamespace()
 	if ns == "" {
 		ns = util.CurrentNamespace()
 	}

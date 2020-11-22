@@ -1097,3 +1097,18 @@ func EnsureCommonMetaFields(object metav1.Object, finalizer string) bool {
 	}
 	return updated
 }
+
+// GetWatchNamespace returns the namespace the operator should be watching for changes
+// this was implemented in operator-sdk v0.17 and removed. copied from here:
+// https://github.com/operator-framework/operator-sdk/blob/53b00d125fb12515cd74fb169149913b401c8995/pkg/k8sutil/k8sutil.go#L45
+func GetWatchNamespace() (string, error) {
+	const WatchNamespaceEnvVar = "WATCH_NAMESPACE"
+	ns, found := os.LookupEnv(WatchNamespaceEnvVar)
+	if !found {
+		return "", fmt.Errorf("%s must be set", WatchNamespaceEnvVar)
+	}
+	if len(ns) == 0 {
+		return "", fmt.Errorf("%s must not be empty", WatchNamespaceEnvVar)
+	}
+	return ns, nil
+}
