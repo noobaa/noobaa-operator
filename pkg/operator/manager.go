@@ -16,7 +16,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/controller"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
-	"github.com/operator-framework/operator-sdk/pkg/leader"
+	"github.com/operator-framework/operator-lib/leader"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )

@@ -89,7 +89,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "8abfa87b27f19b77f88b463a0fd7b3984f7ca40474f9198f9a043dcbbfcc99d5"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "fa3fe63dbf3242ff5e3fd94e434cb3e69a38c99121fd06da8b229303aeae7b3a"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -385,8 +385,30 @@ spec:
             relatedObjects:
               description: RelatedObjects is a list of objects related to this operator.
               items:
-                description: ObjectReference contains enough information to let you
-                  inspect or modify the referred object.
+                description: 'ObjectReference contains enough information to let you
+                  inspect or modify the referred object. --- New uses of this type
+                  are discouraged because of difficulty describing its usage when
+                  embedded in APIs.  1. Ignored fields.  It includes many fields which
+                  are not generally honored.  For instance, ResourceVersion and FieldPath
+                  are both very rarely valid in actual usage.  2. Invalid usage help.  It
+                  is impossible to add specific help for individual usage.  In most
+                  embedded usages, there are particular     restrictions like, "must
+                  refer only to types A and B" or "UID not honored" or "name must
+                  be restricted".     Those cannot be well described when embedded.  3.
+                  Inconsistent validation.  Because the usages are different, the
+                  validation rules are different by usage, which makes it hard for
+                  users to predict what will happen.  4. The fields are both imprecise
+                  and overly precise.  Kind is not a precise mapping to a URL. This
+                  can produce ambiguity     during interpretation and require a REST
+                  mapping.  In most cases, the dependency is on the group,resource
+                  tuple     and the version of the actual struct is irrelevant.  5.
+                  We cannot easily change it.  Because this type is embedded in many
+                  locations, updates to this type     will affect numerous schemas.  Don''t
+                  make new APIs embed an underspecified API type they do not control.
+                  Instead of using this type, create a locally provided and used type
+                  that is well-focused on your reference. For example, ServiceReferences
+                  for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                  .'
                 properties:
                   apiVersion:
                     description: API version of the referent.
@@ -431,7 +453,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "460cdb16739e5b43301c4ddaa005648610cdb8e29523bba39bc6a517542f0a45"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "2524d2c2d5006933305eabeaa98d877453833c1b05a44ebdf4f017ca7efac032"
 
 const File_deploy_crds_noobaa_io_bucketclasses_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -553,8 +575,30 @@ spec:
             relatedObjects:
               description: RelatedObjects is a list of objects related to this operator.
               items:
-                description: ObjectReference contains enough information to let you
-                  inspect or modify the referred object.
+                description: 'ObjectReference contains enough information to let you
+                  inspect or modify the referred object. --- New uses of this type
+                  are discouraged because of difficulty describing its usage when
+                  embedded in APIs.  1. Ignored fields.  It includes many fields which
+                  are not generally honored.  For instance, ResourceVersion and FieldPath
+                  are both very rarely valid in actual usage.  2. Invalid usage help.  It
+                  is impossible to add specific help for individual usage.  In most
+                  embedded usages, there are particular     restrictions like, "must
+                  refer only to types A and B" or "UID not honored" or "name must
+                  be restricted".     Those cannot be well described when embedded.  3.
+                  Inconsistent validation.  Because the usages are different, the
+                  validation rules are different by usage, which makes it hard for
+                  users to predict what will happen.  4. The fields are both imprecise
+                  and overly precise.  Kind is not a precise mapping to a URL. This
+                  can produce ambiguity     during interpretation and require a REST
+                  mapping.  In most cases, the dependency is on the group,resource
+                  tuple     and the version of the actual struct is irrelevant.  5.
+                  We cannot easily change it.  Because this type is embedded in many
+                  locations, updates to this type     will affect numerous schemas.  Don''t
+                  make new APIs embed an underspecified API type they do not control.
+                  Instead of using this type, create a locally provided and used type
+                  that is well-focused on your reference. For example, ServiceReferences
+                  for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                  .'
                 properties:
                   apiVersion:
                     description: API version of the referent.
@@ -599,7 +643,7 @@ spec:
     storage: true
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a1b3661d6614535e354be74f26896004f24236b94277fd5858b65cb57810cfe6"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "9fbf5aa10ae14351d042ce79234268be6630ec94998aa8967a610c0f44010b9b"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -1560,8 +1604,30 @@ spec:
             relatedObjects:
               description: RelatedObjects is a list of objects related to this operator.
               items:
-                description: ObjectReference contains enough information to let you
-                  inspect or modify the referred object.
+                description: 'ObjectReference contains enough information to let you
+                  inspect or modify the referred object. --- New uses of this type
+                  are discouraged because of difficulty describing its usage when
+                  embedded in APIs.  1. Ignored fields.  It includes many fields which
+                  are not generally honored.  For instance, ResourceVersion and FieldPath
+                  are both very rarely valid in actual usage.  2. Invalid usage help.  It
+                  is impossible to add specific help for individual usage.  In most
+                  embedded usages, there are particular     restrictions like, "must
+                  refer only to types A and B" or "UID not honored" or "name must
+                  be restricted".     Those cannot be well described when embedded.  3.
+                  Inconsistent validation.  Because the usages are different, the
+                  validation rules are different by usage, which makes it hard for
+                  users to predict what will happen.  4. The fields are both imprecise
+                  and overly precise.  Kind is not a precise mapping to a URL. This
+                  can produce ambiguity     during interpretation and require a REST
+                  mapping.  In most cases, the dependency is on the group,resource
+                  tuple     and the version of the actual struct is irrelevant.  5.
+                  We cannot easily change it.  Because this type is embedded in many
+                  locations, updates to this type     will affect numerous schemas.  Don''t
+                  make new APIs embed an underspecified API type they do not control.
+                  Instead of using this type, create a locally provided and used type
+                  that is well-focused on your reference. For example, ServiceReferences
+                  for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                  .'
                 properties:
                   apiVersion:
                     description: API version of the referent.
