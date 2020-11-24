@@ -13,6 +13,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/crd"
 	"github.com/noobaa/noobaa-operator/v2/pkg/diagnose"
 	"github.com/noobaa/noobaa-operator/v2/pkg/install"
+	"github.com/noobaa/noobaa-operator/v2/pkg/namespacestore"
 	"github.com/noobaa/noobaa-operator/v2/pkg/obc"
 	"github.com/noobaa/noobaa-operator/v2/pkg/olm"
 	"github.com/noobaa/noobaa-operator/v2/pkg/operator"
@@ -114,6 +115,7 @@ Load noobaa completion to bash:
 		Message: "Manage:",
 		Commands: []*cobra.Command{
 			backingstore.Cmd(),
+			namespacestore.Cmd(),
 			bucketclass.Cmd(),
 			obc.Cmd(),
 			diagnose.Cmd(),

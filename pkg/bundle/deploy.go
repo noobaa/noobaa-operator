@@ -454,7 +454,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "b15b01f3c35497a48fd173bac9c855eb22cf489e7d22247d9a2b9016074bef5d"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "f8103950e9d3f6a0a8b61c32d26201799310268dd67a2673e4c2035679397c42"
 
 const File_deploy_crds_noobaa_io_bucketclasses_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -473,6 +473,10 @@ spec:
     - description: Placement
       jsonPath: .spec.placementPolicy
       name: Placement
+      type: string
+    - description: NamespacePolicy
+      jsonPath: .spec.namespacePolicy
+      name: NamespacePolicy
       type: string
     - description: Phase
       jsonPath: .status.phase
@@ -501,6 +505,57 @@ spec:
           spec:
             description: Specification of the desired behavior of the noobaa BucketClass.
             properties:
+              namespacePolicy:
+                description: NamespacePolicy specifies the namespace policy for the
+                  bucket class
+                properties:
+                  cache:
+                    description: Cache is a namespace policy configuration of type
+                      Cache
+                    properties:
+                      caching:
+                        description: Caching is the cache specification for the ns
+                          policy
+                        properties:
+                          prefix:
+                            description: Prefix is prefix of the future cached data
+                            type: string
+                          ttl:
+                            description: TTL specifies the cache ttl
+                            type: integer
+                        type: object
+                      hubResource:
+                        description: HubResource is the read and write resource name
+                          to use
+                        type: string
+                    type: object
+                  multi:
+                    description: Multi is a namespace policy configuration of type
+                      Multi
+                    properties:
+                      readResources:
+                        description: ReadResources is an ordered list of read resources
+                          names to use
+                        items:
+                          type: string
+                        type: array
+                      writeResource:
+                        description: WriteResource is the write resource name to use
+                        type: string
+                    type: object
+                  single:
+                    description: Single is a namespace policy configuration of type
+                      Single
+                    properties:
+                      resource:
+                        description: Resource is the read and write resource name
+                          to use
+                        type: string
+                    type: object
+                  type:
+                    description: Type is the namespace policy type
+                    type: string
+                type: object
               placementPolicy:
                 description: PlacementPolicy specifies the placement policy for the
                   bucket class
@@ -527,11 +582,7 @@ spec:
                           type: string
                       type: object
                     type: array
-                required:
-                - tiers
                 type: object
-            required:
-            - placementPolicy
             type: object
           status:
             description: Most recently observed status of the noobaa BackingStore.
@@ -571,6 +622,292 @@ spec:
               phase:
                 description: Phase is a simple, high-level summary of where the System
                   is in its lifecycle
+                type: string
+              relatedObjects:
+                description: RelatedObjects is a list of objects related to this operator.
+                items:
+                  description: 'ObjectReference contains enough information to let
+                    you inspect or modify the referred object. --- New uses of this
+                    type are discouraged because of difficulty describing its usage
+                    when embedded in APIs.  1. Ignored fields.  It includes many fields
+                    which are not generally honored.  For instance, ResourceVersion
+                    and FieldPath are both very rarely valid in actual usage.  2.
+                    Invalid usage help.  It is impossible to add specific help for
+                    individual usage.  In most embedded usages, there are particular     restrictions
+                    like, "must refer only to types A and B" or "UID not honored"
+                    or "name must be restricted".     Those cannot be well described
+                    when embedded.  3. Inconsistent validation.  Because the usages
+                    are different, the validation rules are different by usage, which
+                    makes it hard for users to predict what will happen.  4. The fields
+                    are both imprecise and overly precise.  Kind is not a precise
+                    mapping to a URL. This can produce ambiguity     during interpretation
+                    and require a REST mapping.  In most cases, the dependency is
+                    on the group,resource tuple     and the version of the actual
+                    struct is irrelevant.  5. We cannot easily change it.  Because
+                    this type is embedded in many locations, updates to this type     will
+                    affect numerous schemas.  Don''t make new APIs embed an underspecified
+                    API type they do not control. Instead of using this type, create
+                    a locally provided and used type that is well-focused on your
+                    reference. For example, ServiceReferences for admission registration:
+                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    .'
+                  properties:
+                    apiVersion:
+                      description: API version of the referent.
+                      type: string
+                    fieldPath:
+                      description: 'If referring to a piece of an object instead of
+                        an entire object, this string should contain a valid JSON/Go
+                        field access statement, such as desiredState.manifest.containers[2].
+                        For example, if the object reference is to a container within
+                        a pod, this would take on a value like: "spec.containers{name}"
+                        (where "name" refers to the name of the container that triggered
+                        the event) or if no container name is specified "spec.containers[2]"
+                        (container with index 2 in this pod). This syntax is chosen
+                        only to have some well-defined way of referencing a part of
+                        an object. TODO: this design is not final and this field is
+                        subject to change in the future.'
+                      type: string
+                    kind:
+                      description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                      type: string
+                    namespace:
+                      description: 'Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/'
+                      type: string
+                    resourceVersion:
+                      description: 'Specific resourceVersion to which this reference
+                        is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency'
+                      type: string
+                    uid:
+                      description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
+                      type: string
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+`
+
+const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "f40283a99e354a94828c396ac25588386b7c75e7be117268c177d189723474aa"
+
+const File_deploy_crds_noobaa_io_namespacestores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: namespacestores.noobaa.io
+spec:
+  group: noobaa.io
+  names:
+    kind: NamespaceStore
+    listKind: NamespaceStoreList
+    plural: namespacestores
+    singular: namespacestore
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Type
+      jsonPath: .spec.type
+      name: Type
+      type: string
+    - description: Phase
+      jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: NamespaceStore is the Schema for the namespacestores API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Specification of the desired behavior of the noobaa NamespaceStore.
+            properties:
+              awsS3:
+                description: AWSS3Spec specifies a namespace store of type aws-s3
+                properties:
+                  region:
+                    description: Region is the AWS region
+                    type: string
+                  secret:
+                    description: Secret refers to a secret that provides the credentials
+                      The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                    properties:
+                      name:
+                        description: Name is unique within a namespace to reference
+                          a secret resource.
+                        type: string
+                      namespace:
+                        description: Namespace defines the space within which the
+                          secret name must be unique.
+                        type: string
+                    type: object
+                  sslDisabled:
+                    description: SSLDisabled allows to disable SSL and use plain http
+                    type: boolean
+                  targetBucket:
+                    description: TargetBucket is the name of the target S3 bucket
+                    type: string
+                required:
+                - secret
+                - targetBucket
+                type: object
+              azureBlob:
+                description: AzureBlob specifies a namespace store of type azure-blob
+                properties:
+                  secret:
+                    description: Secret refers to a secret that provides the credentials
+                      The secret should define AccountName and AccountKey as provided
+                      by Azure Blob.
+                    properties:
+                      name:
+                        description: Name is unique within a namespace to reference
+                          a secret resource.
+                        type: string
+                      namespace:
+                        description: Namespace defines the space within which the
+                          secret name must be unique.
+                        type: string
+                    type: object
+                  targetBlobContainer:
+                    description: TargetBlobContainer is the name of the target Azure
+                      Blob container
+                    type: string
+                required:
+                - secret
+                - targetBlobContainer
+                type: object
+              ibmCos:
+                description: IBMCos specifies a namespace store of type ibm-cos
+                properties:
+                  endpoint:
+                    description: 'Endpoint is the IBM COS compatible endpoint: http(s)://host:port'
+                    type: string
+                  secret:
+                    description: Secret refers to a secret that provides the credentials
+                      The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY
+                    properties:
+                      name:
+                        description: Name is unique within a namespace to reference
+                          a secret resource.
+                        type: string
+                      namespace:
+                        description: Namespace defines the space within which the
+                          secret name must be unique.
+                        type: string
+                    type: object
+                  signatureVersion:
+                    description: SignatureVersion specifies the client signature version
+                      to use when signing requests.
+                    type: string
+                  targetBucket:
+                    description: TargetBucket is the name of the target IBM COS bucket
+                    type: string
+                required:
+                - endpoint
+                - secret
+                - targetBucket
+                type: object
+              s3Compatible:
+                description: S3Compatible specifies a namespace store of type s3-compatible
+                properties:
+                  endpoint:
+                    description: 'Endpoint is the S3 compatible endpoint: http(s)://host:port'
+                    type: string
+                  secret:
+                    description: Secret refers to a secret that provides the credentials
+                      The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                    properties:
+                      name:
+                        description: Name is unique within a namespace to reference
+                          a secret resource.
+                        type: string
+                      namespace:
+                        description: Namespace defines the space within which the
+                          secret name must be unique.
+                        type: string
+                    type: object
+                  signatureVersion:
+                    description: SignatureVersion specifies the client signature version
+                      to use when signing requests.
+                    type: string
+                  targetBucket:
+                    description: TargetBucket is the name of the target S3 bucket
+                    type: string
+                required:
+                - endpoint
+                - secret
+                - targetBucket
+                type: object
+              type:
+                description: Type is an enum of supported types
+                type: string
+            required:
+            - type
+            type: object
+          status:
+            description: Most recently observed status of the noobaa NamespaceStore.
+            properties:
+              conditions:
+                description: Conditions is a list of conditions related to operator
+                  reconciliation
+                items:
+                  description: Condition represents the state of the operator's reconciliation
+                    functionality.
+                  properties:
+                    lastHeartbeatTime:
+                      format: date-time
+                      type: string
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType is the state of the operator's reconciliation
+                        functionality.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              mode:
+                description: Mode specifies the updating mode of a NamespaceStore
+                properties:
+                  modeCode:
+                    description: ModeCode specifies the updated mode of namespacestore
+                    type: string
+                  timeStamp:
+                    description: TimeStamp specifies the update time of namespacestore
+                      new mode
+                    type: string
+                type: object
+              phase:
+                description: Phase is a simple, high-level summary of where the namespace
+                  store is in its lifecycle
                 type: string
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
@@ -1814,17 +2151,22 @@ metadata:
 spec:
 `
 
-const Sha256_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = "d781b04f37c9f376a52c71a1c5abd6acf78fc825fe7f2058d2bb9892afbbd6df"
+const Sha256_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = "fc6047d603b8275240b1d2dc12efa32a977a83edfff4ab565e92c6523a5d8b70"
 
 const File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml = `apiVersion: noobaa.io/v1alpha1
 kind: BucketClass
 metadata:
   name: default
 spec:
-  placementPolicy:
-    tiers:
-    - backingStores:
-      - aws1
+`
+
+const Sha256_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml = "0938c22769bd9f2759d0ffd33b04a4650ec84dcd73508d9ef368f5908c1caec4"
+
+const File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml = `apiVersion: noobaa.io/v1alpha1
+kind: NamespaceStore
+metadata:
+  name: default
+spec:
 `
 
 const Sha256_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml = "498c2013757409432cfd98b21a5934bccf506f1af1b885241db327024aa450fd"

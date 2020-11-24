@@ -166,6 +166,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 	almExamples, err := json.Marshal([]runtime.Object{
 		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml),
 		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml),
+		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml),
 		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml),
 	})
 	util.Panic(err)
@@ -204,8 +205,10 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 		"NooBaa": `A NooBaa system - Create this to start`,
 		"BackingStore": `Storage target spec such as aws-s3, s3-compatible, ibm-cos, PV's and more. ` +
 			`Used in BucketClass to construct data placement policies.`,
-		"BucketClass": `Storage policy spec  tiering, mirroring, spreading. ` +
-			`Combines BackingStores. Referenced by ObjectBucketClaims.`,
+		"NamespaceStore": `Storage target spec such as aws-s3, s3-compatible, ibm-cos and more. ` +
+			`Used in BucketClass to construct namespace policies.`,
+		"BucketClass": `Storage policy spec  tiering, mirroring, spreading, namespace policy. ` +
+			`Combines BackingStores Or NamespaceStores. Referenced by ObjectBucketClaims.`,
 		"ObjectBucketClaim": `Claim a bucket just like claiming a PV. ` +
 			`Automate you app bucket provisioning by creating OBC with your app deployment. ` +
 			`A secret and configmap (name=claim) will be created with access details for the app pods.`,
@@ -214,6 +217,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 	crdDisplayNames := map[string]string{
 		"NooBaa":            "NooBaa",
 		"BackingStore":      "Backing Store",
+		"NamespaceStore":    "Namespace Store",
 		"BucketClass":       "Bucket Class",
 		"ObjectBucketClaim": "Object Bucket Claim",
 		"ObjectBucket":      "Object Bucket",
@@ -235,6 +239,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 		uiFieldGroupS3Compatible       = uiFieldGroup + "s3Compatible"
 		uiFieldGroupIBMCos             = uiFieldGroup + "ibmCos"
 		uiFieldGroupPlacementPolicy    = uiFieldGroup + "placementPolicy"
+		uiFieldGroupNamespacePolicy    = uiFieldGroup + "namespacePolicy"
 	)
 
 	crdSpecDescriptors := map[string][]operv1.SpecDescriptor{
@@ -413,6 +418,93 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			},
 		},
 
+		"NamespaceStore": []operv1.SpecDescriptor{
+			operv1.SpecDescriptor{
+				Description:  "Region is the AWS region.",
+				Path:         "awsS3.region",
+				XDescriptors: []string{uiFieldGroupAwsS3, uiText},
+				DisplayName:  "Region",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Secret refers to a secret that provides the credentials. The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+				Path:         "awsS3.secret.name",
+				XDescriptors: []string{uiFieldGroupAwsS3, uiK8sSecret},
+				DisplayName:  "Secret",
+			},
+			operv1.SpecDescriptor{
+				Description:  "SSLDisabled allows to disable SSL and use plain http.",
+				Path:         "awsS3.sslDisabled",
+				XDescriptors: []string{uiFieldGroupAwsS3, uiBooleanSwitch},
+				DisplayName:  "SSL Disabled",
+			},
+			operv1.SpecDescriptor{
+				Description:  "TargetBucket is the name of the target S3 bucket.",
+				Path:         "awsS3.targetBucket",
+				XDescriptors: []string{uiFieldGroupAwsS3, uiText},
+				DisplayName:  "Target Bucket",
+			},
+			operv1.SpecDescriptor{
+				Description:  " Secret refers to a secret that provides the credentials. The secret should define AccountName and AccountKey as provided\nby Azure Blob.",
+				Path:         "azureBlob.secret.name",
+				XDescriptors: []string{uiFieldGroupAzureBlob, uiK8sSecret},
+				DisplayName:  "Secret",
+			},
+			operv1.SpecDescriptor{
+				Description:  "TargetBlobContainer is the name of the target Azure Blob container.",
+				Path:         "azureBlob.targetBlobContainer",
+				XDescriptors: []string{uiFieldGroupAzureBlob, uiText},
+				DisplayName:  "Target Blob Container",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Endpoint is the S3 compatible endpoint: http(s)://host:port.",
+				Path:         "s3Compatible.endpoint",
+				XDescriptors: []string{uiFieldGroupS3Compatible, uiText},
+				DisplayName:  "End Point",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Secret refers to a secret that provides the credentials. The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+				Path:         "s3Compatible.secret.name",
+				XDescriptors: []string{uiFieldGroupS3Compatible, uiK8sSecret},
+				DisplayName:  "Secret",
+			},
+			operv1.SpecDescriptor{
+				Description:  "SignatureVersion specifies the client signature version to use when signing requests.",
+				Path:         "s3Compatible.signatureVersion",
+				XDescriptors: []string{uiFieldGroupS3Compatible, uiNumber},
+				DisplayName:  "Signature Version",
+			},
+			operv1.SpecDescriptor{
+				Description:  "TargetBucket is the name of the target S3 bucket.",
+				Path:         "s3Compatible.targetBucket",
+				XDescriptors: []string{uiFieldGroupS3Compatible, uiText},
+				DisplayName:  "Target Bucket",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Endpoint is the IBM COS endpoint: http(s)://host:port.",
+				Path:         "IBMCos.endpoint",
+				XDescriptors: []string{uiFieldGroupIBMCos, uiText},
+				DisplayName:  "End Point",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Secret refers to a secret that provides the credentials. The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY.",
+				Path:         "IBMCos.secret.name",
+				XDescriptors: []string{uiFieldGroupIBMCos, uiK8sSecret},
+				DisplayName:  "Secret",
+			},
+			operv1.SpecDescriptor{
+				Description:  "SignatureVersion specifies the client signature version to use when signing requests.",
+				Path:         "IBMCos.signatureVersion",
+				XDescriptors: []string{uiFieldGroupIBMCos, uiNumber},
+				DisplayName:  "Signature Version",
+			},
+			operv1.SpecDescriptor{
+				Description:  "TargetBucket is the name of the target IBM COS bucket.",
+				Path:         "IBMCos.targetBucket",
+				XDescriptors: []string{uiFieldGroupIBMCos, uiText},
+				DisplayName:  "Target Bucket",
+			},
+		},
+
 		"BucketClass": []operv1.SpecDescriptor{
 			operv1.SpecDescriptor{
 				Description:  "BackingStores is an unordered list of backing store names. The meaning of the list depends on the placement.",
@@ -426,7 +518,38 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 				XDescriptors: []string{uiFieldGroupPlacementPolicy, uiText},
 				DisplayName:  "Placement",
 			},
+			operv1.SpecDescriptor{
+				Description:  "Namespace Policy type specifies the type of the namespace policy configuration.",
+				Path:         "namespacePolicy.type",
+				XDescriptors: []string{uiFieldGroupNamespacePolicy, uiText},
+				DisplayName:  "Namespace Policy",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Resource specifies the namespace store configured by the bucket class to be read and write targets.",
+				Path:         "namespacePolicy.single.resource",
+				XDescriptors: []string{uiFieldGroupNamespacePolicy, uiText},
+				DisplayName:  "Resource",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Read Resources specifies the namespace stores configured by the bucket class to be read targets.",
+				Path:         "namespacePolicy.Multi.readResources",
+				XDescriptors: []string{uiFieldGroupNamespacePolicy, uiText},
+				DisplayName:  "Read Resources",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Write Resource specifies the namespace store configured by the bucket class to be write target.",
+				Path:         "namespacePolicy.Multi.writeResource",
+				XDescriptors: []string{uiFieldGroupNamespacePolicy, uiText},
+				DisplayName:  "Write Resource",
+			},
+			operv1.SpecDescriptor{
+				Description:  "Hub Resource specifies the target namespace store configured by the bucket class to be read and write targets.",
+				Path:         "namespacePolicy.Cache.hubResource",
+				XDescriptors: []string{uiFieldGroupNamespacePolicy, uiText},
+				DisplayName:  "Hub Resource",
+			},
 		},
+
 		"ObjectBucketClaim": []operv1.SpecDescriptor{},
 		"ObjectBucket":      []operv1.SpecDescriptor{},
 	}

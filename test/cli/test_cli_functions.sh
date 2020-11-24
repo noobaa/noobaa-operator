@@ -195,6 +195,33 @@ function aws_credentials {
     fi
 }
 
+function check_namespacestore {
+    echo_time "💬  Staring namespacestore cycle"
+    local cycle
+    local type="s3-compatible"
+    local buckets=("target.bucket1" "target.bucket2")
+    local namespacestore=("namespacestore5" "namespacestore6")
+
+    test_noobaa bucket create ${buckets[0]}
+    test_noobaa bucket create ${buckets[1]}
+
+    for (( cycle=0 ; cycle < ${#namespacestore[@]} ; cycle++ ))
+    do
+        test_noobaa namespacestore create ${type} ${namespacestore[cycle]} \
+            --target-bucket ${buckets[cycle]} \
+            --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
+            --access-key ${AWS_ACCESS_KEY_ID} \
+            --secret-key ${AWS_SECRET_ACCESS_KEY}
+        test_noobaa namespacestore status ${namespacestore[cycle]}
+    done
+    
+    test_noobaa namespacestore list
+    test_noobaa status
+    kuberun get namespacestore
+    kuberun describe namespacestore
+    echo_time "✅  namespace store s3 compatible cycle is done"
+}
+
 function check_S3_compatible {
     echo_time "💬  Staring compatible cycle"
     local cycle
@@ -265,18 +292,30 @@ function bucketclass_cycle {
     local bucketclass
     local bucketclass_names=()
     local backingstore=()
+    local namespacestore=()
     local number_of_backingstores=4
+    local number_of_namespacestores=2
 
-    for (( number=0 ; number < number_of_backingstores ; number++ ))
+    for (( number=0 ; number <= (number_of_backingstores + number_of_namespacestores); number++ ))
     do
         bucketclass_names+=("bucket.class$((number+1))")
-        backingstore+=("compatible$((number+1))")
+        if [ "$number" -lt "$number_of_backingstores" ]
+        then
+            backingstore+=("compatible$((number+1))")
+        else
+            namespacestore+=("namespacestore$((number+1))")
+        fi
     done
+    
 
-    test_noobaa bucketclass create ${bucketclass_names[0]} --backingstores ${backingstore[0]}
-    # test_noobaa bucketclass create ${bucketclass_names[1]} --placement Mirror --backingstores nb1,aws1 ❌
-    # test_noobaa bucketclass create ${bucketclass_names[2]} --placement Spread --backingstores aws1,aws2 ❌
-    test_noobaa bucketclass create ${bucketclass_names[3]} --backingstores ${backingstore[0]},${backingstore[1]}
+
+    test_noobaa bucketclass create placement-bucketclass ${bucketclass_names[0]} --backingstores ${backingstore[0]}
+    # test_noobaa bucketclass create placement-bucketclass ${bucketclass_names[1]} --placement Mirror --backingstores nb1,aws1 ❌
+    # test_noobaa bucketclass create placement-bucketclass ${bucketclass_names[2]} --placement Spread --backingstores aws1,aws2 ❌
+    test_noobaa bucketclass create placement-bucketclass ${bucketclass_names[3]} --backingstores ${backingstore[0]},${backingstore[1]}
+    test_noobaa bucketclass create namespace-bucketclass single ${bucketclass_names[4]} --resource ${namespacestore[0]}
+    test_noobaa bucketclass create namespace-bucketclass multi ${bucketclass_names[5]} --read-resources ${namespacestore[0]},${namespacestore[1]} --write-resource ${namespacestore[0]} 
+    #test_noobaa bucketclass create namespace-bucketclass cache ${bucketclass_names[6]} --hub-resource ${namespacestore[1]} --backingstores ${backingstore[0]}
 
     local bucketclass_list_array=($(test_noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME))
     for bucketclass in ${bucketclass_list_array[@]}
@@ -335,8 +374,22 @@ function delete_backingstore_path {
     local object_bucket backing_store
     local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
     local bucketclass=($(test_noobaa silence bucketclass list  | grep ${backingstore[1]} | awk '{print $1}'))
-    local obc=($(test_noobaa silence obc list | grep -v "BUCKET-NAME" | awk '{print $2}'))
-    echo_time "💬  Starting the delete related ${backingstore[1]} paths"
+    local obc=()
+    local all_obc=($(test_noobaa silence obc list | grep -v "BUCKET-NAME" | awk '{print $2":"$5}'))
+    
+    # get obcs that their bucketclass is in bucketclass array
+    for object_bucket in ${all_obc[@]}
+    do
+        local cur_bucketclass=($(awk -F: '{print $2}' <<< ${object_bucket}))
+        local cur_obc_name=($(awk -F: '{print $1}' <<< ${object_bucket}))
+        for bucket_class in ${bucketclass[@]}
+        do
+            if [[ ${cur_bucketclass} == ${bucket_class} ]]
+            then
+                obc+=(${cur_obc_name})
+            fi
+        done
+    done
 
     test_noobaa should_fail backingstore delete ${backingstore[1]}
     if [ ${#obc[@]} -ne 0 ]
@@ -361,6 +414,54 @@ function delete_backingstore_path {
     echo_time "✅  delete ${backingstore[1]} path is done"
 }
 
+function delete_namespacestore_path {
+    local object_bucket namespace_store
+    test_noobaa obc delete ${obc[2]}
+    test_noobaa bucketclass delete ${bucketclass[2]}
+    local namespacestore=($(test_noobaa silence namespacestore list | grep -v "NAME" | awk '{print $1}'))
+    local bucketclass=($(test_noobaa silence bucketclass list | grep -v "NAME" | awk '{print $1}'))
+    local obc=()
+    local all_obc=($(test_noobaa silence obc list | grep -v "BUCKET-NAME" | awk '{print $2":"$5}'))
+    
+    # get obcs that their bucketclass is in bucketclass array
+    for object_bucket in ${all_obc[@]}
+    do
+        local cur_bucketclass=($(awk -F: '{print $2}' <<< ${object_bucket}))
+        local cur_obc_name=($(awk -F: '{print $1}' <<< ${object_bucket}))
+        for bucket_class in ${bucketclass[@]}
+        do
+            if [[ ${cur_bucketclass} == ${bucket_class} ]]
+            then
+                obc+=(${cur_obc_name})
+            fi
+        done
+    done
+
+    echo_time "💬  Starting the delete related ${namespacestore[1]} paths"
+
+    test_noobaa should_fail namespacestore delete ${namespacestore[1]}
+    if [ ${#obc[@]} -ne 0 ]
+    then
+        for object_bucket in ${obc[@]}
+        do
+            test_noobaa obc delete ${object_bucket}
+        done
+    fi
+    if [ ${#bucketclass[@]} -ne 0 ]
+    then
+        for bucket_class in ${bucketclass[@]}
+        do
+            test_noobaa bucketclass delete ${bucket_class}
+        done
+    fi
+    sleep 30
+    local buckets=($(test_noobaa silence bucket list  | grep -v "BUCKET-NAME" | awk '{print $1}'))
+    echo_time "✅  buckets in system: ${buckets}"
+    test_noobaa namespacestore delete ${namespacestore[0]}
+    test_noobaa namespacestore delete ${namespacestore[1]}
+    echo_time "✅  delete ${namespacestore[1]} and ${namespacestore[0]} path is done"
+}
+
 function check_deletes {
     echo_time "💬  Starting the delete cycle"
     local obc=($(test_noobaa silence obc list | grep -v "NAME\|default" | awk '{print $2}'))
@@ -370,6 +471,7 @@ function check_deletes {
     test_noobaa bucketclass delete ${bucketclass[0]}
     test_noobaa backingstore list
     delete_backingstore_path
+    delete_namespacestore_path
     echo_time "✅  delete cycle is done"
 }
 

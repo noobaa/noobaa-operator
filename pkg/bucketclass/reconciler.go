@@ -200,32 +200,65 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		return util.NewPersistentError("MissingSystem",
 			fmt.Sprintf("NooBaa system %q not found or deleted", r.NooBaa.Name))
 	}
-
-	numTiers := len(r.BucketClass.Spec.PlacementPolicy.Tiers)
-	if numTiers != 1 && numTiers != 2 {
-		return util.NewPersistentError("UnsupportedNumberOfTiers",
-			"BucketClass supports only 1 or 2 tiers")
-	}
-	for i := range r.BucketClass.Spec.PlacementPolicy.Tiers {
-		tier := &r.BucketClass.Spec.PlacementPolicy.Tiers[i]
-		for _, backingStoreName := range tier.BackingStores {
-			backStore := &nbv1.BackingStore{
-				TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
+	if r.BucketClass.Spec.PlacementPolicy != nil {
+		numTiers := len(r.BucketClass.Spec.PlacementPolicy.Tiers)
+		if numTiers != 1 && numTiers != 2 {
+			return util.NewPersistentError("UnsupportedNumberOfTiers",
+				"BucketClass supports only 1 or 2 tiers")
+		}
+		for i := range r.BucketClass.Spec.PlacementPolicy.Tiers {
+			tier := &r.BucketClass.Spec.PlacementPolicy.Tiers[i]
+			for _, backingStoreName := range tier.BackingStores {
+				backStore := &nbv1.BackingStore{
+					TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      backingStoreName,
+						Namespace: r.NooBaa.Namespace,
+					},
+				}
+				if !util.KubeCheck(backStore) {
+					return util.NewPersistentError("MissingBackingStore",
+						fmt.Sprintf("NooBaa BackingStore %q not found or deleted", backingStoreName))
+				}
+				if backStore.Status.Phase == nbv1.BackingStorePhaseRejected {
+					return util.NewPersistentError("RejectedBackingStore",
+						fmt.Sprintf("NooBaa BackingStore %q is in rejected phase", backingStoreName))
+				}
+				if backStore.Status.Phase != nbv1.BackingStorePhaseReady {
+					return fmt.Errorf("NooBaa BackingStore %q is not yet ready", backingStoreName)
+				}
+			}
+		}
+	} else if r.BucketClass.Spec.NamespacePolicy != nil {
+		nspType := r.BucketClass.Spec.NamespacePolicy.Type
+		var namespaceStoresArr []string
+		if nspType == nbv1.NSBucketClassTypeSingle {
+			namespaceStoresArr = append(namespaceStoresArr, r.BucketClass.Spec.NamespacePolicy.Single.Resource)
+		} else if nspType == nbv1.NSBucketClassTypeMulti {
+			namespaceStoresArr = append(r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources,
+				r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource)
+		} else if nspType == nbv1.NSBucketClassTypeCache {
+			namespaceStoresArr = append(namespaceStoresArr, r.BucketClass.Spec.NamespacePolicy.Cache.HubResource)
+		}
+		// check that namespace stores exists and their phase it ready
+		for _, name := range namespaceStoresArr {
+			nsStore := &nbv1.NamespaceStore{
+				TypeMeta: metav1.TypeMeta{Kind: "NamespaceStore"},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      backingStoreName,
-					Namespace: r.NooBaa.Namespace,
+					Name:      name,
+					Namespace: options.Namespace,
 				},
 			}
-			if !util.KubeCheck(backStore) {
-				return util.NewPersistentError("MissingBackingStore",
-					fmt.Sprintf("NooBaa BackingStore %q not found or deleted", backingStoreName))
+			if !util.KubeCheck(nsStore) {
+				return util.NewPersistentError("MissingNamespaceStore",
+					fmt.Sprintf("NooBaa NamespaceStore %q not found or deleted", name))
 			}
-			if backStore.Status.Phase == nbv1.BackingStorePhaseRejected {
-				return util.NewPersistentError("RejectedBackingStore",
-					fmt.Sprintf("NooBaa BackingStore %q is in rejected phase", backingStoreName))
+			if nsStore.Status.Phase == nbv1.NamespaceStorePhaseRejected {
+				return util.NewPersistentError("RejectedNamespaceStore",
+					fmt.Sprintf("NooBaa NamespaceStore %q is in rejected phase", name))
 			}
-			if backStore.Status.Phase != nbv1.BackingStorePhaseReady {
-				return fmt.Errorf("NooBaa BackingStore %q is not yet ready", backingStoreName)
+			if nsStore.Status.Phase != nbv1.NamespaceStorePhaseReady {
+				return fmt.Errorf("NooBaa NamespaceStore %q is not yet ready", name)
 			}
 		}
 	}
@@ -271,7 +304,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	}
 	r.NBClient = sysClient.NBClient
 
-	if err := r.UpdateBucketClass(); err != nil {
+	if err := r.UpdateBucketClass(bucketNames); err != nil {
 		return err
 	}
 
@@ -311,12 +344,57 @@ func (r *Reconciler) FinalizeDeletion() error {
 	return nil
 }
 
-// UpdateBucketClass updates all buckets that are assigned to a BucketClass
-func (r *Reconciler) UpdateBucketClass() error {
+// updateNamespaceBucketClass updates all namespace buckets that are assigned to a BucketClass
+func (r *Reconciler) updateNamespaceBucketClass(bucketNames []string) error {
 	log := r.Logger
 
 	if r.BucketClass == nil {
 		return fmt.Errorf("BucketClass not loaded %#v", r)
+	}
+
+	if r.BucketClass.Spec.NamespacePolicy != nil {
+		namespacePolicyType := r.BucketClass.Spec.NamespacePolicy.Type
+		var readResources []string
+		createBucketParams := &nb.CreateBucketParams{}
+		createBucketParams.Namespace = &nb.NamespaceBucketInfo{}
+		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
+			createBucketParams.Namespace.WriteResource = r.BucketClass.Spec.NamespacePolicy.Single.Resource
+			createBucketParams.Namespace.ReadResources = append(readResources, r.BucketClass.Spec.NamespacePolicy.Single.Resource)
+		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
+			createBucketParams.Namespace.WriteResource = r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource
+			createBucketParams.Namespace.ReadResources = r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources
+		} else if namespacePolicyType == nbv1.NSBucketClassTypeCache {
+			createBucketParams.Namespace.WriteResource = r.BucketClass.Spec.NamespacePolicy.Cache.HubResource
+			createBucketParams.Namespace.ReadResources = append(readResources, r.BucketClass.Spec.NamespacePolicy.Cache.HubResource)
+			createBucketParams.Namespace.Caching = &nb.CacheSpec{TTLMs: r.BucketClass.Spec.NamespacePolicy.Cache.Caching.TTL}
+			//cachePrefix := r.BucketClass.Spec.NamespacePolicy.Cache.Prefix
+		}
+
+		for i := range bucketNames {
+
+			createBucketParams.Name = bucketNames[i]
+			err := r.NBClient.UpdateBucketAPI(*createBucketParams)
+
+			if err != nil {
+				return fmt.Errorf("Failed to update obcs %q with error: %v", bucketNames[i], err)
+			}
+		}
+		log.Infof("✅ Successfully updated namespace bucket class and obcs %q", r.BucketClass.Name)
+	}
+	return nil
+}
+
+// UpdateBucketClass updates all buckets that are assigned to a BucketClass
+func (r *Reconciler) UpdateBucketClass(bucketNames []string) error {
+	log := r.Logger
+
+	if r.BucketClass == nil {
+		return fmt.Errorf("BucketClass not loaded %#v", r)
+	}
+
+	if r.BucketClass.Spec.PlacementPolicy == nil &&
+		r.BucketClass.Spec.NamespacePolicy != nil {
+		return r.updateNamespaceBucketClass(bucketNames)
 	}
 
 	policyTiers := []nb.TierItem{}
