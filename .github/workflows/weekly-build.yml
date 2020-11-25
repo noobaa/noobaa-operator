@@ -1,0 +1,40 @@
+name: Weekly Build
+
+# Run the Weekly on Monday 8:30 AM UTC
+on: 
+  schedule:
+    - cron: "30 8 * * 1"
+
+jobs:
+  publish-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get Current Date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y%m%d')"
+
+      - name: Prepare Tags
+        id: prep
+        run: |
+          DOCKER_OPERATOR_IMAGE=noobaa/noobaa-operator
+          VERSION="${{ steps.date.outputs.date }}"
+          echo "::warning ${VERSION}"
+          OPERATOR_TAGS="${DOCKER_OPERATOR_IMAGE}:master-${VERSION}"          
+          echo "::warning ${CORE_TAGS}"
+          echo ::set-output name=operatortags::${OPERATOR_TAGS}
+
+      - name: Login to DockerHub Registry
+        run: echo ${{ secrets.GHACTIONSDOCKERHUB }} | docker login -u ${{ secrets.GHACTIONSDOCKERHUBNAME }} --password-stdin
+
+      - name: Build & Push Docker Image
+        env:
+          DOCKERHUB_OWNER: ${{ secrets.GHACTIONSDOCKERHUBNAME }}
+        run: |
+            make image VERSION=latest
+            docker tag  ${{ steps.prep.outputs.operatortags }}
+            docker push ${{ steps.prep.outputs.operatortags }}
+            
+
