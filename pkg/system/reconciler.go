@@ -65,6 +65,7 @@ type Reconciler struct {
 	NooBaa              *nbv1.NooBaa
 	ServiceAccount      *corev1.ServiceAccount
 	CoreApp             *appsv1.StatefulSet
+	DefaultCoreApp      *corev1.Container
 	NooBaaMongoDB       *appsv1.StatefulSet
 	NooBaaPostgresDB    *appsv1.StatefulSet
 	ServiceMgmt         *corev1.Service
@@ -232,6 +233,8 @@ func NewReconciler(
 
 	// set noobaa root master key secret
 	r.SecretRootMasterKey.StringData["cipher_key_b64"] = util.RandomBase64(32)
+
+	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.Containers[0].DeepCopy();
 	return r
 }
 
