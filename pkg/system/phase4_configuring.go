@@ -33,10 +33,9 @@ import (
 )
 
 const (
-	ibmEndpoint         = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
-	ibmLocation         = "%s-standard"
-	ibmCOSCred          = "ibm-cloud-cos-creds"
-	ibmCOSCredDefaultNS = "openshift-storage"
+	ibmEndpoint = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
+	ibmLocation = "%s-standard"
+	ibmCOSCred  = "ibm-cloud-cos-creds"
 )
 
 type gcpAuthJSON struct {
@@ -698,15 +697,6 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 	)
 
 	util.KubeCheck(r.IBMCloudCOSCreds)
-	if r.IBMCloudCOSCreds.UID == "" && r.IBMCloudCOSCreds.Namespace != ibmCOSCredDefaultNS {
-		// Secret not found under target ns, check under default ns
-		targetNS := r.IBMCloudCOSCreds.Namespace
-		r.IBMCloudCOSCreds.Namespace = ibmCOSCredDefaultNS
-		util.KubeCheck(r.IBMCloudCOSCreds)
-		if r.IBMCloudCOSCreds.UID == "" {
-			r.IBMCloudCOSCreds.Namespace = targetNS
-		}
-	}
 	if r.IBMCloudCOSCreds.UID == "" {
 		r.Logger.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
 		return fmt.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
@@ -773,7 +763,7 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
 		return err
 	}
-	r.Logger.Infof("Creadted bucket: %s", bucketName)
+	r.Logger.Infof("Created bucket: %s", bucketName)
 
 	// create backing store
 	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeIBMCos
