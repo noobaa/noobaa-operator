@@ -41,7 +41,7 @@ minikube config set vm-driver none
 
 minikube version
 sudo minikube start --kubernetes-version=$KUBERNETES_VERSION ${MINIKUBE_DEBUG}
-sudo chown -R travis: /home/travis/.minikube/
+# sudo chown -R travis: /home/travis/.minikube/
 
 minikube update-context || true
 

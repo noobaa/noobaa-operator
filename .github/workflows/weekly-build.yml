@@ -1,9 +1,9 @@
 name: Weekly Build
 
-# Run the Weekly on Monday 8:30 AM UTC
+# Run the Weekly on Monday 8:15 AM UTC
 on: 
   schedule:
-    - cron: "30 8 * * 1"
+    - cron: "15 8 * * 1"
 
 jobs:
   publish-image:
@@ -34,7 +34,7 @@ jobs:
           DOCKERHUB_OWNER: ${{ secrets.GHACTIONSDOCKERHUBNAME }}
         run: |
             make image VERSION=latest
-            docker tag  ${{ steps.prep.outputs.operatortags }}
+            docker tag  noobaa-operator ${{ steps.prep.outputs.operatortags }}
             docker push ${{ steps.prep.outputs.operatortags }}
             
 
