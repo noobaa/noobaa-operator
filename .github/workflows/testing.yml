@@ -1,0 +1,49 @@
+name: Testing flows
+
+# Run the Weekly on Monday 8:15 AM UTC
+on: [push, pull_request]
+  #schedule:
+  #  - cron: "15 8 * * 1"
+
+jobs:
+  auto-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get Current Date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y%m%d')"
+
+      - name: Prepare Tags
+        id: prep
+        run: |
+          DOCKER_OPERATOR_IMAGE=noobaa/noobaa-operator
+          VERSION="${{ steps.date.outputs.date }}"
+          echo "::warning ${VERSION}"
+          echo ::set-output name=version::${VERSION}
+          OPERATOR_TAGS="${DOCKER_OPERATOR_IMAGE}:master-${VERSION}"          
+          echo "::warning ${CORE_TAGS}"
+          echo ::set-output name=operatortags::${OPERATOR_TAGS}
+
+      - name: Update Core Release
+        id: update-release
+        run: |
+          # docker pull "noobaa/noobaa-core:master-${{ steps.prep.outputs.version }}"
+          docker pull "noobaa/noobaa-core:master-20201130"
+          echo "::found version ${{ steps.prep.outputs.version }}, updating image version"
+          # Update local files
+          sed -i 's:ContainerImageTag =.*:ContainerImageTag = master-${{ steps.prep.outputs.version }}:' pkg/options/options.go
+          cat pkg/options/options.go
+
+          #commit    
+          # git config --local user.email "action@github.com"
+          # git config --local user.name "GitHub Action"
+          # git commit -m "Auto update core image" -a
+
+      # - name: Push changes
+      #  uses: ad-m/github-push-action@master
+      #  with:
+      #    github_token: ${{ secrets.GITHUB_TOKEN }}
+      #    branch: ${{ github.ref }}
