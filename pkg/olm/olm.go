@@ -435,7 +435,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 		crdDesc := operv1.CRDDescription{
 			Name:            c.Name,
 			Kind:            c.Spec.Names.Kind,
-			Version:         c.Spec.Version,
+			Version:         c.Spec.Versions[0].Name,
 			DisplayName:     crdDisplayNames[c.Spec.Names.Kind],
 			Description:     crdDescriptions[c.Spec.Names.Kind],
 			SpecDescriptors: crdSpecDescriptors[c.Spec.Names.Kind],
