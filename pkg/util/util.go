@@ -1074,6 +1074,21 @@ func ReflectEnvVariable(env *[]corev1.EnvVar, name string) {
 	}
 }
 
+// MergeEnvArrays takes two Env variables arrays and merge them into the first
+func MergeEnvArrays(envA, envB *[]corev1.EnvVar) {
+	existingEnvs := make(map[string]bool)
+
+	for _, item := range *envA {
+		existingEnvs[item.Name] = true
+	}
+
+	for _, item := range *envB {
+		if !existingEnvs[item.Name] {
+			*envA = append(*envA, item)
+		}
+	}
+}
+
 // EnsureCommonMetaFields ensures that the resource has all mandatory meta fields
 func EnsureCommonMetaFields(object metav1.Object, finalizer string) bool {
 	updated := false

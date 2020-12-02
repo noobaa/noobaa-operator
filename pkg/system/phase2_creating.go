@@ -293,6 +293,8 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				coreImageChanged = true
 				c.Image = r.NooBaa.Status.ActualImage
 			}
+			// adding the missing Env varibale from default container
+			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env);
 			for j := range c.Env {
 				switch c.Env[j].Name {
 				case "AGENT_PROFILE":
@@ -341,7 +343,6 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 						}
 					}
 				}
-						
 			}
 
 			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
