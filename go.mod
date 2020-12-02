@@ -23,8 +23,8 @@ require (
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
+	github.com/operator-framework/api v0.3.22
 	github.com/operator-framework/operator-lib v0.2.0
-	github.com/operator-framework/operator-lifecycle-manager v0.0.0-20200321030439-57b580e57e88 // 0.11.0
 	github.com/rook/rook v1.4.6
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
@@ -35,7 +35,7 @@ require (
 	golang.org/x/tools v0.0.0-20200915031644-64986481280e // indirect
 	google.golang.org/api v0.15.1
 	k8s.io/api v0.19.3
-	k8s.io/apiextensions-apiserver v0.18.8
+	k8s.io/apiextensions-apiserver v0.19.3
 	k8s.io/apimachinery v0.19.3
 	k8s.io/cli-runtime v0.19.3
 	k8s.io/client-go v12.0.0+incompatible

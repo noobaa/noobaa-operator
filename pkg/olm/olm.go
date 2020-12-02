@@ -17,7 +17,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/version"
 
 	"github.com/blang/semver"
-	operv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
+	operv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -435,7 +435,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 		crdDesc := operv1.CRDDescription{
 			Name:            c.Name,
 			Kind:            c.Spec.Names.Kind,
-			Version:         c.Spec.Version,
+			Version:         c.Spec.Versions[0].Name,
 			DisplayName:     crdDisplayNames[c.Spec.Names.Kind],
 			Description:     crdDescriptions[c.Spec.Names.Kind],
 			SpecDescriptors: crdSpecDescriptors[c.Spec.Names.Kind],

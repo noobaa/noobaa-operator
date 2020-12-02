@@ -1,4 +1,4 @@
-FROM quay.io/operator-framework/upstream-registry-builder:v1.5.7 as builder
+FROM quay.io/operator-framework/upstream-registry-builder:v1.13.3 as builder
 # Add noobaa manifests
 COPY build/_output/olm manifests/noobaa
 # Add lib-bucket-provisioner manifests
