@@ -62,7 +62,6 @@ spec:
             - containerPort: 60100
           env:
             - name: MONGODB_URL
-              value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
             - name: POSTGRES_HOST
               value: "noobaa-db-0.noobaa-db"
             - name: POSTGRES_DBNAME

@@ -73,7 +73,11 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 	if r.NooBaa.Spec.DBType == "postgres" {
-		if err := r.ReconcileObject(r.SecretDB, nil); err != nil {
+		if err := r.ReconcileObject(r.SecretPostgresDB, nil); err != nil {
+			return err
+		}
+	} else {
+		if err := r.ReconcileObject(r.SecretMongoDB, nil); err != nil {
 			return err
 		}
 	}
@@ -184,7 +188,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 						c.Env[j].ValueFrom = &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: r.SecretDB.Name,
+									Name: r.SecretPostgresDB.Name,
 								},
 								Key: "user",
 							},
@@ -193,13 +197,27 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 						c.Env[j].ValueFrom = &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: r.SecretDB.Name,
+									Name: r.SecretPostgresDB.Name,
 								},
 								Key: "password",
 							},
 						}
 					}
-					
+
+				}
+			} else if r.NooBaa.Spec.DBType == "mongodb" {
+				for j := range c.Env {
+					switch c.Env[j].Name {
+					case "MONGODB_URL":
+						c.Env[j].ValueFrom = &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: r.SecretMongoDB.Name,
+								},
+								Key: "url",
+							},
+						}
+					}
 				}
 			}
 		}
@@ -299,7 +317,16 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 					c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
 
 				case "MONGODB_URL":
-					c.Env[j].Value = "mongodb://" + r.NooBaaMongoDB.Name + "-0." + r.NooBaaMongoDB.Spec.ServiceName + "/nbcore"
+					if r.NooBaa.Spec.DBType == "mongodb" {
+						c.Env[j].ValueFrom = &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: r.SecretMongoDB.Name,
+								},
+								Key: "url",
+							},
+						}
+					}
 
 				case "POSTGRES_HOST":
 					c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
@@ -323,7 +350,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 						c.Env[j].ValueFrom = &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: r.SecretDB.Name,
+									Name: r.SecretPostgresDB.Name,
 								},
 								Key: "user",
 							},
@@ -334,14 +361,14 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 						c.Env[j].ValueFrom = &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: r.SecretDB.Name,
+									Name: r.SecretPostgresDB.Name,
 								},
 								Key: "password",
 							},
 						}
 					}
 				}
-						
+
 			}
 
 			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
