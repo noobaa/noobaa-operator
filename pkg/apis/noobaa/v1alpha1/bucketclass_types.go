@@ -18,6 +18,7 @@ func init() {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Placement",type="string",JSONPath=".spec.placementPolicy",description="Placement"
+// +kubebuilder:printcolumn:name="NamespacePolicy",type="string",JSONPath=".spec.namespacePolicy",description="NamespacePolicy"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type BucketClass struct {
@@ -57,7 +58,12 @@ type BucketClassList struct {
 type BucketClassSpec struct {
 
 	// PlacementPolicy specifies the placement policy for the bucket class
-	PlacementPolicy PlacementPolicy `json:"placementPolicy"`
+	// +optional
+	PlacementPolicy *PlacementPolicy `json:"placementPolicy,omitempty"`
+
+	// NamespacePolicy specifies the namespace policy for the bucket class
+	// +optional
+	NamespacePolicy *NamespacePolicy `json:"namespacePolicy,omitempty"`
 }
 
 // BucketClassStatus defines the observed state of BucketClass
@@ -87,7 +93,63 @@ type PlacementPolicy struct {
 	// Tiers is an ordered list of tiers to use.
 	// The model is a waterfall - push to first tier by default,
 	// and when no more space spill "cold" storage to next tier.
-	Tiers []Tier `json:"tiers"`
+	Tiers []Tier `json:"tiers,omitempty"`
+}
+
+// NamespacePolicy specifies the namespace policy for the bucket class
+type NamespacePolicy struct {
+	// Type is the namespace policy type
+	Type NSBucketClassType `json:"type,omitempty"`
+
+	// Single is a namespace policy configuration of type Single
+	// +optional
+	Single *SingleNamespacePolicy `json:"single,omitempty"`
+
+	// Multi is a namespace policy configuration of type Multi
+	// +optional
+	Multi *MultiNamespacePolicy `json:"multi,omitempty"`
+
+	// Cache is a namespace policy configuration of type Cache
+	// +optional
+	Cache *CacheNamespacePolicy `json:"cache,omitempty"`
+}
+
+// SingleNamespacePolicy specifies the configuration of namespace policy of type Single
+type SingleNamespacePolicy struct {
+
+	// Resource is the read and write resource name to use
+	Resource string `json:"resource,omitempty"`
+}
+
+// MultiNamespacePolicy specifies the configuration of namespace policy of type Multi
+type MultiNamespacePolicy struct {
+
+	// ReadResources is an ordered list of read resources names to use
+	ReadResources []string `json:"readResources,omitempty"`
+
+	// WriteResource is the write resource name to use
+	WriteResource string `json:"writeResource,omitempty"`
+}
+
+// CacheNamespacePolicy specifies the configuration of namespace policy of type Cache
+type CacheNamespacePolicy struct {
+
+	// HubResource is the read and write resource name to use
+	HubResource string `json:"hubResource,omitempty"`
+
+	// Caching is the cache specification for the ns policy
+	Caching *CacheSpec `json:"caching,omitempty"`
+}
+
+// CacheSpec specifies the cache specifications for the bucket class
+type CacheSpec struct {
+
+	// TTL specifies the cache ttl
+	TTL int `json:"ttl,omitempty"`
+
+	// Prefix is prefix of the future cached data
+	// +optional
+	Prefix string `json:"prefix,omitempty"`
 }
 
 // Tier specifies a storage tier
@@ -152,4 +214,18 @@ const (
 
 	// BucketClassPhaseDeleting means the operator is deleting the resources on the cluster
 	BucketClassPhaseDeleting BucketClassPhase = "Deleting"
+)
+
+// NSBucketClassType is the namespace bucketclass type enum
+type NSBucketClassType string
+
+const (
+	// NSBucketClassTypeSingle is used to configure namespace bucket class of type Single
+	NSBucketClassTypeSingle NSBucketClassType = "Single"
+
+	// NSBucketClassTypeMulti is used to configure namespace bucket class of type Multi
+	NSBucketClassTypeMulti NSBucketClassType = "Multi"
+
+	// NSBucketClassTypeCache is used to configure namespace bucket class of type Cache
+	NSBucketClassTypeCache NSBucketClassType = "Cache"
 )

@@ -1,11 +1,10 @@
-package bucketclass
+package namespacestore
 
 import (
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v2/pkg/bucketclass"
+	"github.com/noobaa/noobaa-operator/v2/pkg/namespacestore"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -18,13 +17,13 @@ import (
 // The Manager will set fields on the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 
-	// Create a controller that runs reconcile on noobaa bucket class
+	// Create a controller that runs reconcile on noobaa namespace store
 
 	c, err := controller.New("noobaa-controller", mgr, controller.Options{
 		MaxConcurrentReconciles: 1,
 		Reconciler: reconcile.Func(
 			func(req reconcile.Request) (reconcile.Result, error) {
-				return bucketclass.NewReconciler(
+				return namespacestore.NewReconciler(
 					req.NamespacedName,
 					mgr.GetClient(),
 					mgr.GetScheme(),
@@ -41,44 +40,36 @@ func Add(mgr manager.Manager) error {
 
 	// Predicate that allows events that only change spec, labels or finalizers and will log any allowed events
 	// This will stop infinite reconciles that triggered by status or irrelevant metadata changes
-	bucketClassPredicate := util.ComposePredicates(
+	namespaceStorePredicate := util.ComposePredicates(
 		predicate.GenerationChangedPredicate{},
 		util.LabelsChangedPredicate{},
 		util.FinalizersChangedPredicate{},
+		//namespaceStoreModeChangedPredicate{},
 	)
-
-	// Watch for changes on resources to trigger reconcile
-	err = c.Watch(&source.Kind{Type: &nbv1.BucketClass{}}, &handler.EnqueueRequestForObject{},
-		bucketClassPredicate, &logEventsPredicate)
-	if err != nil {
-		return err
-	}
-
-	backingStoreHandler := handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-			return bucketclass.MapBackingstoreToBucketclasses(types.NamespacedName{
-				Name:      obj.Meta.GetName(),
-				Namespace: obj.Meta.GetNamespace(),
-			})
-		}),
-	}
-	err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, &backingStoreHandler, logEventsPredicate)
-	if err != nil {
-		return err
-	}
-
-	namespaceStoreHandler := handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-			return bucketclass.MapNamespacestoreToBucketclasses(types.NamespacedName{
-				Name:      obj.Meta.GetName(),
-				Namespace: obj.Meta.GetNamespace(),
-			})
-		}),
-	}
-	err = c.Watch(&source.Kind{Type: &nbv1.NamespaceStore{}}, &namespaceStoreHandler, logEventsPredicate)
+	err = c.Watch(&source.Kind{Type: &nbv1.NamespaceStore{}}, &handler.EnqueueRequestForObject{},
+		namespaceStorePredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
 
 	return nil
 }
+
+// // namespaceStoreModeChangedPredicate will only allow events that changed Status.Mode.ModeCode.
+// // This predicate should be used only for NamespaceStore objects!
+// type namespaceStoreModeChangedPredicate struct {
+// 	predicate.Funcs
+// }
+
+// // Update implements the update event trap for LabelsChangedPredicate
+// func (p namespaceStoreModeChangedPredicate) Update(e event.UpdateEvent) bool {
+// 	if e.ObjectOld == nil || e.ObjectNew == nil {
+// 		return false
+// 	}
+// 	oldNamespaceStore, oldCastOk := e.ObjectOld.(*nbv1.NamespaceStore)
+// 	newNamespaceStore, newCastOk := e.ObjectNew.(*nbv1.NamespaceStore)
+// 	if !oldCastOk || !newCastOk {
+// 		return false
+// 	}
+// 	return oldNamespaceStore.Status.Mode.ModeCode != newNamespaceStore.Status.Mode.ModeCode
+// }

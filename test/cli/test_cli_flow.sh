@@ -54,6 +54,7 @@ NAMESPACE='test'
 function post_install_tests {
     aws_credentials
     check_S3_compatible
+    check_namespacestore
     bucketclass_cycle
     obc_cycle
     check_deletes

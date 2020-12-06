@@ -14,6 +14,7 @@ type Client interface {
 	ReadSystemAPI() (SystemInfo, error)
 	ReadBucketAPI(ReadBucketParams) (BucketInfo, error)
 	ReadPoolAPI(ReadPoolParams) (PoolInfo, error)
+	ReadNamespaceResourceAPI(ReadNamespaceResourceParams) (NamespaceResourceInfo, error)
 
 	ListAccountsAPI() (ListAccountsReply, error)
 	ListBucketsAPI() (ListBucketsReply, error)
@@ -23,17 +24,21 @@ type Client interface {
 	CreateSystemAPI(CreateSystemParams) (CreateSystemReply, error)
 	CreateAccountAPI(CreateAccountParams) (CreateAccountReply, error)
 	CreateBucketAPI(CreateBucketParams) error
+	UpdateBucketAPI(CreateBucketParams) error
+
 	CreateHostsPoolAPI(CreateHostsPoolParams) (string, error)
 	GetHostsPoolAgentConfigAPI(GetHostsPoolAgentConfigParams) (string, error)
 	UpdateHostsPoolAPI(UpdateHostsPoolParams) error
 	CreateCloudPoolAPI(CreateCloudPoolParams) error
 	CreateTierAPI(CreateTierParams) error
+	CreateNamespaceResourceAPI(CreateNamespaceResourceParams) error
 	CreateTieringPolicyAPI(TieringPolicyInfo) error
 
 	DeleteBucketAPI(DeleteBucketParams) error
 	DeleteBucketAndObjectsAPI(DeleteBucketParams) error
 	DeleteAccountAPI(DeleteAccountParams) error
 	DeletePoolAPI(DeletePoolParams) error
+	DeleteNamespaceResourceAPI(DeleteNamespaceResourceParams) error
 
 	UpdateAccountS3Access(UpdateAccountS3AccessParams) error
 	UpdateAllBucketsDefaultPool(UpdateDefaultPoolParams) error
@@ -187,6 +192,12 @@ func (c *RPCClient) CreateBucketAPI(params CreateBucketParams) error {
 	return c.Call(req, nil)
 }
 
+// UpdateBucketAPI calls bucket_api.update_bucket()
+func (c *RPCClient) UpdateBucketAPI(params CreateBucketParams) error {
+	req := &RPCMessage{API: "bucket_api", Method: "update_bucket", Params: params}
+	return c.Call(req, nil)
+}
+
 // CreateHostsPoolAPI calls pool_api.create_hosts_pool()
 func (c *RPCClient) CreateHostsPoolAPI(params CreateHostsPoolParams) (string, error) {
 	req := &RPCMessage{API: "pool_api", Method: "create_hosts_pool", Params: params}
@@ -218,6 +229,29 @@ func (c *RPCClient) UpdateHostsPoolAPI(params UpdateHostsPoolParams) error {
 // CreateCloudPoolAPI calls pool_api.create_cloud_pool()
 func (c *RPCClient) CreateCloudPoolAPI(params CreateCloudPoolParams) error {
 	req := &RPCMessage{API: "pool_api", Method: "create_cloud_pool", Params: params}
+	return c.Call(req, nil)
+}
+
+// CreateNamespaceResourceAPI calls pool_api.create_namespace_resource()
+func (c *RPCClient) CreateNamespaceResourceAPI(params CreateNamespaceResourceParams) error {
+	req := &RPCMessage{API: "pool_api", Method: "create_namespace_resource", Params: params}
+	return c.Call(req, nil)
+}
+
+// ReadNamespaceResourceAPI calls pool_api.read_namespace_resource()
+func (c *RPCClient) ReadNamespaceResourceAPI(params ReadNamespaceResourceParams) (NamespaceResourceInfo, error) {
+	req := &RPCMessage{API: "pool_api", Method: "read_namespace_resource", Params: params}
+	res := &struct {
+		RPCMessage `json:",inline"`
+		Reply      NamespaceResourceInfo `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
+}
+
+// DeleteNamespaceResourceAPI calls pool_api.delete_namespace_resource()
+func (c *RPCClient) DeleteNamespaceResourceAPI(params DeleteNamespaceResourceParams) error {
+	req := &RPCMessage{API: "pool_api", Method: "delete_namespace_resource", Params: params}
 	return c.Call(req, nil)
 }
 

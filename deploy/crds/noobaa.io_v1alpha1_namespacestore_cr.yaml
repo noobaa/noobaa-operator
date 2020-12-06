@@ -1,5 +1,5 @@
 apiVersion: noobaa.io/v1alpha1
-kind: BucketClass
+kind: NamespaceStore
 metadata:
   name: default
 spec:
