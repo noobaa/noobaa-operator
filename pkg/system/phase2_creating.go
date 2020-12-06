@@ -77,7 +77,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 			return err
 		}
 	}
-	if err := r.ReconcileObject(r.SecretRootMasterKey, nil); err != nil {
+	if err := r.ReconcileRootSecret(); err != nil {
 		return err
 	}
 	if err := r.UpgradeSplitDB(); err != nil {
@@ -211,7 +211,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 							},
 						}
 					}
-					
+
 				}
 			}
 		}
@@ -334,8 +334,12 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 					},
 				}
 			}
+		case "NOOBAA_ROOT_SECRET":
+			if r.SecretRootMasterKey.StringData["cipher_key_b64"] != "" {
+				c.Env[j].Value = r.SecretRootMasterKey.StringData["cipher_key_b64"]
+			}
 		}
-				
+
 	}
 }
 
@@ -359,7 +363,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				c.Image = r.NooBaa.Status.ActualImage
 			}
 			// adding the missing Env varibale from default container
-			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env);
+			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env)
 			r.setDesiredCoreEnv(c)
 
 			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
@@ -403,8 +407,8 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	}
 
 	phase := r.NooBaa.Status.UpgradePhase
-	replicas := int32(1);
-	if (phase == nbv1.UpgradePhasePrepare || phase == nbv1.UpgradePhaseMigrate) {
+	replicas := int32(1)
+	if phase == nbv1.UpgradePhasePrepare || phase == nbv1.UpgradePhaseMigrate {
 		replicas = int32(0)
 	}
 	r.CoreApp.Spec.Replicas = &replicas
@@ -601,6 +605,44 @@ func (r *Reconciler) SetDesiredAgentProfile(profileString string) string {
 	return string(profileBytes)
 }
 
+// ReconcileRootSecret choose KMS for root secret key
+func (r *Reconciler) ReconcileRootSecret() error {
+	log := r.Logger
+	var err error
+
+	// set noobaa root master key secret
+	if len(r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails) != 0 {
+		c, err := util.InitVaultClient(r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails, r.NooBaa.Spec.Security.KeyManagementService.TokenSecretName, options.Namespace)
+		if err == nil {
+			secretPath := util.BuildExternalSecretPath(r.NooBaa.Spec.Security.KeyManagementService)
+
+			// get secret from external KMS
+			rootKey, err := util.GetSecret(c, "rootkeyb64", secretPath)
+			if err == nil {
+				log.Infof("found root secret in the external KMS succefuly")
+				r.SecretRootMasterKey.StringData["cipher_key_b64"] = rootKey
+				return nil
+			}
+			log.Infof("could not find root secret in external KMS, will upload new secret root key")
+
+			// put secret in external KMS
+			err = util.PutSecret(c, "rootkeyb64", r.SecretRootMasterKey.StringData["cipher_key_b64"], secretPath)
+			if err == nil {
+				log.Infof("uploaded root secret in the external KMS succefuly")
+				return nil
+			}
+			log.Errorf("Error put secret in vault: %+v", err)
+		}
+		log.Infof("could not initialize external KMS client %+v", err)
+	}
+
+	err = r.ReconcileObject(r.SecretRootMasterKey, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // ReconcileDB choose between different types of DB
 func (r *Reconciler) ReconcileDB() error {
 	var err error
@@ -725,7 +767,7 @@ func (r *Reconciler) UpgradeSplitDBDeleteOldPVC(oldPVC *corev1.PersistentVolumeC
 // UpgradeMigrateDB performs a db upgrade between mongodb to postgres
 func (r *Reconciler) UpgradeMigrateDB() error {
 	phase := r.NooBaa.Status.UpgradePhase
-	if (phase == nbv1.UpgradePhaseFinished || phase == nbv1.UpgradePhaseNone) {
+	if phase == nbv1.UpgradePhaseFinished || phase == nbv1.UpgradePhaseNone {
 		return nil
 	}
 	oldSts := &appsv1.StatefulSet{
@@ -739,40 +781,40 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 		phase = nbv1.UpgradePhaseNone
 	} else {
 		r.Logger.Infof("UpgradeMigrateDB: Old STS found, upgrading...")
-		if (phase == "") {
+		if phase == "" {
 			phase = nbv1.UpgradePhasePrepare
 		}
 		switch phase {
 		case nbv1.UpgradePhasePrepare:
 			util.KubeCheckQuiet(r.CoreApp)
-			if (*r.CoreApp.Spec.Replicas == 0) {
+			if *r.CoreApp.Spec.Replicas == 0 {
 				phase = nbv1.UpgradePhaseMigrate
 			}
-		case nbv1.UpgradePhaseMigrate: 
-			if err:= r.ReconcileObject(r.UpgradeJob, r.SetDesiredJobUpgradeDB); err != nil {
+		case nbv1.UpgradePhaseMigrate:
+			if err := r.ReconcileObject(r.UpgradeJob, r.SetDesiredJobUpgradeDB); err != nil {
 				return err
 			}
-			if (r.UpgradeJob.Status.Succeeded > 0) {
+			if r.UpgradeJob.Status.Succeeded > 0 {
 				phase = nbv1.UpgradePhaseClean
 			}
-		case nbv1.UpgradePhaseClean: 
-			if (*oldSts.Spec.Replicas == 0) {
+		case nbv1.UpgradePhaseClean:
+			if *oldSts.Spec.Replicas == 0 {
 				phase = nbv1.UpgradePhaseFinished
 			} else {
-				if err:= r.ReconcileObject(oldSts, func () error {
-					replicas := int32(0); // cleaning the pods
-					oldSts.Spec.Replicas = &replicas;
-					return nil;
+				if err := r.ReconcileObject(oldSts, func() error {
+					replicas := int32(0) // cleaning the pods
+					oldSts.Spec.Replicas = &replicas
+					return nil
 				}); err != nil {
 					return err
 				}
 			}
 		}
 	}
-	r.NooBaa.Status.UpgradePhase = phase;
+	r.NooBaa.Status.UpgradePhase = phase
 	if err := r.UpdateStatus(); err != nil {
 		return err
-	} 
+	}
 	return nil
 }
 

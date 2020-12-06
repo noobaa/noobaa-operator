@@ -64,10 +64,6 @@ spec:
             - name: LOCAL_N2N_AGENT
             - name: JWT_SECRET
             - name: NOOBAA_ROOT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: noobaa-root-master-key
-                  key: cipher_key_b64
             - name: NOOBAA_DISABLE_COMPRESSION
               value: "false"
             - name: NOOBAA_AUTH_TOKEN
