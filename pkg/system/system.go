@@ -266,6 +266,10 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	if err := util.VerifyExternalSecretsDeletion(sys.Spec.Security.KeyManagementService, sys.Namespace); err != nil {
+		log.Warnf("could not delete external secrets: %s", err)
+	}
+
 	util.KubeDelete(sys)
 
 	// NoobaaDB

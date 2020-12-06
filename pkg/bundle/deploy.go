@@ -980,7 +980,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "6e1d9a73fa3fd15dcee96b6434bb4262f7e2680fb3cbc5b15f8811d2e952e76d"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "5c4b7453e4946428a0c53867dbf7f30cfffb34ad95d4c7bb6141ad6003b75f64"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1827,6 +1827,21 @@ spec:
                 description: Region (optional) provide a region for the location info
                   of the endpoints in the endpoint deployment
                 type: string
+              security:
+                description: Security represents security settings
+                properties:
+                  kms:
+                    description: KeyManagementServiceSpec represent various details
+                      of the KMS server
+                    properties:
+                      connectionDetails:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      tokenSecretName:
+                        type: string
+                    type: object
+                type: object
               tolerations:
                 description: Tolerations (optional) passed through to noobaa's pods
                 items:
@@ -2272,7 +2287,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "a5dfd7e76afe6b835cac4354fc818595011ab5ab0cf1dbaa7d78f9550428cae3"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "908a74a03dcf084525635cf6899dfe68bc49ffe5e5eff16c68c2ac0962b31283"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -2340,10 +2355,6 @@ spec:
             - name: LOCAL_N2N_AGENT
             - name: JWT_SECRET
             - name: NOOBAA_ROOT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: noobaa-root-master-key
-                  key: cipher_key_b64
             - name: NOOBAA_DISABLE_COMPRESSION
               value: "false"
             - name: NOOBAA_AUTH_TOKEN
@@ -2807,7 +2818,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "58f7b9e7af79c034eb8f9a71ab599e8ebf4ff01d83a2ee200c404d09b2373fe9"
+const Sha256_deploy_internal_statefulset_core_yaml = "f827660bdd01d915dbaf8305ef2ad8bbfcd7b62c83b62fa9c0dc2738c7553540"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2897,10 +2908,6 @@ spec:
                   name: noobaa-server
                   key: server_secret
             - name: NOOBAA_ROOT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: noobaa-root-master-key
-                  key: cipher_key_b64
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
             - name: DISABLE_DEV_RANDOM_SEED
