@@ -21,8 +21,11 @@ import (
 	"unicode"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	vaultApi "github.com/hashicorp/vault/api"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/v2/pkg/apis"
+	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
 	routev1 "github.com/openshift/api/route/v1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
@@ -52,6 +55,7 @@ import (
 
 const (
 	oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
+	rootSecretPath         = "NOOBAA_ROOT_SECRET_PATH"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -1127,4 +1131,104 @@ func GetWatchNamespace() (string, error) {
 		return "", fmt.Errorf("%s must not be empty", WatchNamespaceEnvVar)
 	}
 	return ns, nil
+}
+
+///////////////////////////////////
+/////////// VAULT UTILS ///////////
+///////////////////////////////////
+
+// VerifyExternalSecretsDeletion checks if noobaa is on un-installation process
+// if true, deletes secrets from external KMS
+func VerifyExternalSecretsDeletion(kms nbv1.KeyManagementServiceSpec, namespace string) error {
+
+	if len(kms.ConnectionDetails) == 0 {
+		return nil
+	}
+	c, err := InitVaultClient(kms.ConnectionDetails, kms.TokenSecretName, namespace)
+
+	if err != nil {
+		return err
+	}
+	secretPath := BuildExternalSecretPath(kms)
+	err = DeleteSecret(c, secretPath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// InitVaultClient inits the secret store
+func InitVaultClient(config map[string]string, tokenSecretName string, namespace string) (*vaultApi.Client, error) {
+	client, err := vaultApi.NewClient(vaultApi.DefaultConfig())
+	if err != nil {
+		return nil, err
+	}
+	addr := config["VAULT_ADDR"]
+	err = client.SetAddress(addr)
+	if err != nil {
+		return nil, err
+	}
+	secret := KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret.Namespace = namespace
+	secret.Name = tokenSecretName
+
+	if !KubeCheck(secret) {
+		return nil, fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+	}
+
+	token := secret.StringData["token"]
+	client.SetToken(token)
+	return client, nil
+}
+
+// PutSecret writes the secret to the secrets store
+func PutSecret(client *vaultApi.Client, secretName, secretValue, secretPath string) error {
+
+	// Build Secret
+	data := make(map[string]interface{})
+	data[secretName] = secretValue
+
+	_, err := client.Logical().Write(secretPath, data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetSecret reads the secret to the secrets store
+func GetSecret(client *vaultApi.Client, secretName, secretPath string) (string, error) {
+	secret, err := client.Logical().Read(secretPath)
+	if err != nil {
+		return "", err
+	}
+	if secret == nil {
+		return "", fmt.Errorf("RootKey is nil")
+	}
+	rootKey := secret.Data[secretName]
+	if rootKey != nil {
+		if rootKeyStr, ok := rootKey.(string); ok {
+			return rootKeyStr, nil
+		}
+	}
+	return "", fmt.Errorf("could not find secret name %+v in path", secretName)
+}
+
+// DeleteSecret deletes the secret from the secrets store
+func DeleteSecret(client *vaultApi.Client, secretPath string) error {
+	_, err := client.Logical().Delete(secretPath)
+	if err != nil {
+		log.Infof("DeleteSecret: err %+v", err)
+		return err
+	}
+	return nil
+}
+
+// BuildExternalSecretPath builds a string that specifies the root key secret path
+func BuildExternalSecretPath(kms nbv1.KeyManagementServiceSpec) string {
+	secretPath := ""
+	if kms.ConnectionDetails["VAULT_BACKEND_PATH"] != "" {
+		secretPath += kms.ConnectionDetails["VAULT_BACKEND_PATH"]
+	}
+	secretPath += rootSecretPath
+	return secretPath
 }

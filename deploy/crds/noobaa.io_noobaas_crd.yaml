@@ -843,6 +843,21 @@ spec:
                 description: Region (optional) provide a region for the location info
                   of the endpoints in the endpoint deployment
                 type: string
+              security:
+                description: Security represents security settings
+                properties:
+                  kms:
+                    description: KeyManagementServiceSpec represent various details
+                      of the KMS server
+                    properties:
+                      connectionDetails:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      tokenSecretName:
+                        type: string
+                    type: object
+                type: object
               tolerations:
                 description: Tolerations (optional) passed through to noobaa's pods
                 items:
