@@ -134,6 +134,20 @@ type NooBaaSpec struct {
 	// CleanupPolicy (optional) Indicates user's policy for deletion
 	// +optional
 	CleanupPolicy CleanupPolicySpec `json:"cleanupPolicy,omitempty"`
+
+	// Security represents security settings
+	Security SecuritySpec `json:"security,omitempty"`
+}
+
+// SecuritySpec is security spec to include various security items such as kms
+type SecuritySpec struct {
+	KeyManagementService KeyManagementServiceSpec `json:"kms,omitempty"`
+}
+
+// KeyManagementServiceSpec represent various details of the KMS server
+type KeyManagementServiceSpec struct {
+	ConnectionDetails map[string]string `json:"connectionDetails,omitempty"`
+	TokenSecretName   string            `json:"tokenSecretName,omitempty"`
 }
 
 // EndpointsSpec defines the desired state of noobaa endpoint deployment

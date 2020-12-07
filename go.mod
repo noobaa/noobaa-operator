@@ -18,6 +18,7 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/zapr v0.1.1 // indirect
 	github.com/go-openapi/spec v0.19.5
+	github.com/hashicorp/vault/api v1.0.4
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20200610144127-e2eec875d6d1
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible

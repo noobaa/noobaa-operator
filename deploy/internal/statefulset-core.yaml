@@ -86,10 +86,6 @@ spec:
                   name: noobaa-server
                   key: server_secret
             - name: NOOBAA_ROOT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: noobaa-root-master-key
-                  key: cipher_key_b64
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
             - name: DISABLE_DEV_RANDOM_SEED

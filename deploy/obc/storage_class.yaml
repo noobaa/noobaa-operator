@@ -1,6 +1,8 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
+  annotations:
+    description: Provides Object Bucket Claims (OBCs)
   name: noobaa.noobaa.io
 provisioner: noobaa.noobaa.io/obc
 reclaimPolicy: Delete

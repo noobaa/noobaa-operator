@@ -319,6 +319,11 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 							},
 						}
 					}
+				case "NOOBAA_ROOT_SECRET":
+					util.KubeCheck(r.SecretRootMasterKey)
+					if r.SecretRootMasterKey.StringData["cipher_key_b64"] != "" {
+						c.Env[j].Value = r.SecretRootMasterKey.StringData["cipher_key_b64"]
+					}
 				case "VIRTUAL_HOSTS":
 					hosts := []string{}
 					for _, addr := range r.NooBaa.Status.Services.ServiceS3.InternalDNS {
