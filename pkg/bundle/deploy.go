@@ -3602,11 +3602,13 @@ spec:
   additionalConfig: {}
 `
 
-const Sha256_deploy_obc_storage_class_yaml = "9d03664a6263d8e54a00cdd604cc3cb6b5ce04ff9d73187b7fcb122bcbbdd1d2"
+const Sha256_deploy_obc_storage_class_yaml = "d84f84e94b6802c1ae96a9ed473d04ac1fb968f41d368c4cb7d438b75a8ceeb4"
 
 const File_deploy_obc_storage_class_yaml = `apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
+  annotations:
+    description: Provides Object Bucket Claims (OBCs)
   name: noobaa.noobaa.io
 provisioner: noobaa.noobaa.io/obc
 reclaimPolicy: Delete
