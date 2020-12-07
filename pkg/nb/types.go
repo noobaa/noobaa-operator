@@ -7,11 +7,12 @@ import (
 
 // SystemInfo is a struct of system info returned by the API
 type SystemInfo struct {
-	Accounts []AccountInfo `json:"accounts"`
-	Buckets  []BucketInfo  `json:"buckets"`
-	Pools    []PoolInfo    `json:"pools"`
-	Tiers    []TierInfo    `json:"tiers"`
-	Version  string        `json:"version"`
+	Accounts           []AccountInfo           `json:"accounts"`
+	Buckets            []BucketInfo            `json:"buckets"`
+	Pools              []PoolInfo              `json:"pools"`
+	Tiers              []TierInfo              `json:"tiers"`
+	Version            string                  `json:"version"`
+	NamespaceResources []NamespaceResourceInfo `json:"namespace_resources"`
 	// TODO SystemInfo struct is partial ...
 }
 
@@ -169,6 +170,19 @@ type PoolInfo struct {
 	// TODO PoolInfo struct is partial ...
 }
 
+// NamespaceResourceInfo is a struct of namespace resource info returned by the API
+type NamespaceResourceInfo struct {
+	Name         string          `json:"name"`
+	Mode         string          `json:"mode,omitempty"`
+	Undeletable  string          `json:"undeletable,omitempty"`
+	EndpointType EndpointType    `json:"endpoint_type,omitempty"`
+	Endpoint     string          `json:"endpoint,omitempty"`
+	TargetBucket string          `json:"target_bucket,omitempty"`
+	Identity     string          `json:"identity,omitempty"`
+	AuthMethod   CloudAuthMethod `json:"auth_method,omitempty"`
+	CpCode       string          `json:"cp_code,omitempty"`
+}
+
 // PoolHostsInfo is the config/info of a hosts pool
 type PoolHostsInfo struct {
 	// TODO encode/decode BigInt
@@ -209,6 +223,11 @@ type ReadBucketParams struct {
 
 // ReadPoolParams is the params to pool_api.read_pool()
 type ReadPoolParams struct {
+	Name string `json:"name"`
+}
+
+// ReadNamespaceResourceParams is the params to pool_api.read_namespace_resource()
+type ReadNamespaceResourceParams struct {
 	Name string `json:"name"`
 }
 
@@ -277,9 +296,23 @@ type CreateSystemReply struct {
 
 // CreateBucketParams is the params of bucket_api.create_bucket()
 type CreateBucketParams struct {
-	Name        string           `json:"name"`
-	Tiering     string           `json:"tiering,omitempty"`
-	BucketClaim *BucketClaimInfo `json:"bucket_claim,omitempty"`
+	Name        string               `json:"name"`
+	Tiering     string               `json:"tiering,omitempty"`
+	BucketClaim *BucketClaimInfo     `json:"bucket_claim,omitempty"`
+	Namespace   *NamespaceBucketInfo `json:"namespace,omitempty"`
+}
+
+// NamespaceBucketInfo is the information needed for creating namespace bucket
+type NamespaceBucketInfo struct {
+	WriteResource string     `json:"write_resource"`
+	ReadResources []string   `json:"read_resources,omitempty"`
+	Caching       *CacheSpec `json:"caching,omitempty"`
+}
+
+// CacheSpec specifies the cache specifications for the bucket class
+type CacheSpec struct {
+	// TTL specifies the cache ttl
+	TTLMs int `json:"ttl_ms,omitempty"`
 }
 
 // BucketClaimInfo is the params of bucket_api.create_bucket()
@@ -349,6 +382,14 @@ type CreateCloudPoolParams struct {
 	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
 }
 
+// CreateNamespaceResourceParams is the params of pool_api.create_cloud_pool()
+type CreateNamespaceResourceParams struct {
+	Name         string            `json:"name"`
+	Connection   string            `json:"connection"`
+	TargetBucket string            `json:"target_bucket"`
+	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
+}
+
 // CreateTierParams is the reply of tier_api.create_tier()
 type CreateTierParams struct {
 	Name             string            `json:"name"`
@@ -400,6 +441,11 @@ type DeleteAccountParams struct {
 
 // DeletePoolParams is the params of pool_api.delete_pool()
 type DeletePoolParams struct {
+	Name string `json:"name"`
+}
+
+// DeleteNamespaceResourceParams is the params of pool_api.delete_namespace_resource()
+type DeleteNamespaceResourceParams struct {
 	Name string `json:"name"`
 }
 

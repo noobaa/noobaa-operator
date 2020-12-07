@@ -305,45 +305,67 @@ func (r *BucketRequest) CreateBucket() error {
 	if r.BucketClass == nil {
 		return fmt.Errorf("BucketClass not loaded %#v", r)
 	}
-
-	tierName := fmt.Sprintf("%s.%x", r.BucketName, time.Now().Unix())
-	tiers := []nb.TierItem{}
-
-	for i := range r.BucketClass.Spec.PlacementPolicy.Tiers {
-		tier := &r.BucketClass.Spec.PlacementPolicy.Tiers[i]
-		name := fmt.Sprintf("%s.%d", tierName, i)
-		tiers = append(tiers, nb.TierItem{Order: int64(i), Tier: name})
-		// we assume either mirror or spread but no mix and the bucket class controller rejects mixed classes.
-		placement := "SPREAD"
-		if tier.Placement == nbv1.TierPlacementMirror {
-			placement = "MIRROR"
-		}
-		err := r.SysClient.NBClient.CreateTierAPI(nb.CreateTierParams{
-			Name:          name,
-			AttachedPools: tier.BackingStores,
-			DataPlacement: placement,
-		})
-		if err != nil {
-			return fmt.Errorf("Failed to create tier %q with error: %v", name, err)
-		}
-	}
-
-	err = r.SysClient.NBClient.CreateTieringPolicyAPI(nb.TieringPolicyInfo{
-		Name:  tierName,
-		Tiers: tiers,
-	})
-	if err != nil {
-		return fmt.Errorf("Failed to create tier %q with error: %v", tierName, err)
-	}
-
-	err = r.SysClient.NBClient.CreateBucketAPI(nb.CreateBucketParams{
-		Name:    r.BucketName,
-		Tiering: tierName,
+	createBucketParams := &nb.CreateBucketParams{
+		Name: r.BucketName,
 		BucketClaim: &nb.BucketClaimInfo{
 			BucketClass: r.BucketClass.Name,
 			Namespace:   r.OBC.Namespace,
 		},
-	})
+	}
+
+	if r.BucketClass.Spec.PlacementPolicy != nil {
+		tierName := fmt.Sprintf("%s.%x", r.BucketName, time.Now().Unix())
+		tiers := []nb.TierItem{}
+
+		for i := range r.BucketClass.Spec.PlacementPolicy.Tiers {
+			tier := r.BucketClass.Spec.PlacementPolicy.Tiers[i]
+			name := fmt.Sprintf("%s.%d", tierName, i)
+			tiers = append(tiers, nb.TierItem{Order: int64(i), Tier: name})
+			// we assume either mirror or spread but no mix and the bucket class controller rejects mixed classes.
+			placement := "SPREAD"
+			if tier.Placement == nbv1.TierPlacementMirror {
+				placement = "MIRROR"
+			}
+			err := r.SysClient.NBClient.CreateTierAPI(nb.CreateTierParams{
+				Name:          name,
+				AttachedPools: tier.BackingStores,
+				DataPlacement: placement,
+			})
+			if err != nil {
+				return fmt.Errorf("Failed to create tier %q with error: %v", name, err)
+			}
+		}
+
+		err = r.SysClient.NBClient.CreateTieringPolicyAPI(nb.TieringPolicyInfo{
+			Name:  tierName,
+			Tiers: tiers,
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to create tier %q with error: %v", tierName, err)
+		}
+		createBucketParams.Tiering = tierName
+	}
+
+	// create NS bucket
+	if r.BucketClass.Spec.NamespacePolicy != nil {
+		namespacePolicyType := r.BucketClass.Spec.NamespacePolicy.Type
+		var readResources []string
+		createBucketParams.Namespace = &nb.NamespaceBucketInfo{}
+		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
+			createBucketParams.Namespace.WriteResource = r.BucketClass.Spec.NamespacePolicy.Single.Resource
+			createBucketParams.Namespace.ReadResources = append(readResources, r.BucketClass.Spec.NamespacePolicy.Single.Resource)
+		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
+			createBucketParams.Namespace.WriteResource = r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource
+			createBucketParams.Namespace.ReadResources = r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources
+		} else if namespacePolicyType == nbv1.NSBucketClassTypeCache {
+			createBucketParams.Namespace.WriteResource = r.BucketClass.Spec.NamespacePolicy.Cache.HubResource
+			createBucketParams.Namespace.ReadResources = append(readResources, r.BucketClass.Spec.NamespacePolicy.Cache.HubResource)
+			createBucketParams.Namespace.Caching = &nb.CacheSpec{TTLMs: r.BucketClass.Spec.NamespacePolicy.Cache.Caching.TTL}
+			//cachePrefix := r.BucketClass.Spec.NamespacePolicy.Cache.Prefix
+		}
+	}
+	err = r.SysClient.NBClient.CreateBucketAPI(*createBucketParams)
+
 	if err != nil {
 		if nbErr, ok := err.(*nb.RPCError); ok {
 			if nbErr.RPCCode == "BUCKET_ALREADY_EXISTS" {
@@ -363,7 +385,10 @@ func (r *BucketRequest) CreateBucket() error {
 func (r *BucketRequest) CreateAccount() error {
 
 	log := r.Provisioner.Logger
-	defaultPool := r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores[0]
+	var defaultPool string
+	if r.BucketClass.Spec.PlacementPolicy != nil {
+		defaultPool = r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores[0]
+	}
 	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{
 		Name:              r.AccountName,
 		Email:             r.AccountName,
