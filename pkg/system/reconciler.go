@@ -22,6 +22,7 @@ import (
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -71,6 +72,7 @@ type Reconciler struct {
 	ServiceMgmt         *corev1.Service
 	ServiceS3           *corev1.Service
 	ServiceDb           *corev1.Service
+	ServiceDbPg         *corev1.Service
 	SecretServer        *corev1.Secret
 	SecretDB            *corev1.Secret
 	SecretOp            *corev1.Secret
@@ -95,6 +97,7 @@ type Reconciler struct {
 	DeploymentEndpoint  *appsv1.Deployment
 	HPAEndpoint         *autoscalingv1.HorizontalPodAutoscaler
 	JoinSecret          *corev1.Secret
+	UpgradeJob			*batchv1.Job
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -120,6 +123,7 @@ func NewReconciler(
 		NooBaaMongoDB:       util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet),
 		NooBaaPostgresDB:    util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet),
 		ServiceDb:           util.KubeObject(bundle.File_deploy_internal_service_db_yaml).(*corev1.Service),
+		ServiceDbPg:         util.KubeObject(bundle.File_deploy_internal_service_db_yaml).(*corev1.Service),
 		ServiceMgmt:         util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
 		ServiceS3:           util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
 		SecretServer:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
@@ -144,6 +148,7 @@ func NewReconciler(
 		RouteS3:             util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
 		DeploymentEndpoint:  util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
 		HPAEndpoint:         util.KubeObject(bundle.File_deploy_internal_hpa_endpoint_yaml).(*autoscalingv1.HorizontalPodAutoscaler),
+		UpgradeJob:			 util.KubeObject(bundle.File_deploy_internal_job_upgrade_db_yaml).(*batchv1.Job),
 	}
 
 	// Set Namespace
@@ -155,6 +160,7 @@ func NewReconciler(
 	r.ServiceMgmt.Namespace = r.Request.Namespace
 	r.ServiceS3.Namespace = r.Request.Namespace
 	r.ServiceDb.Namespace = r.Request.Namespace
+	r.ServiceDbPg.Namespace = r.Request.Namespace
 	r.SecretServer.Namespace = r.Request.Namespace
 	r.SecretDB.Namespace = r.Request.Namespace
 	r.SecretOp.Namespace = r.Request.Namespace
@@ -179,16 +185,18 @@ func NewReconciler(
 	r.RouteS3.Namespace = r.Request.Namespace
 	r.DeploymentEndpoint.Namespace = r.Request.Namespace
 	r.HPAEndpoint.Namespace = r.Request.Namespace
+	r.UpgradeJob.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
 	r.ServiceAccount.Name = r.Request.Name
 	r.CoreApp.Name = r.Request.Name + "-core"
 	r.NooBaaMongoDB.Name = r.Request.Name + "-db"
-	r.NooBaaPostgresDB.Name = r.Request.Name + "-db"
+	r.NooBaaPostgresDB.Name = r.Request.Name + "-db-pg"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
 	r.ServiceS3.Name = "s3"
 	r.ServiceDb.Name = r.Request.Name + "-db"
+	r.ServiceDbPg.Name = r.Request.Name + "-db-pg"
 	r.SecretServer.Name = r.Request.Name + "-server"
 	r.SecretDB.Name = r.Request.Name + "-db"
 	r.SecretOp.Name = r.Request.Name + "-operator"
@@ -213,6 +221,7 @@ func NewReconciler(
 	r.RouteS3.Name = r.ServiceS3.Name
 	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
 	r.HPAEndpoint.Name = r.Request.Name + "-endpoint"
+	r.UpgradeJob.Name = r.Request.Name + "-upgrade-job"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name
@@ -248,10 +257,11 @@ func (r *Reconciler) CheckAll() {
 	if r.NooBaa.Spec.DBType == "postgres" {
 		util.KubeCheck(r.SecretDB)
 		util.KubeCheck(r.NooBaaPostgresDB)
+		util.KubeCheck(r.ServiceDbPg)
 	} else {
 		util.KubeCheck(r.NooBaaMongoDB)
+		util.KubeCheck(r.ServiceDb)
 	}
-	util.KubeCheck(r.ServiceDb)
 	util.KubeCheck(r.SecretServer)
 	util.KubeCheck(r.SecretOp)
 	util.KubeCheck(r.SecretEndpoints)

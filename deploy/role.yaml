@@ -111,3 +111,14 @@ rules:
   - patch
   - list
   - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - get
+  - create
+  - update
+  - patch
+  - list
+  - watch
