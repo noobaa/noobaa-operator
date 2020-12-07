@@ -50,7 +50,13 @@ spec:
             - name: BG_ADDR
             - name: MD_ADDR
             - name: HOSTED_AGENTS_ADDR
+            - name: DB_TYPE
             - name: MONGODB_URL
+            - name: POSTGRES_HOST
+            - name: POSTGRES_DBNAME
+              value: nbcore
+            - name: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
             - name: VIRTUAL_HOSTS
             - name: REGION
             - name: ENDPOINT_GROUP_ID

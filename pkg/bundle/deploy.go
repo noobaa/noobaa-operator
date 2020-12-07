@@ -980,7 +980,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "70959e7c7294f43c28248c8836c8b63d01a59e2b1969c1ad289c16acee3b9766"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "6e1d9a73fa3fd15dcee96b6434bb4262f7e2680fb3cbc5b15f8811d2e952e76d"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2134,6 +2134,9 @@ spec:
                 - serviceMgmt
                 - serviceS3
                 type: object
+              upgradePhase:
+                description: Upgrade reports the status of the ongoing upgrade process
+                type: string
             type: object
         type: object
     served: true
@@ -2269,7 +2272,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "6116310fbe0a22fd3ab3af4b1cd6f0828969fb14cb2443cc999a6fc47cc0dc6d"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "a5dfd7e76afe6b835cac4354fc818595011ab5ab0cf1dbaa7d78f9550428cae3"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -2323,7 +2326,13 @@ spec:
             - name: BG_ADDR
             - name: MD_ADDR
             - name: HOSTED_AGENTS_ADDR
+            - name: DB_TYPE
             - name: MONGODB_URL
+            - name: POSTGRES_HOST
+            - name: POSTGRES_DBNAME
+              value: nbcore
+            - name: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
             - name: VIRTUAL_HOSTS
             - name: REGION
             - name: ENDPOINT_GROUP_ID
@@ -2390,6 +2399,34 @@ spec:
     name: noobaa-endpoint
   targetCPUUtilizationPercentage: 80
 `
+
+const Sha256_deploy_internal_job_upgrade_db_yaml = "4ae1ae1f6009e578ea4cc937c305068dd8f21b93b0d7fd43350628e84725f337"
+
+const File_deploy_internal_job_upgrade_db_yaml = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+  labels:
+    app: noobaa
+spec:
+  template:
+    spec:
+      containers:
+      - name: migrate-job
+        image: NOOBAA_CORE_IMAGE
+        command: ["/noobaa_init_files/noobaa_init.sh", "db_migrate"]
+        env:
+          - name: MONGODB_URL
+            value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
+          - name: POSTGRES_HOST
+            value: "noobaa-db-pg-0.noobaa-db-pg"
+          - name: POSTGRES_DBNAME
+            value: nbcore
+          - name: POSTGRES_USER
+          - name: POSTGRES_PASSWORD
+          - name: CONTAINER_PLATFORM
+            value: KUBERNETES
+      restartPolicy: OnFailure`
 
 const Sha256_deploy_internal_pod_agent_yaml = "204e11eea569564b507010d13c43a2d3ad5feae9e86666a08904508eab231830"
 
@@ -2770,7 +2807,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "d602d62cd0eed9656a96dbef4d8312fa595164178e55474041a258c7e04741bf"
+const Sha256_deploy_internal_statefulset_core_yaml = "58f7b9e7af79c034eb8f9a71ab599e8ebf4ff01d83a2ee200c404d09b2373fe9"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2838,7 +2875,7 @@ spec:
             - name: MONGODB_URL
               value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
             - name: POSTGRES_HOST
-              value: "noobaa-db-0.noobaa-db"
+              value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_DBNAME
               value: nbcore
             - name: POSTGRES_USER
@@ -2972,12 +3009,12 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "a41849d20af288d4e005cb479ceb978891f731ad4d9d5fb9f6824a2dc7d80635"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "163bf7ffa29686d9080bd0b89e00a47824d3f50cab087c477495969746dfa691"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: noobaa-db
+  name: noobaa-db-pg
   labels:
     app: noobaa
 spec:
@@ -2985,7 +3022,7 @@ spec:
   selector:
     matchLabels:
       noobaa-db: noobaa
-  serviceName: noobaa-db
+  serviceName: noobaa-db-pg
   updateStrategy:
     type: RollingUpdate
   template:
@@ -3831,7 +3868,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "d1077c7d48590e7889015b59f4d5f6069f11ca8099c2ed0814e80b4a5936833f"
+const Sha256_deploy_role_yaml = "350eb245a04fd19faeb77941868d228916cd6622053b7675f9af0e853de3d8d9"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -3939,6 +3976,17 @@ rules:
   - autoscaling
   resources:
   - horizontalpodautoscalers
+  verbs:
+  - get
+  - create
+  - update
+  - patch
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
   verbs:
   - get
   - create

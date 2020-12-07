@@ -114,6 +114,7 @@ func MapperProvider(config *rest.Config) (meta.RESTMapper, error) {
 				g.Name == "monitoring.coreos.com" ||
 				g.Name == "ceph.rook.io" ||
 				g.Name == "autoscaling" ||
+				g.Name == "batch" ||
 				strings.HasSuffix(g.Name, ".k8s.io") {
 				return true
 			}
