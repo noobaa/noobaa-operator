@@ -756,6 +756,10 @@ spec:
                       to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                     type: object
                 type: object
+              disableAggregator:
+                description: DisableAggregator indicated the user's desire for disable
+                  aggragation (md aggragation in core)
+                type: boolean
               endpoints:
                 description: Endpoints (optional) sets configuration info for the
                   noobaa endpoint deployment.

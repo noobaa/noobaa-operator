@@ -980,7 +980,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "5c4b7453e4946428a0c53867dbf7f30cfffb34ad95d4c7bb6141ad6003b75f64"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "ac65b1bcaafe3f466272ac05183f902b623b138f269e0e05c0081eeba9036a02"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1740,6 +1740,10 @@ spec:
                       to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                     type: object
                 type: object
+              disableAggregator:
+                description: DisableAggregator indicated the user's desire for disable
+                  aggragation (md aggragation in core)
+                type: boolean
               endpoints:
                 description: Endpoints (optional) sets configuration info for the
                   noobaa endpoint deployment.
@@ -2818,7 +2822,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "f827660bdd01d915dbaf8305ef2ad8bbfcd7b62c83b62fa9c0dc2738c7553540"
+const Sha256_deploy_internal_statefulset_core_yaml = "f2598bb884548f10f0eb37c514725a310da2fdf6cc35885d70207d9f36cfae10"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2908,6 +2912,8 @@ spec:
                   name: noobaa-server
                   key: server_secret
             - name: NOOBAA_ROOT_SECRET
+            - name: NOOBAA_DISABLE_AGGREGATOR
+              value: "false"
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
             - name: DISABLE_DEV_RANDOM_SEED

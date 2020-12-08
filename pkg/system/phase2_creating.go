@@ -338,8 +338,12 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			if r.SecretRootMasterKey.StringData["cipher_key_b64"] != "" {
 				c.Env[j].Value = r.SecretRootMasterKey.StringData["cipher_key_b64"]
 			}
-		}
 
+		case "NOOBAA_DISABLE_AGGREGATOR":
+			if r.NooBaa.Spec.DisableAggregator {
+				c.Env[j].Value = "true"
+			}
+		}
 	}
 }
 

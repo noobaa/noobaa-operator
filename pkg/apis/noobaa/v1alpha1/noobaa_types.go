@@ -137,6 +137,11 @@ type NooBaaSpec struct {
 
 	// Security represents security settings
 	Security SecuritySpec `json:"security,omitempty"`
+
+	// DisableAggregator indicated the user's desire for
+	// disable aggragation (md aggragation in core)
+	// +optional
+	DisableAggregator bool `json:"disableAggregator,omitempty"`
 }
 
 // SecuritySpec is security spec to include various security items such as kms

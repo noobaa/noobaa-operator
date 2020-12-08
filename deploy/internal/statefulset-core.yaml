@@ -86,6 +86,8 @@ spec:
                   name: noobaa-server
                   key: server_secret
             - name: NOOBAA_ROOT_SECRET
+            - name: NOOBAA_DISABLE_AGGREGATOR
+              value: "false"
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
             - name: DISABLE_DEV_RANDOM_SEED
