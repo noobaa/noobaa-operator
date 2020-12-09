@@ -419,6 +419,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 // the bucket name allowed for the credentials. nil is returned if cloud credentials are not supported
 func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	// Skip if joining another NooBaa
+	r.Logger.Info("Reconciling Backing Store Credentials")
 	if r.JoinSecret != nil {
 		return nil
 	}
@@ -431,6 +432,9 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	}
 	if util.IsGCPPlatform() {
 		return r.ReconcileGCPCredentials()
+	}
+	if util.IsIBMPlatform() {
+		return r.ReconcileIBMCredentials()
 	}
 	return r.ReconcileRGWCredentials()
 }
@@ -585,6 +589,15 @@ func (r *Reconciler) ReconcileGCPCredentials() error {
 		return nil
 	}
 	return err
+}
+
+// ReconcileIBMCredentials sets IsIBMCloud to indicate operator is running in IBM Cloud
+func (r *Reconciler) ReconcileIBMCredentials() error {
+	// Currently IBM Cloud is not supported by cloud credential operator
+	// In IBM Cloud, the COS Creds will be provided through Secret.
+	r.Logger.Info("Running in IBM Cloud")
+	r.IsIBMCloud = true
+	return nil
 }
 
 // SetDesiredAgentProfile updates the value of the AGENT_PROFILE env
