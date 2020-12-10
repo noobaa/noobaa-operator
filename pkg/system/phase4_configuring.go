@@ -32,6 +32,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
+const (
+	ibmEndpoint = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
+	ibmLocation = "%s-standard"
+	ibmCOSCred  = "ibm-cloud-cos-creds"
+)
+
 type gcpAuthJSON struct {
 	ProjectID string `json:"project_id"`
 }
@@ -440,24 +446,29 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		return nil
 	}
 
-	if r.CephObjectstoreUser.UID != "" {
-		log.Infof("CephObjectstoreUser %q created.  creating default backing store on ceph objectstore", r.CephObjectstoreUser.Name)
+	if r.CephObjectStoreUser.UID != "" {
+		log.Infof("CephObjectStoreUser %q created. Creating default backing store on ceph objectstore", r.CephObjectStoreUser.Name)
 		if err := r.prepareCephBackingStore(); err != nil {
 			return err
 		}
 	} else if r.AWSCloudCreds.UID != "" {
-		log.Infof("CredentialsRequest %q created.  creating default backing store on AWS objectstore", r.AWSCloudCreds.Name)
+		log.Infof("CredentialsRequest %q created. Creating default backing store on AWS objectstore", r.AWSCloudCreds.Name)
 		if err := r.prepareAWSBackingStore(); err != nil {
 			return err
 		}
 	} else if r.AzureCloudCreds.UID != "" {
-		log.Infof("CredentialsRequest %q created.  creating default backing store on Azure objectstore", r.AzureCloudCreds.Name)
+		log.Infof("CredentialsRequest %q created. Creating default backing store on Azure objectstore", r.AzureCloudCreds.Name)
 		if err := r.prepareAzureBackingStore(); err != nil {
 			return err
 		}
 	} else if r.GCPCloudCreds.UID != "" {
 		log.Infof("CredentialsRequest %q created.  creating default backing store on GCP objectstore", r.GCPCloudCreds.Name)
 		if err := r.prepareGCPBackingStore(); err != nil {
+			return err
+		}
+	} else if r.IsIBMCloud {
+		log.Infof("Running in IBM Cloud. Creating default backing store on IBM objectstore")
+		if err := r.prepareIBMBackingStore(); err != nil {
 			return err
 		}
 	} else {
@@ -677,6 +688,97 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 	return nil
 }
 
+func (r *Reconciler) prepareIBMBackingStore() error {
+	r.Logger.Info("Preparing backing store in IBM Cloud")
+
+	var (
+		endpoint string
+		location string
+	)
+
+	util.KubeCheck(r.IBMCloudCOSCreds)
+	if r.IBMCloudCOSCreds.UID == "" {
+		r.Logger.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
+		return fmt.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
+	}
+
+	if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_Endpoint"]; ok {
+		// Use the endpoint provided in the secret
+		endpoint = val
+		r.Logger.Infof("Endpoint provided in secret: %q", endpoint)
+		if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_Location"]; ok {
+			location = val
+			r.Logger.Infof("Location provided in secret: %q", location)
+		}
+	} else {
+		// Endpoint not provided in the secret, construct one based on the cluster's region
+		// https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints#endpoints
+		region, err := util.GetIBMRegion()
+		if err != nil {
+			r.Logger.Errorf("Failed to get IBM Region. %q", err)
+			return fmt.Errorf("Failed to get IBM Region")
+		}
+		r.Logger.Infof("Constructing endpoint for region: %q", region)
+		// https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-classes#classes-locationconstraint
+		endpoint = fmt.Sprintf(ibmEndpoint, region)
+		location = fmt.Sprintf(ibmLocation, region)
+	}
+
+	if _, err := url.Parse(endpoint); err != nil {
+		r.Logger.Errorf("Invalid formate URL %q", endpoint)
+		return fmt.Errorf("Invalid formate URL %q", endpoint)
+	}
+
+	r.Logger.Infof("IBM COS Endpoint: %s   LocationConstraint: %s", endpoint, location)
+
+	var accessKeyID string
+	if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_ACCESS_KEY_ID"]; ok {
+		accessKeyID = val
+	} else {
+		r.Logger.Errorf("Missing IBM_COS_ACCESS_KEY_ID in the secret")
+		return fmt.Errorf("Missing IBM_COS_ACCESS_KEY_ID in the secret")
+	}
+
+	var secretAccessKey string
+	if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_SECRET_ACCESS_KEY"]; ok {
+		secretAccessKey = val
+	} else {
+		r.Logger.Errorf("Missing IBM_COS_SECRET_ACCESS_KEY in the secret")
+		return fmt.Errorf("Missing IBM_COS_SECRET_ACCESS_KEY in the secret")
+	}
+
+	bucketName := r.generateBackingStoreTargetName()
+	r.Logger.Infof("IBM COS Bucket Name: %s", bucketName)
+
+	s3Config := &aws.Config{
+		S3ForcePathStyle: aws.Bool(true),
+		Endpoint:         aws.String(endpoint),
+		Credentials: credentials.NewStaticCredentials(
+			accessKeyID,
+			secretAccessKey,
+			"",
+		),
+		Region: &location,
+	}
+	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
+		return err
+	}
+	r.Logger.Infof("Created bucket: %s", bucketName)
+
+	// create backing store
+	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeIBMCos
+	r.DefaultBackingStore.Spec.IBMCos = &nbv1.IBMCosSpec{
+		TargetBucket: bucketName,
+		Secret: corev1.SecretReference{
+			Name:      r.IBMCloudCOSCreds.Name,
+			Namespace: r.IBMCloudCOSCreds.Namespace,
+		},
+		Endpoint:         endpoint,
+		SignatureVersion: nbv1.S3SignatureVersionV2,
+	}
+	return nil
+}
+
 func (r *Reconciler) createGCPBucketForBackingStore(client *storage.Client, projectID, bucketName string) error {
 	// [START create_bucket]
 	ctx := context.Background()
@@ -714,7 +816,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 	if cephObjectUserSecret.StringData["Endpoint"] != "" {
 		// first look for the endpoint in the secret
 		endpoint = cephObjectUserSecret.StringData["Endpoint"]
-		r.Logger.Infof("Found RGW endpoint in cephObjectUserSecret %q",secretName)
+		r.Logger.Infof("Found RGW endpoint in cephObjectUserSecret %q", secretName)
 	} else if r.NooBaa.Labels != nil && r.NooBaa.Labels["rgw-endpoint"] != "" {
 		// take from label if not found so far
 		raw := r.NooBaa.Labels["rgw-endpoint"]
@@ -724,11 +826,11 @@ func (r *Reconciler) prepareCephBackingStore() error {
 	} else if r.CephObjectstoreUser.Spec.Store != "" {
 		// if not found in the secret compose from the ceph-object-store name
 		endpoint = "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
-		r.Logger.Infof("Found RGW endpoint in CephObjectstoreUser %q",r.CephObjectstoreUser.Name)
-	}  else {
+		r.Logger.Infof("Found RGW endpoint in CephObjectstoreUser %q", r.CephObjectstoreUser.Name)
+	} else {
 		return fmt.Errorf("Ceph RGW endpoint address is not available")
 	}
-	r.Logger.Infof("RGW endpoint %q",endpoint)
+	r.Logger.Infof("RGW endpoint %q", endpoint)
 
 	region := "us-east-1"
 	forcePathStyle := true

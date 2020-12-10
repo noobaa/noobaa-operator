@@ -79,6 +79,8 @@ type Reconciler struct {
 	AzureContainerCreds *corev1.Secret
 	GCPBucketCreds      *corev1.Secret
 	GCPCloudCreds       *cloudcredsv1.CredentialsRequest
+	IsIBMCloud          bool
+	IBMCloudCOSCreds    *corev1.Secret
 	DefaultBackingStore *nbv1.BackingStore
 	DefaultBucketClass  *nbv1.BucketClass
 	OBCStorageClass     *storagev1.StorageClass
@@ -127,6 +129,7 @@ func NewReconciler(
 		AWSCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		AzureCloudCreds:     util.KubeObject(bundle.File_deploy_internal_cloud_creds_azure_cr_yaml).(*cloudcredsv1.CredentialsRequest),
 		GCPCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_gcp_cr_yaml).(*cloudcredsv1.CredentialsRequest),
+		IBMCloudCOSCreds:    util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
 		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
 		OBCStorageClass:     util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
@@ -160,6 +163,7 @@ func NewReconciler(
 	r.AzureCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
 	r.GCPCloudCreds.Namespace = r.Request.Namespace
 	r.GCPCloudCreds.Spec.SecretRef.Namespace = r.Request.Namespace
+	r.IBMCloudCOSCreds.Namespace = r.Request.Namespace
 	r.DefaultBackingStore.Namespace = r.Request.Namespace
 	r.DefaultBucketClass.Namespace = r.Request.Namespace
 	r.PrometheusRule.Namespace = r.Request.Namespace
@@ -191,7 +195,9 @@ func NewReconciler(
 	r.GCPBucketCreds.Name = r.Request.Name + "-gcp-bucket-creds"
 	r.GCPCloudCreds.Name = r.Request.Name + "-gcp-cloud-creds"
 	r.GCPCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-gcp-cloud-creds-secret"
-	r.CephObjectstoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
+	r.CephObjectStoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
+	r.IsIBMCloud = false
+	r.IBMCloudCOSCreds.Name = ibmCOSCred
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"
 	r.PrometheusRule.Name = r.Request.Name + "-prometheus-rules"
