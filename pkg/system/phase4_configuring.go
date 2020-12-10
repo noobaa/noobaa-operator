@@ -272,6 +272,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			}
 			mgmtBaseAddr := ""
 			s3BaseAddr := ""
+			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env);
 			if r.JoinSecret == nil {
 				mgmtBaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceMgmt.Name, r.Request.Namespace)
 				s3BaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceS3.Name, r.Request.Namespace)
