@@ -168,6 +168,10 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 
 	podSpec := &NooBaaDB.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa"
+	defaultUID := int64(10001)
+	defaulfGID := int64(0)
+	podSpec.SecurityContext.RunAsUser = &defaultUID
+	podSpec.SecurityContext.RunAsGroup = &defaulfGID
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
 		if c.Name == "init" {

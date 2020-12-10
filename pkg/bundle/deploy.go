@@ -2940,7 +2940,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_db_yaml = "1da335367274e61427cd7cea453de205973c48bcbf26bcbd5473c0064df5ff47"
+const Sha256_deploy_internal_statefulset_db_yaml = "40ccae24471e291d5cec7941ffc93e16c9c30e45bccb67e0beb009ad154b0cb0"
 
 const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3003,6 +3003,9 @@ spec:
         volumeMounts:
         - name: db
           mountPath: /data
+      securityContext: 
+        runAsUser: 10001
+        runAsGroup: 0
   volumeClaimTemplates:
   - metadata:
       name: db
@@ -3016,7 +3019,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "163bf7ffa29686d9080bd0b89e00a47824d3f50cab087c477495969746dfa691"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "b50f93974700793f98f409849e3519522ba729d54b5a32a0b1565876f71c85b7"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3039,30 +3042,52 @@ spec:
         noobaa-db: postgres
     spec:
       serviceAccountName: noobaa
-      containers:
-        #--------------------#
-        # Postgres CONTAINER #
-        #--------------------#
+      initContainers:
+      #----------------#
+      # INIT CONTAINER #
+      #----------------#
+      - name: init
+        image: NOOBAA_CORE_IMAGE
+        command:
+        - /noobaa_init_files/noobaa_init.sh
+        - init_postgres
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "500Mi"
+          limits:
+            cpu: "500m"
+            memory: "500Mi"
+        volumeMounts:
         - name: db
-          image: NOOBAA_DB_IMAGE
-          env:
-            - name: POSTGRESQL_DATABASE
-              value: nbcore
-            - name: POSTGRESQL_USER
-            - name: POSTGRESQL_PASSWORD
-          magePullPolicy: "IfNotPresent"
-          ports:
-            - containerPort: 5432
-          resources:
-            requests:
-              cpu: "2"
-              memory: "4Gi"
-            limits:
-              cpu: "2"
-              memory: "4Gi"
-          volumeMounts:
-            - name: db
-              mountPath: /var/lib/pgsql
+          mountPath: /var/lib/pgsql
+      containers:
+      #--------------------#
+      # Postgres CONTAINER #
+      #--------------------#
+      - name: db
+        image: NOOBAA_DB_IMAGE
+        env:
+          - name: POSTGRESQL_DATABASE
+            value: nbcore
+          - name: POSTGRESQL_USER
+          - name: POSTGRESQL_PASSWORD
+        magePullPolicy: "IfNotPresent"
+        ports:
+          - containerPort: 5432
+        resources:
+          requests:
+            cpu: "2"
+            memory: "4Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        volumeMounts:
+          - name: db
+            mountPath: /var/lib/pgsql
+      securityContext: 
+        runAsUser: 10001
+        runAsGroup: 0
   volumeClaimTemplates:
     - metadata:
         name: db
