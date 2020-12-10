@@ -19,30 +19,52 @@ spec:
         noobaa-db: postgres
     spec:
       serviceAccountName: noobaa
-      containers:
-        #--------------------#
-        # Postgres CONTAINER #
-        #--------------------#
+      initContainers:
+      #----------------#
+      # INIT CONTAINER #
+      #----------------#
+      - name: init
+        image: NOOBAA_CORE_IMAGE
+        command:
+        - /noobaa_init_files/noobaa_init.sh
+        - init_postgres
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "500Mi"
+          limits:
+            cpu: "500m"
+            memory: "500Mi"
+        volumeMounts:
         - name: db
-          image: NOOBAA_DB_IMAGE
-          env:
-            - name: POSTGRESQL_DATABASE
-              value: nbcore
-            - name: POSTGRESQL_USER
-            - name: POSTGRESQL_PASSWORD
-          magePullPolicy: "IfNotPresent"
-          ports:
-            - containerPort: 5432
-          resources:
-            requests:
-              cpu: "2"
-              memory: "4Gi"
-            limits:
-              cpu: "2"
-              memory: "4Gi"
-          volumeMounts:
-            - name: db
-              mountPath: /var/lib/pgsql
+          mountPath: /var/lib/pgsql
+      containers:
+      #--------------------#
+      # Postgres CONTAINER #
+      #--------------------#
+      - name: db
+        image: NOOBAA_DB_IMAGE
+        env:
+          - name: POSTGRESQL_DATABASE
+            value: nbcore
+          - name: POSTGRESQL_USER
+          - name: POSTGRESQL_PASSWORD
+        magePullPolicy: "IfNotPresent"
+        ports:
+          - containerPort: 5432
+        resources:
+          requests:
+            cpu: "2"
+            memory: "4Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        volumeMounts:
+          - name: db
+            mountPath: /var/lib/pgsql
+      securityContext: 
+        runAsUser: 10001
+        runAsGroup: 0
   volumeClaimTemplates:
     - metadata:
         name: db
