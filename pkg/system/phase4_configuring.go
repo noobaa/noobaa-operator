@@ -446,8 +446,8 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		return nil
 	}
 
-	if r.CephObjectStoreUser.UID != "" {
-		log.Infof("CephObjectStoreUser %q created. Creating default backing store on ceph objectstore", r.CephObjectStoreUser.Name)
+	if r.CephObjectstoreUser.UID != "" {
+		log.Infof("CephObjectStoreUser %q created. Creating default backing store on ceph objectstore", r.CephObjectstoreUser.Name)
 		if err := r.prepareCephBackingStore(); err != nil {
 			return err
 		}
