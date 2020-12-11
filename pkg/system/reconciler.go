@@ -195,7 +195,7 @@ func NewReconciler(
 	r.GCPBucketCreds.Name = r.Request.Name + "-gcp-bucket-creds"
 	r.GCPCloudCreds.Name = r.Request.Name + "-gcp-cloud-creds"
 	r.GCPCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-gcp-cloud-creds-secret"
-	r.CephObjectStoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
+	r.CephObjectstoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
 	r.IsIBMCloud = false
 	r.IBMCloudCOSCreds.Name = ibmCOSCred
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
