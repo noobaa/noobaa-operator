@@ -794,7 +794,7 @@ func (r *Reconciler) createGCPBucketForBackingStore(client *storage.Client, proj
 
 func (r *Reconciler) prepareCephBackingStore() error {
 
-	secretName := "rook-ceph-object-user-" + r.CephObjectstoreUser.Spec.Store + "-" + r.CephObjectstoreUser.Name
+	secretName := "rook-ceph-object-user-" + r.CephObjectStoreUser.Spec.Store + "-" + r.CephObjectStoreUser.Name
 
 	// get access\secret keys from user secret
 	cephObjectUserSecret := &corev1.Secret{
@@ -823,10 +823,10 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		i := strings.LastIndex(raw, "_")
 		endpoint = fmt.Sprintf("http://%s:%s", raw[:i], raw[i+1:])
 		r.Logger.Info("Found RGW endpoint in noobaa label \"endpoint\"")
-	} else if r.CephObjectstoreUser.Spec.Store != "" {
+	} else if r.CephObjectStoreUser.Spec.Store != "" {
 		// if not found in the secret compose from the ceph-object-store name
-		endpoint = "http://rook-ceph-rgw-" + r.CephObjectstoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
-		r.Logger.Infof("Found RGW endpoint in CephObjectstoreUser %q", r.CephObjectstoreUser.Name)
+		endpoint = "http://rook-ceph-rgw-" + r.CephObjectStoreUser.Spec.Store + "." + options.Namespace + ".svc.cluster.local:80"
+		r.Logger.Infof("Found RGW endpoint in CephObjectStoreUser %q", r.CephObjectStoreUser.Name)
 	} else {
 		return fmt.Errorf("Ceph RGW endpoint address is not available")
 	}

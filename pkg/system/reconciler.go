@@ -87,7 +87,7 @@ type Reconciler struct {
 	PrometheusRule      *monitoringv1.PrometheusRule
 	ServiceMonitor      *monitoringv1.ServiceMonitor
 	SystemInfo          *nb.SystemInfo
-	CephObjectstoreUser *cephv1.CephObjectStoreUser
+	CephObjectStoreUser *cephv1.CephObjectStoreUser
 	RouteMgmt           *routev1.Route
 	RouteS3             *routev1.Route
 	DeploymentEndpoint  *appsv1.Deployment
@@ -135,7 +135,7 @@ func NewReconciler(
 		OBCStorageClass:     util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
 		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		ServiceMonitor:      util.KubeObject(bundle.File_deploy_internal_service_monitor_yaml).(*monitoringv1.ServiceMonitor),
-		CephObjectstoreUser: util.KubeObject(bundle.File_deploy_internal_ceph_objectstore_user_yaml).(*cephv1.CephObjectStoreUser),
+		CephObjectStoreUser: util.KubeObject(bundle.File_deploy_internal_ceph_objectstore_user_yaml).(*cephv1.CephObjectStoreUser),
 		RouteMgmt:           util.KubeObject(bundle.File_deploy_internal_route_mgmt_yaml).(*routev1.Route),
 		RouteS3:             util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
 		DeploymentEndpoint:  util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
@@ -168,7 +168,7 @@ func NewReconciler(
 	r.DefaultBucketClass.Namespace = r.Request.Namespace
 	r.PrometheusRule.Namespace = r.Request.Namespace
 	r.ServiceMonitor.Namespace = r.Request.Namespace
-	r.CephObjectstoreUser.Namespace = r.Request.Namespace
+	r.CephObjectStoreUser.Namespace = r.Request.Namespace
 	r.RouteMgmt.Namespace = r.Request.Namespace
 	r.RouteS3.Namespace = r.Request.Namespace
 	r.DeploymentEndpoint.Namespace = r.Request.Namespace
