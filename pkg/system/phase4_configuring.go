@@ -272,7 +272,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			}
 			mgmtBaseAddr := ""
 			s3BaseAddr := ""
-			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env);
+			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env)
 			if r.JoinSecret == nil {
 				mgmtBaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceMgmt.Name, r.Request.Namespace)
 				s3BaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceS3.Name, r.Request.Namespace)
@@ -842,6 +842,10 @@ func (r *Reconciler) prepareCephBackingStore() error {
 	}
 
 	// create backing store
+	if r.DefaultBackingStore.ObjectMeta.Annotations == nil {
+		r.DefaultBackingStore.ObjectMeta.Annotations = map[string]string{}
+	}
+	r.DefaultBackingStore.ObjectMeta.Annotations["rgw"] = ""
 	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeS3Compatible
 	r.DefaultBackingStore.Spec.S3Compatible = &nbv1.S3CompatibleSpec{
 		Secret:           corev1.SecretReference{Name: secretName, Namespace: options.Namespace},

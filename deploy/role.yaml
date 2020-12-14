@@ -91,6 +91,14 @@ rules:
   - list
   - watch
 - apiGroups:
+  - ceph.rook.io
+  resources:
+  - cephclusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - route.openshift.io
   resources:
   - routes

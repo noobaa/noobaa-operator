@@ -3936,7 +3936,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "350eb245a04fd19faeb77941868d228916cd6622053b7675f9af0e853de3d8d9"
+const Sha256_deploy_role_yaml = "e7f989b6da9e463a79e9c2fca2c8621f3f2eaf7a9df16b7c3eeb27e140e7089a"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -4028,6 +4028,14 @@ rules:
   - get
   - create
   - update
+  - list
+  - watch
+- apiGroups:
+  - ceph.rook.io
+  resources:
+  - cephclusters
+  verbs:
+  - get
   - list
   - watch
 - apiGroups:
