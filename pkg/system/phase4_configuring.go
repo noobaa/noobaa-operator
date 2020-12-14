@@ -16,6 +16,7 @@ import (
 
 	"github.com/marstr/randname"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
@@ -23,7 +24,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -84,7 +87,6 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileDeploymentEndpointStatus(); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -273,7 +275,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			if r.JoinSecret == nil {
 				mgmtBaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceMgmt.Name, r.Request.Namespace)
 				s3BaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceS3.Name, r.Request.Namespace)
-				r.setDesiredCoreEnv(c);
+				r.setDesiredCoreEnv(c)
 			}
 
 			for j := range c.Env {
@@ -1001,6 +1003,13 @@ func (r *Reconciler) ReconcileReadSystem() error {
 	r.UpdateBackingStoresPhase(systemInfo.Pools)
 	r.UpdateBucketClassesPhase(systemInfo.Buckets)
 
+	if len(systemInfo.NamespaceResources) > 0 {
+		if err := r.ReconcileNamespaceStores(systemInfo.NamespaceResources); err != nil {
+			r.Logger.Infof("got error on ReconcileNamespaceStores, %+v", err)
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -1087,5 +1096,135 @@ func (r *Reconciler) ReconcileDeploymentEndpointStatus() error {
 		VirtualHosts: virtualHosts,
 	}
 
+	return nil
+}
+
+// ReconcileNamespaceStores syncs between core namespace resources with namespace bucketclasses
+func (r *Reconciler) ReconcileNamespaceStores(namespaceResources []nb.NamespaceResourceInfo) error {
+	r.Logger.Infof("ReconcileNamespaceStores: %+v", namespaceResources)
+
+	for _, nsr := range namespaceResources {
+		r.Logger.Infof("ReconcileNamespaceStores: nsr: %+v", nsr)
+		nsStore := &nbv1.NamespaceStore{
+			TypeMeta: metav1.TypeMeta{Kind: "NamespaceStore"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nsr.Name,
+				Namespace: options.Namespace,
+			},
+		}
+		if !util.KubeCheck(nsStore) {
+			namespaceResourceOperatorInfo, err := r.NBClient.ReadNamespaceResourceOperatorInfoAPI(nb.ReadNamespaceResourceParams{Name: nsr.Name})
+			if err != nil {
+				logrus.Warnf(`❌ Failed to read NamespaceStore secrets: %s`, err)
+				continue
+			}
+			if !namespaceResourceOperatorInfo.NeedK8sSync {
+				continue
+			}
+
+			o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+			secret := o.(*corev1.Secret)
+			secret.Namespace = options.Namespace
+			secret.Data = nil
+			secret.StringData = map[string]string{}
+
+			switch nsr.EndpointType {
+			case "AWS":
+				nsStore.Spec.Type = nbv1.NSStoreTypeAWSS3
+				secret.StringData["AWS_ACCESS_KEY_ID"] = nsr.Identity
+				secret.StringData["AWS_SECRET_ACCESS_KEY"] = namespaceResourceOperatorInfo.SecretKey
+				secret.Name = fmt.Sprintf("namespace-store-%s-%s", nbv1.NSStoreTypeAWSS3, nsr.Name)
+				nsStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
+					TargetBucket: nsr.TargetBucket,
+					Secret: corev1.SecretReference{
+						Name:      secret.Name,
+						Namespace: secret.Namespace,
+					},
+				}
+			case "AZURE":
+				nsStore.Spec.Type = nbv1.NSStoreTypeAzureBlob
+				secret.StringData["AccountName"] = nsr.Identity
+				secret.StringData["AccountKey"] = namespaceResourceOperatorInfo.SecretKey
+				secret.Name = fmt.Sprintf("namespace-store-%s-%s", nbv1.NSStoreTypeAzureBlob, nsr.Name)
+				nsStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
+					TargetBlobContainer: nsr.TargetBucket,
+					Secret: corev1.SecretReference{
+						Name:      secret.Name,
+						Namespace: secret.Namespace,
+					},
+				}
+			case "S3_COMPATIBLE":
+				nsStore.Spec.Type = nbv1.NSStoreTypeAzureBlob
+				secret.Name = fmt.Sprintf("namespace-store-%s-%s", nbv1.NSStoreTypeS3Compatible, nsr.Name)
+				secret.StringData["AWS_ACCESS_KEY_ID"] = nsr.Identity
+				secret.StringData["AWS_SECRET_ACCESS_KEY"] = namespaceResourceOperatorInfo.SecretKey
+
+				var sig nbv1.S3SignatureVersion
+				if nsr.AuthMethod == nb.CloudAuthMethodAwsV4 {
+					sig = nbv1.S3SignatureVersionV4
+				}
+				if nsr.AuthMethod == nb.CloudAuthMethodAwsV2 {
+					sig = nbv1.S3SignatureVersionV2
+				}
+				nsStore.Spec.S3Compatible = &nbv1.S3CompatibleSpec{
+					TargetBucket: nsr.TargetBucket,
+					Endpoint:     nsr.Endpoint,
+					Secret: corev1.SecretReference{
+						Name:      secret.Name,
+						Namespace: secret.Namespace,
+					},
+					SignatureVersion: sig,
+				}
+			case "IBM_COS":
+				nsStore.Spec.Type = nbv1.NSStoreTypeAzureBlob
+				secret.Name = fmt.Sprintf("namespace-store-%s-%s", nbv1.NSStoreTypeIBMCos, nsr.Name)
+				secret.StringData["AWS_ACCESS_KEY_ID"] = nsr.Identity
+				secret.StringData["AWS_SECRET_ACCESS_KEY"] = namespaceResourceOperatorInfo.SecretKey
+
+				var sig nbv1.S3SignatureVersion
+				if nsr.AuthMethod == nb.CloudAuthMethodAwsV4 {
+					sig = nbv1.S3SignatureVersionV4
+				}
+				if nsr.AuthMethod == nb.CloudAuthMethodAwsV2 {
+					sig = nbv1.S3SignatureVersionV2
+				}
+				nsStore.Spec.IBMCos = &nbv1.IBMCosSpec{
+					TargetBucket: nsr.TargetBucket,
+					Endpoint:     nsr.Endpoint,
+					Secret: corev1.SecretReference{
+						Name:      secret.Name,
+						Namespace: secret.Namespace,
+					},
+					SignatureVersion: sig,
+				}
+			default:
+				logrus.Errorf(`❌ Could not create NamespaceStore %q invalid endpoint type %q`, nsStore.Name, nsr.EndpointType)
+				continue
+			}
+
+			// Create namespace store CR
+			util.Panic(controllerutil.SetControllerReference(r.NooBaa, nsStore, scheme.Scheme))
+			if !util.KubeCreateSkipExisting(nsStore) {
+				logrus.Errorf(`❌ Could not create NamespaceStore %q in Namespace %q (conflict)`, nsStore.Name, nsStore.Namespace)
+				continue
+			}
+
+			if !util.KubeCheck(secret) {
+				// Create secret
+				util.Panic(controllerutil.SetControllerReference(nsStore, secret, scheme.Scheme))
+				if !util.KubeCreateSkipExisting(secret) {
+					logrus.Errorf(`❌ Could not create Secret %q in Namespace %q (conflict)`, secret.Name, secret.Namespace)
+					continue
+				}
+			}
+			err = r.NBClient.SetNamespaceStoreInfo(nb.NamespaceStoreInfo{
+				Name:      nsr.Name,
+				Namespace: options.Namespace,
+			})
+			if err != nil {
+				logrus.Infof("couldn't update namespace store info for namespace resource %q in namespace %q", nsr.Name, options.Namespace)
+			}
+		}
+	}
 	return nil
 }
