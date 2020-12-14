@@ -438,8 +438,8 @@ func CheckNooBaaDBImages(cmd *cobra.Command, sys *nbv1.NooBaa, args []string) st
 		desiredImage = *sys.Spec.DBImage
 	}
 	sts := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
-	if (sys.Spec.DBType == "postgres") {
-		sts.Name = "noobaa-db-pg";
+	if sys.Spec.DBType == "postgres" {
+		sts.Name = "noobaa-db-pg"
 	}
 	sts.Namespace = options.Namespace
 	if util.KubeCheckQuiet(sts) {
@@ -870,6 +870,11 @@ func CheckSystem(sys *nbv1.NooBaa) bool {
 	}
 	if sys.Status.Services == nil {
 		sys.Status.Services = &nbv1.ServicesStatus{}
+	}
+	// load defaults
+	// TODO: This is a temp patch it can be overriden by actually loading from the CR this is just a patch in memory
+	if sys.Spec.DBType == "" {
+		sys.Spec.DBType = "postgres" // = defaults.DBType
 	}
 	return found && sys.UID != ""
 }
