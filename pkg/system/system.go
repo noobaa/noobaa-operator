@@ -874,7 +874,7 @@ func CheckSystem(sys *nbv1.NooBaa) bool {
 	// load defaults
 	// TODO: This is a temp patch it can be overriden by actually loading from the CR this is just a patch in memory
 	if sys.Spec.DBType == "" {
-		sys.Spec.DBType = "postgres" // = defaults.DBType
+		sys.Spec.DBType = "mongodb" // = defaults.DBType
 	}
 	return found && sys.UID != ""
 }
