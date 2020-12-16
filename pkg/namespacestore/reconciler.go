@@ -432,6 +432,10 @@ func (r *Reconciler) ReadSystemInfo() error {
 		Name:         r.NamespaceStore.Name,
 		Connection:   conn.Name,
 		TargetBucket: GetNamespaceStoreTargetBucket(r.NamespaceStore),
+		NamespaceStore: &nb.NamespaceStoreInfo{
+			Name:      r.NamespaceStore.Name,
+			Namespace: options.Namespace,
+		},
 	}
 
 	return nil
@@ -705,18 +709,11 @@ func (r *Reconciler) ReconcileNamespaceStore() error {
 		return nil
 	}
 
-	// namespaceStoreName := ""
-
 	if r.CreateNamespaceResourceParams != nil {
 		err := r.NBClient.CreateNamespaceResourceAPI(*r.CreateNamespaceResourceParams)
 		if err != nil {
 			return err
 		}
-		//namespaceStoreName = r.CreateNamespaceResourceParams.Name
 	}
 	return nil
 }
-
-// func (r *Reconciler) upgradeNamespaceStore(sts *appsv1.StatefulSet) error {
-// 	return nil
-// }

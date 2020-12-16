@@ -77,6 +77,7 @@ type BucketInfo struct {
 		ResiliencyStatus string `json:"resiliency_status"`
 		QuotaStatus      string `json:"quota_status"`
 	} `json:"policy_modes,omitempty"`
+	Namespace *NamespaceBucketInfo `json:"namespace,omitempty"`
 	// TODO BucketInfo struct is partial ...
 }
 
@@ -181,6 +182,13 @@ type NamespaceResourceInfo struct {
 	Identity     string          `json:"identity,omitempty"`
 	AuthMethod   CloudAuthMethod `json:"auth_method,omitempty"`
 	CpCode       string          `json:"cp_code,omitempty"`
+}
+
+// NamespaceResourceOperatorInfo is a struct of namespace resource secrets returned by the API
+type NamespaceResourceOperatorInfo struct {
+	AccessKey   string `json:"access_key,omitempty"`
+	SecretKey   string `json:"secret_key,omitempty"`
+	NeedK8sSync bool   `json:"need_k8s_sync,omitempty"`
 }
 
 // PoolHostsInfo is the config/info of a hosts pool
@@ -353,6 +361,14 @@ type BackingStoreInfo struct {
 	Namespace string `json:"namespace"`
 }
 
+// NamespaceStoreInfo describes namespacestore info
+type NamespaceStoreInfo struct {
+	// Name describes backingstore name
+	Name string `json:"name"`
+	// Namespace describes backingstore namespace
+	Namespace string `json:"namespace"`
+}
+
 // CreateHostsPoolParams is the params of pool_api.create_hosts_pool()
 type CreateHostsPoolParams struct {
 	Name         string            `json:"name"`
@@ -384,10 +400,10 @@ type CreateCloudPoolParams struct {
 
 // CreateNamespaceResourceParams is the params of pool_api.create_cloud_pool()
 type CreateNamespaceResourceParams struct {
-	Name         string            `json:"name"`
-	Connection   string            `json:"connection"`
-	TargetBucket string            `json:"target_bucket"`
-	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
+	Name           string              `json:"name"`
+	Connection     string              `json:"connection"`
+	TargetBucket   string              `json:"target_bucket"`
+	NamespaceStore *NamespaceStoreInfo `json:"namespace_store,omitempty"`
 }
 
 // CreateTierParams is the reply of tier_api.create_tier()
