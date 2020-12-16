@@ -15,6 +15,8 @@ type Client interface {
 	ReadBucketAPI(ReadBucketParams) (BucketInfo, error)
 	ReadPoolAPI(ReadPoolParams) (PoolInfo, error)
 	ReadNamespaceResourceAPI(ReadNamespaceResourceParams) (NamespaceResourceInfo, error)
+	ReadNamespaceResourceOperatorInfoAPI(ReadNamespaceResourceParams) (NamespaceResourceOperatorInfo, error)
+	SetNamespaceStoreInfo(NamespaceStoreInfo) error
 
 	ListAccountsAPI() (ListAccountsReply, error)
 	ListBucketsAPI() (ListBucketsReply, error)
@@ -247,6 +249,23 @@ func (c *RPCClient) ReadNamespaceResourceAPI(params ReadNamespaceResourceParams)
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
+}
+
+// ReadNamespaceResourceOperatorInfoAPI calls pool_api.get_namespace_resource_operator_info()
+func (c *RPCClient) ReadNamespaceResourceOperatorInfoAPI(params ReadNamespaceResourceParams) (NamespaceResourceOperatorInfo, error) {
+	req := &RPCMessage{API: "pool_api", Method: "get_namespace_resource_operator_info", Params: params}
+	res := &struct {
+		RPCMessage `json:",inline"`
+		Reply      NamespaceResourceOperatorInfo `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
+}
+
+// SetNamespaceStoreInfo calls pool_api.set_namespace_store_info()
+func (c *RPCClient) SetNamespaceStoreInfo(info NamespaceStoreInfo) error {
+	req := &RPCMessage{API: "pool_api", Method: "set_namespace_store_info", Params: info}
+	return c.Call(req, nil)
 }
 
 // DeleteNamespaceResourceAPI calls pool_api.delete_namespace_resource()
