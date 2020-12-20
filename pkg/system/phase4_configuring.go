@@ -796,7 +796,7 @@ func (r *Reconciler) createGCPBucketForBackingStore(client *storage.Client, proj
 
 func (r *Reconciler) prepareCephBackingStore() error {
 	util.KubeCheck(r.CephObjectStoreUser)
-	if r.CephObjectStoreUser.UID != "" || r.CephObjectStoreUser.Status.Phase != "Ready" {
+	if r.CephObjectStoreUser.UID == "" || r.CephObjectStoreUser.Status.Phase != "Ready" {
 		r.Logger.Infof("Ceph objectstore user %q is not ready. retry on next reconcile..", r.CephObjectStoreUser.Name)
 		return fmt.Errorf("Ceph objectstore user %q is not ready", r.CephObjectStoreUser.Name)
 	}
