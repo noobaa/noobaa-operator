@@ -435,7 +435,7 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 		pvSizeGB, _ := cmd.Flags().GetUint32("pv-size-gb")
 		storageClass, _ := cmd.Flags().GetString("storage-class")
 		pvPoolName := args[0]
-		if len(pvPoolName) > 47 {
+		if len(pvPoolName) > 43 {
 			log.Fatalf(`❌ Number of characters in <backing-store-name> should not exceed 63 `)
 		}
 		if numVolumes == 0 {
