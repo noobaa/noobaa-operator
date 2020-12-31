@@ -59,6 +59,9 @@ spec:
         volumeMounts:
         - name: db
           mountPath: /data
+      securityContext: 
+        runAsUser: 10001
+        runAsGroup: 0
   volumeClaimTemplates:
   - metadata:
       name: db
