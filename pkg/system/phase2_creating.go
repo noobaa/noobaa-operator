@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -168,6 +169,10 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 
 	podSpec := &NooBaaDB.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa"
+	defaultUID := int64(10001)
+	defaulfGID := int64(0)
+	podSpec.SecurityContext.RunAsUser = &defaultUID
+	podSpec.SecurityContext.RunAsGroup = &defaulfGID
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
 		if c.Name == "init" {
@@ -793,33 +798,71 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 	if !util.KubeCheck(oldSts) {
 		phase = nbv1.UpgradePhaseNone
 	} else {
+		replicas := int32(1);
+		if (phase == nbv1.UpgradePhaseClean) {
+			replicas = int32(0)
+		}
+		if err:= r.ReconcileObject(oldSts, func () error { // remove old sts pods when finish migrating
+			oldSts.Spec.Replicas = &replicas;
+			podSpec := &oldSts.Spec.Template.Spec
+			podSpec.ServiceAccountName = "noobaa"
+			for i := range podSpec.InitContainers {
+				c := &podSpec.InitContainers[i]
+				if c.Name == "init" {
+					c.Image = r.NooBaa.Status.ActualImage
+				}
+			}
+			return nil;
+		}); err != nil {
+			return err
+		}
+		replicas = int32(0)
+		if (phase == nbv1.UpgradePhaseClean) {
+			replicas = int32(1)
+		}
+		if err:= r.ReconcileObject(r.DeploymentEndpoint, func () error { // remove endpoints pods before starting
+			r.DeploymentEndpoint.Spec.Replicas = &replicas;
+			return nil;
+		}); err != nil {
+			return err
+		}
 		r.Logger.Infof("UpgradeMigrateDB: Old STS found, upgrading...")
 		if phase == "" {
 			phase = nbv1.UpgradePhasePrepare
-		}
-		switch phase {
-		case nbv1.UpgradePhasePrepare:
-			util.KubeCheckQuiet(r.CoreApp)
-			if *r.CoreApp.Spec.Replicas == 0 {
-				phase = nbv1.UpgradePhaseMigrate
-			}
-		case nbv1.UpgradePhaseMigrate:
-			if err := r.ReconcileObject(r.UpgradeJob, r.SetDesiredJobUpgradeDB); err != nil {
-				return err
-			}
-			if r.UpgradeJob.Status.Succeeded > 0 {
-				phase = nbv1.UpgradePhaseClean
-			}
-		case nbv1.UpgradePhaseClean:
-			if *oldSts.Spec.Replicas == 0 {
-				phase = nbv1.UpgradePhaseFinished
-			} else {
-				if err := r.ReconcileObject(oldSts, func() error {
-					replicas := int32(0) // cleaning the pods
-					oldSts.Spec.Replicas = &replicas
-					return nil
-				}); err != nil {
+		} else {
+			switch phase {
+			case nbv1.UpgradePhasePrepare:
+				corePodList := &corev1.PodList{}
+				corePodSelector, _ := labels.Parse("noobaa-core=" + r.Request.Name)
+				epPodList := &corev1.PodList{}
+				epPodSelector, _ := labels.Parse("noobaa-s3=" + r.Request.Name)
+				if util.KubeList(epPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: epPodSelector}) && 
+					util.KubeList(corePodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: corePodSelector}) && 
+					(len(corePodList.Items) == 0 && len(epPodList.Items) == 0) && 
+					(oldSts.Status.ReadyReplicas == 1 && r.NooBaaPostgresDB.Status.ReadyReplicas == 1) {
+					phase = nbv1.UpgradePhaseMigrate
+				} else {
+					return fmt.Errorf("system not fully ready for migrate");
+				}
+			case nbv1.UpgradePhaseMigrate: 
+				if err:= r.ReconcileObject(r.UpgradeJob, r.SetDesiredJobUpgradeDB); err != nil {
 					return err
+				}
+				if (r.UpgradeJob.Status.Succeeded > 0) {
+					phase = nbv1.UpgradePhaseClean
+				} else {
+					return fmt.Errorf("job didn't finish yet");
+				}
+			case nbv1.UpgradePhaseClean: 
+				oldDbPodList := &corev1.PodList{}
+				oldDbPodSelector, _ := labels.Parse("noobaa-db=" + r.Request.Name)
+				if !util.KubeList(oldDbPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: oldDbPodSelector}) {
+					return nil
+				}
+				if (len(oldDbPodList.Items) == 0) {
+					phase = nbv1.UpgradePhaseFinished
+				} else {
+					return fmt.Errorf("not all old pods are cleaned yet");
 				}
 			}
 		}

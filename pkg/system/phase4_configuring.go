@@ -272,6 +272,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			}
 			mgmtBaseAddr := ""
 			s3BaseAddr := ""
+			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env);
 			if r.JoinSecret == nil {
 				mgmtBaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceMgmt.Name, r.Request.Namespace)
 				s3BaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceS3.Name, r.Request.Namespace)
@@ -796,7 +797,7 @@ func (r *Reconciler) createGCPBucketForBackingStore(client *storage.Client, proj
 
 func (r *Reconciler) prepareCephBackingStore() error {
 	util.KubeCheck(r.CephObjectStoreUser)
-	if r.CephObjectStoreUser.UID != "" || r.CephObjectStoreUser.Status.Phase != "Ready" {
+	if r.CephObjectStoreUser.UID == "" || r.CephObjectStoreUser.Status.Phase != "Ready" {
 		r.Logger.Infof("Ceph objectstore user %q is not ready. retry on next reconcile..", r.CephObjectStoreUser.Name)
 		return fmt.Errorf("Ceph objectstore user %q is not ready", r.CephObjectStoreUser.Name)
 	}

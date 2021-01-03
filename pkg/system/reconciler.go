@@ -97,6 +97,7 @@ type Reconciler struct {
 	RouteMgmt           *routev1.Route
 	RouteS3             *routev1.Route
 	DeploymentEndpoint  *appsv1.Deployment
+	DefaultDeploymentEndpoint *corev1.Container
 	HPAEndpoint         *autoscalingv1.HorizontalPodAutoscaler
 	JoinSecret          *corev1.Secret
 	UpgradeJob			*batchv1.Job
@@ -250,6 +251,7 @@ func NewReconciler(
 	r.SecretRootMasterKey.StringData["cipher_key_b64"] = util.RandomBase64(32)
 
 	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.Containers[0].DeepCopy();
+	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.Containers[0].DeepCopy();
 	return r
 }
 
