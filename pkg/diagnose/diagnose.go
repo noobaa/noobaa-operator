@@ -49,7 +49,7 @@ func RunCollect(cmd *cobra.Command, args []string) {
 
 	err := os.Mkdir(c.folderName, os.ModePerm)
 	if err != nil {
-		c.log.Fatalf(`❌ Could not craete directory %s, reason: %s`, c.folderName, err)
+		c.log.Fatalf(`❌ Could not create directory %s, reason: %s`, c.folderName, err)
 	}
 
 	c.CollectCR(&nbv1.BackingStoreList{
@@ -69,6 +69,12 @@ func RunCollect(cmd *cobra.Command, args []string) {
 
 	operatorPodSelector, _ := labels.Parse("noobaa-operator=deployment")
 	c.CollectPodLogs(operatorPodSelector)
+
+	noobaaBackingStore, _ := labels.Parse("pool=noobaa-default-backing-store")
+	c.CollectPodLogs(noobaaBackingStore)
+
+	noobaaEndPoint, _ := labels.Parse("noobaa-s3=noobaa")
+	c.CollectPodLogs(noobaaEndPoint)
 
 	// collectSystemMetrics()
 
