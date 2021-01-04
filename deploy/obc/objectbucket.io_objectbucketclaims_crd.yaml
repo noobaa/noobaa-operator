@@ -56,6 +56,10 @@ spec:
                   Caution! In-store bucket names may collide across namespaces.  If
                   you define the name yourself, try to make it as unique as possible.
                 type: string
+              objectBucketName:
+                description: ObjectBucketName is the name of the object bucket resource. 
+                  This is the authoritative determination for binding.
+                type: string
               generateBucketName:
                 description: GenerateBucketName (recommended) a prefix for a bucket
                   name to be followed by a hyphen and 5 random characters. Protects
