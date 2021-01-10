@@ -279,7 +279,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		pvc := &corev1.PersistentVolumeClaim{
 			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      t.Name + "-" + options.SystemName + "-db-0",
+				Name:      t.Name + "-" + noobaaDB.Name + "-0",
 				Namespace: options.Namespace,
 			},
 		}
@@ -512,7 +512,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		pvc := &corev1.PersistentVolumeClaim{
 			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      t.Name + "-" + options.SystemName + "-db-0",
+				Name:      t.Name + "-" + NooBaaDB.Name + "-0",
 				Namespace: options.Namespace,
 			},
 		}
