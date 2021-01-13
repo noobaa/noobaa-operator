@@ -21,6 +21,7 @@ import (
 	"unicode"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/hashicorp/vault/api"
 	vaultApi "github.com/hashicorp/vault/api"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/v2/pkg/apis"
@@ -57,6 +58,13 @@ const (
 	oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
 	rootSecretPath         = "NOOBAA_ROOT_SECRET_PATH"
 	ibmRegion              = "ibm-cloud.kubernetes.io/region"
+	vaultCaCert            = "VAULT_CACERT"
+	vaultClientCert        = "VAULT_CLIENT_CERT"
+	vaultClientKey         = "VAULT_CLIENT_KEY"
+	vaultAddr              = "VAULT_ADDR"
+	vaultCaPath            = "VAULT_CAPATH"
+	vaultBackendPath       = "VAULT_BACKEND_PATH"
+	kmsProvider            = "KMS_PROVIDER"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -1170,32 +1178,56 @@ func GetWatchNamespace() (string, error) {
 func VerifyExternalSecretsDeletion(kms nbv1.KeyManagementServiceSpec, namespace string) error {
 
 	if len(kms.ConnectionDetails) == 0 {
+		log.Infof("deleting root key locally")
 		return nil
 	}
-	c, err := InitVaultClient(kms.ConnectionDetails, kms.TokenSecretName, namespace)
 
+	if !IsVaultKMS(kms.ConnectionDetails[kmsProvider]) {
+		return fmt.Errorf("Unsupported KMS provider %v", kms.ConnectionDetails[kmsProvider])
+	}
+
+	c, err := InitVaultClient(kms.ConnectionDetails, kms.TokenSecretName, namespace)
+	if err != nil {
+		log.Errorf("deleting root key externally failed on init vault client: %v", err)
+		return err
+	}
+
+	secretPath, err := BuildExternalSecretPath(c, kms)
 	if err != nil {
 		return err
 	}
-	secretPath := BuildExternalSecretPath(kms)
+
 	err = DeleteSecret(c, secretPath)
 	if err != nil {
+		log.Errorf("deleting root key externally failed: %v", err)
 		return err
 	}
+
 	return nil
 }
 
 // InitVaultClient inits the secret store
 func InitVaultClient(config map[string]string, tokenSecretName string, namespace string) (*vaultApi.Client, error) {
-	client, err := vaultApi.NewClient(vaultApi.DefaultConfig())
+	// set TLS configurations
+	vaultClientConfig := vaultApi.DefaultConfig()
+	tlsConfig, err := GetVaultTLSConfig(config, namespace)
+	if err != nil {
+		return nil, fmt.Errorf(`❌ Could not init vault tls config %q in namespace %q`, config, namespace)
+	}
+	err = vaultClientConfig.ConfigureTLS(tlsConfig)
+	if err != nil {
+		return nil, fmt.Errorf(`❌ Could not configure tls for vault %q in namespace %q`, config, namespace)
+	}
+	client, err := vaultApi.NewClient(vaultClientConfig)
 	if err != nil {
 		return nil, err
 	}
-	addr := config["VAULT_ADDR"]
+	addr := strings.TrimSuffix(config[vaultAddr], "\n")
 	err = client.SetAddress(addr)
 	if err != nil {
 		return nil, err
 	}
+
 	secret := KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
 	secret.Namespace = namespace
 	secret.Name = tokenSecretName
@@ -1205,18 +1237,88 @@ func InitVaultClient(config map[string]string, tokenSecretName string, namespace
 	}
 
 	token := secret.StringData["token"]
-	client.SetToken(token)
+	trimmedToken := strings.TrimSuffix(token, "\n")
+	client.SetToken(trimmedToken)
+
+	// set namespace
+	vaultNamespace := config["VAULT_NAMESPACE"]
+	if vaultNamespace != "" {
+		client.SetNamespace(vaultNamespace)
+	}
 	return client, nil
 }
 
+// GetVaultTLSConfig returns tlsConfig if given
+func GetVaultTLSConfig(config map[string]string, namespace string) (*api.TLSConfig, error) {
+	tlsConfig := &api.TLSConfig{}
+	secret := KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret.Namespace = namespace
+
+	if tlsServerName := config["VAULT_TLS_SERVER_NAME"]; tlsServerName != "" {
+		tlsConfig.TLSServerName = strings.TrimSuffix(tlsServerName, "\n")
+	}
+	if tlsSkipVerify := config["VAULT_SKIP_VERIFY"]; tlsSkipVerify == "true" {
+		tlsConfig.Insecure = true
+		err := os.Setenv("VAULT_SKIP_VERIFY", "true")
+		if err != nil {
+			return nil, fmt.Errorf("can not set env var %v %v", "VAULT_SKIP_VERIFY", "true")
+		}
+	}
+
+	if caCertSecretName := config[vaultCaCert]; caCertSecretName != "" {
+		secret.Name = caCertSecretName
+		if !KubeCheckOptional(secret) {
+			return nil, fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+		}
+		caFileAddr, err := writeCrtsToFile(caCertSecretName, namespace, secret.Data["cert"], vaultCaCert)
+		if err != nil {
+			return nil, fmt.Errorf("can not write crt %v to file %v", vaultCaCert, err)
+		}
+		tlsConfig.CACert = caFileAddr
+	}
+
+	if clientCertSecretName := config[vaultClientCert]; clientCertSecretName != "" {
+		secret.Name = clientCertSecretName
+		if !KubeCheckOptional(secret) {
+			return nil, fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+		}
+		clientCertFileAddr, err := writeCrtsToFile(clientCertSecretName, namespace, secret.Data["cert"], vaultClientCert)
+		if err != nil {
+			return nil, fmt.Errorf("can not write crt %v to file %v", vaultClientCert, err)
+		}
+		tlsConfig.ClientCert = clientCertFileAddr
+
+	}
+	if clientKeySecretName := config[vaultClientKey]; clientKeySecretName != "" {
+		secret.Name = clientKeySecretName
+		if !KubeCheckOptional(secret) {
+			return nil, fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+		}
+		clientKeyFileAddr, err := writeCrtsToFile(clientKeySecretName, namespace, secret.Data["key"], vaultClientKey)
+		if err != nil {
+			return nil, fmt.Errorf("can not write crt %v to file %v", vaultClientKey, err)
+		}
+		tlsConfig.ClientKey = clientKeyFileAddr
+	}
+	return tlsConfig, nil
+}
+
 // PutSecret writes the secret to the secrets store
-func PutSecret(client *vaultApi.Client, secretName, secretValue, secretPath string) error {
+func PutSecret(client *vaultApi.Client, secretName, secretValue, secretPath string, backendPath string) error {
 
 	// Build Secret
 	data := make(map[string]interface{})
-	data[secretName] = secretValue
+	v2, err := isKV2(client, backendPath)
+	if err != nil {
+		return err
+	}
+	if v2 {
+		data["data"] = map[string]interface{}{secretName: secretValue}
+	} else {
+		data[secretName] = secretValue
+	}
 
-	_, err := client.Logical().Write(secretPath, data)
+	_, err = client.Logical().Write(secretPath, data)
 	if err != nil {
 		return err
 	}
@@ -1224,20 +1326,39 @@ func PutSecret(client *vaultApi.Client, secretName, secretValue, secretPath stri
 }
 
 // GetSecret reads the secret to the secrets store
-func GetSecret(client *vaultApi.Client, secretName, secretPath string) (string, error) {
+func GetSecret(client *vaultApi.Client, secretName, secretPath string, backendPath string) (string, error) {
 	secret, err := client.Logical().Read(secretPath)
 	if err != nil {
 		return "", err
 	}
 	if secret == nil {
-		return "", fmt.Errorf("RootKey is nil")
+		return "", nil
 	}
-	rootKey := secret.Data[secretName]
-	if rootKey != nil {
-		if rootKeyStr, ok := rootKey.(string); ok {
-			return rootKeyStr, nil
+	v2, err := isKV2(client, backendPath)
+	if err != nil {
+		return "", err
+	}
+	if v2 {
+		rootKey, ok := secret.Data["data"].(map[string]interface{})
+		// data property does not exist in secret (in kv2 a secret may exist but have deletion timestamp)
+		if !ok {
+			return "", nil
+		}
+		rootKeyData := rootKey[secretName]
+		if rootKeyData != nil {
+			if rootKeyStr, ok := rootKeyData.(string); ok {
+				return rootKeyStr, nil
+			}
+		}
+	} else {
+		rootKey := secret.Data[secretName]
+		if rootKey != nil {
+			if rootKeyStr, ok := rootKey.(string); ok {
+				return rootKeyStr, nil
+			}
 		}
 	}
+
 	return "", fmt.Errorf("could not find secret name %+v in path", secretName)
 }
 
@@ -1248,15 +1369,142 @@ func DeleteSecret(client *vaultApi.Client, secretPath string) error {
 		log.Infof("DeleteSecret: err %+v", err)
 		return err
 	}
+	log.Infof("DeleteSecret: deletion from secret path %+v succeded", secretPath)
+
 	return nil
 }
 
+func isKV2(client *vaultApi.Client, backend string) (bool, error) {
+	if backend == "" {
+		return false, nil
+	}
+	if !strings.HasSuffix(backend, "/") {
+		backend += "/"
+	}
+	mounts, err := client.Sys().ListMounts()
+	if err != nil {
+		return false, err
+	}
+	kvBackend, ok := mounts[backend]
+	if !ok {
+		return false, fmt.Errorf("can not find backend path %v in vault", backend)
+	}
+	if len(kvBackend.Options) > 0 && kvBackend.Options["version"] == "2" {
+		return true, nil
+	}
+	return false, nil
+}
+
 // BuildExternalSecretPath builds a string that specifies the root key secret path
-func BuildExternalSecretPath(kms nbv1.KeyManagementServiceSpec) string {
+func BuildExternalSecretPath(client *vaultApi.Client, kms nbv1.KeyManagementServiceSpec) (string, error) {
 	secretPath := ""
-	if kms.ConnectionDetails["VAULT_BACKEND_PATH"] != "" {
-		secretPath += kms.ConnectionDetails["VAULT_BACKEND_PATH"]
+	backendPath := kms.ConnectionDetails[vaultBackendPath]
+	if backendPath != "" {
+		secretPath += backendPath
+		if !strings.HasSuffix(backendPath, "/") {
+			secretPath += "/"
+		}
+	}
+
+	v2, err := isKV2(client, backendPath)
+	if err != nil {
+		return "", err
+	}
+	if v2 {
+		secretPath += "data/"
 	}
 	secretPath += rootSecretPath
-	return secretPath
+	return secretPath, nil
+}
+
+// IsVaultKMS return true if kms provider is vault
+func IsVaultKMS(provider string) bool {
+	return provider == "vault"
+}
+
+// ValidateConnectionDetails return error if kms connection details are faulty
+func ValidateConnectionDetails(config map[string]string, tokenSecretName string, namespace string) error {
+	// validate auth token
+	if tokenSecretName == "" {
+		return fmt.Errorf("kms token is missing")
+	}
+	secret := KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret.Namespace = namespace
+	secret.Name = tokenSecretName
+
+	if !KubeCheck(secret) {
+		return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+	}
+
+	token, ok := secret.StringData["token"]
+	if !ok || token == "" {
+		return fmt.Errorf("kms token in token secret is missing")
+	}
+	// validate connection details
+	providerType := config[kmsProvider]
+	if IsVaultKMS(providerType) {
+		return ValidateVaultConnectionDetails(config, tokenSecretName, namespace)
+	}
+	return fmt.Errorf("Unsupported kms type: %v", providerType)
+}
+
+// ValidateVaultConnectionDetails return error if vault connection details are faulty
+func ValidateVaultConnectionDetails(config map[string]string, tokenName string, namespace string) error {
+	if addr, ok := config[vaultAddr]; !ok || addr == "" {
+		return fmt.Errorf("failed to validate vault connection details: vault address is missing")
+	}
+	if capPath, ok := config[vaultCaPath]; ok && capPath != "" {
+		// We do not support a directory with multiple CA since we fetch a k8s Secret and read its content
+		// So we operate with a single CA only
+		return fmt.Errorf("failed to validate vault connection details: multiple CA is unsupported")
+	}
+	secret := KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret.Namespace = namespace
+
+	vaultTLSConnectionDetailsMap := map[string]string{vaultCaCert: "cert",
+		vaultClientCert: "cert", vaultClientKey: "key"}
+
+	for tlsOption, fieldInSecret := range vaultTLSConnectionDetailsMap {
+		tlsOptionSecretName, ok := config[tlsOption]
+		if ok && tlsOptionSecretName != "" {
+			secret.Name = tlsOptionSecretName
+			if !KubeCheckOptional(secret) {
+				return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+			}
+			if tlsOptionValue, ok := secret.Data[fieldInSecret]; !ok || len(tlsOptionValue) == 0 {
+				return fmt.Errorf("failed to validate vault connection details: vault %v is missing in secret %q in namespace %q",
+					tlsOption, secret.Name, secret.Namespace)
+			}
+		}
+	}
+	return nil
+}
+
+func writeCrtsToFile(secretName string, namespace string, secretValue []byte, envVarName string) (string, error) {
+	// check here first the env variable
+	if envVar, found := os.LookupEnv(envVarName); found && envVar != "" {
+		return envVar, nil
+	}
+
+	// Generate a temp file
+	file, err := ioutil.TempFile("", "")
+	if err != nil {
+		return "", fmt.Errorf("failed to generate temp file for k8s secret %q content, %v", secretName, err)
+	}
+
+	// Write into a file
+	err = ioutil.WriteFile(file.Name(), secretValue, 0444)
+	if err != nil {
+		return "", fmt.Errorf("failed to write k8s secret %q content to a file %v", secretName, err)
+	}
+
+	// update the env var with the path
+	envVarValue := file.Name()
+	envVarKey := envVarName
+
+	err = os.Setenv(envVarKey, envVarValue)
+	if err != nil {
+		return "", fmt.Errorf("can not set env var %v %v", envVarKey, envVarValue)
+	}
+	return envVarValue, nil
 }

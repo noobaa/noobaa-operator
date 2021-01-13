@@ -244,6 +244,8 @@ func RunDelete(cmd *cobra.Command, args []string) {
 
 	util.KubeCheck(sys)
 
+	log.Infof("Notice: Deletion of External secrets should be preformed manually")
+
 	cleanupData, _ := cmd.Flags().GetBool("cleanup_data")
 	objectBuckets := &nbv1.ObjectBucketList{}
 	obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
@@ -264,10 +266,6 @@ func RunDelete(cmd *cobra.Command, args []string) {
 				log.Errorf("NooBaa %q failed to remove finalizer %q", options.SystemName, nbv1.GracefulFinalizer)
 			}
 		}
-	}
-
-	if err := util.VerifyExternalSecretsDeletion(sys.Spec.Security.KeyManagementService, sys.Namespace); err != nil {
-		log.Warnf("could not delete external secrets: %s", err)
 	}
 
 	util.KubeDelete(sys)
