@@ -319,6 +319,9 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			}
 		case "POSTGRES_USER":
 			if r.NooBaa.Spec.DBType == "postgres" {
+				if (c.Env[j].Value != "") {
+					c.Env[j].Value = ""
+				}
 				c.Env[j].ValueFrom = &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
@@ -330,6 +333,9 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			}
 		case "POSTGRES_PASSWORD":
 			if r.NooBaa.Spec.DBType == "postgres" {
+				if (c.Env[j].Value != "") {
+					c.Env[j].Value = ""
+				}
 				c.Env[j].ValueFrom = &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
