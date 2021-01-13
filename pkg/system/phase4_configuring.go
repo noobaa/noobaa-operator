@@ -1000,16 +1000,18 @@ func (r *Reconciler) ReconcileReadSystem() error {
 	r.Logger.Infof("updating noobaa-core version to %s", systemInfo.Version)
 	r.CoreVersion = systemInfo.Version
 
-	// update backingstores and bucketclass mode
-	r.UpdateBackingStoresPhase(systemInfo.Pools)
-	r.UpdateBucketClassesPhase(systemInfo.Buckets)
-
+	// creates namespace stores if sync is needed on upgrade
 	if len(systemInfo.NamespaceResources) > 0 {
 		if err := r.ReconcileNamespaceStores(systemInfo.NamespaceResources); err != nil {
 			r.Logger.Infof("got error on ReconcileNamespaceStores, %+v", err)
 			return err
 		}
 	}
+
+	// update backingstores, namespacestores and bucketclass mode
+	r.UpdateBackingStoresPhase(systemInfo.Pools)
+	r.UpdateNamespaceStoresPhase(systemInfo.NamespaceResources)
+	r.UpdateBucketClassesPhase(systemInfo.Buckets)
 
 	return nil
 }
@@ -1033,6 +1035,31 @@ func (r *Reconciler) UpdateBackingStoresPhase(pools []nb.PoolInfo) {
 				err := r.Client.Status().Update(r.Ctx, bs)
 				if err != nil {
 					logrus.Errorf("got error when trying to update status of backingstore %v. %v", bs.Name, err)
+				}
+			}
+		}
+	}
+}
+
+// UpdateNamespaceStoresPhase updates newPhase of namespace resource after readSystem
+func (r *Reconciler) UpdateNamespaceStoresPhase(namespaceResources []nb.NamespaceResourceInfo) {
+
+	nssList := &nbv1.NamespaceStoreList{
+		TypeMeta: metav1.TypeMeta{Kind: "NamespaceStoreList"},
+	}
+	if !util.KubeList(nssList, &client.ListOptions{Namespace: options.Namespace}) {
+		logrus.Errorf("not found: Namespace Store list")
+	}
+	for i := range nssList.Items {
+		nss := &nssList.Items[i]
+		for _, namespaceResource := range namespaceResources {
+			if namespaceResource.Name == nss.Name && nss.Status.Mode.ModeCode != namespaceResource.Mode {
+				nss.Status.Mode.ModeCode = namespaceResource.Mode
+				nss.Status.Mode.TimeStamp = fmt.Sprint(time.Now())
+				r.NooBaa.Status.ObservedGeneration = r.NooBaa.Generation
+				err := r.Client.Status().Update(r.Ctx, nss)
+				if err != nil {
+					logrus.Errorf("got error when trying to update status of namespacestore %v. %v", nss.Name, err)
 				}
 			}
 		}
