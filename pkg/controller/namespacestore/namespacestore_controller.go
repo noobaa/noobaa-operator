@@ -6,6 +6,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -44,7 +45,7 @@ func Add(mgr manager.Manager) error {
 		predicate.GenerationChangedPredicate{},
 		util.LabelsChangedPredicate{},
 		util.FinalizersChangedPredicate{},
-		//namespaceStoreModeChangedPredicate{},
+		namespaceStoreModeChangedPredicate{},
 	)
 	err = c.Watch(&source.Kind{Type: &nbv1.NamespaceStore{}}, &handler.EnqueueRequestForObject{},
 		namespaceStorePredicate, &logEventsPredicate)
@@ -55,21 +56,21 @@ func Add(mgr manager.Manager) error {
 	return nil
 }
 
-// // namespaceStoreModeChangedPredicate will only allow events that changed Status.Mode.ModeCode.
-// // This predicate should be used only for NamespaceStore objects!
-// type namespaceStoreModeChangedPredicate struct {
-// 	predicate.Funcs
-// }
+// namespaceStoreModeChangedPredicate will only allow events that changed Status.Mode.ModeCode.
+// This predicate should be used only for NamespaceStore objects!
+type namespaceStoreModeChangedPredicate struct {
+	predicate.Funcs
+}
 
-// // Update implements the update event trap for LabelsChangedPredicate
-// func (p namespaceStoreModeChangedPredicate) Update(e event.UpdateEvent) bool {
-// 	if e.ObjectOld == nil || e.ObjectNew == nil {
-// 		return false
-// 	}
-// 	oldNamespaceStore, oldCastOk := e.ObjectOld.(*nbv1.NamespaceStore)
-// 	newNamespaceStore, newCastOk := e.ObjectNew.(*nbv1.NamespaceStore)
-// 	if !oldCastOk || !newCastOk {
-// 		return false
-// 	}
-// 	return oldNamespaceStore.Status.Mode.ModeCode != newNamespaceStore.Status.Mode.ModeCode
-// }
+// Update implements the update event trap for LabelsChangedPredicate
+func (p namespaceStoreModeChangedPredicate) Update(e event.UpdateEvent) bool {
+	if e.ObjectOld == nil || e.ObjectNew == nil {
+		return false
+	}
+	oldNamespaceStore, oldCastOk := e.ObjectOld.(*nbv1.NamespaceStore)
+	newNamespaceStore, newCastOk := e.ObjectNew.(*nbv1.NamespaceStore)
+	if !oldCastOk || !newCastOk {
+		return false
+	}
+	return oldNamespaceStore.Status.Mode.ModeCode != newNamespaceStore.Status.Mode.ModeCode
+}

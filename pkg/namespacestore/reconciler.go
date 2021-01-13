@@ -15,7 +15,6 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
 	"github.com/sirupsen/logrus"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,6 +29,21 @@ import (
 type ModeInfo struct {
 	Phase    nbv1.NamespaceStorePhase
 	Severity string
+}
+
+var nsrModeInfoMap map[string]ModeInfo
+
+func init() {
+	nsrModeInfoMap = modeInfoMap()
+}
+
+func modeInfoMap() map[string]ModeInfo {
+	return map[string]ModeInfo{
+		"OPTIMAL":           {nbv1.NamespaceStorePhaseReady, corev1.EventTypeNormal},
+		"IO_ERRORS":         {nbv1.NamespaceStorePhaseRejected, corev1.EventTypeWarning},
+		"STORAGE_NOT_EXIST": {nbv1.NamespaceStorePhaseRejected, corev1.EventTypeWarning},
+		"AUTH_FAILED":       {nbv1.NamespaceStorePhaseRejected, corev1.EventTypeWarning},
+	}
 }
 
 // Reconciler is the context for loading or reconciling a noobaa system
@@ -125,14 +139,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 	system.CheckSystem(r.NooBaa)
-
-	oldStatefulSet := &appsv1.StatefulSet{}
-	oldStatefulSet.Name = fmt.Sprintf("%s-%s-noobaa", r.NamespaceStore.Name, options.SystemName)
-	oldStatefulSet.Namespace = r.Request.Namespace
 	var err error
-	// if util.KubeCheck(oldStatefulSet) {
-	// 	err = r.upgradeNamespaceStore(oldStatefulSet)
-	// }
 
 	if err == nil {
 		err = r.LoadNamespaceStoreSecret()
@@ -147,7 +154,6 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	if err != nil {
-		logrus.Infof("ReconcilePhases err %+v", err)
 		if perr, isPERR := err.(*util.PersistentError); isPERR {
 			r.SetPhase(nbv1.NamespaceStorePhaseRejected, perr.Reason, perr.Message)
 			log.Errorf("❌ Persistent Error: %s", err)
@@ -155,21 +161,30 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 				r.Recorder.Eventf(r.NamespaceStore, corev1.EventTypeWarning, perr.Reason, perr.Message)
 			}
 		} else {
-			logrus.Infof("ReconcilePhases err1")
 			res.RequeueAfter = 3 * time.Second
 			// leave current phase as is
 			r.SetPhase("", "TemporaryError", err.Error())
 			log.Warnf("⏳ Temporary Error: %s", err)
 		}
 	} else {
-		logrus.Infof("ReconcilePhases ready")
+		mode := r.NamespaceStore.Status.Mode.ModeCode
+		phaseInfo, exist := nsrModeInfoMap[mode]
 
-		r.SetPhase(
-			nbv1.NamespaceStorePhaseReady,
-			"NamespaceStorePhaseReady",
-			"noobaa operator completed reconcile - namespace store is ready",
-		)
-		log.Infof("✅ Done")
+		if exist && phaseInfo.Phase != r.NamespaceStore.Status.Phase {
+			phaseName := fmt.Sprintf("NamespaceStorePhase%s", phaseInfo.Phase)
+			desc := fmt.Sprintf("Namespace store mode: %s", mode)
+			r.SetPhase(phaseInfo.Phase, desc, phaseName)
+			if r.Recorder != nil {
+				r.Recorder.Eventf(r.NamespaceStore, phaseInfo.Severity, phaseName, desc)
+			}
+		} else {
+			r.SetPhase(
+				nbv1.NamespaceStorePhaseReady,
+				"NamespaceStorePhaseReady",
+				"noobaa operator completed reconcile - namespace store is ready",
+			)
+			log.Infof("✅ Done")
+		}
 	}
 	logrus.Infof("ReconcilePhases update status")
 
