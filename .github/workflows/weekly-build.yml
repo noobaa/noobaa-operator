@@ -30,19 +30,19 @@ jobs:
       - name: Update Core Release
         id: update-release
         run: |
-          curl --silent -f -lSL "https://index.docker.io/v1/repositories/noobaa/noobaa-core/tags/master${{ steps.prep.outputs.version }}" > /dev/null || exit 1
+          curl --silent -f -lSL "https://index.docker.io/v1/repositories/noobaa/noobaa-core/tags/master-${{ steps.prep.outputs.version }}" > /dev/null || exit 1
           echo "::found version ${{ steps.prep.outputs.version }}, updating image version"
 
       - name: Login to DockerHub Registry
         run: echo ${{ secrets.GHACTIONSDOCKERHUB }} | docker login -u ${{ secrets.GHACTIONSDOCKERHUBNAME }} --password-stdin
 
       - name: Update Core Release Image
-        id: update-release
+        id: update-release-image
         run: |
           # docker pull "noobaa/noobaa-core:master-${{ steps.prep.outputs.version }}"
           echo "::found version ${{ steps.prep.outputs.version }}, updating image version in options.go"
           # Update local files
-          sed -i 's:ContainerImageTag =.*:ContainerImageTag = master-${{ steps.prep.outputs.version }}:' pkg/options/options.go
+          sed -i 's:ContainerImageTag =.*:ContainerImageTag = "master-${{ steps.prep.outputs.version }}":' pkg/options/options.go
 
           # Commit Changes
           # git config --local user.email "action@github.com"
@@ -54,7 +54,7 @@ jobs:
           DOCKERHUB_OWNER: ${{ secrets.GHACTIONSDOCKERHUBNAME }}
         run: |
             make image VERSION=latest
-            docker tag  noobaa-operator ${{ steps.prep.outputs.operatortags }}
+            docker tag  noobaa/noobaa-operator ${{ steps.prep.outputs.operatortags }}
             docker push ${{ steps.prep.outputs.operatortags }}
 
       - name: Push CLI Binary
