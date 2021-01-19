@@ -513,6 +513,13 @@ func (r *Reconciler) ReadSystemInfo() error {
 				r.BackingStore.Name, pool, pool.ResourceType,
 			))
 		}
+
+		const maxPoolNameLength = int(43)
+		if len(r.BackingStore.Name) > maxPoolNameLength {
+			return util.NewPersistentError("TooLongPoolName",
+				fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to too long pvpool backingstore name, max allowed is %d", r.BackingStore.Name, maxPoolNameLength))
+		}
+
 		const defaultVolumeSize = int64(20 * 1024 * 1024 * 1024) // 20Gi=20*1024^3
 		const minimalVolumeSize = int64(16 * 1024 * 1024 * 1024) // 16Gi=16*1024^3
 		var volumeSize int64
