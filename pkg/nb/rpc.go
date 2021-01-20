@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	util "github.com/noobaa/noobaa-operator/v2/pkg/util"
 	"github.com/sirupsen/logrus"
@@ -16,6 +17,9 @@ const (
 	// RPCMaxMessageSize is a limit to protect the process from allocating too much memory
 	// for a single incoming message for example in case the connection is out of sync or other bugs.
 	RPCMaxMessageSize = 64 * 1024 * 1024
+
+	// RPCSendTimeout is a limit the time we wait for getting reply from the server
+	RPCSendTimeout = 120 * time.Second;
 )
 
 // GlobalRPC is the global rpc
