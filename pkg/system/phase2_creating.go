@@ -319,7 +319,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			}
 		case "POSTGRES_USER":
 			if r.NooBaa.Spec.DBType == "postgres" {
-				if (c.Env[j].Value != "") {
+				if c.Env[j].Value != "" {
 					c.Env[j].Value = ""
 				}
 				c.Env[j].ValueFrom = &corev1.EnvVarSource{
@@ -333,7 +333,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			}
 		case "POSTGRES_PASSWORD":
 			if r.NooBaa.Spec.DBType == "postgres" {
-				if (c.Env[j].Value != "") {
+				if c.Env[j].Value != "" {
 					c.Env[j].Value = ""
 				}
 				c.Env[j].ValueFrom = &corev1.EnvVarSource{
@@ -634,32 +634,49 @@ func (r *Reconciler) ReconcileRootSecret() error {
 	log := r.Logger
 	var err error
 
+	connectionDetails := r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails
+	authTokenSecretName := r.NooBaa.Spec.Security.KeyManagementService.TokenSecretName
+
 	// set noobaa root master key secret
-	if len(r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails) != 0 {
-		c, err := util.InitVaultClient(r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails, r.NooBaa.Spec.Security.KeyManagementService.TokenSecretName, options.Namespace)
-		if err == nil {
-			secretPath := util.BuildExternalSecretPath(r.NooBaa.Spec.Security.KeyManagementService)
-
-			// get secret from external KMS
-			rootKey, err := util.GetSecret(c, "rootkeyb64", secretPath)
-			if err == nil {
-				log.Infof("found root secret in the external KMS succefuly")
-				r.SecretRootMasterKey.StringData["cipher_key_b64"] = rootKey
-				return nil
-			}
-			log.Infof("could not find root secret in external KMS, will upload new secret root key")
-
-			// put secret in external KMS
-			err = util.PutSecret(c, "rootkeyb64", r.SecretRootMasterKey.StringData["cipher_key_b64"], secretPath)
-			if err == nil {
-				log.Infof("uploaded root secret in the external KMS succefuly")
-				return nil
-			}
-			log.Errorf("Error put secret in vault: %+v", err)
+	if len(connectionDetails) != 0 {
+		if err := util.ValidateConnectionDetails(connectionDetails, authTokenSecretName, options.Namespace); err != nil {
+			return fmt.Errorf("external kms connection details validation failed: %q", err)
 		}
-		log.Infof("could not initialize external KMS client %+v", err)
+		kmsProvider := connectionDetails["KMS_PROVIDER"]
+		if util.IsVaultKMS(kmsProvider) {
+			// reconcile root master key externally (vault)
+			c, err := util.InitVaultClient(connectionDetails, authTokenSecretName, options.Namespace)
+			if err == nil {
+				secretPath, err1 := util.BuildExternalSecretPath(c, r.NooBaa.Spec.Security.KeyManagementService)
+				if err1 != nil {
+					return err1
+				}
+				// get secret from external KMS
+				rootKey, err := util.GetSecret(c, "rootkeyb64", secretPath, connectionDetails["VAULT_BACKEND_PATH"])
+				if err != nil {
+					msg := fmt.Errorf("got error in fetch root secret from external KMS %v", err)
+					return msg
+				}
+				if err == nil && rootKey != "" {
+					log.Infof("found root secret in external KMS successfully")
+					r.SecretRootMasterKey.StringData["cipher_key_b64"] = rootKey
+					return nil
+				}
+				log.Infof("could not find root secret in external KMS, will upload new secret root key %v", err)
+				// put secret in external KMS
+				if r.NooBaa.DeletionTimestamp == nil {
+					err = util.PutSecret(c, "rootkeyb64", r.SecretRootMasterKey.StringData["cipher_key_b64"], secretPath, connectionDetails["VAULT_BACKEND_PATH"])
+					if err == nil {
+						log.Infof("uploaded root secret to external KMS successfully")
+						return nil
+					}
+					return fmt.Errorf("Error put secret in vault: %+v", err)
+				}
+			}
+			return fmt.Errorf("could not initialize external KMS client %+v", err)
+		}
 	}
-
+	// reconcile root master key as K8s secret
 	err = r.ReconcileObject(r.SecretRootMasterKey, nil)
 	if err != nil {
 		return err
@@ -804,12 +821,12 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 	if !util.KubeCheck(oldSts) {
 		phase = nbv1.UpgradePhaseNone
 	} else {
-		replicas := int32(1);
-		if (phase == nbv1.UpgradePhaseClean) {
+		replicas := int32(1)
+		if phase == nbv1.UpgradePhaseClean {
 			replicas = int32(0)
 		}
-		if err:= r.ReconcileObject(oldSts, func () error { // remove old sts pods when finish migrating
-			oldSts.Spec.Replicas = &replicas;
+		if err := r.ReconcileObject(oldSts, func() error { // remove old sts pods when finish migrating
+			oldSts.Spec.Replicas = &replicas
 			podSpec := &oldSts.Spec.Template.Spec
 			podSpec.ServiceAccountName = "noobaa"
 			for i := range podSpec.InitContainers {
@@ -818,17 +835,17 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 					c.Image = r.NooBaa.Status.ActualImage
 				}
 			}
-			return nil;
+			return nil
 		}); err != nil {
 			return err
 		}
 		replicas = int32(0)
-		if (phase == nbv1.UpgradePhaseClean) {
+		if phase == nbv1.UpgradePhaseClean {
 			replicas = int32(1)
 		}
-		if err:= r.ReconcileObject(r.DeploymentEndpoint, func () error { // remove endpoints pods before starting
-			r.DeploymentEndpoint.Spec.Replicas = &replicas;
-			return nil;
+		if err := r.ReconcileObject(r.DeploymentEndpoint, func() error { // remove endpoints pods before starting
+			r.DeploymentEndpoint.Spec.Replicas = &replicas
+			return nil
 		}); err != nil {
 			return err
 		}
@@ -842,33 +859,33 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 				corePodSelector, _ := labels.Parse("noobaa-core=" + r.Request.Name)
 				epPodList := &corev1.PodList{}
 				epPodSelector, _ := labels.Parse("noobaa-s3=" + r.Request.Name)
-				if util.KubeList(epPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: epPodSelector}) && 
-					util.KubeList(corePodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: corePodSelector}) && 
-					(len(corePodList.Items) == 0 && len(epPodList.Items) == 0) && 
+				if util.KubeList(epPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: epPodSelector}) &&
+					util.KubeList(corePodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: corePodSelector}) &&
+					(len(corePodList.Items) == 0 && len(epPodList.Items) == 0) &&
 					(oldSts.Status.ReadyReplicas == 1 && r.NooBaaPostgresDB.Status.ReadyReplicas == 1) {
 					phase = nbv1.UpgradePhaseMigrate
 				} else {
-					return fmt.Errorf("system not fully ready for migrate");
+					return fmt.Errorf("system not fully ready for migrate")
 				}
-			case nbv1.UpgradePhaseMigrate: 
-				if err:= r.ReconcileObject(r.UpgradeJob, r.SetDesiredJobUpgradeDB); err != nil {
+			case nbv1.UpgradePhaseMigrate:
+				if err := r.ReconcileObject(r.UpgradeJob, r.SetDesiredJobUpgradeDB); err != nil {
 					return err
 				}
-				if (r.UpgradeJob.Status.Succeeded > 0) {
+				if r.UpgradeJob.Status.Succeeded > 0 {
 					phase = nbv1.UpgradePhaseClean
 				} else {
-					return fmt.Errorf("job didn't finish yet");
+					return fmt.Errorf("job didn't finish yet")
 				}
-			case nbv1.UpgradePhaseClean: 
+			case nbv1.UpgradePhaseClean:
 				oldDbPodList := &corev1.PodList{}
 				oldDbPodSelector, _ := labels.Parse("noobaa-db=" + r.Request.Name)
 				if !util.KubeList(oldDbPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: oldDbPodSelector}) {
 					return nil
 				}
-				if (len(oldDbPodList.Items) == 0) {
+				if len(oldDbPodList.Items) == 0 {
 					phase = nbv1.UpgradePhaseFinished
 				} else {
-					return fmt.Errorf("not all old pods are cleaned yet");
+					return fmt.Errorf("not all old pods are cleaned yet")
 				}
 			}
 		}
