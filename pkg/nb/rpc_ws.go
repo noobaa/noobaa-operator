@@ -171,7 +171,9 @@ func (c *RPCConnWS) NewRequest(req *RPCMessage, res RPCResponse) chan error {
 
 // SendMessage sends the pending request
 func (c *RPCConnWS) SendMessage(msg interface{}) error {
-	writer, err := c.WS.Writer(context.TODO(), websocket.MessageBinary)
+	ctx, cancel := context.WithTimeout(context.TODO(), RPCSendTimeout)
+	defer cancel()
+	writer, err := c.WS.Writer(ctx, websocket.MessageBinary)
 	if err != nil {
 		return err
 	}

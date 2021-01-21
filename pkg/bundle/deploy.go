@@ -2483,7 +2483,7 @@ spec:
         claimName: noobaa-pv-claim
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "c97955aecaa1afefc9e19db2d15ec6aab49dfe2c0471430fef203ea469aef17c"
+const Sha256_deploy_internal_prometheus_rules_yaml = "a52b7e8fd6aab6754cf72a74a741148bfc60a1fc566ade36377caee1715b086a"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -2501,8 +2501,14 @@ spec:
         sum(NooBaa_num_unhealthy_buckets + NooBaa_num_unhealthy_bucket_claims)
       record: job:noobaa_total_unhealthy_buckets:sum
     - expr: |
+        NooBaa_num_unhealthy_namespace_buckets
+      record: job:noobaa_total_unhealthy_namespace_buckets
+    - expr: |
         sum(NooBaa_num_buckets + NooBaa_num_buckets_claims)
       record: job:noobaa_bucket_count:sum
+    - expr: |
+        NooBaa_num_namespace_buckets
+      record: job:noobaa_namespace_bucket_count
     - expr: |
         sum(NooBaa_num_objects + NooBaa_num_objects_buckets_claims)
       record: job:noobaa_total_object_count:sum
@@ -2523,6 +2529,18 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_status{bucket_name=~".*"} == 0
+      for: 5m
+      labels:
+        severity: warning
+    - alert: NooBaaNamespaceBucketErrorState
+      annotations:
+        description: A NooBaa namespace bucket {{ $labels.bucket_name }} is in error
+          state for more than 5m
+        message: A NooBaa Namespace Bucket Is In Error State
+        severity_level: warning
+        storage_type: NooBaa
+      expr: |
+        NooBaa_namespace_bucket_status{bucket_name=~".*"} == 0
       for: 5m
       labels:
         severity: warning
@@ -2585,6 +2603,18 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_resource_status{resource_name=~".*"} == 0
+      for: 5m
+      labels:
+        severity: warning
+    - alert: NooBaaNamespaceResourceErrorState
+      annotations:
+        description: A NooBaa namespace resource {{ $labels.namespace_resource_name
+          }} is in error state for more than 5m
+        message: A NooBaa Namespace Resource Is In Error State
+        severity_level: warning
+        storage_type: NooBaa
+      expr: |
+        NooBaa_namespace_resource_status{namespace_resource_name=~".*"} == 0
       for: 5m
       labels:
         severity: warning
