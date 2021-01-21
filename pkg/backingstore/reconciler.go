@@ -46,7 +46,7 @@ func init() {
 
 func modeInfoMap() map[string]ModeInfo {
 	return map[string]ModeInfo{
-		"INITIALIZING":        {nbv1.BackingStorePhaseReady, corev1.EventTypeNormal},
+		"INITIALIZING":        {nbv1.BackingStorePhaseCreating, corev1.EventTypeNormal},
 		"DELETING":            {nbv1.BackingStorePhaseReady, corev1.EventTypeNormal},
 		"SCALING":             {nbv1.BackingStorePhaseReady, corev1.EventTypeNormal},
 		"MOST_NODES_ISSUES":   {nbv1.BackingStorePhaseReady, corev1.EventTypeWarning},
