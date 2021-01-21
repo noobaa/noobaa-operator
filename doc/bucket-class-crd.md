@@ -22,7 +22,6 @@ Namespace policy of type multi will require the following configuration:
 
 Namespace policy of type cache will require the following configuration:
   - Hub Resource - a single namespace-store, defines the read and write target of the namespace bucket.
-  - Hub Prefix - defines the prefix of the future cached data.
   - TTL - defines the TTL of the cached data.
 
 Constraints:
@@ -240,7 +239,7 @@ spec:
 
 Namespace bucketclass:
 ```shell
-noobaa -n noobaa bucketclass create bc namespace --type cache --hubResource ibm-cos-ns --hubPrefix aaa/ --ttl 3600
+noobaa -n noobaa bucketclass create bc namespace --type cache --hubResource ibm-cos-ns --ttl 3600
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -255,6 +254,5 @@ spec:
     type: cache
     cache: 
       hubResource: ibm-cos-ns
-      hubPrefix: 'aaa/'
       ttl: 3600
 ```
