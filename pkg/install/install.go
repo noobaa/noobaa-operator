@@ -109,6 +109,11 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	log.Printf("Operator Status:")
 	operator.RunStatus(cmd, args)
 	log.Printf("")
+	log.Printf("System Wait Ready:")
+	if system.WaitReady() {
+		log.Printf("")
+		log.Printf("")
+	}
 	log.Printf("System Status:")
 	system.RunStatus(cmd, args)
 
