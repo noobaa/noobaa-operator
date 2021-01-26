@@ -5,6 +5,10 @@ import (
 	"strconv"
 )
 
+const (
+	petaInBytes = 1024 * 1024 * 1024 * 1024 * 1024
+)
+
 // SystemInfo is a struct of system info returned by the API
 type SystemInfo struct {
 	Accounts           []AccountInfo           `json:"accounts"`
@@ -390,12 +394,19 @@ type UpdateHostsPoolParams struct {
 	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
 }
 
-// CreateCloudPoolParams is the reply of pool_api.create_cloud_pool()
+// CreateCloudPoolParams is the params of pool_api.create_cloud_pool()
 type CreateCloudPoolParams struct {
-	Name         string            `json:"name"`
-	Connection   string            `json:"connection"`
-	TargetBucket string            `json:"target_bucket"`
-	Backingstore *BackingStoreInfo `json:"backingstore,omitempty"`
+	Name              string            `json:"name"`
+	Connection        string            `json:"connection"`
+	TargetBucket      string            `json:"target_bucket"`
+	Backingstore      *BackingStoreInfo `json:"backingstore,omitempty"`
+	AvailableCapacity *BigInt           `json:"available_capacity,omitempty"`
+}
+
+// UpdateCloudPoolParams is the params of pool_api.create_cloud_pool()
+type UpdateCloudPoolParams struct {
+	Name              string  `json:"name"`
+	AvailableCapacity *BigInt `json:"available_capacity,omitempty"`
 }
 
 // CreateNamespaceResourceParams is the params of pool_api.create_cloud_pool()
@@ -602,7 +613,7 @@ type UpdateEndpointGroupParams struct {
 
 // BigIntToHumanBytes returns a human readable bytes string
 func BigIntToHumanBytes(bi *BigInt) string {
-	return IntToHumanBytes(bi.N + (bi.Peta * 1024 * 1024 * 1024 * 1024 * 1024))
+	return IntToHumanBytes(bi.N + (bi.Peta * petaInBytes))
 }
 
 // IntToHumanBytes returns a human readable bytes string
@@ -620,4 +631,12 @@ func IntToHumanBytes(bi int64) string {
 		u++
 	}
 	return s + strconv.FormatFloat(f, 'f', 3, 64) + " " + units[u] + "B"
+}
+
+// UInt64ToBigInt convert uint64 based value to BigInt value
+func UInt64ToBigInt(value uint64) BigInt {
+	return BigInt{
+		Peta: int64(value / petaInBytes),
+		N:    int64(value % petaInBytes),
+	}
 }
