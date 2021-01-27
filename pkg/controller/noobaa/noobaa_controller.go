@@ -57,6 +57,12 @@ func Add(mgr manager.Manager) error {
 	// Predicate that allow us to log event that are being queued
 	logEventsPredicate := util.LogEventsPredicate{}
 
+	// Predicate that filter events that noobaa is not their owner
+	filterForOwnerPredicate := util.FilterForOwner{
+		OwnerType: &nbv1.NooBaa{},
+		Scheme:    mgr.GetScheme(),
+	}
+
 	// Predicate that allows events that only change spec, labels or finalizers will log any allowed events
 	// This will stop infinite reconciles that triggered by status or irrelevant metadata changes
 	noobaaPredicate := util.ComposePredicates(
@@ -73,19 +79,19 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, ownerHandler, &logEventsPredicate)
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, ownerHandler, &logEventsPredicate)
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, ownerHandler, &logEventsPredicate)
+	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, ownerHandler, &logEventsPredicate)
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
