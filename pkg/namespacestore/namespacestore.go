@@ -74,6 +74,10 @@ func CmdCreateAWSS3() *cobra.Command {
 		`Secret key for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
 	)
 	cmd.Flags().String(
+		"secret-name", "",
+		`The name of a secret for authentication - should have AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY properties`,
+	)
+	cmd.Flags().String(
 		"region", "",
 		"The AWS bucket region",
 	)
@@ -98,6 +102,10 @@ func CmdCreateS3Compatible() *cobra.Command {
 	cmd.Flags().String(
 		"secret-key", "",
 		`Secret key for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
+	)
+	cmd.Flags().String(
+		"secret-name", "",
+		`The name of a secret for authentication - should have AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY properties`,
 	)
 	cmd.Flags().String(
 		"endpoint", "",
@@ -130,6 +138,10 @@ func CmdCreateIBMCos() *cobra.Command {
 		`Secret key for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
 	)
 	cmd.Flags().String(
+		"secret-name", "",
+		`The name of a secret for authentication - should have IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY properties`,
+	)
+	cmd.Flags().String(
 		"endpoint", "",
 		"The target IBM Cos endpoint",
 	)
@@ -154,6 +166,10 @@ func CmdCreateAzureBlob() *cobra.Command {
 	cmd.Flags().String(
 		"account-key", "",
 		`Account key for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
+	)
+	cmd.Flags().String(
+		"secret-name", "",
+		`The name of a secret for authentication - should have AccountName and AccountKey properties`,
 	)
 	return cmd
 }
@@ -206,6 +222,7 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
 	}
 	name := args[0]
+	secretName, _ := cmd.Flags().GetString("secret-name")
 
 	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
 	sys := o.(*nbv1.NooBaa)
@@ -242,7 +259,7 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 		log.Fatalf(`❌ Could not create NamespaceStore %q in Namespace %q (conflict)`, namespaceStore.Name, namespaceStore.Namespace)
 	}
 
-	if GetNamespaceStoreSecret(namespaceStore) != nil {
+	if GetNamespaceStoreSecret(namespaceStore) != nil && secretName == "" {
 		// Create secret
 		util.Panic(controllerutil.SetControllerReference(namespaceStore, secret, scheme.Scheme))
 		if !util.KubeCreateSkipExisting(secret) {
@@ -265,11 +282,20 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 func RunCreateAWSS3(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.NSStoreTypeAWSS3, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
-		accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
-		secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
 		region, _ := cmd.Flags().GetString("region")
-		secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
-		secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
+		secretName, _ := cmd.Flags().GetString("secret-name")
+
+		if secretName == "" {
+			accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
+			secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
+			secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
+			secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
+		} else {
+			mandatoryProperties := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
+			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
+			secret.Name = secretName
+		}
+
 		namespaceStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
 			TargetBucket: targetBucket,
 			Region:       region,
@@ -286,11 +312,19 @@ func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.NSStoreTypeS3Compatible, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
 		endpoint := util.GetFlagStringOrPrompt(cmd, "endpoint")
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
-		accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
-		secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
 		sigVer, _ := cmd.Flags().GetString("signature-version")
-		secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
-		secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
+		secretName, _ := cmd.Flags().GetString("secret-name")
+
+		if secretName == "" {
+			accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
+			secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
+			secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
+			secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
+		} else {
+			mandatoryProperties := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
+			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
+			secret.Name = secretName
+		}
 		namespaceStore.Spec.S3Compatible = &nbv1.S3CompatibleSpec{
 			TargetBucket:     targetBucket,
 			Endpoint:         endpoint,
@@ -308,11 +342,20 @@ func RunCreateIBMCos(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.NSStoreTypeIBMCos, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
 		endpoint := util.GetFlagStringOrPrompt(cmd, "endpoint")
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
-		accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
-		secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
 		// sigVer, _ := cmd.Flags().GetString("signature-version")
-		secret.StringData["IBM_COS_ACCESS_KEY_ID"] = accessKey
-		secret.StringData["IBM_COS_SECRET_ACCESS_KEY"] = secretKey
+		secretName, _ := cmd.Flags().GetString("secret-name")
+
+		if secretName == "" {
+			accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
+			secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
+			secret.StringData["IBM_COS_ACCESS_KEY_ID"] = accessKey
+			secret.StringData["IBM_COS_SECRET_ACCESS_KEY"] = secretKey
+		} else {
+			mandatoryProperties := []string{"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"}
+			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
+			secret.Name = secretName
+		}
+
 		namespaceStore.Spec.IBMCos = &nbv1.IBMCosSpec{
 			TargetBucket:     targetBucket,
 			Endpoint:         endpoint,
@@ -329,10 +372,18 @@ func RunCreateIBMCos(cmd *cobra.Command, args []string) {
 func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.NSStoreTypeAzureBlob, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
 		targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
-		accountName := util.GetFlagStringOrPromptPassword(cmd, "account-name")
-		accountKey := util.GetFlagStringOrPromptPassword(cmd, "account-key")
-		secret.StringData["AccountName"] = accountName
-		secret.StringData["AccountKey"] = accountKey
+		secretName, _ := cmd.Flags().GetString("secret-name")
+
+		if secretName == "" {
+			accountName := util.GetFlagStringOrPrompt(cmd, "account-name")
+			accountKey := util.GetFlagStringOrPrompt(cmd, "account-key")
+			secret.StringData["AccountName"] = accountName
+			secret.StringData["AccountKey"] = accountKey
+		} else {
+			mandatoryProperties := []string{"AccountName", "AccountKey"}
+			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
+			secret.Name = secretName
+		}
 		namespaceStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
 			TargetBlobContainer: targetBlobContainer,
 			Secret: corev1.SecretReference{

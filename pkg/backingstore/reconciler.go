@@ -19,6 +19,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/system"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
+	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -45,7 +46,7 @@ func init() {
 
 func modeInfoMap() map[string]ModeInfo {
 	return map[string]ModeInfo{
-		"INITIALIZING":        {nbv1.BackingStorePhaseReady, corev1.EventTypeNormal},
+		"INITIALIZING":        {nbv1.BackingStorePhaseCreating, corev1.EventTypeNormal},
 		"DELETING":            {nbv1.BackingStorePhaseReady, corev1.EventTypeNormal},
 		"SCALING":             {nbv1.BackingStorePhaseReady, corev1.EventTypeNormal},
 		"MOST_NODES_ISSUES":   {nbv1.BackingStorePhaseReady, corev1.EventTypeWarning},
@@ -932,6 +933,21 @@ func (r *Reconciler) ReconcilePool() error {
 	}
 
 	if r.CreateCloudPoolParams != nil {
+		if r.BackingStore.ObjectMeta.Annotations != nil {
+			if _, ok := r.BackingStore.ObjectMeta.Annotations["rgw"]; ok {
+				cephCluster := &cephv1.CephCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ocs-storagecluster",
+						Namespace: options.Namespace,
+					},
+				}
+				if util.KubeCheck(cephCluster) {
+					availCapacity := nb.UInt64ToBigInt(cephCluster.Status.CephStatus.Capacity.AvailableBytes)
+					r.CreateCloudPoolParams.AvailableCapacity = &availCapacity
+				}
+			}
+		}
+
 		err := r.NBClient.CreateCloudPoolAPI(*r.CreateCloudPoolParams)
 		if err != nil {
 			return err
