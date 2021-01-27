@@ -985,6 +985,22 @@ func IsStringGraphicOrSpacesCharsOnly(s string) bool {
 	return true
 }
 
+// VerifyCredsInSecret throws fatal error when a given secret doesn't contain the mandatory properties
+func VerifyCredsInSecret(secretName string, namespace string, mandatoryProperties []string) {
+	secret := KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret.Name = secretName
+	secret.Namespace = namespace
+	if !KubeCheck(secret) {
+		log.Fatalf("secret %q does not exist", secretName)
+	}
+	for _, p := range mandatoryProperties {
+		cred, ok := secret.StringData[p]
+		if cred == "" || !ok {
+			log.Fatalf("❌ secret %q does not contain property %q", secret.Name, p)
+		}
+	}
+}
+
 // Tar takes a source and variable writers and walks 'source' writing each file
 // found to the tar writer; the purpose for accepting multiple writers is to allow
 // for multiple outputs (for example a file, or md5 hash)
