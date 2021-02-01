@@ -329,7 +329,9 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 						}
 					}
 				case "NOOBAA_ROOT_SECRET":
-					util.KubeCheck(r.SecretRootMasterKey)
+					if len(r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails) == 0 {
+						util.KubeCheck(r.SecretRootMasterKey)
+					}
 					if r.SecretRootMasterKey.StringData["cipher_key_b64"] != "" {
 						c.Env[j].Value = r.SecretRootMasterKey.StringData["cipher_key_b64"]
 					}
