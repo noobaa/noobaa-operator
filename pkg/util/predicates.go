@@ -4,6 +4,8 @@ import (
 	"reflect"
 
 	"github.com/sirupsen/logrus"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -69,6 +71,59 @@ func (p FinalizersChangedPredicate) Update(e event.UpdateEvent) bool {
 	return e.MetaOld != nil &&
 		e.MetaNew != nil &&
 		!reflect.DeepEqual(e.MetaOld.GetFinalizers(), e.MetaNew.GetFinalizers())
+}
+
+// FilterForOwner will only allow events that owned by noobaa
+type FilterForOwner struct {
+	OwnerType runtime.Object
+	Scheme    *runtime.Scheme
+}
+
+// Create implements the create event trap for FilterForOwner
+func (p FilterForOwner) Create(e event.CreateEvent) bool {
+	eventOwners := e.Meta.GetOwnerReferences()
+	return p.hasCorrectOwner(eventOwners)
+
+}
+
+// Delete implements the delete event trap for FilterForOwner
+func (p FilterForOwner) Delete(e event.DeleteEvent) bool {
+	eventOwners := e.Meta.GetOwnerReferences()
+	return p.hasCorrectOwner(eventOwners)
+}
+
+// Update implements the update event trap for FilterForOwner
+func (p FilterForOwner) Update(e event.UpdateEvent) bool {
+	newEventOwners := e.MetaNew.GetOwnerReferences()
+	return p.hasCorrectOwner(newEventOwners)
+
+}
+
+// Generic implements the generic event trap for FilterForOwner
+func (p FilterForOwner) Generic(e event.GenericEvent) bool {
+	eventOwners := e.Meta.GetOwnerReferences()
+	return p.hasCorrectOwner(eventOwners)
+}
+
+// hasCorrectOwner checks if one of the owners has a substring that represents an expected owner
+func (p FilterForOwner) hasCorrectOwner(arr []v1.OwnerReference) bool {
+	// actual owner reference
+	var controllerRef *v1.OwnerReference = nil
+	for _, r := range arr {
+		if r.Controller != nil && *r.Controller {
+			controllerRef = &r
+			break
+		}
+	}
+	if controllerRef == nil {
+		return false
+	}
+	// expected owner reference kind
+	kinds, _, err := p.Scheme.ObjectKinds(p.OwnerType)
+	if err != nil || len(kinds) != 1 {
+		return false
+	}
+	return controllerRef.Kind == kinds[0].Kind
 }
 
 // LogEventsPredicate will passthrough events while loging a message for each
