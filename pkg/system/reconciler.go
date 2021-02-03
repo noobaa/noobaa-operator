@@ -84,7 +84,6 @@ type Reconciler struct {
 	AzureContainerCreds *corev1.Secret
 	GCPBucketCreds      *corev1.Secret
 	GCPCloudCreds       *cloudcredsv1.CredentialsRequest
-	IsIBMCloud          bool
 	IBMCloudCOSCreds    *corev1.Secret
 	DefaultBackingStore *nbv1.BackingStore
 	DefaultBucketClass  *nbv1.BucketClass
@@ -217,7 +216,6 @@ func NewReconciler(
 	r.GCPCloudCreds.Name = r.Request.Name + "-gcp-cloud-creds"
 	r.GCPCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-gcp-cloud-creds-secret"
 	r.CephObjectStoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
-	r.IsIBMCloud = false
 	r.IBMCloudCOSCreds.Name = ibmCOSCred
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"

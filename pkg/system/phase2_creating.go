@@ -607,7 +607,11 @@ func (r *Reconciler) ReconcileIBMCredentials() error {
 	// Currently IBM Cloud is not supported by cloud credential operator
 	// In IBM Cloud, the COS Creds will be provided through Secret.
 	r.Logger.Info("Running in IBM Cloud")
-	r.IsIBMCloud = true
+	util.KubeCheck(r.IBMCloudCOSCreds)
+	if r.IBMCloudCOSCreds.UID == "" {
+		r.Logger.Info("ibm-cloud-cos-creds secret is not present")
+		return nil
+	}
 	return nil
 }
 
