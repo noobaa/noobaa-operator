@@ -609,7 +609,7 @@ func (r *Reconciler) ReconcileIBMCredentials() error {
 	r.Logger.Info("Running in IBM Cloud")
 	util.KubeCheck(r.IBMCloudCOSCreds)
 	if r.IBMCloudCOSCreds.UID == "" {
-		r.Logger.Info("ibm-cloud-cos-creds secret is not present")
+		r.Logger.Infof("%q secret is not present", r.IBMCloudCOSCreds.Name)
 		return nil
 	}
 	return nil
