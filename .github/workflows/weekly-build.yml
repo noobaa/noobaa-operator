@@ -60,18 +60,22 @@ jobs:
       - name: Push CLI Binary
         run: |
             make cli
+            make release-cli VERSION=-master-${{ steps.prep.outputs.version }}         
             #noobaa-operator-cli
 
             date=`date +%Y%m%d`
             dateFormatted=`date -R`
             s3Bucket="noobaa-operator-cli"
-            fileName="FILE_NAME"
+            fileName="noobaa-linux-master-${{ steps.prep.outputs.version }}"
             relativePath="/${s3Bucket}/${fileName}"
             contentType="application/octet-stream"
             stringToSign="PUT\n\n${contentType}\n${dateFormatted}\n${relativePath}"
             s3AccessKey="${{ secrets.AWSACCESSKEY }}"
             s3SecretKey="${{ secrets.AWSSECRETKEY }}"
             signature=`echo -en ${stringToSign} | openssl sha1 -hmac ${s3SecretKey} -binary | base64`
+
+            cp build-releases/noobaa-linux-v-master-${{ steps.prep.outputs.version }} ${fileName}
+            
             curl -X PUT -T "${fileName}" \
             -H "Host: ${s3Bucket}.s3.amazonaws.com" \
             -H "Date: ${dateFormatted}" \
