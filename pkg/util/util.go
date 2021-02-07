@@ -872,6 +872,8 @@ func GetAWSRegion() (string, error) {
 		"ap-south-1":     "ap-south-1",
 		"me-south-1":     "me-south-1",
 		"sa-east-1":      "sa-east-1",
+		"us-gov-west-1":  "us-gov-west-1",
+		"us-gov-east-1":  "us-gov-east-1",
 	}
 	nodesList := &corev1.NodeList{}
 	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {

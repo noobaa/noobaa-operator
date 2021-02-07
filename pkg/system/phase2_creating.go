@@ -400,9 +400,16 @@ func (r *Reconciler) ReconcileRGWCredentials() error {
 
 // ReconcileAWSCredentials creates a CredentialsRequest resource if cloud credentials operator is available
 func (r *Reconciler) ReconcileAWSCredentials() error {
+	arnPrefix := "arn:aws:s3:::"
+	awsRegion, err := util.GetAWSRegion()
+	if err != nil {
+		r.Logger.Errorf("Got error from util.GetAWSRegion(). will use arnPrefix=%q. error=%v", arnPrefix, err)
+	} else if awsRegion == "us-gov-east-1" || awsRegion == "us-gov-west-1" {
+		arnPrefix = "arn:aws-us-gov:s3:::"
+	}
 	r.Logger.Info("Running in AWS. will create a CredentialsRequest resource")
 	var bucketName string
-	err := r.Client.Get(r.Ctx, util.ObjectKey(r.AWSCloudCreds), r.AWSCloudCreds)
+	err = r.Client.Get(r.Ctx, util.ObjectKey(r.AWSCloudCreds), r.AWSCloudCreds)
 	if err == nil {
 		// credential request already exist. get the bucket name
 		codec, err := cloudcredsv1.NewCodec()
@@ -416,7 +423,7 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 			r.Logger.Error("error decoding providerSpec from cloud credentials request")
 			return err
 		}
-		bucketName = strings.TrimPrefix(awsProviderSpec.StatementEntries[0].Resource, "arn:aws:s3:::")
+		bucketName = strings.TrimPrefix(awsProviderSpec.StatementEntries[0].Resource, arnPrefix)
 		r.Logger.Infof("found existing credential request for bucket %s", bucketName)
 		r.DefaultBackingStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
 			TargetBucket: bucketName,
@@ -443,8 +450,8 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 			return err
 		}
 		// fix creds request according to bucket name
-		awsProviderSpec.StatementEntries[0].Resource = "arn:aws:s3:::" + bucketName
-		awsProviderSpec.StatementEntries[1].Resource = "arn:aws:s3:::" + bucketName + "/*"
+		awsProviderSpec.StatementEntries[0].Resource = arnPrefix + bucketName
+		awsProviderSpec.StatementEntries[1].Resource = arnPrefix + bucketName + "/*"
 		updatedProviderSpec, err := codec.EncodeProviderSpec(awsProviderSpec)
 		if err != nil {
 			r.Logger.Error("error encoding providerSpec for cloud credentials request")
