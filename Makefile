@@ -66,15 +66,21 @@ clean:
 	@echo "✅ clean"
 .PHONY: clean
 
-release:
+release-docker:
 	docker push $(IMAGE)
 	docker push $(CATALOG_IMAGE)
 	@echo "✅ docker push"
+.PHONY: release-docker
+
+release-cli:
 	mkdir -p build-releases
 	cp build/_output/bin/noobaa-operator build-releases/noobaa-linux-v$(VERSION)
 	@echo "✅ build-releases/noobaa-linux-v$(VERSION)"
 	cp build/_output/bin/noobaa-operator-local build-releases/noobaa-mac-v$(VERSION)
 	@echo "✅ build-releases/noobaa-mac-v$(VERSION)"
+.PHONY: release-cli
+
+release: release-docker release-cli
 .PHONY: release
 
 $(OPERATOR_SDK):

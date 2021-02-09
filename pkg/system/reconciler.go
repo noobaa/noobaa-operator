@@ -63,44 +63,44 @@ type Reconciler struct {
 	OperatorVersion string
 	OAuthEndpoints  *util.OAuth2Endpoints
 
-	NooBaa              *nbv1.NooBaa
-	ServiceAccount      *corev1.ServiceAccount
-	CoreApp             *appsv1.StatefulSet
-	DefaultCoreApp      *corev1.Container
-	NooBaaMongoDB       *appsv1.StatefulSet
-	NooBaaPostgresDB    *appsv1.StatefulSet
-	ServiceMgmt         *corev1.Service
-	ServiceS3           *corev1.Service
-	ServiceDb           *corev1.Service
-	ServiceDbPg         *corev1.Service
-	SecretServer        *corev1.Secret
-	SecretDB            *corev1.Secret
-	SecretOp            *corev1.Secret
-	SecretAdmin         *corev1.Secret
-	SecretEndpoints     *corev1.Secret
-	SecretRootMasterKey *corev1.Secret
-	AWSCloudCreds       *cloudcredsv1.CredentialsRequest
-	AzureCloudCreds     *cloudcredsv1.CredentialsRequest
-	AzureContainerCreds *corev1.Secret
-	GCPBucketCreds      *corev1.Secret
-	GCPCloudCreds       *cloudcredsv1.CredentialsRequest
-	IsIBMCloud          bool
-	IBMCloudCOSCreds    *corev1.Secret
-	DefaultBackingStore *nbv1.BackingStore
-	DefaultBucketClass  *nbv1.BucketClass
-	OBCStorageClass     *storagev1.StorageClass
-	PrometheusRule      *monitoringv1.PrometheusRule
-	ServiceMonitorMgmt  *monitoringv1.ServiceMonitor
-	ServiceMonitorS3    *monitoringv1.ServiceMonitor
-	SystemInfo          *nb.SystemInfo
-	CephObjectStoreUser *cephv1.CephObjectStoreUser
-	RouteMgmt           *routev1.Route
-	RouteS3             *routev1.Route
-	DeploymentEndpoint  *appsv1.Deployment
+	NooBaa                    *nbv1.NooBaa
+	ServiceAccount            *corev1.ServiceAccount
+	CoreApp                   *appsv1.StatefulSet
+	DefaultCoreApp            *corev1.Container
+	NooBaaMongoDB             *appsv1.StatefulSet
+	NooBaaPostgresDB          *appsv1.StatefulSet
+	ServiceMgmt               *corev1.Service
+	ServiceS3                 *corev1.Service
+	ServiceDb                 *corev1.Service
+	ServiceDbPg               *corev1.Service
+	SecretServer              *corev1.Secret
+	SecretDB                  *corev1.Secret
+	SecretOp                  *corev1.Secret
+	SecretAdmin               *corev1.Secret
+	SecretEndpoints           *corev1.Secret
+	SecretRootMasterKey       *corev1.Secret
+	AWSCloudCreds             *cloudcredsv1.CredentialsRequest
+	AzureCloudCreds           *cloudcredsv1.CredentialsRequest
+	AzureContainerCreds       *corev1.Secret
+	GCPBucketCreds            *corev1.Secret
+	GCPCloudCreds             *cloudcredsv1.CredentialsRequest
+	IsIBMCloud                bool
+	IBMCloudCOSCreds          *corev1.Secret
+	DefaultBackingStore       *nbv1.BackingStore
+	DefaultBucketClass        *nbv1.BucketClass
+	OBCStorageClass           *storagev1.StorageClass
+	PrometheusRule            *monitoringv1.PrometheusRule
+	ServiceMonitorMgmt        *monitoringv1.ServiceMonitor
+	ServiceMonitorS3          *monitoringv1.ServiceMonitor
+	SystemInfo                *nb.SystemInfo
+	CephObjectStoreUser       *cephv1.CephObjectStoreUser
+	RouteMgmt                 *routev1.Route
+	RouteS3                   *routev1.Route
+	DeploymentEndpoint        *appsv1.Deployment
 	DefaultDeploymentEndpoint *corev1.Container
-	HPAEndpoint         *autoscalingv1.HorizontalPodAutoscaler
-	JoinSecret          *corev1.Secret
-	UpgradeJob			*batchv1.Job
+	HPAEndpoint               *autoscalingv1.HorizontalPodAutoscaler
+	JoinSecret                *corev1.Secret
+	UpgradeJob                *batchv1.Job
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -152,7 +152,7 @@ func NewReconciler(
 		RouteS3:             util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
 		DeploymentEndpoint:  util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
 		HPAEndpoint:         util.KubeObject(bundle.File_deploy_internal_hpa_endpoint_yaml).(*autoscalingv1.HorizontalPodAutoscaler),
-		UpgradeJob:			 util.KubeObject(bundle.File_deploy_internal_job_upgrade_db_yaml).(*batchv1.Job),
+		UpgradeJob:          util.KubeObject(bundle.File_deploy_internal_job_upgrade_db_yaml).(*batchv1.Job),
 	}
 
 	// Set Namespace
@@ -250,8 +250,8 @@ func NewReconciler(
 	// set noobaa root master key secret
 	r.SecretRootMasterKey.StringData["cipher_key_b64"] = util.RandomBase64(32)
 
-	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.Containers[0].DeepCopy();
-	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.Containers[0].DeepCopy();
+	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.Containers[0].DeepCopy()
+	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.Containers[0].DeepCopy()
 	return r
 }
 
@@ -274,7 +274,9 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.SecretOp)
 	util.KubeCheck(r.SecretEndpoints)
 	util.KubeCheck(r.SecretAdmin)
-	util.KubeCheck(r.SecretRootMasterKey)
+	if len(r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails) == 0 {
+		util.KubeCheck(r.SecretRootMasterKey)
+	}
 	util.KubeCheck(r.OBCStorageClass)
 	util.KubeCheck(r.DefaultBucketClass)
 	util.KubeCheck(r.DeploymentEndpoint)
