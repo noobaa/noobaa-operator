@@ -298,7 +298,11 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
 
 		case "MONGODB_URL":
-			c.Env[j].Value = "mongodb://" + r.NooBaaMongoDB.Name + "-0." + r.NooBaaMongoDB.Spec.ServiceName + "/nbcore"
+			if r.NooBaa.Spec.MongoDbURL != "" {
+				c.Env[j].Value = r.NooBaa.Spec.MongoDbURL
+			} else {
+				c.Env[j].Value = "mongodb://" + r.NooBaaMongoDB.Name + "-0." + r.NooBaaMongoDB.Spec.ServiceName + "/nbcore"
+			}
 
 		case "POSTGRES_HOST":
 			c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
@@ -373,7 +377,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				coreImageChanged = true
 				c.Image = r.NooBaa.Status.ActualImage
 			}
-			// adding the missing Env varibale from default container
+			// adding the missing Env variable from default container
 			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env)
 			r.setDesiredCoreEnv(c)
 

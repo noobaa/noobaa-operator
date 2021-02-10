@@ -150,6 +150,10 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 		sc := options.DBStorageClass
 		sys.Spec.DBStorageClass = &sc
 	}
+	if options.MongoDbURL != "" {
+		mongoDbURL := options.MongoDbURL
+		sys.Spec.MongoDbURL = mongoDbURL
+	}
 	if options.PVPoolDefaultStorageClass != "" {
 		sc := options.PVPoolDefaultStorageClass
 		sys.Spec.PVPoolDefaultStorageClass = &sc
@@ -197,6 +201,7 @@ func RunOperatorCreate(cmd *cobra.Command, args []string) {
 
 // RunCreate runs a CLI command
 func RunCreate(cmd *cobra.Command, args []string) {
+	log := util.Logger()
 	sys := LoadSystemDefaults()
 	ns := util.KubeObject(bundle.File_deploy_namespace_yaml).(*corev1.Namespace)
 	ns.Name = sys.Namespace
@@ -222,6 +227,11 @@ func RunCreate(cmd *cobra.Command, args []string) {
 			}
 		}
 		util.Panic(json.Unmarshal([]byte(endpointResourcesJSON), &sys.Spec.Endpoints.Resources))
+	}
+
+	err := CheckMongoURL(sys)
+	if err != nil {
+		log.Fatalf(`❌ %s`, err)
 	}
 
 	// TODO check PVC if exist and the system does not exist -
@@ -875,4 +885,18 @@ func CheckSystem(sys *nbv1.NooBaa) bool {
 		sys.Spec.DBType = "mongodb" // = defaults.DBType
 	}
 	return found && sys.UID != ""
+}
+
+// CheckMongoURL checks if the mongourl structure is valid and if we use mongo as db
+func CheckMongoURL(sys *nbv1.NooBaa) error {
+	if sys.Spec.MongoDbURL != "" {
+		if sys.Spec.DBType != "mongodb" {
+			return fmt.Errorf("Expecting the DBType to be mongodb when using external MongoDbURL, got %s", sys.Spec.DBType)
+		}
+		if !strings.Contains(sys.Spec.MongoDbURL, "mongodb://") &&
+			!strings.Contains(sys.Spec.MongoDbURL, "mongodb+srv://") {
+			return fmt.Errorf("Invalid mongo db url %s, expecting the url to start with mongodb:// or mongodb+srv://", sys.Spec.MongoDbURL)
+		}
+	}
+	return nil
 }

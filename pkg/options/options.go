@@ -82,6 +82,10 @@ var DBVolumeSizeGB = 0
 // it can be overridden for testing or different PV providers.
 var DBStorageClass = ""
 
+// MongoDbURL is used for providing mongodb url
+// it can be overridden for testing or different url.
+var MongoDbURL = ""
+
 // PVPoolDefaultStorageClass is used for PVC's allocation for the noobaa server data
 // it can be overridden for testing or different PV providers.
 var PVPoolDefaultStorageClass = ""
@@ -143,6 +147,10 @@ func init() {
 	FlagSet.StringVar(
 		&DBStorageClass, "db-storage-class",
 		DBStorageClass, "The database volume storage class name",
+	)
+	FlagSet.StringVar(
+		&MongoDbURL, "mongodb-url",
+		MongoDbURL, "url for mongodb",
 	)
 	FlagSet.StringVar(
 		&PVPoolDefaultStorageClass, "pv-pool-default-storage-class",

@@ -126,6 +126,11 @@ func (r *Reconciler) CheckSystemCR() error {
 		}
 	}
 
+	err = CheckMongoURL(r.NooBaa)
+	if err != nil {
+		return util.NewPersistentError("InvalidMongoDbURL", fmt.Sprintf(`%s`, err))
+	}
+
 	return nil
 }
 
