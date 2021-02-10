@@ -278,20 +278,23 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	isMongoDbURL := sys.Spec.MongoDbURL
 	util.KubeDelete(sys)
 
-	// NoobaaDB
-	noobaaDB := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
-	for i := range noobaaDB.Spec.VolumeClaimTemplates {
-		t := &noobaaDB.Spec.VolumeClaimTemplates[i]
-		pvc := &corev1.PersistentVolumeClaim{
-			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      t.Name + "-" + noobaaDB.Name + "-0",
-				Namespace: options.Namespace,
-			},
+	if isMongoDbURL == "" {
+		// NoobaaDB
+		noobaaDB := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
+		for i := range noobaaDB.Spec.VolumeClaimTemplates {
+			t := &noobaaDB.Spec.VolumeClaimTemplates[i]
+			pvc := &corev1.PersistentVolumeClaim{
+				TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      t.Name + "-" + noobaaDB.Name + "-0",
+					Namespace: options.Namespace,
+				},
+			}
+			util.KubeDelete(pvc)
 		}
-		util.KubeDelete(pvc)
 	}
 	backingStores := &nbv1.BackingStoreList{}
 	util.KubeList(backingStores, &client.ListOptions{Namespace: options.Namespace})
@@ -514,17 +517,20 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	} else {
 		NooBaaDB = r.NooBaaMongoDB
 	}
-	// NobbaaDB
-	for i := range NooBaaDB.Spec.VolumeClaimTemplates {
-		t := &NooBaaDB.Spec.VolumeClaimTemplates[i]
-		pvc := &corev1.PersistentVolumeClaim{
-			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      t.Name + "-" + NooBaaDB.Name + "-0",
-				Namespace: options.Namespace,
-			},
+	// create the mongo db only if mongo db url is not given.
+	if r.NooBaa.Spec.MongoDbURL == "" {
+		// NoobaaDB
+		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
+			t := &NooBaaDB.Spec.VolumeClaimTemplates[i]
+			pvc := &corev1.PersistentVolumeClaim{
+				TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      t.Name + "-" + NooBaaDB.Name + "-0",
+					Namespace: options.Namespace,
+				},
+			}
+			util.KubeCheck(pvc)
 		}
-		util.KubeCheck(pvc)
 	}
 
 	// sys := cli.LoadSystemDefaults()

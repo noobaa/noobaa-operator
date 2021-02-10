@@ -104,7 +104,7 @@ func (r *Reconciler) CheckSystemCR() error {
 	// Set ActualImage to be updated in the noobaa status
 	r.NooBaa.Status.ActualImage = specImage
 
-	// Verfify the endpoints spec
+	// Verify the endpoints spec
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	if endpointsSpec != nil {
 		if endpointsSpec.MinCount <= 0 {
