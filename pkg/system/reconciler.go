@@ -318,8 +318,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 	if r.NooBaa.DeletionTimestamp != nil {
-		if err := util.VerifyExternalSecretsDeletion(r.NooBaa.Spec.Security.KeyManagementService, r.NooBaa.Namespace); err != nil {
-			r.SetPhase("", "TemporaryError", err.Error())
+		if err := util.VerifyExternalSecretsDeletion(r.NooBaa.Spec.Security.KeyManagementService, r.NooBaa.Namespace, string(r.NooBaa.ObjectMeta.UID)); err != nil {
 			log.Warnf("⏳ Temporary Error: %s", err)
 		}
 	}
