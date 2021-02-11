@@ -52,16 +52,17 @@ var (
 
 // Reconciler is the context for loading or reconciling a noobaa system
 type Reconciler struct {
-	Request         types.NamespacedName
-	Client          client.Client
-	Scheme          *runtime.Scheme
-	Ctx             context.Context
-	Logger          *logrus.Entry
-	Recorder        record.EventRecorder
-	NBClient        nb.Client
-	CoreVersion     string
-	OperatorVersion string
-	OAuthEndpoints  *util.OAuth2Endpoints
+	Request               types.NamespacedName
+	Client                client.Client
+	Scheme                *runtime.Scheme
+	Ctx                   context.Context
+	Logger                *logrus.Entry
+	Recorder              record.EventRecorder
+	NBClient              nb.Client
+	CoreVersion           string
+	OperatorVersion       string
+	OAuthEndpoints        *util.OAuth2Endpoints
+	MongoConnectionString string
 
 	NooBaa                    *nbv1.NooBaa
 	ServiceAccount            *corev1.ServiceAccount
@@ -262,12 +263,14 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.CoreApp)
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
-	if r.NooBaa.Spec.DBType == "postgres" {
-		util.KubeCheck(r.SecretDB)
-		util.KubeCheck(r.NooBaaPostgresDB)
-		util.KubeCheck(r.ServiceDbPg)
-	} else {
-		util.KubeCheck(r.NooBaaMongoDB)
+	if r.NooBaa.Spec.MongoDbURL == "" {
+		if r.NooBaa.Spec.DBType == "postgres" {
+			util.KubeCheck(r.SecretDB)
+			util.KubeCheck(r.NooBaaPostgresDB)
+			util.KubeCheck(r.ServiceDbPg)
+		} else {
+			util.KubeCheck(r.NooBaaMongoDB)
+		}
 		util.KubeCheck(r.ServiceDb)
 	}
 	util.KubeCheck(r.SecretServer)

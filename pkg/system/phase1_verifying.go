@@ -104,7 +104,7 @@ func (r *Reconciler) CheckSystemCR() error {
 	// Set ActualImage to be updated in the noobaa status
 	r.NooBaa.Status.ActualImage = specImage
 
-	// Verfify the endpoints spec
+	// Verify the endpoints spec
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	if endpointsSpec != nil {
 		if endpointsSpec.MinCount <= 0 {
@@ -124,6 +124,11 @@ func (r *Reconciler) CheckSystemCR() error {
 					fmt.Sprintf(`Invalid virtual host %s, not a fully qualified DNS name`, virtualHost))
 			}
 		}
+	}
+
+	err = CheckMongoURL(r.NooBaa)
+	if err != nil {
+		return util.NewPersistentError("InvalidMongoDbURL", fmt.Sprintf(`%s`, err))
 	}
 
 	return nil

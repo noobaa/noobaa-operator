@@ -150,6 +150,10 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 		sc := options.DBStorageClass
 		sys.Spec.DBStorageClass = &sc
 	}
+	if options.MongoDbURL != "" {
+		mongoDbURL := options.MongoDbURL
+		sys.Spec.MongoDbURL = mongoDbURL
+	}
 	if options.PVPoolDefaultStorageClass != "" {
 		sc := options.PVPoolDefaultStorageClass
 		sys.Spec.PVPoolDefaultStorageClass = &sc
@@ -197,6 +201,7 @@ func RunOperatorCreate(cmd *cobra.Command, args []string) {
 
 // RunCreate runs a CLI command
 func RunCreate(cmd *cobra.Command, args []string) {
+	log := util.Logger()
 	sys := LoadSystemDefaults()
 	ns := util.KubeObject(bundle.File_deploy_namespace_yaml).(*corev1.Namespace)
 	ns.Name = sys.Namespace
@@ -222,6 +227,11 @@ func RunCreate(cmd *cobra.Command, args []string) {
 			}
 		}
 		util.Panic(json.Unmarshal([]byte(endpointResourcesJSON), &sys.Spec.Endpoints.Resources))
+	}
+
+	err := CheckMongoURL(sys)
+	if err != nil {
+		log.Fatalf(`❌ %s`, err)
 	}
 
 	// TODO check PVC if exist and the system does not exist -
@@ -268,20 +278,23 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	isMongoDbURL := sys.Spec.MongoDbURL
 	util.KubeDelete(sys)
 
-	// NoobaaDB
-	noobaaDB := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
-	for i := range noobaaDB.Spec.VolumeClaimTemplates {
-		t := &noobaaDB.Spec.VolumeClaimTemplates[i]
-		pvc := &corev1.PersistentVolumeClaim{
-			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      t.Name + "-" + noobaaDB.Name + "-0",
-				Namespace: options.Namespace,
-			},
+	if isMongoDbURL == "" {
+		// NoobaaDB
+		noobaaDB := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
+		for i := range noobaaDB.Spec.VolumeClaimTemplates {
+			t := &noobaaDB.Spec.VolumeClaimTemplates[i]
+			pvc := &corev1.PersistentVolumeClaim{
+				TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      t.Name + "-" + noobaaDB.Name + "-0",
+					Namespace: options.Namespace,
+				},
+			}
+			util.KubeDelete(pvc)
 		}
-		util.KubeDelete(pvc)
 	}
 	backingStores := &nbv1.BackingStoreList{}
 	util.KubeList(backingStores, &client.ListOptions{Namespace: options.Namespace})
@@ -504,17 +517,20 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	} else {
 		NooBaaDB = r.NooBaaMongoDB
 	}
-	// NobbaaDB
-	for i := range NooBaaDB.Spec.VolumeClaimTemplates {
-		t := &NooBaaDB.Spec.VolumeClaimTemplates[i]
-		pvc := &corev1.PersistentVolumeClaim{
-			TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      t.Name + "-" + NooBaaDB.Name + "-0",
-				Namespace: options.Namespace,
-			},
+	// create the mongo db only if mongo db url is not given.
+	if r.NooBaa.Spec.MongoDbURL == "" {
+		// NoobaaDB
+		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
+			t := &NooBaaDB.Spec.VolumeClaimTemplates[i]
+			pvc := &corev1.PersistentVolumeClaim{
+				TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      t.Name + "-" + NooBaaDB.Name + "-0",
+					Namespace: options.Namespace,
+				},
+			}
+			util.KubeCheck(pvc)
 		}
-		util.KubeCheck(pvc)
 	}
 
 	// sys := cli.LoadSystemDefaults()
@@ -875,4 +891,18 @@ func CheckSystem(sys *nbv1.NooBaa) bool {
 		sys.Spec.DBType = "mongodb" // = defaults.DBType
 	}
 	return found && sys.UID != ""
+}
+
+// CheckMongoURL checks if the mongourl structure is valid and if we use mongo as db
+func CheckMongoURL(sys *nbv1.NooBaa) error {
+	if sys.Spec.MongoDbURL != "" {
+		if sys.Spec.DBType != "mongodb" {
+			return fmt.Errorf("Expecting the DBType to be mongodb when using external MongoDbURL, got %s", sys.Spec.DBType)
+		}
+		if !strings.Contains(sys.Spec.MongoDbURL, "mongodb://") &&
+			!strings.Contains(sys.Spec.MongoDbURL, "mongodb+srv://") {
+			return fmt.Errorf("Invalid mongo db url %s, expecting the url to start with mongodb:// or mongodb+srv://", sys.Spec.MongoDbURL)
+		}
+	}
+	return nil
 }

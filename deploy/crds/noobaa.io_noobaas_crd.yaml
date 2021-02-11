@@ -832,6 +832,10 @@ spec:
                       name must be unique.
                     type: string
                 type: object
+              mongoDbURL:
+                description: MongoDbURL (optional) overrides the default mongo db
+                  remote url
+                type: string
               pvPoolDefaultStorageClass:
                 description: PVPoolDefaultStorageClass (optional) overrides the default
                   cluster StorageClass for the pv-pool volumes. This affects where

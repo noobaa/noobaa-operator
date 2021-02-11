@@ -309,6 +309,10 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					} else {
 						c.Env[j].Value = r.JoinSecret.StringData["hosted_agents_addr"]
 					}
+				case "MONGODB_URL":
+					if r.JoinSecret == nil {
+						c.Env[j].Value = r.MongoConnectionString
+					}
 				case "LOCAL_MD_SERVER":
 					if r.JoinSecret == nil {
 						c.Env[j].Value = "true"

@@ -97,6 +97,10 @@ type NooBaaSpec struct {
 	// +optional
 	DBStorageClass *string `json:"dbStorageClass,omitempty"`
 
+	// MongoDbURL (optional) overrides the default mongo db remote url
+	// +optional
+	MongoDbURL string `json:"mongoDbURL,omitempty"`
+
 	// PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes.
 	// This affects where the system stores data chunks (encrypted).
 	// Updates to this field will only affect new pv-pools,
