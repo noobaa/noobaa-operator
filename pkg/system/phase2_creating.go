@@ -667,32 +667,33 @@ func (r *Reconciler) ReconcileRootSecret() error {
 	// set noobaa root master key secret
 	if len(connectionDetails) != 0 {
 		if err := util.ValidateConnectionDetails(connectionDetails, authTokenSecretName, options.Namespace); err != nil {
-			return fmt.Errorf("external kms connection details validation failed: %q", err)
+			return fmt.Errorf("could not get/put key in external KMS: external kms connection details validation failed: %q", err)
 		}
 		kmsProvider := connectionDetails["KMS_PROVIDER"]
 		if util.IsVaultKMS(kmsProvider) {
+			keySecretName := "rootkeyb64-" + string(r.NooBaa.ObjectMeta.UID)
 			// reconcile root master key externally (vault)
 			c, err := util.InitVaultClient(connectionDetails, authTokenSecretName, options.Namespace)
 			if err == nil {
-				secretPath, err1 := util.BuildExternalSecretPath(c, r.NooBaa.Spec.Security.KeyManagementService)
+				secretPath, err1 := util.BuildExternalSecretPath(c, r.NooBaa.Spec.Security.KeyManagementService, string(r.NooBaa.ObjectMeta.UID))
 				if err1 != nil {
-					return err1
+					return fmt.Errorf("could not get/put key in external KMS %+v", err1)
 				}
 				// get secret from external KMS
-				rootKey, err := util.GetSecret(c, "rootkeyb64", secretPath, connectionDetails["VAULT_BACKEND_PATH"])
+				rootKey, err := util.GetSecret(c, keySecretName, secretPath, connectionDetails["VAULT_BACKEND_PATH"])
 				if err != nil {
-					msg := fmt.Errorf("got error in fetch root secret from external KMS %v", err)
-					return msg
+					return fmt.Errorf("got error in fetch root secret from external KMS %v", err)
 				}
 				if err == nil && rootKey != "" {
 					log.Infof("found root secret in external KMS successfully")
 					r.SecretRootMasterKey.StringData["cipher_key_b64"] = rootKey
 					return nil
 				}
-				log.Infof("could not find root secret in external KMS, will upload new secret root key %v", err)
+				log.Infof("could not find root secret in external KMS %v", err)
 				// put secret in external KMS
 				if r.NooBaa.DeletionTimestamp == nil {
-					err = util.PutSecret(c, "rootkeyb64", r.SecretRootMasterKey.StringData["cipher_key_b64"], secretPath, connectionDetails["VAULT_BACKEND_PATH"])
+					log.Infof("could not find root secret in external KMS, will upload new secret root key %v", err)
+					err = util.PutSecret(c, keySecretName, r.SecretRootMasterKey.StringData["cipher_key_b64"], secretPath, connectionDetails["VAULT_BACKEND_PATH"])
 					if err == nil {
 						log.Infof("uploaded root secret to external KMS successfully")
 						return nil
