@@ -5,8 +5,11 @@ import (
 	"os/exec"
 	"runtime"
 
+	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // CmdUI returns a CLI command
@@ -22,6 +25,10 @@ func CmdUI() *cobra.Command {
 // RunUI runs a CLI command
 func RunUI(cmd *cobra.Command, args []string) {
 	log := util.Logger()
+	klient := util.KubeClient()
+	sysKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
+	r := NewReconciler(sysKey, klient, scheme.Scheme, nil)
+	CheckSystem(r.NooBaa)
 
 	sysClient, err := Connect(true)
 	if err != nil {
@@ -32,7 +39,7 @@ func RunUI(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("\n")
 	fmt.Printf("NooBaa UI (credentials unless using Openshift SSO):\n")
-	fmt.Printf("url      : %s\n", mgmtURL)
+	fmt.Printf("url      : %s\n", r.NooBaa.Status.Services.ServiceMgmt.NodePorts)
 	fmt.Printf("email    : %s\n", sysClient.SecretAdmin.StringData["email"])
 	fmt.Printf("password : %s\n", sysClient.SecretAdmin.StringData["password"])
 	fmt.Printf("\n")
