@@ -41,7 +41,7 @@ func RunCollect(cmd *cobra.Command, args []string) {
 
 	destDir, _ := cmd.Flags().GetString("dir")
 	c := Collector{
-		folderName: fmt.Sprintf("%s_%s", "noobaa_diagnostics", time.Now().Format(time.RFC3339)),
+		folderName: fmt.Sprintf("%s_%d", "noobaa_diagnostics", time.Now().Unix()),
 		log:        util.Logger(),
 	}
 
@@ -49,7 +49,7 @@ func RunCollect(cmd *cobra.Command, args []string) {
 
 	err := os.Mkdir(c.folderName, os.ModePerm)
 	if err != nil {
-		c.log.Fatalf(`❌ Could not craete directory %s, reason: %s`, c.folderName, err)
+		c.log.Fatalf(`❌ Could not create directory %s, reason: %s`, c.folderName, err)
 	}
 
 	c.CollectCR(&nbv1.BackingStoreList{

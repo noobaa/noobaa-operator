@@ -1193,7 +1193,7 @@ func GetWatchNamespace() (string, error) {
 
 // VerifyExternalSecretsDeletion checks if noobaa is on un-installation process
 // if true, deletes secrets from external KMS
-func VerifyExternalSecretsDeletion(kms nbv1.KeyManagementServiceSpec, namespace string) error {
+func VerifyExternalSecretsDeletion(kms nbv1.KeyManagementServiceSpec, namespace string, uid string) error {
 
 	if len(kms.ConnectionDetails) == 0 {
 		log.Infof("deleting root key locally")
@@ -1201,17 +1201,19 @@ func VerifyExternalSecretsDeletion(kms nbv1.KeyManagementServiceSpec, namespace 
 	}
 
 	if !IsVaultKMS(kms.ConnectionDetails[kmsProvider]) {
+		log.Errorf("Unsupported KMS provider %v", kms.ConnectionDetails[kmsProvider])
 		return fmt.Errorf("Unsupported KMS provider %v", kms.ConnectionDetails[kmsProvider])
 	}
 
 	c, err := InitVaultClient(kms.ConnectionDetails, kms.TokenSecretName, namespace)
 	if err != nil {
-		log.Errorf("deleting root key externally failed on init vault client: %v", err)
+		log.Errorf("deleting root key externally failed: init vault client: %v", err)
 		return err
 	}
 
-	secretPath, err := BuildExternalSecretPath(c, kms)
+	secretPath, err := BuildExternalSecretPath(c, kms, uid)
 	if err != nil {
+		log.Errorf("deleting root key externally failed: %v", err)
 		return err
 	}
 
@@ -1376,8 +1378,8 @@ func GetSecret(client *vaultApi.Client, secretName, secretPath string, backendPa
 			}
 		}
 	}
-
-	return "", fmt.Errorf("could not find secret name %+v in path", secretName)
+	log.Infof("get secret: found other secrets in external KMS path, but not path: %v, secret name: %v", backendPath, backendPath)
+	return "", nil
 }
 
 // DeleteSecret deletes the secret from the secrets store
@@ -1414,7 +1416,7 @@ func isKV2(client *vaultApi.Client, backend string) (bool, error) {
 }
 
 // BuildExternalSecretPath builds a string that specifies the root key secret path
-func BuildExternalSecretPath(client *vaultApi.Client, kms nbv1.KeyManagementServiceSpec) (string, error) {
+func BuildExternalSecretPath(client *vaultApi.Client, kms nbv1.KeyManagementServiceSpec, uid string) (string, error) {
 	secretPath := ""
 	backendPath := kms.ConnectionDetails[vaultBackendPath]
 	if backendPath != "" {
@@ -1432,6 +1434,7 @@ func BuildExternalSecretPath(client *vaultApi.Client, kms nbv1.KeyManagementServ
 		secretPath += "data/"
 	}
 	secretPath += rootSecretPath
+	secretPath += "/rootkeyb64-" + uid
 	return secretPath, nil
 }
 
