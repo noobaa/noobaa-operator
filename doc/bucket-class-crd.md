@@ -94,7 +94,7 @@ Here are some examples of the cli/YAML usage and BucketClass CRs for the differe
 
 Single tier, single backing-store, placement Spread:
 ```shell
-noobaa -n noobaa bucketclass create bc --backingstores bs --placement Spread
+noobaa -n noobaa bucketclass create placement-bucketclass bc --backingstores bs --placement Spread
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -114,7 +114,7 @@ spec:
 
 Single tier, two backing-stores, placement Spread:
 ```shell
-noobaa -n noobaa bucketclass create bc --backingstores bs1,bs2 --placement Spread
+noobaa -n noobaa bucketclass create placement-bucketclass bc --backingstores bs1,bs2 --placement Spread
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -135,7 +135,7 @@ spec:
 
 Single tier, two backing-store, placement Mirror:
 ```shell
-noobaa -n noobaa bucketclass create bc --backingstores bs1,bs2 --placement Mirror
+noobaa -n noobaa bucketclass create placement-bucketclass bc --backingstores bs1,bs2 --placement Mirror
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -198,7 +198,7 @@ spec:
 
 Namespace bucketclass:
 ```shell
-noobaa -n noobaa bucketclass create bc namespace --type single --resource azure-blob-ns
+noobaa -n noobaa bucketclass create namespace-bucketclass single bc --resource azure-blob-ns
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -217,7 +217,7 @@ spec:
 
 Namespace bucketclass:
 ```shell
-noobaa -n noobaa bucketclass create bc namespace --type multi --write-resource aws-s3-ns --read-resources aws-s3-ns,azure-blob-ns 
+noobaa -n noobaa bucketclass create namespace-bucketclass multi bc --write-resource aws-s3-ns --read-resources aws-s3-ns,azure-blob-ns 
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -239,7 +239,7 @@ spec:
 
 Namespace bucketclass:
 ```shell
-noobaa -n noobaa bucketclass create bc namespace --type cache --hubResource ibm-cos-ns --ttl 3600
+noobaa -n noobaa bucketclass create namespace-bucketclass cache bc --hubResource ibm-cos-ns --ttl 3600
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
