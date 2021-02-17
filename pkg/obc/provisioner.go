@@ -2,9 +2,14 @@ package obc
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
@@ -110,6 +115,10 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 		return nil, err
 	}
 
+	err = r.putBucketTagging()
+	if err != nil {
+		logrus.Warnf("failed executing putBucketTagging on bucket: %v, %v", r.BucketName, err)
+	}
 	return r.OB, nil
 }
 
@@ -315,7 +324,6 @@ func (r *BucketRequest) CreateBucket(
 			Namespace:   r.OBC.Namespace,
 		},
 	}
-
 	if r.BucketClass.Spec.PlacementPolicy != nil {
 		tierName, err := r.CreateTieringStructure(*r.BucketClass)
 		if err != nil {
@@ -527,5 +535,53 @@ func (r *BucketRequest) DeleteBucket() error {
 		log.Infof("✅ Successfully deleted bucket %q", r.BucketName)
 	}
 
+	return nil
+}
+
+// putBucketTagging calls s3 putBucketTagging on the created noobaa bucket
+func (r *BucketRequest) putBucketTagging() error {
+
+	client := &http.Client{Transport: util.InsecureHTTPTransport}
+	s3Status := &r.SysClient.NooBaa.Status.Services.ServiceS3
+	s3Config := &aws.Config{
+		Credentials: credentials.NewStaticCredentials(
+			r.SysClient.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"],
+			r.SysClient.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"],
+			"",
+		),
+		Region:           aws.String("us-east-1"),
+		Endpoint:         aws.String(s3Status.InternalDNS[0]),
+		S3ForcePathStyle: aws.Bool(true),
+		HTTPClient:       client,
+	}
+	s3Session, err := session.NewSession(s3Config)
+	if err != nil {
+		return err
+	}
+	s3Client := s3.New(s3Session)
+
+	// convert labels to tagging array
+	taggingArray := []*s3.Tag{}
+	for key, value := range r.OBC.Labels {
+		// no need to put tagging of these labels
+		if !util.Contains(key, []string{"app", "noobaa-domain", "bucket-provisioner"}) {
+			keyPointer := key
+			valuePointer := value
+			taggingArray = append(taggingArray, &s3.Tag{Key: &keyPointer, Value: &valuePointer})
+		}
+	}
+	logrus.Infof("put bucket tagging on bucket: %s tagging: %+v ", r.BucketName, taggingArray)
+	if len(taggingArray) == 0 {
+		return nil
+	}
+	_, err = s3Client.PutBucketTagging(&s3.PutBucketTaggingInput{
+		Bucket: &r.BucketName,
+		Tagging: &s3.Tagging{
+			TagSet: taggingArray,
+		},
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }
