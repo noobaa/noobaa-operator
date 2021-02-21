@@ -70,6 +70,9 @@ func RunCollect(cmd *cobra.Command, args []string) {
 	operatorPodSelector, _ := labels.Parse("noobaa-operator=deployment")
 	c.CollectPodLogs(operatorPodSelector)
 
+	endpointPodSelector, _ := labels.Parse("noobaa-s3=" + options.SystemName)
+	c.CollectPodLogs(endpointPodSelector)
+
 	// collectSystemMetrics()
 
 	c.ExportDiagnostics(destDir)
