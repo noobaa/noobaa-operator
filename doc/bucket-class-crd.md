@@ -26,8 +26,11 @@ Namespace policy of type cache will require the following configuration:
 
 Constraints:
 A backing-store name may appear in more than one bucket-class but may not appear more than once in a single bucket-class.
-The operator cli currently only supports a single tier placement-policy for a bucket-class. 
-A bucket class must have only one of Placement-policy or Namespace-policy.
+The operator cli currently only supports a single tier placement-policy for a bucket-class.
+Upon creating regular buckets, the user will first need to create a placement-bucketclass which contains placemant policy.
+Upon creating namespace buckets, the user will first need to create a namespace-bucketclass which contains namespace policy.
+A namespace bucket class of type cache must contain both Placement-policy or Namespace-policy.
+A namespace bucket class of type single/multi must contain Namespace-policy.
 YAML must be used to create a bucket-class with a placement-policy that has multiple tiers.
 Placement-policy is case sensitive and should be of value (Mirror|Spread).
 Namespace-policy is case sensitive.
@@ -210,7 +213,7 @@ metadata:
   namespace: noobaa
 spec:
   namespacePolicy:
-    type: single
+    type: Single
     single: 
       resource: azure-blob-ns
 ```
@@ -229,7 +232,7 @@ metadata:
   namespace: noobaa
 spec:
   namespacePolicy:
-    type: multi
+    type: Multi
     multi:
       writeResource: aws-s3-ns 
       readResources:
@@ -239,7 +242,7 @@ spec:
 
 Namespace bucketclass:
 ```shell
-noobaa -n noobaa bucketclass create namespace-bucketclass cache bc --hubResource ibm-cos-ns --ttl 3600
+noobaa -n noobaa bucketclass create namespace-bucketclass cache bc --hub-resource ibm-cos-ns --ttl 36000 --backingstores noobaa-default-backing-store
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -251,8 +254,13 @@ metadata:
   namespace: noobaa
 spec:
   namespacePolicy:
-    type: cache
-    cache: 
-      hubResource: ibm-cos-ns
-      ttl: 3600
+    type: Cache
+    cache:
+      caching:
+        ttl: 36000
+      hubResource: ibm-cos-ns 
+  placementPolicy:
+    tiers:
+    - backingStores:
+      - noobaa-default-backing-store
 ```
