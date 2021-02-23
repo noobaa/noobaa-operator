@@ -823,6 +823,8 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 	if phase == nbv1.UpgradePhaseFinished || phase == nbv1.UpgradePhaseNone {
 		return nil
 	}
+
+	r.Logger.Infof("UpgradeMigrateDB: upgrade phase - %s", phase)
 	oldSts := &appsv1.StatefulSet{
 		TypeMeta: metav1.TypeMeta{Kind: "StatefulSet"},
 		ObjectMeta: metav1.ObjectMeta{
@@ -831,10 +833,12 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 		},
 	}
 	if !util.KubeCheck(oldSts) {
+		r.Logger.Info("Old (mongo) STS was not found. skipping migration")
 		phase = nbv1.UpgradePhaseNone
 	} else {
 		replicas := int32(1)
 		if phase == nbv1.UpgradePhaseClean {
+			r.Logger.Info("UpgradeMigrateDB:: Cleanning phase - setting old STS to 0 replicas")
 			replicas = int32(0)
 		}
 		if err := r.ReconcileObject(oldSts, func() error { // remove old sts pods when finish migrating
@@ -849,20 +853,23 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 			}
 			return nil
 		}); err != nil {
+			r.Logger.Errorf("got error on mongo STS reconcile %v", err)
 			return err
 		}
 		replicas = int32(0)
 		if phase == nbv1.UpgradePhaseClean {
+			r.Logger.Info("UpgradeMigrateDB:: cleanning phase - setting endopint deployment to 1")
 			replicas = int32(1)
 		}
 		if err := r.ReconcileObject(r.DeploymentEndpoint, func() error { // remove endpoints pods before starting
 			r.DeploymentEndpoint.Spec.Replicas = &replicas
 			return nil
 		}); err != nil {
+			r.Logger.Errorf("got error on endpoints deployment reconcile %v", err)
 			return err
 		}
-		r.Logger.Infof("UpgradeMigrateDB: Old STS found, upgrading...")
 		if phase == "" {
+			r.Logger.Infof("UpgradeMigrateDB: setting phase to %s", nbv1.UpgradePhasePrepare)
 			phase = nbv1.UpgradePhasePrepare
 		} else {
 			switch phase {
@@ -875,17 +882,22 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 					util.KubeList(corePodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: corePodSelector}) &&
 					(len(corePodList.Items) == 0 && len(epPodList.Items) == 0) &&
 					(oldSts.Status.ReadyReplicas == 1 && r.NooBaaPostgresDB.Status.ReadyReplicas == 1) {
+					r.Logger.Infof("UpgradeMigrateDB:: system is ready for migration. setting phase to %s", nbv1.UpgradePhaseMigrate)
 					phase = nbv1.UpgradePhaseMigrate
 				} else {
+					r.Logger.Infof("UpgradeMigrateDB:: system not fully ready for migrate")
 					return fmt.Errorf("system not fully ready for migrate")
 				}
 			case nbv1.UpgradePhaseMigrate:
+				r.Logger.Infof("UpgradeMigrateDB:: reconciling migration job")
 				if err := r.ReconcileObject(r.UpgradeJob, r.SetDesiredJobUpgradeDB); err != nil {
 					return err
 				}
 				if r.UpgradeJob.Status.Succeeded > 0 {
+					r.Logger.Infof("UpgradeMigrateDB:: migration completed successfuly. setting phase to %s", nbv1.UpgradePhaseClean)
 					phase = nbv1.UpgradePhaseClean
 				} else {
+					r.Logger.Infof("UpgradeMigrateDB:: migration not finished yet")
 					return fmt.Errorf("job didn't finish yet")
 				}
 			case nbv1.UpgradePhaseClean:
@@ -896,7 +908,9 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 				}
 				if len(oldDbPodList.Items) == 0 {
 					phase = nbv1.UpgradePhaseFinished
+					r.Logger.Infof("UpgradeMigrateDB:: mongo pod terminated. setting phase to %s", nbv1.UpgradePhaseFinished)
 				} else {
+					r.Logger.Infof("UpgradeMigrateDB:: mongo pod is still running. waiting for termination")
 					return fmt.Errorf("not all old pods are cleaned yet")
 				}
 			}
