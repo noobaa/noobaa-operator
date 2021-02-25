@@ -291,6 +291,19 @@ func NewBucketRequest(
 		}
 		r.BucketName = ob.Spec.Connection.Endpoint.BucketName
 		r.AccountName = ob.Spec.AdditionalState["account"]
+		bucketClassName := ob.Spec.AdditionalState["bucketclass"]
+		r.BucketClass = &nbv1.BucketClass{
+			TypeMeta: metav1.TypeMeta{Kind: "BucketClass"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      bucketClassName,
+				Namespace: p.Namespace,
+			},
+		}
+		if !util.KubeCheck(r.BucketClass) {
+			msg := fmt.Sprintf("BucketClass %q not found in provisioner namespace %q", bucketClassName, p.Namespace)
+			p.recorder.Event(r.OBC, "Warning", "MissingBucketClass", msg)
+			return nil, fmt.Errorf(msg)
+		}
 	}
 
 	return r, nil
@@ -520,10 +533,14 @@ func (r *BucketRequest) DeleteAccount() error {
 func (r *BucketRequest) DeleteBucket() error {
 
 	// TODO delete bucket data!!!
-
+	var err error
 	log := r.Provisioner.Logger
 	log.Infof("deleting bucket %q", r.BucketName)
-	err := r.SysClient.NBClient.DeleteBucketAndObjectsAPI(nb.DeleteBucketParams{Name: r.BucketName})
+	if r.BucketClass.Spec.NamespacePolicy != nil {
+		err = r.SysClient.NBClient.DeleteBucketAPI(nb.DeleteBucketParams{Name: r.BucketName})
+	} else {
+		err = r.SysClient.NBClient.DeleteBucketAndObjectsAPI(nb.DeleteBucketParams{Name: r.BucketName})
+	}
 
 	if err != nil {
 		if nbErr, ok := err.(*nb.RPCError); ok && nbErr.RPCCode == "NO_SUCH_BUCKET" {
