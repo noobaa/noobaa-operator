@@ -73,6 +73,12 @@ func RunCollect(cmd *cobra.Command, args []string) {
 	endpointPodSelector, _ := labels.Parse("noobaa-s3=" + options.SystemName)
 	c.CollectPodLogs(endpointPodSelector)
 
+	dbPodSelector, _ := labels.Parse("noobaa-db=" + options.SystemName)
+	if options.DBType == "postgres" {
+		dbPodSelector, _ = labels.Parse("noobaa-db=" + options.DBType)
+	}
+	c.CollectPodLogs(dbPodSelector)
+
 	// collectSystemMetrics()
 
 	c.ExportDiagnostics(destDir)
