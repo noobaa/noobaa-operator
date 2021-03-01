@@ -493,7 +493,11 @@ func RunSystemVersionsStatus(cmd *cobra.Command, args []string) {
 		noobaaOperatorImage = CheckOperatorImage(cmd, args)
 	} else {
 		noobaaImage = options.NooBaaImage
-		noobaaDbImage = options.DBImage
+		if options.DBType == "postgres" {
+			noobaaDbImage = options.DBPostgresImage
+		} else {
+			noobaaDbImage = options.DBImage
+		}
 		noobaaOperatorImage = options.OperatorImage
 	}
 
