@@ -11,7 +11,6 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/system"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
-	"github.com/noobaa/noobaa-operator/v2/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +50,7 @@ func CmdStatus() *cobra.Command {
 // RunInstall runs a CLI command
 func RunInstall(cmd *cobra.Command, args []string) {
 	log := util.Logger()
-	version.RunVersion(cmd, args)
+	system.RunSystemVersionsStatus(cmd, args)
 	log.Printf("Namespace: %s", options.Namespace)
 	log.Printf("")
 	log.Printf("CRD Create:")
