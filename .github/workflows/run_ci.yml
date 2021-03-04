@@ -4,10 +4,10 @@ name: Run Operator Unit Tests
 on: [push, pull_request]
 
 env:
-  ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
-  GO111MODULE: 'on'
-  GOPROXY: 'https://proxy.golang.org'
-  KUBERNETES_VERSION: 'v1.17.3'
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: "true"
+  GO111MODULE: "on"
+  GOPROXY: "https://proxy.golang.org"
+  KUBERNETES_VERSION: "v1.17.3"
 
 jobs:
   run-tests:
@@ -22,24 +22,44 @@ jobs:
           bash .travis/install-tools.sh
           bash .travis/install-python.sh
           sudo bash .travis/install-minikube.sh
-      
-      - name: Run Generate API
-        id: run-gen-api
-        run: make gen-api-fail-if-dirty --always-make || exit 1
 
       - name: Run Build
         id: run-build
         run: make build || exit 1
-      
+
+      - name: Run Generate API
+        id: run-gen-api
+        run: make gen-api-fail-if-dirty --always-make || exit 1
+
       - name: Run Test
         id: run-test
         run: make test || exit 1
-      
+
       - name: Run Test OLM
         id: run-test-olm
         run: sudo make test-olm || exit 1
 
+  run-cli-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: Deploy Dependencies
+        id: deploy
+        run: |
+          bash .travis/install-tools.sh
+          bash .travis/install-python.sh
+          sudo bash .travis/install-minikube.sh
+
+      - name: Run Build CLI
+        id: run-build-cli
+        run: make cli || exit 1
+
+      - name: Run Build Image
+        id: run-build-image
+        run: make image || exit 1
+
       - name: Run Test CLI
         id: run-test-cli
         run: sudo make test-cli-flow || exit 1
-
