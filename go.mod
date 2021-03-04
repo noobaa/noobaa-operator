@@ -18,7 +18,7 @@ require (
 	github.com/go-logr/zapr v0.1.1 // indirect
 	github.com/go-openapi/spec v0.19.8
 	github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
-	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20201218194517-2e9d6aa76d58
+	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20210127170128-83a4fdf6edd6
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20190614194054-1ccced634f6c
@@ -36,7 +36,7 @@ require (
 	k8s.io/apimachinery v0.19.3
 	k8s.io/cli-runtime v0.19.3
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/code-generator v0.19.3
+	k8s.io/code-generator v0.20.1
 	k8s.io/gengo v0.0.0-20200428234225-8167cfdcfc14
 	k8s.io/kube-openapi v0.0.0-20200805222855-6aeccd4b50c6
 	k8s.io/kubectl v0.18.8
