@@ -23,13 +23,13 @@ jobs:
           bash .travis/install-python.sh
           sudo bash .travis/install-minikube.sh
 
-      - name: Run Build
-        id: run-build
-        run: make build || exit 1
-
       - name: Run Generate API
         id: run-gen-api
         run: make gen-api-fail-if-dirty --always-make || exit 1
+
+      - name: Run Build
+        id: run-build
+        run: make build || exit 1
 
       - name: Run Test
         id: run-test
