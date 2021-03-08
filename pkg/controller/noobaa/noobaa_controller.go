@@ -124,7 +124,7 @@ func Add(mgr manager.Manager) error {
 
 	// handler for global RPC message and ,simply trigger a reconcile on every message
 	nb.GlobalRPC.Handler = func(req *nb.RPCMessage) (interface{}, error) {
-		logrus.Infof("RPC Handle: %+v", req)
+		logrus.Infof("RPC Handle: {Op: %s, API: %s, Method: %s, Error: %s, Params: %+v}", req.Op, req.API, req.Method, req.Error, req.Params)
 		notificationSource.Queue.AddRateLimited(reconcile.Request{NamespacedName: types.NamespacedName{
 			Name:      options.SystemName,
 			Namespace: options.Namespace,
