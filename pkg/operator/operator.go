@@ -1,6 +1,7 @@
 package operator
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 
+	secv1 "github.com/openshift/api/security/v1"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -94,6 +96,7 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	util.KubeCreateSkipExisting(c.RoleBinding)
 	util.KubeCreateSkipExisting(c.ClusterRole)
 	util.KubeCreateSkipExisting(c.ClusterRoleBinding)
+	util.KubeCreateOptional(c.SecurityContextConstraints)
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		util.KubeCreateSkipExisting(c.Deployment)
@@ -107,13 +110,20 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	if !noDeploy {
 		util.KubeDelete(c.Deployment)
 	}
+	cleanup, _ := cmd.Flags().GetBool("cleanup")
+	if !cleanup {
+		log.Printf("SCC Delete: currently disabled (enable with \"--cleanup\")")
+		log.Printf("SCC Status:")
+		util.KubeCheck(c.NS)
+	} else {
+		util.KubeDelete(c.SecurityContextConstraints)
+	}
 	util.KubeDelete(c.ClusterRoleBinding)
 	util.KubeDelete(c.ClusterRole)
 	util.KubeDelete(c.RoleBinding)
 	util.KubeDelete(c.Role)
 	util.KubeDelete(c.SA)
 
-	cleanup, _ := cmd.Flags().GetBool("cleanup")
 	reservedNS := c.NS.Name == "default" ||
 		strings.HasPrefix(c.NS.Name, "openshift-") ||
 		strings.HasPrefix(c.NS.Name, "kubernetes-") ||
@@ -170,13 +180,14 @@ func RunYaml(cmd *cobra.Command, args []string) {
 
 // Conf struct holds all the objects needed to install the operator
 type Conf struct {
-	NS                 *corev1.Namespace
-	SA                 *corev1.ServiceAccount
-	Role               *rbacv1.Role
-	RoleBinding        *rbacv1.RoleBinding
-	ClusterRole        *rbacv1.ClusterRole
-	ClusterRoleBinding *rbacv1.ClusterRoleBinding
-	Deployment         *appsv1.Deployment
+	NS                         *corev1.Namespace
+	SA                         *corev1.ServiceAccount
+	Role                       *rbacv1.Role
+	RoleBinding                *rbacv1.RoleBinding
+	ClusterRole                *rbacv1.ClusterRole
+	ClusterRoleBinding         *rbacv1.ClusterRoleBinding
+	SecurityContextConstraints *secv1.SecurityContextConstraints
+	Deployment                 *appsv1.Deployment
 }
 
 // LoadOperatorConf loads and initializes all the objects needed to install the operator
@@ -189,6 +200,7 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.RoleBinding = util.KubeObject(bundle.File_deploy_role_binding_yaml).(*rbacv1.RoleBinding)
 	c.ClusterRole = util.KubeObject(bundle.File_deploy_cluster_role_yaml).(*rbacv1.ClusterRole)
 	c.ClusterRoleBinding = util.KubeObject(bundle.File_deploy_cluster_role_binding_yaml).(*rbacv1.ClusterRoleBinding)
+	c.SecurityContextConstraints = util.KubeObject(bundle.File_deploy_scc_yaml).(*secv1.SecurityContextConstraints)
 	c.Deployment = util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
 
 	c.NS.Name = options.Namespace
@@ -210,6 +222,8 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 		c.Deployment.Spec.Template.Spec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{{Name: options.ImagePullSecret}}
 	}
+
+	c.SecurityContextConstraints.Users[0] = fmt.Sprintf("system:serviceaccount:%s:%s", options.Namespace, c.SA.Name)
 	return c
 }
 

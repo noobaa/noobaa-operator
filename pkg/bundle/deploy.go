@@ -4091,6 +4091,48 @@ roleRef:
   name: noobaa
 `
 
+const Sha256_deploy_scc_yaml = "cbb071961f7dd77e5bdca7e36b89e1e1982265c4e7dc95f00109d0acc64a3c06"
+
+const File_deploy_scc_yaml = `apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: noobaa
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: false
+allowedCapabilities: []
+defaultAddCapabilities: []
+fsGroup:
+  type: MustRunAs
+groups: []
+priority: null
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+- KILL
+- MKNOD
+- SETUID
+- SETGID
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+users:
+- system:serviceaccount:openshift-storage:noobaa
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- persistentVolumeClaim
+- projected
+- secret
+`
+
 const Sha256_deploy_service_account_yaml = "7c68e5bd65c614787d7d4cdf80db8c14d9159ce8e940c5134d33d21dbe66893f"
 
 const File_deploy_service_account_yaml = `apiVersion: v1

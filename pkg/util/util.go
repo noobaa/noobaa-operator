@@ -28,6 +28,7 @@ import (
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
 	routev1 "github.com/openshift/api/route/v1"
+	secv1 "github.com/openshift/api/security/v1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	operv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -94,6 +95,7 @@ func init() {
 	Panic(operv1.AddToScheme(scheme.Scheme))
 	Panic(cephv1.AddToScheme(scheme.Scheme))
 	Panic(routev1.AddToScheme(scheme.Scheme))
+	Panic(secv1.AddToScheme(scheme.Scheme))
 	Panic(autoscalingv1.AddToScheme(scheme.Scheme))
 }
 
@@ -124,6 +126,7 @@ func MapperProvider(config *rest.Config) (meta.RESTMapper, error) {
 				g.Name == "operator.openshift.io" ||
 				g.Name == "route.openshift.io" ||
 				g.Name == "cloudcredential.openshift.io" ||
+				g.Name == "security.openshift.io" ||
 				g.Name == "monitoring.coreos.com" ||
 				g.Name == "ceph.rook.io" ||
 				g.Name == "autoscaling" ||
@@ -213,6 +216,50 @@ func KubeCreateSkipExisting(obj runtime.Object) bool {
 	}
 	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
 		log.Printf("❌ CRD Missing: %s %q\n", gvk.Kind, objKey.Name)
+		return false
+	}
+	if errors.IsNotFound(err) {
+		err = klient.Create(ctx, obj)
+		if err == nil {
+			log.Printf("✅ Created: %s %q\n", gvk.Kind, objKey.Name)
+			return true
+		}
+		if errors.IsNotFound(err) {
+			log.Printf("❌ Namespace Missing: %s %q: kubectl create ns %s\n",
+				gvk.Kind, objKey.Name, objKey.Namespace)
+			return false
+		}
+	}
+	if errors.IsConflict(err) {
+		log.Printf("❌ Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		return false
+	}
+	if errors.IsForbidden(err) {
+		log.Printf("❌ Forbidden: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		return false
+	}
+	if errors.IsInvalid(err) {
+		log.Printf("❌ Invalid: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		return false
+	}
+	Panic(err)
+	return false
+}
+
+// KubeCreateOptional will check if the object exists and will create/skip accordingly
+// It detects the situation of a missing CRD and reports it as an optional feature.
+func KubeCreateOptional(obj runtime.Object) bool {
+	klient := KubeClient()
+	objKey := ObjectKey(obj)
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	clone := obj.DeepCopyObject()
+	err := klient.Get(ctx, objKey, clone)
+	if err == nil {
+		log.Printf("✅ Already Exists: %s %q\n", gvk.Kind, objKey.Name)
+		return false
+	}
+	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+		log.Printf("⬛ (Optional) CRD Unavailable: %s %q\n", gvk.Kind, objKey.Name)
 		return false
 	}
 	if errors.IsNotFound(err) {
