@@ -15,4 +15,5 @@ COPY build/bin /usr/local/bin
 RUN  /usr/local/bin/user_setup
 USER ${USER_UID}
 
-CMD ["/usr/local/bin/noobaa-operator", "operator", "run"]
+ENTRYPOINT ["/usr/local/bin/noobaa-operator"]
+CMD ["operator", "run"]
