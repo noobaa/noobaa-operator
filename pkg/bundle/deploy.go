@@ -694,7 +694,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "f40283a99e354a94828c396ac25588386b7c75e7be117268c177d189723474aa"
+const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "08e32df6c91fa995d30c3a0981e6079c104d87a039092886fbc8648cf62d6172"
 
 const File_deploy_crds_noobaa_io_namespacestores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -825,6 +825,22 @@ spec:
                 - endpoint
                 - secret
                 - targetBucket
+                type: object
+              nsfs:
+                description: NSFS specifies a namespace store of type nsfs
+                properties:
+                  fsBackend:
+                    description: FsBackend is the backend type of the file system
+                    enum:
+                    - CEPH_FS
+                    - GPFS
+                    - NFSv4
+                    type: string
+                  fsPath:
+                    description: FsPath is a path to a directory in a file system
+                    type: string
+                required:
+                - fsPath
                 type: object
               s3Compatible:
                 description: S3Compatible specifies a namespace store of type s3-compatible

@@ -128,6 +128,22 @@ spec:
                 - secret
                 - targetBucket
                 type: object
+              nsfs:
+                description: NSFS specifies a namespace store of type nsfs
+                properties:
+                  fsBackend:
+                    description: FsBackend is the backend type of the file system
+                    enum:
+                    - CEPH_FS
+                    - GPFS
+                    - NFSv4
+                    type: string
+                  fsPath:
+                    description: FsPath is a path to a directory in a file system
+                    type: string
+                required:
+                - fsPath
+                type: object
               s3Compatible:
                 description: S3Compatible specifies a namespace store of type s3-compatible
                 properties:

@@ -200,7 +200,6 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
 // ReconcilePhases runs the reconcile flow and populates System.Status.
 func (r *Reconciler) ReconcilePhases() error {
-	logrus.Infof("ReconcilePhases ")
 
 	if err := r.ReconcilePhaseVerifying(); err != nil {
 		logrus.Infof("ReconcilePhases verifying")
@@ -410,6 +409,22 @@ func (r *Reconciler) ReadSystemInfo() error {
 	}
 
 	nsr := r.NamespaceResourceinfo
+
+	// handling namespace fs resource
+	if r.NamespaceStore.Spec.Type == nbv1.NSStoreTypeNSFS {
+		r.CreateNamespaceResourceParams = &nb.CreateNamespaceResourceParams{
+			Name: r.NamespaceStore.Name,
+			NSFSConfig: &nb.NSFSConfig{
+				FsBackend: r.NamespaceStore.Spec.NSFS.FsBackend,
+				FsPath:    r.NamespaceStore.Spec.NSFS.FsPath,
+			},
+			NamespaceStore: &nb.NamespaceStoreInfo{
+				Name:      r.NamespaceStore.Name,
+				Namespace: options.Namespace,
+			},
+		}
+		return nil
+	}
 
 	conn, err := r.MakeExternalConnectionParams()
 	if err != nil {

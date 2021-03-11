@@ -50,6 +50,7 @@ func CmdCreate() *cobra.Command {
 		CmdCreateS3Compatible(),
 		CmdCreateIBMCos(),
 		CmdCreateAzureBlob(),
+		CmdCreateNSFS(),
 	)
 	return cmd
 }
@@ -170,6 +171,24 @@ func CmdCreateAzureBlob() *cobra.Command {
 	cmd.Flags().String(
 		"secret-name", "",
 		`The name of a secret for authentication - should have AccountName and AccountKey properties`,
+	)
+	return cmd
+}
+
+// CmdCreateNSFS returns a CLI command
+func CmdCreateNSFS() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "nsfs <namespace-store-name>",
+		Short: "Create nsfs namespace store",
+		Run:   RunCreateNSFS,
+	}
+	cmd.Flags().String(
+		"fs-backend", "",
+		"The file system backend type - CEPH_FS | GPFS | NFSv4",
+	)
+	cmd.Flags().String(
+		"fs-path", "",
+		"The path to the exported directory in the file system",
 	)
 	return cmd
 }
@@ -390,6 +409,23 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 				Name:      secret.Name,
 				Namespace: secret.Namespace,
 			},
+		}
+	})
+}
+
+// RunCreateNSFS runs a CLI command
+func RunCreateNSFS(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	createCommon(cmd, args, nbv1.NSStoreTypeNSFS, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
+		fsPath := util.GetFlagStringOrPrompt(cmd, "fs-path")
+		fsBackend, _ := cmd.Flags().GetString("fs-backend")
+
+		if fsPath == "" {
+			log.Fatalf(`❌ Missing expected arguments: <fs-path> %s`, cmd.UsageString())
+		}
+		namespaceStore.Spec.NSFS = &nbv1.NSFSSpec{
+			FsPath:    fsPath,
+			FsBackend: fsBackend,
 		}
 	})
 }
@@ -616,6 +652,8 @@ func GetNamespaceStoreSecret(bs *nbv1.NamespaceStore) *corev1.SecretReference {
 		return &bs.Spec.IBMCos.Secret
 	case nbv1.NSStoreTypeAzureBlob:
 		return &bs.Spec.AzureBlob.Secret
+	case nbv1.NSStoreTypeNSFS:
+		return nil
 	default:
 		return nil
 	}
@@ -632,6 +670,8 @@ func GetNamespaceStoreTargetBucket(bs *nbv1.NamespaceStore) string {
 		return bs.Spec.IBMCos.TargetBucket
 	case nbv1.NSStoreTypeAzureBlob:
 		return bs.Spec.AzureBlob.TargetBlobContainer
+	case nbv1.NSStoreTypeNSFS:
+		return ""
 	default:
 		return ""
 	}
