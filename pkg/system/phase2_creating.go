@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -825,25 +826,35 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 	}
 
 	r.Logger.Infof("UpgradeMigrateDB: upgrade phase - %s", phase)
-	oldSts := &appsv1.StatefulSet{
+	mongoSts := &appsv1.StatefulSet{
 		TypeMeta: metav1.TypeMeta{Kind: "StatefulSet"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "noobaa-db",
 			Namespace: options.Namespace,
 		},
 	}
-	if !util.KubeCheck(oldSts) {
-		r.Logger.Info("Old (mongo) STS was not found. skipping migration")
-		phase = nbv1.UpgradePhaseNone
-	} else {
-		replicas := int32(1)
-		if phase == nbv1.UpgradePhaseClean {
-			r.Logger.Info("UpgradeMigrateDB:: Cleanning phase - setting old STS to 0 replicas")
-			replicas = int32(0)
+
+	mongoExists := util.KubeCheck(mongoSts)
+
+	switch phase {
+
+	case "":
+		if mongoExists {
+			r.Logger.Infof("UpgradeMigrateDB: setting phase to %s", nbv1.UpgradePhasePrepare)
+			phase = nbv1.UpgradePhasePrepare
+		} else {
+			// no mongo STS. skip migration
+			r.Logger.Info("Old (mongo) STS was not found. skipping migration")
+			phase = nbv1.UpgradePhaseNone
 		}
-		if err := r.ReconcileObject(oldSts, func() error { // remove old sts pods when finish migrating
-			oldSts.Spec.Replicas = &replicas
-			podSpec := &oldSts.Spec.Template.Spec
+
+	case nbv1.UpgradePhasePrepare:
+		r.Logger.Infof("UpgradeMigrateDB:: prepare phase")
+
+		// update mongo sts with the new noobaa-core image as the init container image
+		r.Logger.Infof("UpgradeMigrateDB:: updating mongo STS init container")
+		if err := r.ReconcileObject(mongoSts, func() error { // remove old sts pods when finish migrating
+			podSpec := &mongoSts.Spec.Template.Spec
 			podSpec.ServiceAccountName = "noobaa"
 			for i := range podSpec.InitContainers {
 				c := &podSpec.InitContainers[i]
@@ -856,66 +867,97 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 			r.Logger.Errorf("got error on mongo STS reconcile %v", err)
 			return err
 		}
-		replicas = int32(0)
-		if phase == nbv1.UpgradePhaseClean {
-			r.Logger.Info("UpgradeMigrateDB:: cleanning phase - setting endopint deployment to 1")
-			replicas = int32(1)
-		}
-		if err := r.ReconcileObject(r.DeploymentEndpoint, func() error { // remove endpoints pods before starting
-			r.DeploymentEndpoint.Spec.Replicas = &replicas
-			return nil
-		}); err != nil {
-			r.Logger.Errorf("got error on endpoints deployment reconcile %v", err)
+
+		// when starting - restart the db pod. This is a fix for https://bugzilla.redhat.com/show_bug.cgi?id=1922113
+		r.Logger.Info("getting noobaa-db-0 pod and deleting it if init container is old")
+		dbPod := &corev1.Pod{}
+		err := r.Client.Get(r.Ctx, types.NamespacedName{Namespace: options.Namespace, Name: "noobaa-db-0"}, dbPod)
+		if err != nil {
+			r.Logger.Errorf("got error when trying to get noobaa-db-0 pod - %v", err)
 			return err
 		}
-		if phase == "" {
-			r.Logger.Infof("UpgradeMigrateDB: setting phase to %s", nbv1.UpgradePhasePrepare)
-			phase = nbv1.UpgradePhasePrepare
-		} else {
-			switch phase {
-			case nbv1.UpgradePhasePrepare:
-				corePodList := &corev1.PodList{}
-				corePodSelector, _ := labels.Parse("noobaa-core=" + r.Request.Name)
-				epPodList := &corev1.PodList{}
-				epPodSelector, _ := labels.Parse("noobaa-s3=" + r.Request.Name)
-				if util.KubeList(epPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: epPodSelector}) &&
-					util.KubeList(corePodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: corePodSelector}) &&
-					(len(corePodList.Items) == 0 && len(epPodList.Items) == 0) &&
-					(oldSts.Status.ReadyReplicas == 1 && r.NooBaaPostgresDB.Status.ReadyReplicas == 1) {
-					r.Logger.Infof("UpgradeMigrateDB:: system is ready for migration. setting phase to %s", nbv1.UpgradePhaseMigrate)
-					phase = nbv1.UpgradePhaseMigrate
-				} else {
-					r.Logger.Infof("UpgradeMigrateDB:: system not fully ready for migrate")
-					return fmt.Errorf("system not fully ready for migrate")
-				}
-			case nbv1.UpgradePhaseMigrate:
-				r.Logger.Infof("UpgradeMigrateDB:: reconciling migration job")
-				if err := r.ReconcileObject(r.UpgradeJob, r.SetDesiredJobUpgradeDB); err != nil {
-					return err
-				}
-				if r.UpgradeJob.Status.Succeeded > 0 {
-					r.Logger.Infof("UpgradeMigrateDB:: migration completed successfuly. setting phase to %s", nbv1.UpgradePhaseClean)
-					phase = nbv1.UpgradePhaseClean
-				} else {
-					r.Logger.Infof("UpgradeMigrateDB:: migration not finished yet")
-					return fmt.Errorf("job didn't finish yet")
-				}
-			case nbv1.UpgradePhaseClean:
-				oldDbPodList := &corev1.PodList{}
-				oldDbPodSelector, _ := labels.Parse("noobaa-db=" + r.Request.Name)
-				if !util.KubeList(oldDbPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: oldDbPodSelector}) {
-					return nil
-				}
-				if len(oldDbPodList.Items) == 0 {
-					phase = nbv1.UpgradePhaseFinished
-					r.Logger.Infof("UpgradeMigrateDB:: mongo pod terminated. setting phase to %s", nbv1.UpgradePhaseFinished)
-				} else {
-					r.Logger.Infof("UpgradeMigrateDB:: mongo pod is still running. waiting for termination")
-					return fmt.Errorf("not all old pods are cleaned yet")
-				}
+		if dbPod.Spec.InitContainers[0].Image != r.NooBaa.Status.ActualImage {
+			r.Logger.Info("identified old init container on ")
+			err = r.Client.Delete(r.Ctx, dbPod)
+			if err != nil {
+				r.Logger.Errorf("got error on deletion of noobaa-db-0 pod")
+				return err
 			}
 		}
+
+		// remove endpoints pods. set replicas to 0
+		// setting the deployment's replica count to 0 should disable the HPA
+		// https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#implicit-maintenance-mode-deactivation
+		if err := r.SetEndpointsDeploymentReplicas(0); err != nil {
+			r.Logger.Errorf("UpgradeMigrateDB::got error on endpoints deployment reconcile %v", err)
+			return err
+		}
+
+		// wait for endpoints and core pods to stop
+		corePodList := &corev1.PodList{}
+		corePodSelector, _ := labels.Parse("noobaa-core=" + r.Request.Name)
+		epPodList := &corev1.PodList{}
+		epPodSelector, _ := labels.Parse("noobaa-s3=" + r.Request.Name)
+		if util.KubeList(epPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: epPodSelector}) &&
+			util.KubeList(corePodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: corePodSelector}) &&
+			(len(corePodList.Items) == 0 && len(epPodList.Items) == 0) &&
+			(mongoSts.Status.ReadyReplicas == 1 && r.NooBaaPostgresDB.Status.ReadyReplicas == 1) {
+			r.Logger.Infof("UpgradeMigrateDB:: system is ready for migration. setting phase to %s", nbv1.UpgradePhaseMigrate)
+			phase = nbv1.UpgradePhaseMigrate
+		} else {
+			r.Logger.Infof("UpgradeMigrateDB:: system not fully ready for migrate")
+			return fmt.Errorf("system not fully ready for migrate")
+		}
+
+	case nbv1.UpgradePhaseMigrate:
+		r.Logger.Infof("UpgradeMigrateDB:: data migration phase")
+
+		r.Logger.Infof("UpgradeMigrateDB:: reconciling migration job")
+		if err := r.ReconcileObject(r.UpgradeJob, r.SetDesiredJobUpgradeDB); err != nil {
+			return err
+		}
+		if r.UpgradeJob.Status.Succeeded > 0 {
+			r.Logger.Infof("UpgradeMigrateDB:: migration completed successfuly. setting phase to %s", nbv1.UpgradePhaseClean)
+			phase = nbv1.UpgradePhaseClean
+		} else {
+			r.Logger.Infof("UpgradeMigrateDB:: migration not finished yet")
+			return fmt.Errorf("job didn't finish yet")
+		}
+
+	case nbv1.UpgradePhaseClean:
+		r.Logger.Infof("UpgradeMigrateDB:: cleanup phase")
+
+		r.Logger.Infof("UpgradeMigrateDB:: deleting mongodb STS")
+		err := r.Client.Delete(r.Ctx, mongoSts)
+		if err != nil && !errors.IsNotFound(err) {
+			r.Logger.Errorf("got error on mongo sts deletion: %v", err)
+			return err
+		}
+
+		oldDbPodList := &corev1.PodList{}
+		oldDbPodSelector, _ := labels.Parse("noobaa-db=" + r.Request.Name)
+		if !util.KubeList(oldDbPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: oldDbPodSelector}) {
+			return nil
+		}
+		if len(oldDbPodList.Items) == 0 {
+			r.Logger.Infof("UpgradeMigrateDB:: mongo pod terminated")
+		} else {
+			r.Logger.Infof("UpgradeMigrateDB:: mongo pod is still running. waiting for termination")
+			return fmt.Errorf("mongo is still alive")
+		}
+
+		// set endpoints replica count to 1. this should enable HPA back again
+		if err := r.SetEndpointsDeploymentReplicas(1); err != nil {
+			r.Logger.Errorf("UpgradeMigrateDB::got error on endpoints deployment reconcile %v", err)
+			return err
+		}
+
+		r.Logger.Infof("UpgradeMigrateDB:: Completed migration to postgres. setting upgrade phase to DoneUpgrade")
+
+		phase = nbv1.UpgradePhaseFinished
+
 	}
+
 	r.NooBaa.Status.UpgradePhase = phase
 	if err := r.UpdateStatus(); err != nil {
 		return err
@@ -929,4 +971,13 @@ func (r *Reconciler) SetDesiredJobUpgradeDB() error {
 	r.UpgradeJob.Spec.Template.Spec.Containers[0].Command = []string{"/noobaa_init_files/noobaa_init.sh", "db_migrate"}
 	r.setDesiredCoreEnv(&r.UpgradeJob.Spec.Template.Spec.Containers[0])
 	return nil
+}
+
+// SetEndpointsDeploymentReplicas updates the number of replicas on the endpoints deployment
+func (r *Reconciler) SetEndpointsDeploymentReplicas(replicas int32) error {
+	r.Logger.Infof("UpgradeMigrateDB:: setting endpoints replica count to %d", replicas)
+	return r.ReconcileObject(r.DeploymentEndpoint, func() error {
+		r.DeploymentEndpoint.Spec.Replicas = &replicas
+		return nil
+	})
 }
