@@ -25,6 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const upgradeJobBackoffLimit = int32(4)
+
 // ReconcilePhaseCreating runs the reconcile phase
 func (r *Reconciler) ReconcilePhaseCreating() error {
 
@@ -919,6 +921,9 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 		if r.UpgradeJob.Status.Succeeded > 0 {
 			r.Logger.Infof("UpgradeMigrateDB:: migration completed successfuly. setting phase to %s", nbv1.UpgradePhaseClean)
 			phase = nbv1.UpgradePhaseClean
+		} else if r.UpgradeJob.Status.Failed > upgradeJobBackoffLimit {
+			r.Logger.Errorf("migration failed. upgrade job exceeded the backoff limit of %d. manually delete the job %q to retry",
+				upgradeJobBackoffLimit, r.UpgradeJob.Name)
 		} else {
 			r.Logger.Infof("UpgradeMigrateDB:: migration not finished yet")
 			return fmt.Errorf("job didn't finish yet")
@@ -928,8 +933,7 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 		r.Logger.Infof("UpgradeMigrateDB:: cleanup phase")
 
 		r.Logger.Infof("UpgradeMigrateDB:: deleting mongodb STS")
-		err := r.Client.Delete(r.Ctx, mongoSts)
-		if err != nil && !errors.IsNotFound(err) {
+		if err := r.Client.Delete(r.Ctx, mongoSts); err != nil && !errors.IsNotFound(err) {
 			r.Logger.Errorf("got error on mongo sts deletion: %v", err)
 			return err
 		}
@@ -952,8 +956,11 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 			return err
 		}
 
-		r.Logger.Infof("UpgradeMigrateDB:: Completed migration to postgres. setting upgrade phase to DoneUpgrade")
+		if err := r.CleanupMigrationJob(); err != nil {
+			return err
+		}
 
+		r.Logger.Infof("UpgradeMigrateDB:: Completed migration to postgres. setting upgrade phase to DoneUpgrade")
 		phase = nbv1.UpgradePhaseFinished
 
 	}
@@ -965,11 +972,50 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 	return nil
 }
 
+// CleanupMigrationJob deletes the migration job and all its pods
+func (r *Reconciler) CleanupMigrationJob() error {
+
+	// delete the migration job
+	r.Logger.Infof("UpgradeMigrateDB:: deleting migration job")
+	if err := r.Client.Delete(r.Ctx, r.UpgradeJob); err != nil {
+		r.Logger.Errorf("UpgradeMigrateDB:: got error on migration job deletion: %v", err)
+		return err
+	}
+
+	// it seems that completed pods are not delete after job deletion. delete all job pods explicitly
+	r.Logger.Infof("UpgradeMigrateDB:: deleting migration job pods")
+	jobPods := &corev1.PodList{}
+	jobPodsSelector, _ := labels.Parse("job-name=" + r.UpgradeJob.Name)
+	if !util.KubeList(jobPods, &client.ListOptions{Namespace: options.Namespace, LabelSelector: jobPodsSelector}) {
+		return nil
+	}
+
+	hadErrors := false
+	for _, pod := range jobPods.Items {
+		if err := r.Client.Delete(r.Ctx, &pod); err != nil && !errors.IsNotFound(err) {
+			r.Logger.Errorf("got error on pod %v deletion. %v", pod.Name, err)
+			hadErrors = true
+		}
+	}
+	if hadErrors {
+		return fmt.Errorf("had errors in migration job pods deletion")
+	}
+
+	return nil
+
+}
+
 // SetDesiredJobUpgradeDB updates the UpgradeJob as desired for reconciling
 func (r *Reconciler) SetDesiredJobUpgradeDB() error {
+	backoffLimit := upgradeJobBackoffLimit
 	r.UpgradeJob.Spec.Template.Spec.Containers[0].Image = r.NooBaa.Status.ActualImage
 	r.UpgradeJob.Spec.Template.Spec.Containers[0].Command = []string{"/noobaa_init_files/noobaa_init.sh", "db_migrate"}
 	r.setDesiredCoreEnv(&r.UpgradeJob.Spec.Template.Spec.Containers[0])
+
+	// setting the restart policy to never to keep the pods around after failed migrations
+	// also reducing the backoff limit to avoid to many pods staying around in case of an issue
+	r.UpgradeJob.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
+	r.UpgradeJob.Spec.BackoffLimit = &backoffLimit
 	return nil
 }
 
