@@ -414,7 +414,14 @@ type CreateNamespaceResourceParams struct {
 	Name           string              `json:"name"`
 	Connection     string              `json:"connection"`
 	TargetBucket   string              `json:"target_bucket"`
+	NSFSConfig     *NSFSConfig          `json:"nsfs_config,omitempty"`
 	NamespaceStore *NamespaceStoreInfo `json:"namespace_store,omitempty"`
+}
+
+// NSFSConfig is the namespace fs config needed for creating namespace resource of type fs()
+type NSFSConfig struct {
+	FsBackend string `json:"fs_backend,omitempty"`
+	FsPath    string `json:"fs_path,omitempty"`
 }
 
 // CreateTierParams is the reply of tier_api.create_tier()
