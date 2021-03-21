@@ -51,55 +51,48 @@ var (
 
 // Reconciler is the context for loading or reconciling a noobaa system
 type Reconciler struct {
-	Request               types.NamespacedName
-	Client                client.Client
-	Scheme                *runtime.Scheme
-	Ctx                   context.Context
-	Logger                *logrus.Entry
-	Recorder              record.EventRecorder
-	NBClient              nb.Client
-	CoreVersion           string
-	OperatorVersion       string
-	OAuthEndpoints        *util.OAuth2Endpoints
-	MongoConnectionString string
+	Request         types.NamespacedName
+	Client          client.Client
+	Scheme          *runtime.Scheme
+	Ctx             context.Context
+	Logger          *logrus.Entry
+	Recorder        record.EventRecorder
+	NBClient        nb.Client
+	CoreVersion     string
+	OperatorVersion string
+	OAuthEndpoints  *util.OAuth2Endpoints
 
-	NooBaa                    *nbv1.NooBaa
-	ServiceAccount            *corev1.ServiceAccount
-	CoreApp                   *appsv1.StatefulSet
-	DefaultCoreApp            *corev1.Container
-	NooBaaMongoDB             *appsv1.StatefulSet
-	NooBaaPostgresDB          *appsv1.StatefulSet
-	ServiceMgmt               *corev1.Service
-	ServiceS3                 *corev1.Service
-	ServiceDb                 *corev1.Service
-	ServiceDbPg               *corev1.Service
-	SecretServer              *corev1.Secret
-	SecretDB                  *corev1.Secret
-	SecretOp                  *corev1.Secret
-	SecretAdmin               *corev1.Secret
-	SecretEndpoints           *corev1.Secret
-	SecretRootMasterKey       *corev1.Secret
-	AWSCloudCreds             *cloudcredsv1.CredentialsRequest
-	AzureCloudCreds           *cloudcredsv1.CredentialsRequest
-	AzureContainerCreds       *corev1.Secret
-	GCPBucketCreds            *corev1.Secret
-	GCPCloudCreds             *cloudcredsv1.CredentialsRequest
-	IBMCloudCOSCreds          *corev1.Secret
-	DefaultBackingStore       *nbv1.BackingStore
-	DefaultBucketClass        *nbv1.BucketClass
-	OBCStorageClass           *storagev1.StorageClass
-	PrometheusRule            *monitoringv1.PrometheusRule
-	ServiceMonitorMgmt        *monitoringv1.ServiceMonitor
-	ServiceMonitorS3          *monitoringv1.ServiceMonitor
-	SystemInfo                *nb.SystemInfo
-	CephObjectStoreUser       *cephv1.CephObjectStoreUser
-	RouteMgmt                 *routev1.Route
-	RouteS3                   *routev1.Route
-	DeploymentEndpoint        *appsv1.Deployment
-	DefaultDeploymentEndpoint *corev1.Container
-	HPAEndpoint               *autoscalingv1.HorizontalPodAutoscaler
-	JoinSecret                *corev1.Secret
-	UpgradeJob                *batchv1.Job
+	NooBaa              *nbv1.NooBaa
+	ServiceAccount      *corev1.ServiceAccount
+	CoreApp             *appsv1.StatefulSet
+	NooBaaMongoDB       *appsv1.StatefulSet
+	NooBaaPostgresDB    *appsv1.StatefulSet
+	ServiceMgmt         *corev1.Service
+	ServiceS3           *corev1.Service
+	ServiceDb           *corev1.Service
+	SecretServer        *corev1.Secret
+	SecretOp            *corev1.Secret
+	SecretAdmin         *corev1.Secret
+	SecretEndpoints     *corev1.Secret
+	AWSCloudCreds       *cloudcredsv1.CredentialsRequest
+	AzureCloudCreds     *cloudcredsv1.CredentialsRequest
+	AzureContainerCreds *corev1.Secret
+	GCPBucketCreds      *corev1.Secret
+	GCPCloudCreds       *cloudcredsv1.CredentialsRequest
+	IsIBMCloud          bool
+	IBMCloudCOSCreds    *corev1.Secret
+	DefaultBackingStore *nbv1.BackingStore
+	DefaultBucketClass  *nbv1.BucketClass
+	OBCStorageClass     *storagev1.StorageClass
+	PrometheusRule      *monitoringv1.PrometheusRule
+	ServiceMonitor      *monitoringv1.ServiceMonitor
+	SystemInfo          *nb.SystemInfo
+	CephObjectstoreUser *cephv1.CephObjectStoreUser
+	RouteMgmt           *routev1.Route
+	RouteS3             *routev1.Route
+	DeploymentEndpoint  *appsv1.Deployment
+	HPAEndpoint         *autoscalingv1.HorizontalPodAutoscaler
+	JoinSecret          *corev1.Secret
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -202,7 +195,8 @@ func NewReconciler(
 	r.GCPBucketCreds.Name = r.Request.Name + "-gcp-bucket-creds"
 	r.GCPCloudCreds.Name = r.Request.Name + "-gcp-cloud-creds"
 	r.GCPCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-gcp-cloud-creds-secret"
-	r.CephObjectStoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
+	r.CephObjectstoreUser.Name = r.Request.Name + "-ceph-objectstore-user"
+	r.IsIBMCloud = false
 	r.IBMCloudCOSCreds.Name = ibmCOSCred
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"

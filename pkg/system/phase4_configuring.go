@@ -466,8 +466,8 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		if err := r.prepareGCPBackingStore(); err != nil {
 			return err
 		}
-	} else if r.IBMCloudCOSCreds.UID != "" {
-		log.Infof("IBM objectstore credentials %q created. Creating default backing store on IBM objectstore", r.IBMCloudCOSCreds.Name)
+	} else if r.IsIBMCloud {
+		log.Infof("Running in IBM Cloud. Creating default backing store on IBM objectstore")
 		if err := r.prepareIBMBackingStore(); err != nil {
 			return err
 		}
