@@ -246,6 +246,7 @@ func (r *Reconciler) SetDesiredSecretEndpoints() error {
 func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 	r.DeploymentEndpoint.Spec.Selector.MatchLabels["noobaa-s3"] = r.Request.Name
 	r.DeploymentEndpoint.Spec.Template.Labels["noobaa-s3"] = r.Request.Name
+	r.DeploymentEndpoint.Spec.Template.Labels["app"] = r.Request.Name
 
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec

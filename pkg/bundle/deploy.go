@@ -2307,7 +2307,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "908a74a03dcf084525635cf6899dfe68bc49ffe5e5eff16c68c2ac0962b31283"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "73ca3e7d4d3d2e8b3143946d2c92cdf2f7380a3f0700b9fda2fb736cd18f0d02"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -2329,6 +2329,7 @@ spec:
     metadata:
       labels:
         noobaa-s3: noobaa
+        app: noobaa
     spec:
       serviceAccountName: noobaa
       volumes:
