@@ -18,6 +18,7 @@ spec:
     metadata:
       labels:
         noobaa-s3: noobaa
+        app: noobaa
     spec:
       serviceAccountName: noobaa
       volumes:
