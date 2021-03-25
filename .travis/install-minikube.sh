@@ -16,8 +16,8 @@ sudo apt-get update && sudo apt-get install socat && sudo apt-get install conntr
 
 MINIKUBE_DEBUG=""
 #MINIKUBE_DEBUG="--alsologtostderr --v=5"
-export MINIKUBE_VERSION=v1.8.2
-export KUBERNETES_VERSION=v1.17.3
+export MINIKUBE_VERSION=v1.18.1
+export KUBERNETES_VERSION=v1.20.2
 
 
 sudo mount --make-rshared /
