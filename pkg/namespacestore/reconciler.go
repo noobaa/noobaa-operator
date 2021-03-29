@@ -347,8 +347,7 @@ func (r *Reconciler) ReconcileDeletion() error {
 		if err != nil {
 			if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
 				if rpcErr.RPCCode == "IN_USE" {
-					return util.NewPersistentError("ResourceInUse",
-						fmt.Sprintf("DeleteNamespaceResourceAPI cannot complete because namespace store %q has buckets attached", r.NamespaceResourceinfo.Name))
+					return fmt.Errorf("DeleteNamespaceResourceAPI cannot complete because namespace store %q has buckets attached", r.NamespaceResourceinfo.Name)
 				}
 			}
 			return err
