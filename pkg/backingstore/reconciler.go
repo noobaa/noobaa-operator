@@ -439,8 +439,7 @@ func (r *Reconciler) ReconcileDeletion() error {
 						fmt.Sprintf("DeletePoolAPI cannot complete because pool %q is an account default resource", r.PoolInfo.Name))
 				}
 				if rpcErr.RPCCode == "IN_USE" {
-					return util.NewPersistentError("ResourceInUse",
-						fmt.Sprintf("DeletePoolAPI cannot complete because pool %q has buckets attached", r.PoolInfo.Name))
+					return fmt.Errorf("DeletePoolAPI cannot complete because pool %q has buckets attached", r.PoolInfo.Name)
 				}
 			}
 			return err
