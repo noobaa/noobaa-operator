@@ -87,12 +87,11 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.UpgradeSplitDB(); err != nil {
 		return err
 	}
-	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
-		return err
-	}
+
 	if err := r.ReconcileDB(); err != nil {
 		return err
 	}
+
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
 		return err
 	}
@@ -110,6 +109,11 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 			return err
 		}
 	}
+
+	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
+		return err
+	}
+
 	if err := r.ReconcileObjectOptional(r.RouteMgmt, nil); err != nil {
 		return err
 	}
