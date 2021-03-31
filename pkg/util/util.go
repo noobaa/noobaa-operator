@@ -66,6 +66,7 @@ const (
 	vaultCaPath            = "VAULT_CAPATH"
 	vaultBackendPath       = "VAULT_BACKEND_PATH"
 	kmsProvider            = "KMS_PROVIDER"
+	defaultVaultBackendPath = "secret/"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -1443,7 +1444,7 @@ func DeleteSecret(client *vaultApi.Client, secretPath string) error {
 
 func isKV2(client *vaultApi.Client, backend string) (bool, error) {
 	if backend == "" {
-		return false, nil
+		backend = defaultVaultBackendPath
 	}
 	if !strings.HasSuffix(backend, "/") {
 		backend += "/"
@@ -1471,6 +1472,8 @@ func BuildExternalSecretPath(client *vaultApi.Client, kms nbv1.KeyManagementServ
 		if !strings.HasSuffix(backendPath, "/") {
 			secretPath += "/"
 		}
+	} else {
+		secretPath += defaultVaultBackendPath
 	}
 
 	v2, err := isKV2(client, backendPath)
