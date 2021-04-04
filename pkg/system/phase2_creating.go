@@ -887,6 +887,19 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 					c.Image = r.NooBaa.Status.ActualImage
 				}
 			}
+			for i := range podSpec.Containers {
+				c := &podSpec.Containers[i]
+				if c.Name == "db" {
+					r.Logger.Infof("UpgradeMigrateDB:: setting mongo image to %v", options.DBMongoImage)
+					c.Image = options.DBMongoImage
+				}
+			}
+
+			defaultUID := int64(10001)
+			defaulfGID := int64(0)
+			podSpec.SecurityContext.RunAsUser = &defaultUID
+			podSpec.SecurityContext.RunAsGroup = &defaulfGID
+
 			return nil
 		}); err != nil {
 			r.Logger.Errorf("got error on mongo STS reconcile %v", err)
@@ -901,7 +914,8 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 			r.Logger.Errorf("got error when trying to get noobaa-db-0 pod - %v", err)
 			return err
 		}
-		if dbPod.Spec.InitContainers[0].Image != r.NooBaa.Status.ActualImage {
+		if dbPod.Spec.InitContainers[0].Image != r.NooBaa.Status.ActualImage ||
+			dbPod.Spec.Containers[0].Image != options.DBMongoImage {
 			r.Logger.Info("identified old init container on ")
 			err = r.Client.Delete(r.Ctx, dbPod)
 			if err != nil {
