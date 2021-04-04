@@ -71,6 +71,10 @@ var DBImage = "centos/mongodb-36-centos7"
 // currently it can not be overridden.
 var DBPostgresImage = "centos/postgresql-12-centos7"
 
+// DBMongoImage is the default mongo db image url
+// this is used during migration to solve issues where mongo STS referencing to postgres image
+var DBMongoImage = "centos/mongodb-36-centos7"
+
 // DBType is the default db image type
 // it can be overridden for testing or different types.
 var DBType = "mongodb"
