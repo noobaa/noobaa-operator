@@ -316,9 +316,15 @@ type CreateBucketParams struct {
 
 // NamespaceBucketInfo is the information needed for creating namespace bucket
 type NamespaceBucketInfo struct {
-	WriteResource string     `json:"write_resource"`
-	ReadResources []string   `json:"read_resources,omitempty"`
+	WriteResource NamespaceResourceFullConfig     `json:"write_resource"`
+	ReadResources []NamespaceResourceFullConfig   `json:"read_resources,omitempty"`
 	Caching       *CacheSpec `json:"caching,omitempty"`
+}
+
+// NamespaceResourceFullConfig is the resource configuration for creating namespace bucket 
+type NamespaceResourceFullConfig struct {
+	Resource string     `json:"resource"`
+	Path string   `json:"path,omitempty"`
 }
 
 // CacheSpec specifies the cache specifications for the bucket class
