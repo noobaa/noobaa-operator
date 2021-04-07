@@ -131,3 +131,11 @@ rules:
   - list
   - watch
   - delete
+- apiGroups:
+  - security.openshift.io 
+  resourceNames:
+  - noobaa 
+  resources:
+  - securitycontextconstraints 
+  verbs: 
+  - use

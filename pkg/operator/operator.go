@@ -92,11 +92,15 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	c := LoadOperatorConf(cmd)
 	util.KubeCreateSkipExisting(c.NS)
 	util.KubeCreateSkipExisting(c.SA)
+	util.KubeCreateSkipExisting(c.SAEndpoint)
 	util.KubeCreateSkipExisting(c.Role)
+	util.KubeCreateSkipExisting(c.RoleEndpoint)
 	util.KubeCreateSkipExisting(c.RoleBinding)
+	util.KubeCreateSkipExisting(c.RoleBindingEndpoint)
 	util.KubeCreateSkipExisting(c.ClusterRole)
 	util.KubeCreateSkipExisting(c.ClusterRoleBinding)
 	util.KubeCreateOptional(c.SecurityContextConstraints)
+	util.KubeCreateOptional(c.SCCEndpoint)
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		util.KubeCreateSkipExisting(c.Deployment)
@@ -116,12 +120,16 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 		log.Printf("SCC Status:")
 		util.KubeCheck(c.NS)
 	} else {
+		util.KubeDelete(c.SCCEndpoint)
 		util.KubeDelete(c.SecurityContextConstraints)
 	}
 	util.KubeDelete(c.ClusterRoleBinding)
 	util.KubeDelete(c.ClusterRole)
+	util.KubeDelete(c.RoleBindingEndpoint)
 	util.KubeDelete(c.RoleBinding)
+	util.KubeDelete(c.RoleEndpoint)
 	util.KubeDelete(c.Role)
+	util.KubeDelete(c.SAEndpoint)
 	util.KubeDelete(c.SA)
 
 	reservedNS := c.NS.Name == "default" ||
@@ -146,14 +154,16 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 func RunStatus(cmd *cobra.Command, args []string) {
 	c := LoadOperatorConf(cmd)
 	util.KubeCheck(c.NS)
-	if util.KubeCheck(c.SA) {
+	if util.KubeCheck(c.SA) && util.KubeCheck(c.SAEndpoint){
 		// in OLM deployment the roles and bindings have generated names
 		// so we list and lookup bindings to our service account to discover the actual names
 		DetectRole(c)
 		DetectClusterRole(c)
 	}
 	util.KubeCheck(c.Role)
+	util.KubeCheck(c.RoleEndpoint)
 	util.KubeCheck(c.RoleBinding)
+	util.KubeCheck(c.RoleBindingEndpoint)
 	util.KubeCheck(c.ClusterRole)
 	util.KubeCheck(c.ClusterRoleBinding)
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
@@ -168,8 +178,11 @@ func RunYaml(cmd *cobra.Command, args []string) {
 	p := printers.YAMLPrinter{}
 	util.Panic(p.PrintObj(c.NS, os.Stdout))
 	util.Panic(p.PrintObj(c.SA, os.Stdout))
+	util.Panic(p.PrintObj(c.SAEndpoint, os.Stdout))
 	util.Panic(p.PrintObj(c.Role, os.Stdout))
+	util.Panic(p.PrintObj(c.RoleEndpoint, os.Stdout))
 	util.Panic(p.PrintObj(c.RoleBinding, os.Stdout))
+	util.Panic(p.PrintObj(c.RoleBindingEndpoint, os.Stdout))
 	util.Panic(p.PrintObj(c.ClusterRole, os.Stdout))
 	util.Panic(p.PrintObj(c.ClusterRoleBinding, os.Stdout))
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
@@ -182,11 +195,15 @@ func RunYaml(cmd *cobra.Command, args []string) {
 type Conf struct {
 	NS                         *corev1.Namespace
 	SA                         *corev1.ServiceAccount
+	SAEndpoint                 *corev1.ServiceAccount
 	Role                       *rbacv1.Role
+	RoleEndpoint               *rbacv1.Role
 	RoleBinding                *rbacv1.RoleBinding
+	RoleBindingEndpoint        *rbacv1.RoleBinding
 	ClusterRole                *rbacv1.ClusterRole
 	ClusterRoleBinding         *rbacv1.ClusterRoleBinding
 	SecurityContextConstraints *secv1.SecurityContextConstraints
+	SCCEndpoint                *secv1.SecurityContextConstraints
 	Deployment                 *appsv1.Deployment
 }
 
@@ -196,17 +213,24 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 
 	c.NS = util.KubeObject(bundle.File_deploy_namespace_yaml).(*corev1.Namespace)
 	c.SA = util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount)
+	c.SAEndpoint = util.KubeObject(bundle.File_deploy_service_account_endpoint_yaml).(*corev1.ServiceAccount)
 	c.Role = util.KubeObject(bundle.File_deploy_role_yaml).(*rbacv1.Role)
+	c.RoleEndpoint = util.KubeObject(bundle.File_deploy_role_endpoint_yaml).(*rbacv1.Role)
 	c.RoleBinding = util.KubeObject(bundle.File_deploy_role_binding_yaml).(*rbacv1.RoleBinding)
+	c.RoleBindingEndpoint = util.KubeObject(bundle.File_deploy_role_binding_endpoint_yaml).(*rbacv1.RoleBinding)
 	c.ClusterRole = util.KubeObject(bundle.File_deploy_cluster_role_yaml).(*rbacv1.ClusterRole)
 	c.ClusterRoleBinding = util.KubeObject(bundle.File_deploy_cluster_role_binding_yaml).(*rbacv1.ClusterRoleBinding)
 	c.SecurityContextConstraints = util.KubeObject(bundle.File_deploy_scc_yaml).(*secv1.SecurityContextConstraints)
+	c.SCCEndpoint = util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints)
 	c.Deployment = util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
 
 	c.NS.Name = options.Namespace
 	c.SA.Namespace = options.Namespace
+	c.SAEndpoint.Namespace = options.Namespace
 	c.Role.Namespace = options.Namespace
+	c.RoleEndpoint.Namespace = options.Namespace
 	c.RoleBinding.Namespace = options.Namespace
+	c.RoleBindingEndpoint.Namespace = options.Namespace
 	c.ClusterRole.Namespace = options.Namespace
 	c.Deployment.Namespace = options.Namespace
 
@@ -224,6 +248,7 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	}
 
 	c.SecurityContextConstraints.Users[0] = fmt.Sprintf("system:serviceaccount:%s:%s", options.Namespace, c.SA.Name)
+	c.SCCEndpoint.Users[0] = fmt.Sprintf("system:serviceaccount:%s:%s", options.Namespace, c.SAEndpoint.Name)
 	return c
 }
 
@@ -247,7 +272,12 @@ func DetectRole(c *Conf) {
 				s.Namespace == c.SA.Namespace {
 				c.Role.Name = b.RoleRef.Name
 				c.RoleBinding.Name = b.Name
-				return
+			}
+			if s.Kind == "ServiceAccount" &&
+				s.Name == c.SAEndpoint.Name &&
+				s.Namespace == c.SAEndpoint.Namespace {
+				c.RoleEndpoint.Name = b.RoleRef.Name
+				c.RoleBindingEndpoint.Name = b.Name
 			}
 		}
 	}
