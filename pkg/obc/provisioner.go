@@ -163,13 +163,15 @@ func (p *Provisioner) Delete(ob *nbv1.ObjectBucket) error {
 
 	log.Infof("Delete: got request to delete bucket %q and account %q", r.BucketName, r.AccountName)
 
-	if ob.Spec.ReclaimPolicy != nil &&
-		(*ob.Spec.ReclaimPolicy == corev1.PersistentVolumeReclaimDelete ||
-			*ob.Spec.ReclaimPolicy == corev1.PersistentVolumeReclaimRecycle) {
-		err = r.DeleteBucket()
-		if err != nil {
-			return err
-		}
+	if ob.Spec.ReclaimPolicy != nil && *ob.Spec.ReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
+		// if reclaim policy is not delete, just warn and continue with deletion.
+		// we still want to delete because this could be part of resources cleanup after failed provisioning
+		log.Warnf("got delete request but reclaim policy is not Delete. assuming this is cleanup after error. ob.Spec.ReclaimPolicy=%q", *ob.Spec.ReclaimPolicy)
+	}
+
+	err = r.DeleteBucket()
+	if err != nil {
+		return err
 	}
 
 	err = r.DeleteAccount()
@@ -365,23 +367,23 @@ func (r *BucketRequest) CreateBucket(
 		}
 
 		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource }
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource })
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource}
+			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource})
 		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource }
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource}
 			for i := range r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources {
 				rr := r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources[i]
-				readResources = append(readResources,  nb.NamespaceResourceFullConfig{ Resource: rr })
+				readResources = append(readResources, nb.NamespaceResourceFullConfig{Resource: rr})
 			}
 			createBucketParams.Namespace.ReadResources = readResources
 		} else if namespacePolicyType == nbv1.NSBucketClassTypeCache {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource }
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource })
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource}
+			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource})
 			createBucketParams.Namespace.Caching = &nb.CacheSpec{TTLMs: r.BucketClass.Spec.NamespacePolicy.Cache.Caching.TTL}
 			//cachePrefix := r.BucketClass.Spec.NamespacePolicy.Cache.Prefix
 		}
