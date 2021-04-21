@@ -1,4 +1,4 @@
-name: Manual Build Dispatch
+name: Manual Operator Build Dispatch
 on: 
   workflow_dispatch:
     inputs:
