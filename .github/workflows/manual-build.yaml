@@ -20,7 +20,4 @@ jobs:
 
       - name: Get Current Date
         id: date
-        run: |
-		echo "::set-output name=date::$(date +'%Y%m%d')"
-		echo "::warning hello world done"
-		
+          run: echo "::set-output name=date::$(date +'%Y%m%d')"
