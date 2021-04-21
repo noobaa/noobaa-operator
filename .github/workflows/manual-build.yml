@@ -22,3 +22,71 @@ jobs:
       - name: Get Current Date
         id: date
         run: echo "::set-output name=date::$(date +'%Y%m%d')"
+
+      - name: Prepare Tags
+        id: prep
+        run: |
+          DOCKER_OPERATOR_IMAGE=noobaa/noobaa-operator
+          VERSION="${{ steps.date.outputs.date }}"
+          echo "::warning ${VERSION}"
+          echo ::set-output name=version::${VERSION}
+          OPERATOR_TAGS="${DOCKER_OPERATOR_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}-${{ github.event.inputs.tag }}"
+          echo "::warning ${CORE_TAGS}"
+          echo ::set-output name=operatortags::${OPERATOR_TAGS}
+
+      - name: Update Core Release
+        id: update-release
+        run: |
+          curl --silent -f -lSL "https://index.docker.io/v1/repositories/noobaa/noobaa-core/tags/${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }}" > /dev/null || exit 1
+          echo "::found version ${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }}, updating image version"
+
+      - name: Login to DockerHub Registry
+        run: echo ${{ secrets.GHACTIONSDOCKERHUB }} | docker login -u ${{ secrets.GHACTIONSDOCKERHUBNAME }} --password-stdin
+
+      - name: Update Core Release Image
+        id: update-release-image
+        run: |
+          # docker pull "noobaa/noobaa-core:${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }}"
+          echo "::found version ${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }}, updating image version in options.go"
+          # Update local files
+          sed -i 's:ContainerImageTag =.*:ContainerImageTag = "${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }}":' pkg/options/options.go
+
+          # Commit Changes
+          # git config --local user.email "action@github.com"
+          # git config --local user.name "GitHub Action"
+          # git commit -m "Auto update core image" -a
+
+      - name: Build & Push Docker Image
+        env:
+          DOCKERHUB_OWNER: ${{ secrets.GHACTIONSDOCKERHUBNAME }}
+        run: |
+            make image VERSION=latest
+            docker tag  noobaa/noobaa-operator ${{ steps.prep.outputs.operatortags }}
+            docker push ${{ steps.prep.outputs.operatortags }}
+
+      - name: Push CLI Binary
+        run: |
+            make cli
+            make release-cli VERSION=-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }}
+            #noobaa-operator-cli
+
+            date=`date +%Y%m%d`
+            dateFormatted=`date -R`
+            s3Bucket="noobaa-operator-cli"
+            fileName="noobaa-linux-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }}"
+            relativePath="/${s3Bucket}/${fileName}"
+            contentType="application/octet-stream"
+            stringToSign="PUT\n\n${contentType}\n${dateFormatted}\n${relativePath}"
+            s3AccessKey="${{ secrets.AWSACCESSKEY }}"
+            s3SecretKey="${{ secrets.AWSSECRETKEY }}"
+            signature=`echo -en ${stringToSign} | openssl sha1 -hmac ${s3SecretKey} -binary | base64`
+
+            cp build-releases/noobaa-linux-v-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }} ${fileName}
+            
+            curl -X PUT -T "${fileName}" \
+            -H "Host: ${s3Bucket}.s3.amazonaws.com" \
+            -H "Date: ${dateFormatted}" \
+            -H "Content-Type: ${contentType}" \
+            -H "Authorization: AWS ${s3AccessKey}:${signature}" \
+            http://${s3Bucket}.s3.amazonaws.com/${fileName}
+            
