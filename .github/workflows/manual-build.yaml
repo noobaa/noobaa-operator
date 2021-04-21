@@ -1,4 +1,5 @@
 name: Manual Operator Build Dispatch
+
 on: 
   workflow_dispatch:
     inputs:
@@ -10,7 +11,7 @@ on:
         default: ''
 
 jobs:
-  manual-build-and-publish-image:
+  publish-image:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
