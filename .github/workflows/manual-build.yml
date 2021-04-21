@@ -21,4 +21,4 @@ jobs:
 
       - name: Get Current Date
         id: date
-          run: echo "::set-output name=date::$(date +'%Y%m%d')"
+        run: echo "::set-output name=date::$(date +'%Y%m%d')"
