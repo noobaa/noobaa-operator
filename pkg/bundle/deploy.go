@@ -2307,7 +2307,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "e64afa3c079c6ee43c063b66a15b9146ca33b1d4eb9643d86438b9e151443cf2"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "73ca3e7d4d3d2e8b3143946d2c92cdf2f7380a3f0700b9fda2fb736cd18f0d02"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -2331,7 +2331,7 @@ spec:
         noobaa-s3: noobaa
         app: noobaa
     spec:
-      serviceAccountName: noobaa-endpoint
+      serviceAccountName: noobaa
       volumes:
         - name: mgmt-secret
           secret:
@@ -2354,9 +2354,6 @@ spec:
             limits:
               cpu: "1"
               memory: "2Gi"
-          securityContext:
-            capabilities:
-              add: ["SETUID", "SETGID"]
           ports:
             - containerPort: 6001
             - containerPort: 6443
@@ -2415,9 +2412,6 @@ spec:
             tcpSocket:
               port: 6001 # ready when s3 port is open
             timeoutSeconds: 5
-      securityContext: 
-        runAsUser: 0
-        runAsGroup: 0
 `
 
 const Sha256_deploy_internal_hpa_endpoint_yaml = "5f6d756b2a8a7419b0d3b103c0289e911cba08748da2d36db0c0c7e497e6f423"

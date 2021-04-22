@@ -20,7 +20,7 @@ spec:
         noobaa-s3: noobaa
         app: noobaa
     spec:
-      serviceAccountName: noobaa-endpoint
+      serviceAccountName: noobaa
       volumes:
         - name: mgmt-secret
           secret:
@@ -43,9 +43,6 @@ spec:
             limits:
               cpu: "1"
               memory: "2Gi"
-          securityContext:
-            capabilities:
-              add: ["SETUID", "SETGID"]
           ports:
             - containerPort: 6001
             - containerPort: 6443
@@ -104,6 +101,3 @@ spec:
             tcpSocket:
               port: 6001 # ready when s3 port is open
             timeoutSeconds: 5
-      securityContext: 
-        runAsUser: 0
-        runAsGroup: 0

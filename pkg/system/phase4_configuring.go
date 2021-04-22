@@ -263,9 +263,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
-	rootUIDGid := int64(0)
-	podSpec.SecurityContext.RunAsUser = &rootUIDGid
-	podSpec.SecurityContext.RunAsGroup = &rootUIDGid
 
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
@@ -377,7 +374,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					}
 				}
 			}
-			c.SecurityContext.Capabilities.Add = []corev1.Capability{"SETUID", "SETGID"}
 
 			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
 			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
