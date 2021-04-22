@@ -65,28 +65,17 @@ jobs:
             docker push ${{ steps.prep.outputs.operatortags }}
 
       - name: Push CLI Binary
-        run: |
-            make cli
-            make release-cli VERSION=-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }}
-            #noobaa-operator-cli
+        run: |         
+          make cli
+          make release-cli VERSION=-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }}
+          #noobaa-operator-cli
 
-            date=`date +%Y%m%d`
-            dateFormatted=`date -R`
-            s3Bucket="noobaa-operator-cli"
-            fileName="noobaa-linux-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }}"
-            relativePath="/${s3Bucket}/${fileName}"
-            contentType="application/octet-stream"
-            stringToSign="PUT\n\n${contentType}\n${dateFormatted}\n${relativePath}"
-            s3AccessKey="${{ secrets.AWSACCESSKEY }}"
-            s3SecretKey="${{ secrets.AWSSECRETKEY }}"
-            signature=`echo -en ${stringToSign} | openssl sha1 -hmac ${s3SecretKey} -binary | base64`
+          s3AccessKey="${{ secrets.AWSACCESSKEY }}"
+          s3SecretKey="${{ secrets.AWSSECRETKEY }}"
+          s3Bucket="noobaa-operator-cli"
+          region="us-east-2"
+          fileName="noobaa-linux-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }}"
 
-            cp build-releases/noobaa-linux-v-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }} ${fileName}
-            
-            curl -X PUT -T "${fileName}" \
-            -H "Host: ${s3Bucket}.s3.amazonaws.com" \
-            -H "Date: ${dateFormatted}" \
-            -H "Content-Type: ${contentType}" \
-            -H "Authorization: AWS ${s3AccessKey}:${signature}" \
-            http://${s3Bucket}.s3.amazonaws.com/${fileName}
-            
+          cp build-releases/noobaa-linux-v-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}-${{ github.event.inputs.tag }} ${fileName}
+
+          .travis/upload-s3-object-using-curl.sh ${s3AccessKey} ${s3SecretKey} ${s3Bucket}@${region} ${fileName} ${fileName}
