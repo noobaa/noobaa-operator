@@ -260,6 +260,9 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			if nsStore.Status.Phase != nbv1.NamespaceStorePhaseReady {
 				return fmt.Errorf("NooBaa NamespaceStore %q is not yet ready", name)
 			}
+			if nsStore.Spec.Type == nbv1.NSStoreTypeNSFS && nspType != nbv1.NSBucketClassTypeSingle{
+				return util.NewPersistentError("InvalidNamespaceStoreTypes", fmt.Sprintf("NSFS NamespaceStore %q is allowed on bucketclass of type Single", name))
+			}
 		}
 	}
 

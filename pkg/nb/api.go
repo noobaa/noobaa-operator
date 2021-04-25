@@ -44,7 +44,7 @@ type Client interface {
 	DeleteNamespaceResourceAPI(DeleteNamespaceResourceParams) error
 
 	UpdateAccountS3Access(UpdateAccountS3AccessParams) error
-	UpdateAllBucketsDefaultPool(UpdateDefaultPoolParams) error
+	UpdateAllBucketsDefaultPool(UpdateDefaultResourceParams) error
 	UpdateBucketClass(UpdateBucketClassParams) (BucketClassInfo, error)
 
 	AddExternalConnectionAPI(AddExternalConnectionParams) error
@@ -335,7 +335,7 @@ func (c *RPCClient) UpdateBucketClass(params UpdateBucketClassParams) (BucketCla
 }
 
 // UpdateAllBucketsDefaultPool calls bucket_api.update_all_buckets_default_pool()
-func (c *RPCClient) UpdateAllBucketsDefaultPool(params UpdateDefaultPoolParams) error {
+func (c *RPCClient) UpdateAllBucketsDefaultPool(params UpdateDefaultResourceParams) error {
 	req := &RPCMessage{API: "bucket_api", Method: "update_all_buckets_default_pool", Params: params}
 	return c.Call(req, nil)
 }
