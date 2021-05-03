@@ -103,22 +103,34 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		if err := r.ReconcileDB(); err != nil {
 			return err
 		}
-		if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDB); err != nil {
-			return err
+
+		if r.NooBaa.Spec.DBType == "postgres" {
+			if err := r.ReconcileObject(r.ServiceDbPg, r.SetDesiredServiceDBForPostgres); err != nil {
+				return err
+			}
+			// fix for https://bugzilla.redhat.com/show_bug.cgi?id=1955328
+			// if DBType=postgres was passed in version 5.6 (OCS 4.6) the operator reconciled
+			// the mongo service with postgres values. see here:
+			// https://github.com/noobaa/noobaa-operator/blob/112c510650612b1a6b88582cf41c53b30068161c/pkg/system/phase2_creating.go#L121-L126
+			// to fix that, reconcile mongo service as well if it exists
+			if util.KubeCheck(r.ServiceDb) {
+				r.Logger.Infof("found existing mongo db service [%q] will reconcile", r.ServiceDb.Name)
+				if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDBForMongo); err != nil {
+					r.Logger.Errorf("got error when trying to reconcile mongo service. %v", err)
+					return err
+				}
+			}
+
+		} else {
+			if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDBForMongo); err != nil {
+				return err
+			}
 		}
 	}
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
 		return err
 	}
-	if r.NooBaa.Spec.DBType == "postgres" {
-		if err := r.ReconcileObject(r.ServiceDbPg, r.SetDesiredServiceDB); err != nil {
-			return err
-		}
-	} else {
-		if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDB); err != nil {
-			return err
-		}
-	}
+
 	if r.NooBaa.Spec.DBType == "postgres" {
 		if err := r.UpgradeMigrateDB(); err != nil {
 			return err
@@ -158,19 +170,21 @@ func (r *Reconciler) SetDesiredServiceS3() error {
 	return nil
 }
 
-// SetDesiredServiceDB updates the ServiceS3 as desired for reconciling
-func (r *Reconciler) SetDesiredServiceDB() error {
-	if r.NooBaa.Spec.DBType == "postgres" {
-		r.ServiceDbPg.Spec.Selector["noobaa-db"] = "postgres"
-		r.ServiceDbPg.Spec.Ports[0].Name = "postgres"
-		r.ServiceDbPg.Spec.Ports[0].Port = 5432
-		r.ServiceDbPg.Spec.Ports[0].TargetPort = intstr.FromInt(5432)
-	} else {
-		r.ServiceDb.Spec.Selector["noobaa-db"] = r.Request.Name
-		r.ServiceDb.Spec.Ports[0].Name = "mongodb"
-		r.ServiceDb.Spec.Ports[0].Port = 27017
-		r.ServiceDb.Spec.Ports[0].TargetPort = intstr.FromInt(27017)
-	}
+// SetDesiredServiceDBForMongo updates the mongodb service
+func (r *Reconciler) SetDesiredServiceDBForMongo() error {
+	r.ServiceDb.Spec.Selector["noobaa-db"] = r.Request.Name
+	r.ServiceDb.Spec.Ports[0].Name = "mongodb"
+	r.ServiceDb.Spec.Ports[0].Port = 27017
+	r.ServiceDb.Spec.Ports[0].TargetPort = intstr.FromInt(27017)
+	return nil
+}
+
+// SetDesiredServiceDBForPostgres updates the postgres service
+func (r *Reconciler) SetDesiredServiceDBForPostgres() error {
+	r.ServiceDbPg.Spec.Selector["noobaa-db"] = "postgres"
+	r.ServiceDbPg.Spec.Ports[0].Name = "postgres"
+	r.ServiceDbPg.Spec.Ports[0].Port = 5432
+	r.ServiceDbPg.Spec.Ports[0].TargetPort = intstr.FromInt(5432)
 	return nil
 }
 
@@ -987,6 +1001,14 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 			return fmt.Errorf("mongo is still alive")
 		}
 
+		if util.KubeCheck(r.ServiceDb) {
+			r.Logger.Infof("UpgradeMigrateDB:: deleting mongodb service")
+
+			if err := r.Client.Delete(r.Ctx, r.ServiceDb); err != nil && !errors.IsNotFound(err) {
+				r.Logger.Errorf("got error on mongo service deletion: %v", err)
+				return err
+			}
+		}
 		// set endpoints replica count to 1. this should enable HPA back again
 		if err := r.SetEndpointsDeploymentReplicas(1); err != nil {
 			r.Logger.Errorf("UpgradeMigrateDB::got error on endpoints deployment reconcile %v", err)
