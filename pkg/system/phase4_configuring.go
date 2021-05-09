@@ -375,12 +375,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 				}
 			}
 
-			c.SecurityContext = &corev1.SecurityContext{
-				Capabilities: &corev1.Capabilities{
-					Add: []corev1.Capability{"SETUID", "SETGID"},
-				},
-			}
-
 			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
 			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
 			util.ReflectEnvVariable(&c.Env, "NO_PROXY")
