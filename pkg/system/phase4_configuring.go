@@ -1203,7 +1203,7 @@ func (r *Reconciler) ReconcileNamespaceStores(namespaceResources []nb.NamespaceR
 					},
 				}
 			case "S3_COMPATIBLE":
-				nsStore.Spec.Type = nbv1.NSStoreTypeAzureBlob
+				nsStore.Spec.Type = nbv1.NSStoreTypeS3Compatible
 				secret.Name = fmt.Sprintf("namespace-store-%s-%s", nbv1.NSStoreTypeS3Compatible, nsr.Name)
 				secret.StringData["AWS_ACCESS_KEY_ID"] = nsr.Identity
 				secret.StringData["AWS_SECRET_ACCESS_KEY"] = namespaceResourceOperatorInfo.SecretKey
@@ -1225,7 +1225,7 @@ func (r *Reconciler) ReconcileNamespaceStores(namespaceResources []nb.NamespaceR
 					SignatureVersion: sig,
 				}
 			case "IBM_COS":
-				nsStore.Spec.Type = nbv1.NSStoreTypeAzureBlob
+				nsStore.Spec.Type = nbv1.NSStoreTypeIBMCos
 				secret.Name = fmt.Sprintf("namespace-store-%s-%s", nbv1.NSStoreTypeIBMCos, nsr.Name)
 				secret.StringData["AWS_ACCESS_KEY_ID"] = nsr.Identity
 				secret.StringData["AWS_SECRET_ACCESS_KEY"] = namespaceResourceOperatorInfo.SecretKey
