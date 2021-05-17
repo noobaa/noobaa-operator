@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
-	"github.com/noobaa/noobaa-operator/v2/pkg/options"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	secv1 "github.com/openshift/api/security/v1"
 	"github.com/spf13/cobra"
@@ -154,7 +154,7 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 func RunStatus(cmd *cobra.Command, args []string) {
 	c := LoadOperatorConf(cmd)
 	util.KubeCheck(c.NS)
-	if util.KubeCheck(c.SA) && util.KubeCheck(c.SAEndpoint){
+	if util.KubeCheck(c.SA) && util.KubeCheck(c.SAEndpoint) {
 		// in OLM deployment the roles and bindings have generated names
 		// so we list and lookup bindings to our service account to discover the actual names
 		DetectRole(c)

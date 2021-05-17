@@ -1,9 +1,9 @@
 package namespacestore
 
 import (
-	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v2/pkg/namespacestore"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"

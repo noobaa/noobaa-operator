@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"

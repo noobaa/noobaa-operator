@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 )
 
 func init() {

@@ -5,8 +5,8 @@ import (
 	"os/exec"
 	"runtime"
 
-	"github.com/noobaa/noobaa-operator/v2/pkg/options"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"

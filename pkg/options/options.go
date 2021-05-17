@@ -1,8 +1,8 @@
 package options
 
 import (
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
-	"github.com/noobaa/noobaa-operator/v2/version"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/version"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"

@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
-	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
-	"github.com/noobaa/noobaa-operator/v2/pkg/options"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
-	"github.com/noobaa/noobaa-operator/v2/version"
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/version"
 
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"

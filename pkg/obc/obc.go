@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
-	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
-	"github.com/noobaa/noobaa-operator/v2/pkg/options"
-	"github.com/noobaa/noobaa-operator/v2/pkg/system"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	"github.com/spf13/cobra"

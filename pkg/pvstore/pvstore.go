@@ -3,9 +3,9 @@ package pvstore
 import (
 	"fmt"
 
-	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
-	"github.com/noobaa/noobaa-operator/v2/pkg/system"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	"github.com/spf13/cobra"
 )
