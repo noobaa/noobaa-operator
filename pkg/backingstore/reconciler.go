@@ -415,7 +415,7 @@ func (r *Reconciler) ReconcileDeletion() error {
 		}
 		for i := range r.SystemInfo.Accounts {
 			account := &r.SystemInfo.Accounts[i]
-			if account.DefaultPool == r.PoolInfo.Name {
+			if account.DefaultResource == r.PoolInfo.Name {
 				allowedBuckets := account.AllowedBuckets
 				if allowedBuckets.PermissionList == nil {
 					allowedBuckets.PermissionList = []string{}
@@ -423,7 +423,7 @@ func (r *Reconciler) ReconcileDeletion() error {
 				err := r.NBClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
 					Email:        account.Email,
 					S3Access:     account.HasS3Access,
-					DefaultPool:  &internalPoolName,
+					DefaultResource:  &internalPoolName,
 					AllowBuckets: &allowedBuckets,
 				})
 				if err != nil {
@@ -918,7 +918,7 @@ func (r *Reconciler) ReconcilePool() error {
 			r.Secret.StringData["AGENT_CONFIG"] = res
 			util.KubeUpdate(r.Secret)
 		}
-		err = r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultPoolParams{
+		err = r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultResourceParams{
 			PoolName: r.CreateHostsPoolParams.Name,
 		})
 		if err != nil {
@@ -955,7 +955,7 @@ func (r *Reconciler) ReconcilePool() error {
 	}
 
 	if poolName != "" {
-		err := r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultPoolParams{
+		err := r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultResourceParams{
 			PoolName: poolName,
 		})
 		if err != nil {

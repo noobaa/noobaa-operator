@@ -47,6 +47,8 @@ func CmdCreate() *cobra.Command {
 		"Set bucket class to specify the bucket policy")
 	cmd.Flags().String("app-namespace", "",
 		"Set the namespace of the application where the OBC should be created")
+	cmd.Flags().String("path", "",
+		"Set path to specify inner directory in namespace store target path - can be used only while specifing a namespace bucketclass")
 	return cmd
 }
 
@@ -95,6 +97,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 
 	exact, _ := cmd.Flags().GetBool("exact")
 	bucketClassName, _ := cmd.Flags().GetString("bucketclass")
+	path, _ := cmd.Flags().GetString("path")
 	appNamespace, _ := cmd.Flags().GetString("app-namespace")
 	if appNamespace == "" {
 		appNamespace = options.Namespace
@@ -135,7 +138,13 @@ func RunCreate(cmd *cobra.Command, args []string) {
 			log.Fatalf(`❌ Could not get BucketClass %q in namespace %q`,
 				bucketClass.Name, bucketClass.Namespace)
 		}
+		if bucketClass.Spec.NamespacePolicy == nil && path != "" {
+			log.Fatalf(`❌ Could not create OBC %q with inner path while missing namespace bucketclass`, obc.Name)
+		}
 		obc.Spec.AdditionalConfig["bucketclass"] = bucketClassName
+		obc.Spec.AdditionalConfig["path"] = path
+	} else if path != "" {
+		log.Fatalf(`❌ Could not create OBC %q with inner path while missing namespace bucketclass`, obc.Name)
 	}
 
 	if !util.KubeCreateSkipExisting(obc) {

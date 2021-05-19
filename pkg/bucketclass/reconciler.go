@@ -229,7 +229,8 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 				}
 			}
 		}
-	} else if r.BucketClass.Spec.NamespacePolicy != nil {
+	} 
+	if r.BucketClass.Spec.NamespacePolicy != nil {
 		nspType := r.BucketClass.Spec.NamespacePolicy.Type
 		var namespaceStoresArr []string
 		if nspType == nbv1.NSBucketClassTypeSingle {
@@ -259,6 +260,9 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			}
 			if nsStore.Status.Phase != nbv1.NamespaceStorePhaseReady {
 				return fmt.Errorf("NooBaa NamespaceStore %q is not yet ready", name)
+			}
+			if nsStore.Spec.Type == nbv1.NSStoreTypeNSFS && nspType != nbv1.NSBucketClassTypeSingle{
+				return util.NewPersistentError("InvalidNamespaceStoreTypes", fmt.Sprintf("NSFS NamespaceStore %q is allowed on bucketclass of type Single", name))
 			}
 		}
 	}
