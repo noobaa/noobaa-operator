@@ -229,7 +229,8 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 				}
 			}
 		}
-	} else if r.BucketClass.Spec.NamespacePolicy != nil {
+	} 
+	if r.BucketClass.Spec.NamespacePolicy != nil {
 		nspType := r.BucketClass.Spec.NamespacePolicy.Type
 		var namespaceStoresArr []string
 		if nspType == nbv1.NSBucketClassTypeSingle {
