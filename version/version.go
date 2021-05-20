@@ -2,5 +2,5 @@ package version
 
 const (
 	// Version is the noobaa-operator version (semver)
-	Version = "5.8.0"
+	Version = "5.9.0"
 )
