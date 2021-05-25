@@ -438,11 +438,12 @@ func (r *Reconciler) ReadSystemInfo() error {
 
 	// handling namespace fs resource
 	if r.NamespaceStore.Spec.Type == nbv1.NSStoreTypeNSFS {
+		fsRootPath := "/nsfs/" + r.NamespaceStore.Name 
 		r.CreateNamespaceResourceParams = &nb.CreateNamespaceResourceParams{
 			Name: r.NamespaceStore.Name,
 			NSFSConfig: &nb.NSFSConfig{
 				FsBackend: r.NamespaceStore.Spec.NSFS.FsBackend,
-				FsRootPath:    r.NamespaceStore.Spec.NSFS.FsRootPath,
+				FsRootPath: fsRootPath,
 			},
 			NamespaceStore: &nb.NamespaceStoreInfo{
 				Name:      r.NamespaceStore.Name,
@@ -771,5 +772,6 @@ func (r *Reconciler) ReconcileNamespaceStore() error {
 			return err
 		}
 	}
+
 	return nil
 }

@@ -138,12 +138,16 @@ spec:
                     - GPFS
                     - NFSv4
                     type: string
-                  fsRootPath:
-                    description: FsRootPath is a path to a root directory in a file
+                  pvcName:
+                    description: PvcName is the name of the pvc in which the file
+                      system resides
+                    type: string
+                  subPath:
+                    description: SubPath is a path to a sub directory in the pvc file
                       system
                     type: string
                 required:
-                - fsRootPath
+                - pvcName
                 type: object
               s3Compatible:
                 description: S3Compatible specifies a namespace store of type s3-compatible
