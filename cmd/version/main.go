@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/noobaa/noobaa-operator/v2/version"
+	"github.com/noobaa/noobaa-operator/v5/version"
 )
 
 func main() {

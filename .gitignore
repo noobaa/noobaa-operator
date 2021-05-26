@@ -11,3 +11,5 @@ build-releases/
 
 # visual studio code intellisense configuration
 .vscode/
+
+*.IGNORE

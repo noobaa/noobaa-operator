@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/noobaa/noobaa-operator/v2/pkg/controller/namespacestore"
+	"github.com/noobaa/noobaa-operator/v5/pkg/controller/namespacestore"
 )
 
 func init() {

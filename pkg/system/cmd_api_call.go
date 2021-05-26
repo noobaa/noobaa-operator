@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/spf13/cobra"
 	sigyaml "sigs.k8s.io/yaml"
 )

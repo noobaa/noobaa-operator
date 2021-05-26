@@ -1,4 +1,4 @@
-module github.com/noobaa/noobaa-operator/v2
+module github.com/noobaa/noobaa-operator/v5
 
 go 1.16
 
