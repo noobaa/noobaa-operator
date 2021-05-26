@@ -14,6 +14,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v2/pkg/diagnose"
 	"github.com/noobaa/noobaa-operator/v2/pkg/install"
 	"github.com/noobaa/noobaa-operator/v2/pkg/namespacestore"
+	"github.com/noobaa/noobaa-operator/v2/pkg/noobaaaccount"
 	"github.com/noobaa/noobaa-operator/v2/pkg/obc"
 	"github.com/noobaa/noobaa-operator/v2/pkg/olm"
 	"github.com/noobaa/noobaa-operator/v2/pkg/operator"
@@ -117,6 +118,7 @@ Load noobaa completion to bash:
 			backingstore.Cmd(),
 			namespacestore.Cmd(),
 			bucketclass.Cmd(),
+			noobaaaccount.Cmd(),
 			obc.Cmd(),
 			diagnose.Cmd(),
 			system.CmdUI(),

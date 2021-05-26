@@ -57,6 +57,7 @@ function post_install_tests {
     check_namespacestore
     bucketclass_cycle
     obc_cycle
+    account_cycle
     check_deletes
 }
 
