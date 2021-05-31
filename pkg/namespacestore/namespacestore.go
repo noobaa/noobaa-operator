@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
-	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
-	"github.com/noobaa/noobaa-operator/v2/pkg/options"
-	"github.com/noobaa/noobaa-operator/v2/pkg/system"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -187,7 +187,7 @@ func CmdCreateNSFS() *cobra.Command {
 		"The file system backend type - CEPH_FS | GPFS | NFSv4",
 	)
 	cmd.Flags().String(
-		"fs-path", "",
+		"fs-root-path", "",
 		"The path to the exported directory in the file system",
 	)
 	return cmd
@@ -417,14 +417,14 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 func RunCreateNSFS(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 	createCommon(cmd, args, nbv1.NSStoreTypeNSFS, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
-		fsPath := util.GetFlagStringOrPrompt(cmd, "fs-path")
+		fsRootPath := util.GetFlagStringOrPrompt(cmd, "fs-root-path")
 		fsBackend, _ := cmd.Flags().GetString("fs-backend")
 
-		if fsPath == "" {
-			log.Fatalf(`❌ Missing expected arguments: <fs-path> %s`, cmd.UsageString())
+		if fsRootPath == "" {
+			log.Fatalf(`❌ Missing expected arguments: <fs-root-path> %s`, cmd.UsageString())
 		}
 		namespaceStore.Spec.NSFS = &nbv1.NSFSSpec{
-			FsPath:    fsPath,
+			FsRootPath:    fsRootPath,
 			FsBackend: fsBackend,
 		}
 	})

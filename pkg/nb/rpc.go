@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	util "github.com/noobaa/noobaa-operator/v2/pkg/util"
+	util "github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,7 +19,7 @@ const (
 	RPCMaxMessageSize = 64 * 1024 * 1024
 
 	// RPCSendTimeout is a limit the time we wait for getting reply from the server
-	RPCSendTimeout = 120 * time.Second;
+	RPCSendTimeout = 120 * time.Second
 )
 
 // GlobalRPC is the global rpc

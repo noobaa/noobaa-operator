@@ -1,6 +1,6 @@
 package bundle
 
-const Version = "5.8.0"
+const Version = "5.9.0"
 
 const Sha256_deploy_cluster_role_yaml = "349e613915ed288629c4926e22cd42f4a3776ed38dfbc9e814a9b28211a67b3c"
 
@@ -694,7 +694,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "08e32df6c91fa995d30c3a0981e6079c104d87a039092886fbc8648cf62d6172"
+const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "f81a4ad7b2829701465af2ad1970706233096b5190fb63bf0361956a65b744cc"
 
 const File_deploy_crds_noobaa_io_namespacestores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -836,11 +836,12 @@ spec:
                     - GPFS
                     - NFSv4
                     type: string
-                  fsPath:
-                    description: FsPath is a path to a directory in a file system
+                  fsRootPath:
+                    description: FsRootPath is a path to a root directory in a file
+                      system
                     type: string
                 required:
-                - fsPath
+                - fsRootPath
                 type: object
               s3Compatible:
                 description: S3Compatible specifies a namespace store of type s3-compatible

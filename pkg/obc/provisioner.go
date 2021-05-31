@@ -10,11 +10,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
-	"github.com/noobaa/noobaa-operator/v2/pkg/options"
-	"github.com/noobaa/noobaa-operator/v2/pkg/system"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	"github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner"
 	obAPI "github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner/api"
@@ -340,6 +340,9 @@ func (r *BucketRequest) CreateBucket(
 		},
 	}
 	if r.BucketClass.Spec.PlacementPolicy != nil {
+		if r.OBC.Spec.AdditionalConfig["path"] != "" {
+			return fmt.Errorf("Could not create OBC %q with inner path while missing namespace bucketclass", r.OBC.Name)
+		}
 		tierName, err := r.CreateTieringStructure(*r.BucketClass)
 		if err != nil {
 			return fmt.Errorf("CreateTieringStructure for PlacementPolicy failed to create policy %q with error: %v", tierName, err)
@@ -367,13 +370,17 @@ func (r *BucketRequest) CreateBucket(
 		}
 
 		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource}
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource})
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
+				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource,
+				Path:  r.OBC.Spec.AdditionalConfig["path"],
+			}
+			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{ 
+				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource })
 		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource}
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
+				Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource,
+				Path:  r.OBC.Spec.AdditionalConfig["path"],
+			}
 			for i := range r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources {
 				rr := r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources[i]
 				readResources = append(readResources, nb.NamespaceResourceFullConfig{Resource: rr})
@@ -475,14 +482,14 @@ func (r *BucketRequest) CreateTieringStructure(BucketClass nbv1.BucketClass) (st
 func (r *BucketRequest) CreateAccount() error {
 
 	log := r.Provisioner.Logger
-	var defaultPool string
+	var defaultResource string
 	if r.BucketClass.Spec.PlacementPolicy != nil {
-		defaultPool = r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores[0]
+		defaultResource = r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores[0]
 	}
 	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{
 		Name:              r.AccountName,
 		Email:             r.AccountName,
-		DefaultPool:       defaultPool,
+		DefaultResource:   defaultResource,
 		HasLogin:          false,
 		S3Access:          true,
 		AllowBucketCreate: false,

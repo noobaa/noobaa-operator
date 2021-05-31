@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
-	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
-	"github.com/noobaa/noobaa-operator/v2/pkg/options"
-	"github.com/noobaa/noobaa-operator/v2/pkg/system"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -229,7 +229,8 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 				}
 			}
 		}
-	} else if r.BucketClass.Spec.NamespacePolicy != nil {
+	} 
+	if r.BucketClass.Spec.NamespacePolicy != nil {
 		nspType := r.BucketClass.Spec.NamespacePolicy.Type
 		var namespaceStoresArr []string
 		if nspType == nbv1.NSBucketClassTypeSingle {
@@ -259,6 +260,9 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			}
 			if nsStore.Status.Phase != nbv1.NamespaceStorePhaseReady {
 				return fmt.Errorf("NooBaa NamespaceStore %q is not yet ready", name)
+			}
+			if nsStore.Spec.Type == nbv1.NSStoreTypeNSFS && nspType != nbv1.NSBucketClassTypeSingle{
+				return util.NewPersistentError("InvalidNamespaceStoreTypes", fmt.Sprintf("NSFS NamespaceStore %q is allowed on bucketclass of type Single", name))
 			}
 		}
 	}
@@ -357,28 +361,29 @@ func (r *Reconciler) updateNamespaceBucketClass(bucketNames []string) error {
 		var readResources []nb.NamespaceResourceFullConfig
 		createBucketParams := &nb.CreateBucketParams{}
 		createBucketParams.Namespace = &nb.NamespaceBucketInfo{}
-	
+
 		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource }
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource })
-	
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource}
+			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource})
+
 		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource }
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource}
 
 			for i := range r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources {
 				rr := r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources[i]
-				readResources = append(readResources,  nb.NamespaceResourceFullConfig{ Resource: rr })	}
+				readResources = append(readResources, nb.NamespaceResourceFullConfig{Resource: rr})
+			}
 
 			createBucketParams.Namespace.ReadResources = readResources
-	
+
 		} else if namespacePolicyType == nbv1.NSBucketClassTypeCache {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource }
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource })
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource}
+			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource})
 			createBucketParams.Namespace.Caching = &nb.CacheSpec{TTLMs: r.BucketClass.Spec.NamespacePolicy.Cache.Caching.TTL}
 			//cachePrefix := r.BucketClass.Spec.NamespacePolicy.Cache.Prefix
 		}

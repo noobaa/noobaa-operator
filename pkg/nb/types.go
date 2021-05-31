@@ -29,7 +29,7 @@ type AccountInfo struct {
 	HasS3Access        bool           `json:"has_s3_access"`
 	CanCreateBuckets   bool           `json:"can_create_buckets"`
 	NextPasswordChange int64          `json:"next_password_change"`
-	DefaultPool        string         `json:"default_pool"`
+	DefaultResource    string         `json:"default_resource"`
 	AccessKeys         []S3AccessKeys `json:"access_keys"`
 	AllowedIPs         []struct {
 		Start string `json:"start"`
@@ -353,7 +353,7 @@ type CreateAccountParams struct {
 	S3Access          bool                  `json:"s3_access"`
 	AllowBucketCreate bool                  `json:"allow_bucket_creation"`
 	AllowedBuckets    AccountAllowedBuckets `json:"allowed_buckets"`
-	DefaultPool       string                `json:"default_pool,omitempty"`
+	DefaultResource   string                `json:"default_resource,omitempty"`
 	BucketClaimOwner  string                `json:"bucket_claim_owner,omitempty"`
 }
 
@@ -427,7 +427,7 @@ type CreateNamespaceResourceParams struct {
 // NSFSConfig is the namespace fs config needed for creating namespace resource of type fs()
 type NSFSConfig struct {
 	FsBackend string `json:"fs_backend,omitempty"`
-	FsPath    string `json:"fs_path,omitempty"`
+	FsRootPath    string `json:"fs_root_path,omitempty"`
 }
 
 // CreateTierParams is the reply of tier_api.create_tier()
@@ -493,13 +493,13 @@ type DeleteNamespaceResourceParams struct {
 type UpdateAccountS3AccessParams struct {
 	Email               string          `json:"email"`
 	S3Access            bool            `json:"s3_access"`
-	DefaultPool         *string         `json:"default_pool,omitempty"`
+	DefaultResource     *string         `json:"default_resource,omitempty"`
 	AllowBucketCreation *bool           `json:"allow_bucket_creation,omitempty"`
 	AllowBuckets        *AllowedBuckets `json:"allowed_buckets,omitempty"`
 }
 
-// UpdateDefaultPoolParams is the params of bucket_api.update_all_buckets_default_pool()
-type UpdateDefaultPoolParams struct {
+// UpdateDefaultResourceParams is the params of bucket_api.update_all_buckets_default_pool()
+type UpdateDefaultResourceParams struct {
 	PoolName string `json:"pool_name"`
 }
 

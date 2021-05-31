@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/sirupsen/logrus"
 )
 

@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
-	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
-	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
-	"github.com/noobaa/noobaa-operator/v2/pkg/options"
-	"github.com/noobaa/noobaa-operator/v2/pkg/system"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
@@ -415,7 +415,7 @@ func (r *Reconciler) ReconcileDeletion() error {
 		}
 		for i := range r.SystemInfo.Accounts {
 			account := &r.SystemInfo.Accounts[i]
-			if account.DefaultPool == r.PoolInfo.Name {
+			if account.DefaultResource == r.PoolInfo.Name {
 				allowedBuckets := account.AllowedBuckets
 				if allowedBuckets.PermissionList == nil {
 					allowedBuckets.PermissionList = []string{}
@@ -423,7 +423,7 @@ func (r *Reconciler) ReconcileDeletion() error {
 				err := r.NBClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
 					Email:        account.Email,
 					S3Access:     account.HasS3Access,
-					DefaultPool:  &internalPoolName,
+					DefaultResource:  &internalPoolName,
 					AllowBuckets: &allowedBuckets,
 				})
 				if err != nil {
@@ -918,7 +918,7 @@ func (r *Reconciler) ReconcilePool() error {
 			r.Secret.StringData["AGENT_CONFIG"] = res
 			util.KubeUpdate(r.Secret)
 		}
-		err = r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultPoolParams{
+		err = r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultResourceParams{
 			PoolName: r.CreateHostsPoolParams.Name,
 		})
 		if err != nil {
@@ -955,7 +955,7 @@ func (r *Reconciler) ReconcilePool() error {
 	}
 
 	if poolName != "" {
-		err := r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultPoolParams{
+		err := r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultResourceParams{
 			PoolName: poolName,
 		})
 		if err != nil {

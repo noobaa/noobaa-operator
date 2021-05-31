@@ -163,8 +163,8 @@ const (
 // NSFSSpec specifies a namespace store of type nsfs
 type NSFSSpec struct {
 
-	// FsPath is a path to a directory in a file system
-	FsPath string `json:"fsPath"`
+	// FsRootPath is a path to a root directory in a file system
+	FsRootPath string `json:"fsRootPath"`
 
 	// FsBackend is the backend type of the file system
 	// +optional

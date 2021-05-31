@@ -7,12 +7,12 @@ import (
 	"regexp"
 	"time"
 
-	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
-	"github.com/noobaa/noobaa-operator/v2/pkg/nb"
-	"github.com/noobaa/noobaa-operator/v2/pkg/options"
-	"github.com/noobaa/noobaa-operator/v2/pkg/system"
-	"github.com/noobaa/noobaa-operator/v2/pkg/util"
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -342,6 +342,33 @@ func (r *Reconciler) ReconcileDeletion() error {
 	}
 
 	if r.NamespaceResourceinfo != nil {
+
+		internalPoolName := ""
+		for i := range r.SystemInfo.Pools {
+			pool := &r.SystemInfo.Pools[i]
+			if pool.ResourceType == "INTERNAL" {
+				internalPoolName = pool.Name
+				break
+			}
+		}
+		for i := range r.SystemInfo.Accounts {
+			account := &r.SystemInfo.Accounts[i]
+			if account.DefaultResource == r.NamespaceResourceinfo.Name {
+				allowedBuckets := account.AllowedBuckets
+				if allowedBuckets.PermissionList == nil {
+					allowedBuckets.PermissionList = []string{}
+				}
+				err := r.NBClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
+					Email:        account.Email,
+					S3Access:     account.HasS3Access,
+					DefaultResource:  &internalPoolName,
+					AllowBuckets: &allowedBuckets,
+				})
+				if err != nil {
+					return err
+				}
+			}
+		}
 		err := r.NBClient.DeleteNamespaceResourceAPI(nb.DeleteNamespaceResourceParams{Name: r.NamespaceResourceinfo.Name})
 		if err != nil {
 			if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
@@ -415,7 +442,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 			Name: r.NamespaceStore.Name,
 			NSFSConfig: &nb.NSFSConfig{
 				FsBackend: r.NamespaceStore.Spec.NSFS.FsBackend,
-				FsPath:    r.NamespaceStore.Spec.NSFS.FsPath,
+				FsRootPath:    r.NamespaceStore.Spec.NSFS.FsRootPath,
 			},
 			NamespaceStore: &nb.NamespaceStoreInfo{
 				Name:      r.NamespaceStore.Name,
