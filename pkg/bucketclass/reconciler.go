@@ -229,7 +229,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 				}
 			}
 		}
-	} 
+	}
 	if r.BucketClass.Spec.NamespacePolicy != nil {
 		nspType := r.BucketClass.Spec.NamespacePolicy.Type
 		var namespaceStoresArr []string
@@ -261,7 +261,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			if nsStore.Status.Phase != nbv1.NamespaceStorePhaseReady {
 				return fmt.Errorf("NooBaa NamespaceStore %q is not yet ready", name)
 			}
-			if nsStore.Spec.Type == nbv1.NSStoreTypeNSFS && nspType != nbv1.NSBucketClassTypeSingle{
+			if nsStore.Spec.Type == nbv1.NSStoreTypeNSFS && nspType != nbv1.NSBucketClassTypeSingle {
 				return util.NewPersistentError("InvalidNamespaceStoreTypes", fmt.Sprintf("NSFS NamespaceStore %q is allowed on bucketclass of type Single", name))
 			}
 		}
@@ -389,7 +389,6 @@ func (r *Reconciler) updateNamespaceBucketClass(bucketNames []string) error {
 		}
 
 		for i := range bucketNames {
-
 			createBucketParams.Name = bucketNames[i]
 			err := r.NBClient.UpdateBucketAPI(*createBucketParams)
 
@@ -409,6 +408,7 @@ func (r *Reconciler) UpdateBucketClass(bucketNames []string) error {
 	if r.BucketClass == nil {
 		return fmt.Errorf("BucketClass not loaded %#v", r)
 	}
+
 
 	if r.BucketClass.Spec.PlacementPolicy == nil &&
 		r.BucketClass.Spec.NamespacePolicy != nil {
@@ -456,6 +456,8 @@ func (r *Reconciler) UpdateBucketClass(bucketNames []string) error {
 		return util.NewPersistentError("InvalidConfReverting", fmt.Sprintf("Unable to change bucketclass due to error: %v", result.ErrorMessage))
 		// return fmt.Errorf("Failed to update bucket class %q with error: %v - Reverting back", r.BucketClass.Name, result.ErrorMessage)
 	}
+
+
 
 	log.Infof("✅ Successfully updated bucket class %q", r.BucketClass.Name)
 	return nil

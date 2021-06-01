@@ -1635,3 +1635,30 @@ func DeleteStorageClass(sc *storagev1.StorageClass) error{
 	log.Infof("deleted storageclass %v successfully", sc.Name)
 	return nil
 }
+
+func LoadBucketReplicationJSON(replicationPolicy string, namespace string) ([]interface{}, error) {
+	cm := KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap)
+	cm.Name = replicationPolicy
+	cm.Namespace = namespace
+
+	if !KubeCheck(cm) { 
+		return nil, fmt.Errorf("❌ Could nsot find replication configuration configmap %q in namespace %q", cm.Name, cm.Namespace)
+	}
+
+	var replicationPolicyJsonParam map[string][]interface{}
+	logrus.Infof("loading bucket replication %v", cm.Data["replicationPolicyJSON"])
+
+	err := json.Unmarshal([]byte(cm.Data["replicationPolicyJSON"]), &replicationPolicyJsonParam)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid replication policy config map %v error: %v", cm.Name, err)
+	}
+
+	replicationRules, found := replicationPolicyJsonParam["replication_policy"]
+	if !found {
+		return nil, fmt.Errorf("Invalid replication policy config map %v error: %v", cm.Name, err)
+	}
+
+	logrus.Infof("✅ Successfully loaded bucket replication %v", replicationRules)
+
+	return replicationRules, nil
+}

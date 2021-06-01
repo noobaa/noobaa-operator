@@ -370,16 +370,16 @@ func (r *BucketRequest) CreateBucket(
 		}
 
 		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
 				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource,
-				Path:  r.OBC.Spec.AdditionalConfig["path"],
+				Path:     r.OBC.Spec.AdditionalConfig["path"],
 			}
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource })
+			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource})
 		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
 				Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource,
-				Path:  r.OBC.Spec.AdditionalConfig["path"],
+				Path:     r.OBC.Spec.AdditionalConfig["path"],
 			}
 			for i := range r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources {
 				rr := r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources[i]
@@ -395,6 +395,7 @@ func (r *BucketRequest) CreateBucket(
 			//cachePrefix := r.BucketClass.Spec.NamespacePolicy.Cache.Prefix
 		}
 	}
+	
 	err = r.SysClient.NBClient.CreateBucketAPI(*createBucketParams)
 
 	if err != nil {
@@ -408,6 +409,34 @@ func (r *BucketRequest) CreateBucket(
 		return fmt.Errorf("Failed to create bucket %q with error: %v", r.BucketName, err)
 	}
 
+	// update replication policy
+	log.Infof("Provisioner: replication %s", r.BucketClass.Spec.ReplicationPolicy)
+	if r.OBC.Spec.AdditionalConfig["replicationPolicy"] != "" || r.BucketClass.Spec.ReplicationPolicy != "" {
+		replicationPolicy := r.BucketClass.Spec.ReplicationPolicy
+		// if OBC has replication policy set it to replication policy instead of the bucketclass
+		if r.OBC.Spec.AdditionalConfig["replicationPolicy"] != "" {
+			replicationPolicy = r.OBC.Spec.AdditionalConfig["replicationPolicy"]
+		}
+		replicationRules , err := util.LoadBucketReplicationJSON(replicationPolicy, options.Namespace)
+		if err != nil {
+			return err
+		}
+		
+		params := nb.BucketReplicationParams{
+			Name: r.BucketName,
+			ReplicationPolicy: replicationRules,
+		}
+		log.Infof("PutBucketReplicationAPI params: %v", params)
+		err = r.SysClient.NBClient.PutBucketReplicationAPI(params)
+		if err != nil {
+			rpcErr, isRPCErr := err.(*nb.RPCError)
+			if isRPCErr && rpcErr.RPCCode != "INVALID_REPLICATION_POLICY" {
+				return util.NewPersistentError("InvalidBucketReplication", "Bucket replication configuration is invalid")
+			}
+			return fmt.Errorf("Provisioner Failed to update bucketclass replication on obc %q with error: %v", r.BucketClass.Name , err)
+		}
+	}
+	
 	log.Infof("✅ Successfully created bucket %q", r.BucketName)
 	return nil
 }

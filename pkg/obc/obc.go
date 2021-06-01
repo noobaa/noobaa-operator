@@ -49,6 +49,8 @@ func CmdCreate() *cobra.Command {
 		"Set the namespace of the application where the OBC should be created")
 	cmd.Flags().String("path", "",
 		"Set path to specify inner directory in namespace store target path - can be used only while specifing a namespace bucketclass")
+	cmd.Flags().String("replication-policy", "",
+		"Set the configmap name that contains replicationPolicyJSON propert")
 	return cmd
 }
 
@@ -99,6 +101,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	exact, _ := cmd.Flags().GetBool("exact")
 	bucketClassName, _ := cmd.Flags().GetString("bucketclass")
 	path, _ := cmd.Flags().GetString("path")
+	replicationPolicy, _ := cmd.Flags().GetString("replication-policy")
 	appNamespace, _ := cmd.Flags().GetString("app-namespace")
 	if appNamespace == "" {
 		appNamespace = options.Namespace
@@ -126,6 +129,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 	obc.Spec.StorageClassName = sc.Name
 	obc.Spec.AdditionalConfig = map[string]string{}
+	obc.Spec.AdditionalConfig["replicationPolicy"] = replicationPolicy
 
 	if bucketClassName != "" {
 		bucketClass := &nbv1.BucketClass{
@@ -144,6 +148,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		}
 		obc.Spec.AdditionalConfig["bucketclass"] = bucketClassName
 		obc.Spec.AdditionalConfig["path"] = path
+
 	} else if path != "" {
 		log.Fatalf(`❌ Could not create OBC %q with inner path while missing namespace bucketclass`, obc.Name)
 	}
