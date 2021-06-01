@@ -49,6 +49,7 @@ func CmdCreate() *cobra.Command {
 		CmdCreateNamespaceBucketclass(),
 		CmdCreatePlacementBucketClass(),
 	)
+
 	return cmd
 }
 
@@ -65,6 +66,8 @@ func CmdCreatePlacementBucketClass() *cobra.Command {
 		"Set first tier placement policy - Mirror | Spread | \"\" (empty defaults to single backing store)")
 	cmd.Flags().StringSlice("backingstores", nil,
 		"Set first tier backing stores (use commas or multiple flags)")
+	cmd.Flags().String("replication-policy", "",
+		"Set the json file name that contains the replication rules")
 
 	return cmd
 }
@@ -96,6 +99,8 @@ func CmdCreateSingleNamespaceBucketclass() *cobra.Command {
 	// single namespace policy
 	cmd.Flags().String("resource", "",
 		"Set the namespace read and write resource")
+	cmd.Flags().String("replication-policy", "",
+		"Set the json file name that contains replication rules")
 
 	return cmd
 }
@@ -113,6 +118,8 @@ func CmdCreateMultiNamespaceBucketclass() *cobra.Command {
 		"Set the namespace write resource")
 	cmd.Flags().StringSlice("read-resources", nil,
 		"Set the namespace read resources")
+	cmd.Flags().String("replication-policy", "",
+		"Set the json file name that contains replication rules")
 
 	return cmd
 }
@@ -136,6 +143,9 @@ func CmdCreateCacheNamespaceBucketclass() *cobra.Command {
 		"Set first tier placement policy - Mirror | Spread | \"\" (empty defaults to single backing store)")
 	cmd.Flags().StringSlice("backingstores", nil,
 		"Set first tier backing stores (use commas or multiple flags)")
+	cmd.Flags().String("replication-policy", "",
+		"Set the json file name that contains replication rules")
+
 	return cmd
 }
 
@@ -333,6 +343,14 @@ func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType 
 		}
 	}
 
+	replicationPolicyJSON, _ := cmd.Flags().GetString("replication-policy")
+	if replicationPolicyJSON != "" {
+		replication, err := util.LoadBucketReplicationJSON(replicationPolicyJSON)
+		if err != nil {
+			log.Fatalf(`❌ %q`, err)
+		}
+		bucketClass.Spec.ReplicationPolicy = replication
+	}
 	// Create bucket class CR
 	util.Panic(controllerutil.SetControllerReference(sys, bucketClass, scheme.Scheme))
 	if !util.KubeCreateFailExisting(bucketClass) {

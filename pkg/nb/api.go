@@ -55,6 +55,9 @@ type Client interface {
 	UpdateEndpointGroupAPI(UpdateEndpointGroupParams) error
 
 	RegisterToCluster() error
+
+	PutBucketReplicationAPI(BucketReplicationParams) error
+	ValidateReplicationAPI(BucketReplicationParams) error
 }
 
 // ReadAuthAPI calls auth_api.read_auth()
@@ -378,5 +381,17 @@ func (c *RPCClient) UpdateEndpointGroupAPI(params UpdateEndpointGroupParams) err
 // RegisterToCluster calls redirector_api.RegisterToCluster()
 func (c *RPCClient) RegisterToCluster() error {
 	req := &RPCMessage{API: "redirector_api", Method: "register_to_cluster"}
+	return c.Call(req, nil)
+}
+
+// PutBucketReplicationAPI calls bucket_api.put_bucket_replication()
+func (c *RPCClient) PutBucketReplicationAPI(params BucketReplicationParams) error {
+	req := &RPCMessage{API: "bucket_api", Method: "put_bucket_replication", Params: params}
+	return c.Call(req, nil)
+}
+
+// ValidateReplicationAPI calls bucket_api.validate_replication()
+func (c *RPCClient) ValidateReplicationAPI(params BucketReplicationParams) error {
+	req := &RPCMessage{API: "bucket_api", Method: "validate_replication", Params: params}
 	return c.Call(req, nil)
 }

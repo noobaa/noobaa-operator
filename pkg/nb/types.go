@@ -316,15 +316,15 @@ type CreateBucketParams struct {
 
 // NamespaceBucketInfo is the information needed for creating namespace bucket
 type NamespaceBucketInfo struct {
-	WriteResource NamespaceResourceFullConfig     `json:"write_resource"`
-	ReadResources []NamespaceResourceFullConfig   `json:"read_resources,omitempty"`
-	Caching       *CacheSpec `json:"caching,omitempty"`
+	WriteResource NamespaceResourceFullConfig   `json:"write_resource"`
+	ReadResources []NamespaceResourceFullConfig `json:"read_resources,omitempty"`
+	Caching       *CacheSpec                    `json:"caching,omitempty"`
 }
 
-// NamespaceResourceFullConfig is the resource configuration for creating namespace bucket 
+// NamespaceResourceFullConfig is the resource configuration for creating namespace bucket
 type NamespaceResourceFullConfig struct {
-	Resource string     `json:"resource"`
-	Path string   `json:"path,omitempty"`
+	Resource string `json:"resource"`
+	Path     string `json:"path,omitempty"`
 }
 
 // CacheSpec specifies the cache specifications for the bucket class
@@ -420,14 +420,14 @@ type CreateNamespaceResourceParams struct {
 	Name           string              `json:"name"`
 	Connection     string              `json:"connection"`
 	TargetBucket   string              `json:"target_bucket"`
-	NSFSConfig     *NSFSConfig          `json:"nsfs_config,omitempty"`
+	NSFSConfig     *NSFSConfig         `json:"nsfs_config,omitempty"`
 	NamespaceStore *NamespaceStoreInfo `json:"namespace_store,omitempty"`
 }
 
 // NSFSConfig is the namespace fs config needed for creating namespace resource of type fs()
 type NSFSConfig struct {
-	FsBackend string `json:"fs_backend,omitempty"`
-	FsRootPath    string `json:"fs_root_path,omitempty"`
+	FsBackend  string `json:"fs_backend,omitempty"`
+	FsRootPath string `json:"fs_root_path,omitempty"`
 }
 
 // CreateTierParams is the reply of tier_api.create_tier()
@@ -508,6 +508,12 @@ type UpdateBucketClassParams struct {
 	Name   string            `json:"name"`
 	Policy TieringPolicyInfo `json:"policy"`
 	Tiers  []TierInfo        `json:"tiers"`
+}
+
+// BucketReplicationParams is the params of bucket_api.put_bucket_replication()
+type BucketReplicationParams struct {
+	Name              string        `json:"name"`
+	ReplicationPolicy []interface{} `json:"replication_policy"`
 }
 
 // BucketClassInfo is the is the reply of tiering_policy_api.update_bucket_class()

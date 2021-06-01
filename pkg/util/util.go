@@ -564,7 +564,7 @@ func GetPodLogs(pod corev1.Pod) (map[string]io.ReadCloser, error) {
 			podLogs, err := req.Stream(ctx)
 			if err != nil {
 				// do not warn about lack of additional previous logs, i.e. when nameSuffix is set
-				if  nameSuffix == nil {
+				if nameSuffix == nil {
 					log.Printf(`Could not read logs %s container %s, reason: %s`, pod.Name, container.Name, err)
 				}
 				return
@@ -1651,4 +1651,23 @@ func DeleteStorageClass(sc *storagev1.StorageClass) error {
 	}
 	log.Infof("deleted storageclass %v successfully", sc.Name)
 	return nil
+}
+
+// LoadBucketReplicationJSON loads the bucket replication from a json file
+func LoadBucketReplicationJSON(replicationJSONFilePath string) (string, error) {
+
+	logrus.Infof("loading bucket replication %v", replicationJSONFilePath)
+	bytes, err := ioutil.ReadFile(replicationJSONFilePath)
+	if err != nil {
+		return "", fmt.Errorf("Failed to read file %q: %v", replicationJSONFilePath, err)
+	}
+	var replicationJSON []interface{}
+	err = json.Unmarshal(bytes, &replicationJSON)
+	if err != nil {
+		return "", fmt.Errorf("Failed to parse json file %q: %v", replicationJSONFilePath, err)
+	}
+
+	logrus.Infof("✅ Successfully loaded bucket replication %v", string(bytes))
+
+	return string(bytes), nil
 }

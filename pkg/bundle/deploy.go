@@ -455,7 +455,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "f8103950e9d3f6a0a8b61c32d26201799310268dd67a2673e4c2035679397c42"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "4fe0737b2fe7ab77e80ca6518cd6e9ce7fa4f4c3ff18990142f4ffd7bc7db4c1"
 
 const File_deploy_crds_noobaa_io_bucketclasses_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -584,6 +584,10 @@ spec:
                       type: object
                     type: array
                 type: object
+              replicationPolicy:
+                description: ReplicationPolicy specifies a json of replication rules
+                  for the bucketclass
+                type: string
             type: object
           status:
             description: Most recently observed status of the noobaa BackingStore.
