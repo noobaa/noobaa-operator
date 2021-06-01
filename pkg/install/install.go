@@ -22,7 +22,35 @@ func CmdInstall() *cobra.Command {
 		Run:   RunInstall,
 	}
 	cmd.Flags().Bool("use-obc-cleanup-policy", false, "Create NooBaa system with obc cleanup policy")
+	cmd.AddCommand(
+		CmdYaml(),
+	)
 	return cmd
+}
+
+// CmdYaml returns a CLI command
+func CmdYaml() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "yaml",
+		Short: "Show install yaml, expected usage \"noobaa install 1> install.yaml\"",
+		Run:   RunYaml,
+	}
+	return cmd
+}
+
+// RunYaml dumps a combined yaml of all installation yaml
+// including CRD, operator and system
+func RunYaml(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	log.Println("Dump CRD yamls...")
+	crd.RunYaml(cmd, args)
+	fmt.Println("---") // yaml resources separator
+	log.Println("Dump operator yamls...")
+	operator.RunYaml(cmd, args)
+	fmt.Println("---") // yaml resources separator
+	log.Println("Dump system yamls...")
+	system.RunYaml(cmd, args)
+	log.Println("✅ Done dumping installation yaml")
 }
 
 // CmdUninstall returns a CLI command
