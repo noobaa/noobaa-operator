@@ -694,7 +694,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "f81a4ad7b2829701465af2ad1970706233096b5190fb63bf0361956a65b744cc"
+const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "75ea24de1ab0e53c7cdebe2e1f55fe7cd0dc28f469920d64a8451d5429967c8f"
 
 const File_deploy_crds_noobaa_io_namespacestores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -836,12 +836,16 @@ spec:
                     - GPFS
                     - NFSv4
                     type: string
-                  fsRootPath:
-                    description: FsRootPath is a path to a root directory in a file
+                  pvcName:
+                    description: PvcName is the name of the pvc in which the file
+                      system resides
+                    type: string
+                  subPath:
+                    description: SubPath is a path to a sub directory in the pvc file
                       system
                     type: string
                 required:
-                - fsRootPath
+                - pvcName
                 type: object
               s3Compatible:
                 description: S3Compatible specifies a namespace store of type s3-compatible

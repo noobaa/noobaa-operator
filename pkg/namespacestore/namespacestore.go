@@ -187,8 +187,12 @@ func CmdCreateNSFS() *cobra.Command {
 		"The file system backend type - CEPH_FS | GPFS | NFSv4",
 	)
 	cmd.Flags().String(
-		"fs-root-path", "",
-		"The path to the exported directory in the file system",
+		"sub-path", "",
+		"The path to a sub directory inside the pvc file system",
+	)
+	cmd.Flags().String(
+		"pvc-name", "",
+		"The pvc name in which the file system resides",
 	)
 	return cmd
 }
@@ -417,14 +421,16 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 func RunCreateNSFS(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 	createCommon(cmd, args, nbv1.NSStoreTypeNSFS, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
-		fsRootPath := util.GetFlagStringOrPrompt(cmd, "fs-root-path")
+		pvcName := util.GetFlagStringOrPrompt(cmd, "pvc-name")
 		fsBackend, _ := cmd.Flags().GetString("fs-backend")
+		subPath, _ := cmd.Flags().GetString("sub-path")
 
-		if fsRootPath == "" {
-			log.Fatalf(`❌ Missing expected arguments: <fs-root-path> %s`, cmd.UsageString())
+		if pvcName == "" {
+			log.Fatalf(`❌ Missing expected arguments: <pvc-name> %s`, cmd.UsageString())
 		}
 		namespaceStore.Spec.NSFS = &nbv1.NSFSSpec{
-			FsRootPath:    fsRootPath,
+			PvcName: pvcName,
+			SubPath:  subPath,
 			FsBackend: fsBackend,
 		}
 	})

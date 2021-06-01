@@ -277,7 +277,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			}
 			mgmtBaseAddr := ""
 			s3BaseAddr := ""
-			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env)
+			util.MergeEnvArrays(&c.Env, &r.DefaultDeploymentEndpoint.Containers[0].Env)
 			if r.JoinSecret == nil {
 				mgmtBaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceMgmt.Name, r.Request.Namespace)
 				s3BaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceS3.Name, r.Request.Namespace)
@@ -387,6 +387,59 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
 			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
 			util.ReflectEnvVariable(&c.Env, "NO_PROXY")
+
+			return r.setDesiredEndpointMounts(podSpec, c)
+		}
+	}
+	return nil
+}
+
+func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container *corev1.Container) error {
+	namespaceStoreList := &nbv1.NamespaceStoreList{}
+	if !util.KubeList(namespaceStoreList, client.InNamespace(options.Namespace)) {
+		return fmt.Errorf("Error: Cant list namespacestores")
+	}
+	podSpec.Volumes = r.DefaultDeploymentEndpoint.Volumes 
+	container.VolumeMounts = r.DefaultDeploymentEndpoint.Containers[0].VolumeMounts
+
+	for _, nsStore := range namespaceStoreList.Items {
+		if nsStore.Spec.NSFS != nil {
+			pvcName := nsStore.Spec.NSFS.PvcName
+			isPvcExist := false
+			volumeName := "nsfs-" + nsStore.Name
+			for _, volume := range podSpec.Volumes {
+				if volume.PersistentVolumeClaim != nil && volume.PersistentVolumeClaim.ClaimName == pvcName {
+						isPvcExist = true // PVC already attached to the pods - no need to add
+						volumeName = volume.Name
+						break;
+				}
+			}
+			if (!isPvcExist) {
+				podSpec.Volumes = append(podSpec.Volumes, corev1.Volume {
+					Name: volumeName,
+					VolumeSource: corev1.VolumeSource {
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: pvcName,
+						},
+					},
+				})
+			}
+			subPath := nsStore.Spec.NSFS.SubPath
+			mountPath := "/nsfs/" + nsStore.Name
+			isMountExist := false
+			for _, volumeMount := range container.VolumeMounts {
+				if volumeMount.Name == volumeName && volumeMount.SubPath == subPath {
+						isMountExist = true // volumeMount already created - no need to add
+						break;
+				}
+			}
+			if (!isMountExist) {
+				container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+					Name: volumeName,
+					MountPath: mountPath,
+					SubPath: subPath,
+				})
+			}
 		}
 	}
 	return nil

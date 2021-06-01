@@ -162,9 +162,12 @@ const (
 
 // NSFSSpec specifies a namespace store of type nsfs
 type NSFSSpec struct {
-
-	// FsRootPath is a path to a root directory in a file system
-	FsRootPath string `json:"fsRootPath"`
+	// PvcName is the name of the pvc in which the file system resides
+	PvcName string `json:"pvcName"`
+	
+	// SubPath is a path to a sub directory in the pvc file system
+	// +optional
+	SubPath string `json:"subPath"`
 
 	// FsBackend is the backend type of the file system
 	// +optional
