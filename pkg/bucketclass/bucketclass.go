@@ -41,8 +41,9 @@ func Cmd() *cobra.Command {
 // CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create bucket class",
+		Use:               "create",
+		Short:             "Create bucket class",
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 
 	cmd.AddCommand(
@@ -142,9 +143,10 @@ func CmdCreateCacheNamespaceBucketclass() *cobra.Command {
 // CmdDelete returns a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <bucket-class-name>",
-		Short: "Delete bucket class",
-		Run:   RunDelete,
+		Use:               "delete <bucket-class-name>",
+		Short:             "Delete bucket class",
+		Run:               RunDelete,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	return cmd
 }
@@ -152,9 +154,10 @@ func CmdDelete() *cobra.Command {
 // CmdStatus returns a CLI command
 func CmdStatus() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "status <bucket-class-name>",
-		Short: "Status bucket class",
-		Run:   RunStatus,
+		Use:               "status <bucket-class-name>",
+		Short:             "Status bucket class",
+		Run:               RunStatus,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	return cmd
 }
@@ -172,10 +175,11 @@ func CmdList() *cobra.Command {
 // CmdReconcile returns a CLI command
 func CmdReconcile() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "reconcile",
-		Short:  "Runs a reconcile attempt like noobaa-operator",
-		Run:    RunReconcile,
+		Hidden:            true,
+		Use:               "reconcile",
+		Short:             "Runs a reconcile attempt like noobaa-operator",
+		Run:               RunReconcile,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	return cmd
 }
@@ -493,8 +497,8 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 	}
 	bucketClassName := args[0]
 	klient := util.KubeClient()
-	intervalSec := time.Duration(3)
-	util.Panic(wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
+	intervalDuration := time.Duration(3)
+	util.Panic(wait.PollImmediateInfinite(intervalDuration*time.Second, func() (bool, error) {
 		req := reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Namespace: options.Namespace,
@@ -506,7 +510,7 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 			return false, err
 		}
 		if res.Requeue || res.RequeueAfter != 0 {
-			log.Printf("\nRetrying in %d seconds\n", intervalSec)
+			log.Printf("\nRetrying in %d seconds\n", intervalDuration)
 			return false, nil
 		}
 		return true, nil

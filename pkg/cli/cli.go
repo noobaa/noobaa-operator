@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -58,6 +59,17 @@ func Run() {
 	}
 }
 
+// PersistentPreRunERoot generate an error if a user wrongly inputs options with –
+// See https://github.com/noobaa/noobaa-operator/issues/484
+func PersistentPreRunERoot(cmd *cobra.Command, args []string) error {
+	flagArgs := cmd.Flags().Args()
+	if len(flagArgs) > 0 {
+		errorText := fmt.Sprint("unknown args: ", flagArgs)
+		return errors.New(errorText)
+	}
+	return nil
+}
+
 // Cmd returns a CLI command
 func Cmd() *cobra.Command {
 
@@ -74,6 +86,10 @@ func Cmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "noobaa",
 		Short: logo,
+		// disallow non-flag args on all noobaa commands
+		// exclude commands requiring arguments by defining
+		// PersistentPreRunE as options.PersistentPreRunEPass
+		PersistentPreRunE: PersistentPreRunERoot,
 	}
 
 	rootCmd.PersistentFlags().AddFlagSet(options.FlagSet)

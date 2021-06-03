@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
@@ -29,9 +30,10 @@ func Cmd() *cobra.Command {
 // CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create <bucket-name>",
-		Short: "Create a NooBaa bucket",
-		Run:   RunCreate,
+		Use:               "create <bucket-name>",
+		Short:             "Create a NooBaa bucket",
+		Run:               RunCreate,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	return cmd
 }
@@ -39,9 +41,10 @@ func CmdCreate() *cobra.Command {
 // CmdDelete returns a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <bucket-name>",
-		Short: "Delete a NooBaa bucket",
-		Run:   RunDelete,
+		Use:               "delete <bucket-name>",
+		Short:             "Delete a NooBaa bucket",
+		Run:               RunDelete,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	return cmd
 }
@@ -49,9 +52,10 @@ func CmdDelete() *cobra.Command {
 // CmdStatus returns a CLI command
 func CmdStatus() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "status <bucket-name>",
-		Short: "Show the status of a NooBaa bucket",
-		Run:   RunStatus,
+		Use:               "status <bucket-name>",
+		Short:             "Show the status of a NooBaa bucket",
+		Run:               RunStatus,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	return cmd
 }

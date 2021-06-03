@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
@@ -13,8 +14,9 @@ import (
 // Cmd creates a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "pvstore",
-		Short: "Manage noobaa pv store",
+		Use:               "pvstore",
+		Short:             "Manage noobaa pv store",
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	cmd.AddCommand(
 		CmdCreate(),
@@ -27,9 +29,10 @@ func Cmd() *cobra.Command {
 // CmdCreate creates a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create <store-name>",
-		Short: "Create a NooBaa PV Store",
-		Run:   RunCreate,
+		Use:               "create <store-name>",
+		Short:             "Create a NooBaa PV Store",
+		Run:               RunCreate,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 
 	cmd.Flags().Uint32(
@@ -47,9 +50,10 @@ func CmdCreate() *cobra.Command {
 // CmdDelete creates a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <store-name>",
-		Short: "Deletes a NooBaa PV Store",
-		Run:   RunDelete,
+		Use:               "delete <store-name>",
+		Short:             "Deletes a NooBaa PV Store",
+		Run:               RunDelete,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	return cmd
 }

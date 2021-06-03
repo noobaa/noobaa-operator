@@ -22,8 +22,9 @@ import (
 // Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "obc",
-		Short: "Manage object bucket claims",
+		Use:               "obc",
+		Short:             "Manage object bucket claims",
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	cmd.AddCommand(
 		CmdCreate(),
@@ -37,9 +38,10 @@ func Cmd() *cobra.Command {
 // CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create <bucket-claim-name>",
-		Short: "Create an OBC",
-		Run:   RunCreate,
+		Use:               "create <bucket-claim-name>",
+		Short:             "Create an OBC",
+		Run:               RunCreate,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	cmd.Flags().Bool("exact", false,
 		"Request an exact bucketName instead of the default generateBucketName")
@@ -55,9 +57,10 @@ func CmdCreate() *cobra.Command {
 // CmdDelete returns a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <bucket-claim-name>",
-		Short: "Delete an OBC",
-		Run:   RunDelete,
+		Use:               "delete <bucket-claim-name>",
+		Short:             "Delete an OBC",
+		Run:               RunDelete,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	cmd.Flags().String("app-namespace", "",
 		"Set the namespace of the application where the OBC should be created")
@@ -67,9 +70,10 @@ func CmdDelete() *cobra.Command {
 // CmdStatus returns a CLI command
 func CmdStatus() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "status <bucket-claim-name>",
-		Short: "Status of an OBC",
-		Run:   RunStatus,
+		Use:               "status <bucket-claim-name>",
+		Short:             "Status of an OBC",
+		Run:               RunStatus,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	cmd.Flags().String("app-namespace", "",
 		"Set the namespace of the application where the OBC should be created")

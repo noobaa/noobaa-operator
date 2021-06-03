@@ -26,8 +26,9 @@ import (
 // Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "namespacestore",
-		Short: "Manage namespace stores",
+		Use:               "namespacestore",
+		Short:             "Manage namespace stores",
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	cmd.AddCommand(
 		CmdCreate(),
@@ -42,8 +43,9 @@ func Cmd() *cobra.Command {
 // CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create namespace store",
+		Use:               "create",
+		Short:             "Create namespace store",
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	cmd.AddCommand(
 		CmdCreateAWSS3(),
@@ -200,9 +202,10 @@ func CmdCreateNSFS() *cobra.Command {
 // CmdDelete returns a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <namespace-store-name>",
-		Short: "Delete namespace store",
-		Run:   RunDelete,
+		Use:               "delete <namespace-store-name>",
+		Short:             "Delete namespace store",
+		Run:               RunDelete,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	return cmd
 }
@@ -210,9 +213,10 @@ func CmdDelete() *cobra.Command {
 // CmdStatus returns a CLI command
 func CmdStatus() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "status <namespace-store-name>",
-		Short: "Status namespace store",
-		Run:   RunStatus,
+		Use:               "status <namespace-store-name>",
+		Short:             "Status namespace store",
+		Run:               RunStatus,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	return cmd
 }
@@ -230,10 +234,11 @@ func CmdList() *cobra.Command {
 // CmdReconcile returns a CLI command
 func CmdReconcile() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "reconcile",
-		Short:  "Runs a reconcile attempt like noobaa-operator",
-		Run:    RunReconcile,
+		Hidden:            true,
+		Use:               "reconcile",
+		Short:             "Runs a reconcile attempt like noobaa-operator",
+		Run:               RunReconcile,
+		PersistentPreRunE: options.PersistentPreRunEPass,
 	}
 	return cmd
 }
@@ -429,8 +434,8 @@ func RunCreateNSFS(cmd *cobra.Command, args []string) {
 			log.Fatalf(`❌ Missing expected arguments: <pvc-name> %s`, cmd.UsageString())
 		}
 		namespaceStore.Spec.NSFS = &nbv1.NSFSSpec{
-			PvcName: pvcName,
-			SubPath:  subPath,
+			PvcName:   pvcName,
+			SubPath:   subPath,
 			FsBackend: fsBackend,
 		}
 	})
@@ -627,8 +632,8 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 	}
 	namespaceStoreName := args[0]
 	klient := util.KubeClient()
-	intervalSec := time.Duration(3)
-	util.Panic(wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
+	intervalDuration := time.Duration(3)
+	util.Panic(wait.PollImmediateInfinite(intervalDuration*time.Second, func() (bool, error) {
 		req := reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Namespace: options.Namespace,
@@ -640,7 +645,7 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 			return false, err
 		}
 		if res.Requeue || res.RequeueAfter != 0 {
-			log.Printf("\nRetrying in %d seconds\n", intervalSec)
+			log.Printf("\nRetrying in %d seconds\n", intervalDuration)
 			return false, nil
 		}
 		return true, nil
