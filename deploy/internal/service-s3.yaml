@@ -13,10 +13,10 @@ spec:
   selector:
     noobaa-s3: SYSNAME
   ports:
-    - port: 80
+    - port: 8080
       targetPort: 6001
       name: s3
-    - port: 443
+    - port: 444
       targetPort: 6443
       name: s3-https
     - port: 8444

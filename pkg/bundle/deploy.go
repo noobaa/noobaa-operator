@@ -2810,7 +2810,7 @@ spec:
       name: hosted-agents-https
 `
 
-const Sha256_deploy_internal_service_s3_yaml = "df7d8c8ee81b820678b7d8648b26c6cf86da6be00caedad052c3848db5480c37"
+const Sha256_deploy_internal_service_s3_yaml = "5099c1cfb5fef11be59596a7d938134eac8f4eb5075e1345393e91dfcc126c75"
 
 const File_deploy_internal_service_s3_yaml = `apiVersion: v1
 kind: Service
@@ -2827,10 +2827,10 @@ spec:
   selector:
     noobaa-s3: SYSNAME
   ports:
-    - port: 80
+    - port: 8080
       targetPort: 6001
       name: s3
-    - port: 443
+    - port: 444
       targetPort: 6443
       name: s3-https
     - port: 8444
