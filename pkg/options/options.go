@@ -77,7 +77,7 @@ var DBMongoImage = "centos/mongodb-36-centos7"
 
 // DBType is the default db image type
 // it can be overridden for testing or different types.
-var DBType = "mongodb"
+var DBType = "postgres"
 
 // DBVolumeSizeGB can be used to override the default database volume size
 var DBVolumeSizeGB = 0
