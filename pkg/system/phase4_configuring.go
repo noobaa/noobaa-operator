@@ -2,6 +2,7 @@ package system
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -401,7 +402,7 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 	if !util.KubeList(namespaceStoreList, client.InNamespace(options.Namespace)) {
 		return fmt.Errorf("Error: Cant list namespacestores")
 	}
-	podSpec.Volumes = r.DefaultDeploymentEndpoint.Volumes 
+	podSpec.Volumes = r.DefaultDeploymentEndpoint.Volumes
 	container.VolumeMounts = r.DefaultDeploymentEndpoint.Containers[0].VolumeMounts
 
 	for _, nsStore := range namespaceStoreList.Items {
@@ -411,15 +412,15 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 			volumeName := "nsfs-" + nsStore.Name
 			for _, volume := range podSpec.Volumes {
 				if volume.PersistentVolumeClaim != nil && volume.PersistentVolumeClaim.ClaimName == pvcName {
-						isPvcExist = true // PVC already attached to the pods - no need to add
-						volumeName = volume.Name
-						break;
+					isPvcExist = true // PVC already attached to the pods - no need to add
+					volumeName = volume.Name
+					break
 				}
 			}
-			if (!isPvcExist) {
-				podSpec.Volumes = append(podSpec.Volumes, corev1.Volume {
+			if !isPvcExist {
+				podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
 					Name: volumeName,
-					VolumeSource: corev1.VolumeSource {
+					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 							ClaimName: pvcName,
 						},
@@ -431,15 +432,15 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 			isMountExist := false
 			for _, volumeMount := range container.VolumeMounts {
 				if volumeMount.Name == volumeName && volumeMount.SubPath == subPath {
-						isMountExist = true // volumeMount already created - no need to add
-						break;
+					isMountExist = true // volumeMount already created - no need to add
+					break
 				}
 			}
-			if (!isMountExist) {
+			if !isMountExist {
 				container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-					Name: volumeName,
+					Name:      volumeName,
 					MountPath: mountPath,
-					SubPath: subPath,
+					SubPath:   subPath,
 				})
 			}
 		}
@@ -447,9 +448,39 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 	return nil
 }
 
-// ReconcileHPAEndpoint reconcile the endpoint's HPS and report the configuration
+// awaitEndpointDeploymentPods wait for the the endpoint deployment to become ready
+// before creating the controlling HPA
+// See https://bugzilla.redhat.com/show_bug.cgi?id=1885524
+func (r *Reconciler) awaitEndpointDeploymentPods() error {
+
+	// Check that all deployment pods are available
+	availablePods := r.DeploymentEndpoint.Status.AvailableReplicas
+	desiredPods := r.DeploymentEndpoint.Status.Replicas
+	if availablePods == 0 || availablePods != desiredPods {
+		return errors.New("not enough available replicas in endpoint deployment")
+	}
+
+	// Check that deployment is ready
+	for _, condition := range r.DeploymentEndpoint.Status.Conditions {
+		if condition.Status != "True" {
+			return errors.New("endpoint deployment is not ready")
+		}
+	}
+
+	return nil
+}
+
+// ReconcileHPAEndpoint reconcile the endpoint's HPA and report the configuration
 // back to the noobaa core
 func (r *Reconciler) ReconcileHPAEndpoint() error {
+	// Wait for the the endpoint deployment to become ready
+	// only if HPA was not created yet
+	if r.HPAEndpoint.UID == "" {
+		if err := r.awaitEndpointDeploymentPods(); err != nil {
+			return err
+		}
+	}
+
 	if err := r.ReconcileObject(r.HPAEndpoint, r.SetDesiredHPAEndpoint); err != nil {
 		return err
 	}
