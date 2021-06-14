@@ -1,6 +1,7 @@
 package operator
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
@@ -63,9 +64,8 @@ func RunOperator(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed AddToManager: %s", err)
 	}
 
-	util.Panic(mgr.Add(manager.RunnableFunc(func(stopChan <-chan struct{}) error {
+	util.Panic(mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 		system.RunOperatorCreate(cmd, args)
-		<-stopChan
 		return nil
 	})))
 
