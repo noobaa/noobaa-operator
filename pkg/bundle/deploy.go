@@ -1001,7 +1001,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a7a87b507e0d7ca2ee52f440e86b1d7383123d14c5e9265ca5b837345175aca8"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a77ff65531f26c4361ca51ba1f38c0076da1ab24403007641a131ce63f2065cd"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1761,6 +1761,9 @@ spec:
                       to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                     type: object
                 type: object
+              debugLevel:
+                description: DebugLevel (optional) sets the debug level
+                type: integer
               endpoints:
                 description: Endpoints (optional) sets configuration info for the
                   noobaa endpoint deployment.
