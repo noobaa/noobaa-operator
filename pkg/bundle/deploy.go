@@ -2312,7 +2312,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "e64afa3c079c6ee43c063b66a15b9146ca33b1d4eb9643d86438b9e151443cf2"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "6769a038678b5d5d41a3a731e1cfd63acf113c45aef2855f790cbe6e2fc91b9a"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -2384,6 +2384,8 @@ spec:
             - name: LOCAL_N2N_AGENT
             - name: JWT_SECRET
             - name: NOOBAA_ROOT_SECRET
+            - name: NOOBAA_LOG_LEVEL
+              value: "0"
             - name: NOOBAA_DISABLE_COMPRESSION
               value: "false"
             - name: NOOBAA_AUTH_TOKEN
@@ -2880,7 +2882,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "f827660bdd01d915dbaf8305ef2ad8bbfcd7b62c83b62fa9c0dc2738c7553540"
+const Sha256_deploy_internal_statefulset_core_yaml = "758e83226e32791df7c5199203122def00d5df31d46eab3f0daddbf62ab1a068"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2957,6 +2959,8 @@ spec:
               value: mongodb
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
+            - name: NOOBAA_LOG_LEVEL
+              value: "0"
             - name: NOOBAA_DISABLE_COMPRESSION
               value: "false"
             - name: JWT_SECRET

@@ -73,6 +73,8 @@ spec:
               value: mongodb
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
+            - name: NOOBAA_LOG_LEVEL
+              value: "0"
             - name: NOOBAA_DISABLE_COMPRESSION
               value: "false"
             - name: JWT_SECRET
