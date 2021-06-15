@@ -1,6 +1,6 @@
 module github.com/noobaa/noobaa-operator/v2
 
-go 1.16
+go 1.15
 
 require (
 	cloud.google.com/go/storage v1.10.0
@@ -30,6 +30,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	google.golang.org/api v0.32.0
 	k8s.io/api v0.19.3
 	k8s.io/apiextensions-apiserver v0.19.3
