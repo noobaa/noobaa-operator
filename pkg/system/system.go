@@ -54,6 +54,7 @@ func CmdCreate() *cobra.Command {
 		Use:   "create",
 		Short: "Create a noobaa system",
 		Run:   RunCreate,
+		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().String("core-resources", "", "Core resources JSON")
 	cmd.Flags().String("db-resources", "", "DB resources JSON")
@@ -68,6 +69,7 @@ func CmdDelete() *cobra.Command {
 		Use:   "delete",
 		Short: "Delete a noobaa system",
 		Run:   RunDelete,
+		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().Bool("cleanup_data", false, "clean object buckets")
 	return cmd
@@ -79,6 +81,7 @@ func CmdList() *cobra.Command {
 		Use:   "list",
 		Short: "List noobaa systems",
 		Run:   RunList,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -89,6 +92,7 @@ func CmdStatus() *cobra.Command {
 		Use:   "status",
 		Short: "Status of a noobaa system",
 		Run:   RunStatus,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -100,6 +104,7 @@ func CmdReconcile() *cobra.Command {
 		Use:    "reconcile",
 		Short:  "Runs a reconcile attempt like noobaa-operator",
 		Run:    RunReconcile,
+		Args:   cobra.NoArgs,
 	}
 	return cmd
 }
@@ -110,6 +115,7 @@ func CmdYaml() *cobra.Command {
 		Use:   "yaml",
 		Short: "Show bundled noobaa yaml",
 		Run:   RunYaml,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }

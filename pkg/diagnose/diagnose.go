@@ -31,6 +31,7 @@ func Cmd() *cobra.Command {
 		Use:   "diagnose",
 		Short: "Collect diagnostics",
 		Run:   RunCollect,
+		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().String("dir", "", "collect noobaa diagnose tar file into destination directory")
 	return cmd

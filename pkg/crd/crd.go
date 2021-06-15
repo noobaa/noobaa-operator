@@ -41,6 +41,7 @@ func CmdCreate() *cobra.Command {
 		Use:   "create",
 		Short: "Create noobaa CRDs",
 		Run:   RunCreate,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -51,6 +52,7 @@ func CmdDelete() *cobra.Command {
 		Use:   "delete",
 		Short: "Delete noobaa CRDs",
 		Run:   RunDelete,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -61,6 +63,7 @@ func CmdStatus() *cobra.Command {
 		Use:   "status",
 		Short: "Status of noobaa CRDs",
 		Run:   RunStatus,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -71,6 +74,7 @@ func CmdWait() *cobra.Command {
 		Use:   "wait",
 		Short: "Wait for CRD to be ready",
 		Run:   RunWait,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -81,6 +85,7 @@ func CmdYaml() *cobra.Command {
 		Use:   "yaml",
 		Short: "Show bundled CRDs",
 		Run:   RunYaml,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }

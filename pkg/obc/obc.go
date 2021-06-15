@@ -82,6 +82,7 @@ func CmdList() *cobra.Command {
 		Use:   "list",
 		Short: "List OBC's",
 		Run:   RunList,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }

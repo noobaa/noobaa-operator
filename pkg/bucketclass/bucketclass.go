@@ -165,6 +165,7 @@ func CmdList() *cobra.Command {
 		Use:   "list",
 		Short: "List bucket classes",
 		Run:   RunList,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }

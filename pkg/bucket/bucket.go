@@ -62,6 +62,7 @@ func CmdList() *cobra.Command {
 		Use:   "list",
 		Short: "List NooBaa buckets",
 		Run:   RunList,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }

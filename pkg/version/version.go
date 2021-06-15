@@ -14,6 +14,7 @@ func Cmd() *cobra.Command {
 		Use:   "version",
 		Short: "Show version",
 		Run:   RunVersion,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }

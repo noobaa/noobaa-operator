@@ -14,6 +14,7 @@ func Cmd() *cobra.Command {
 		Use:   "options",
 		Short: "Print the list of global flags",
 		Run:   RunOptions,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }

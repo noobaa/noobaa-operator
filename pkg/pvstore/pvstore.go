@@ -60,6 +60,7 @@ func CmdList() *cobra.Command {
 		Use:   "list",
 		Short: "List NooBaa PV stores",
 		Run:   RunList,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
