@@ -45,7 +45,7 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 )
 
-// Pinned to kubernetes-1.19.3
+// Pinned to kubernetes-1.20.7
 replace (
 	github.com/moby/term => github.com/moby/term v0.0.0-20201110203204-bea5bbe245bf // indirect
 	k8s.io/api => k8s.io/api v0.20.7
