@@ -2316,7 +2316,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_configmap_postgres_db_yaml = "d1e0721ff0214b5ed8af9c9f189d70173f934bfcf4710d2826c61f05cad9b152"
+const Sha256_deploy_internal_configmap_postgres_db_yaml = "d35c0d8efb46f8ff6a5be4ca66a4e462cff69b60c6fa9e315fb61308e6e84215"
 
 const File_deploy_internal_configmap_postgres_db_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -2329,6 +2329,21 @@ data:
     # disable huge_pages trial
     # see https://bugzilla.redhat.com/show_bug.cgi?id=1946792
     huge_pages = off
+
+    # postgres tuning
+    max_connections = 300
+    shared_buffers = 1GB
+    effective_cache_size = 3GB
+    maintenance_work_mem = 256MB
+    checkpoint_completion_target = 0.9
+    wal_buffers = 16MB
+    default_statistics_target = 100
+    random_page_cost = 1.1
+    effective_io_concurrency = 300
+    work_mem = 1747kB
+    min_wal_size = 2GB
+    max_wal_size = 8GB
+    shared_preload_libraries = 'pg_stat_statements'
 `
 
 const Sha256_deploy_internal_deployment_endpoint_yaml = "6769a038678b5d5d41a3a731e1cfd63acf113c45aef2855f790cbe6e2fc91b9a"
@@ -3104,7 +3119,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "eedfd246f622f56f1b99e9ce7d0e6d30cbe3e1fc64f83e5a2349e76ce6a6d015"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "c6c0e65bbe94510f1f0333629821abd804b75832cb0cbaddacee9550fd3951f1"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3162,10 +3177,10 @@ spec:
           - containerPort: 5432
         resources:
           requests:
-            cpu: "2"
+            cpu: "500m"
             memory: "4Gi"
           limits:
-            cpu: "2"
+            cpu: "500m"
             memory: "4Gi"
         volumeMounts:
           - name: db
