@@ -318,6 +318,8 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					if r.JoinSecret == nil {
 						c.Env[j].Value = r.MongoConnectionString
 					}
+				case "NOOBAA_LOG_LEVEL":
+					c.Env[j].Value = strconv.Itoa(r.NooBaa.Spec.DebugLevel)
 				case "LOCAL_MD_SERVER":
 					if r.JoinSecret == nil {
 						c.Env[j].Value = "true"
