@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/spf13/cobra"
@@ -85,7 +84,7 @@ func RunCollect(cmd *cobra.Command, args []string) {
 }
 
 // CollectCR info
-func (c *Collector) CollectCR(list runtime.Object) {
+func (c *Collector) CollectCR(list client.ObjectList) {
 	gvk := list.GetObjectKind().GroupVersionKind()
 
 	if !util.KubeList(list, &client.ListOptions{Namespace: options.Namespace}) {

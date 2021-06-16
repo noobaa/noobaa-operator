@@ -1,8 +1,9 @@
 package namespacestore
 
 import (
+	"context"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -23,8 +24,8 @@ func Add(mgr manager.Manager) error {
 	c, err := controller.New("noobaa-controller", mgr, controller.Options{
 		MaxConcurrentReconciles: 1,
 		Reconciler: reconcile.Func(
-			func(req reconcile.Request) (reconcile.Result, error) {
-				return namespacestore.NewReconciler(
+			func(context context.Context, req reconcile.Request) (reconcile.Result, error) {
+				return system.NewReconciler(
 					req.NamespacedName,
 					mgr.GetClient(),
 					mgr.GetScheme(),
@@ -32,6 +33,7 @@ func Add(mgr manager.Manager) error {
 				).Reconcile()
 			}),
 	})
+
 	if err != nil {
 		return err
 	}
