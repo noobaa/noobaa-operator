@@ -2287,6 +2287,21 @@ metadata:
 data: {}
 `
 
+const Sha256_deploy_internal_configmap_postgres_db_yaml = "d1e0721ff0214b5ed8af9c9f189d70173f934bfcf4710d2826c61f05cad9b152"
+
+const File_deploy_internal_configmap_postgres_db_yaml = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: noobaa-postgres-config
+  labels:
+    app: noobaa
+data:
+  noobaa-postgres.conf: |
+    # disable huge_pages trial
+    # see https://bugzilla.redhat.com/show_bug.cgi?id=1946792
+    huge_pages = off
+`
+
 const Sha256_deploy_internal_deployment_endpoint_yaml = "73ca3e7d4d3d2e8b3143946d2c92cdf2f7380a3f0700b9fda2fb736cd18f0d02"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
@@ -3050,7 +3065,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "b50f93974700793f98f409849e3519522ba729d54b5a32a0b1565876f71c85b7"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "eedfd246f622f56f1b99e9ce7d0e6d30cbe3e1fc64f83e5a2349e76ce6a6d015"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3103,7 +3118,7 @@ spec:
             value: nbcore
           - name: POSTGRESQL_USER
           - name: POSTGRESQL_PASSWORD
-        magePullPolicy: "IfNotPresent"
+        imagePullPolicy: "IfNotPresent"
         ports:
           - containerPort: 5432
         resources:
@@ -3116,6 +3131,12 @@ spec:
         volumeMounts:
           - name: db
             mountPath: /var/lib/pgsql
+          - name: noobaa-postgres-config-volume
+            mountPath: /opt/app-root/src/postgresql-cfg
+      volumes:
+      - name: noobaa-postgres-config-volume
+        configMap:
+          name: noobaa-postgres-config
       securityContext: 
         runAsUser: 10001
         runAsGroup: 0
