@@ -48,9 +48,8 @@ func Cmd() *cobra.Command {
 // CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "create",
-		Short:             "Create backing store",
-		PersistentPreRunE: options.PersistentPreRunEPass,
+		Use:   "create",
+		Short: "Create backing store",
 	}
 	cmd.AddCommand(
 		CmdCreateAWSS3(),
@@ -230,10 +229,9 @@ func CmdCreatePVPool() *cobra.Command {
 // CmdDelete returns a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "delete <backing-store-name>",
-		Short:             "Delete backing store",
-		Run:               RunDelete,
-		PersistentPreRunE: options.PersistentPreRunEPass,
+		Use:   "delete <backing-store-name>",
+		Short: "Delete backing store",
+		Run:   RunDelete,
 	}
 	return cmd
 }
@@ -241,10 +239,9 @@ func CmdDelete() *cobra.Command {
 // CmdStatus returns a CLI command
 func CmdStatus() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "status <backing-store-name>",
-		Short:             "Status backing store",
-		Run:               RunStatus,
-		PersistentPreRunE: options.PersistentPreRunEPass,
+		Use:   "status <backing-store-name>",
+		Short: "Status backing store",
+		Run:   RunStatus,
 	}
 	return cmd
 }
@@ -252,10 +249,9 @@ func CmdStatus() *cobra.Command {
 // CmdRunRemovePendingPods returns a CLI command
 func CmdRunRemovePendingPods() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "remove_pending <backing-store-name>",
-		Short:             "Deletes all the pending pods that failed to connect to server",
-		Run:               RunRemovePendingPods,
-		PersistentPreRunE: options.PersistentPreRunEPass,
+		Use:   "remove_pending <backing-store-name>",
+		Short: "Deletes all the pending pods that failed to connect to server",
+		Run:   RunRemovePendingPods,
 	}
 	return cmd
 }
@@ -273,11 +269,10 @@ func CmdList() *cobra.Command {
 // CmdReconcile returns a CLI command
 func CmdReconcile() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden:            true,
-		Use:               "reconcile",
-		Short:             "Runs a reconcile attempt like noobaa-operator",
-		Run:               RunReconcile,
-		PersistentPreRunE: options.PersistentPreRunEPass,
+		Hidden: true,
+		Use:    "reconcile",
+		Short:  "Runs a reconcile attempt like noobaa-operator",
+		Run:    RunReconcile,
 	}
 	return cmd
 }
@@ -824,8 +819,8 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 	}
 	backingStoreName := args[0]
 	klient := util.KubeClient()
-	intervalDuration := time.Duration(3)
-	util.Panic(wait.PollImmediateInfinite(intervalDuration*time.Second, func() (bool, error) {
+	intervalSec := time.Duration(3)
+	util.Panic(wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
 		req := reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Namespace: options.Namespace,
@@ -837,7 +832,7 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 			return false, err
 		}
 		if res.Requeue || res.RequeueAfter != 0 {
-			log.Printf("\nRetrying in %d seconds\n", intervalDuration)
+			log.Printf("\nRetrying in %d seconds\n", intervalSec)
 			return false, nil
 		}
 		return true, nil
