@@ -116,14 +116,6 @@ func ObjectBucketProvisionerName() string {
 	return SubDomainNS() + "/obc"
 }
 
-// PersistentPreRunEPass do not generate on args
-// for the commands that require one, such as
-// noobaa bucket create <bucket-name> [flags] [options]...
-// See https://github.com/noobaa/noobaa-operator/issues/484
-func PersistentPreRunEPass(cmd *cobra.Command, args []string) error {
-	return nil
-}
-
 // FlagSet defines the
 var FlagSet = pflag.NewFlagSet("noobaa", pflag.ContinueOnError)
 
