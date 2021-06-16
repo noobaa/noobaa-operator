@@ -147,7 +147,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Could not create OBC %q with inner path while missing namespace bucketclass`, obc.Name)
 	}
 
-	if !util.KubeCreateSkipExisting(obc) {
+	if !util.KubeCreateFailExisting(obc) {
 		log.Fatalf(`❌ Could not create OBC %q in namespace %q (conflict)`, obc.Name, obc.Namespace)
 	}
 

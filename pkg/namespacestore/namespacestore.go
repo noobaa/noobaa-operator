@@ -278,14 +278,14 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 
 	// Create namespace store CR
 	util.Panic(controllerutil.SetControllerReference(sys, namespaceStore, scheme.Scheme))
-	if !util.KubeCreateSkipExisting(namespaceStore) {
+	if !util.KubeCreateFailExisting(namespaceStore) {
 		log.Fatalf(`❌ Could not create NamespaceStore %q in Namespace %q (conflict)`, namespaceStore.Name, namespaceStore.Namespace)
 	}
 
 	if GetNamespaceStoreSecret(namespaceStore) != nil && secretName == "" {
 		// Create secret
 		util.Panic(controllerutil.SetControllerReference(namespaceStore, secret, scheme.Scheme))
-		if !util.KubeCreateSkipExisting(secret) {
+		if !util.KubeCreateFailExisting(secret) {
 			log.Fatalf(`❌ Could not create Secret %q in Namespace %q (conflict)`, secret.Name, secret.Namespace)
 		}
 	}
