@@ -1,9 +1,12 @@
 package bucketclass
 
 import (
+	"context"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -19,12 +22,11 @@ import (
 func Add(mgr manager.Manager) error {
 
 	// Create a controller that runs reconcile on noobaa bucket class
-
 	c, err := controller.New("noobaa-controller", mgr, controller.Options{
 		MaxConcurrentReconciles: 1,
 		Reconciler: reconcile.Func(
-			func(req reconcile.Request) (reconcile.Result, error) {
-				return bucketclass.NewReconciler(
+			func(context context.Context, req reconcile.Request) (reconcile.Result, error) {
+				return system.NewReconciler(
 					req.NamespacedName,
 					mgr.GetClient(),
 					mgr.GetScheme(),
@@ -54,28 +56,29 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 
-	backingStoreHandler := handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+	backingStoreHandler := handler.EnqueueRequestsFromMapFunc(
+		func(obj client.Object) []reconcile.Request {
 			return bucketclass.MapBackingstoreToBucketclasses(types.NamespacedName{
-				Name:      obj.Meta.GetName(),
-				Namespace: obj.Meta.GetNamespace(),
+				Name:      obj.GetName(),
+				Namespace: obj.GetNamespace(),
 			})
-		}),
-	}
-	err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, &backingStoreHandler, logEventsPredicate)
+		})
+
+	err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, backingStoreHandler, logEventsPredicate)
+
 	if err != nil {
 		return err
 	}
 
-	namespaceStoreHandler := handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+	namespaceStoreHandler := handler.EnqueueRequestsFromMapFunc(
+		func(obj client.Object) []reconcile.Request {
 			return bucketclass.MapNamespacestoreToBucketclasses(types.NamespacedName{
-				Name:      obj.Meta.GetName(),
-				Namespace: obj.Meta.GetNamespace(),
+				Name:      obj.GetName(),
+				Namespace: obj.GetNamespace(),
 			})
-		}),
-	}
-	err = c.Watch(&source.Kind{Type: &nbv1.NamespaceStore{}}, &namespaceStoreHandler, logEventsPredicate)
+		})
+
+	err = c.Watch(&source.Kind{Type: &nbv1.NamespaceStore{}}, namespaceStoreHandler, logEventsPredicate)
 	if err != nil {
 		return err
 	}

@@ -56,9 +56,9 @@ type LabelsChangedPredicate struct {
 
 // Update implements the update event trap for LabelsChangedPredicate
 func (p LabelsChangedPredicate) Update(e event.UpdateEvent) bool {
-	return e.MetaOld != nil &&
-		e.MetaNew != nil &&
-		!reflect.DeepEqual(e.MetaOld.GetLabels(), e.MetaNew.GetLabels())
+	return e.ObjectOld != nil &&
+		e.ObjectNew != nil &&
+		!reflect.DeepEqual(e.ObjectOld.GetLabels(), e.ObjectNew.GetLabels())
 }
 
 // FinalizersChangedPredicate will only allow events that changed Metadata.Finalizers
@@ -68,9 +68,9 @@ type FinalizersChangedPredicate struct {
 
 // Update implements the update event trap for FinalizersChangedPredicate
 func (p FinalizersChangedPredicate) Update(e event.UpdateEvent) bool {
-	return e.MetaOld != nil &&
-		e.MetaNew != nil &&
-		!reflect.DeepEqual(e.MetaOld.GetFinalizers(), e.MetaNew.GetFinalizers())
+	return e.ObjectOld != nil &&
+		e.ObjectNew != nil &&
+		!reflect.DeepEqual(e.ObjectOld.GetFinalizers(), e.ObjectNew.GetFinalizers())
 }
 
 // FilterForOwner will only allow events that owned by noobaa
@@ -81,27 +81,27 @@ type FilterForOwner struct {
 
 // Create implements the create event trap for FilterForOwner
 func (p FilterForOwner) Create(e event.CreateEvent) bool {
-	eventOwners := e.Meta.GetOwnerReferences()
+	eventOwners := e.Object.GetOwnerReferences()
 	return p.hasCorrectOwner(eventOwners)
 
 }
 
 // Delete implements the delete event trap for FilterForOwner
 func (p FilterForOwner) Delete(e event.DeleteEvent) bool {
-	eventOwners := e.Meta.GetOwnerReferences()
+	eventOwners := e.Object.GetOwnerReferences()
 	return p.hasCorrectOwner(eventOwners)
 }
 
 // Update implements the update event trap for FilterForOwner
 func (p FilterForOwner) Update(e event.UpdateEvent) bool {
-	newEventOwners := e.MetaNew.GetOwnerReferences()
+	newEventOwners := e.ObjectNew.GetOwnerReferences()
 	return p.hasCorrectOwner(newEventOwners)
 
 }
 
 // Generic implements the generic event trap for FilterForOwner
 func (p FilterForOwner) Generic(e event.GenericEvent) bool {
-	eventOwners := e.Meta.GetOwnerReferences()
+	eventOwners := e.Object.GetOwnerReferences()
 	return p.hasCorrectOwner(eventOwners)
 }
 
@@ -132,36 +132,36 @@ type LogEventsPredicate struct {
 
 // Create implements the create event trap for LogEventsPredicate
 func (p LogEventsPredicate) Create(e event.CreateEvent) bool {
-	if e.Meta != nil {
+	if e.Object != nil {
 		logrus.Infof("Create event detected for %s (%s), queuing Reconcile",
-			e.Meta.GetName(), e.Meta.GetNamespace())
+			e.Object.GetName(), e.Object.GetNamespace())
 	}
 	return true
 }
 
 // Delete implements the delete event trap for LogEventsPredicate
 func (p LogEventsPredicate) Delete(e event.DeleteEvent) bool {
-	if e.Meta != nil {
+	if e.Object != nil {
 		logrus.Infof("Delete event detected for %s (%s), queuing Reconcile",
-			e.Meta.GetName(), e.Meta.GetNamespace())
+			e.Object.GetName(), e.Object.GetNamespace())
 	}
 	return true
 }
 
 // Update implements the update event trap for LogEventsPredicate
 func (p LogEventsPredicate) Update(e event.UpdateEvent) bool {
-	if e.MetaOld != nil {
+	if e.ObjectOld != nil {
 		logrus.Infof("Update event detected for %s (%s), queuing Reconcile",
-			e.MetaOld.GetName(), e.MetaOld.GetNamespace())
+			e.ObjectOld.GetName(), e.ObjectOld.GetNamespace())
 	}
 	return true
 }
 
 // Generic implements the generic event trap for LogEventsPredicate
 func (p LogEventsPredicate) Generic(e event.GenericEvent) bool {
-	if e.Meta != nil {
+	if e.Object != nil {
 		logrus.Infof("Generic event detected for %s (%s), queuing Reconcile",
-			e.Meta.GetName(), e.Meta.GetNamespace())
+			e.Object.GetName(), e.Object.GetNamespace())
 	}
 	return true
 }
