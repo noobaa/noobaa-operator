@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -271,7 +272,12 @@ func RunDelete(cmd *cobra.Command, args []string) {
 
 		} else {
 			log.Infof("Deleting All object buckets in namespace %q", options.Namespace)
-
+			// deletion of OBCSC 
+			sc := &storagev1.StorageClass{}
+			sc.Name = options.SubDomainNS()
+			if  err := util.DeleteStorageClass(sc); err != nil {
+				log.Errorf("failed to delete storageclass %q", sc.Name)
+			}
 			util.RemoveFinalizer(sys, nbv1.GracefulFinalizer)
 			if !util.KubeUpdate(sys) {
 				log.Errorf("NooBaa %q failed to remove finalizer %q", options.SystemName, nbv1.GracefulFinalizer)
