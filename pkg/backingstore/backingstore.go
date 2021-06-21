@@ -317,14 +317,14 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 
 	// Create backing store CR
 	util.Panic(controllerutil.SetControllerReference(sys, backStore, scheme.Scheme))
-	if !util.KubeCreateSkipExisting(backStore) {
+	if !util.KubeCreateFailExisting(backStore) {
 		log.Fatalf(`❌ Could not create BackingStore %q in Namespace %q (conflict)`, backStore.Name, backStore.Namespace)
 	}
 
 	if GetBackingStoreSecret(backStore) != nil && secretName == "" {
 		// Create secret
 		util.Panic(controllerutil.SetControllerReference(backStore, secret, scheme.Scheme))
-		if !util.KubeCreateSkipExisting(secret) {
+		if !util.KubeCreateFailExisting(secret) {
 			log.Fatalf(`❌ Could not create Secret %q in Namespace %q (conflict)`, secret.Name, secret.Namespace)
 		}
 	}

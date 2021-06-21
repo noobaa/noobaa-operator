@@ -334,7 +334,7 @@ func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType 
 
 	// Create bucket class CR
 	util.Panic(controllerutil.SetControllerReference(sys, bucketClass, scheme.Scheme))
-	if !util.KubeCreateSkipExisting(bucketClass) {
+	if !util.KubeCreateFailExisting(bucketClass) {
 		log.Fatalf(`❌ Could not create BucketClass %q in Namespace %q (conflict)`, bucketClass.Name, bucketClass.Namespace)
 	}
 
