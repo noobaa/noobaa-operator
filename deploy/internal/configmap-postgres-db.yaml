@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: noobaa-postgres-config
+  labels:
+    app: noobaa
+data:
+  noobaa-postgres.conf: |
+    # disable huge_pages trial
+    # see https://bugzilla.redhat.com/show_bug.cgi?id=1946792
+    huge_pages = off

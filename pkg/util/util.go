@@ -203,9 +203,11 @@ func KubeApply(obj runtime.Object) bool {
 	return false
 }
 
-// KubeCreateSkipExisting will check if the object exists and will create/skip accordingly
-// and report the object status.
-func KubeCreateSkipExisting(obj runtime.Object) bool {
+// kubeCreateSkipOrFailExisting create k8s object,
+// return true on success
+// if the object exists return skipOrFail parameter
+// return false on failure
+func kubeCreateSkipOrFailExisting(obj runtime.Object, skipOrFail bool) bool {
 	klient := KubeClient()
 	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
@@ -213,7 +215,7 @@ func KubeCreateSkipExisting(obj runtime.Object) bool {
 	err := klient.Get(ctx, objKey, clone)
 	if err == nil {
 		log.Printf("✅ Already Exists: %s %q\n", gvk.Kind, objKey.Name)
-		return false
+		return skipOrFail
 	}
 	if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
 		log.Printf("❌ CRD Missing: %s %q\n", gvk.Kind, objKey.Name)
@@ -245,6 +247,19 @@ func KubeCreateSkipExisting(obj runtime.Object) bool {
 	}
 	Panic(err)
 	return false
+}
+
+// KubeCreateFailExisting will check if the object exists and will create/skip accordingly
+// and report the object status.
+func KubeCreateFailExisting(obj runtime.Object) bool {
+	return kubeCreateSkipOrFailExisting(obj, false)
+}
+
+// KubeCreateSkipExisting will try to create an object
+// returns true of the object exist or was created
+// returns false otherwise
+func KubeCreateSkipExisting(obj runtime.Object) bool {
+	return kubeCreateSkipOrFailExisting(obj, true)
 }
 
 // KubeCreateOptional will check if the object exists and will create/skip accordingly
@@ -1177,6 +1192,36 @@ func ReflectEnvVariable(env *[]corev1.EnvVar, name string) {
 				*env = append((*env)[:i], (*env)[i+1:]...)
 				return
 			}
+		}
+	}
+}
+
+// MergeVolumeList takes two Volume arrays and merge them into the first
+func MergeVolumeList(existing, template *[]corev1.Volume) {
+	existingElements := make(map[string]bool)
+
+	for _, item := range *existing {
+		existingElements[item.Name] = true
+	}
+
+	for _, item := range *template {
+		if !existingElements[item.Name] {
+			*existing = append(*existing, item)
+		}
+	}
+}
+
+// MergeVolumeMountList takes two VolumeMount arrays and merge them into the first
+func MergeVolumeMountList(existing, template *[]corev1.VolumeMount) {
+	existingElements := make(map[string]bool)
+
+	for _, item := range *existing {
+		existingElements[item.Name] = true
+	}
+
+	for _, item := range *template {
+		if !existingElements[item.Name] {
+			*existing = append(*existing, item)
 		}
 	}
 }
