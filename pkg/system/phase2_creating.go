@@ -9,6 +9,7 @@ import (
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v2/pkg/options"
 	"github.com/noobaa/noobaa-operator/v2/pkg/util"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
@@ -181,16 +182,20 @@ func (r *Reconciler) SetDesiredServiceDBForPostgres() error {
 // SetDesiredNooBaaDB updates the NooBaaDB as desired for reconciling
 func (r *Reconciler) SetDesiredNooBaaDB() error {
 	var NooBaaDB *appsv1.StatefulSet = nil
+	var NooBaaDBTemplate *appsv1.StatefulSet = nil
+
 	if r.NooBaa.Spec.DBType == "postgres" {
 		NooBaaDB = r.NooBaaPostgresDB
 		NooBaaDB.Spec.Template.Labels["noobaa-db"] = "postgres"
 		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
 		NooBaaDB.Spec.ServiceName = r.ServiceDbPg.Name
+		NooBaaDBTemplate = util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
 	} else {
 		NooBaaDB = r.NooBaaMongoDB
 		NooBaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
 		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
 		NooBaaDB.Spec.ServiceName = r.ServiceDb.Name
+		NooBaaDBTemplate = util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
 	}
 
 	podSpec := &NooBaaDB.Spec.Template.Spec
@@ -282,6 +287,12 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 		}
 
 	} else {
+		// upgrade path add new resources,
+		// merge the volumes & volumeMounts from the template
+		util.MergeVolumeList(&NooBaaDB.Spec.Template.Spec.Volumes, &NooBaaDBTemplate.Spec.Template.Spec.Volumes)
+		for i := range NooBaaDB.Spec.Template.Spec.Containers {
+			util.MergeVolumeMountList(&NooBaaDB.Spec.Template.Spec.Containers[i].VolumeMounts, &NooBaaDBTemplate.Spec.Template.Spec.Containers[i].VolumeMounts)
+		}
 
 		// when already exists we check that there is no update requested to the volumes
 		// otherwise we report that volume update is unsupported
@@ -726,6 +737,14 @@ func (r *Reconciler) ReconcileRootSecret() error {
 func (r *Reconciler) ReconcileDB() error {
 	var err error
 	if r.NooBaa.Spec.DBType == "postgres" {
+		// this config map is required by the NooBaaPostgresDB StatefulSet,
+		// if the configMap was not created at this step, NooBaaPostgresDB
+		// would fail to start.
+		r.Own(r.PostgresDBConf)
+		if !util.KubeCreateSkipExisting(r.PostgresDBConf) {
+			return fmt.Errorf("could not create Postgres DB configMap %q in Namespace %q", r.PostgresDBConf.Name, r.PostgresDBConf.Namespace)
+		}
+
 		err = r.ReconcileObject(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB)
 		// Making sure that previous CRs without the value will deploy MongoDB
 	} else if r.NooBaa.Spec.DBType == "" || r.NooBaa.Spec.DBType == "mongodb" {

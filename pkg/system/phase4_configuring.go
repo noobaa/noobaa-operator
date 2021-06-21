@@ -1239,7 +1239,7 @@ func (r *Reconciler) ReconcileNamespaceStores(namespaceResources []nb.NamespaceR
 
 			// Create namespace store CR
 			util.Panic(controllerutil.SetControllerReference(r.NooBaa, nsStore, scheme.Scheme))
-			if !util.KubeCreateSkipExisting(nsStore) {
+			if !util.KubeCreateFailExisting(nsStore) {
 				logrus.Errorf(`❌ Could not create NamespaceStore %q in Namespace %q (conflict)`, nsStore.Name, nsStore.Namespace)
 				continue
 			}
@@ -1247,7 +1247,7 @@ func (r *Reconciler) ReconcileNamespaceStores(namespaceResources []nb.NamespaceR
 			if !util.KubeCheck(secret) {
 				// Create secret
 				util.Panic(controllerutil.SetControllerReference(nsStore, secret, scheme.Scheme))
-				if !util.KubeCreateSkipExisting(secret) {
+				if !util.KubeCreateFailExisting(secret) {
 					logrus.Errorf(`❌ Could not create Secret %q in Namespace %q (conflict)`, secret.Name, secret.Namespace)
 					continue
 				}
