@@ -272,8 +272,8 @@ func (r *Reconciler) CheckAll() {
 			util.KubeCheck(r.ServiceDbPg)
 		} else {
 			util.KubeCheck(r.NooBaaMongoDB)
+			util.KubeCheck(r.ServiceDb)
 		}
-		util.KubeCheck(r.ServiceDb)
 	}
 	util.KubeCheck(r.SecretServer)
 	util.KubeCheck(r.SecretOp)
