@@ -24,6 +24,7 @@ require (
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
 	github.com/operator-framework/api v0.3.22
 	github.com/operator-framework/operator-lib v0.2.0
+	github.com/pkg/errors v0.9.1
 	github.com/rook/rook v1.6.5
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.1.1
