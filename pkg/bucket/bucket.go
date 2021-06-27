@@ -124,12 +124,22 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		fmt.Printf("  %-22s : %s\n", "Undeletable", b.Undeletable)
 	}
 	if b.NumObjects != nil {
-		fmt.Printf("  %-22s : %d\n", "Num Objects", b.NumObjects.Value)
+		if b.BucketType == "NAMESPACE" {
+			fmt.Printf("  %-22s : N/A\n", "Num Objects")
+		} else {			
+			fmt.Printf("  %-22s : %d\n", "Num Objects", b.NumObjects.Value)
+		}
 	}
 	if b.DataCapacity != nil {
-		fmt.Printf("  %-22s : %s\n", "Data Size", nb.BigIntToHumanBytes(b.DataCapacity.Size))
-		fmt.Printf("  %-22s : %s\n", "Data Size Reduced", nb.BigIntToHumanBytes(b.DataCapacity.SizeReduced))
-		fmt.Printf("  %-22s : %s\n", "Data Space Avail", nb.BigIntToHumanBytes(b.DataCapacity.AvailableToUpload))
+		if b.BucketType == "NAMESPACE" {
+			fmt.Printf("  %-22s : N/A\n", "Data Size")
+			fmt.Printf("  %-22s : N/A\n", "Data Size Reduced")
+			fmt.Printf("  %-22s : N/A\n", "Data Space Avail")
+		} else {
+			fmt.Printf("  %-22s : %s\n", "Data Size", nb.BigIntToHumanBytes(b.DataCapacity.Size))
+			fmt.Printf("  %-22s : %s\n", "Data Size Reduced", nb.BigIntToHumanBytes(b.DataCapacity.SizeReduced))
+			fmt.Printf("  %-22s : %s\n", "Data Space Avail", nb.BigIntToHumanBytes(b.DataCapacity.AvailableToUpload))
+		}
 	}
 	fmt.Printf("\n")
 }
