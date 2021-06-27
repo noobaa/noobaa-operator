@@ -38,6 +38,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -1623,4 +1624,14 @@ func writeCrtsToFile(secretName string, namespace string, secretValue []byte, en
 		return "", fmt.Errorf("can not set env var %v %v", envVarKey, envVarValue)
 	}
 	return envVarValue, nil
+}
+
+// DeleteStorageClass deletes storage class
+func DeleteStorageClass(sc *storagev1.StorageClass) error{
+	log.Infof("storageclass %v found, deleting..", sc.Name)
+	if !KubeDelete(sc) {
+		return fmt.Errorf("storageclass %q failed to delete", sc)
+	}
+	log.Infof("deleted storageclass %v successfully", sc.Name)
+	return nil
 }

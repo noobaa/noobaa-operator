@@ -326,11 +326,12 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		if err := util.VerifyExternalSecretsDeletion(r.NooBaa.Spec.Security.KeyManagementService, r.NooBaa.Namespace, string(r.NooBaa.ObjectMeta.UID)); err != nil {
 			log.Warnf("⏳ Temporary Error: %s", err)
 		}
-	}
-
-	if err := r.VerifyObjectBucketCleanup(); err != nil {
-		r.SetPhase("", "TemporaryError", err.Error())
-		log.Warnf("⏳ Temporary Error: %s", err)
+		// obc and storage class removal
+		if err := r.VerifyObjectBucketCleanup(); err != nil {
+			r.SetPhase("", "TemporaryError", err.Error())
+			log.Warnf("⏳ Temporary Error: %s", err)
+		}
+		
 	}
 
 	if r.NooBaa.Spec.JoinSecret != nil {
@@ -392,6 +393,9 @@ func (r *Reconciler) VerifyObjectBucketCleanup() error {
 	}
 
 	if r.NooBaa.Spec.CleanupPolicy.Confirmation == nbv1.DeleteOBCConfirmation {
+		if  err := util.DeleteStorageClass(r.OBCStorageClass); err != nil {
+			log.Errorf("failed to delete storageclass %q",r.OBCStorageClass.Name)
+		}
 		util.RemoveFinalizer(r.NooBaa, nbv1.GracefulFinalizer)
 		if !util.KubeUpdate(r.NooBaa) {
 			log.Errorf("NooBaa %q failed to remove finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
@@ -416,6 +420,10 @@ func (r *Reconciler) VerifyObjectBucketCleanup() error {
 	}
 
 	log.Infof("All object buckets deleted in namespace %q", r.NooBaa.Namespace)
+
+	if  err := util.DeleteStorageClass(r.OBCStorageClass); err != nil {
+		log.Errorf("failed to delete storageclass %q",r.OBCStorageClass.Name)
+	}
 	util.RemoveFinalizer(r.NooBaa, nbv1.GracefulFinalizer)
 	if !util.KubeUpdate(r.NooBaa) {
 		log.Errorf("NooBaa %q failed to remove finalizer %q", r.NooBaa.Name, nbv1.GracefulFinalizer)
