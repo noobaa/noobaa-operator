@@ -95,6 +95,10 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	if err != nil {
+		return err
+	}
 
 	storageClassHandler := handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(mo handler.MapObject) []reconcile.Request {

@@ -2346,7 +2346,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "6769a038678b5d5d41a3a731e1cfd63acf113c45aef2855f790cbe6e2fc91b9a"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "267c70049455fcad93868f00223aeea9e0edde95d4810e6a4acccd9bbb11635c"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -2354,6 +2354,8 @@ metadata:
   labels:
     app: noobaa
   name: noobaa-endpoint
+  annotations:
+    ConfigMapHash: ""
 spec:
   replicas: 1
   selector:
@@ -2400,6 +2402,11 @@ spec:
             - containerPort: 6001
             - containerPort: 6443
           env:
+            - name: NOOBAA_DISABLE_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_DISABLE_COMPRESSION
             - name: MGMT_ADDR
             - name: BG_ADDR
             - name: MD_ADDR
@@ -2420,8 +2427,6 @@ spec:
             - name: NOOBAA_ROOT_SECRET
             - name: NOOBAA_LOG_LEVEL
               value: "0"
-            - name: NOOBAA_DISABLE_COMPRESSION
-              value: "false"
             - name: NOOBAA_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -2916,7 +2921,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "758e83226e32791df7c5199203122def00d5df31d46eab3f0daddbf62ab1a068"
+const Sha256_deploy_internal_statefulset_core_yaml = "0509f99ec8d23bc5bc2a51d2b4c1ef824628afecd689aea20b938f920238a7c4"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2924,6 +2929,8 @@ metadata:
   name: noobaa-core
   labels:
     app: noobaa
+  annotations:
+    ConfigMapHash: ""
 spec:
   replicas: 1
   selector:
@@ -2981,6 +2988,16 @@ spec:
             - containerPort: 8446
             - containerPort: 60100
           env:
+            - name: NOOBAA_DISABLE_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_DISABLE_COMPRESSION
+            - name: DISABLE_DEV_RANDOM_SEED
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: DISABLE_DEV_RANDOM_SEED
             - name: MONGODB_URL
               value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
             - name: POSTGRES_HOST
@@ -2995,8 +3012,6 @@ spec:
               value: KUBERNETES
             - name: NOOBAA_LOG_LEVEL
               value: "0"
-            - name: NOOBAA_DISABLE_COMPRESSION
-              value: "false"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -3010,8 +3025,6 @@ spec:
             - name: NOOBAA_ROOT_SECRET
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
-            - name: DISABLE_DEV_RANDOM_SEED
-              value: "true"
             - name: OAUTH_AUTHORIZATION_ENDPOINT
               value: ""
             - name: OAUTH_TOKEN_ENDPOINT
@@ -3020,8 +3033,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.serviceAccountName
-            - name: container_dbg
-              value: "" # any non-empty value will set the container to dbg mode
             - name: CONTAINER_CPU_REQUEST
               valueFrom:
                 resourceFieldRef:
