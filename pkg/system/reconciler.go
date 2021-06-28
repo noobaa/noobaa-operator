@@ -67,6 +67,7 @@ type Reconciler struct {
 	NooBaa                    *nbv1.NooBaa
 	ServiceAccount            *corev1.ServiceAccount
 	CoreApp                   *appsv1.StatefulSet
+	CoreAppConfig             *corev1.ConfigMap
 	DefaultCoreApp            *corev1.Container
 	NooBaaMongoDB             *appsv1.StatefulSet
 	PostgresDBConf            *corev1.ConfigMap
@@ -124,6 +125,7 @@ func NewReconciler(
 		NooBaa:              util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		ServiceAccount:      util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
 		CoreApp:             util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
+		CoreAppConfig:       util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap),
 		NooBaaMongoDB:       util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet),
 		PostgresDBConf:      util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap),
 		NooBaaPostgresDB:    util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet),
@@ -161,6 +163,7 @@ func NewReconciler(
 	r.NooBaa.Namespace = r.Request.Namespace
 	r.ServiceAccount.Namespace = r.Request.Namespace
 	r.CoreApp.Namespace = r.Request.Namespace
+	r.CoreAppConfig.Namespace = r.Request.Namespace
 	r.NooBaaMongoDB.Namespace = r.Request.Namespace
 	r.PostgresDBConf.Namespace = r.Request.Namespace
 	r.NooBaaPostgresDB.Namespace = r.Request.Namespace
@@ -199,6 +202,7 @@ func NewReconciler(
 	r.NooBaa.Name = r.Request.Name
 	r.ServiceAccount.Name = r.Request.Name
 	r.CoreApp.Name = r.Request.Name + "-core"
+	r.CoreAppConfig.Name = "noobaa-config"
 	r.NooBaaMongoDB.Name = r.Request.Name + "-db"
 	r.NooBaaPostgresDB.Name = r.Request.Name + "-db-pg"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
@@ -262,6 +266,7 @@ func (r *Reconciler) CheckAll() {
 
 	CheckSystem(r.NooBaa)
 	util.KubeCheck(r.CoreApp)
+	util.KubeCheck(r.CoreAppConfig)
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
 	if r.NooBaa.Spec.MongoDbURL == "" {

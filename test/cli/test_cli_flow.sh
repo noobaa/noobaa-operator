@@ -52,6 +52,7 @@ NAMESPACE='test'
 # AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=YYY aws s3 --endpoint-url XXX ls BUCKETNAME ❌
 
 function post_install_tests {
+    check_core_config_map
     aws_credentials
     check_S3_compatible
     check_namespacestore

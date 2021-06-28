@@ -180,6 +180,41 @@ function noobaa_install {
     kuberun describe noobaa
 }
 
+function check_core_config_map {
+    kuberun get configmap noobaa-config
+    check_change_debug_level_in_config_map
+}
+
+function check_change_debug_level_in_config_map {
+    local patch='{"data":{"NOOBAA_LOG_LEVEL":"2"}}'
+    local cm_debug_level="2"
+    local timeout=0
+    local core_debug_level=$(kuberun silence exec noobaa-core-0 -- printenv NOOBAA_LOG_LEVEL)
+
+    kuberun silence patch configmap noobaa-config -p ${patch}
+
+    while [[ "${core_debug_level}" != "${cm_debug_level}" ]]
+    do
+        echo_time "💬  Waiting for NOOBAA_LOG_LEVEL core env var to match the noobaa-config"
+        timeout=$((timeout+10))
+        sleep 10
+        core_debug_level=$(kuberun silence exec noobaa-core-0 -- printenv NOOBAA_LOG_LEVEL)
+        if [ ${timeout} -ge 180 ] 
+        then
+            echo_time "❌  reached the timeout for waiting to the update"
+            break
+        fi
+    done 
+
+    if [[ "${core_debug_level}" == "${cm_debug_level}" ]]
+    then
+        echo_time "✅  noobaa core env variable updated successfully"
+    else
+        echo_time "❌  noobaa core env var NOOBAA_LOG_LEVEL didn't got updated, Exiting"
+        exit 1
+    fi
+}
+
 function aws_credentials {
     while read line
     do

@@ -4,6 +4,8 @@ metadata:
   labels:
     app: noobaa
   name: noobaa-endpoint
+  annotations:
+    ConfigMapHash: ""
 spec:
   replicas: 1
   selector:
@@ -50,6 +52,16 @@ spec:
             - containerPort: 6001
             - containerPort: 6443
           env:
+            - name: NOOBAA_DISABLE_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_DISABLE_COMPRESSION
+            - name: NOOBAA_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_LOG_LEVEL
             - name: MGMT_ADDR
             - name: BG_ADDR
             - name: MD_ADDR
@@ -68,10 +80,6 @@ spec:
             - name: LOCAL_N2N_AGENT
             - name: JWT_SECRET
             - name: NOOBAA_ROOT_SECRET
-            - name: NOOBAA_LOG_LEVEL
-              value: "0"
-            - name: NOOBAA_DISABLE_COMPRESSION
-              value: "false"
             - name: NOOBAA_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:

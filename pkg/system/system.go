@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -129,7 +130,8 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	sys.Finalizers = []string{nbv1.GracefulFinalizer}
 	dbType := options.DBType
 	sys.Spec.DBType = nbv1.DBTypes(dbType)
-	sys.Spec.DebugLevel = options.DebugLevel
+
+	LoadConfigMapFromFlags()
 
 	if options.NooBaaImage != "" {
 		image := options.NooBaaImage
@@ -949,4 +951,21 @@ func CheckMongoURL(sys *nbv1.NooBaa) error {
 		}
 	}
 	return nil
+}
+
+// LoadConfigMapFromFlags loads a config-map with values from the cli flags, if provided.
+func LoadConfigMapFromFlags() {
+	if(options.DebugLevel != 0) {
+		cm := util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap)
+		cm.Namespace = options.Namespace
+		cm.Name = "noobaa-config"
+
+		DefaultConfigMapData := map[string]string {
+			"NOOBAA_LOG_LEVEL": strconv.Itoa(options.DebugLevel),
+		}
+
+		cm.Data = DefaultConfigMapData
+
+		util.KubeCreateSkipExisting(cm)
+	}
 }
