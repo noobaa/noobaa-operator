@@ -101,6 +101,7 @@ Load noobaa completion to bash:
 			}
 
 		},
+		Args: cobra.NoArgs,
 	}
 	completionCmd.Flags().String("alias", "", "Custom alias name to generate the completion for")
 

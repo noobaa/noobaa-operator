@@ -18,6 +18,7 @@ func CmdUI() *cobra.Command {
 		Use:   "ui",
 		Short: "Open the NooBaa UI",
 		Run:   RunUI,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }

@@ -41,6 +41,7 @@ func CmdInstall() *cobra.Command {
 		Use:   "install",
 		Short: "Install noobaa-operator",
 		Run:   RunInstall,
+		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().Bool("no-deploy", false, "Install only the needed resources but do not create the operator deployment")
 	return cmd
@@ -52,6 +53,7 @@ func CmdUninstall() *cobra.Command {
 		Use:   "uninstall",
 		Short: "Uninstall noobaa-operator",
 		Run:   RunUninstall,
+		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().Bool("cleanup", false, "Enable deletion of the Namespace")
 	return cmd
@@ -63,6 +65,7 @@ func CmdStatus() *cobra.Command {
 		Use:   "status",
 		Short: "Status of a noobaa-operator",
 		Run:   RunStatus,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -73,6 +76,7 @@ func CmdYaml() *cobra.Command {
 		Use:   "yaml",
 		Short: "Show bundled noobaa-operator yaml",
 		Run:   RunYaml,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -83,6 +87,7 @@ func CmdRun() *cobra.Command {
 		Use:   "run",
 		Short: "Runs the noobaa-operator",
 		Run:   RunOperator,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }

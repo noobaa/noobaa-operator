@@ -262,6 +262,7 @@ func CmdList() *cobra.Command {
 		Use:   "list",
 		Short: "List backing stores",
 		Run:   RunList,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }

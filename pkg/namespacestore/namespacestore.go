@@ -223,6 +223,7 @@ func CmdList() *cobra.Command {
 		Use:   "list",
 		Short: "List namespace stores",
 		Run:   RunList,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }

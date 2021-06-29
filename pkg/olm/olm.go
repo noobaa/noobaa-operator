@@ -53,6 +53,7 @@ func CmdCatalog() *cobra.Command {
 		Use:   "catalog",
 		Short: "Create OLM catalog dir",
 		Run:   RunCatalog,
+		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().String("dir", "./build/_output/olm", "The output dir for the OLM package")
 	return cmd
@@ -64,6 +65,7 @@ func CmdCSV() *cobra.Command {
 		Use:   "csv",
 		Short: "Print CSV yaml",
 		Run:   RunCSV,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -74,6 +76,7 @@ func CmdHubInstall() *cobra.Command {
 		Use:   "install",
 		Short: "Install noobaa-operator from operatorhub.io",
 		Run:   RunHubInstall,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -84,6 +87,7 @@ func CmdHubUninstall() *cobra.Command {
 		Use:   "uninstall",
 		Short: "Uninstall noobaa-operator from operatorhub.io",
 		Run:   RunHubUninstall,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -94,6 +98,7 @@ func CmdHubStatus() *cobra.Command {
 		Use:   "status",
 		Short: "Status of noobaa-operator from operatorhub.io",
 		Run:   RunHubStatus,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -104,6 +109,7 @@ func CmdLocalInstall() *cobra.Command {
 		Use:   "local-install",
 		Short: "Install noobaa-operator from local OLM catalog",
 		Run:   RunLocalInstall,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
@@ -114,6 +120,7 @@ func CmdLocalUninstall() *cobra.Command {
 		Use:   "local-uninstall",
 		Short: "Uninstall noobaa-operator from local OLM catalog",
 		Run:   RunLocalUninstall,
+		Args:  cobra.NoArgs,
 	}
 	return cmd
 }
