@@ -104,7 +104,7 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 	}
 	// TODO: we need to better handle the case that a bucket was created, but Provision failed
 	// right now we will fail on create bucket when Provision is called the second time
-	err = r.CreateBucket(p, bucketOptions)
+	err = r.CreateAndUpdateBucket(p, bucketOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -311,8 +311,8 @@ func NewBucketRequest(
 	return r, nil
 }
 
-// CreateBucket creates the obc bucket
-func (r *BucketRequest) CreateBucket(
+// CreateAndUpdateBucket creates the obc bucket and update
+func (r *BucketRequest) CreateAndUpdateBucket(
 	p *Provisioner,
 	bucketOptions *obAPI.BucketOptions,
 ) error {
@@ -370,16 +370,16 @@ func (r *BucketRequest) CreateBucket(
 		}
 
 		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
 				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource,
-				Path:  r.OBC.Spec.AdditionalConfig["path"],
+				Path:     r.OBC.Spec.AdditionalConfig["path"],
 			}
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource })
+			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource})
 		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
 				Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource,
-				Path:  r.OBC.Spec.AdditionalConfig["path"],
+				Path:     r.OBC.Spec.AdditionalConfig["path"],
 			}
 			for i := range r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources {
 				rr := r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources[i]
@@ -409,7 +409,120 @@ func (r *BucketRequest) CreateBucket(
 	}
 
 	log.Infof("✅ Successfully created bucket %q", r.BucketName)
+
+	return r.UpdateBucket()
+}
+
+//UpdateBucket update the obc bucket
+func (r *BucketRequest) UpdateBucket() error {
+
+	log := r.Provisioner.Logger
+
+	if r.BucketClass == nil {
+		return fmt.Errorf("BucketClass not loaded %#v", r)
+	}
+
+	_, err := r.SysClient.NBClient.ReadBucketAPI(nb.ReadBucketParams{Name: r.BucketName})
+	if err != nil {
+		msg := fmt.Sprintf("Bucket %q doesn't exist", r.BucketName)
+		log.Error(msg)
+		return fmt.Errorf(msg)
+	}
+
+	quotaConfig, err := r.getQuotaConfig()
+	if err != nil {
+		return err
+	}
+
+	if quotaConfig != nil {
+		createBucketParams := &nb.CreateBucketParams{
+			Name:  r.BucketName,
+			Quota: quotaConfig,
+		}
+
+		err = r.SysClient.NBClient.UpdateBucketAPI(*createBucketParams)
+		if err != nil {
+			return r.LogAndGetError("failed to update bucket %q with error: %v", r.BucketName, err)
+		}
+	}
+
+	log.Infof("✅ Successfully update bucket %q", r.BucketName)
 	return nil
+}
+
+// Get minimum QuotaConfig based on OBC config and BucketClass
+func (r *BucketRequest) getQuotaConfig() (*nb.QuotaConfig, error) {
+
+	obcMaxSize := r.OBC.Spec.AdditionalConfig["maxSize"]
+	obcMaxObjects := r.OBC.Spec.AdditionalConfig["maxObjects"]
+
+	if r.BucketClass.Spec.Quota == nil && obcMaxSize == "" && obcMaxObjects == "" {
+		return nil, nil
+	}
+
+	quota := &nb.QuotaConfig{}
+
+	//Parse bucketclass quota and transform to quotaConfig
+	if r.BucketClass.Spec.Quota != nil {
+		if r.BucketClass.Spec.Quota.MaxSize != "" {
+			value, unit, err := nb.HumanBytesToValueAndUnit(r.BucketClass.Spec.Quota.MaxSize)
+			if err != nil {
+				return nil, r.LogAndGetError("failed to parse obc bucketclass quota maxSize config %q with error: %v", r.OBC.Name, err)
+			}
+
+			quota.Size = &nb.SizeQuotaConfig{Value: value, Unit: unit}
+
+		}
+		if r.BucketClass.Spec.Quota.MaxObjects != "" {
+			num, err := strconv.ParseInt(r.BucketClass.Spec.Quota.MaxObjects, 10, 32)
+			if err != nil {
+				return nil, r.LogAndGetError("failed to parse obc bucketclass quota MaxObjects config %q with error: %v", r.OBC.Name, err)
+			}
+
+			quota.Quantity = &nb.QuantityQuotaConfig{Value: int(num)}
+		}
+	}
+
+	//Parse obc quota transform to quotaConfig
+	if obcMaxSize != "" {
+		value, unit, err := nb.HumanBytesToValueAndUnit(obcMaxSize)
+		if err != nil {
+			return nil, r.LogAndGetError("failed to parse obc quota maxSize config %q with error: %v", r.OBC.Name, err)
+		}
+		if quota.Size != nil && quota.Size.Value > 0 {
+			//Calculate min maxSize
+			obcMaxSizeBigInt := nb.GetValueUnitToMathBigInt(value, unit)
+			quotaBigInt := nb.GetValueUnitToMathBigInt(quota.Size.Value, quota.Size.Unit)
+
+			if obcMaxSizeBigInt.Cmp(quotaBigInt) <= 0 {
+				quota.Size = &nb.SizeQuotaConfig{Value: value, Unit: unit}
+			}
+		} else {
+			quota.Size = &nb.SizeQuotaConfig{Value: value, Unit: unit}
+		}
+	}
+
+	if obcMaxObjects != "" {
+		num, err := strconv.ParseInt(obcMaxObjects, 10, 32)
+		if err != nil {
+			return nil, r.LogAndGetError("failed to parse obc quota MaxObjects config %q with error: %v", r.OBC.Name, err)
+		}
+		intNum := int(num)
+		//Calculate min MaxObjects
+		if quota.Quantity == nil || quota.Quantity.Value == 0 || intNum <= quota.Quantity.Value {
+			quota.Quantity = &nb.QuantityQuotaConfig{Value: intNum}
+		}
+	}
+
+	return quota, nil
+}
+
+//LogAndGetError error handler. prints error message to log and returns error
+func (r *BucketRequest) LogAndGetError(format string, a ...interface{}) error {
+	log := r.Provisioner.Logger
+	msg := fmt.Sprintf(format, a...)
+	log.Error(msg)
+	return fmt.Errorf(msg)
 }
 
 // GetDefaultBucketClass will get the default bucket class

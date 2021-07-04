@@ -45,6 +45,10 @@ func CmdCreate() *cobra.Command {
 		"Request an exact bucketName instead of the default generateBucketName")
 	cmd.Flags().String("bucketclass", "",
 		"Set bucket class to specify the bucket policy")
+	cmd.Flags().String("max-objects", "",
+		"Set quota max objects quantity config to requested bucket")
+	cmd.Flags().String("max-size", "",
+		"Set quota max size config to requested bucket")
 	cmd.Flags().String("app-namespace", "",
 		"Set the namespace of the application where the OBC should be created")
 	cmd.Flags().String("path", "",
@@ -98,6 +102,8 @@ func RunCreate(cmd *cobra.Command, args []string) {
 
 	exact, _ := cmd.Flags().GetBool("exact")
 	bucketClassName, _ := cmd.Flags().GetString("bucketclass")
+	maxSize, _ := cmd.Flags().GetString("max-size")
+	maxObjects, _ := cmd.Flags().GetString("max-objects")
 	path, _ := cmd.Flags().GetString("path")
 	appNamespace, _ := cmd.Flags().GetString("app-namespace")
 	if appNamespace == "" {
@@ -146,6 +152,13 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		obc.Spec.AdditionalConfig["path"] = path
 	} else if path != "" {
 		log.Fatalf(`❌ Could not create OBC %q with inner path while missing namespace bucketclass`, obc.Name)
+	}
+
+	if maxSize != "" {
+		obc.Spec.AdditionalConfig["maxSize"] = maxSize
+	}
+	if maxObjects != "" {
+		obc.Spec.AdditionalConfig["maxObjects"] = maxObjects
 	}
 
 	if !util.KubeCreateFailExisting(obc) {
@@ -307,7 +320,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		if b.DataCapacity != nil {
 			fmt.Printf("  %-22s : %s\n", "Data Size", nb.BigIntToHumanBytes(b.DataCapacity.Size))
 			fmt.Printf("  %-22s : %s\n", "Data Size Reduced", nb.BigIntToHumanBytes(b.DataCapacity.SizeReduced))
-			fmt.Printf("  %-22s : %s\n", "Data Space Avail", nb.BigIntToHumanBytes(b.DataCapacity.AvailableToUpload))
+			fmt.Printf("  %-22s : %s\n", "Data Space Avail", nb.BigIntToHumanBytes(b.DataCapacity.AvailableSizeToUpload))
 		}
 		fmt.Printf("\n")
 	}

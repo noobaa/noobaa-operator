@@ -2,11 +2,26 @@ package nb
 
 import (
 	"encoding/json"
+	"fmt"
+	"math/big"
 	"strconv"
+	"strings"
+	"unicode"
 )
 
 const (
-	petaInBytes = 1024 * 1024 * 1024 * 1024 * 1024
+	//KILOBYTE size
+	KILOBYTE = 1024
+	//MEGABYTE size
+	MEGABYTE = 1024 * KILOBYTE
+	//GIGABYTE size
+	GIGABYTE = 1024 * MEGABYTE
+	//TERABYTE size
+	TERABYTE = 1024 * GIGABYTE
+	//PETABYTE size
+	PETABYTE = 1024 * TERABYTE
+
+	humanBytesParserErrorTemplate = "failed to parse value %s, must be positive in format <bytes>[G|T|P]"
 )
 
 // SystemInfo is a struct of system info returned by the API
@@ -59,11 +74,12 @@ type BucketInfo struct {
 	BucketClaim  *BucketClaimInfo   `json:"bucket_claim,omitempty"`
 	Tiering      *TieringPolicyInfo `json:"tiering,omitempty"`
 	DataCapacity *struct {
-		Size              *BigInt `json:"size,omitempty"`
-		SizeReduced       *BigInt `json:"size_reduced,omitempty"`
-		Free              *BigInt `json:"free,omitempty"`
-		AvailableToUpload *BigInt `json:"available_for_upload,omitempty"`
-		LastUpdate        int64   `json:"last_update"`
+		Size                      *BigInt `json:"size,omitempty"`
+		SizeReduced               *BigInt `json:"size_reduced,omitempty"`
+		Free                      *BigInt `json:"free,omitempty"`
+		AvailableSizeToUpload     *BigInt `json:"available_size_for_upload,omitempty"`
+		AvailableQuantityToUpload int32   `json:"available_quantity_for_upload,omitempty"`
+		LastUpdate                int64   `json:"last_update"`
 	} `json:"data,omitempty"`
 	StorageCapacity *struct {
 		Values     *StorageInfo `json:"values,omitempty"`
@@ -73,10 +89,7 @@ type BucketInfo struct {
 		Value      int64 `json:"value"`
 		LastUpdate int64 `json:"last_update"`
 	} `json:"num_objects,omitempty"`
-	Quota *struct {
-		Size int64  `json:"size"`
-		Unit string `json:"unit"`
-	} `json:"quota,omitempty"`
+	Quota       *QuotaConfig `json:"quota,omitempty"`
 	PolicyModes *struct {
 		ResiliencyStatus string `json:"resiliency_status"`
 		QuotaStatus      string `json:"quota_status"`
@@ -312,19 +325,20 @@ type CreateBucketParams struct {
 	Tiering     string               `json:"tiering,omitempty"`
 	BucketClaim *BucketClaimInfo     `json:"bucket_claim,omitempty"`
 	Namespace   *NamespaceBucketInfo `json:"namespace,omitempty"`
+	Quota       *QuotaConfig         `json:"quota,omitempty"`
 }
 
 // NamespaceBucketInfo is the information needed for creating namespace bucket
 type NamespaceBucketInfo struct {
-	WriteResource NamespaceResourceFullConfig     `json:"write_resource"`
-	ReadResources []NamespaceResourceFullConfig   `json:"read_resources,omitempty"`
-	Caching       *CacheSpec `json:"caching,omitempty"`
+	WriteResource NamespaceResourceFullConfig   `json:"write_resource"`
+	ReadResources []NamespaceResourceFullConfig `json:"read_resources,omitempty"`
+	Caching       *CacheSpec                    `json:"caching,omitempty"`
 }
 
-// NamespaceResourceFullConfig is the resource configuration for creating namespace bucket 
+// NamespaceResourceFullConfig is the resource configuration for creating namespace bucket
 type NamespaceResourceFullConfig struct {
-	Resource string     `json:"resource"`
-	Path string   `json:"path,omitempty"`
+	Resource string `json:"resource"`
+	Path     string `json:"path,omitempty"`
 }
 
 // CacheSpec specifies the cache specifications for the bucket class
@@ -337,6 +351,26 @@ type CacheSpec struct {
 type BucketClaimInfo struct {
 	BucketClass string `json:"bucket_class,omitempty"`
 	Namespace   string `json:"namespace,omitempty"`
+}
+
+// QuotaConfig quota configuration
+type QuotaConfig struct {
+	Size     *SizeQuotaConfig     `json:"size,omitempty"`
+	Quantity *QuantityQuotaConfig `json:"quantity,omitempty"`
+}
+
+//SizeQuotaConfig size quota configuration
+type SizeQuotaConfig struct {
+	//limits the max total size value
+	Value int `json:"value,omitempty"`
+	//Units of max total size per bucket
+	Unit string `json:"unit,omitempty"`
+}
+
+//QuantityQuotaConfig quantity quota configuration
+type QuantityQuotaConfig struct {
+	//limits the max total quantity value
+	Value int `json:"value,omitempty"`
 }
 
 // AccountAllowedBuckets is part of CreateAccountParams
@@ -420,14 +454,14 @@ type CreateNamespaceResourceParams struct {
 	Name           string              `json:"name"`
 	Connection     string              `json:"connection"`
 	TargetBucket   string              `json:"target_bucket"`
-	NSFSConfig     *NSFSConfig          `json:"nsfs_config,omitempty"`
+	NSFSConfig     *NSFSConfig         `json:"nsfs_config,omitempty"`
 	NamespaceStore *NamespaceStoreInfo `json:"namespace_store,omitempty"`
 }
 
 // NSFSConfig is the namespace fs config needed for creating namespace resource of type fs()
 type NSFSConfig struct {
-	FsBackend string `json:"fs_backend,omitempty"`
-	FsRootPath    string `json:"fs_root_path,omitempty"`
+	FsBackend  string `json:"fs_backend,omitempty"`
+	FsRootPath string `json:"fs_root_path,omitempty"`
 }
 
 // CreateTierParams is the reply of tier_api.create_tier()
@@ -626,7 +660,7 @@ type UpdateEndpointGroupParams struct {
 
 // BigIntToHumanBytes returns a human readable bytes string
 func BigIntToHumanBytes(bi *BigInt) string {
-	return IntToHumanBytes(bi.N + (bi.Peta * petaInBytes))
+	return IntToHumanBytes(bi.N + (bi.Peta * PETABYTE))
 }
 
 // IntToHumanBytes returns a human readable bytes string
@@ -649,7 +683,50 @@ func IntToHumanBytes(bi int64) string {
 // UInt64ToBigInt convert uint64 based value to BigInt value
 func UInt64ToBigInt(value uint64) BigInt {
 	return BigInt{
-		Peta: int64(value / petaInBytes),
-		N:    int64(value % petaInBytes),
+		Peta: int64(value / PETABYTE),
+		N:    int64(value % PETABYTE),
 	}
+}
+
+// HumanBytesToValueAndUnit convert human bytes to value and unit. 10G -> value: 10, unit GIGABYTE
+func HumanBytesToValueAndUnit(str string) (int, string, error) {
+	str = strings.ToUpper(strings.TrimSpace(str))
+	letterIndex := strings.IndexFunc(str, unicode.IsLetter)
+
+	if letterIndex == -1 {
+		return 0, "", fmt.Errorf(humanBytesParserErrorTemplate, str)
+	}
+
+	bytesString, multiple := str[:letterIndex], str[letterIndex:]
+	bytes, err := strconv.ParseInt(bytesString, 10, 32)
+	if err != nil || bytes < 0 {
+		return 0, "", fmt.Errorf(humanBytesParserErrorTemplate, str)
+	}
+
+	switch multiple {
+	case "P", "PB", "PIB":
+		return int(bytes), "PETABYTE", nil
+	case "T", "TB", "TIB":
+		return int(bytes), "TERABYTE", nil
+	case "G", "GB", "GIB":
+		return int(bytes), "GIGABYTE", nil
+	default:
+		return 0, "", fmt.Errorf(humanBytesParserErrorTemplate, str)
+	}
+}
+
+// GetValueUnitToMathBigInt convert int value and unit to math/big int
+func GetValueUnitToMathBigInt(value int, unit string) *big.Int {
+	var num *big.Int
+	switch unit {
+	case "PETABYTE":
+		num = big.NewInt(PETABYTE)
+	case "TERABYTE":
+		num = big.NewInt(TERABYTE)
+	case "GIGABYTE":
+		num = big.NewInt(GIGABYTE)
+	default:
+		num = big.NewInt(1)
+	}
+	return num.Mul(num, big.NewInt(int64(value)))
 }

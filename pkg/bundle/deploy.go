@@ -455,7 +455,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "f8103950e9d3f6a0a8b61c32d26201799310268dd67a2673e4c2035679397c42"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "5e7ef5d1a6c88d3ff014383e7df48ba170d4ece5ecd72548051f99c4ebab008d"
 
 const File_deploy_crds_noobaa_io_bucketclasses_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -478,6 +478,10 @@ spec:
     - description: NamespacePolicy
       jsonPath: .spec.namespacePolicy
       name: NamespacePolicy
+      type: string
+    - description: Quota
+      jsonPath: .spec.quota
+      name: Quota
       type: string
     - description: Phase
       jsonPath: .status.phase
@@ -583,6 +587,17 @@ spec:
                           type: string
                       type: object
                     type: array
+                type: object
+              quota:
+                description: Quota specifies the quota configuration for the bucket
+                  class
+                properties:
+                  maxObjects:
+                    description: imits the max total quantity per bucket
+                    type: string
+                  maxSize:
+                    description: limits the max total size per bucket
+                    type: string
                 type: object
             type: object
           status:

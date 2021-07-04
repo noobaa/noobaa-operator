@@ -20,6 +20,10 @@ spec:
       jsonPath: .spec.namespacePolicy
       name: NamespacePolicy
       type: string
+    - description: Quota
+      jsonPath: .spec.quota
+      name: Quota
+      type: string
     - description: Phase
       jsonPath: .status.phase
       name: Phase
@@ -124,6 +128,17 @@ spec:
                           type: string
                       type: object
                     type: array
+                type: object
+              quota:
+                description: Quota specifies the quota configuration for the bucket
+                  class
+                properties:
+                  maxObjects:
+                    description: imits the max total quantity per bucket
+                    type: string
+                  maxSize:
+                    description: limits the max total size per bucket
+                    type: string
                 type: object
             type: object
           status:

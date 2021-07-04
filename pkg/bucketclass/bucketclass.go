@@ -65,6 +65,10 @@ func CmdCreatePlacementBucketClass() *cobra.Command {
 		"Set first tier placement policy - Mirror | Spread | \"\" (empty defaults to single backing store)")
 	cmd.Flags().StringSlice("backingstores", nil,
 		"Set first tier backing stores (use commas or multiple flags)")
+	cmd.Flags().String("max-objects", "",
+		"Set quota max objects quantity config to requested bucket")
+	cmd.Flags().String("max-size", "",
+		"Set quota max size config to requested bucket")
 
 	return cmd
 }
@@ -254,6 +258,15 @@ func RunCreatePlacementBucketClass(cmd *cobra.Command, args []string) {
 		if len(backingStores) == 0 {
 			log.Fatalf(`❌ Must provide at least one backing store`)
 		}
+		maxSize, _ := cmd.Flags().GetString("max-size")
+		maxObjects, _ := cmd.Flags().GetString("max-objects")
+		if maxSize != "" || maxObjects != "" {
+			bucketClass.Spec.Quota = &nbv1.Quota{
+				MaxSize:    maxSize,
+				MaxObjects: maxObjects,
+			}
+		}
+
 		bucketClass.Spec.PlacementPolicy.Tiers = append(bucketClass.Spec.PlacementPolicy.Tiers,
 			nbv1.Tier{Placement: nbv1.TierPlacement(placement), BackingStores: backingStores})
 
@@ -468,6 +481,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		"NAME",
 		"PLACEMENT",
 		"NAMESPACE-POLICY",
+		"QUOTA",
 		"PHASE",
 		"AGE",
 	)
@@ -475,10 +489,12 @@ func RunList(cmd *cobra.Command, args []string) {
 		bc := &list.Items[i]
 		pp, _ := json.Marshal(bc.Spec.PlacementPolicy)
 		np, _ := json.Marshal(bc.Spec.NamespacePolicy)
+		quota, _ := json.Marshal(bc.Spec.Quota)
 		table.AddRow(
 			bc.Name,
 			fmt.Sprintf("%+v", string(pp)),
 			fmt.Sprintf("%+v", string(np)),
+			fmt.Sprintf("%+v", string(quota)),
 			string(bc.Status.Phase),
 			time.Since(bc.CreationTimestamp.Time).Round(time.Second).String(),
 		)
