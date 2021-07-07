@@ -3,6 +3,7 @@ package diagnose
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 // Collector configuration for diagnostics
 type Collector struct {
 	folderName string
+	kubeconfig string
 	log        *logrus.Entry
 }
 
@@ -40,10 +42,12 @@ func Cmd() *cobra.Command {
 // RunCollect runs a CLI command
 func RunCollect(cmd *cobra.Command, args []string) {
 
+	kubeconfig, _ := cmd.Flags().GetString("kubeconfig")
 	destDir, _ := cmd.Flags().GetString("dir")
 	c := Collector{
 		folderName: fmt.Sprintf("%s_%d", "noobaa_diagnostics", time.Now().Unix()),
 		log:        util.Logger(),
+		kubeconfig: kubeconfig,
 	}
 
 	c.log.Println("Running collection of diagnostics")
@@ -103,6 +107,31 @@ func (c *Collector) CollectCR(list runtime.Object) {
 	}
 }
 
+// collect output of the "describe pod"
+func (c *Collector) collectPodDescribe(pod *corev1.Pod) {
+	cmd := exec.Command("kubectl", "describe", "pod", "-n", pod.Namespace, pod.Name)
+	// handle custom path for kubeconfig file,
+	// see --kubeconfig cli options
+	if len(c.kubeconfig) > 0 {
+		cmd.Env = append(cmd.Env, "KUBECONFIG=" + c.kubeconfig)
+	}
+
+	// open the out file for writing
+	fileName := c.folderName + "/" + pod.Name + "-describe.txt"
+	outfile, err := os.Create(fileName)
+	if err != nil {
+		c.log.Printf(`❌ can not create file %v: %v`, fileName, err)
+		return
+	}
+	defer outfile.Close()
+	cmd.Stdout = outfile
+
+	// run kubectl describe
+	if err := cmd.Run(); err != nil {
+		c.log.Printf(`❌ can not describe pod %v namespace %v: %v`, pod.Name, pod.Namespace, err)
+	}
+}
+
 // CollectPodLogs info
 func (c *Collector) CollectPodLogs(corePodSelector labels.Selector) {
 	corePodList := &corev1.PodList{}
@@ -117,6 +146,9 @@ func (c *Collector) CollectPodLogs(corePodSelector labels.Selector) {
 
 	for i := range corePodList.Items {
 		corePod := &corePodList.Items[i]
+
+		c.collectPodDescribe(corePod)
+
 		podLogs, _ := util.GetPodLogs(*corePod)
 		for containerName, containerLog := range podLogs {
 			targetFile := fmt.Sprintf("%s/%s-%s.log", c.folderName, corePod.Name, containerName)
