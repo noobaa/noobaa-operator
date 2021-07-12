@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nsfs-vol
+spec:
+  storageClassName: nsfs-local
+  volumeMode: Filesystem
+  persistentVolumeReclaimPolicy: Retain
+  local:
+    path: /nsfs/
+  capacity:
+    storage: 1Ti
+  accessModes:
+    - ReadWriteMany
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/os
+              operator: Exists

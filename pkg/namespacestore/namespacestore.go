@@ -277,6 +277,11 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 
 	populate(namespaceStore, secret)
 
+	validationErr := ValidateNamespaceStore(namespaceStore)
+	if validationErr != nil {
+		log.Fatalf(`❌ %s %s`, validationErr, cmd.UsageString())
+	}
+
 	// Create namespace store CR
 	util.Panic(controllerutil.SetControllerReference(sys, namespaceStore, scheme.Scheme))
 	if !util.KubeCreateFailExisting(namespaceStore) {
@@ -420,18 +425,14 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 
 // RunCreateNSFS runs a CLI command
 func RunCreateNSFS(cmd *cobra.Command, args []string) {
-	log := util.Logger()
 	createCommon(cmd, args, nbv1.NSStoreTypeNSFS, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
 		pvcName := util.GetFlagStringOrPrompt(cmd, "pvc-name")
 		fsBackend, _ := cmd.Flags().GetString("fs-backend")
 		subPath, _ := cmd.Flags().GetString("sub-path")
 
-		if pvcName == "" {
-			log.Fatalf(`❌ Missing expected arguments: <pvc-name> %s`, cmd.UsageString())
-		}
 		namespaceStore.Spec.NSFS = &nbv1.NSFSSpec{
-			PvcName: pvcName,
-			SubPath:  subPath,
+			PvcName:   pvcName,
+			SubPath:   subPath,
 			FsBackend: fsBackend,
 		}
 	})

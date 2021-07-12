@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"regexp"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -138,6 +137,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			return res, nil
 		}
 	}
+
 	system.CheckSystem(r.NooBaa)
 	var err error
 
@@ -260,6 +260,11 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		"noobaa operator started phase 1/3 - \"Verifying\"",
 	)
 
+	err := ValidateNamespaceStore(r.NamespaceStore)
+	if err != nil {
+		return err
+	}
+
 	if r.NooBaa.UID == "" {
 		return util.NewPersistentError("MissingSystem",
 			fmt.Sprintf("NooBaa system %q not found or deleted", r.NooBaa.Name))
@@ -359,16 +364,17 @@ func (r *Reconciler) ReconcileDeletion() error {
 					allowedBuckets.PermissionList = []string{}
 				}
 				err := r.NBClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
-					Email:        account.Email,
-					S3Access:     account.HasS3Access,
-					DefaultResource:  &internalPoolName,
-					AllowBuckets: &allowedBuckets,
+					Email:           account.Email,
+					S3Access:        account.HasS3Access,
+					DefaultResource: &internalPoolName,
+					AllowBuckets:    &allowedBuckets,
 				})
 				if err != nil {
 					return err
 				}
 			}
 		}
+
 		err := r.NBClient.DeleteNamespaceResourceAPI(nb.DeleteNamespaceResourceParams{Name: r.NamespaceResourceinfo.Name})
 		if err != nil {
 			if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
@@ -438,11 +444,11 @@ func (r *Reconciler) ReadSystemInfo() error {
 
 	// handling namespace fs resource
 	if r.NamespaceStore.Spec.Type == nbv1.NSStoreTypeNSFS {
-		fsRootPath := "/nsfs/" + r.NamespaceStore.Name 
+		fsRootPath := "/nsfs/" + r.NamespaceStore.Name
 		r.CreateNamespaceResourceParams = &nb.CreateNamespaceResourceParams{
 			Name: r.NamespaceStore.Name,
 			NSFSConfig: &nb.NSFSConfig{
-				FsBackend: r.NamespaceStore.Spec.NSFS.FsBackend,
+				FsBackend:  r.NamespaceStore.Spec.NSFS.FsBackend,
 				FsRootPath: fsRootPath,
 			},
 			NamespaceStore: &nb.NamespaceStoreInfo{
@@ -546,100 +552,24 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
 		conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
 		s3Compatible := r.NamespaceStore.Spec.S3Compatible
-		if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV4 {
-			conn.AuthMethod = "AWS_V4"
-		} else if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV2 {
-			conn.AuthMethod = "AWS_V2"
-		} else if s3Compatible.SignatureVersion != "" {
-			return nil, util.NewPersistentError("InvalidSignatureVersion",
-				fmt.Sprintf("Invalid s3 signature version %q for namespace store %q",
-					s3Compatible.SignatureVersion, r.NamespaceStore.Name))
-		}
-		if s3Compatible.Endpoint == "" {
-			u := url.URL{
-				Scheme: "https",
-				Host:   "127.0.0.1:6443",
-			}
-			// if s3Compatible.SSLDisabled {
-			// 	u.Scheme = "http"
-			// 	u.Host = fmt.Sprintf("127.0.0.1:6001")
-			// }
-			conn.Endpoint = u.String()
-		} else {
-			match, err := regexp.MatchString(`^\w+://`, s3Compatible.Endpoint)
-			if err != nil {
-				return nil, util.NewPersistentError("InvalidEndpoint",
-					fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
-			}
-			if !match {
-				s3Compatible.Endpoint = "https://" + s3Compatible.Endpoint
-				// if s3Options.SSLDisabled {
-				// 	u.Scheme = "http"
-				// }
-			}
-			u, err := url.Parse(s3Compatible.Endpoint)
-			if err != nil {
-				return nil, util.NewPersistentError("InvalidEndpoint",
-					fmt.Sprintf("Invalid endpoint url %q: %v", s3Compatible.Endpoint, err))
-			}
-			if u.Scheme == "" {
-				u.Scheme = "https"
-				// if s3Options.SSLDisabled {
-				// 	u.Scheme = "http"
-				// }
-			}
-			conn.Endpoint = u.String()
-		}
+
+		//Configure auth method
+		conn.AuthMethod = getAuthMethod(s3Compatible.SignatureVersion, r.NamespaceStore.Name)
+
+		//Configure endPoint
+		conn.Endpoint = s3Compatible.Endpoint
 
 	case nbv1.NSStoreTypeIBMCos:
 		conn.EndpointType = nb.EndpointTypeIBMCos
 		conn.Identity = r.Secret.StringData["IBM_COS_ACCESS_KEY_ID"]
 		conn.Secret = r.Secret.StringData["IBM_COS_SECRET_ACCESS_KEY"]
 		IBMCos := r.NamespaceStore.Spec.IBMCos
-		if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV4 {
-			conn.AuthMethod = "AWS_V4"
-		} else if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV2 {
-			conn.AuthMethod = "AWS_V2"
-		} else if IBMCos.SignatureVersion != "" {
-			return nil, util.NewPersistentError("InvalidSignatureVersion",
-				fmt.Sprintf("Invalid s3 signature version %q for namespace store %q",
-					IBMCos.SignatureVersion, r.NamespaceStore.Name))
-		}
-		if IBMCos.Endpoint == "" {
-			u := url.URL{
-				Scheme: "https",
-				Host:   "127.0.0.1:6443",
-			}
-			// if IBMCos.SSLDisabled {
-			// 	u.Scheme = "http"
-			// 	u.Host = fmt.Sprintf("127.0.0.1:6001")
-			// }
-			conn.Endpoint = u.String()
-		} else {
-			match, err := regexp.MatchString(`^\w+://`, IBMCos.Endpoint)
-			if err != nil {
-				return nil, util.NewPersistentError("InvalidEndpoint",
-					fmt.Sprintf("Invalid endpoint url %q: %v", IBMCos.Endpoint, err))
-			}
-			if !match {
-				IBMCos.Endpoint = "https://" + IBMCos.Endpoint
-				// if s3Options.SSLDisabled {
-				// 	u.Scheme = "http"
-				// }
-			}
-			u, err := url.Parse(IBMCos.Endpoint)
-			if err != nil {
-				return nil, util.NewPersistentError("InvalidEndpoint",
-					fmt.Sprintf("Invalid endpoint url %q: %v", IBMCos.Endpoint, err))
-			}
-			if u.Scheme == "" {
-				u.Scheme = "https"
-				// if s3Options.SSLDisabled {
-				// 	u.Scheme = "http"
-				// }
-			}
-			conn.Endpoint = u.String()
-		}
+
+		//Configure auth method
+		conn.AuthMethod = getAuthMethod(IBMCos.SignatureVersion, r.NamespaceStore.Name)
+
+		//Configure endPoint
+		conn.Endpoint = IBMCos.Endpoint
 
 	case nbv1.NSStoreTypeAzureBlob:
 		conn.EndpointType = nb.EndpointTypeAzure
@@ -774,4 +704,16 @@ func (r *Reconciler) ReconcileNamespaceStore() error {
 	}
 
 	return nil
+}
+
+//getAuthMethod get auth method based on s3 signature
+func getAuthMethod(signature nbv1.S3SignatureVersion, nsStoreName string) nb.CloudAuthMethod {
+
+	if signature == nbv1.S3SignatureVersionV4 {
+		return "AWS_V4"
+	}
+	if signature == nbv1.S3SignatureVersionV2 {
+		return "AWS_V2"
+	}
+	return ""
 }

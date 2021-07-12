@@ -219,7 +219,53 @@ function check_namespacestore {
     test_noobaa status
     kuberun get namespacestore
     kuberun describe namespacestore
+
+    check_namespacestore_validator
+
     echo_time "✅  namespace store s3 compatible cycle is done"
+}
+
+function check_namespacestore_validator {
+    check_namespacestore_nsfs_validator
+}
+
+function check_namespacestore_nsfs_validator {
+    echo_time "💬  Staring namespacestore nsfs validator cycle"
+
+    #Setup
+    local type="nsfs"
+    local pvc="nsfs-vol"
+    local namespacestore="namespacestore-"${type}
+
+    kuberun create -f $(dirname ${0})/resources/nsfs-local-class.yaml
+    kuberun create -f $(dirname ${0})/resources/nsfs-local-pv.yaml
+    kuberun create -f $(dirname ${0})/resources/nsfs-local-pvc.yaml
+    
+    #Sub-path is not relative
+    test_noobaa should_fail namespacestore create ${type} ${namespacestore} \
+        --fs-backend 'GPFS' \
+        --pvc-name ${pvc} \
+        --sub-path '/'
+    
+    #Sub-path contains '..'
+    test_noobaa should_fail namespacestore create ${type} ${namespacestore} \
+        --fs-backend 'GPFS' \
+        --pvc-name ${pvc} \
+        --sub-path 'subpath/../'
+
+    #Valid sub-path
+    test_noobaa namespacestore create ${type} ${namespacestore} \
+        --fs-backend 'GPFS' \
+        --pvc-name ${pvc} \
+        --sub-path 'subpath'
+    
+    test_noobaa namespacestore list
+
+    #cleanup
+    test_noobaa silence namespacestore delete ${namespacestore}
+
+
+    echo_time "✅  namespacestore nsfs validator is done"
 }
 
 function check_S3_compatible {
