@@ -1095,6 +1095,11 @@ func (r *Reconciler) UpdateBucketClassesPhase(Buckets []nb.BucketInfo) {
 		bc := &bucketclassList.Items[i]
 		for _, bucket := range Buckets {
 
+			// in case of a namespace bucket, we might not have bucket.Tiering. skip
+			if bucket.Tiering == nil {
+				continue
+			}
+
 			bucketTieringPolicyName := ""
 			if bucket.BucketClaim != nil {
 				bucketTieringPolicyName = bucket.BucketClaim.BucketClass
