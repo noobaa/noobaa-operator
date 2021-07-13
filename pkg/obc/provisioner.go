@@ -357,16 +357,16 @@ func (r *BucketRequest) CreateBucket(
 		createBucketParams.Namespace = &nb.NamespaceBucketInfo{}
 
 		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
 				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource,
-				Path:  r.OBC.Spec.AdditionalConfig["path"],
+				Path:     r.OBC.Spec.AdditionalConfig["path"],
 			}
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource })
+			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource})
 		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
 				Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource,
-				Path:  r.OBC.Spec.AdditionalConfig["path"],
+				Path:     r.OBC.Spec.AdditionalConfig["path"],
 			}
 			for i := range r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources {
 				rr := r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources[i]
