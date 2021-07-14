@@ -598,8 +598,8 @@ type CheckExternalConnectionReply struct {
 	} `json:"error,omitempty"`
 }
 
-// EditExternalConnectionCredentialsParams is the params of account_api.edit_external_connection_credentials()
-type EditExternalConnectionCredentialsParams struct {
+// UpdateExternalConnectionParams is the params of account_api.update_external_connection()
+type UpdateExternalConnectionParams struct {
 	Name     string `json:"name"`
 	Identity string `json:"identity"`
 	Secret   string `json:"secret"`

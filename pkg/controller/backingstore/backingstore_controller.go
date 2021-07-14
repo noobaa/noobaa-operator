@@ -71,6 +71,10 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
