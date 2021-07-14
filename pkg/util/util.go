@@ -558,14 +558,32 @@ func GetPodLogs(pod corev1.Pod) (map[string]io.ReadCloser, error) {
 
 	containerMap := make(map[string]io.ReadCloser)
 	for _, container := range allContainers {
-		podLogOpts := corev1.PodLogOptions{Container: container.Name}
-		req := clientset.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOpts)
-		podLogs, err := req.Stream(ctx)
-		if err != nil {
-			log.Printf(`Could not read logs %s container %s, reason: %s\n`, pod.Name, container.Name, err)
-			continue
+		getPodLogOpts := func(pod *corev1.Pod, logOpts *corev1.PodLogOptions, nameSuffix *string) {
+			req := clientset.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, logOpts)
+
+			podLogs, err := req.Stream(ctx)
+			if err != nil {
+				// do not warn about lack of additional previous logs, i.e. when nameSuffix is set
+				if  nameSuffix == nil {
+					log.Printf(`Could not read logs %s container %s, reason: %s`, pod.Name, container.Name, err)
+				}
+				return
+			}
+			mapKey := container.Name
+			if nameSuffix != nil {
+				mapKey += "-" + *nameSuffix
+			}
+			containerMap[mapKey] = podLogs
 		}
-		containerMap[container.Name] = podLogs
+
+		// retrieve logs from a current instantiation of pod containers
+		podLogOpts := corev1.PodLogOptions{Container: container.Name}
+		getPodLogOpts(&pod, &podLogOpts, nil)
+
+		// retrieve logs from a previous instantiation of pod containers
+		prevPodLogOpts := corev1.PodLogOptions{Container: container.Name, Previous: true}
+		previousSuffix := "previous"
+		getPodLogOpts(&pod, &prevPodLogOpts, &previousSuffix)
 	}
 	return containerMap, nil
 }
@@ -1627,7 +1645,7 @@ func writeCrtsToFile(secretName string, namespace string, secretValue []byte, en
 }
 
 // DeleteStorageClass deletes storage class
-func DeleteStorageClass(sc *storagev1.StorageClass) error{
+func DeleteStorageClass(sc *storagev1.StorageClass) error {
 	log.Infof("storageclass %v found, deleting..", sc.Name)
 	if !KubeDelete(sc) {
 		return fmt.Errorf("storageclass %q failed to delete", sc)
