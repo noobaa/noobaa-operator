@@ -88,10 +88,11 @@ type Reconciler struct {
 	PoolInfo               *nb.PoolInfo
 	HostsInfo              *[]nb.HostInfo
 
-	AddExternalConnectionParams *nb.AddExternalConnectionParams
-	CreateCloudPoolParams       *nb.CreateCloudPoolParams
-	CreateHostsPoolParams       *nb.CreateHostsPoolParams
-	UpdateHostsPoolParams       *nb.UpdateHostsPoolParams
+	AddExternalConnectionParams    *nb.AddExternalConnectionParams
+	CreateCloudPoolParams          *nb.CreateCloudPoolParams
+	CreateHostsPoolParams          *nb.CreateHostsPoolParams
+	UpdateHostsPoolParams          *nb.UpdateHostsPoolParams
+	UpdateExternalConnectionParams *nb.UpdateExternalConnectionParams
 }
 
 // Own sets the object owner references to the backingstore
@@ -257,13 +258,19 @@ func (r *Reconciler) ReconcilePhases() error {
 // LoadBackingStoreSecret loads the secret to the reconciler struct
 func (r *Reconciler) LoadBackingStoreSecret() error {
 	if !util.IsSTSClusterBS(r.BackingStore) {
-		secretRef := GetBackingStoreSecret(r.BackingStore)
+		secretRef, err := util.GetBackingStoreSecret(r.BackingStore)
+		if err != nil {
+			return err
+		}
+
 		if secretRef != nil {
 			r.Secret.Name = secretRef.Name
 			r.Secret.Namespace = secretRef.Namespace
+
 			if r.Secret.Namespace == "" {
 				r.Secret.Namespace = r.BackingStore.Namespace
 			}
+
 			if r.Secret.Name == "" {
 				if r.BackingStore.Spec.Type != nbv1.StoreTypePVPool {
 					return util.NewPersistentError("EmptySecretName",
@@ -281,10 +288,43 @@ func (r *Reconciler) LoadBackingStoreSecret() error {
 							fmt.Sprintf("Could not create Secret %q in Namespace %q (conflict)", r.Secret.Name, r.Secret.Namespace))
 					}
 				}
-
+			} else {
+				// check the existence of another secret in the system that contains the same credentials,
+				// if found, point this BS secret reference to it.
+				// so if the user will update the credentials, it will trigger updateExternalConnection in all the Backingstores
+				secret, err := util.GetSecretFromSecretReference(secretRef)
+				if err != nil {
+					return nil
+				}
+				if secret != nil {
+					suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, util.MapStorTypeToMandatoryProperties[r.BackingStore.Spec.Type])
+					if suggestedSecret != nil {
+						secretRef.Name = suggestedSecret.Name
+						secretRef.Namespace = suggestedSecret.Namespace
+						err := util.SetBackingStoreSecretRef(r.BackingStore, secretRef)
+						if err != nil {
+							return err
+						}
+						if !util.KubeUpdate(r.BackingStore) {
+							return fmt.Errorf("failed to update Backingstore: %q secret reference", r.BackingStore.Name)
+						}
+						secret = suggestedSecret
+					}
+					err = util.SetOwnerReference(r.BackingStore, secret, r.Scheme)
+					if _, ok := err.(*controllerutil.AlreadyOwnedError); !ok {
+						if err == nil {
+							if !util.KubeUpdate(secret) {
+								return fmt.Errorf("failed to update secret: %q owner reference", r.BackingStore.Name)
+							}
+						}
+					} else {
+						return err
+					}
+				}
 			}
-			util.KubeCheck(r.Secret)
 		}
+
+		util.KubeCheck(r.Secret)
 	}
 	return nil
 }
@@ -599,6 +639,11 @@ func (r *Reconciler) ReadSystemInfo() error {
 			pool.CloudInfo.Endpoint != conn.Endpoint ||
 			pool.CloudInfo.Identity != conn.Identity {
 			r.Logger.Warnf("using existing pool but connection mismatch %+v pool %+v %+v", conn, pool, pool.CloudInfo)
+			r.UpdateExternalConnectionParams = &nb.UpdateExternalConnectionParams{
+				Name:     conn.Name,
+				Identity: conn.Identity,
+				Secret:   conn.Secret,
+			}
 		}
 	}
 
@@ -618,10 +663,15 @@ func (r *Reconciler) ReadSystemInfo() error {
 
 	r.AddExternalConnectionParams = conn
 
+	targetBucket, err := util.GetBackingStoreTargetBucket(r.BackingStore)
+	if err != nil {
+		return err
+	}
+
 	r.CreateCloudPoolParams = &nb.CreateCloudPoolParams{
 		Name:         r.BackingStore.Name,
 		Connection:   conn.Name,
-		TargetBucket: GetBackingStoreTargetBucket(r.BackingStore),
+		TargetBucket: targetBucket,
 		Backingstore: &nb.BackingStoreInfo{
 			Name:      r.BackingStore.Name,
 			Namespace: r.NooBaa.Namespace,
@@ -826,15 +876,55 @@ func (r *Reconciler) fixAlternateKeysNames() {
 // ReconcileExternalConnection handles the external connection using noobaa api
 func (r *Reconciler) ReconcileExternalConnection() error {
 
-	// TODO we only support creation here, but not updates
 	if r.ExternalConnectionInfo != nil {
 		return nil
 	}
+
 	if r.AddExternalConnectionParams == nil {
 		return nil
 	}
 
-	res, err := r.NBClient.CheckExternalConnectionAPI(*r.AddExternalConnectionParams)
+	checkConnectionParams := &nb.CheckExternalConnectionParams{
+		Name:         r.AddExternalConnectionParams.Name,
+		EndpointType: r.AddExternalConnectionParams.EndpointType,
+		Endpoint:     r.AddExternalConnectionParams.Endpoint,
+		Identity:     r.AddExternalConnectionParams.Identity,
+		Secret:       r.AddExternalConnectionParams.Secret,
+		AuthMethod:   r.AddExternalConnectionParams.AuthMethod,
+	}
+
+	if r.UpdateExternalConnectionParams != nil {
+		checkConnectionParams.IgnoreNameAlreadyExist = true
+		err := r.CheckExternalConnection(checkConnectionParams)
+		if err != nil {
+			return err
+		}
+
+		err = r.NBClient.UpdateExternalConnectionAPI(*r.UpdateExternalConnectionParams)
+		if err != nil {
+			return err
+		}
+		r.UpdateExternalConnectionParams = nil
+		return nil
+	}
+
+	checkConnectionParams.IgnoreNameAlreadyExist = false
+	err := r.CheckExternalConnection(checkConnectionParams)
+	if err != nil {
+		return err
+	}
+
+	err = r.NBClient.AddExternalConnectionAPI(*r.AddExternalConnectionParams)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CheckExternalConnection checks an external connection using the noobaa api
+func (r *Reconciler) CheckExternalConnection(connInfo *nb.CheckExternalConnectionParams) error {
+	res, err := r.NBClient.CheckExternalConnectionAPI(*connInfo)
 	if err != nil {
 		if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
 			if rpcErr.RPCCode == "INVALID_SCHEMA_PARAMS" {
@@ -866,7 +956,6 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	case nb.ExternalConnectionNotSupported:
 		return util.NewPersistentError(string(res.Status),
 			fmt.Sprintf("BackingStore %q invalid external connection %q", r.BackingStore.Name, res.Status))
-
 	case nb.ExternalConnectionTimeout:
 		fallthrough
 	case nb.ExternalConnectionUnknownFailure:
@@ -874,11 +963,6 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	default:
 		return fmt.Errorf("CheckExternalConnection Status=%s Error=%s Message=%s",
 			res.Status, res.Error.Code, res.Error.Message)
-	}
-
-	err = r.NBClient.AddExternalConnectionAPI(*r.AddExternalConnectionParams)
-	if err != nil {
-		return err
 	}
 
 	return nil

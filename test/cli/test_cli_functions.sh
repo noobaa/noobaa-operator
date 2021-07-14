@@ -281,6 +281,13 @@ function aws_credentials {
         echo_time "❌  Could not get AWS credentials, Exiting"
         exit 1
     fi
+    local SECRET=$(dirname ${0})/resources/empty-secret.yaml
+    local access_key="  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}"
+    printf "\n${access_key}" >> ${SECRET}
+    local secret_key="  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}"
+    printf "\n${secret_key}" >> ${SECRET}
+    kuberun create -f $SECRET
+    export SECRET_NAME="empty-secret"
 }
 
 function check_namespacestore {
@@ -298,8 +305,7 @@ function check_namespacestore {
         test_noobaa namespacestore create ${type} ${namespacestore[cycle]} \
             --target-bucket ${buckets[cycle]} \
             --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
-            --access-key ${AWS_ACCESS_KEY_ID} \
-            --secret-key ${AWS_SECRET_ACCESS_KEY}
+            --secret-name ${SECRET_NAME}
         test_noobaa namespacestore status ${namespacestore[cycle]}
     done
     
@@ -314,6 +320,19 @@ function check_namespacestore {
 }
 
 function check_namespacestore_validator {
+    local type="s3-compatible"
+    local buckets="failns.bucket1"
+    local namespacestore="namespacestore.fail"
+
+    test_noobaa bucket create ${buckets}
+
+    # Should fail due to a access/secret key already in use, in case the user didn't want to use it as secret refernce  
+    yes n | test_noobaa should_fail namespacestore create ${type} ${namespacestore} \
+        --target-bucket ${buckets} \
+        --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
+        --access-key ${AWS_ACCESS_KEY_ID} \
+        --secret-key ${AWS_SECRET_ACCESS_KEY}
+
     check_namespacestore_nsfs_validator
 }
 
@@ -330,19 +349,19 @@ function check_namespacestore_nsfs_validator {
     kuberun create -f $(dirname ${0})/resources/nsfs-local-pvc.yaml
     
     #Sub-path is not relative
-    test_noobaa should_fail namespacestore create ${type} ${namespacestore} \
+    yes | test_noobaa should_fail namespacestore create ${type} ${namespacestore} \
         --fs-backend 'GPFS' \
         --pvc-name ${pvc} \
         --sub-path '/'
     
     #Sub-path contains '..'
-    test_noobaa should_fail namespacestore create ${type} ${namespacestore} \
+    yes | test_noobaa should_fail namespacestore create ${type} ${namespacestore} \
         --fs-backend 'GPFS' \
         --pvc-name ${pvc} \
         --sub-path 'subpath/../'
 
     #Valid sub-path
-    test_noobaa namespacestore create ${type} ${namespacestore} \
+    yes | test_noobaa namespacestore create ${type} ${namespacestore} \
         --fs-backend 'GPFS' \
         --pvc-name ${pvc} \
         --sub-path 'subpath'
@@ -415,21 +434,35 @@ function check_S3_compatible {
     test_noobaa backingstore create pv-pool pvpool1 \
             --num-volumes 1 \
             --pv-size-gb 50
-
     for (( cycle=0 ; cycle < ${#backingstore[@]} ; cycle++ ))
     do
         test_noobaa backingstore create ${type} ${backingstore[cycle]} \
             --target-bucket ${buckets[cycle]} \
             --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
-            --access-key ${AWS_ACCESS_KEY_ID} \
-            --secret-key ${AWS_SECRET_ACCESS_KEY}
+            --secret-name ${SECRET_NAME}
         test_noobaa backingstore status ${backingstore[cycle]}
     done
     test_noobaa backingstore list
     test_noobaa status
     kuberun get backingstore
     kuberun describe backingstore
+    check_S3_compatible_validator
     echo_time "✅  s3 compatible cycle is done"
+}
+
+function check_S3_compatible_validator {
+    local type="s3-compatible"
+    local buckets="fails3.bucket"
+    local backingstore="fail.compatible1"
+
+    test_noobaa bucket create ${buckets}
+
+    # Should fail due to a access/secret key already in use, in case the user didn't want to use it as secret refernce 
+    yes n | test_noobaa should_fail backingstore create ${type} ${backingstore} \
+        --target-bucket ${buckets} \
+        --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
+        --access-key ${AWS_ACCESS_KEY_ID} \
+        --secret-key ${AWS_SECRET_ACCESS_KEY}
 }
 
 function check_IBM_cos {
@@ -445,15 +478,30 @@ function check_IBM_cos {
         test_noobaa backingstore create ${type} ${backingstore[cycle]} \
             --target-bucket ${buckets[cycle]} \
             --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
-            --access-key ${AWS_ACCESS_KEY_ID} \
-            --secret-key ${AWS_SECRET_ACCESS_KEY}
+            --secret-name ${SECRET_NAME}
         test_noobaa backingstore status ${backingstore[cycle]}
     done
     test_noobaa backingstore list
     test_noobaa status
     kuberun get backingstore
     kuberun describe backingstore
+    check_IBM_cos_validator
     echo_time "✅  ibm cos cycle is done"
+}
+
+function check_IBM_cos_validator {
+    local type="ibm-cos"
+    local buckets="failIBM.bucket"
+    local backingstore="fail.ibmcos"
+
+    test_noobaa bucket create ${buckets}
+
+    # Should fail due to a access/secret key already in use, in case the user didn't want to use it as secret refernce 
+    yes n | test_noobaa should_fail backingstore create ${type} ${backingstore} \
+        --target-bucket ${buckets} \
+        --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
+        --access-key ${AWS_ACCESS_KEY_ID} \
+        --secret-key ${AWS_SECRET_ACCESS_KEY}
 }
 
 function check_aws_S3 {

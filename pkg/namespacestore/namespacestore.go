@@ -2,6 +2,7 @@ package namespacestore
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -278,6 +279,29 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 
 	populate(namespaceStore, secret)
 
+	suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, util.MapStorTypeToMandatoryProperties[nbv1.StoreType(namespaceStore.Spec.Type)])
+	if suggestedSecret != nil {
+		var decision string
+		log.Printf("Found a Secret in the system with the same credentials (%s)", suggestedSecret.Name)
+		log.Printf("Note that using more then one secret with the same credentials is not supported")
+		log.Printf("do you want to use it for this Namespacestore? y/n")
+		fmt.Scanln(&decision)
+		if strings.ToLower(decision) == "y" {
+			log.Printf("Will use %s as the Namespacestore Secret", suggestedSecret.Name)
+			err := util.SetNamespaceStoreSecretRef(namespaceStore, &corev1.SecretReference{
+				Name:      suggestedSecret.Name,
+				Namespace: suggestedSecret.Namespace,
+			})
+			if err != nil {
+				log.Fatalf(`❌ %s`, err)
+			}
+		} else if strings.ToLower(decision) == "n" {
+			log.Fatalf("Not creating Namespacestore")
+		} else {
+			log.Fatalf(`❌ Invalid input, please select y/n`)
+		}
+	}
+
 	validationErr := validations.ValidateNamespaceStore(namespaceStore)
 	if validationErr != nil {
 		log.Fatalf(`❌ %s %s`, validationErr, cmd.UsageString())
@@ -289,11 +313,17 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 		log.Fatalf(`❌ Could not create NamespaceStore %q in Namespace %q (conflict)`, namespaceStore.Name, namespaceStore.Namespace)
 	}
 
-	if GetNamespaceStoreSecret(namespaceStore) != nil && secretName == "" {
+	secretRef, _ := util.GetNamespaceStoreSecret(namespaceStore)
+	if secretRef != nil && secretName == "" && suggestedSecret == nil {
 		// Create secret
 		util.Panic(controllerutil.SetControllerReference(namespaceStore, secret, scheme.Scheme))
 		if !util.KubeCreateFailExisting(secret) {
 			log.Fatalf(`❌ Could not create Secret %q in Namespace %q (conflict)`, secret.Name, secret.Namespace)
+		}
+	} else if secretRef != nil && secretName != "" {
+		_, err := util.GetSecretFromSecretReference(secretRef)
+		if err != nil {
+			util.Logger().Fatalf(`❌ Could not found Secret %q from SecretReference`, secret.Name)
 		}
 	}
 
@@ -314,6 +344,7 @@ func RunCreateAWSS3(cmd *cobra.Command, args []string) {
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 		region, _ := cmd.Flags().GetString("region")
 		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
 
 		if secretName == "" {
 			accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
@@ -321,9 +352,9 @@ func RunCreateAWSS3(cmd *cobra.Command, args []string) {
 			secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
 			secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
 		} else {
-			mandatoryProperties := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName
+			secret.Namespace = options.Namespace
 		}
 
 		namespaceStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
@@ -344,6 +375,7 @@ func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 		sigVer, _ := cmd.Flags().GetString("signature-version")
 		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
 
 		if secretName == "" {
 			accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
@@ -351,10 +383,11 @@ func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 			secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
 			secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
 		} else {
-			mandatoryProperties := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName
+			secret.Namespace = options.Namespace
 		}
+
 		namespaceStore.Spec.S3Compatible = &nbv1.S3CompatibleSpec{
 			TargetBucket:     targetBucket,
 			Endpoint:         endpoint,
@@ -374,6 +407,7 @@ func RunCreateIBMCos(cmd *cobra.Command, args []string) {
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 		// sigVer, _ := cmd.Flags().GetString("signature-version")
 		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"}
 
 		if secretName == "" {
 			accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
@@ -381,9 +415,9 @@ func RunCreateIBMCos(cmd *cobra.Command, args []string) {
 			secret.StringData["IBM_COS_ACCESS_KEY_ID"] = accessKey
 			secret.StringData["IBM_COS_SECRET_ACCESS_KEY"] = secretKey
 		} else {
-			mandatoryProperties := []string{"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"}
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName
+			secret.Namespace = options.Namespace
 		}
 
 		namespaceStore.Spec.IBMCos = &nbv1.IBMCosSpec{
@@ -403,6 +437,7 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.NSStoreTypeAzureBlob, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
 		targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
 		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"AccountName", "AccountKey"}
 
 		if secretName == "" {
 			accountName := util.GetFlagStringOrPrompt(cmd, "account-name")
@@ -410,10 +445,11 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 			secret.StringData["AccountName"] = accountName
 			secret.StringData["AccountKey"] = accountKey
 		} else {
-			mandatoryProperties := []string{"AccountName", "AccountKey"}
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName
+			secret.Namespace = options.Namespace
 		}
+
 		namespaceStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
 			TargetBlobContainer: targetBlobContainer,
 			Secret: corev1.SecretReference{
@@ -501,7 +537,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 			namespaceStore.Name, namespaceStore.Namespace)
 	}
 
-	secretRef := GetNamespaceStoreSecret(namespaceStore)
+	secretRef, _ := util.GetNamespaceStoreSecret(namespaceStore)
 	if secretRef != nil {
 		secret.Name = secretRef.Name
 		secret.Namespace = secretRef.Namespace
@@ -609,13 +645,16 @@ func RunList(cmd *cobra.Command, args []string) {
 	)
 	for i := range list.Items {
 		bs := &list.Items[i]
-		table.AddRow(
-			bs.Name,
-			string(bs.Spec.Type),
-			GetNamespaceStoreTargetBucket(bs),
-			string(bs.Status.Phase),
-			util.HumanizeDuration(time.Since(bs.CreationTimestamp.Time).Round(time.Second)),
-		)
+		tb, err := util.GetNamespaceStoreTargetBucket(bs)
+		if err == nil {
+			table.AddRow(
+				bs.Name,
+				string(bs.Spec.Type),
+				tb,
+				string(bs.Status.Phase),
+				util.HumanizeDuration(time.Since(bs.CreationTimestamp.Time).Round(time.Second)),
+			)
+		}
 	}
 	fmt.Print(table.String())
 }
@@ -648,38 +687,33 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 	}))
 }
 
-// GetNamespaceStoreSecret returns the secret reference of the namespace store if it is relevant to the type
-func GetNamespaceStoreSecret(bs *nbv1.NamespaceStore) *corev1.SecretReference {
-	switch bs.Spec.Type {
-	case nbv1.NSStoreTypeAWSS3:
-		return &bs.Spec.AWSS3.Secret
-	case nbv1.NSStoreTypeS3Compatible:
-		return &bs.Spec.S3Compatible.Secret
-	case nbv1.NSStoreTypeIBMCos:
-		return &bs.Spec.IBMCos.Secret
-	case nbv1.NSStoreTypeAzureBlob:
-		return &bs.Spec.AzureBlob.Secret
-	case nbv1.NSStoreTypeNSFS:
-		return nil
-	default:
+// MapSecretToNamespaceStores returns a list of namespacestores that uses the secret in their secretRefernce
+// used by namespacestore_contorller to watch secrets changes
+func MapSecretToNamespaceStores(secret types.NamespacedName) []reconcile.Request {
+	log := util.Logger()
+	log.Infof("checking which namespaceStores to reconcile. mapping secret %v to namespaceStores", secret)
+	nsList := &nbv1.NamespaceStoreList{
+		TypeMeta: metav1.TypeMeta{Kind: "NamespaceStoreList"},
+	}
+	if !util.KubeList(nsList, &client.ListOptions{Namespace: secret.Namespace}) {
+		log.Infof("Cloud not found namespaceStores in namespace %q", secret.Namespace)
 		return nil
 	}
-}
 
-// GetNamespaceStoreTargetBucket returns the target bucket of the namespace store if it is relevant to the type
-func GetNamespaceStoreTargetBucket(bs *nbv1.NamespaceStore) string {
-	switch bs.Spec.Type {
-	case nbv1.NSStoreTypeAWSS3:
-		return bs.Spec.AWSS3.TargetBucket
-	case nbv1.NSStoreTypeS3Compatible:
-		return bs.Spec.S3Compatible.TargetBucket
-	case nbv1.NSStoreTypeIBMCos:
-		return bs.Spec.IBMCos.TargetBucket
-	case nbv1.NSStoreTypeAzureBlob:
-		return bs.Spec.AzureBlob.TargetBlobContainer
-	case nbv1.NSStoreTypeNSFS:
-		return ""
-	default:
-		return ""
+	reqs := []reconcile.Request{}
+
+	for _, ns := range nsList.Items {
+		nsSecret, err := util.GetNamespaceStoreSecret(&ns)
+		if nsSecret.Name == secret.Name && err != nil {
+			reqs = append(reqs, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      ns.Name,
+					Namespace: ns.Namespace,
+				},
+			})
+		}
 	}
+	log.Infof("will reconcile these namespaceStores: %v", reqs)
+
+	return reqs
 }

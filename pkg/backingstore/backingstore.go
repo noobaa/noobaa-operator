@@ -369,17 +369,46 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 		log.Fatalf(`❌ %s %s`, validationErr, cmd.UsageString())
 	}
 
+	suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, util.MapStorTypeToMandatoryProperties[storeType])
+	if suggestedSecret != nil {
+		var decision string
+		log.Printf("Found a Secret in the system with the same credentials (%s)", suggestedSecret.Name)
+		log.Printf("Note that using more then one secret with the same credentials is not supported")
+		log.Printf("do you want to use it for this Backingstore? y/n")
+		fmt.Scanln(&decision)
+		if strings.ToLower(decision) == "y" {
+			log.Printf("Will use %s as the Backingstore %s Secret", suggestedSecret.Name, backStore.Name)
+			err := util.SetBackingStoreSecretRef(backStore, &corev1.SecretReference{
+				Name:      suggestedSecret.Name,
+				Namespace: suggestedSecret.Namespace,
+			})
+			if err != nil {
+				log.Fatalf(`❌ %s`, err)
+			}
+		} else if strings.ToLower(decision) == "n" {
+			log.Fatalf("Not creating Backingstore")
+		} else {
+			log.Fatalf(`❌ Invalid input, please select y/n`)
+		}
+	}
+
 	// Create backing store CR
 	util.Panic(controllerutil.SetControllerReference(sys, backStore, scheme.Scheme))
 	if !util.KubeCreateFailExisting(backStore) {
 		log.Fatalf(`❌ Could not create BackingStore %q in Namespace %q (conflict)`, backStore.Name, backStore.Namespace)
 	}
 
-	if GetBackingStoreSecret(backStore) != nil && secretName == "" {
+	secretRef, _ := util.GetBackingStoreSecret(backStore)
+	if secretRef != nil && secretName == "" && suggestedSecret == nil {
 		// Create secret
 		util.Panic(controllerutil.SetControllerReference(backStore, secret, scheme.Scheme))
 		if !util.KubeCreateFailExisting(secret) {
 			log.Fatalf(`❌ Could not create Secret %q in Namespace %q (conflict)`, secret.Name, secret.Namespace)
+		}
+	} else if secretRef != nil && secretName != "" {
+		_, err := util.GetSecretFromSecretReference(secretRef)
+		if err != nil {
+			util.Logger().Fatalf(`❌ Could not found Secret %q from SecretReference`, secret.Name)
 		}
 	}
 
@@ -450,6 +479,7 @@ func RunCreateAWSS3(cmd *cobra.Command, args []string) {
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 		region, _ := cmd.Flags().GetString("region")
 		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
 
 		if secretName == "" {
 			accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
@@ -457,10 +487,11 @@ func RunCreateAWSS3(cmd *cobra.Command, args []string) {
 			secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
 			secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
 		} else {
-			mandatoryProperties := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName
+			secret.Namespace = options.Namespace
 		}
+
 		backStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
 			TargetBucket: targetBucket,
 			Region:       region,
@@ -479,6 +510,7 @@ func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 		sigVer, _ := cmd.Flags().GetString("signature-version")
 		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
 
 		if secretName == "" {
 			accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
@@ -486,9 +518,9 @@ func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 			secret.StringData["AWS_ACCESS_KEY_ID"] = accessKey
 			secret.StringData["AWS_SECRET_ACCESS_KEY"] = secretKey
 		} else {
-			mandatoryProperties := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName
+			secret.Namespace = options.Namespace
 		}
 
 		backStore.Spec.S3Compatible = &nbv1.S3CompatibleSpec{
@@ -510,6 +542,7 @@ func RunCreateIBMCos(cmd *cobra.Command, args []string) {
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 		// sigVer, _ := cmd.Flags().GetString("signature-version")
 		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"}
 
 		if secretName == "" {
 			accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
@@ -517,9 +550,9 @@ func RunCreateIBMCos(cmd *cobra.Command, args []string) {
 			secret.StringData["IBM_COS_ACCESS_KEY_ID"] = accessKey
 			secret.StringData["IBM_COS_SECRET_ACCESS_KEY"] = secretKey
 		} else {
-			mandatoryProperties := []string{"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"}
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName
+			secret.Namespace = options.Namespace
 		}
 
 		backStore.Spec.IBMCos = &nbv1.IBMCosSpec{
@@ -539,6 +572,7 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.StoreTypeAzureBlob, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
 		targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
 		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"AccountName", "AccountKey"}
 
 		if secretName == "" {
 			accountName := util.GetFlagStringOrPrompt(cmd, "account-name")
@@ -546,9 +580,9 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 			secret.StringData["AccountName"] = accountName
 			secret.StringData["AccountKey"] = accountKey
 		} else {
-			mandatoryProperties := []string{"AccountName", "AccountKey"}
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName
+			secret.Namespace = options.Namespace
 		}
 
 		backStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
@@ -567,6 +601,7 @@ func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.StoreTypeGoogleCloudStorage, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"GoogleServiceAccountPrivateKeyJson"}
 
 		if secretName == "" {
 			privateKeyJSONFile := util.GetFlagStringOrPrompt(cmd, "private-key-json-file")
@@ -581,9 +616,9 @@ func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 			}
 			secret.StringData["GoogleServiceAccountPrivateKeyJson"] = string(bytes)
 		} else {
-			mandatoryProperties := []string{"GoogleServiceAccountPrivateKeyJson"}
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName
+			secret.Namespace = options.Namespace
 		}
 
 		backStore.Spec.GoogleCloudStorage = &nbv1.GoogleCloudStorageSpec{
@@ -836,7 +871,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Could not get BackingStore %q in namespace %q`,
 			backStore.Name, backStore.Namespace)
 	}
-	secretRef := GetBackingStoreSecret(backStore)
+	secretRef, _ := util.GetBackingStoreSecret(backStore)
 	if !util.IsSTSClusterBS(backStore) {
 		if secretRef != nil {
 			secret.Name = secretRef.Name
@@ -944,13 +979,16 @@ func RunList(cmd *cobra.Command, args []string) {
 	)
 	for i := range list.Items {
 		bs := &list.Items[i]
-		table.AddRow(
-			bs.Name,
-			string(bs.Spec.Type),
-			GetBackingStoreTargetBucket(bs),
-			string(bs.Status.Phase),
-			util.HumanizeDuration(time.Since(bs.CreationTimestamp.Time).Round(time.Second)),
-		)
+		tb, err := util.GetBackingStoreTargetBucket(bs)
+		if err == nil {
+			table.AddRow(
+				bs.Name,
+				string(bs.Spec.Type),
+				tb,
+				string(bs.Status.Phase),
+				util.HumanizeDuration(time.Since(bs.CreationTimestamp.Time).Round(time.Second)),
+			)
+		}
 	}
 	fmt.Print(table.String())
 }
@@ -983,40 +1021,33 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 	}))
 }
 
-// GetBackingStoreSecret returns the secret reference of the backing store if it is relevant to the type
-func GetBackingStoreSecret(bs *nbv1.BackingStore) *corev1.SecretReference {
-	switch bs.Spec.Type {
-	case nbv1.StoreTypeAWSS3:
-		return &bs.Spec.AWSS3.Secret
-	case nbv1.StoreTypeS3Compatible:
-		return &bs.Spec.S3Compatible.Secret
-	case nbv1.StoreTypeIBMCos:
-		return &bs.Spec.IBMCos.Secret
-	case nbv1.StoreTypeAzureBlob:
-		return &bs.Spec.AzureBlob.Secret
-	case nbv1.StoreTypeGoogleCloudStorage:
-		return &bs.Spec.GoogleCloudStorage.Secret
-	case nbv1.StoreTypePVPool:
-		return &bs.Spec.PVPool.Secret
-	default:
+// MapSecretToBackingStores returns a list of backingstores that uses the secret in their secretRefernce
+// used by backingstore_contorller to watch secrets changes
+func MapSecretToBackingStores(secret types.NamespacedName) []reconcile.Request {
+	log := util.Logger()
+	log.Infof("checking which backingstore to reconcile. mapping secret %v to backingstores", secret)
+	bsList := &nbv1.BackingStoreList{
+		TypeMeta: metav1.TypeMeta{Kind: "BackingStoreList"},
+	}
+	if !util.KubeList(bsList, &client.ListOptions{Namespace: secret.Namespace}) {
+		log.Infof("Cloud not found backingStores in namespace %q, while trying to find Backingstore that uses %s secrte", secret.Namespace, secret.Name)
 		return nil
 	}
-}
 
-// GetBackingStoreTargetBucket returns the target bucket of the backing store if it is relevant to the type
-func GetBackingStoreTargetBucket(bs *nbv1.BackingStore) string {
-	switch bs.Spec.Type {
-	case nbv1.StoreTypeAWSS3:
-		return bs.Spec.AWSS3.TargetBucket
-	case nbv1.StoreTypeS3Compatible:
-		return bs.Spec.S3Compatible.TargetBucket
-	case nbv1.StoreTypeIBMCos:
-		return bs.Spec.IBMCos.TargetBucket
-	case nbv1.StoreTypeAzureBlob:
-		return bs.Spec.AzureBlob.TargetBlobContainer
-	case nbv1.StoreTypeGoogleCloudStorage:
-		return bs.Spec.GoogleCloudStorage.TargetBucket
-	default:
-		return ""
+	reqs := []reconcile.Request{}
+
+	for _, bs := range bsList.Items {
+		bsSecret, err := util.GetBackingStoreSecret(&bs)
+		if bsSecret.Name == secret.Name && err == nil {
+			reqs = append(reqs, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      bs.Name,
+					Namespace: bs.Namespace,
+				},
+			})
+		}
 	}
+	log.Infof("will reconcile these backingstores: %v", reqs)
+
+	return reqs
 }

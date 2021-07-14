@@ -62,7 +62,7 @@ type AccountInfo struct {
 	// NsfsAccountConfig specifies the configurations on Namespace FS
 	// +nullable
 	// +optional
-	NsfsAccountConfig *nbv1.AccountNsfsConfig	`json:"nsfs_account_config,omitempty"`
+	NsfsAccountConfig *nbv1.AccountNsfsConfig `json:"nsfs_account_config,omitempty"`
 }
 
 // BucketInfo is a struct of bucket info returned by the API
@@ -399,15 +399,15 @@ type AccountAllowedBuckets struct {
 
 // CreateAccountParams is the params of account_api.create_account()
 type CreateAccountParams struct {
-    Name              string                    `json:"name"`
-    Email             string                    `json:"email"`
-    HasLogin          bool                      `json:"has_login"`
-    S3Access          bool                      `json:"s3_access"`
-    AllowBucketCreate bool                      `json:"allow_bucket_creation"`
-    AllowedBuckets    AccountAllowedBuckets     `json:"allowed_buckets"`
-    DefaultResource   string                    `json:"default_resource,omitempty"`
-    BucketClaimOwner  string                    `json:"bucket_claim_owner,omitempty"`
-    NsfsAccountConfig *nbv1.AccountNsfsConfig   `json:"nsfs_account_config,omitempty"`
+	Name              string                  `json:"name"`
+	Email             string                  `json:"email"`
+	HasLogin          bool                    `json:"has_login"`
+	S3Access          bool                    `json:"s3_access"`
+	AllowBucketCreate bool                    `json:"allow_bucket_creation"`
+	AllowedBuckets    AccountAllowedBuckets   `json:"allowed_buckets"`
+	DefaultResource   string                  `json:"default_resource,omitempty"`
+	BucketClaimOwner  string                  `json:"bucket_claim_owner,omitempty"`
+	NsfsAccountConfig *nbv1.AccountNsfsConfig `json:"nsfs_account_config,omitempty"`
 }
 
 // CreateAccountReply is the reply of account_api.create_account()
@@ -418,7 +418,7 @@ type CreateAccountReply struct {
 
 // GenerateAccountKeysParams is the params of account_api.generate_account_keys()
 type GenerateAccountKeysParams struct {
-	Email             string                `json:"email"`
+	Email string `json:"email"`
 }
 
 // ResetPasswordParams is the params of account_api.reset_password()
@@ -556,12 +556,12 @@ type DeleteNamespaceResourceParams struct {
 
 // UpdateAccountS3AccessParams is the params of account_api.update_account_s3_access()
 type UpdateAccountS3AccessParams struct {
-    Email               string                  `json:"email"`
-    S3Access            bool                    `json:"s3_access"`
-    DefaultResource     *string                 `json:"default_resource,omitempty"`
-    AllowBucketCreation *bool                   `json:"allow_bucket_creation,omitempty"`
-    AllowBuckets        *AllowedBuckets         `json:"allowed_buckets,omitempty"`
-    NsfsAccountConfig   *nbv1.AccountNsfsConfig `json:"nsfs_account_config,omitempty"`
+	Email               string                  `json:"email"`
+	S3Access            bool                    `json:"s3_access"`
+	DefaultResource     *string                 `json:"default_resource,omitempty"`
+	AllowBucketCreation *bool                   `json:"allow_bucket_creation,omitempty"`
+	AllowBuckets        *AllowedBuckets         `json:"allowed_buckets,omitempty"`
+	NsfsAccountConfig   *nbv1.AccountNsfsConfig `json:"nsfs_account_config,omitempty"`
 }
 
 // UpdateDefaultResourceParams is the params of bucket_api.update_all_buckets_default_pool()
@@ -670,6 +670,17 @@ type AddExternalConnectionParams struct {
 	Region       string          `json:"region,omitempty"`
 }
 
+// CheckExternalConnectionParams is the params of account_api.check_external_connection()
+type CheckExternalConnectionParams struct {
+	Name                   string          `json:"name"`
+	EndpointType           EndpointType    `json:"endpoint_type"`
+	Endpoint               string          `json:"endpoint"`
+	Identity               string          `json:"identity"`
+	Secret                 string          `json:"secret"`
+	AuthMethod             CloudAuthMethod `json:"auth_method,omitempty"`
+	IgnoreNameAlreadyExist bool            `json:"ignore_name_already_exist,omitempty"`
+}
+
 // CheckExternalConnectionReply is the reply of account_api.check_external_connection()
 type CheckExternalConnectionReply struct {
 	Status ExternalConnectionStatus `json:"status"`
@@ -679,8 +690,8 @@ type CheckExternalConnectionReply struct {
 	} `json:"error,omitempty"`
 }
 
-// EditExternalConnectionCredentialsParams is the params of account_api.edit_external_connection_credentials()
-type EditExternalConnectionCredentialsParams struct {
+// UpdateExternalConnectionParams is the params of account_api.update_external_connection()
+type UpdateExternalConnectionParams struct {
 	Name     string `json:"name"`
 	Identity string `json:"identity"`
 	Secret   string `json:"secret"`

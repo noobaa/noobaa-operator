@@ -48,8 +48,8 @@ type Client interface {
 	UpdateBucketClass(UpdateBucketClassParams) (BucketClassInfo, error)
 
 	AddExternalConnectionAPI(AddExternalConnectionParams) error
-	CheckExternalConnectionAPI(AddExternalConnectionParams) (CheckExternalConnectionReply, error)
-	EditExternalConnectionCredentialsAPI(EditExternalConnectionCredentialsParams) error
+	CheckExternalConnectionAPI(CheckExternalConnectionParams) (CheckExternalConnectionReply, error)
+	UpdateExternalConnectionAPI(UpdateExternalConnectionParams) error
 	DeleteExternalConnectionAPI(DeleteExternalConnectionParams) error
 
 	UpdateEndpointGroupAPI(UpdateEndpointGroupParams) error
@@ -354,7 +354,7 @@ func (c *RPCClient) AddExternalConnectionAPI(params AddExternalConnectionParams)
 }
 
 // CheckExternalConnectionAPI calls account_api.check_external_connection()
-func (c *RPCClient) CheckExternalConnectionAPI(params AddExternalConnectionParams) (CheckExternalConnectionReply, error) {
+func (c *RPCClient) CheckExternalConnectionAPI(params CheckExternalConnectionParams) (CheckExternalConnectionReply, error) {
 	req := &RPCMessage{API: "account_api", Method: "check_external_connection", Params: params}
 	res := &struct {
 		RPCMessage `json:",inline"`
@@ -364,9 +364,9 @@ func (c *RPCClient) CheckExternalConnectionAPI(params AddExternalConnectionParam
 	return res.Reply, err
 }
 
-// EditExternalConnectionCredentialsAPI calls account_api.edit_external_connection_credentials()
-func (c *RPCClient) EditExternalConnectionCredentialsAPI(params EditExternalConnectionCredentialsParams) error {
-	req := &RPCMessage{API: "account_api", Method: "edit_external_connection_credentials", Params: params}
+// UpdateExternalConnectionAPI calls account_api.update_external_connection()
+func (c *RPCClient) UpdateExternalConnectionAPI(params UpdateExternalConnectionParams) error {
+	req := &RPCMessage{API: "account_api", Method: "update_external_connection", Params: params}
 	return c.Call(req, nil)
 }
 

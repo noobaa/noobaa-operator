@@ -584,7 +584,7 @@ func MapBackingstoreToBucketclasses(backingstore types.NamespacedName) []reconci
 		TypeMeta: metav1.TypeMeta{Kind: "BucketClassList"},
 	}
 	if !util.KubeList(bucketclassList, &client.ListOptions{Namespace: backingstore.Namespace}) {
-		log.Infof("did not find backing stores in namespace %q", backingstore.Namespace)
+		log.Infof("Could not found bucketClasses in namespace %q", backingstore.Namespace)
 		return nil
 	}
 
