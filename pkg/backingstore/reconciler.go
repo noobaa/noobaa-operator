@@ -87,10 +87,11 @@ type Reconciler struct {
 	PoolInfo               *nb.PoolInfo
 	HostsInfo              *[]nb.HostInfo
 
-	AddExternalConnectionParams *nb.AddExternalConnectionParams
-	CreateCloudPoolParams       *nb.CreateCloudPoolParams
-	CreateHostsPoolParams       *nb.CreateHostsPoolParams
-	UpdateHostsPoolParams       *nb.UpdateHostsPoolParams
+	AddExternalConnectionParams    *nb.AddExternalConnectionParams
+	CreateCloudPoolParams          *nb.CreateCloudPoolParams
+	CreateHostsPoolParams          *nb.CreateHostsPoolParams
+	UpdateHostsPoolParams          *nb.UpdateHostsPoolParams
+	UpdateExternalConnectionParams *nb.UpdateExternalConnectionParams
 }
 
 // Own sets the object owner references to the backingstore
@@ -598,6 +599,11 @@ func (r *Reconciler) ReadSystemInfo() error {
 			pool.CloudInfo.Endpoint != conn.Endpoint ||
 			pool.CloudInfo.Identity != conn.Identity {
 			r.Logger.Warnf("using existing pool but connection mismatch %+v pool %+v %+v", conn, pool, pool.CloudInfo)
+			r.UpdateExternalConnectionParams = &nb.UpdateExternalConnectionParams{
+				Name: conn.Name,
+				Identity: conn.Identity,
+				Secret: conn.Secret,
+			}
 		}
 	}
 
@@ -826,11 +832,19 @@ func (r *Reconciler) fixAlternateKeysNames() {
 // ReconcileExternalConnection handles the external connection using noobaa api
 func (r *Reconciler) ReconcileExternalConnection() error {
 
-	// TODO we only support creation here, but not updates
 	if r.ExternalConnectionInfo != nil {
 		return nil
 	}
 	if r.AddExternalConnectionParams == nil {
+		return nil
+	}
+
+	if r.UpdateExternalConnectionParams != nil {
+		err := r.NBClient.UpdateExternalConnectionAPI(*r.UpdateExternalConnectionParams)
+		if err != nil {
+			return err
+		}
+		r.UpdateExternalConnectionParams = nil
 		return nil
 	}
 
@@ -866,7 +880,6 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	case nb.ExternalConnectionNotSupported:
 		return util.NewPersistentError(string(res.Status),
 			fmt.Sprintf("BackingStore %q invalid external connection %q", r.BackingStore.Name, res.Status))
-
 	case nb.ExternalConnectionTimeout:
 		fallthrough
 	case nb.ExternalConnectionUnknownFailure:

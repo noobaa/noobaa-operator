@@ -49,7 +49,7 @@ type Client interface {
 
 	AddExternalConnectionAPI(AddExternalConnectionParams) error
 	CheckExternalConnectionAPI(AddExternalConnectionParams) (CheckExternalConnectionReply, error)
-	EditExternalConnectionCredentialsAPI(EditExternalConnectionCredentialsParams) error
+	UpdateExternalConnectionAPI(UpdateExternalConnectionParams) error
 	DeleteExternalConnectionAPI(DeleteExternalConnectionParams) error
 
 	UpdateEndpointGroupAPI(UpdateEndpointGroupParams) error
@@ -357,9 +357,9 @@ func (c *RPCClient) CheckExternalConnectionAPI(params AddExternalConnectionParam
 	return res.Reply, err
 }
 
-// EditExternalConnectionCredentialsAPI calls account_api.edit_external_connection_credentials()
-func (c *RPCClient) EditExternalConnectionCredentialsAPI(params EditExternalConnectionCredentialsParams) error {
-	req := &RPCMessage{API: "account_api", Method: "edit_external_connection_credentials", Params: params}
+// UpdateExternalConnectionAPI calls account_api.update_external_connection()
+func (c *RPCClient) UpdateExternalConnectionAPI(params UpdateExternalConnectionParams) error {
+	req := &RPCMessage{API: "account_api", Method: "update_external_connection", Params: params}
 	return c.Call(req, nil)
 }
 
