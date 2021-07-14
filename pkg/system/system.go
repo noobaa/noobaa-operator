@@ -278,10 +278,10 @@ func RunDelete(cmd *cobra.Command, args []string) {
 
 		} else {
 			log.Infof("Deleting All object buckets in namespace %q", options.Namespace)
-			// deletion of OBCSC 
+			// deletion of OBCSC
 			sc := &storagev1.StorageClass{}
 			sc.Name = options.SubDomainNS()
-			if  err := util.DeleteStorageClass(sc); err != nil {
+			if err := util.DeleteStorageClass(sc); err != nil {
 				log.Errorf("failed to delete storageclass %q", sc.Name)
 			}
 			util.RemoveFinalizer(sys, nbv1.GracefulFinalizer)
@@ -893,8 +893,22 @@ func Connect(isExternal bool) (*Client, error) {
 	}, nil
 }
 
+// GetDesiredDBImage returns the desired DB image according to spec or env or default (in options)
+func GetDesiredDBImage(sys *nbv1.NooBaa) string {
+	if sys.Spec.DBImage != nil {
+		return *sys.Spec.DBImage
+	}
+
+	if os.Getenv("NOOBAA_DB_IMAGE") != "" {
+		return os.Getenv("NOOBAA_DB_IMAGE")
+	}
+
+	return options.DBImage
+}
+
 // CheckSystem checks the state of the system and initializes its status fields
 func CheckSystem(sys *nbv1.NooBaa) bool {
+	log := util.Logger()
 	found := util.KubeCheck(sys)
 	if sys.Status.Accounts == nil {
 		sys.Status.Accounts = &nbv1.AccountsStatus{}
@@ -902,11 +916,24 @@ func CheckSystem(sys *nbv1.NooBaa) bool {
 	if sys.Status.Services == nil {
 		sys.Status.Services = &nbv1.ServicesStatus{}
 	}
-	// load defaults
-	// TODO: This is a temp patch it can be overriden by actually loading from the CR this is just a patch in memory
+
+	// a hack to better set the DBType in cases where DBType is not set.
+	// if dbtype is not set, try to infer it from the db image. this only update dbtype in memory
 	if sys.Spec.DBType == "" {
-		sys.Spec.DBType = "mongodb" // = defaults.DBType
+		dbImage := GetDesiredDBImage(sys)
+		if strings.Contains(dbImage, "postgres") {
+			log.Infof("dbType was not supplied. according to image (%s) setting dbType to postgres", dbImage)
+			sys.Spec.DBType = "postgres"
+		} else {
+			if strings.Contains(dbImage, "mongo") {
+				log.Infof("dbType was not supplied. according to image (%s) setting dbType to mongodb", dbImage)
+			} else {
+				log.Warnf("dbType was not supplied and it cannot be guessed from from the dbImage (%s). setting dbType to mongodb", dbImage)
+			}
+			sys.Spec.DBType = "mongodb"
+		}
 	}
+
 	return found && sys.UID != ""
 }
 
