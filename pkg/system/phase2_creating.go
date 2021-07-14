@@ -3,7 +3,6 @@ package system
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -227,14 +226,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 		c := &podSpec.Containers[i]
 		if c.Name == "db" {
 
-			c.Image = options.DBImage
-			if os.Getenv("NOOBAA_DB_IMAGE") != "" {
-				c.Image = os.Getenv("NOOBAA_DB_IMAGE")
-			}
-			if r.NooBaa.Spec.DBImage != nil {
-				c.Image = *r.NooBaa.Spec.DBImage
-			}
-
+			c.Image = GetDesiredDBImage(r.NooBaa)
 			if r.NooBaa.Spec.DBResources != nil {
 				c.Resources = *r.NooBaa.Spec.DBResources
 			}
@@ -302,7 +294,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	} else {
 		// upgrade path add new resources,
 		// merge the volumes & volumeMounts from the template
-		util.MergeVolumeList( &NooBaaDB.Spec.Template.Spec.Volumes, &NooBaaDBTemplate.Spec.Template.Spec.Volumes)
+		util.MergeVolumeList(&NooBaaDB.Spec.Template.Spec.Volumes, &NooBaaDBTemplate.Spec.Template.Spec.Volumes)
 		for i := range NooBaaDB.Spec.Template.Spec.Containers {
 			util.MergeVolumeMountList(&NooBaaDB.Spec.Template.Spec.Containers[i].VolumeMounts, &NooBaaDBTemplate.Spec.Template.Spec.Containers[i].VolumeMounts)
 		}
@@ -355,7 +347,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			}
 
 		case "NOOBAA_LOG_LEVEL":
-				c.Env[j].Value = strconv.Itoa(r.NooBaa.Spec.DebugLevel)
+			c.Env[j].Value = strconv.Itoa(r.NooBaa.Spec.DebugLevel)
 
 		case "POSTGRES_HOST":
 			c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
