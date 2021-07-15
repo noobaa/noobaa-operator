@@ -167,3 +167,8 @@ test-olm: $(OPERATOR_SDK) gen-olm
 	$(TIME) ./test/test-olm.sh $(CATALOG_IMAGE)
 	@echo "✅ test-olm"
 .PHONY: test-olm
+
+test-hac:
+	ginkgo -v pkg/controller/ha
+	@echo "✅ test-hac"
+.PHONY: test-hac
