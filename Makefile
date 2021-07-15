@@ -23,6 +23,8 @@ BIN ?= $(OUTPUT)/bin
 OLM ?= $(OUTPUT)/olm
 VENV ?= $(OUTPUT)/venv
 
+# OPERATOR_SDK_VERSION is for build perpuse only, the dependencies themself are 
+# updated to a new version as stated in the go.mod file
 export OPERATOR_SDK_VERSION ?= v0.17.2
 export OPERATOR_SDK ?= build/_tools/operator-sdk-$(OPERATOR_SDK_VERSION)
 

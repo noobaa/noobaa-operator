@@ -1,6 +1,8 @@
 package backingstore
 
 import (
+	"context"
+
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
@@ -24,7 +26,7 @@ func Add(mgr manager.Manager) error {
 	c, err := controller.New("noobaa-controller", mgr, controller.Options{
 		MaxConcurrentReconciles: 1,
 		Reconciler: reconcile.Func(
-			func(req reconcile.Request) (reconcile.Result, error) {
+			func(context context.Context, req reconcile.Request) (reconcile.Result, error) {
 				return backingstore.NewReconciler(
 					req.NamespacedName,
 					mgr.GetClient(),
