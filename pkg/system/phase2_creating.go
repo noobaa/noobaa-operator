@@ -74,6 +74,10 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return nil
 	}
 
+	if err := r.ReconcileObject(r.CoreAppConfig, r.SetDesiredCoreAppConfig); err != nil {
+		return err
+	}
+
 	// A failure to discover OAuth endpoints should not fail the entire reconcile phase.
 	oAuthEndpoints, err := util.DiscoverOAuthEndpoints()
 	if err != nil {
@@ -465,6 +469,8 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 		}
 
 	}
+
+	r.SetConfigMapAnnotation(r.CoreApp.ObjectMeta.Annotations)
 
 	phase := r.NooBaa.Status.UpgradePhase
 	replicas := int32(1)
@@ -1102,4 +1108,36 @@ func (r *Reconciler) SetEndpointsDeploymentReplicas(replicas int32) error {
 		r.DeploymentEndpoint.Spec.Replicas = &replicas
 		return nil
 	})
+}
+
+// SetDesiredCoreAppConfig initiate the config map with predifined environment variables and their valuse
+func (r *Reconciler) SetDesiredCoreAppConfig() error {
+	updateNeeded := false
+	// When adding a new env var, make sure to add it to the sts/deployment as well
+	// see "NOOBAA_DISABLE_COMPRESSION" as an example
+	DefaultConfigMapData := map[string]string {
+		"NOOBAA_DISABLE_COMPRESSION": "false",
+		"DISABLE_DEV_RANDOM_SEED": "true",
+	}
+	for key, value := range DefaultConfigMapData {
+		if _, ok := r.CoreAppConfig.Data[key]; !ok {
+			r.CoreAppConfig.Data[key] = value
+			updateNeeded = true
+		}
+	}
+	if updateNeeded {
+		if !util.KubeUpdate(r.CoreAppConfig) {
+			r.Logger.Errorf("Failed to load initial data into %v", r.CoreAppConfig.Name)
+		}
+	}
+	return nil
+}
+
+// SetConfigMapAnnotation sets the ConfigMapHash annotation with the init data hash string
+func (r *Reconciler) SetConfigMapAnnotation(annotation map[string]string) {
+	if annotation["ConfigMapHash"] == "" {
+		input := &r.CoreAppConfig.Data
+		sha256Hex := util.GetCmDataHash(*input)
+		annotation["ConfigMapHash"] = sha256Hex
+	}
 }
