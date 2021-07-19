@@ -2,6 +2,7 @@ package system
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -454,9 +455,39 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 	return nil
 }
 
-// ReconcileHPAEndpoint reconcile the endpoint's HPS and report the configuration
+// awaitEndpointDeploymentPods wait for the the endpoint deployment to become ready
+// before creating the controlling HPA
+// See https://bugzilla.redhat.com/show_bug.cgi?id=1885524
+func (r *Reconciler) awaitEndpointDeploymentPods() error {
+
+	// Check that all deployment pods are available
+	availablePods := r.DeploymentEndpoint.Status.AvailableReplicas
+	desiredPods := r.DeploymentEndpoint.Status.Replicas
+	if availablePods == 0 || availablePods != desiredPods {
+		return errors.New("not enough available replicas in endpoint deployment")
+	}
+
+	// Check that deployment is ready
+	for _, condition := range r.DeploymentEndpoint.Status.Conditions {
+		if condition.Status != "True" {
+			return errors.New("endpoint deployment is not ready")
+		}
+	}
+
+	return nil
+}
+
+// ReconcileHPAEndpoint reconcile the endpoint's HPA and report the configuration
 // back to the noobaa core
 func (r *Reconciler) ReconcileHPAEndpoint() error {
+	// Wait for the the endpoint deployment to become ready
+	// only if HPA was not created yet
+	if r.HPAEndpoint.UID == "" {
+		if err := r.awaitEndpointDeploymentPods(); err != nil {
+			return err
+		}
+	}
+
 	if err := r.ReconcileObject(r.HPAEndpoint, r.SetDesiredHPAEndpoint); err != nil {
 		return err
 	}
