@@ -399,8 +399,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 
 func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container *corev1.Container) error {
 
-	log := r.Logger.WithField("source", "SystemReconciler:setDesiredEndpointMounts")
-
 	namespaceStoreList := &nbv1.NamespaceStoreList{}
 	if !util.KubeList(namespaceStoreList, client.InNamespace(options.Namespace)) {
 		return fmt.Errorf("Error: Cant list namespacestores")
@@ -409,8 +407,10 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 	container.VolumeMounts = r.DefaultDeploymentEndpoint.Containers[0].VolumeMounts
 
 	for _, nsStore := range namespaceStoreList.Items {
-		if nsStore.Status.Phase == nbv1.NamespaceStorePhaseRejected {
-			log.Warnf("namespacestore %s is in rejected phase", nsStore.Name)
+		// Since namespacestore is able to get a rejected state on runtime errors,
+		// we want to skip namespacestores with invalid configuration only.
+		// Remove this validation when the kubernetes validations hooks will be available.
+		if !r.validateNsStoreNSFS(&nsStore) {
 			continue
 		}
 		if nsStore.Spec.NSFS != nil {
@@ -453,6 +453,37 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 		}
 	}
 	return nil
+}
+
+// Duplicate code from validation.go namespacetore pkg.
+// Cannot import the namespacestore pkg, because the pkg imports the system pkg
+// TODO remove the code
+func (r *Reconciler) validateNsStoreNSFS(nsStore *nbv1.NamespaceStore) bool {
+	nsfs := nsStore.Spec.NSFS
+
+	if nsfs == nil {
+		return true
+	}
+
+	//pvcName validation
+	if nsfs.PvcName == "" {
+		return false
+	}
+
+	//SubPath validation
+	if nsfs.SubPath != "" {
+		path := nsfs.SubPath
+		if len(path) > 0 && path[0] == '/' {
+			return false
+		}
+		parts := strings.Split(path, "/")
+		for _, item := range parts {
+			if item == ".." {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // awaitEndpointDeploymentPods wait for the the endpoint deployment to become ready
