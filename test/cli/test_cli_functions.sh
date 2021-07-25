@@ -534,7 +534,7 @@ function noobaa_uninstall {
     [ ${check_cleanup_data_flag} -eq 0 ] && cleanup_data="--cleanup_data"
 
     echo_time "💬  Running uninstall ${cleanup} ${cleanup_data}"
-    test_noobaa --timeout uninstall ${cleanup} ${cleanup_data}
+    yes | test_noobaa --timeout uninstall ${cleanup} ${cleanup_data}
     if [ ${check_cleanflag} -eq 0 ]
     then
         check_if_cleanup
