@@ -1,6 +1,7 @@
 package obc
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -332,6 +333,15 @@ func (r *BucketRequest) CreateBucket(
 	if r.BucketClass == nil {
 		return fmt.Errorf("BucketClass not loaded %#v", r)
 	}
+
+	log.Infof("Provisioner: replication policy %s", r.BucketClass.Spec.ReplicationPolicy)
+	var replicationParams *nb.BucketReplicationParams
+	if r.OBC.Spec.AdditionalConfig["replicationPolicy"] != "" || r.BucketClass.Spec.ReplicationPolicy != "" {
+		if replicationParams, err = r.prepareReplicationParams(); err != nil {
+			return err
+		}
+	}
+
 	createBucketParams := &nb.CreateBucketParams{
 		Name: r.BucketName,
 		BucketClaim: &nb.BucketClaimInfo{
@@ -370,16 +380,16 @@ func (r *BucketRequest) CreateBucket(
 		}
 
 		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
 				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource,
-				Path:  r.OBC.Spec.AdditionalConfig["path"],
+				Path:     r.OBC.Spec.AdditionalConfig["path"],
 			}
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{ 
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource })
+			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource})
 		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{ 
+			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
 				Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource,
-				Path:  r.OBC.Spec.AdditionalConfig["path"],
+				Path:     r.OBC.Spec.AdditionalConfig["path"],
 			}
 			for i := range r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources {
 				rr := r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources[i]
@@ -395,6 +405,7 @@ func (r *BucketRequest) CreateBucket(
 			//cachePrefix := r.BucketClass.Spec.NamespacePolicy.Cache.Prefix
 		}
 	}
+
 	err = r.SysClient.NBClient.CreateBucketAPI(*createBucketParams)
 
 	if err != nil {
@@ -406,6 +417,16 @@ func (r *BucketRequest) CreateBucket(
 			}
 		}
 		return fmt.Errorf("Failed to create bucket %q with error: %v", r.BucketName, err)
+	}
+
+	log.Infof("PutBucketReplicationAPI params: %v", replicationParams)
+
+	// update replication policy
+	if replicationParams != nil {
+		err = r.SysClient.NBClient.PutBucketReplicationAPI(*replicationParams)
+		if err != nil {
+			return fmt.Errorf("Provisioner Failed to update replication on bucket %q with error: %v", r.BucketName, err)
+		}
 	}
 
 	log.Infof("✅ Successfully created bucket %q", r.BucketName)
@@ -620,4 +641,31 @@ func (r *BucketRequest) putBucketTagging() error {
 		return err
 	}
 	return nil
+}
+
+// prepareReplicationParams validates and prepare the replication params
+func (r *BucketRequest) prepareReplicationParams() (*nb.BucketReplicationParams, error) {
+	replicationPolicy := r.BucketClass.Spec.ReplicationPolicy
+	// if OBC has replication policy set it to replication policy instead of the bucketclass
+	if r.OBC.Spec.AdditionalConfig["replicationPolicy"] != "" {
+		replicationPolicy = r.OBC.Spec.AdditionalConfig["replicationPolicy"]
+	}
+	var replicationRules []interface{}
+	err := json.Unmarshal([]byte(replicationPolicy), &replicationRules)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse replication json %q: %v", replicationRules, err)
+	}
+	replicationParams := &nb.BucketReplicationParams{
+		Name:              r.BucketName,
+		ReplicationPolicy: replicationRules,
+	}
+	err = r.SysClient.NBClient.ValidateReplicationAPI(*replicationParams)
+	if err != nil {
+		rpcErr, isRPCErr := err.(*nb.RPCError)
+		if isRPCErr && rpcErr.RPCCode == "INVALID_REPLICATION_POLICY" {
+			return nil, fmt.Errorf("Bucket replication configuration is invalid")
+		}
+		return nil, fmt.Errorf("Provisioner Failed to validate replication of bucket %q with error: %v", r.BucketName, err)
+	}
+	return replicationParams, nil
 }

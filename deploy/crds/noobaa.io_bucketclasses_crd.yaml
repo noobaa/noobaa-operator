@@ -125,6 +125,10 @@ spec:
                       type: object
                     type: array
                 type: object
+              replicationPolicy:
+                description: ReplicationPolicy specifies a json of replication rules
+                  for the bucketclass
+                type: string
             type: object
           status:
             description: Most recently observed status of the noobaa BackingStore.

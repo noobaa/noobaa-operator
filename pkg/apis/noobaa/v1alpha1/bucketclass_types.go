@@ -64,6 +64,10 @@ type BucketClassSpec struct {
 	// NamespacePolicy specifies the namespace policy for the bucket class
 	// +optional
 	NamespacePolicy *NamespacePolicy `json:"namespacePolicy,omitempty"`
+
+	// ReplicationPolicy specifies a json of replication rules for the bucketclass
+	// +optional
+	ReplicationPolicy string `json:"replicationPolicy,omitempty"`
 }
 
 // BucketClassStatus defines the observed state of BucketClass
