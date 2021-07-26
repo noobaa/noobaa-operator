@@ -526,23 +526,23 @@ func (r *Reconciler) UpdateStatus() error {
 // ReconcileObject is a generic call to reconcile a kubernetes object
 // desiredFunc can be passed to modify the object before create/update.
 // Currently we ignore enforcing a desired state, but it might be needed on upgrades.
-func (r *Reconciler) ReconcileObject(obj runtime.Object, desiredFunc func() error) error {
+func (r *Reconciler) ReconcileObject(obj client.Object, desiredFunc func() error) error {
 	return r.reconcileObject(obj, desiredFunc, false)
 }
 
 // ReconcileObjectOptional is like ReconcileObject but also ignores if the CRD is missing
-func (r *Reconciler) ReconcileObjectOptional(obj runtime.Object, desiredFunc func() error) error {
+func (r *Reconciler) ReconcileObjectOptional(obj client.Object, desiredFunc func() error) error {
 	return r.reconcileObject(obj, desiredFunc, true)
 }
 
-func (r *Reconciler) reconcileObject(obj runtime.Object, desiredFunc func() error, optionalCRD bool) error {
+func (r *Reconciler) reconcileObject(obj client.Object, desiredFunc func() error, optionalCRD bool) error {
 
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	objMeta, _ := meta.Accessor(obj)
 	r.Own(objMeta)
 
 	op, err := controllerutil.CreateOrUpdate(
-		r.Ctx, r.Client, obj.(runtime.Object), func() error {
+		r.Ctx, r.Client, obj, func() error {
 			if desiredFunc != nil {
 				if err := desiredFunc(); err != nil {
 					return err
@@ -551,6 +551,9 @@ func (r *Reconciler) reconcileObject(obj runtime.Object, desiredFunc func() erro
 			return nil
 		},
 	)
+
+	util.SecretResetStringDataFromData(obj)
+
 	if err != nil {
 		if optionalCRD && (meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err)) {
 			r.Logger.Printf("ReconcileObject: (Optional) CRD Unavailable: %s %s\n", gvk.Kind, objMeta.GetSelfLink())

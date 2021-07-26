@@ -1,6 +1,8 @@
 package cephcluster
 
 import (
+	"context"
+
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
@@ -50,7 +52,7 @@ func Add(mgr manager.Manager) error {
 }
 
 // React to cephcluster capacity changes
-func doReconcile(req reconcile.Request) (reconcile.Result, error) {
+func doReconcile(context context.Context, req reconcile.Request) (reconcile.Result, error) {
 	log := logrus.WithField("cephcluster", req.Namespace+"/"+req.Name)
 	res := reconcile.Result{}
 

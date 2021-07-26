@@ -172,11 +172,11 @@ func KubeObject(text string) runtime.Object {
 
 // KubeApply will check if the object exists and will create/update accordingly
 // and report the object status.
-func KubeApply(obj runtime.Object) bool {
+func KubeApply(obj client.Object) bool {
 	klient := KubeClient()
 	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
-	clone := obj.DeepCopyObject()
+	clone := obj.DeepCopyObject().(client.Object)
 	err := klient.Get(ctx, objKey, clone)
 	if err == nil {
 		err = klient.Update(ctx, obj)
@@ -208,11 +208,11 @@ func KubeApply(obj runtime.Object) bool {
 // return true on success
 // if the object exists return skipOrFail parameter
 // return false on failure
-func kubeCreateSkipOrFailExisting(obj runtime.Object, skipOrFail bool) bool {
+func kubeCreateSkipOrFailExisting(obj client.Object, skipOrFail bool) bool {
 	klient := KubeClient()
 	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
-	clone := obj.DeepCopyObject()
+	clone := obj.DeepCopyObject().(client.Object)
 	err := klient.Get(ctx, objKey, clone)
 	if err == nil {
 		log.Printf("✅ Already Exists: %s %q\n", gvk.Kind, objKey.Name)
@@ -252,24 +252,24 @@ func kubeCreateSkipOrFailExisting(obj runtime.Object, skipOrFail bool) bool {
 
 // KubeCreateFailExisting will check if the object exists and will create/skip accordingly
 // and report the object status.
-func KubeCreateFailExisting(obj runtime.Object) bool {
+func KubeCreateFailExisting(obj client.Object) bool {
 	return kubeCreateSkipOrFailExisting(obj, false)
 }
 
 // KubeCreateSkipExisting will try to create an object
 // returns true of the object exist or was created
 // returns false otherwise
-func KubeCreateSkipExisting(obj runtime.Object) bool {
+func KubeCreateSkipExisting(obj client.Object) bool {
 	return kubeCreateSkipOrFailExisting(obj, true)
 }
 
 // KubeCreateOptional will check if the object exists and will create/skip accordingly
 // It detects the situation of a missing CRD and reports it as an optional feature.
-func KubeCreateOptional(obj runtime.Object) bool {
+func KubeCreateOptional(obj client.Object) bool {
 	klient := KubeClient()
 	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
-	clone := obj.DeepCopyObject()
+	clone := obj.DeepCopyObject().(client.Object)
 	err := klient.Get(ctx, objKey, clone)
 	if err == nil {
 		log.Printf("✅ Already Exists: %s %q\n", gvk.Kind, objKey.Name)
@@ -308,7 +308,7 @@ func KubeCreateOptional(obj runtime.Object) bool {
 }
 
 // KubeDelete deletes an object and reports the object status.
-func KubeDelete(obj runtime.Object, opts ...client.DeleteOption) bool {
+func KubeDelete(obj client.Object, opts ...client.DeleteOption) bool {
 	klient := KubeClient()
 	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
@@ -359,7 +359,7 @@ func KubeDelete(obj runtime.Object, opts ...client.DeleteOption) bool {
 }
 
 // KubeDeleteAllOf deletes an list of objects and reports the status.
-func KubeDeleteAllOf(obj runtime.Object, opts ...client.DeleteAllOfOption) bool {
+func KubeDeleteAllOf(obj client.Object, opts ...client.DeleteAllOfOption) bool {
 	klient := KubeClient()
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	deleted := false
@@ -376,7 +376,7 @@ func KubeDeleteAllOf(obj runtime.Object, opts ...client.DeleteAllOfOption) bool 
 }
 
 // KubeUpdate updates an object and reports the object status.
-func KubeUpdate(obj runtime.Object) bool {
+func KubeUpdate(obj client.Object) bool {
 	klient := KubeClient()
 	objKey := ObjectKey(obj)
 	gvk := obj.GetObjectKind().GroupVersionKind()
@@ -402,7 +402,7 @@ func KubeUpdate(obj runtime.Object) bool {
 }
 
 // KubeCheck checks if the object exists and reports the object status.
-func KubeCheck(obj runtime.Object) bool {
+func KubeCheck(obj client.Object) bool {
 	name, kind, err := KubeGet(obj)
 	if err == nil {
 		SecretResetStringDataFromData(obj)
@@ -427,7 +427,7 @@ func KubeCheck(obj runtime.Object) bool {
 
 // KubeCheckOptional checks if the object exists and reports the object status.
 // It detects the situation of a missing CRD and reports it as an optional feature.
-func KubeCheckOptional(obj runtime.Object) bool {
+func KubeCheckOptional(obj client.Object) bool {
 	name, kind, err := KubeGet(obj)
 	if err == nil {
 		log.Printf("✅ (Optional) Exists: %s %q\n", kind, name)
@@ -451,7 +451,7 @@ func KubeCheckOptional(obj runtime.Object) bool {
 
 // KubeCheckQuiet checks if the object exists fills the given object if found.
 // returns true if the object was found. It does not print any status
-func KubeCheckQuiet(obj runtime.Object) bool {
+func KubeCheckQuiet(obj client.Object) bool {
 	_, _, err := KubeGet(obj)
 	if err == nil {
 		return true
@@ -466,9 +466,9 @@ func KubeCheckQuiet(obj runtime.Object) bool {
 	return false
 }
 
-// KubeGet gets a runtime.Object, fills the given object and returns the name and kind
+// KubeGet gets a client.Object, fills the given object and returns the name and kind
 // returns error on failure
-func KubeGet(obj runtime.Object) (name string, kind string, err error) {
+func KubeGet(obj client.Object) (name string, kind string, err error) {
 	klient := KubeClient()
 	objKey := ObjectKey(obj)
 	name = objKey.Name
@@ -479,7 +479,7 @@ func KubeGet(obj runtime.Object) (name string, kind string, err error) {
 }
 
 // KubeList returns a list of objects.
-func KubeList(list runtime.Object, options ...client.ListOption) bool {
+func KubeList(list client.ObjectList, options ...client.ListOption) bool {
 	klient := KubeClient()
 	gvk := list.GetObjectKind().GroupVersionKind()
 	err := klient.List(ctx, list, options...)
@@ -755,9 +755,8 @@ func SecretResetStringDataFromData(obj runtime.Object) {
 }
 
 // ObjectKey returns the objects key (namespace + name)
-func ObjectKey(obj runtime.Object) client.ObjectKey {
-	objKey, err := client.ObjectKeyFromObject(obj)
-	Panic(err)
+func ObjectKey(obj client.Object) client.ObjectKey {
+	objKey := client.ObjectKeyFromObject(obj)
 	return objKey
 }
 

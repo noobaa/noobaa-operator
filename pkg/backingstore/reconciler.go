@@ -967,6 +967,9 @@ func (r *Reconciler) ReconcilePool() error {
 }
 
 func (r *Reconciler) reconcilePvPool() error {
+	if r.Secret.StringData == nil {
+		return fmt.Errorf("reconcilePvPool: r.Secret.StringData is not initialized yet")
+	}
 	if r.Secret.StringData["AGENT_CONFIG"] == "" {
 		res, err := r.NBClient.GetHostsPoolAgentConfigAPI(nb.GetHostsPoolAgentConfigParams{
 			Name: r.BackingStore.Name,
