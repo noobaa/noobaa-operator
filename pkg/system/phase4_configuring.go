@@ -470,6 +470,12 @@ func (r *Reconciler) validateNsStoreNSFS(nsStore *nbv1.NamespaceStore) bool {
 		return false
 	}
 
+	//Check the mountPath
+	mountPath := "/nsfs/" + nsStore.Name
+	if len(mountPath) > 63 {		
+		return false
+	}
+
 	//SubPath validation
 	if nsfs.SubPath != "" {
 		path := nsfs.SubPath
