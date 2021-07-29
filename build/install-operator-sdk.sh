@@ -21,12 +21,13 @@ then
 fi
 
 PLATFORM="$(uname)"
+ARCHITECTURE="$(uname -m)"
 if [ "${PLATFORM}" == "Darwin" ] 
 then 
-    SDK_RELEASE="https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-apple-darwin"
+    SDK_RELEASE="https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-${ARCHITECTURE}-apple-darwin"
 else 
     # Assuming that if not darwin then running on linux
-    SDK_RELEASE="https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu"
+    SDK_RELEASE="https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-${ARCHITECTURE}-linux-gnu"
 fi
 
 echo "installing version ${OPERATOR_SDK_VERSION}"
