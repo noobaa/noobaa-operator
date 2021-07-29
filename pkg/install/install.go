@@ -107,6 +107,24 @@ func RunInstall(cmd *cobra.Command, args []string) {
 // RunUninstall runs a CLI command
 func RunUninstall(cmd *cobra.Command, args []string) {
 	log := util.Logger()
+	cleanup, _ := cmd.Flags().GetBool("cleanup")
+
+	if cleanup {
+		var decision string
+		
+		for {
+			log.Printf("--cleanup removes the CRDs and affecting all noobaa instances, are you sure? y/n ")
+			fmt.Scanln(&decision)
+
+			if (decision == "y") {
+				log.Printf("Will remove CRD (cluster scope)")
+				break
+			} else if (decision == "n") {
+				return
+			}
+		}
+	}
+
 	system.RunSystemVersionsStatus(cmd, args)
 	log.Printf("Namespace: %s", options.Namespace)
 	log.Printf("")
@@ -116,7 +134,6 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	log.Printf("Operator Delete:")
 	operator.RunUninstall(cmd, args)
 	log.Printf("")
-	cleanup, _ := cmd.Flags().GetBool("cleanup")
 	if cleanup {
 		log.Printf("CRD Delete:")
 		crd.RunDelete(cmd, args)
