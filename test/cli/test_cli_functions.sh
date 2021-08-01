@@ -636,3 +636,18 @@ function delete_replication_files {
     rm "replication1.json"
     rm "replication2.json"
 }
+
+function check_backingstore {
+    test_noobaa bucket create "testbucket"
+
+    local tier=`noobaa api bucket_api read_bucket '{ "name": "testbucket" }' | grep -w "tier" | awk '{ print $2 }'`
+    local bs=`noobaa api tier_api read_tier '{ "name": "'$tier'" }' | grep -m 1 "noobaa-default-backing-store"` 
+
+    if [ ! -z "$bs" ]
+    then
+        echo_time "❌  backingstore for the bucket is not the default backingstore"
+        exit 1
+    fi
+
+    test_noobaa bucket delete "testbucket"
+}

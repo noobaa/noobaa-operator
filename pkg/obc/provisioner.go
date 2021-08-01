@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
@@ -374,7 +375,8 @@ func (r *BucketRequest) CreateBucket(
 		if r.OBC.Spec.AdditionalConfig["path"] != "" {
 			return fmt.Errorf("Could not create OBC %q with inner path while missing namespace bucketclass", r.OBC.Name)
 		}
-		tierName, err := r.CreateTieringStructure(*r.BucketClass)
+
+		tierName, err := bucketclass.CreateTieringStructure(*r.BucketClass, r.BucketName, r.SysClient.NBClient)
 		if err != nil {
 			return fmt.Errorf("CreateTieringStructure for PlacementPolicy failed to create policy %q with error: %v", tierName, err)
 		}
@@ -439,72 +441,6 @@ func (r *BucketRequest) CreateBucket(
 
 	log.Infof("✅ Successfully created bucket %q", r.BucketName)
 	return nil
-}
-
-// GetDefaultBucketClass will get the default bucket class
-func GetDefaultBucketClass(
-	p *Provisioner,
-	bucketOptions *obAPI.BucketOptions,
-) (*nbv1.BucketClass, error) {
-	bucketClassName := bucketOptions.Parameters["bucketclass"]
-
-	if bucketClassName == "" {
-		return nil, fmt.Errorf("GetDefaultBucketClass failed to find bucket class")
-	}
-
-	bucketClass := &nbv1.BucketClass{
-		TypeMeta: metav1.TypeMeta{Kind: "BucketClass"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      bucketClassName,
-			Namespace: p.Namespace,
-		},
-	}
-
-	if !util.KubeCheck(bucketClass) {
-		msg := fmt.Sprintf("GetDefaultBucketClass BucketClass %q not found in provisioner namespace %q", bucketClassName, p.Namespace)
-		return nil, fmt.Errorf(msg)
-	}
-
-	if bucketClass.Status.Phase != nbv1.BucketClassPhaseReady {
-		msg := fmt.Sprintf("GetDefaultBucketClass BucketClass %q is not ready", bucketClassName)
-		return nil, fmt.Errorf(msg)
-	}
-
-	return bucketClass, nil
-}
-
-// CreateTieringStructure will create the tiering structure needed for the OBC
-func (r *BucketRequest) CreateTieringStructure(BucketClass nbv1.BucketClass) (string, error) {
-	tierName := fmt.Sprintf("%s.%x", r.BucketName, time.Now().Unix())
-	tiers := []nb.TierItem{}
-
-	for i := range BucketClass.Spec.PlacementPolicy.Tiers {
-		tier := BucketClass.Spec.PlacementPolicy.Tiers[i]
-		name := fmt.Sprintf("%s.%d", tierName, i)
-		tiers = append(tiers, nb.TierItem{Order: int64(i), Tier: name})
-		// we assume either mirror or spread but no mix and the bucket class controller rejects mixed classes.
-		placement := "SPREAD"
-		if tier.Placement == nbv1.TierPlacementMirror {
-			placement = "MIRROR"
-		}
-		err := r.SysClient.NBClient.CreateTierAPI(nb.CreateTierParams{
-			Name:          name,
-			AttachedPools: tier.BackingStores,
-			DataPlacement: placement,
-		})
-		if err != nil {
-			return tierName, fmt.Errorf("Failed to create tier %q with error: %v", name, err)
-		}
-	}
-
-	err := r.SysClient.NBClient.CreateTieringPolicyAPI(nb.TieringPolicyInfo{
-		Name:  tierName,
-		Tiers: tiers,
-	})
-	if err != nil {
-		return tierName, fmt.Errorf("Failed to create tier %q with error: %v", tierName, err)
-	}
-	return tierName, nil
 }
 
 // CreateAccount creates the obc account

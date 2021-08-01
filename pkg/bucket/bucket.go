@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
@@ -67,7 +69,7 @@ func CmdList() *cobra.Command {
 	return cmd
 }
 
-// RunCreate runs a CLI command
+// RunCreate runs a CLI command. The default backingstore will be used as the underlying storage for buckets created using the CLI
 func RunCreate(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 	if len(args) != 1 || args[0] == "" {
@@ -75,7 +77,18 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 	bucketName := args[0]
 	nbClient := system.GetNBClient()
-	err := nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName})
+
+	bucketClass, err := bucketclass.GetDefaultBucketClass(options.Namespace)
+	if err != nil {
+		log.Fatal(fmt.Errorf("Failed to get defualt bucketcalss with error: %v", err))
+	}
+
+	tierName, err := bucketclass.CreateTieringStructure(*bucketClass, bucketName, nbClient);
+	if err != nil {
+		log.Fatal(fmt.Errorf("CreateTieringStructure for PlacementPolicy failed to create policy %q with error: %v", tierName, err))
+	}
+
+	err = nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName, Tiering : tierName})
 	if err != nil {
 		log.Fatal(err)
 	}

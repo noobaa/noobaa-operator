@@ -62,6 +62,7 @@ function post_install_tests {
     replication_cycle
     check_deletes
     delete_replication_files
+    check_backingstore
 }
 
 function main {
