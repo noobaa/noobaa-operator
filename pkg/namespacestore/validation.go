@@ -68,6 +68,13 @@ func validateNsStoreNSFS(nsStore *nbv1.NamespaceStore) error {
 		}
 	}
 
+	//Check the mountPath
+	mountPath := "/nsfs/" + nsStore.Name
+	if len(mountPath) > 63 {
+		return util.NewPersistentError("InvalidMountPath",
+		fmt.Sprintf(" MountPath %v must be no more than 63 characters", mountPath))
+	}
+
 	return nil
 }
 
