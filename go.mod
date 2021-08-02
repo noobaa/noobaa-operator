@@ -19,11 +19,14 @@ require (
 	github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20210311161930-4bea5edaff58
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
+	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/gomega v1.10.2
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20210716145643-0ee1808fb8ed
 	github.com/openshift/custom-resource-status v0.0.0-20190801200128-4c95b3a336cd
 	github.com/operator-framework/api v0.3.22
 	github.com/operator-framework/operator-lib v0.2.0
+	github.com/pkg/errors v0.9.1
 	github.com/rook/rook v1.6.5
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.1.1
