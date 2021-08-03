@@ -21,6 +21,7 @@ GOHOSTOS ?= $(shell go env GOHOSTOS)
 OUTPUT ?= build/_output
 BIN ?= $(OUTPUT)/bin
 OLM ?= $(OUTPUT)/olm
+MANIFESTS ?= $(OUTPUT)/manifests
 VENV ?= $(OUTPUT)/venv
 
 # OPERATOR_SDK_VERSION is for build perpuse only, the dependencies themself are 
@@ -128,6 +129,12 @@ gen-olm: $(OPERATOR_SDK) gen
 	@echo "✅ gen-olm"
 .PHONY: gen-olm
 
+
+gen-odf-package: cli
+	rm -rf $(MANIFESTS)
+	MANIFESTS=$(MANIFESTS) CSV_NAME=$(csv-name) CORE_IMAGE=$(core-image) DB_IMAGE=$(db-image) OPERATOR_IMAGE=$(operator-image) build/gen-odf-package.sh
+	@echo "✅ gen-odf-package"
+.PHONY: gen-odf-package
 
 #-----------#
 #- Testing -#

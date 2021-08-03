@@ -19,6 +19,7 @@ import (
 	"github.com/blang/semver"
 	operv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -56,6 +57,8 @@ func CmdCatalog() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().String("dir", "./build/_output/olm", "The output dir for the OLM package")
+	cmd.Flags().Bool("odf", false, "Build package according to ODF requirements")
+	cmd.Flags().String("csv-name", "", "File name for the CSV YAML")
 	return cmd
 }
 
@@ -133,12 +136,22 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 	if dir == "" {
 		log.Fatalf(`Missing required flag: --dir: %s`, cmd.UsageString())
 	}
+
 	if !strings.HasSuffix(dir, "/") {
 		dir += "/"
 	}
-	versionDir := dir + version.Version + "/"
 
 	opConf := operator.LoadOperatorConf(cmd)
+
+	var versionDir string
+
+	forODF, _ := cmd.Flags().GetBool("odf")
+	if forODF {
+		opConf.HideOperator = true
+		versionDir = dir
+	} else {
+		versionDir = dir + version.Version + "/"
+	}
 
 	pkgBytes, err := sigyaml.Marshal(unObj{
 		"packageName":    "noobaa-operator",
@@ -150,9 +163,18 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 	})
 	util.Panic(err)
 
+	csvFileName, _ := cmd.Flags().GetString("csv-name")
+	if csvFileName == "" {
+		csvFileName = versionDir + "noobaa-operator.v" + version.Version + ".clusterserviceversion.yaml"
+	} else {
+		csvFileName = versionDir + csvFileName
+	}
+
 	util.Panic(os.MkdirAll(versionDir, 0755))
-	util.Panic(ioutil.WriteFile(dir+"noobaa-operator.package.yaml", pkgBytes, 0644))
-	util.Panic(util.WriteYamlFile(versionDir+"noobaa-operator.v"+version.Version+".clusterserviceversion.yaml", GenerateCSV(opConf)))
+	if !forODF {
+		util.Panic(ioutil.WriteFile(dir+"noobaa-operator.package.yaml", pkgBytes, 0644))
+	}
+	util.Panic(util.WriteYamlFile(csvFileName, GenerateCSV(opConf)))
 	crd.ForEachCRD(func(c *crd.CRD) {
 		if c.Spec.Group == nbv1.SchemeGroupVersion.Group {
 			util.Panic(util.WriteYamlFile(versionDir+c.Name+".crd.yaml", c))
@@ -183,6 +205,10 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 	csv.Name = "noobaa-operator.v" + version.Version
 	csv.Namespace = options.Namespace
 	csv.Annotations["containerImage"] = options.OperatorImage
+	// this annotation hides the operator in OCP console
+	if opConf.HideOperator {
+		csv.Annotations["operators.operatorframework.io/internal-objects"] = ""
+	}
 	// csv.Annotations["createdAt"] = ???
 	csv.Annotations["alm-examples"] = string(almExamples)
 	csv.Spec.Version.Version = semver.MustParse(version.Version)
@@ -210,6 +236,16 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 		operv1.StrategyDeploymentSpec{
 			Name: opConf.Deployment.Name,
 			Spec: opConf.Deployment.Spec,
+		})
+	operatorContainer := &csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec.Containers[0]
+	operatorContainer.Env = append(operatorContainer.Env,
+		corev1.EnvVar{
+			Name:  "NOOBAA_CORE_IMAGE",
+			Value: options.NooBaaImage,
+		},
+		corev1.EnvVar{
+			Name:  "NOOBAA_DB_IMAGE",
+			Value: options.DBImage,
 		})
 	csv.Spec.CustomResourceDefinitions.Owned = []operv1.CRDDescription{}
 	csv.Spec.CustomResourceDefinitions.Required = []operv1.CRDDescription{}
