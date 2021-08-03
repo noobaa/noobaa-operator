@@ -3993,7 +3993,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "eb0941a5e095fa7ac391e05782e6847e419e4d0dc17f6d8151df0032c977c743"
+const Sha256_deploy_role_yaml = "9096949fa4107c5c1b33f78ee97f7595f24c87f4321bc56d2e04658ab0623eb6"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -4045,6 +4045,7 @@ rules:
   - update
   - list
   - watch
+  - delete
 - apiGroups:
   - ""
   resources:
