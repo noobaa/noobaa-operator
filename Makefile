@@ -12,6 +12,7 @@ TIME ?= time -p
 
 VERSION ?= $(shell go run cmd/version/main.go)
 IMAGE ?= noobaa/noobaa-operator:$(VERSION)
+DEV_IMAGE ?= noobaa/noobaa-operator-dev:$(VERSION)
 REPO ?= github.com/noobaa/noobaa-operator
 CATALOG_IMAGE ?= noobaa/noobaa-operator-catalog:$(VERSION)
 
@@ -52,6 +53,12 @@ image: $(OPERATOR_SDK) gen
 	$(OPERATOR_SDK) build $(IMAGE)
 	@echo "✅ image"
 .PHONY: image
+
+dev-image: $(OPERATOR_SDK) gen
+	$(OPERATOR_SDK) build --go-build-args "-gcflags all=-N -gcflags all=-l" $(IMAGE)
+	docker build -f build/DockerfileDev --build-arg base_image=$(IMAGE) -t $(DEV_IMAGE) .
+	@echo "✅ dev image"
+.PHONY: dev-image
 
 vendor:
 	go mod tidy
