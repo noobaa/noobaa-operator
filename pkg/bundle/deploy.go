@@ -1006,7 +1006,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a77ff65531f26c4361ca51ba1f38c0076da1ab24403007641a131ce63f2065cd"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a7a87b507e0d7ca2ee52f440e86b1d7383123d14c5e9265ca5b837345175aca8"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1766,9 +1766,6 @@ spec:
                       to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                     type: object
                 type: object
-              debugLevel:
-                description: DebugLevel (optional) sets the debug level
-                type: integer
               endpoints:
                 description: Endpoints (optional) sets configuration info for the
                   noobaa endpoint deployment.
@@ -2350,7 +2347,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "6769a038678b5d5d41a3a731e1cfd63acf113c45aef2855f790cbe6e2fc91b9a"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "d0b3248e8751fd5dc0827d9ec526b6a9a31bb7014940c5a86b0519b523f48af3"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -2358,6 +2355,8 @@ metadata:
   labels:
     app: noobaa
   name: noobaa-endpoint
+  annotations:
+    ConfigMapHash: ""
 spec:
   replicas: 1
   selector:
@@ -2404,6 +2403,16 @@ spec:
             - containerPort: 6001
             - containerPort: 6443
           env:
+            - name: NOOBAA_DISABLE_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_DISABLE_COMPRESSION
+            - name: NOOBAA_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_LOG_LEVEL
             - name: MGMT_ADDR
             - name: BG_ADDR
             - name: MD_ADDR
@@ -2422,10 +2431,6 @@ spec:
             - name: LOCAL_N2N_AGENT
             - name: JWT_SECRET
             - name: NOOBAA_ROOT_SECRET
-            - name: NOOBAA_LOG_LEVEL
-              value: "0"
-            - name: NOOBAA_DISABLE_COMPRESSION
-              value: "false"
             - name: NOOBAA_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -2920,7 +2925,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "758e83226e32791df7c5199203122def00d5df31d46eab3f0daddbf62ab1a068"
+const Sha256_deploy_internal_statefulset_core_yaml = "4fcda72e3d5e4ce1e46cd1c5c324a2dbc748df155733dea8ec06ef6d6183424c"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -2928,6 +2933,8 @@ metadata:
   name: noobaa-core
   labels:
     app: noobaa
+  annotations:
+    ConfigMapHash: ""
 spec:
   replicas: 1
   selector:
@@ -2985,6 +2992,21 @@ spec:
             - containerPort: 8446
             - containerPort: 60100
           env:
+            - name: NOOBAA_DISABLE_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_DISABLE_COMPRESSION
+            - name: DISABLE_DEV_RANDOM_SEED
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: DISABLE_DEV_RANDOM_SEED
+            - name: NOOBAA_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_LOG_LEVEL
             - name: MONGODB_URL
               value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
             - name: POSTGRES_HOST
@@ -2997,10 +3019,6 @@ spec:
               value: mongodb
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
-            - name: NOOBAA_LOG_LEVEL
-              value: "0"
-            - name: NOOBAA_DISABLE_COMPRESSION
-              value: "false"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -3014,8 +3032,6 @@ spec:
             - name: NOOBAA_ROOT_SECRET
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
-            - name: DISABLE_DEV_RANDOM_SEED
-              value: "true"
             - name: OAUTH_AUTHORIZATION_ENDPOINT
               value: ""
             - name: OAUTH_TOKEN_ENDPOINT
@@ -3024,8 +3040,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.serviceAccountName
-            - name: container_dbg
-              value: "" # any non-empty value will set the container to dbg mode
             - name: CONTAINER_CPU_REQUEST
               valueFrom:
                 resourceFieldRef:

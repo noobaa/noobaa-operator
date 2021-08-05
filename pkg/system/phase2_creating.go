@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -72,6 +71,10 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	// Skip if joining another NooBaa
 	if r.JoinSecret != nil {
 		return nil
+	}
+
+	if err := r.ReconcileObject(r.CoreAppConfig, r.SetDesiredCoreAppConfig); err != nil {
+		return err
 	}
 
 	// A failure to discover OAuth endpoints should not fail the entire reconcile phase.
@@ -346,8 +349,6 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				c.Env[j].Value = "mongodb://" + r.NooBaaMongoDB.Name + "-0." + r.NooBaaMongoDB.Spec.ServiceName + "/nbcore"
 			}
 
-		case "NOOBAA_LOG_LEVEL":
-			c.Env[j].Value = strconv.Itoa(r.NooBaa.Spec.DebugLevel)
 
 		case "POSTGRES_HOST":
 			c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
@@ -465,6 +466,8 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 		}
 
 	}
+
+	r.SetConfigMapAnnotation(r.CoreApp.ObjectMeta.Annotations)
 
 	phase := r.NooBaa.Status.UpgradePhase
 	replicas := int32(1)
@@ -1102,4 +1105,34 @@ func (r *Reconciler) SetEndpointsDeploymentReplicas(replicas int32) error {
 		r.DeploymentEndpoint.Spec.Replicas = &replicas
 		return nil
 	})
+}
+
+// SetDesiredCoreAppConfig initiate the config map with predifined environment variables and their valuse
+func (r *Reconciler) SetDesiredCoreAppConfig() error {
+	// Reowning the ConfigMap, incase the CreateOrUpdate removed the OwnerRefernce
+	r.Own(r.CoreAppConfig)
+
+	// When adding a new env var, make sure to add it to the sts/deployment as well
+	// see "NOOBAA_DISABLE_COMPRESSION" as an example
+	DefaultConfigMapData := map[string]string {
+		"NOOBAA_DISABLE_COMPRESSION": "false",
+		"DISABLE_DEV_RANDOM_SEED": "true",
+		"NOOBAA_LOG_LEVEL": "0",
+	}
+	for key, value := range DefaultConfigMapData {
+		if _, ok := r.CoreAppConfig.Data[key]; !ok {
+			r.CoreAppConfig.Data[key] = value
+		}
+	}
+
+	return nil
+}
+
+// SetConfigMapAnnotation sets the ConfigMapHash annotation with the init data hash string
+func (r *Reconciler) SetConfigMapAnnotation(annotation map[string]string) {
+	if annotation["ConfigMapHash"] == "" {
+		input := &r.CoreAppConfig.Data
+		sha256Hex := util.GetCmDataHash(*input)
+		annotation["ConfigMapHash"] = sha256Hex
+	}
 }

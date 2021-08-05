@@ -2,9 +2,11 @@ package util
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
@@ -16,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -356,6 +359,27 @@ func KubeDelete(obj client.Object, opts ...client.DeleteOption) bool {
 	})
 	Panic(err)
 	return deleted
+}
+
+// KubeDeleteNoPolling deletes an object without waiting for acknowledgement the object got deleted
+func KubeDeleteNoPolling(obj client.Object, opts ...client.DeleteOption) bool {
+	klient := KubeClient()
+	objKey := ObjectKey(obj)
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	deleted := false
+
+	err := klient.Delete(ctx, obj, opts...)
+	if err == nil {
+		deleted = true
+		log.Printf("🗑️  Deleting: %s %q\n", gvk.Kind, objKey.Name)
+	} else if errors.IsConflict(err) {
+		log.Printf("🗑️  Conflict (OK): %s %q: %s\n", gvk.Kind, objKey.Name, err)
+	} else if errors.IsNotFound(err) {
+		return true
+	}
+
+	Panic(err)
+	return(deleted)
 }
 
 // KubeDeleteAllOf deletes an list of objects and reports the status.
@@ -1242,6 +1266,26 @@ func MergeVolumeMountList(existing, template *[]corev1.VolumeMount) {
 			*existing = append(*existing, item)
 		}
 	}
+}
+
+// GetCmDataHash calculates a Hash string repersnting an array of key value strings
+func GetCmDataHash(input map[string]string) string {
+	b := new(bytes.Buffer)
+
+	keys := make([]string, 0, len(input))
+	for k := range input {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	
+	for _, k := range keys {
+		// Convert each key/value pair in the map to a string
+		fmt.Fprintf(b, "%s=\"%s\"\n", k, input[k])
+	}
+
+	sha256Bytes := sha256.Sum256(b.Bytes())
+	sha256Hex := hex.EncodeToString(sha256Bytes[:])
+	return sha256Hex
 }
 
 // MergeEnvArrays takes two Env variables arrays and merge them into the first
