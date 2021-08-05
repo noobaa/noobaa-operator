@@ -207,7 +207,7 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 	csv.Annotations["containerImage"] = options.OperatorImage
 	// this annotation hides the operator in OCP console
 	if opConf.HideOperator {
-		csv.Annotations["operators.operatorframework.io/internal-objects"] = ""
+		csv.Annotations["operators.operatorframework.io/operator-type"] = "non-standalone"
 	}
 	// csv.Annotations["createdAt"] = ???
 	csv.Annotations["alm-examples"] = string(almExamples)
