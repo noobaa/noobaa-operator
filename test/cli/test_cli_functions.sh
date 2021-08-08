@@ -186,8 +186,8 @@ function check_core_config_map {
 }
 
 function check_change_debug_level_in_config_map {
-    local patch='{"data":{"NOOBAA_LOG_LEVEL":"2"}}'
-    local cm_debug_level="2"
+    local cm_debug_level="all"
+    local patch='{"data":{"NOOBAA_LOG_LEVEL":"all"}}'
     local timeout=0
     local core_debug_level=$(kuberun silence exec noobaa-core-0 -- printenv NOOBAA_LOG_LEVEL)
 

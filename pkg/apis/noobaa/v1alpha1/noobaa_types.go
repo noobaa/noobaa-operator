@@ -101,6 +101,11 @@ type NooBaaSpec struct {
 	// +optional
 	MongoDbURL string `json:"mongoDbURL,omitempty"`
 
+	// DebugLevel (optional) sets the debug level
+	// +optional
+	// +kubebuilder:validation:Enum=all;nsfs;warn;default_level
+	DebugLevel int `json:"debugLevel,omitempty"`
+	
 	// PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes.
 	// This affects where the system stores data chunks (encrypted).
 	// Updates to this field will only affect new pv-pools,
