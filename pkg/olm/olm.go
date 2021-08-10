@@ -147,7 +147,7 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 
 	forODF, _ := cmd.Flags().GetBool("odf")
 	if forODF {
-		opConf.HideOperator = true
+		opConf.IsForODF = true
 		versionDir = dir
 	} else {
 		versionDir = dir + version.Version + "/"
@@ -206,9 +206,6 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 	csv.Namespace = options.Namespace
 	csv.Annotations["containerImage"] = options.OperatorImage
 	// this annotation hides the operator in OCP console
-	if opConf.HideOperator {
-		csv.Annotations["operators.operatorframework.io/operator-type"] = "non-standalone"
-	}
 	// csv.Annotations["createdAt"] = ???
 	csv.Annotations["alm-examples"] = string(almExamples)
 	csv.Spec.Version.Version = semver.MustParse(version.Version)
@@ -237,16 +234,22 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			Name: opConf.Deployment.Name,
 			Spec: opConf.Deployment.Spec,
 		})
-	operatorContainer := &csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec.Containers[0]
-	operatorContainer.Env = append(operatorContainer.Env,
-		corev1.EnvVar{
-			Name:  "NOOBAA_CORE_IMAGE",
-			Value: options.NooBaaImage,
-		},
-		corev1.EnvVar{
-			Name:  "NOOBAA_DB_IMAGE",
-			Value: options.DBImage,
-		})
+
+	if opConf.IsForODF {
+		// add anotation to hide the operator in OCP console
+		csv.Annotations["operators.operatorframework.io/operator-type"] = "non-standalone"
+		operatorContainer := &csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env,
+			corev1.EnvVar{
+				Name:  "NOOBAA_CORE_IMAGE",
+				Value: options.NooBaaImage,
+			},
+			corev1.EnvVar{
+				Name:  "NOOBAA_DB_IMAGE",
+				Value: options.DBImage,
+			})
+	}
+
 	csv.Spec.CustomResourceDefinitions.Owned = []operv1.CRDDescription{}
 	csv.Spec.CustomResourceDefinitions.Required = []operv1.CRDDescription{}
 	crdDescriptions := map[string]string{

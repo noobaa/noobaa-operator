@@ -210,7 +210,7 @@ type Conf struct {
 	SecurityContextConstraints *secv1.SecurityContextConstraints
 	SCCEndpoint                *secv1.SecurityContextConstraints
 	Deployment                 *appsv1.Deployment
-	HideOperator               bool
+	IsForODF                   bool
 }
 
 // LoadOperatorConf loads and initializes all the objects needed to install the operator
@@ -229,7 +229,7 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.SecurityContextConstraints = util.KubeObject(bundle.File_deploy_scc_yaml).(*secv1.SecurityContextConstraints)
 	c.SCCEndpoint = util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints)
 	c.Deployment = util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
-	c.HideOperator = false
+	c.IsForODF = false
 
 	c.NS.Name = options.Namespace
 	c.SA.Namespace = options.Namespace
