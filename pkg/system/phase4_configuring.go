@@ -271,6 +271,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 	rootUIDGid := int64(0)
 	podSpec.SecurityContext.RunAsUser = &rootUIDGid
 	podSpec.SecurityContext.RunAsGroup = &rootUIDGid
+	podSpec.ServiceAccountName = "noobaa-endpoint"
 
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
