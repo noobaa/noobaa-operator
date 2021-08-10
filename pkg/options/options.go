@@ -92,7 +92,7 @@ var DBStorageClass = ""
 var MongoDbURL = ""
 
 //DebugLevel can be used to override the default debug level
-var DebugLevel = 0
+var DebugLevel = "default_level"
 
 // PVPoolDefaultStorageClass is used for PVC's allocation for the noobaa server data
 // it can be overridden for testing or different PV providers.
@@ -160,9 +160,9 @@ func init() {
 		&MongoDbURL, "mongodb-url",
 		MongoDbURL, "url for mongodb",
 	)
-	FlagSet.IntVar(
+	FlagSet.StringVar(
 		&DebugLevel, "debug-level",
-		DebugLevel, "Sets debug level prints of the system, affects the install spec",
+		DebugLevel, "The type of debug sets that the system prints (all, nsfs, warn, default_level)",
 	)
 	FlagSet.StringVar(
 		&PVPoolDefaultStorageClass, "pv-pool-default-storage-class",

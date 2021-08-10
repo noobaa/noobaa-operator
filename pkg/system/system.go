@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -955,13 +954,13 @@ func CheckMongoURL(sys *nbv1.NooBaa) error {
 
 // LoadConfigMapFromFlags loads a config-map with values from the cli flags, if provided.
 func LoadConfigMapFromFlags() {
-	if(options.DebugLevel != 0) {
+	if(options.DebugLevel != "default_level") {
 		cm := util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap)
 		cm.Namespace = options.Namespace
 		cm.Name = "noobaa-config"
 
 		DefaultConfigMapData := map[string]string {
-			"NOOBAA_LOG_LEVEL": strconv.Itoa(options.DebugLevel),
+			"NOOBAA_LOG_LEVEL": options.DebugLevel,
 		}
 
 		cm.Data = DefaultConfigMapData

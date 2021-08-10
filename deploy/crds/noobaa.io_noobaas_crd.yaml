@@ -756,6 +756,14 @@ spec:
                       to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                     type: object
                 type: object
+              debugLevel:
+                description: DebugLevel (optional) sets the debug level
+                enum:
+                - all
+                - nsfs
+                - warn
+                - default_level
+                type: integer
               endpoints:
                 description: Endpoints (optional) sets configuration info for the
                   noobaa endpoint deployment.
