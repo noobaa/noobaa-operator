@@ -10,6 +10,7 @@ import (
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	secv1 "github.com/openshift/api/security/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -85,6 +86,8 @@ func RunCollect(cmd *cobra.Command, args []string) {
 
 	// collectSystemMetrics()
 
+	c.CollectSCC()
+
 	c.ExportDiagnostics(destDir)
 }
 
@@ -157,6 +160,46 @@ func (c *Collector) CollectPodLogs(corePodSelector labels.Selector) {
 			}
 
 		}
+	}
+}
+
+// collectSCCDescribe collect output of the "describe scc"
+func (c *Collector) collectSCCDescribe(scc *secv1.SecurityContextConstraints) {
+	cmd := exec.Command("kubectl", "describe", "scc", "-n", scc.Namespace, scc.Name)
+	// handle custom path for kubeconfig file,
+	// see --kubeconfig cli options
+	if len(c.kubeconfig) > 0 {
+		cmd.Env = append(cmd.Env, "KUBECONFIG=" + c.kubeconfig)
+	}
+
+	// open the out file for writing
+	fileName := c.folderName + "/" + scc.Name + "-scc-describe.txt"
+	outfile, err := os.Create(fileName)
+	if err != nil {
+		c.log.Printf(`❌ can not create file %v: %v`, fileName, err)
+		return
+	}
+	defer outfile.Close()
+	cmd.Stdout = outfile
+
+	// run kubectl describe
+	if err := cmd.Run(); err != nil {
+		c.log.Printf(`❌ can not describe scc %v namespace %v: %v`, scc.Name, scc.Namespace, err)
+	}
+}
+
+// CollectSCC collects the SCC 
+func (c *Collector) CollectSCC() {
+	for _, name := range []string{"noobaa", "noobaa-endpoint"} {
+		scc := &secv1.SecurityContextConstraints {
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: options.Namespace,
+			},
+		}
+		if util.KubeCheckOptional(scc) {
+			c.collectSCCDescribe(scc)
+		} 
 	}
 }
 
