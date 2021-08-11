@@ -3,7 +3,6 @@ package system
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -224,14 +223,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 		c := &podSpec.Containers[i]
 		if c.Name == "db" {
 
-			c.Image = options.DBImage
-			if os.Getenv("NOOBAA_DB_IMAGE") != "" {
-				c.Image = os.Getenv("NOOBAA_DB_IMAGE")
-			}
-			if r.NooBaa.Spec.DBImage != nil {
-				c.Image = *r.NooBaa.Spec.DBImage
-			}
-
+			c.Image = GetDesiredDBImage(r.NooBaa)
 			if r.NooBaa.Spec.DBResources != nil {
 				c.Resources = *r.NooBaa.Spec.DBResources
 			}
