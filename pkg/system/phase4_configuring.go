@@ -394,6 +394,10 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
 			util.ReflectEnvVariable(&c.Env, "NO_PROXY")
 
+			if (r.DeploymentEndpoint.ObjectMeta.Annotations == nil) {
+				r.DeploymentEndpoint.ObjectMeta.Annotations = make(map[string]string)
+			}
+
 			r.SetConfigMapAnnotation(r.DeploymentEndpoint.ObjectMeta.Annotations)
 
 			return r.setDesiredEndpointMounts(podSpec, c)
