@@ -467,6 +467,10 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 
 	}
 
+	if (r.CoreApp.ObjectMeta.Annotations == nil) {
+		r.CoreApp.ObjectMeta.Annotations = make(map[string]string)
+	}
+
 	r.SetConfigMapAnnotation(r.CoreApp.ObjectMeta.Annotations)
 
 	phase := r.NooBaa.Status.UpgradePhase
