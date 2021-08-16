@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -57,35 +56,14 @@ func RunCollect(cmd *cobra.Command, args []string) {
 		c.log.Fatalf(`❌ Could not create directory %s, reason: %s`, c.folderName, err)
 	}
 
-	c.CollectCR(&nbv1.BackingStoreList{
-		TypeMeta: metav1.TypeMeta{Kind: "BackingStoreList"},
-	})
+	// Define to select only noobaa pods within the namespace
+	podSelector, _ := labels.Parse("app=noobaa")
+	listOptions := client.ListOptions{Namespace: options.Namespace, LabelSelector: podSelector}
 
-	c.CollectCR(&nbv1.BucketClassList{
-		TypeMeta: metav1.TypeMeta{Kind: "BucketClassList"},
-	})
-
-	c.CollectCR(&nbv1.NooBaaList{
-		TypeMeta: metav1.TypeMeta{Kind: "NooBaaList"},
-	})
-
-	corePodSelector, _ := labels.Parse("noobaa-core=" + options.SystemName)
-	c.CollectPodLogs(corePodSelector)
-
-	operatorPodSelector, _ := labels.Parse("noobaa-operator=deployment")
-	c.CollectPodLogs(operatorPodSelector)
-
-	endpointPodSelector, _ := labels.Parse("noobaa-s3=" + options.SystemName)
-	c.CollectPodLogs(endpointPodSelector)
-
-	dbPodSelector, _ := labels.Parse("noobaa-db=" + options.SystemName)
-	if options.DBType == "postgres" {
-		dbPodSelector, _ = labels.Parse("noobaa-db=" + options.DBType)
-	}
-	c.CollectPodLogs(dbPodSelector)
-
-	// collectSystemMetrics()
-
+	c.CollectCRs()
+	c.CollectPodsLogs(listOptions)
+	c.CollectPVs(listOptions)
+	c.CollectPVCs(listOptions)
 	c.CollectSCC()
 
 	c.ExportDiagnostics(destDir)
@@ -109,9 +87,24 @@ func (c *Collector) CollectCR(list client.ObjectList) {
 	}
 }
 
-// collect output of the "describe pod"
-func (c *Collector) collectPodDescribe(pod *corev1.Pod) {
-	cmd := exec.Command("kubectl", "describe", "pod", "-n", pod.Namespace, pod.Name)
+// CollectCRs collects the content of multiple CR types
+func (c *Collector) CollectCRs() {
+	c.CollectCR(&nbv1.BackingStoreList{
+		TypeMeta: metav1.TypeMeta{Kind: "BackingStoreList"},
+	})
+
+	c.CollectCR(&nbv1.BucketClassList{
+		TypeMeta: metav1.TypeMeta{Kind: "BucketClassList"},
+	})
+
+	c.CollectCR(&nbv1.NooBaaList{
+		TypeMeta: metav1.TypeMeta{Kind: "NooBaaList"},
+	})
+}
+
+// CollectDescribe collects output of the "describe pod" of a single pod
+func (c *Collector) CollectDescribe(Kind string, Name string) {
+	cmd := exec.Command("kubectl", "describe", Kind, "-n", options.Namespace, Name)
 	// handle custom path for kubeconfig file,
 	// see --kubeconfig cli options
 	if len(c.kubeconfig) > 0 {
@@ -119,10 +112,10 @@ func (c *Collector) collectPodDescribe(pod *corev1.Pod) {
 	}
 
 	// open the out file for writing
-	fileName := c.folderName + "/" + pod.Name + "-describe.txt"
+	fileName := c.folderName + "/" + Name + "-" + Kind + "-describe.txt"
 	outfile, err := os.Create(fileName)
 	if err != nil {
-		c.log.Printf(`❌ can not create file %v: %v`, fileName, err)
+		c.log.Printf(`❌ cannot create file %v: %v`, fileName, err)
 		return
 	}
 	defer outfile.Close()
@@ -130,66 +123,74 @@ func (c *Collector) collectPodDescribe(pod *corev1.Pod) {
 
 	// run kubectl describe
 	if err := cmd.Run(); err != nil {
-		c.log.Printf(`❌ can not describe pod %v namespace %v: %v`, pod.Name, pod.Namespace, err)
+		c.log.Printf(`❌ cannot describe %v %v in namespace %v: %v`, Kind, Name, options.Namespace, err)
 	}
 }
 
-// CollectPodLogs info
-func (c *Collector) CollectPodLogs(corePodSelector labels.Selector) {
-	corePodList := &corev1.PodList{}
-	currentPod := strings.Split(corePodSelector.String(), "=")[0]
-	if !util.KubeList(corePodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: corePodSelector}) {
+// CollectPodsLogs collects logs of all existing noobaa pods
+func (c *Collector) CollectPodsLogs(listOptions client.ListOptions) {
+	// List all pods and select only noobaa pods within the relevant namespace
+	c.log.Println("Collecting pod logs")
+	podList := &corev1.PodList{}
+	if !util.KubeList(podList, &listOptions) {
+		c.log.Printf(`❌ failed to get noobaa pod list within namespace %s\n`, options.Namespace)
 		return
 	}
-	if len(corePodList.Items) == 0 {
-		c.log.Printf(`❌ No %s pods found\n`, currentPod)
-		return
-	}
 
-	for i := range corePodList.Items {
-		corePod := &corePodList.Items[i]
+	// Iterate the list of pods, collecting the logs of each
+	for i := range podList.Items {
+		pod := &podList.Items[i]
 
-		c.collectPodDescribe(corePod)
+		c.CollectDescribe("pod", pod.Name)
 
-		podLogs, _ := util.GetPodLogs(*corePod)
+		podLogs, _ := util.GetPodLogs(*pod)
 		for containerName, containerLog := range podLogs {
-			targetFile := fmt.Sprintf("%s/%s-%s.log", c.folderName, corePod.Name, containerName)
+			targetFile := fmt.Sprintf("%s/%s-%s.log", c.folderName, pod.Name, containerName)
 			err := util.SaveStreamToFile(containerLog, targetFile)
 			if err != nil {
 				c.log.Printf("got error on util.SaveStreamToFile for %v: %v", targetFile, err)
 			}
-
 		}
 	}
 }
 
-// collectSCCDescribe collect output of the "describe scc"
-func (c *Collector) collectSCCDescribe(scc *secv1.SecurityContextConstraints) {
-	cmd := exec.Command("kubectl", "describe", "scc", "-n", scc.Namespace, scc.Name)
-	// handle custom path for kubeconfig file,
-	// see --kubeconfig cli options
-	if len(c.kubeconfig) > 0 {
-		cmd.Env = append(cmd.Env, "KUBECONFIG=" + c.kubeconfig)
-	}
-
-	// open the out file for writing
-	fileName := c.folderName + "/" + scc.Name + "-scc-describe.txt"
-	outfile, err := os.Create(fileName)
-	if err != nil {
-		c.log.Printf(`❌ can not create file %v: %v`, fileName, err)
+// CollectPVs collects describe of PVs 
+func (c *Collector) CollectPVs(listOptions client.ListOptions) {
+	// List all PVs and select only noobaa PVs within the relevant namespace
+	c.log.Println("Collecting PV logs")
+	pvList := &corev1.PersistentVolumeList{}
+	if !util.KubeList(pvList, &listOptions) {
+		c.log.Printf(`❌ failed to get noobaa PV list within namespace %s\n`, options.Namespace)
 		return
 	}
-	defer outfile.Close()
-	cmd.Stdout = outfile
 
-	// run kubectl describe
-	if err := cmd.Run(); err != nil {
-		c.log.Printf(`❌ can not describe scc %v namespace %v: %v`, scc.Name, scc.Namespace, err)
+	// Iterate the list of PVs, collecting the describe of each
+	for i := range pvList.Items {
+		pv := &pvList.Items[i]
+		c.CollectDescribe("pv", pv.Name)
+	}
+}
+
+// CollectPVCs collects describe of PVCs 
+func (c *Collector) CollectPVCs(listOptions client.ListOptions) {
+	// List all PVCs and select only noobaa PVCs within the relevant namespace
+	c.log.Println("Collecting PVC logs")
+	pvcList := &corev1.PersistentVolumeClaimList{}
+	if !util.KubeList(pvcList, &listOptions) {
+		c.log.Printf(`❌ failed to get noobaa PVC list within namespace %s\n`, options.Namespace)
+		return
+	}
+
+	// Iterate the list of PVCs, collecting the describe of each
+	for i := range pvcList.Items {
+		pvc := &pvcList.Items[i]
+		c.CollectDescribe("pvc", pvc.Name)
 	}
 }
 
 // CollectSCC collects the SCC 
 func (c *Collector) CollectSCC() {
+	c.log.Println("Collecting SCC logs")
 	for _, name := range []string{"noobaa", "noobaa-endpoint"} {
 		scc := &secv1.SecurityContextConstraints {
 			ObjectMeta: metav1.ObjectMeta{
@@ -198,7 +199,7 @@ func (c *Collector) CollectSCC() {
 			},
 		}
 		if util.KubeCheckOptional(scc) {
-			c.collectSCCDescribe(scc)
+			c.CollectDescribe("scc", scc.Name)
 		} 
 	}
 }
@@ -251,5 +252,4 @@ func (c *Collector) ExportDiagnostics(destDir string) {
 	if err != nil {
 		c.log.Fatalf(`❌ Could not delete diagnostics collecting folder %s, reason: %s`, c.folderName, err)
 	}
-
 }
