@@ -9,6 +9,7 @@ export GO111MODULE=on
 export GOPROXY:=https://proxy.golang.org
 
 TIME ?= time -p
+ARCH ?= $(shell uname -m)
 
 VERSION ?= $(shell go run cmd/version/main.go)
 IMAGE ?= noobaa/noobaa-operator:$(VERSION)
