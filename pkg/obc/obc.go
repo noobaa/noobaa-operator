@@ -129,13 +129,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 	obc.Spec.StorageClassName = sc.Name
 	obc.Spec.AdditionalConfig = map[string]string{}
-	if replicationPolicy != "" {
-		replication, err := util.LoadBucketReplicationJSON(replicationPolicy)
-		if err != nil {
-			log.Fatalf(`❌ %q`, err)
-		}
-		obc.Spec.AdditionalConfig["replicationPolicy"] = replication
-	}
+
 	if bucketClassName != "" {
 		bucketClass := &nbv1.BucketClass{
 			TypeMeta: metav1.TypeMeta{Kind: "BucketClass"},
@@ -153,9 +147,18 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		}
 		obc.Spec.AdditionalConfig["bucketclass"] = bucketClassName
 		obc.Spec.AdditionalConfig["path"] = path
+		obc.Spec.AdditionalConfig["replicationPolicy"] = bucketClass.Spec.ReplicationPolicy
 
 	} else if path != "" {
 		log.Fatalf(`❌ Could not create OBC %q with inner path while missing namespace bucketclass`, obc.Name)
+	}
+
+	if replicationPolicy != "" {
+		replication, err := util.LoadBucketReplicationJSON(replicationPolicy)
+		if err != nil {
+			log.Fatalf(`❌ %q`, err)
+		}
+		obc.Spec.AdditionalConfig["replicationPolicy"] = replication
 	}
 
 	if !util.KubeCreateFailExisting(obc) {
