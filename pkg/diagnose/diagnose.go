@@ -7,6 +7,7 @@ import (
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/dbdump"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	secv1 "github.com/openshift/api/security/v1"
@@ -35,6 +36,7 @@ func Cmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().String("dir", "", "collect noobaa diagnose tar file into destination directory")
+	cmd.Flags().Bool("db-dump", false, "collect db dump in addition to diagnostics")
 	return cmd
 }
 
@@ -43,6 +45,7 @@ func RunCollect(cmd *cobra.Command, args []string) {
 
 	kubeconfig, _ := cmd.Flags().GetString("kubeconfig")
 	destDir, _ := cmd.Flags().GetString("dir")
+	collectDBDump, _ := cmd.Flags().GetBool("db-dump")
 	c := Collector{
 		folderName: fmt.Sprintf("%s_%d", "noobaa_diagnostics", time.Now().Unix()),
 		log:        util.Logger(),
@@ -67,6 +70,12 @@ func RunCollect(cmd *cobra.Command, args []string) {
 	c.CollectSCC()
 
 	c.ExportDiagnostics(destDir)
+
+	// Collects db dump in addition to diagnostics.
+	// A separate tarball is created for diagnostics and db dump
+	if(collectDBDump){
+		dbdump.CollectDBDump(kubeconfig, destDir)
+	}
 }
 
 // CollectCR info
