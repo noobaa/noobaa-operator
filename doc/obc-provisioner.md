@@ -78,6 +78,32 @@ spec:
     bucketclass: custom-bucket-class
 ```
 
+# OBC with specific Replication Policy
+
+Applications that require a bucket to have a specific replication policy can create an OBC and add to the claim 
+the `spec.additionalConfig.replication-policy` property.
+
+/path/to/json-file.json is the path to a JSON file which defines the replication policy
+
+Example:
+
+```bash
+noobaa obc create my-bucket-claim -n noobaa --app-namespace my-app --replication-policy /path/to/json-file.json
+```
+
+```yaml
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: my-bucket-claim
+  namespace: my-app
+spec:
+  generateBucketName: my-bucket
+  storageClassName: noobaa.noobaa.io
+  additionalConfig:
+    replication-policy: [{ "rule_id": "rule-2", "destination_bucket": "first.bucket", "filter": {"prefix": "bc"}}]
+```
+
 # Using the OBC
 
 Once the OBC is provisioned by the operator, a bucket will be created in NooBaa, and the operator will create a Secret and ConfigMap with the same name of the OBC on the same namespace of the OBC. For the example above, the Secret and ConfigMap will both be named `my-bucket-claim`.
