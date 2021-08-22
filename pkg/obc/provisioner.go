@@ -376,7 +376,7 @@ func (r *BucketRequest) CreateBucket(
 			return fmt.Errorf("Could not create OBC %q with inner path while missing namespace bucketclass", r.OBC.Name)
 		}
 
-		tierName, err := bucketclass.CreateTieringStructure(*r.BucketClass, r.BucketName, r.SysClient.NBClient)
+		tierName, err := bucketclass.CreateTieringStructure(*r.BucketClass.Spec.PlacementPolicy, r.BucketName, r.SysClient.NBClient)
 		if err != nil {
 			return fmt.Errorf("CreateTieringStructure for PlacementPolicy failed to create policy %q with error: %v", tierName, err)
 		}

@@ -83,7 +83,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatal(fmt.Errorf("Failed to get default bucketclass with error: %v", err))
 	}
 
-	tierName, err := bucketclass.CreateTieringStructure(*bucketClass, bucketName, nbClient);
+	tierName, err := bucketclass.CreateTieringStructure(*bucketClass.Spec.PlacementPolicy, bucketName, nbClient);
 	if err != nil {
 		log.Fatal(fmt.Errorf("CreateTieringStructure for PlacementPolicy failed to create policy %q with error: %v", tierName, err))
 	}

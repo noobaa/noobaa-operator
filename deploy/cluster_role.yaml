@@ -66,3 +66,28 @@ rules:
       - subjectaccessreviews
     verbs:
       - create
+  - apiGroups: 
+      - coordination.k8s.io
+    resources: 
+      - leases
+    verbs: 
+      - get
+      - watch
+      - list
+      - delete
+      - update
+      - create
+  - apiGroups: 
+      - objectstorage.k8s.io
+    resources: 
+      - buckets
+      - bucketaccesses
+      - buckets/status
+      - bucketaccesses/status
+    verbs: 
+      - get
+      - watch
+      - list
+      - delete
+      - update
+      - create

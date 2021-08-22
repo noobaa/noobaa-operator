@@ -658,12 +658,12 @@ func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []rec
 }
 
 // CreateTieringStructure creates a tering policy for a bucket
-func CreateTieringStructure(BucketClass nbv1.BucketClass, BucketName string, nbClient nb.Client) (string, error) {
+func CreateTieringStructure(PlacementPolicy nbv1.PlacementPolicy, BucketName string, nbClient nb.Client) (string, error) {
 	tierName := fmt.Sprintf("%s.%x", BucketName, time.Now().Unix())
 	tiers := []nb.TierItem{}
 
-	for i := range BucketClass.Spec.PlacementPolicy.Tiers {
-		tier := BucketClass.Spec.PlacementPolicy.Tiers[i]
+	for i := range PlacementPolicy.Tiers {
+		tier := PlacementPolicy.Tiers[i]
 		name := fmt.Sprintf("%s.%d", tierName, i)
 		tiers = append(tiers, nb.TierItem{Order: int64(i), Tier: name})
 		// we assume either mirror or spread but no mix and the bucket class controller rejects mixed classes.
@@ -687,7 +687,7 @@ func CreateTieringStructure(BucketClass nbv1.BucketClass, BucketName string, nbC
 		Tiers: tiers,
 	})
 	if err != nil {
-		return tierName, fmt.Errorf("Failed to create tier %q with error: %v", tierName, err)
+		return tierName, fmt.Errorf("Failed to create tiering policy %q with error: %v", tierName, err)
 	}
 	return tierName, nil
 }

@@ -228,6 +228,9 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.SecurityContextConstraints = util.KubeObject(bundle.File_deploy_scc_yaml).(*secv1.SecurityContextConstraints)
 	c.SCCEndpoint = util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints)
 	c.Deployment = util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
+	if (options.EnableCosi) {
+		c.Deployment = util.KubeObject(bundle.File_deploy_operator_cosi_yaml).(*appsv1.Deployment)
+	}
 
 	c.NS.Name = options.Namespace
 	c.SA.Namespace = options.Namespace
@@ -250,6 +253,9 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	if options.ImagePullSecret != "" {
 		c.Deployment.Spec.Template.Spec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{{Name: options.ImagePullSecret}}
+	}
+	if options.EnableCosi {
+		c.Deployment.Spec.Template.Spec.Containers[1].Image = options.CosiSideCarImage
 	}
 
 	c.SecurityContextConstraints.Users[0] = fmt.Sprintf("system:serviceaccount:%s:%s", options.Namespace, c.SA.Name)

@@ -1,0 +1,14 @@
+apiVersion: objectstorage.k8s.io/v1alpha1
+kind: BucketClass
+metadata:
+  name: my-bc
+provisioner: noobaa.objectstorage.k8s.io
+isDefaultBucketClass: true
+allowedNamespaces:
+- default
+protocol:
+  s3:
+    region: us-east-1
+    signatureVersion: S3V4
+parameters:
+  policy: "{\"placementPolicy\":{\"tiers\":[{\"backingStores\":[\"noobaa-default-backing-store\"]}]}}"

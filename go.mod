@@ -14,7 +14,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/coreos/go-semver v0.3.0
 	github.com/docker/distribution v2.7.1+incompatible
-	github.com/go-openapi/spec v0.19.8
+	github.com/go-openapi/spec v0.19.12
 	github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20210818162813-3eee31c01875
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
@@ -34,6 +34,7 @@ require (
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
 	google.golang.org/api v0.32.0
+	google.golang.org/grpc v1.35.0
 	k8s.io/api v0.21.3
 	k8s.io/apiextensions-apiserver v0.21.3
 	k8s.io/apimachinery v0.21.3
@@ -44,6 +45,8 @@ require (
 	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 	k8s.io/kubectl v0.21.3
 	nhooyr.io/websocket v1.7.4
+	sigs.k8s.io/container-object-storage-interface-provisioner-sidecar v0.0.0-20210528161624-b46634c30d14
+	sigs.k8s.io/container-object-storage-interface-spec v0.0.0-20210507203703-a97f2e98ac90
 	sigs.k8s.io/controller-runtime v0.9.5
 	sigs.k8s.io/yaml v1.2.0
 )
