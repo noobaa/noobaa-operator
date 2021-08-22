@@ -1,0 +1,7 @@
+apiVersion: objectstorage.k8s.io/v1alpha1
+kind: BucketRequest
+metadata:
+  name: my-br
+spec:
+  bucketPrefix: my-br
+  bucketClassName: my-bc

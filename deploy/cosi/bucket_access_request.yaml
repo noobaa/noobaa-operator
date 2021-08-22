@@ -1,0 +1,7 @@
+apiVersion: objectstorage.k8s.io/v1alpha1
+kind: BucketAccessRequest
+metadata:
+  name: my-bar
+spec:
+  bucketAccessClassName: my-bac
+  bucketRequestName: my-br
