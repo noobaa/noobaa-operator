@@ -1,7 +1,7 @@
 [NooBaa Operator](../README.md) /
 # BucketClass CRD
 
-NooBaaBucket CRD represents a class for buckets that defines policies for data placement, namespace, and more.
+NooBaaBucket CRD represents a class for buckets that defines policies for data placement, namespace, replication policy and more.
 
 Data placement capabilities are built as a multi-layer structure, here are the layers bottom-up:
 - Spread Layer - list of backing-stores, aggregates the storage of multiple stores.
@@ -23,6 +23,15 @@ Namespace policy of type multi will require the following configuration:
 Namespace policy of type cache will require the following configuration:
   - Hub Resource - a single namespace-store, defines the read and write target of the namespace bucket.
   - TTL - defines the TTL of the cached data.
+
+
+Replication policy:
+A bucket-class will define a replication policy when an admin would like to replicate objects 
+within noobaa bucket to another noobaa bucket (source/destination buckets can be regular/namespace buckets).
+
+Replication policy will require the content of a JSON file which defines array of rules.
+  - Each rule is an object contains rule_id, destination bucket and optional filter object that contains prefix field.
+  - When a filter with prefix is defined - only objects keys that match prefix, will be replicated.
 
 Constraints:
 A backing-store name may appear in more than one bucket-class but may not appear more than once in a single bucket-class.
@@ -263,4 +272,27 @@ spec:
     tiers:
     - backingStores:
       - noobaa-default-backing-store
+```
+
+
+Namespace bucketclass with replication to first.bucket:
+
+/path/to/json-file.json is the path to a JSON file which defines the replication policy
+```shell
+noobaa -n noobaa bucketclass create namespace-bucketclass single bc --resource azure-blob-ns --replication-policy=/path/to/json-file.json
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BucketClass
+metadata:
+  labels:
+    app: noobaa
+  name: bc
+  namespace: noobaa
+spec:
+  namespacePolicy:
+    type: Single
+    single: 
+      resource: azure-blob-ns
+  replicationPolicy: [{ "rule_id": "rule-1", "destination_bucket": "first.bucket", "filter": {"prefix": "ba"}}]
 ```
