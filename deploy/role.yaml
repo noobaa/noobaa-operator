@@ -48,6 +48,7 @@ rules:
   - update
   - list
   - watch
+  - delete
 - apiGroups:
   - ""
   resources:

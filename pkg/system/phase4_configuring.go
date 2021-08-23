@@ -14,6 +14,7 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/option"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/marstr/randname"
 	nbv1 "github.com/noobaa/noobaa-operator/v2/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v2/pkg/bundle"
@@ -76,6 +77,9 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 		return err
 	}
 	if err := r.ReconcilePrometheusRule(); err != nil {
+		return err
+	}
+	if err := r.DeleteOldServiceMonitor(); err != nil {
 		return err
 	}
 	if err := r.ReconcileServiceMonitors(); err != nil {
@@ -1101,6 +1105,25 @@ func (r *Reconciler) UpdateBucketClassesPhase(Buckets []nb.BucketInfo) {
 			}
 		}
 	}
+}
+
+// DeleteOldServiceMonitor updates the service monitor by removing old format
+// This function should only be valid after upgrade from 5.6 to 5.7
+func (r *Reconciler) DeleteOldServiceMonitor() error {
+
+	OldMonitor := &monitoringv1.ServiceMonitor {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "noobaa-service-monitor",
+			Namespace: options.Namespace,
+		},
+	}
+	if util.KubeCheck(OldMonitor) {
+		if !util.KubeDelete(OldMonitor) {
+			return fmt.Errorf("Could not delete noobaa-service-monitor")
+		}
+	}
+
+	return nil
 }
 
 // ReconcileDeploymentEndpointStatus creates/updates the endpoints deployment
