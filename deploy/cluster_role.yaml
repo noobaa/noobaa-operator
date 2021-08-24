@@ -74,3 +74,9 @@ rules:
       - get
       - update
       - list
+  - apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - '*'

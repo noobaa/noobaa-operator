@@ -27,8 +27,6 @@ seLinuxContext:
   type: RunAsAny
 supplementalGroups:
   type: RunAsAny
-users:
-- system:serviceaccount:openshift-storage:noobaa-endpoint
 volumes:
 - configMap
 - downwardAPI

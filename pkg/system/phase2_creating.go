@@ -13,11 +13,13 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util/kms"
+	secv1 "github.com/openshift/api/security/v1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -260,7 +262,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	}
 
 	podSpec := &NooBaaDB.Spec.Template.Spec
-	podSpec.ServiceAccountName = "noobaa-endpoint"
+	podSpec.ServiceAccountName = "noobaa-db"
 	defaultUID := int64(10001)
 	defaulfGID := int64(0)
 	podSpec.SecurityContext.RunAsUser = &defaultUID
@@ -799,9 +801,46 @@ func (r *Reconciler) ReconcileRootSecret() error {
 	return nil
 }
 
+func (r* Reconciler) reconcileRbac(scc, sa, role, binding string) error {
+	SCC := util.KubeObject(scc).(*secv1.SecurityContextConstraints)
+	util.KubeCreateOptional(SCC)
+
+	SA := util.KubeObject(sa).(*corev1.ServiceAccount)
+	SA.Namespace = options.Namespace
+	if err := r.ReconcileObject(SA, nil); err != nil {
+		return err
+	}
+	Role := util.KubeObject(role).(*rbacv1.Role)
+	Role.Namespace = options.Namespace
+	if err := r.ReconcileObject(Role, nil); err != nil {
+		return err
+	}
+	RoleBinding := util.KubeObject(binding).(*rbacv1.RoleBinding)
+	RoleBinding.Namespace = options.Namespace
+	if err := r.ReconcileObject(RoleBinding, nil); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// reconcileDBRBAC creates DB scc, role, rolebinding and service account
+func (r* Reconciler) reconcileDBRBAC() error {
+	return r.reconcileRbac(
+		bundle.File_deploy_scc_db_yaml,
+		bundle.File_deploy_service_account_db_yaml,
+		bundle.File_deploy_role_db_yaml,
+		bundle.File_deploy_role_binding_db_yaml)
+}
+
 // ReconcileDB choose between different types of DB
 func (r *Reconciler) ReconcileDB() error {
 	var err error
+
+	if err = r.reconcileDBRBAC(); err != nil {
+		return err
+	}
+
 	if r.NooBaa.Spec.DBType == "postgres" {
 		// those are config maps required by the NooBaaPostgresDB StatefulSet,
 		// if the configMap was not created at this step, NooBaaPostgresDB

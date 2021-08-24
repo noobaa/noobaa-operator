@@ -18,7 +18,7 @@ spec:
         app: noobaa
         noobaa-db: postgres
     spec:
-      serviceAccountName: noobaa-endpoint
+      serviceAccountName: noobaa-db
       initContainers:
       #-----------------#
       # INIT CONTAINERS #
