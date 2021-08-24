@@ -61,13 +61,21 @@ jobs:
           # git config --local user.name "GitHub Action"
           # git commit -m "Auto update core image" -a
 
-      - name: Build & Push Docker Image
+      - name: Build & Push Docker Image to DockerHub
         env:
           DOCKERHUB_OWNER: ${{ secrets.GHACTIONSDOCKERHUBNAME }}
         run: |
             make image VERSION=latest
             docker tag  noobaa/noobaa-operator ${{ steps.prep.outputs.operatortags }}
             docker push ${{ steps.prep.outputs.operatortags }}
+
+      - name: Login to Quay.io Registry
+        run: echo ${{ secrets.GHACTIONQUAYTOKEN }} | docker login quay.io -u ${{ secrets.GHACTIONQUAYNAME }} --password-stdin
+
+      - name: Push Docker Image to Quay
+        env:
+          DOCKERHUB_OWNER: ${{ secrets.GHACTIONQUAYNAME }}
+        run: docker push ${{ steps.prep.outputs.operatortags }} 
 
       - name: Push CLI Binary
         run: |         
