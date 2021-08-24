@@ -203,6 +203,22 @@ func (p *Provisioner) Revoke(ob *nbv1.ObjectBucket) error {
 	return nil
 }
 
+// Update implements lib-bucket-provisioner callback to stop using an existing bucket additional config of OBC
+func (p *Provisioner) Update(ob *nbv1.ObjectBucket) error {
+	log := p.Logger
+	log.Infof("Update: got request to Update access to bucket %q", ob.Name)
+
+	r, err := NewBucketRequest(p, ob, nil)
+	if err != nil {
+		return err
+	}
+
+	if err = r.updateReplicationPolicy(ob); err != nil {
+		return err
+	}
+	return nil
+}
+
 // BucketRequest is the context of handling a single bucket request
 type BucketRequest struct {
 	Provisioner *Provisioner
@@ -336,8 +352,13 @@ func (r *BucketRequest) CreateBucket(
 
 	log.Infof("Provisioner: replication policy %s", r.BucketClass.Spec.ReplicationPolicy)
 	var replicationParams *nb.BucketReplicationParams
-	if r.OBC.Spec.AdditionalConfig["replicationPolicy"] != "" || r.BucketClass.Spec.ReplicationPolicy != "" {
-		if replicationParams, err = r.prepareReplicationParams(); err != nil {
+	replicationPolicy := r.BucketClass.Spec.ReplicationPolicy
+	// if OBC has replication policy set it to replication policy instead of the bucketclass
+	if r.OBC.Spec.AdditionalConfig["replicationPolicy"] != "" {
+		replicationPolicy = r.OBC.Spec.AdditionalConfig["replicationPolicy"]
+	}
+	if replicationPolicy != "" {
+		if replicationParams, _, err = r.prepareReplicationParams(replicationPolicy, false); err != nil {
 			return err
 		}
 	}
@@ -631,28 +652,77 @@ func (r *BucketRequest) putBucketTagging() error {
 }
 
 // prepareReplicationParams validates and prepare the replication params
-func (r *BucketRequest) prepareReplicationParams() (*nb.BucketReplicationParams, error) {
-	replicationPolicy := r.BucketClass.Spec.ReplicationPolicy
-	// if OBC has replication policy set it to replication policy instead of the bucketclass
-	if r.OBC.Spec.AdditionalConfig["replicationPolicy"] != "" {
-		replicationPolicy = r.OBC.Spec.AdditionalConfig["replicationPolicy"]
+func (r *BucketRequest) prepareReplicationParams(replicationPolicy string, update bool) (*nb.BucketReplicationParams, *nb.DeleteBucketReplicationParams, error) {
+	log := r.Provisioner.Logger
+	deleteReplicationParams := &nb.DeleteBucketReplicationParams{
+		Name: r.BucketName,
 	}
+
+	if replicationPolicy == "" && update {
+		return nil, deleteReplicationParams, nil
+	}
+
 	var replicationRules []interface{}
 	err := json.Unmarshal([]byte(replicationPolicy), &replicationRules)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse replication json %q: %v", replicationRules, err)
+		return nil, nil, fmt.Errorf("Failed to parse replication json %q: %v", replicationRules, err)
 	}
+	log.Infof("prepareReplicationParams: newReplication %+v", replicationRules)
+
+	if len(replicationRules) == 0 {
+		if update {
+			return nil, deleteReplicationParams, nil
+		}
+		return nil, nil, fmt.Errorf("replication rules array of bucket %q is empty %q", r.BucketName, replicationRules)
+	}
+
 	replicationParams := &nb.BucketReplicationParams{
 		Name:              r.BucketName,
 		ReplicationPolicy: replicationRules,
 	}
+
+	log.Infof("prepareReplicationParams: validating replication: replicationParams: %+v", replicationParams)
 	err = r.SysClient.NBClient.ValidateReplicationAPI(*replicationParams)
 	if err != nil {
 		rpcErr, isRPCErr := err.(*nb.RPCError)
 		if isRPCErr && rpcErr.RPCCode == "INVALID_REPLICATION_POLICY" {
-			return nil, fmt.Errorf("Bucket replication configuration is invalid")
+			return nil, nil, fmt.Errorf("Bucket replication configuration is invalid")
 		}
-		return nil, fmt.Errorf("Provisioner Failed to validate replication of bucket %q with error: %v", r.BucketName, err)
+		return nil, nil, fmt.Errorf("Provisioner Failed to validate replication of bucket %q with error: %v", r.BucketName, err)
 	}
-	return replicationParams, nil
+	log.Infof("prepareReplicationParams: validated replication successfully")
+	return replicationParams, nil, nil
+}
+
+// updateReplicationPolicy validates and prepare the replication params
+func (r *BucketRequest) updateReplicationPolicy(ob *nbv1.ObjectBucket) error {
+	log := r.Provisioner.Logger
+	newReplication := ob.Spec.Endpoint.AdditionalConfigData["replicationPolicy"]
+	log.Infof("updateReplicationPolicy: new Replication %q detected on ob: %v", newReplication, ob.Name)
+
+	updateReplicationParams, deleteReplicationParams, err := r.prepareReplicationParams(newReplication, true)
+	if err != nil {
+		return err
+	}
+
+	// delete bucket replication
+	if deleteReplicationParams != nil {
+		log.Infof("updateReplicationPolicy: deleting replication of bucket %q", ob.Name)
+		err = r.SysClient.NBClient.DeleteBucketReplicationAPI(*deleteReplicationParams)
+		if err != nil {
+			return fmt.Errorf("Provisioner Failed to remove replication of bucket %q with error: %v", ob.Name, err)
+		}
+		return nil
+	}
+
+	// update replication policy
+	if updateReplicationParams != nil {
+		log.Infof("updateReplicationPolicy: updating replication on ob: %q replicationParams: %+v", ob.Name, updateReplicationParams)
+		err = r.SysClient.NBClient.PutBucketReplicationAPI(*updateReplicationParams)
+		if err != nil {
+			return fmt.Errorf("Provisioner Failed to update replication on bucket %q with error: %v", ob.Name, err)
+		}
+	}
+	log.Infof("updateReplicationPolicy: updated replication successfully")
+	return nil
 }

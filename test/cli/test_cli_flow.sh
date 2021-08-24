@@ -56,9 +56,12 @@ function post_install_tests {
     aws_credentials
     check_S3_compatible
     check_namespacestore
+    create_replication_files
     bucketclass_cycle
     obc_cycle
+    replication_cycle
     check_deletes
+    delete_replication_files
 }
 
 function main {

@@ -516,6 +516,11 @@ type BucketReplicationParams struct {
 	ReplicationPolicy []interface{} `json:"replication_policy"`
 }
 
+// DeleteBucketReplicationParams is the params of bucket_api.delete_bucket_replication()
+type DeleteBucketReplicationParams struct {
+	Name string `json:"name"`
+}
+
 // BucketClassInfo is the is the reply of tiering_policy_api.update_bucket_class()
 type BucketClassInfo struct {
 	ErrorMessage   string                  `json:"error_message"`

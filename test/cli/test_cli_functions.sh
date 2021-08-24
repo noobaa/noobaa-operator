@@ -393,10 +393,12 @@ function bucketclass_cycle {
     test_noobaa bucketclass create placement-bucketclass ${bucketclass_names[0]} --backingstores ${backingstore[0]}
     # test_noobaa bucketclass create placement-bucketclass ${bucketclass_names[1]} --placement Mirror --backingstores nb1,aws1 ❌
     # test_noobaa bucketclass create placement-bucketclass ${bucketclass_names[2]} --placement Spread --backingstores aws1,aws2 ❌
-    test_noobaa bucketclass create placement-bucketclass ${bucketclass_names[3]} --backingstores ${backingstore[0]},${backingstore[1]}
+    test_noobaa bucketclass create placement-bucketclass ${bucketclass_names[3]} --backingstores ${backingstore[0]},${backingstore[1]}   
     test_noobaa bucketclass create namespace-bucketclass single ${bucketclass_names[4]} --resource ${namespacestore[0]}
     test_noobaa bucketclass create namespace-bucketclass multi ${bucketclass_names[5]} --read-resources ${namespacestore[0]},${namespacestore[1]} --write-resource ${namespacestore[0]} 
     test_noobaa bucketclass create namespace-bucketclass cache ${bucketclass_names[6]} --hub-resource ${namespacestore[1]} --backingstores ${backingstore[1]}
+    test_noobaa bucketclass create placement-bucketclass "bucket.class.replication" --backingstores ${backingstore[0]} --replication-policy replication1.json
+    bucketclass_names+=("bucket.class.replication")
 
     local bucketclass_list_array=($(test_noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME))
     for bucketclass in ${bucketclass_list_array[@]}
@@ -441,6 +443,13 @@ function obc_cycle {
         if [ "${bucketclass//[a-zA-Z.-]/}" == "3" ]
         then
             flag="--app-namespace default"
+        fi
+        # for bucketclass7 - create 2 obcs, one using its one replication policy and second one that using the bucketclass replication and 
+        if [ "${bucketclass//[a-zA-Z.-]/}" == "7" ]
+        then
+            flag="--replication-policy replication_policy2.json"
+            test_noobaa --timeout --func check_obc obc create "${buckets[$((${#buckets[@]}-1))]}_obc_repl" --bucketclass ${bucketclass} ${flag}
+            unset flag
         fi
         test_noobaa --timeout --func check_obc obc create ${buckets[$((${#buckets[@]}-1))]} --bucketclass ${bucketclass} ${flag}
         unset flag
@@ -616,3 +625,14 @@ then
     echo_time "❌  The noobaa variable must be define in the shell"
     exit 1
 fi
+
+
+function create_replication_files {
+    echo "[{ \"rule_id\": \"rule-1\", \"destination_bucket\": \"first.bucket\", \"filter\": {\"prefix\": \"d\"}} ]" > replication1.json
+    echo "[{ \"rule_id\": \"rule-2\", \"destination_bucket\": \"first.bucket\", \"filter\": {\"prefix\": \"e\"}} ]" > replication2.json
+}
+
+function delete_replication_files {
+    rm "replication1.json"
+    rm "replication2.json"
+}
