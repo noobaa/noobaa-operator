@@ -394,7 +394,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
 			util.ReflectEnvVariable(&c.Env, "NO_PROXY")
 
-			if (r.DeploymentEndpoint.ObjectMeta.Annotations == nil) {
+			if r.DeploymentEndpoint.ObjectMeta.Annotations == nil {
 				r.DeploymentEndpoint.ObjectMeta.Annotations = make(map[string]string)
 			}
 
@@ -481,7 +481,7 @@ func (r *Reconciler) validateNsStoreNSFS(nsStore *nbv1.NamespaceStore) bool {
 
 	//Check the mountPath
 	mountPath := "/nsfs/" + nsStore.Name
-	if len(mountPath) > 63 {		
+	if len(mountPath) > 63 {
 		return false
 	}
 
@@ -982,6 +982,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 
 	region := "us-east-1"
 	forcePathStyle := true
+	disableSSL := true
 	s3Config := &aws.Config{
 		Credentials: credentials.NewStaticCredentials(
 			cephObjectStoreUserSecret.StringData["AccessKey"],
@@ -991,6 +992,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		Endpoint:         &endpoint,
 		Region:           &region,
 		S3ForcePathStyle: &forcePathStyle,
+		DisableSSL:       &disableSSL,
 	}
 	bucketName := r.generateBackingStoreTargetName()
 	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
@@ -1426,7 +1428,7 @@ func (r *Reconciler) ReconcileNamespaceStores(namespaceResources []nb.NamespaceR
 func (r *Reconciler) ReconcileSystemConfigMap() error {
 	sha256Hex := util.GetCmDataHash(r.CoreAppConfig.Data)
 
-	if (r.DeploymentEndpoint.ObjectMeta.Annotations["ConfigMapHash"] != sha256Hex) {
+	if r.DeploymentEndpoint.ObjectMeta.Annotations["ConfigMapHash"] != sha256Hex {
 		epPodList := &corev1.PodList{}
 		epPodSelector, _ := labels.Parse("noobaa-s3=" + r.Request.Name)
 		if !util.KubeList(epPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: epPodSelector}) {
@@ -1448,15 +1450,15 @@ func (r *Reconciler) ReconcileSystemConfigMap() error {
 		r.Logger.Errorf("failed to list to core pods")
 	}
 
-	if (r.CoreApp.ObjectMeta.Annotations["ConfigMapHash"] != sha256Hex){
+	if r.CoreApp.ObjectMeta.Annotations["ConfigMapHash"] != sha256Hex {
 		r.CoreApp.ObjectMeta.Annotations["ConfigMapHash"] = sha256Hex
-		
+
 		if !util.KubeUpdate(r.CoreApp) {
 			r.Logger.Infof("NooBaa %q failed to update Core STS Config Map Hash", options.SystemName)
-		}	
+		}
 
 		for _, pod := range corePodList.Items {
-			if (pod.DeletionTimestamp == nil){
+			if pod.DeletionTimestamp == nil {
 				util.KubeDeleteNoPolling(&pod)
 			}
 		}
