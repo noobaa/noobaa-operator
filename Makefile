@@ -16,6 +16,7 @@ IMAGE ?= noobaa/noobaa-operator:$(VERSION)
 DEV_IMAGE ?= noobaa/noobaa-operator-dev:$(VERSION)
 REPO ?= github.com/noobaa/noobaa-operator
 CATALOG_IMAGE ?= noobaa/noobaa-operator-catalog:$(VERSION)
+BUNDLE_IMAGE ?= noobaa/noobaa-operator-bundle:$(VERSION)
 
 GO_LINUX ?= GOOS=linux GOARCH=amd64
 GOHOSTOS ?= $(shell go env GOHOSTOS)
@@ -143,6 +144,9 @@ gen-odf-package: cli
 	MANIFESTS=$(MANIFESTS) CSV_NAME=$(csv-name) CORE_IMAGE=$(core-image) DB_IMAGE=$(db-image) OPERATOR_IMAGE=$(operator-image) build/gen-odf-package.sh
 	@echo "✅ gen-odf-package"
 .PHONY: gen-odf-package
+
+bundle-image: gen-odf-package
+	docker build -t $(BUNDLE_IMAGE) -f build/bundle/Dockerfile .
 
 #-----------#
 #- Testing -#
