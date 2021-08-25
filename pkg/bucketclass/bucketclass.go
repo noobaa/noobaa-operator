@@ -8,6 +8,7 @@ import (
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
@@ -654,4 +655,64 @@ func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []rec
 	log.Infof("will reconcile these bucketclasses: %v", reqs)
 
 	return reqs
+}
+
+// CreateTieringStructure creates a tering policy for a bucket
+func CreateTieringStructure(BucketClass nbv1.BucketClass, BucketName string, nbClient nb.Client) (string, error) {
+	tierName := fmt.Sprintf("%s.%x", BucketName, time.Now().Unix())
+	tiers := []nb.TierItem{}
+
+	for i := range BucketClass.Spec.PlacementPolicy.Tiers {
+		tier := BucketClass.Spec.PlacementPolicy.Tiers[i]
+		name := fmt.Sprintf("%s.%d", tierName, i)
+		tiers = append(tiers, nb.TierItem{Order: int64(i), Tier: name})
+		// we assume either mirror or spread but no mix and the bucket class controller rejects mixed classes.
+		placement := "SPREAD"
+		if tier.Placement == nbv1.TierPlacementMirror {
+			placement = "MIRROR"
+		}
+
+		err := nbClient.CreateTierAPI(nb.CreateTierParams{
+			Name:          name,
+			AttachedPools: tier.BackingStores,
+			DataPlacement: placement,
+		})
+		if err != nil {
+			return tierName, fmt.Errorf("Failed to create tier %q with error: %v", name, err)
+		}
+	}
+
+	err := nbClient.CreateTieringPolicyAPI(nb.TieringPolicyInfo{
+		Name:  tierName,
+		Tiers: tiers,
+	})
+	if err != nil {
+		return tierName, fmt.Errorf("Failed to create tier %q with error: %v", tierName, err)
+	}
+	return tierName, nil
+}
+
+// GetDefaultBucketClass will get the default bucket class
+func GetDefaultBucketClass(Namespace string) (*nbv1.BucketClass, error) {
+	bucketClassName := options.SystemName + "-default-bucket-class"
+
+	bucketClass := &nbv1.BucketClass{
+		TypeMeta: metav1.TypeMeta{Kind: "BucketClass"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      bucketClassName,
+			Namespace: Namespace,
+		},
+	}
+
+	if !util.KubeCheck(bucketClass) {
+		msg := fmt.Sprintf("GetDefaultBucketClass BucketClass %q not found in provisioner namespace %q", bucketClassName, Namespace)
+		return nil, fmt.Errorf(msg)
+	}
+
+	if bucketClass.Status.Phase != nbv1.BucketClassPhaseReady {
+		msg := fmt.Sprintf("GetDefaultBucketClass BucketClass %q is not ready", bucketClassName)
+		return nil, fmt.Errorf(msg)
+	}
+
+	return bucketClass, nil
 }
