@@ -32,12 +32,15 @@ jobs:
         id: prep
         run: |
           DOCKER_OPERATOR_IMAGE=noobaa/noobaa-operator
+          DOCKER_OPERATOR_BUNDLE_IMAGE=noobaa/noobaa-operator-bundle
           VERSION="${{ steps.date.outputs.date }}"
           echo "::warning ${VERSION}"
           echo ::set-output name=version::${VERSION}
           OPERATOR_TAGS="${DOCKER_OPERATOR_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}${{ steps.suffix.outputs.suffix }}"
+          OPERATOR_BUNDLE_TAGS="${DOCKER_OPERATOR_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}${{ steps.suffix.outputs.suffix }}"
           echo "::warning ${CORE_TAGS}"
           echo ::set-output name=operatortags::${OPERATOR_TAGS}
+          echo ::set-output name=operatorbundletags::${OPERATOR_BUNDLE_TAGS}
 
       - name: Update Core Release
         id: update-release
@@ -69,13 +72,25 @@ jobs:
             docker tag  noobaa/noobaa-operator ${{ steps.prep.outputs.operatortags }}
             docker push ${{ steps.prep.outputs.operatortags }}
 
+      - name: Build Bundle
+        run: |
+          make bundle-image \
+          csv-name=noobaa-operator.clusterserviceversion.yaml \
+          core-image=quay.io/${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }} \
+          operator-image=quay.io/${{ steps.prep.outputs.operatortags }} \
+          db-image=centos/postgresql-12-centos7 \
+          BUNDLE_IMAGE=quay.io/${{ steps.prep.outputs.operatorbundletags }}
+
       - name: Login to Quay.io Registry
         run: echo ${{ secrets.GHACTIONQUAYTOKEN }} | docker login quay.io -u ${{ secrets.GHACTIONQUAYNAME }} --password-stdin
 
-      - name: Push Docker Image to Quay
+      - name: Push Docker Images to Quay
         env:
           DOCKERHUB_OWNER: ${{ secrets.GHACTIONQUAYNAME }}
-        run: docker push ${{ steps.prep.outputs.operatortags }} 
+        run: |
+            docker tag ${{ steps.prep.outputs.operatortags }} quay.io/${{ steps.prep.outputs.operatortags }} 
+            docker push quay.io/${{ steps.prep.outputs.operatortags }} 
+            docker push quay.io/${{ steps.prep.outputs.operatorbundletags }}
 
       - name: Push CLI Binary
         run: |         
