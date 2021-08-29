@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -982,7 +983,10 @@ func (r *Reconciler) prepareCephBackingStore() error {
 
 	region := "us-east-1"
 	forcePathStyle := true
+	// temp solution
 	disableSSL := true
+	insecureClient := &http.Client{Transport: util.InsecureHTTPTransport}
+
 	s3Config := &aws.Config{
 		Credentials: credentials.NewStaticCredentials(
 			cephObjectStoreUserSecret.StringData["AccessKey"],
@@ -993,7 +997,9 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		Region:           &region,
 		S3ForcePathStyle: &forcePathStyle,
 		DisableSSL:       &disableSSL,
+		HTTPClient:       insecureClient,
 	}
+
 	bucketName := r.generateBackingStoreTargetName()
 	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
 		return err
