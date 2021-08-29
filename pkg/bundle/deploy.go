@@ -2568,7 +2568,7 @@ spec:
         claimName: noobaa-pv-claim
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "a52b7e8fd6aab6754cf72a74a741148bfc60a1fc566ade36377caee1715b086a"
+const Sha256_deploy_internal_prometheus_rules_yaml = "240afef650732c122cdaf58c454194c44ac5b6332d119bb3ee8275ea4a4934db"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -2603,6 +2603,32 @@ spec:
     - expr: |
         NooBaa_total_usage
       record: noobaa_total_usage
+  - name: noobaa-odf.rules
+    rules:
+    - expr: |
+        NooBaa_odf_health_status
+      labels:
+        system_type: OCS
+        system_vendor: Red Hat
+      record: odf_system_health_status
+    - expr: |
+        NooBaa_system_capacity
+      labels:
+        system_type: OCS
+        system_vendor: Red Hat
+      record: odf_system_raw_capacity_used_bytes
+    - expr: |
+        sum by (namespace, managedBy, job, service) (rate(NooBaa_providers_ops_read_num[5m]) + rate(NooBaa_providers_ops_write_num[5m]))
+      labels:
+        system_type: OCS
+        system_vendor: Red Hat
+      record: odf_system_iops_total_bytes
+    - expr: |
+        sum by (namespace, managedBy, job, service) (rate(NooBaa_providers_bandwidth_read_size[5m]) + rate(NooBaa_providers_bandwidth_write_size[5m]))
+      labels:
+        system_type: OCS
+        system_vendor: Red Hat
+      record: odf_system_throughput_total_bytes
   - name: bucket-state-alert.rules
     rules:
     - alert: NooBaaBucketErrorState
