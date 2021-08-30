@@ -80,7 +80,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 
 	bucketClass, err := bucketclass.GetDefaultBucketClass(options.Namespace)
 	if err != nil {
-		log.Fatal(fmt.Errorf("Failed to get defualt bucketcalss with error: %v", err))
+		log.Fatal(fmt.Errorf("Failed to get default bucketclass with error: %v", err))
 	}
 
 	tierName, err := bucketclass.CreateTieringStructure(*bucketClass, bucketName, nbClient);
