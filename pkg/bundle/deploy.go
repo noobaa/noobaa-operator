@@ -2568,7 +2568,7 @@ spec:
         claimName: noobaa-pv-claim
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "240afef650732c122cdaf58c454194c44ac5b6332d119bb3ee8275ea4a4934db"
+const Sha256_deploy_internal_prometheus_rules_yaml = "5e6dd6583b60eaaf950db4c15f45c405bc3956277cd6687086fa9e17d2745c81"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -2629,6 +2629,23 @@ spec:
         system_type: OCS
         system_vendor: Red Hat
       record: odf_system_throughput_total_bytes
+  - name: noobaa-replication.rules
+    rules:
+    - expr: |
+        sum_over_time(sum by (replication_id) (NooBaa_replication_last_cycle_writes_size)[1y:30s])
+      record: noobaa_replication_total_writes_size
+    - expr: |
+        sum_over_time(sum by (replication_id) (NooBaa_replication_last_cycle_writes_num)[1y:30s])
+      record: noobaa_replication_total_writes_num
+    - expr: |
+        sum_over_time(sum by (replication_id) (NooBaa_replication_last_cycle_error_writes_size)[1y:30s])
+      record: noobaa_replication_total_error_writes_size
+    - expr: |
+        sum_over_time(sum by (replication_id) (NooBaa_replication_last_cycle_error_writes_num)[1y:30s])
+      record: noobaa_replication_total_error_writes_num
+    - expr: |
+        count_over_time(count by (replication_id) (NooBaa_replication_last_cycle_writes_size)[1y:30s])
+      record: noobaa_replication_total_cycles
   - name: bucket-state-alert.rules
     rules:
     - alert: NooBaaBucketErrorState
