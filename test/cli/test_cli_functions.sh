@@ -43,6 +43,8 @@ echo_time() {
 function test_noobaa {
     local rc func timeout_in_sec
     local {timeout,should_fail,silence}=false
+    local count=1
+    local retries=18
 
     if [[ "${1}" =~ ("should_fail"|"silence") ]]
     then
@@ -84,25 +86,38 @@ function test_noobaa {
         # When we are running with timeout because the command runs in the background
         timeout --PID ${PID} ${timeout_in_sec} ${func} ${options}
     else
-        ${noobaa} ${options}
-        if [ $? -ne 0 ]
-        then
-            if ${should_fail}
+        local rc=1
+        while [ $rc -ne 0 ]
+        do
+            ${noobaa} ${options}
+            rc=$?
+            if [ $rc -ne 0 ]
             then
-                echo_time "✅  ${noobaa} ${options} failed - as should"
-            else 
-                echo_time "❌  ${noobaa} ${options} failed, Exiting"
-                local pod_operator=$(kuberun get pod | grep noobaa-operator | awk '{print $1}')
-                echo_time "==============OPERATOR LOGS============"
-                kuberun logs ${pod_operator}
-                echo_time "==============CORE LOGS============"
-                kuberun logs noobaa-core-0
-                exit 1
+                if ${should_fail}
+                then
+                    echo_time "✅  ${noobaa} ${options} failed - as should"
+                    rc=0
+                else 
+                    if [ ${count} -lt ${retries} ]
+                    then
+                        echo_time "❌ failed to run ${noobaa} ${options} retrying" 
+                        sleep 10
+                        count=$((count+1))
+                    else
+                        echo_time "❌  ${noobaa} ${options} failed, Exiting"
+                        local pod_operator=$(kuberun get pod | grep noobaa-operator | awk '{print $1}')
+                        echo_time "==============OPERATOR LOGS============"
+                        kuberun logs ${pod_operator}
+                        echo_time "==============CORE LOGS============"
+                        kuberun logs noobaa-core-0
+                        exit 1
+                    fi
+                fi
+            elif [ ! ${silence} ]
+            then
+                echo_time "✅  ${noobaa} ${options} passed"
             fi
-        elif [ ! ${silence} ]
-        then
-            echo_time "✅  ${noobaa} ${options} passed"
-        fi
+        done
     fi
 
 }
@@ -638,6 +653,7 @@ function delete_replication_files {
 }
 
 function check_backingstore {
+    echo_time "💬  Creating bucket testbucket"
     test_noobaa bucket create "testbucket"
 
     local tier=`noobaa api bucket_api read_bucket '{ "name": "testbucket" }' | grep -w "tier" | awk '{ print $2 }'`
@@ -649,5 +665,6 @@ function check_backingstore {
         exit 1
     fi
 
+    echo_time "💬  Deleting bucket testbucket"
     test_noobaa bucket delete "testbucket"
 }

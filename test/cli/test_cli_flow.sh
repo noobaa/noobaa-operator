@@ -60,9 +60,9 @@ function post_install_tests {
     bucketclass_cycle
     obc_cycle
     replication_cycle
+    check_backingstore
     check_deletes
     delete_replication_files
-    check_backingstore
 }
 
 function main {

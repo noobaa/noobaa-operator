@@ -710,7 +710,7 @@ func GetDefaultBucketClass(Namespace string) (*nbv1.BucketClass, error) {
 	}
 
 	if bucketClass.Status.Phase != nbv1.BucketClassPhaseReady {
-		msg := fmt.Sprintf("GetDefaultBucketClass BucketClass %q is not ready", bucketClassName)
+		msg := fmt.Sprintf("GetDefaultBucketClass BucketClass %q is %v", bucketClassName, bucketClass.Status.Phase)
 		return nil, fmt.Errorf(msg)
 	}
 
