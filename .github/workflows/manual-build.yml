@@ -37,7 +37,7 @@ jobs:
           echo "::warning ${VERSION}"
           echo ::set-output name=version::${VERSION}
           OPERATOR_TAGS="${DOCKER_OPERATOR_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}${{ steps.suffix.outputs.suffix }}"
-          OPERATOR_BUNDLE_TAGS="${DOCKER_OPERATOR_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}${{ steps.suffix.outputs.suffix }}"
+          OPERATOR_BUNDLE_TAGS="${DOCKER_OPERATOR_BUNDLE_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}${{ steps.suffix.outputs.suffix }}"
           echo "::warning ${CORE_TAGS}"
           echo ::set-output name=operatortags::${OPERATOR_TAGS}
           echo ::set-output name=operatorbundletags::${OPERATOR_BUNDLE_TAGS}
