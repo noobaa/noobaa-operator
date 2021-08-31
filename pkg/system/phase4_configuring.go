@@ -983,9 +983,10 @@ func (r *Reconciler) prepareCephBackingStore() error {
 
 	region := "us-east-1"
 	forcePathStyle := true
-	// temp solution
-	disableSSL := true
-	insecureClient := &http.Client{Transport: util.InsecureHTTPTransport}
+	insecureClient := &http.Client{
+		Transport: util.InsecureHTTPTransport,
+		Timeout: 10 * time.Second, 
+	}
 
 	s3Config := &aws.Config{
 		Credentials: credentials.NewStaticCredentials(
@@ -996,7 +997,6 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		Endpoint:         &endpoint,
 		Region:           &region,
 		S3ForcePathStyle: &forcePathStyle,
-		DisableSSL:       &disableSSL,
 		HTTPClient:       insecureClient,
 	}
 
