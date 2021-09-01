@@ -2478,11 +2478,17 @@ spec:
         runAsGroup: 0
 `
 
-const Sha256_deploy_internal_hpa_endpoint_yaml = "5f6d756b2a8a7419b0d3b103c0289e911cba08748da2d36db0c0c7e497e6f423"
+const Sha256_deploy_internal_hpa_endpoint_yaml = "2ff7dd7bbece11cae9eb9e01fa971c5676630af33346d7592e013b09de2fd635"
 
 const File_deploy_internal_hpa_endpoint_yaml = `apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
+  annotations:
+    # Memory metrics for scaling
+    #
+    # The beta version API version includes support for scaling on memory and custom metrics.
+    # The new fields introduced in autoscaling/v2beta2 are preserved as annotations when working with autoscaling/v1.
+    autoscaling.alpha.kubernetes.io/metrics: '[{"type":"Resource","resource":{"name":"memory", "targetAverageUtilization":80}}]'
   labels:
     app: noobaa
   name: noobaa-endpoint
