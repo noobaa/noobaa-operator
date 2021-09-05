@@ -14,6 +14,12 @@ func init() {
 	SchemeBuilder.Register(&NooBaa{}, &NooBaaList{})
 }
 
+// Labels are label for a given daemons
+type Labels map[string]string
+
+// LabelsSpec is the main spec label for all daemons
+type LabelsSpec map[string]Labels
+
 // NooBaa is the Schema for the NooBaas API
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -146,6 +152,12 @@ type NooBaaSpec struct {
 
 	// Security represents security settings
 	Security SecuritySpec `json:"security,omitempty"`
+
+	// The labels-related configuration to add/set on each Pod related object.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +nullable
+	// +optional
+	Labels LabelsSpec `json:"labels,omitempty"`
 }
 
 // SecuritySpec is security spec to include various security items such as kms
