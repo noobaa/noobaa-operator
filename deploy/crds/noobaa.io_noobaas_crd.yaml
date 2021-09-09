@@ -840,6 +840,17 @@ spec:
                       name must be unique.
                     type: string
                 type: object
+              labels:
+                additionalProperties:
+                  additionalProperties:
+                    type: string
+                  description: Labels are label for a given daemons
+                  type: object
+                description: The labels-related configuration to add/set on each Pod
+                  related object.
+                nullable: true
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               mongoDbURL:
                 description: MongoDbURL (optional) overrides the default mongo db
                   remote url

@@ -22,6 +22,8 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -1135,12 +1137,35 @@ func (r *Reconciler) ReconcilePrometheusRule() error {
 	return r.ReconcileObjectOptional(r.PrometheusRule, nil)
 }
 
+// ApplyMonitoringLabels function adds the name of the resource that manages
+// noobaa, as a label on the noobaa metrics
+func (r *Reconciler) ApplyMonitoringLabels(serviceMonitor *monitoringv1.ServiceMonitor) {
+	if r.NooBaa.Spec.Labels != nil {
+		if monitoringLabels, ok := r.NooBaa.Spec.Labels["monitoring"]; ok {
+			if managedBy, ok := monitoringLabels["noobaa.io/managedBy"]; ok {
+				relabelConfig := monitoringv1.RelabelConfig{
+					TargetLabel: "managedBy",
+					Replacement: managedBy,
+				}
+				serviceMonitor.Spec.Endpoints[0].RelabelConfigs = append(
+					serviceMonitor.Spec.Endpoints[0].RelabelConfigs, &relabelConfig)
+			} else {
+				r.Logger.Info("noobaa.io/managedBy not specified in monitoring labels")
+			}
+		} else {
+			r.Logger.Info("monitoring labels not specified")
+		}
+	}
+}
+
 // ReconcileServiceMonitors reconciles service monitors
 func (r *Reconciler) ReconcileServiceMonitors() error {
 	// Skip if joining another NooBaa
 	if r.JoinSecret != nil {
 		return nil
 	}
+
+	r.ApplyMonitoringLabels(r.ServiceMonitorMgmt)
 
 	if err := r.ReconcileObjectOptional(r.ServiceMonitorMgmt, nil); err != nil {
 		return err

@@ -1006,7 +1006,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "03e132acd16c7b14d3a75ea0c38053957bfeadd1090d3df68a22c13344dacab8"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "6c5ce827afdf6c10276747506c1d25e0e3cbe9c42a432372f36b673a61d4c339"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1850,6 +1850,17 @@ spec:
                       name must be unique.
                     type: string
                 type: object
+              labels:
+                additionalProperties:
+                  additionalProperties:
+                    type: string
+                  description: Labels are label for a given daemons
+                  type: object
+                description: The labels-related configuration to add/set on each Pod
+                  related object.
+                nullable: true
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               mongoDbURL:
                 description: MongoDbURL (optional) overrides the default mongo db
                   remote url
