@@ -418,14 +418,14 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
 func (r *Reconciler) SetDesiredCoreApp() error {
-	r.CoreApp.Spec.Template.Labels["noobaa-core"] = r.Request.Name
-	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
 	if coreLabels, ok := r.NooBaa.Spec.Labels["core"]; ok {
 		r.CoreApp.Spec.Template.Labels = coreLabels
 	}
 	if coreAnnotations, ok := r.NooBaa.Spec.Annotations["core"]; ok {
 		r.CoreApp.Spec.Template.Annotations = coreAnnotations
 	}
+	r.CoreApp.Spec.Template.Labels["noobaa-core"] = r.Request.Name
+	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
 	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
 
