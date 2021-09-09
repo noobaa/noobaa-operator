@@ -1006,7 +1006,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "6c5ce827afdf6c10276747506c1d25e0e3cbe9c42a432372f36b673a61d4c339"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "3ab5615cb3a73506b8e4c56dc65019739649d48f2228b9581c38e6551ff05624"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1654,6 +1654,17 @@ spec:
                         type: array
                     type: object
                 type: object
+              annotations:
+                additionalProperties:
+                  additionalProperties:
+                    type: string
+                  description: Annotations are annotation for a given daemon
+                  type: object
+                description: The annotations-related configuration to add/set on each
+                  Pod related object.
+                nullable: true
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               cleanupPolicy:
                 description: CleanupPolicy (optional) Indicates user's policy for
                   deletion
@@ -1854,7 +1865,7 @@ spec:
                 additionalProperties:
                   additionalProperties:
                     type: string
-                  description: Labels are label for a given daemons
+                  description: Labels are label for a given daemon
                   type: object
                 description: The labels-related configuration to add/set on each Pod
                   related object.

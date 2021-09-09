@@ -201,12 +201,24 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 
 	if r.NooBaa.Spec.DBType == "postgres" {
 		NooBaaDB = r.NooBaaPostgresDB
+		if dbLabels, ok := r.NooBaa.Spec.Labels["db"]; ok {
+			NooBaaDB.Spec.Template.Labels = dbLabels
+		}
+		if dbAnnotations, ok := r.NooBaa.Spec.Annotations["db"]; ok {
+			NooBaaDB.Spec.Template.Annotations = dbAnnotations
+		}
 		NooBaaDB.Spec.Template.Labels["noobaa-db"] = "postgres"
 		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
 		NooBaaDB.Spec.ServiceName = r.ServiceDbPg.Name
 		NooBaaDBTemplate = util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
 	} else {
 		NooBaaDB = r.NooBaaMongoDB
+		if dbLabels, ok := r.NooBaa.Spec.Labels["db"]; ok {
+			NooBaaDB.Spec.Template.Labels = dbLabels
+		}
+		if dbAnnotations, ok := r.NooBaa.Spec.Annotations["db"]; ok {
+			NooBaaDB.Spec.Template.Annotations = dbAnnotations
+		}
 		NooBaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
 		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
 		NooBaaDB.Spec.ServiceName = r.ServiceDb.Name
@@ -408,6 +420,12 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.Template.Labels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
+	if coreLabels, ok := r.NooBaa.Spec.Labels["core"]; ok {
+		r.CoreApp.Spec.Template.Labels = coreLabels
+	}
+	if coreAnnotations, ok := r.NooBaa.Spec.Annotations["core"]; ok {
+		r.CoreApp.Spec.Template.Annotations = coreAnnotations
+	}
 	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
 
@@ -467,7 +485,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 
 	}
 
-	if (r.CoreApp.ObjectMeta.Annotations == nil) {
+	if r.CoreApp.ObjectMeta.Annotations == nil {
 		r.CoreApp.ObjectMeta.Annotations = make(map[string]string)
 	}
 

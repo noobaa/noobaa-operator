@@ -644,6 +644,17 @@ spec:
                         type: array
                     type: object
                 type: object
+              annotations:
+                additionalProperties:
+                  additionalProperties:
+                    type: string
+                  description: Annotations are annotation for a given daemon
+                  type: object
+                description: The annotations-related configuration to add/set on each
+                  Pod related object.
+                nullable: true
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               cleanupPolicy:
                 description: CleanupPolicy (optional) Indicates user's policy for
                   deletion
@@ -844,7 +855,7 @@ spec:
                 additionalProperties:
                   additionalProperties:
                     type: string
-                  description: Labels are label for a given daemons
+                  description: Labels are label for a given daemon
                   type: object
                 description: The labels-related configuration to add/set on each Pod
                   related object.
