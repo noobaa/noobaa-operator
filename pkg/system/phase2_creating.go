@@ -117,7 +117,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 			// the mongo service with postgres values. see here:
 			// https://github.com/noobaa/noobaa-operator/blob/112c510650612b1a6b88582cf41c53b30068161c/pkg/system/phase2_creating.go#L121-L126
 			// to fix that, reconcile mongo service as well if it exists
-			if util.KubeCheck(r.ServiceDb) {
+			if util.KubeCheckQuiet(r.ServiceDb) {
 				r.Logger.Infof("found existing mongo db service [%q] will reconcile", r.ServiceDb.Name)
 				if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDBForMongo); err != nil {
 					r.Logger.Errorf("got error when trying to reconcile mongo service. %v", err)
@@ -1025,7 +1025,7 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 			return fmt.Errorf("mongo is still alive")
 		}
 
-		if util.KubeCheck(r.ServiceDb) {
+		if util.KubeCheckQuiet(r.ServiceDb) {
 			r.Logger.Infof("UpgradeMigrateDB:: deleting mongodb service")
 
 			if err := r.Client.Delete(r.Ctx, r.ServiceDb); err != nil && !errors.IsNotFound(err) {
