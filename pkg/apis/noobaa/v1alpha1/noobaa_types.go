@@ -14,11 +14,17 @@ func init() {
 	SchemeBuilder.Register(&NooBaa{}, &NooBaaList{})
 }
 
-// Labels are label for a given daemons
+// Labels are label for a given daemon
 type Labels map[string]string
 
 // LabelsSpec is the main spec label for all daemons
 type LabelsSpec map[string]Labels
+
+// Annotations are annotation for a given daemon
+type Annotations map[string]string
+
+// AnnotationsSpec is the main spec annotation for all daemons
+type AnnotationsSpec map[string]Annotations
 
 // NooBaa is the Schema for the NooBaas API
 // +k8s:openapi-gen=true
@@ -158,6 +164,12 @@ type NooBaaSpec struct {
 	// +nullable
 	// +optional
 	Labels LabelsSpec `json:"labels,omitempty"`
+
+	// The annotations-related configuration to add/set on each Pod related object.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +nullable
+	// +optional
+	Annotations AnnotationsSpec `json:"annotations,omitempty"`
 }
 
 // SecuritySpec is security spec to include various security items such as kms
