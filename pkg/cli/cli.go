@@ -11,6 +11,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucket"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/crd"
+	"github.com/noobaa/noobaa-operator/v5/pkg/dbdump"
 	"github.com/noobaa/noobaa-operator/v5/pkg/diagnose"
 	"github.com/noobaa/noobaa-operator/v5/pkg/install"
 	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
@@ -121,6 +122,7 @@ Load noobaa completion to bash:
 			obc.Cmd(),
 			diagnose.Cmd(),
 			system.CmdUI(),
+			dbdump.Cmd(),
 		},
 	}, {
 		Message: "Advanced:",
