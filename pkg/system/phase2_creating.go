@@ -117,7 +117,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 			// the mongo service with postgres values. see here:
 			// https://github.com/noobaa/noobaa-operator/blob/112c510650612b1a6b88582cf41c53b30068161c/pkg/system/phase2_creating.go#L121-L126
 			// to fix that, reconcile mongo service as well if it exists
-			if util.KubeCheck(r.ServiceDb) {
+			if util.KubeCheckQuiet(r.ServiceDb) {
 				r.Logger.Infof("found existing mongo db service [%q] will reconcile", r.ServiceDb.Name)
 				if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDBForMongo); err != nil {
 					r.Logger.Errorf("got error when trying to reconcile mongo service. %v", err)
@@ -226,12 +226,24 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 
 	if r.NooBaa.Spec.DBType == "postgres" {
 		NooBaaDB = r.NooBaaPostgresDB
+		if dbLabels, ok := r.NooBaa.Spec.Labels["db"]; ok {
+			NooBaaDB.Spec.Template.Labels = dbLabels
+		}
+		if dbAnnotations, ok := r.NooBaa.Spec.Annotations["db"]; ok {
+			NooBaaDB.Spec.Template.Annotations = dbAnnotations
+		}
 		NooBaaDB.Spec.Template.Labels["noobaa-db"] = "postgres"
 		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
 		NooBaaDB.Spec.ServiceName = r.ServiceDbPg.Name
 		NooBaaDBTemplate = util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
 	} else {
 		NooBaaDB = r.NooBaaMongoDB
+		if dbLabels, ok := r.NooBaa.Spec.Labels["db"]; ok {
+			NooBaaDB.Spec.Template.Labels = dbLabels
+		}
+		if dbAnnotations, ok := r.NooBaa.Spec.Annotations["db"]; ok {
+			NooBaaDB.Spec.Template.Annotations = dbAnnotations
+		}
 		NooBaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
 		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
 		NooBaaDB.Spec.ServiceName = r.ServiceDb.Name
@@ -413,6 +425,12 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
 func (r *Reconciler) SetDesiredCoreApp() error {
+	if coreLabels, ok := r.NooBaa.Spec.Labels["core"]; ok {
+		r.CoreApp.Spec.Template.Labels = coreLabels
+	}
+	if coreAnnotations, ok := r.NooBaa.Spec.Annotations["core"]; ok {
+		r.CoreApp.Spec.Template.Annotations = coreAnnotations
+	}
 	r.CoreApp.Spec.Template.Labels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
 	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
@@ -474,7 +492,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 
 	}
 
-	if (r.CoreApp.ObjectMeta.Annotations == nil) {
+	if r.CoreApp.ObjectMeta.Annotations == nil {
 		r.CoreApp.ObjectMeta.Annotations = make(map[string]string)
 	}
 
@@ -1035,7 +1053,7 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 			return fmt.Errorf("mongo is still alive")
 		}
 
-		if util.KubeCheck(r.ServiceDb) {
+		if util.KubeCheckQuiet(r.ServiceDb) {
 			r.Logger.Infof("UpgradeMigrateDB:: deleting mongodb service")
 
 			if err := r.Client.Delete(r.Ctx, r.ServiceDb); err != nil && !errors.IsNotFound(err) {

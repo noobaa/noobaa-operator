@@ -23,7 +23,6 @@ import (
 	"time"
 	"unicode"
 
-	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/hashicorp/vault/api"
 	vaultApi "github.com/hashicorp/vault/api"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
@@ -35,10 +34,11 @@ import (
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	operv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -1035,7 +1035,7 @@ func GetFlagStringOrPromptPassword(cmd *cobra.Command, flag string) string {
 		return str
 	}
 	fmt.Printf("Enter %s: ", flag)
-	bytes, err := terminal.ReadPassword(0)
+	bytes, err := term.ReadPassword(0)
 	Panic(err)
 	str = string(bytes)
 	fmt.Printf("[got %d characters]\n", len(str))

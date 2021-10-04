@@ -16,7 +16,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/version"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	operv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
