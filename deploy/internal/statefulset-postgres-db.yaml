@@ -18,11 +18,11 @@ spec:
         app: noobaa
         noobaa-db: postgres
     spec:
-      serviceAccountName: noobaa-endpoint
+      serviceAccountName: noobaa
       initContainers:
-      #-----------------#
-      # INIT CONTAINERS #
-      #-----------------#
+      #----------------#
+      # INIT CONTAINER #
+      #----------------#
       - name: init
         image: NOOBAA_CORE_IMAGE
         command:
@@ -38,32 +38,6 @@ spec:
         volumeMounts:
         - name: db
           mountPath: /var/lib/pgsql
-      - name: initialize-database
-        image: NOOBAA_DB_IMAGE
-        env:
-          - name: POSTGRESQL_DATABASE
-            value: nbcore
-          - name: POSTGRESQL_USER
-          - name: POSTGRESQL_PASSWORD
-        command:
-        - sh
-        - -x
-        - /init/initdb.sh
-        securityContext:
-          runAsUser: 0
-          runAsGroup: 0
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "500Mi"
-          limits:
-            cpu: "500m"
-            memory: "500Mi"
-        volumeMounts:
-        - name: db
-          mountPath: /var/lib/pgsql
-        - name: noobaa-postgres-initdb-sh-volume
-          mountPath: /init
       containers:
       #--------------------#
       # Postgres CONTAINER #
@@ -90,15 +64,10 @@ spec:
             mountPath: /var/lib/pgsql
           - name: noobaa-postgres-config-volume
             mountPath: /opt/app-root/src/postgresql-cfg
-          - name: noobaa-postgres-initdb-sh-volume
-            mountPath: /init
       volumes:
       - name: noobaa-postgres-config-volume
         configMap:
           name: noobaa-postgres-config
-      - name: noobaa-postgres-initdb-sh-volume
-        configMap:
-          name: noobaa-postgres-initdb-sh
       securityContext: 
         runAsUser: 10001
         runAsGroup: 0

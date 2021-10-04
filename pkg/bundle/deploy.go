@@ -2355,41 +2355,6 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "4d18ac61f52f46c0764b8ae4f1a17912c3afda2f1655406ae338579cc3821bed"
-
-const File_deploy_internal_configmap_postgres_initdb_yaml = `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: noobaa-postgres-initdb-sh
-  labels:
-    app: noobaa
-data:
-  initdb.sh: |
-          # If the config file is present, the DB is initiazed
-          # and we're out of here
-          export PGDATA=$HOME/data/userdata
-          if [ -f $PGDATA/postgresql.conf ]; then
-            echo postgresql.conf file is found
-            exit 0
-          fi
-
-          # Wrap the postgres binary, force huge_pages=off for initdb
-          # see https://bugzilla.redhat.com/show_bug.cgi?id=1946792
-          p=/opt/rh/rh-postgresql12/root/usr/bin/postgres
-          mv $p $p.orig
-          echo exec $p.orig \"\$@\" -c huge_pages=off > $p
-          chmod 755 $p
-
-          # The NooBaa DB runs with UID 10001 GID 0
-          sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
-
-          # Init the DB and exit once the DB is ready to run
-          sed -i -e 's/^exec.*$/exit 0/' \
-                 -e 's/^pg_ctl\sstart.*/pg_ctl start || true/'                                   \
-                    /usr/bin/run-postgresql
-          su postgres -c "bash -x /usr/bin/run-postgresql"
-`
-
 const Sha256_deploy_internal_deployment_endpoint_yaml = "d0b3248e8751fd5dc0827d9ec526b6a9a31bb7014940c5a86b0519b523f48af3"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
@@ -3144,7 +3109,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_db_yaml = "3de515b92c4892045b4e9c0ad8d0b69eaf198b7708818cd9e58c5e4cb53e2073"
+const Sha256_deploy_internal_statefulset_db_yaml = "40ccae24471e291d5cec7941ffc93e16c9c30e45bccb67e0beb009ad154b0cb0"
 
 const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3166,7 +3131,7 @@ spec:
         app: noobaa
         noobaa-db: noobaa
     spec:
-      serviceAccountName: noobaa-endpoint
+      serviceAccountName: noobaa
       terminationGracePeriodSeconds: 60
       initContainers:
       #----------------#
@@ -3223,7 +3188,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "3921b3a648538a7f4ec337c34b59a837b4a3385cc0c52ce00389e0be6a5cb64e"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "c6c0e65bbe94510f1f0333629821abd804b75832cb0cbaddacee9550fd3951f1"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3245,11 +3210,11 @@ spec:
         app: noobaa
         noobaa-db: postgres
     spec:
-      serviceAccountName: noobaa-endpoint
+      serviceAccountName: noobaa
       initContainers:
-      #-----------------#
-      # INIT CONTAINERS #
-      #-----------------#
+      #----------------#
+      # INIT CONTAINER #
+      #----------------#
       - name: init
         image: NOOBAA_CORE_IMAGE
         command:
@@ -3265,32 +3230,6 @@ spec:
         volumeMounts:
         - name: db
           mountPath: /var/lib/pgsql
-      - name: initialize-database
-        image: NOOBAA_DB_IMAGE
-        env:
-          - name: POSTGRESQL_DATABASE
-            value: nbcore
-          - name: POSTGRESQL_USER
-          - name: POSTGRESQL_PASSWORD
-        command:
-        - sh
-        - -x
-        - /init/initdb.sh
-        securityContext:
-          runAsUser: 0
-          runAsGroup: 0
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "500Mi"
-          limits:
-            cpu: "500m"
-            memory: "500Mi"
-        volumeMounts:
-        - name: db
-          mountPath: /var/lib/pgsql
-        - name: noobaa-postgres-initdb-sh-volume
-          mountPath: /init
       containers:
       #--------------------#
       # Postgres CONTAINER #
@@ -3317,15 +3256,10 @@ spec:
             mountPath: /var/lib/pgsql
           - name: noobaa-postgres-config-volume
             mountPath: /opt/app-root/src/postgresql-cfg
-          - name: noobaa-postgres-initdb-sh-volume
-            mountPath: /init
       volumes:
       - name: noobaa-postgres-config-volume
         configMap:
           name: noobaa-postgres-config
-      - name: noobaa-postgres-initdb-sh-volume
-        configMap:
-          name: noobaa-postgres-initdb-sh
       securityContext: 
         runAsUser: 10001
         runAsGroup: 0
