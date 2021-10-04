@@ -29,6 +29,22 @@ func nodeIsReady(node *corev1.Node) bool {
 	return false
 }
 
+// nodeIsTainted checks if a kubernetes node is tainted
+// Noe: for the context of this function, "PreferNoSchedule" is
+// not considered a taint, since it allows pods to continue
+// function normally.
+// On the other hand, "NoSchedule" and "NoExecute" would
+// result in true return value
+func nodeIsTainted(node *corev1.Node) bool {
+	for _, t := range node.Spec.Taints {
+		if t.Effect != corev1.TaintEffectPreferNoSchedule {
+			return true
+		}
+	}
+
+	return false
+}
+
 // deletePodsOnStartup - during start up delete NooBaa pods
 // that might be stuck on a failing node
 func deletePodsOnStartup(client client.Client) error {
@@ -39,7 +55,7 @@ func deletePodsOnStartup(client client.Client) error {
 	}
 
 	for _, node := range nodeList.Items {
-		if !nodeIsReady(&node) {
+		if !nodeIsReady(&node) || nodeIsTainted(&node) {
 			pd := hac.PodDeleter{Client: client, NodeName: node.Name}
 			if err := pd.DeletePodsOnNode(); err != nil {
 				return errors.Errorf("failed to delete noobaa pods on the node %v in namespace %v", node.Name, options.Namespace)	
@@ -49,8 +65,9 @@ func deletePodsOnStartup(client client.Client) error {
 	return nil
 }
 
-// nodeNotReadyPredicate selects nodes that were ready, but became unreachable
-func nodeNotReadyPredicate() predicate.Predicate {
+// nodeNeedsEvacuationPredicate selects nodes that were ready, but became unreachable
+// or tainted
+func nodeNeedsEvacuationPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		CreateFunc: func(event.CreateEvent) bool {
 			return false
@@ -58,7 +75,15 @@ func nodeNotReadyPredicate() predicate.Predicate {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			oldNode := e.ObjectOld.(*corev1.Node)
 			newNode := e.ObjectNew.(*corev1.Node)
-			return nodeIsReady(oldNode) && !nodeIsReady(newNode)
+			if nodeIsReady(oldNode) && !nodeIsReady(newNode) {
+				return true
+			}
+
+			if !nodeIsTainted(oldNode) && nodeIsTainted(newNode) {
+				return true
+			}
+
+			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
@@ -89,7 +114,7 @@ func Add(mgr manager.Manager) error {
 	}
 
 	// start watching node state transitions
-	if err := c.Watch(&source.Kind{Type: &corev1.Node{}}, &handler.EnqueueRequestForObject{}, nodeNotReadyPredicate()); err != nil {
+	if err := c.Watch(&source.Kind{Type: &corev1.Node{}}, &handler.EnqueueRequestForObject{}, nodeNeedsEvacuationPredicate()); err != nil {
 		return err
 	}
 
