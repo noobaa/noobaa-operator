@@ -499,7 +499,7 @@ func RunList(cmd *cobra.Command, args []string) {
 			fmt.Sprintf("%+v", string(pp)),
 			fmt.Sprintf("%+v", string(np)),
 			string(bc.Status.Phase),
-			time.Since(bc.CreationTimestamp.Time).Round(time.Second).String(),
+			util.HumanizeDuration(time.Since(bc.CreationTimestamp.Time).Round(time.Second)),
 		)
 	}
 	fmt.Print(table.String())

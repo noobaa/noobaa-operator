@@ -615,7 +615,7 @@ func RunList(cmd *cobra.Command, args []string) {
 			string(bs.Spec.Type),
 			GetNamespaceStoreTargetBucket(bs),
 			string(bs.Status.Phase),
-			time.Since(bs.CreationTimestamp.Time).Round(time.Second).String(),
+			util.HumanizeDuration(time.Since(bs.CreationTimestamp.Time).Round(time.Second)),
 		)
 	}
 	fmt.Print(table.String())
