@@ -10,7 +10,12 @@ fi
 
 temp_csv=$(mktemp)
 
-grep -v "status: {}" ${MANIFESTS}/${CSV_NAME} > ${temp_csv}
+# remove status property and everything after it
+status_line_number=$(grep -n "status:" ${MANIFESTS}/${CSV_NAME} | cut -f1 -d:)
+n=$((status_line_number-1))
+head -n ${n} ${MANIFESTS}/${CSV_NAME} > ${temp_csv}
+
+# add relatedImages to the final CSV
 cat >> ${temp_csv} << EOF
   relatedImages:
   - image: ${CORE_IMAGE}
