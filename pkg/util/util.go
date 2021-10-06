@@ -1303,6 +1303,31 @@ func MergeEnvArrays(envA, envB *[]corev1.EnvVar) {
 	}
 }
 
+// HumanizeDuration humanizes time.Duration output to a meaningful value - will show days/years
+func HumanizeDuration(duration time.Duration) string {
+	const (
+		oneDay  = time.Minute * 60 * 24
+		oneYear = 365 * oneDay
+	)
+	if duration < oneDay {
+		return duration.String()
+	}
+
+	var builder strings.Builder
+
+	if duration >= oneYear {
+		years := duration / oneYear
+		fmt.Fprintf(&builder, "%dy", years)
+		duration -= years * oneYear
+	}
+
+	days := duration / oneDay
+	duration -= days * oneDay
+	fmt.Fprintf(&builder, "%dd%s", days, duration)
+
+	return builder.String()
+}
+
 // EnsureCommonMetaFields ensures that the resource has all mandatory meta fields
 func EnsureCommonMetaFields(object metav1.Object, finalizer string) bool {
 	updated := false
