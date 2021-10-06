@@ -418,7 +418,7 @@ func RunList(cmd *cobra.Command, args []string) {
 			fmt.Sprint(s.Status.Services.ServiceS3.NodePorts),
 			s.Status.ActualImage,
 			string(s.Status.Phase),
-			time.Since(s.CreationTimestamp.Time).Round(time.Second).String(),
+			util.HumanizeDuration(time.Since(s.CreationTimestamp.Time).Round(time.Second)),
 		)
 	}
 	fmt.Print(table.String())
