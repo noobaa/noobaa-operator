@@ -4403,7 +4403,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "eb0941a5e095fa7ac391e05782e6847e419e4d0dc17f6d8151df0032c977c743"
+const Sha256_deploy_role_yaml = "594d23fb4992d174675665f297faaa8a37e1bfaa248cdc1b8fd31cec6cdfecd7"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -4546,6 +4546,13 @@ rules:
   - securitycontextconstraints 
   verbs: 
   - use
+- apiGroups:
+  - metrics.k8s.io
+  resources:
+  - pods
+  verbs:
+   - get
+   - list
 `
 
 const Sha256_deploy_role_binding_yaml = "59a2627156ed3db9cd1a4d9c47e8c1044279c65e84d79c525e51274329cb16ff"

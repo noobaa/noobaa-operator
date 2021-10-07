@@ -55,6 +55,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
@@ -151,8 +152,15 @@ func KubeClient() client.Client {
 	if lazyClient == nil {
 		config := KubeConfig()
 		mapper, _ := MapperProvider(config)
+		kscheme := scheme.Scheme
 		var err error
-		lazyClient, err = client.New(config, client.Options{Mapper: mapper, Scheme: scheme.Scheme})
+
+		// Allow working with metrics
+		if err := metricsv1beta1.AddToScheme(kscheme); err != nil {
+			log.Fatalf("KubeClient: failed to add metrics scheme: %v", err)
+		}
+
+		lazyClient, err = client.New(config, client.Options{Mapper: mapper, Scheme: kscheme})
 		if err != nil {
 			log.Fatalf("KubeClient: %v", err)
 		}

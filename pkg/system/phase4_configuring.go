@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes/scheme"
+	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -522,6 +523,22 @@ func (r *Reconciler) awaitEndpointDeploymentPods() error {
 			return errors.New("endpoint deployment is not ready")
 		}
 	}
+
+
+	// make sure metrics are available
+	namespaceOption := &client.ListOptions{Namespace: options.Namespace}
+	labelOption := client.MatchingLabels{"noobaa-s3": "noobaa"}
+	podMetricsList := metricsv1beta1.PodMetricsList{}
+	if !util.KubeList(&podMetricsList, namespaceOption, labelOption) {
+		return errors.New("endpoint pods metrics are not listable")
+	}
+
+	if len(podMetricsList.Items) == 0 {
+		return errors.New("endpoint pods metrics list is empty")
+	}
+
+	log := r.Logger.WithField("func", "awaitEndpointDeploymentPods")
+	log.Infof("endpoint pods metrics received : %v", podMetricsList.Items )
 
 	return nil
 }

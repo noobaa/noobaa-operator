@@ -43,6 +43,7 @@ require (
 	k8s.io/gengo v0.0.0-20201214224949-b6c5ce23f027
 	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 	k8s.io/kubectl v0.21.3
+	k8s.io/metrics v0.21.3
 	nhooyr.io/websocket v1.7.4
 	sigs.k8s.io/controller-runtime v0.9.5
 	sigs.k8s.io/yaml v1.2.0

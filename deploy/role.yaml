@@ -139,3 +139,10 @@ rules:
   - securitycontextconstraints 
   verbs: 
   - use
+- apiGroups:
+  - metrics.k8s.io
+  resources:
+  - pods
+  verbs:
+   - get
+   - list
