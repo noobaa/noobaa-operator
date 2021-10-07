@@ -418,6 +418,8 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			if r.SecretRootMasterKey.StringData["cipher_key_b64"] != "" {
 				c.Env[j].Value = r.SecretRootMasterKey.StringData["cipher_key_b64"]
 			}
+		case "NODE_EXTRA_CA_CERTS":
+			c.Env[j].Value = r.ApplyCAsToPods
 		}
 
 	}

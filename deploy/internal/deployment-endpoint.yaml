@@ -80,6 +80,7 @@ spec:
             - name: LOCAL_N2N_AGENT
             - name: JWT_SECRET
             - name: NOOBAA_ROOT_SECRET
+            - name: NODE_EXTRA_CA_CERTS
             - name: NOOBAA_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:

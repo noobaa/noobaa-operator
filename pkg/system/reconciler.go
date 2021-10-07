@@ -3,6 +3,7 @@ package system
 import (
 	"context"
 	"fmt"
+	"os"
 	goruntime "runtime"
 	"strings"
 	"text/template"
@@ -63,6 +64,7 @@ type Reconciler struct {
 	OperatorVersion       string
 	OAuthEndpoints        *util.OAuth2Endpoints
 	MongoConnectionString string
+	ApplyCAsToPods        string
 
 	NooBaa                    *nbv1.NooBaa
 	ServiceAccount            *corev1.ServiceAccount
@@ -97,6 +99,7 @@ type Reconciler struct {
 	ServiceMonitorS3          *monitoringv1.ServiceMonitor
 	SystemInfo                *nb.SystemInfo
 	CephObjectStoreUser       *cephv1.CephObjectStoreUser
+	CephObjectStore       	  *cephv1.CephObjectStore
 	RouteMgmt                 *routev1.Route
 	RouteS3                   *routev1.Route
 	DeploymentEndpoint        *appsv1.Deployment
@@ -357,7 +360,16 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	err := r.ReconcilePhases()
+	err := util.AddToRootCAs(options.ServiceServingCertCAFile)
+	if err == nil {
+		r.ApplyCAsToPods = options.ServiceServingCertCAFile
+	} else if !os.IsNotExist(err) {
+		log.Errorf("❌ NooBaa %q failed to add root CAs to system default", r.NooBaa.Name)
+		res.RequeueAfter = 3 * time.Second
+		return res, nil
+	}
+
+	err = r.ReconcilePhases()
 
 	if err != nil {
 		if perr, isPERR := err.(*util.PersistentError); isPERR {
