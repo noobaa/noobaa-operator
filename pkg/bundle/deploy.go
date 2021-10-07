@@ -2830,7 +2830,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "d0b3248e8751fd5dc0827d9ec526b6a9a31bb7014940c5a86b0519b523f48af3"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "9e67a262b53e9b336a0d2810d3bf47b373704796ba7007b637492a3fac549ee7"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -2914,6 +2914,7 @@ spec:
             - name: LOCAL_N2N_AGENT
             - name: JWT_SECRET
             - name: NOOBAA_ROOT_SECRET
+            - name: NODE_EXTRA_CA_CERTS
             - name: NOOBAA_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -3451,7 +3452,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "4fcda72e3d5e4ce1e46cd1c5c324a2dbc748df155733dea8ec06ef6d6183424c"
+const Sha256_deploy_internal_statefulset_core_yaml = "002ed83aac0df2458a67fe77ce70d2028845a415f5fc49ceaaa007ab159a2e3b"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3556,6 +3557,7 @@ spec:
                   name: noobaa-server
                   key: server_secret
             - name: NOOBAA_ROOT_SECRET
+            - name: NODE_EXTRA_CA_CERTS
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
             - name: OAUTH_AUTHORIZATION_ENDPOINT

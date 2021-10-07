@@ -384,6 +384,9 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					} else {
 						c.Env[j].Value = ""
 					}
+
+				case "NODE_EXTRA_CA_CERTS":
+					c.Env[j].Value = r.ApplyCAsToPods
 				}
 			}
 
@@ -985,11 +988,14 @@ func (r *Reconciler) prepareCephBackingStore() error {
 
 	region := "us-east-1"
 	forcePathStyle := true
-	insecureClient := &http.Client{
+	client := &http.Client{
 		Transport: util.InsecureHTTPTransport,
 		Timeout: 10 * time.Second, 
+	}	
+	if r.ApplyCAsToPods != "" {
+		client.Transport = util.SecureHTTPTransport
 	}
-
+	
 	s3Config := &aws.Config{
 		Credentials: credentials.NewStaticCredentials(
 			cephObjectStoreUserSecret.StringData["AccessKey"],
@@ -999,7 +1005,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		Endpoint:         &endpoint,
 		Region:           &region,
 		S3ForcePathStyle: &forcePathStyle,
-		HTTPClient:       insecureClient,
+		HTTPClient:       client,
 	}
 
 	bucketName := r.generateBackingStoreTargetName()

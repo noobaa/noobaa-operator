@@ -61,7 +61,7 @@ function post_install_tests {
     obc_cycle
     replication_cycle
     check_backingstore
-    check_dbdump
+    # check_dbdump
     account_cycle
     check_deletes
     delete_replication_files

@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -89,7 +90,38 @@ var (
 	InsecureHTTPTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
+
+	// SecureHTTPTransport is a global secure http transport
+	SecureHTTPTransport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+	}
 )
+
+// AddToRootCAs adds a local cert file to Our SecureHttpTransport
+func AddToRootCAs(localCertFile string) error{
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+
+	// Read in the cert file
+	certs, err := ioutil.ReadFile(localCertFile)
+	if err != nil {
+		log.Errorf("Failed to append %q to RootCAs: %v", localCertFile, err)
+		return err
+	}
+
+	// Append our cert to the system pool
+	if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+		log.Errorf("Failed to append %q to RootCAs", localCertFile)
+		return fmt.Errorf("Failed to append %q to RootCAs", localCertFile)
+	}
+
+	// Trust the augmented cert pool in our client
+	log.Infof("Successfuly appended %q to RootCAs", localCertFile)
+	SecureHTTPTransport.TLSClientConfig.RootCAs = rootCAs
+	return nil
+}
 
 func init() {
 	Panic(apiextv1.AddToScheme(scheme.Scheme))
