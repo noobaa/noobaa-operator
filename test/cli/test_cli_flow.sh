@@ -53,6 +53,7 @@ NAMESPACE='test'
 
 function post_install_tests {
     aws_credentials
+    check_pv_pool_resources
     check_S3_compatible
     check_namespacestore
     bucketclass_cycle
