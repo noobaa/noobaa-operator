@@ -204,6 +204,14 @@ func CmdCreateGoogleCloudStorage() *cobra.Command {
 	return cmd
 }
 
+// Minimum backing store pv pool resources
+const (
+	// CPU, in cores. (500m = .5 cores)
+	minCPUString string = "100m"
+	// Memory, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
+	minMemoryString string = "400Mi"
+)
+
 // CmdCreatePVPool returns a CLI command
 func CmdCreatePVPool() *cobra.Command {
 	cmd := &cobra.Command{
@@ -218,6 +226,22 @@ func CmdCreatePVPool() *cobra.Command {
 	cmd.Flags().Uint32(
 		"pv-size-gb", 0,
 		`PV size of each volume in the store`,
+	)
+	cmd.Flags().String(
+		"request-cpu", minCPUString,
+		"Request cpu for an agent pod",
+	)
+	cmd.Flags().String(
+		"request-memory", minMemoryString,
+		"Request memory for an agent pod",
+	)
+	cmd.Flags().String(
+		"limit-cpu", minCPUString,
+		"Limit cpu for an agent pod",
+	)
+	cmd.Flags().String(
+		"limit-memory", minMemoryString,
+		"Limit memory for an agent pod",
 	)
 	cmd.Flags().String(
 		"storage-class", "",
@@ -500,6 +524,10 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 		numVolumes, _ := cmd.Flags().GetUint32("num-volumes")
 		pvSizeGB, _ := cmd.Flags().GetUint32("pv-size-gb")
 		storageClass, _ := cmd.Flags().GetString("storage-class")
+		requestCPU, _ := cmd.Flags().GetString("request-cpu")
+		requestMemory, _ := cmd.Flags().GetString("request-memory")
+		limitCPU, _ := cmd.Flags().GetString("limit-cpu")
+		limitMemory, _ := cmd.Flags().GetString("limit-memory")
 		pvPoolName := args[0]
 		if len(pvPoolName) > 43 {
 			log.Fatalf(`❌ Number of characters in <backing-store-name> should not exceed 63 `)
@@ -550,12 +578,49 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 			}
 		}
 
+		var requestCPUQuantity, requestMemoryQuantity,  limitCPUQuantity, limitMemoryQuantity resource.Quantity
+		var err error
+		requestCPUQuantity, err = resource.ParseQuantity(requestCPU)
+		if err != nil {
+			log.Fatalf(`❌ Could not parse request cpu %q`,
+			requestCPU)
+		}
+		requestMemoryQuantity, err = resource.ParseQuantity(requestMemory)
+		if err != nil {
+			log.Fatalf(`❌ Could not parse request Memory %q`,
+			requestMemory)
+		}
+		limitCPUQuantity, err = resource.ParseQuantity(limitCPU)
+		if err != nil {
+			log.Fatalf(`❌ Could not parse limit cpu %q`,
+			limitCPU)
+		}
+		limitMemoryQuantity, err = resource.ParseQuantity(limitMemory)
+		if err != nil {
+			log.Fatalf(`❌ Could not parse limit Memory %q`,
+			limitMemory)
+		}
+		if requestCPUQuantity.Cmp(limitCPUQuantity) > 0 {
+			log.Fatalf(`❌ Request CPU %v is larger than limit CPU %v`,
+			requestCPUQuantity.String(), limitCPUQuantity.String())
+		}
+		if requestMemoryQuantity.Cmp(limitMemoryQuantity) > 0 {
+			log.Fatalf(`❌ Request memory %v is larger than limit memory %v`,
+			requestMemoryQuantity.String(), limitMemoryQuantity.String())
+		}
+
 		backStore.Spec.PVPool = &nbv1.PVPoolSpec{
 			StorageClass: storageClass,
 			NumVolumes:   int(numVolumes),
 			VolumeResources: &corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: *resource.NewQuantity(int64(pvSizeGB)*1024*1024*1024, resource.BinarySI),
+					corev1.ResourceCPU: requestCPUQuantity,
+					corev1.ResourceMemory: requestMemoryQuantity,
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU: limitCPUQuantity,
+					corev1.ResourceMemory: limitMemoryQuantity,
 				},
 			},
 			Secret: corev1.SecretReference{
