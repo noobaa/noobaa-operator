@@ -23,6 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -1011,7 +1012,9 @@ func (r *Reconciler) reconcileMissingPods(podsList *corev1.PodList, pvcsList *co
 	for _, pod := range podsList.Items {
 		claimNames = append(claimNames, pod.Spec.Volumes[1].PersistentVolumeClaim.ClaimName)
 	}
-	r.updatePodTemplate()
+	if err := r.updatePodTemplate(); err != nil {
+		return err
+	}
 	for _, pvc := range pvcsList.Items {
 		if !contains(claimNames, pvc.Name) {
 			i := strings.LastIndex(pvc.Name, "-")
@@ -1061,6 +1064,29 @@ func (r *Reconciler) reconcileExistingPods(podsList *corev1.PodList) error {
 	return nil
 }
 
+// return true if update is required
+func compareResourceList(template, container *corev1.ResourceList) bool {
+	for _, res := range []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory} {
+		if qty, ok := (*template)[res]; ok {
+			if qty.Cmp((*container)[res]) != 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// return true if resources need to be updated
+func (r *Reconciler) needUpdateResources(c *corev1.Container) bool {
+	pvPool := r.BackingStore.Spec.PVPool
+	if pvPool == nil || pvPool.VolumeResources == nil {
+		return false
+	}
+
+	return compareResourceList(&pvPool.VolumeResources.Requests, &c.Resources.Requests) ||
+		compareResourceList(&pvPool.VolumeResources.Limits, &c.Resources.Limits)
+}
+
 func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 	var c = &pod.Spec.Containers[0]
 	for _, name := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
@@ -1075,6 +1101,12 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 		r.Logger.Warnf("Change in Image detected: current image(%v) noobaa image(%v)", c.Image, r.NooBaa.Status.ActualImage)
 		return true
 	}
+
+	if r.needUpdateResources(c) {
+		r.Logger.Warnf("Change in backing store agent resources detected")
+		return true
+	}
+
 	podSecrets := pod.Spec.ImagePullSecrets
 	noobaaSecret := r.NooBaa.Spec.ImagePullSecret
 	if noobaaSecret == nil {
@@ -1115,7 +1147,7 @@ func (r *Reconciler) isPodinNoobaa(pod *corev1.Pod) bool {
 	return false
 }
 
-func (r *Reconciler) updatePodTemplate() {
+func (r *Reconciler) updatePodTemplate() error {
 	c := &r.PodAgentTemplate.Spec.Containers[0]
 	for j := range c.Env {
 		switch c.Env[j].Name {
@@ -1152,6 +1184,36 @@ func (r *Reconciler) updatePodTemplate() {
 	if r.NooBaa.Spec.Affinity != nil {
 		r.PodAgentTemplate.Spec.Affinity = r.NooBaa.Spec.Affinity
 	}
+
+	return r.updatePodResourcesTemplate(c)
+}
+
+func (r *Reconciler) updatePodResourcesTemplate(c *corev1.Container) error {
+	minimalCPU := resource.MustParse(minCPUString)
+	minimalMemory := resource.MustParse(minMemoryString)
+	var src, dst *corev1.ResourceList
+	pvPool := r.BackingStore.Spec.PVPool
+
+	// Request
+	dst = &c.Resources.Requests
+	if pvPool != nil && pvPool.VolumeResources != nil {
+		src = &pvPool.VolumeResources.Requests
+	}
+	if err := r.reconcileResources(src, dst, minimalCPU, minimalMemory); err != nil {
+		return err
+	}
+
+	// Limits
+	src = nil
+	if pvPool != nil && pvPool.VolumeResources != nil {
+		src = &pvPool.VolumeResources.Limits
+	}
+	dst = &c.Resources.Limits
+	if err := r.reconcileResources(src, dst, minimalCPU, minimalMemory); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *Reconciler) updatePvcTemplate() {
@@ -1217,5 +1279,31 @@ func (r *Reconciler) upgradeBackingStore(sts *appsv1.StatefulSet) error {
 			util.KubeUpdate(pvc)
 		}
 	}
+	return nil
+}
+
+func (r *Reconciler) reconcileResources(src, dst *corev1.ResourceList, minCPU, minMem resource.Quantity) error {
+	cpu := minCPU
+	mem := minMem
+
+	if src != nil {
+		if qty, ok := (*src)[corev1.ResourceCPU]; ok {
+			if qty.Cmp(minCPU) < 0 {
+				return util.NewPersistentError("MinRequestCpu",
+				fmt.Sprintf("NooBaa BackingStore %v is in rejected phase due to small cpu request %v, min is %v", r.BackingStore.Name, qty.String(), minCPU.String()))
+			}
+			cpu = qty
+		}
+		if qty, ok := (*src)[corev1.ResourceMemory]; ok {
+			if qty.Cmp(minMem) < 0 {
+				return util.NewPersistentError("MinRequestCpu",
+				fmt.Sprintf("NooBaa BackingStore %v is in rejected phase due to small memory request %v, min is %v", r.BackingStore.Name, qty.String(), minMem.String()))
+			}
+			mem = qty
+		}
+	}
+
+	(*dst)[corev1.ResourceCPU] = cpu
+	(*dst)[corev1.ResourceMemory] = mem
 	return nil
 }
