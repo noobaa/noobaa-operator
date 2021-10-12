@@ -339,7 +339,6 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				c.Env[j].Value = "mongodb://" + r.NooBaaMongoDB.Name + "-0." + r.NooBaaMongoDB.Spec.ServiceName + "/nbcore"
 			}
 
-
 		case "POSTGRES_HOST":
 			c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
 
@@ -718,7 +717,7 @@ func (r *Reconciler) ReconcileRootSecret() error {
 					return fmt.Errorf("ReconcileRootSecret: could not get/put key in external KMS %+v", err1)
 				}
 				// get secret from external KMS
-				rootKey, err := util.GetSecret(c, keySecretName, secretPath, connectionDetails["VAULT_BACKEND_PATH"])				
+				rootKey, err := util.GetSecret(c, keySecretName, secretPath, connectionDetails["VAULT_BACKEND_PATH"])
 				if err != nil {
 					return fmt.Errorf("ReconcileRootSecret: got error in fetch root secret from external KMS %v", err)
 				}
@@ -757,15 +756,30 @@ func (r *Reconciler) ReconcileDB() error {
 		// those are config maps required by the NooBaaPostgresDB StatefulSet,
 		// if the configMap was not created at this step, NooBaaPostgresDB
 		// would fail to start.
-		var postgresCMs = []*corev1.ConfigMap{r.PostgresDBConf, r.PostgresDBInitDb}
-		for  _, cm := range postgresCMs {
-			r.Own(cm)
-			if !util.KubeCreateSkipExisting(cm) {
-				return fmt.Errorf("could not create Postgres DB configMap %q in Namespace %q", cm.Name, cm.Namespace)
-			}
+
+		isDBInitUpdated, reconcileDbError := r.ReconcileDBConfigMap(r.PostgresDBInitDb, r.SetDesiredPostgresDBInitDb)
+		if reconcileDbError != nil {
+			return reconcileDbError
 		}
 
-		err = r.ReconcileObject(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB)
+		isDBConfUpdated, reconcileDbError := r.ReconcileDBConfigMap(r.PostgresDBConf, r.SetDesiredPostgresDBConf)
+		if reconcileDbError != nil {
+			return reconcileDbError
+		}
+
+		result, reconcilePostgresError := r.reconcileObjectAndGetResult(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB, false)
+		if reconcilePostgresError != nil {
+			return reconcilePostgresError
+		}
+		if !r.isObjectUpdated(result) && (isDBInitUpdated || isDBConfUpdated) {
+			r.Logger.Warn("One of the db configMap was updated but not postgres db")
+			restartError := r.RestartDbPods()
+			if restartError != nil {
+				r.Logger.Warn("Unable to restart db pods")
+			}
+
+		}
+
 		// Making sure that previous CRs without the value will deploy MongoDB
 	} else if r.NooBaa.Spec.DBType == "" || r.NooBaa.Spec.DBType == "mongodb" {
 		err = r.ReconcileObject(r.NooBaaMongoDB, r.SetDesiredNooBaaDB)
@@ -773,6 +787,47 @@ func (r *Reconciler) ReconcileDB() error {
 		err = util.NewPersistentError("UnknownDBType", "Unknown dbType is specified in NooBaa spec")
 	}
 	return err
+}
+
+// ReconcileDBConfigMap reconcile provided postgres db config map
+func (r *Reconciler) ReconcileDBConfigMap(cm *corev1.ConfigMap, desiredFunc func() error) (bool, error) {
+	r.Own(cm)
+	result, error := r.reconcileObjectAndGetResult(cm, desiredFunc, false)
+	if error != nil {
+		return false, fmt.Errorf("could not update Postgres DB configMap %q in Namespace %q", cm.Name, cm.Namespace)
+	}
+	return r.isObjectUpdated(result), nil
+}
+
+// SetDesiredPostgresDBConf fill desired postgres db config map
+func (r *Reconciler) SetDesiredPostgresDBConf() error {
+	dbConfigYaml := util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap)
+	r.PostgresDBConf.Data = dbConfigYaml.Data
+	return nil
+}
+
+// SetDesiredPostgresDBInitDb fill desired postgres db init config map
+func (r *Reconciler) SetDesiredPostgresDBInitDb() error {
+	postgresDBInitDbYaml := util.KubeObject(bundle.File_deploy_internal_configmap_postgres_initdb_yaml).(*corev1.ConfigMap)
+	r.PostgresDBConf.Data = postgresDBInitDbYaml.Data
+	return nil
+}
+
+// RestartDbPods restart db pods
+func (r *Reconciler) RestartDbPods() error {
+	r.Logger.Warn("Restarting postgres db pods")
+
+	dbPodList := &corev1.PodList{}
+	dbPodSelector, _ := labels.Parse("noobaa-db=postgres")
+	if !util.KubeList(dbPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: dbPodSelector}) {
+		return fmt.Errorf("failed to list db pods in Namespace %q", options.Namespace)
+	}
+	for _, pod := range dbPodList.Items {
+		if pod.DeletionTimestamp == nil {
+			util.KubeDeleteNoPolling(&pod)
+		}
+	}
+	return nil
 }
 
 // UpgradeSplitDB removes the old pvc and create a  new one with the same PV
@@ -1119,10 +1174,10 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 
 	// When adding a new env var, make sure to add it to the sts/deployment as well
 	// see "NOOBAA_DISABLE_COMPRESSION" as an example
-	DefaultConfigMapData := map[string]string {
+	DefaultConfigMapData := map[string]string{
 		"NOOBAA_DISABLE_COMPRESSION": "false",
-		"DISABLE_DEV_RANDOM_SEED": "true",
-		"NOOBAA_LOG_LEVEL": "default_level",
+		"DISABLE_DEV_RANDOM_SEED":    "true",
+		"NOOBAA_LOG_LEVEL":           "default_level",
 	}
 	for key, value := range DefaultConfigMapData {
 		if _, ok := r.CoreAppConfig.Data[key]; !ok {
