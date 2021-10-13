@@ -3479,7 +3479,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "3921b3a648538a7f4ec337c34b59a837b4a3385cc0c52ce00389e0be6a5cb64e"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "2cd6f3fdb0087481d8d692dece6f68e5d75fd4f46233db7b1e37c1c3665233c7"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3527,7 +3527,15 @@ spec:
           - name: POSTGRESQL_DATABASE
             value: nbcore
           - name: POSTGRESQL_USER
+            valueFrom:
+              secretKeyRef:
+                key: user
+                name: noobaa-db
           - name: POSTGRESQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: noobaa-db
         command:
         - sh
         - -x
@@ -3557,7 +3565,15 @@ spec:
           - name: POSTGRESQL_DATABASE
             value: nbcore
           - name: POSTGRESQL_USER
+            valueFrom:
+              secretKeyRef:
+                key: user
+                name: noobaa-db
           - name: POSTGRESQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: noobaa-db
         imagePullPolicy: "IfNotPresent"
         ports:
           - containerPort: 5432

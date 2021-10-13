@@ -194,31 +194,6 @@ func (r *Reconciler) SetDesiredServiceDBForPostgres() error {
 	return nil
 }
 
-func (r *Reconciler) setPostgresUserPass(c *corev1.Container) {
-	for j := range c.Env {
-		switch c.Env[j].Name {
-		case "POSTGRESQL_USER":
-			c.Env[j].ValueFrom = &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: r.SecretDB.Name,
-					},
-					Key: "user",
-				},
-			}
-		case "POSTGRESQL_PASSWORD":
-			c.Env[j].ValueFrom = &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: r.SecretDB.Name,
-					},
-					Key: "password",
-				},
-			}
-		}
-	}
-}
-
 // SetDesiredNooBaaDB updates the NooBaaDB as desired for reconciling
 func (r *Reconciler) SetDesiredNooBaaDB() error {
 	var NooBaaDB *appsv1.StatefulSet = nil
@@ -263,7 +238,6 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 		}
 		if c.Name == "initialize-database" {
 			c.Image = GetDesiredDBImage(r.NooBaa)
-			r.setPostgresUserPass(c)
 		}
 	}
 	for i := range podSpec.Containers {
@@ -273,9 +247,6 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 			c.Image = GetDesiredDBImage(r.NooBaa)
 			if r.NooBaa.Spec.DBResources != nil {
 				c.Resources = *r.NooBaa.Spec.DBResources
-			}
-			if r.NooBaa.Spec.DBType == "postgres" {
-				r.setPostgresUserPass(c)
 			}
 		}
 	}

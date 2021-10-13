@@ -44,7 +44,15 @@ spec:
           - name: POSTGRESQL_DATABASE
             value: nbcore
           - name: POSTGRESQL_USER
+            valueFrom:
+              secretKeyRef:
+                key: user
+                name: noobaa-db
           - name: POSTGRESQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: noobaa-db
         command:
         - sh
         - -x
@@ -74,7 +82,15 @@ spec:
           - name: POSTGRESQL_DATABASE
             value: nbcore
           - name: POSTGRESQL_USER
+            valueFrom:
+              secretKeyRef:
+                key: user
+                name: noobaa-db
           - name: POSTGRESQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: noobaa-db
         imagePullPolicy: "IfNotPresent"
         ports:
           - containerPort: 5432
