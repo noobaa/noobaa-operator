@@ -29,7 +29,10 @@ func RunUI(cmd *cobra.Command, args []string) {
 	klient := util.KubeClient()
 	sysKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
 	r := NewReconciler(sysKey, klient, scheme.Scheme, nil)
-	CheckSystem(r.NooBaa)
+	if  !CheckSystem(r.NooBaa) {
+		log.Infof("NooBaa not found or already deleted. Skip.")
+		return
+	}
 
 	sysClient, err := Connect(true)
 	if err != nil {

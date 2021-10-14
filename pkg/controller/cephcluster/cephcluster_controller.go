@@ -4,6 +4,7 @@ import (
 	"context"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
@@ -55,6 +56,14 @@ func Add(mgr manager.Manager) error {
 func doReconcile(context context.Context, req reconcile.Request) (reconcile.Result, error) {
 	log := logrus.WithField("cephcluster", req.Namespace+"/"+req.Name)
 	res := reconcile.Result{}
+
+	nooBaa := nbv1.NooBaa{}
+	nooBaa.Name = options.SystemName
+	nooBaa.Namespace = req.Namespace
+	if !system.CheckSystem(&nooBaa) {
+		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
+		return res, nil
+	}
 
 	cephCluster := cephv1.CephCluster{}
 	cephCluster.Name = req.Name

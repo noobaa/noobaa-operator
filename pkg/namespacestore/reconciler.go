@@ -119,13 +119,25 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
 	res := reconcile.Result{}
 	log := r.Logger
-	log.Infof("Start reconciling namespacestore ...")
+	var err error = nil
+	log.Infof("Start NamespaceStore Reconcile ...")
 
-	util.KubeCheck(r.NamespaceStore)
-	log.Infof("Start reconciling namespacestore after kubecheck ...")
+	systemFound := system.CheckSystem(r.NooBaa)
 
-	if r.NamespaceStore.UID == "" {
-		log.Infof("NamespaceStore %q not found or deleted. Skip reconcile.", r.NamespaceStore.Name)
+	if !util.KubeCheck(r.NamespaceStore) {
+		log.Infof("❌ NamespaceStore %q not found.", r.NamespaceStore.Name)
+		return res, err
+	}
+
+	if ts := r.NamespaceStore.DeletionTimestamp; ts != nil {
+		log.Infof("❌ NamespaceStore %q was deleted on %v.", r.NamespaceStore.Name, ts)
+
+		err = r.ReconcileDeletion(systemFound)
+		return res, err
+	}
+
+	if !systemFound {
+		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return reconcile.Result{}, nil
 	}
 
@@ -138,19 +150,12 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	system.CheckSystem(r.NooBaa)
-	var err error
-
 	if err == nil {
 		err = r.LoadNamespaceStoreSecret()
 	}
 
 	if err == nil {
-		if r.NamespaceStore.DeletionTimestamp != nil {
-			err = r.ReconcileDeletion()
-		} else {
-			err = r.ReconcilePhases()
-		}
+		err = r.ReconcilePhases()
 	}
 
 	if err != nil {
@@ -322,7 +327,7 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 }
 
 // ReconcileDeletion handles the deletion of a namespace-store using the noobaa api
-func (r *Reconciler) ReconcileDeletion() error {
+func (r *Reconciler) ReconcileDeletion(systemFound bool) error {
 
 	// Set the phase to let users know the operator has noticed the deletion request
 	if r.NamespaceStore.Status.Phase != nbv1.NamespaceStorePhaseDeleting {
@@ -337,70 +342,68 @@ func (r *Reconciler) ReconcileDeletion() error {
 		}
 	}
 
-	if r.NooBaa.UID == "" {
-		r.Logger.Infof("NamepsaceStore %q remove finalizer because NooBaa system is already deleted", r.NamespaceStore.Name)
-		return r.FinalizeDeletion()
-	}
-
-	if err := r.ReadSystemInfo(); err != nil {
-		return err
-	}
-
-	if r.NamespaceResourceinfo != nil {
-
-		internalPoolName := ""
-		for i := range r.SystemInfo.Pools {
-			pool := &r.SystemInfo.Pools[i]
-			if pool.ResourceType == "INTERNAL" {
-				internalPoolName = pool.Name
-				break
-			}
-		}
-		for i := range r.SystemInfo.Accounts {
-			account := &r.SystemInfo.Accounts[i]
-			if account.DefaultResource == r.NamespaceResourceinfo.Name {
-				allowedBuckets := account.AllowedBuckets
-				if allowedBuckets.PermissionList == nil {
-					allowedBuckets.PermissionList = []string{}
-				}
-				err := r.NBClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
-					Email:           account.Email,
-					S3Access:        account.HasS3Access,
-					DefaultResource: &internalPoolName,
-					AllowBuckets:    &allowedBuckets,
-				})
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		err := r.NBClient.DeleteNamespaceResourceAPI(nb.DeleteNamespaceResourceParams{Name: r.NamespaceResourceinfo.Name})
-		if err != nil {
-			if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
-				if rpcErr.RPCCode == "IN_USE" {
-					return fmt.Errorf("DeleteNamespaceResourceAPI cannot complete because namespace store %q has buckets attached", r.NamespaceResourceinfo.Name)
-				}
-			}
+	if systemFound {
+		if err := r.ReadSystemInfo(); err != nil {
 			return err
 		}
-	}
 
-	if r.ExternalConnectionInfo != nil {
-		// TODO we cannot assume we are the only one using this connection...
-		err := r.NBClient.DeleteExternalConnectionAPI(nb.DeleteExternalConnectionParams{Name: r.ExternalConnectionInfo.Name})
-		if err != nil {
-			if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
-				if rpcErr.RPCCode != "IN_USE" {
-					return err
+		if r.NamespaceResourceinfo != nil {
+
+			internalPoolName := ""
+			for i := range r.SystemInfo.Pools {
+				pool := &r.SystemInfo.Pools[i]
+				if pool.ResourceType == "INTERNAL" {
+					internalPoolName = pool.Name
+					break
 				}
-				r.Logger.Warnf("DeleteExternalConnection cannot complete because it is IN_USE %q", r.ExternalConnectionInfo.Name)
-			} else {
+			}
+			for i := range r.SystemInfo.Accounts {
+				account := &r.SystemInfo.Accounts[i]
+				if account.DefaultResource == r.NamespaceResourceinfo.Name {
+					allowedBuckets := account.AllowedBuckets
+					if allowedBuckets.PermissionList == nil {
+						allowedBuckets.PermissionList = []string{}
+					}
+					err := r.NBClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
+						Email:           account.Email,
+						S3Access:        account.HasS3Access,
+						DefaultResource: &internalPoolName,
+						AllowBuckets:    &allowedBuckets,
+					})
+					if err != nil {
+						return err
+					}
+				}
+			}
+
+			err := r.NBClient.DeleteNamespaceResourceAPI(nb.DeleteNamespaceResourceParams{Name: r.NamespaceResourceinfo.Name})
+			if err != nil {
+				if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
+					if rpcErr.RPCCode == "IN_USE" {
+						return fmt.Errorf("DeleteNamespaceResourceAPI cannot complete because namespace store %q has buckets attached", r.NamespaceResourceinfo.Name)
+					}
+				}
 				return err
 			}
 		}
+
+		if r.ExternalConnectionInfo != nil {
+			// TODO we cannot assume we are the only one using this connection...
+			err := r.NBClient.DeleteExternalConnectionAPI(nb.DeleteExternalConnectionParams{Name: r.ExternalConnectionInfo.Name})
+			if err != nil {
+				if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
+					if rpcErr.RPCCode != "IN_USE" {
+						return err
+					}
+					r.Logger.Warnf("DeleteExternalConnection cannot complete because it is IN_USE %q", r.ExternalConnectionInfo.Name)
+				} else {
+					return err
+				}
+			}
+		}
 	}
 
+	r.Logger.Infof("NamepsaceStore %q remove finalizer", r.NamespaceStore.Name)
 	return r.FinalizeDeletion()
 }
 
