@@ -6,6 +6,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/crd"
+	"github.com/noobaa/noobaa-operator/v5/pkg/noobaaaccount"
 	"github.com/noobaa/noobaa-operator/v5/pkg/obc"
 	"github.com/noobaa/noobaa-operator/v5/pkg/operator"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
@@ -177,6 +178,13 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	fmt.Println("#------------------#")
 	fmt.Println("")
 	bucketclass.RunList(cmd, args)
+	fmt.Println("")
+
+	fmt.Println("#-------------------#")
+	fmt.Println("#- NooBaa Accounts -#")
+	fmt.Println("#-------------------#")
+	fmt.Println("")
+	noobaaaccount.RunList(cmd, args)
 	fmt.Println("")
 
 	fmt.Println("#-----------------#")
