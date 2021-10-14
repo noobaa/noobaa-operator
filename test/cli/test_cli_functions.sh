@@ -693,7 +693,7 @@ function check_backingstore {
 }
 
 function check_dbdump {
-    echo_time "💬  Generaiting db dump"
+    echo_time "💬  Generating db dump"
 
     # Generate db dump at /tmp/<random_dir>
     rand_dir=`tr -dc A-Za-z0-9 </dev/urandom | head -c 13 ; echo ''`
@@ -701,7 +701,7 @@ function check_dbdump {
     test_noobaa db-dump --dir /tmp/$rand_dir
 
     # Check whether dump was created
-     dump_file_name=`ls -l /tmp/$rand_dir | grep noobaa_db_dump | awk '{ print $9 }'`
+    dump_file_name=`ls -l /tmp/$rand_dir | grep noobaa_db_dump | awk '{ print $9 }'`
     if [ ! -f "/tmp/$rand_dir/$dump_file_name" ]
     then
         echo_time "❌  db dump was not generated"
@@ -712,7 +712,7 @@ function check_dbdump {
     rm /tmp/$rand_dir/$dump_file_name
 
     # Generate db dump through diagnose API
-    echo_time "💬  Generaiting db dump through diagnose"
+    echo_time "💬  Generating db dump through diagnose"
     test_noobaa diagnose --db-dump --dir /tmp/$rand_dir
 
     # Check whether dump was created
@@ -726,3 +726,4 @@ function check_dbdump {
 
     # Remove diagnostics and dump files
     rm -rf /tmp/$rand_dir
+}
