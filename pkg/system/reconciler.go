@@ -343,7 +343,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			r.SetPhase("", "TemporaryError", err.Error())
 			log.Warnf("⏳ Temporary Error: %s", err)
 		}
-		
+
 	}
 
 	if r.NooBaa.Spec.JoinSecret != nil {
@@ -414,8 +414,8 @@ func (r *Reconciler) VerifyObjectBucketCleanup() error {
 	}
 
 	if r.NooBaa.Spec.CleanupPolicy.Confirmation == nbv1.DeleteOBCConfirmation {
-		if  err := util.DeleteStorageClass(r.OBCStorageClass); err != nil {
-			log.Errorf("failed to delete storageclass %q",r.OBCStorageClass.Name)
+		if err := util.DeleteStorageClass(r.OBCStorageClass); err != nil {
+			log.Errorf("failed to delete storageclass %q", r.OBCStorageClass.Name)
 		}
 		util.RemoveFinalizer(r.NooBaa, nbv1.GracefulFinalizer)
 		if !util.KubeUpdate(r.NooBaa) {
@@ -442,8 +442,8 @@ func (r *Reconciler) VerifyObjectBucketCleanup() error {
 
 	log.Infof("All object buckets deleted in namespace %q", r.NooBaa.Namespace)
 
-	if  err := util.DeleteStorageClass(r.OBCStorageClass); err != nil {
-		log.Errorf("failed to delete storageclass %q",r.OBCStorageClass.Name)
+	if err := util.DeleteStorageClass(r.OBCStorageClass); err != nil {
+		log.Errorf("failed to delete storageclass %q", r.OBCStorageClass.Name)
 	}
 	util.RemoveFinalizer(r.NooBaa, nbv1.GracefulFinalizer)
 	if !util.KubeUpdate(r.NooBaa) {
@@ -557,7 +557,11 @@ func (r *Reconciler) ReconcileObjectOptional(obj client.Object, desiredFunc func
 }
 
 func (r *Reconciler) reconcileObject(obj client.Object, desiredFunc func() error, optionalCRD bool) error {
+	_, err := r.reconcileObjectAndGetResult(obj, desiredFunc, optionalCRD)
+	return err
+}
 
+func (r *Reconciler) reconcileObjectAndGetResult(obj client.Object, desiredFunc func() error, optionalCRD bool) (controllerutil.OperationResult, error) {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	objMeta, _ := meta.Accessor(obj)
 	r.Own(objMeta)
@@ -578,14 +582,19 @@ func (r *Reconciler) reconcileObject(obj client.Object, desiredFunc func() error
 	if err != nil {
 		if optionalCRD && (meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err)) {
 			r.Logger.Printf("ReconcileObject: (Optional) CRD Unavailable: %s %s\n", gvk.Kind, objMeta.GetSelfLink())
-			return nil
+			return op, nil
 		}
 		r.Logger.Errorf("ReconcileObject: Error %s %s %v", gvk.Kind, objMeta.GetSelfLink(), err)
-		return err
+		return op, err
 	}
 
-	r.Logger.Infof("ReconcileObject: Done - %s %s %s", op, gvk.Kind, objMeta.GetSelfLink())
-	return nil
+	r.Logger.Infof("ReconcileObject: Done - %s %s %s %s", op, gvk.Kind, objMeta.GetName(), objMeta.GetSelfLink())
+	return op, nil
+}
+
+// isObjectWasUpdated check if object has been updated based on reconcile object result
+func (r *Reconciler) isObjectUpdated(result controllerutil.OperationResult) bool {
+	return result != controllerutil.OperationResultNone && result != controllerutil.OperationResultUpdatedStatusOnly
 }
 
 // Own sets the object owner references to the noobaa system
