@@ -1181,7 +1181,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "d0e6dafbcbb08652dd58bc2131a57835479bca29d9d232770cd474d261a5bc57"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a716415c7ed63a0445c8d79c14898e98733a32e133df23c11b1825418195af53"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2194,6 +2194,11 @@ spec:
                 - warn
                 - default_level
                 type: integer
+              disableLoadBalancerService:
+                description: DisableLoadBalancerService (optional) sets the service
+                  type to ClusterIP instead of LoadBalancer
+                nullable: true
+                type: boolean
               endpoints:
                 description: Endpoints (optional) sets configuration info for the
                   noobaa endpoint deployment.

@@ -1009,6 +1009,11 @@ spec:
                 - warn
                 - default_level
                 type: integer
+              disableLoadBalancerService:
+                description: DisableLoadBalancerService (optional) sets the service
+                  type to ClusterIP instead of LoadBalancer
+                nullable: true
+                type: boolean
               endpoints:
                 description: Endpoints (optional) sets configuration info for the
                   noobaa endpoint deployment.
