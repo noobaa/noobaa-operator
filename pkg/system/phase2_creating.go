@@ -15,6 +15,7 @@ import (
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -277,6 +278,13 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 			case "db":
 				if r.NooBaa.Spec.DBStorageClass != nil {
 					pvc.Spec.StorageClassName = r.NooBaa.Spec.DBStorageClass
+				} else {
+					storageClassName, err := r.findLocalStorageClass()
+					if err != nil {
+						r.Logger.Errorf("got error finding a default/local storage class. error: %v", err)
+						return err
+					}
+					pvc.Spec.StorageClassName = &storageClassName
 				}
 				if r.NooBaa.Spec.DBVolumeResources != nil {
 					pvc.Spec.Resources = *r.NooBaa.Spec.DBVolumeResources
@@ -293,7 +301,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 		}
 
 		// when already exists we check that there is no update requested to the volumes
-		// otherwise we report that volume update is unsupported
+		// otherwise we report that volume updarte is unsupported
 		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
 			pvc := &NooBaaDB.Spec.VolumeClaimTemplates[i]
 			switch pvc.Name {
@@ -305,12 +313,12 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 				}
 				if r.NooBaa.Spec.DBStorageClass != nil {
 					desiredClass = *r.NooBaa.Spec.DBStorageClass
-				}
-				if desiredClass != currentClass {
-					r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBStorageClassIsImmutable",
-						"spec.dbStorageClass is immutable and cannot be updated for volume %q in existing %s %q"+
-							" since it requires volume recreate and migrate which is unsupported by the operator",
-						pvc.Name, r.CoreApp.TypeMeta.Kind, r.CoreApp.Name)
+					if desiredClass != currentClass {
+						r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBStorageClassIsImmutable",
+							"spec.dbStorageClass is immutable and cannot be updated for volume %q in existing %s %q"+
+								" since it requires volume recreate and migrate which is unsupported by the operator",
+							pvc.Name, r.CoreApp.TypeMeta.Kind, r.CoreApp.Name)
+					}
 				}
 				if r.NooBaa.Spec.DBVolumeResources != nil &&
 					!reflect.DeepEqual(pvc.Spec.Resources, *r.NooBaa.Spec.DBVolumeResources) {
@@ -1195,4 +1203,25 @@ func (r *Reconciler) SetConfigMapAnnotation(annotation map[string]string) {
 		sha256Hex := util.GetCmDataHash(*input)
 		annotation["ConfigMapHash"] = sha256Hex
 	}
+}
+
+func (r *Reconciler) findLocalStorageClass() (string, error) {
+	lsoStorageClassNames := []string{}
+	scList := &storagev1.StorageClassList{}
+	util.KubeList(scList)
+	for _, sc := range scList.Items {
+		if sc.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+			return sc.Name, nil
+		}
+		if sc.Provisioner == "kubernetes.io/no-provisioner" {
+			lsoStorageClassNames = append(lsoStorageClassNames, sc.Name)
+		}
+	}
+	if len(lsoStorageClassNames) == 0 {
+		return "", fmt.Errorf("Error: found no LSO storage class and no storage class was marked as default")
+	} 
+	if len(lsoStorageClassNames) > 1 {
+		return "", fmt.Errorf("Error: found more than one LSO storage class and none was marked as default")
+	}
+	return lsoStorageClassNames[0], nil
 }
