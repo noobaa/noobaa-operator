@@ -911,6 +911,11 @@ func GetDesiredDBImage(sys *nbv1.NooBaa) string {
 func CheckSystem(sys *nbv1.NooBaa) bool {
 	log := util.Logger()
 	found := util.KubeCheck(sys)
+
+	if ts := sys.GetDeletionTimestamp(); ts != nil {
+		log.Printf("❌ NooBaa system deleted at %v", ts)
+		return false // deleted
+	}
 	if sys.Status.Accounts == nil {
 		sys.Status.Accounts = &nbv1.AccountsStatus{}
 	}

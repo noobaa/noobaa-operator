@@ -144,15 +144,27 @@ func NewReconciler(
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
+	var err error = nil
 	res := reconcile.Result{}
 	log := r.Logger
-	log.Infof("Start ...")
+	log.Infof("Start BackingStore Reconcile ...")
 
-	util.KubeCheck(r.BackingStore)
+	systemFound := system.CheckSystem(r.NooBaa)
 
-	if r.BackingStore.UID == "" {
-		log.Infof("BackingStore %q not found or deleted. Skip reconcile.", r.BackingStore.Name)
-		return reconcile.Result{}, nil
+	if !util.KubeCheck(r.BackingStore) {
+		log.Infof("❌ BackingStore %q not found.", r.BackingStore.Name)
+		return res, err
+	}
+
+	if ts := r.BackingStore.DeletionTimestamp; ts != nil {
+		log.Infof("BackingStore %q was deleted on %v.", r.BackingStore.Name, ts)
+		err = r.ReconcileDeletion(systemFound)
+		return res, err
+	}
+
+	if !systemFound {
+		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
+		return res, nil
 	}
 
 	if util.EnsureCommonMetaFields(r.BackingStore, nbv1.Finalizer) {
@@ -164,12 +176,10 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	system.CheckSystem(r.NooBaa)
-
 	oldStatefulSet := &appsv1.StatefulSet{}
 	oldStatefulSet.Name = fmt.Sprintf("%s-%s-noobaa", r.BackingStore.Name, options.SystemName)
 	oldStatefulSet.Namespace = r.Request.Namespace
-	var err error
+
 	if util.KubeCheck(oldStatefulSet) {
 		err = r.upgradeBackingStore(oldStatefulSet)
 	}
@@ -179,11 +189,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	if err == nil {
-		if r.BackingStore.DeletionTimestamp != nil {
-			err = r.ReconcileDeletion()
-		} else {
-			err = r.ReconcilePhases()
-		}
+		err = r.ReconcilePhases()
 	}
 
 	if err != nil {
@@ -373,32 +379,9 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	return nil
 }
 
-// ReconcileDeletion handles the deletion of a backing-store using the noobaa api
-func (r *Reconciler) ReconcileDeletion() error {
-
-	// Set the phase to let users know the operator has noticed the deletion request
-	if r.BackingStore.Status.Phase != nbv1.BackingStorePhaseDeleting {
-		r.SetPhase(
-			nbv1.BackingStorePhaseDeleting,
-			"BackingStorePhaseDeleting",
-			"noobaa operator started deletion",
-		)
-		err := r.UpdateStatus()
-		if err != nil {
-			return err
-		}
-	}
-
-	if r.NooBaa.UID == "" {
-		r.Logger.Infof("BackingStore %q remove finalizer because NooBaa system is already deleted", r.BackingStore.Name)
-		if r.BackingStore.Spec.Type == nbv1.StoreTypePVPool {
-			err := r.deletePvPool()
-			if err != nil {
-				return err
-			}
-		}
-		return r.FinalizeDeletion()
-	}
+// finalizeCore runs when the backing store is being deleted
+// Handles NooBaa core side of the store deletion
+func (r *Reconciler) finalizeCore() error {
 
 	if err := r.ReadSystemInfo(); err != nil {
 		return err
@@ -446,13 +429,6 @@ func (r *Reconciler) ReconcileDeletion() error {
 		}
 	}
 
-	if r.BackingStore.Spec.Type == nbv1.StoreTypePVPool {
-		err := r.deletePvPool()
-		if err != nil {
-			return err
-		}
-	}
-
 	if r.ExternalConnectionInfo != nil {
 		// TODO we cannot assume we are the only one using this connection...
 		err := r.NBClient.DeleteExternalConnectionAPI(nb.DeleteExternalConnectionParams{Name: r.ExternalConnectionInfo.Name})
@@ -468,6 +444,42 @@ func (r *Reconciler) ReconcileDeletion() error {
 		}
 	}
 
+	// success
+	return nil
+}
+
+// ReconcileDeletion handles the deletion of a backing-store using the noobaa api
+func (r *Reconciler) ReconcileDeletion(systemFound bool) error {
+
+	// Set the phase to let users know the operator has noticed the deletion request
+	if r.BackingStore.Status.Phase != nbv1.BackingStorePhaseDeleting {
+		r.SetPhase(
+			nbv1.BackingStorePhaseDeleting,
+			"BackingStorePhaseDeleting",
+			"noobaa operator started deletion",
+		)
+		err := r.UpdateStatus()
+		if err != nil {
+			return err
+		}
+	}
+
+	// Notify the NooBaa core if the system is running
+	if systemFound {
+		if err := r.finalizeCore(); err != nil {
+			return err
+		}
+	}
+
+	// Release the k8s volumes used
+	if r.BackingStore.Spec.Type == nbv1.StoreTypePVPool {
+		err := r.deletePvPool()
+		if err != nil {
+			return err
+		}
+	}
+
+	r.Logger.Infof("BackingStore %q remove finalizer", r.BackingStore.Name)
 	return r.FinalizeDeletion()
 }
 

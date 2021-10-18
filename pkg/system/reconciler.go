@@ -316,14 +316,24 @@ func (r *Reconciler) CheckAll() {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *Reconciler) Reconcile() (reconcile.Result, error) {
-
+    var err error = nil
 	res := reconcile.Result{}
 	log := r.Logger
-	log.Infof("Start ...")
+	log.Infof("Start NooBaa system Reconcile ...")
 
 	if !CheckSystem(r.NooBaa) {
-		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
-		return res, nil
+		log.Infof("NooBaa not found or already deleted.")
+		if r.NooBaa.DeletionTimestamp != nil {
+			if err = util.VerifyExternalSecretsDeletion(r.NooBaa.Spec.Security.KeyManagementService, r.NooBaa.Namespace, string(r.NooBaa.ObjectMeta.UID)); err != nil {
+				log.Warnf("⏳ Temporary Error: %s", err)
+			}
+			// obc and storage class removal
+			if err = r.VerifyObjectBucketCleanup(); err != nil {
+				r.SetPhase("", "TemporaryError", err.Error())
+				log.Warnf("⏳ Temporary Error: %s", err)
+			}
+		}
+		return res, err
 	}
 
 	if util.EnsureCommonMetaFields(r.NooBaa, nbv1.GracefulFinalizer) {
@@ -333,17 +343,6 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			res.RequeueAfter = 3 * time.Second
 			return res, nil
 		}
-	}
-	if r.NooBaa.DeletionTimestamp != nil {
-		if err := util.VerifyExternalSecretsDeletion(r.NooBaa.Spec.Security.KeyManagementService, r.NooBaa.Namespace, string(r.NooBaa.ObjectMeta.UID)); err != nil {
-			log.Warnf("⏳ Temporary Error: %s", err)
-		}
-		// obc and storage class removal
-		if err := r.VerifyObjectBucketCleanup(); err != nil {
-			r.SetPhase("", "TemporaryError", err.Error())
-			log.Warnf("⏳ Temporary Error: %s", err)
-		}
-
 	}
 
 	if r.NooBaa.Spec.JoinSecret != nil {
@@ -360,7 +359,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	err := util.AddToRootCAs(options.ServiceServingCertCAFile)
+	err = util.AddToRootCAs(options.ServiceServingCertCAFile)
 	if err == nil {
 		r.ApplyCAsToPods = options.ServiceServingCertCAFile
 	} else if !os.IsNotExist(err) {

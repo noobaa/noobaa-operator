@@ -74,16 +74,26 @@ func NewReconciler(
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *Reconciler) Reconcile() (reconcile.Result, error) {
-
+	var err error = nil
 	res := reconcile.Result{}
 	log := r.Logger
-	log.Infof("Start ...")
+	log.Infof("Start BucketClass Reconcile...")
 
-	util.KubeCheck(r.BucketClass)
+	systemFound := system.CheckSystem(r.NooBaa)
 
-	if r.BucketClass.UID == "" {
-		log.Infof("BucketClass %q not found or deleted. Skip reconcile.", r.BucketClass.Name)
-		return reconcile.Result{}, nil
+	if !util.KubeCheck(r.BucketClass) {
+		log.Infof("❌ BucketClass %q not found or deleted.", r.BucketClass.Name)
+		return res, err
+	}
+
+	if r.BucketClass.DeletionTimestamp != nil {
+		err = r.ReconcileDeletion()
+		return res, err
+	}
+
+	if !systemFound {
+		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
+		return res, nil
 	}
 
 	if util.EnsureCommonMetaFields(r.BucketClass, nbv1.Finalizer) {
@@ -95,14 +105,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	system.CheckSystem(r.NooBaa)
-
-	var err error
-	if r.BucketClass.DeletionTimestamp != nil {
-		err = r.ReconcileDeletion()
-	} else {
-		err = r.ReconcilePhases()
-	}
+	err = r.ReconcilePhases()
 	if err != nil {
 		if perr, isPERR := err.(*util.PersistentError); isPERR {
 			r.SetPhase(nbv1.BucketClassPhaseRejected, perr.Reason, perr.Message)
@@ -331,11 +334,7 @@ func (r *Reconciler) ReconcileDeletion() error {
 		}
 	}
 
-	if r.NooBaa.UID == "" {
-		r.Logger.Infof("BucketClass %q remove finalizer because NooBaa system is already deleted", r.BucketClass.Name)
-		return r.FinalizeDeletion()
-	}
-
+	r.Logger.Infof("BucketClass %q remove finalizer", r.BucketClass.Name)
 	return r.FinalizeDeletion()
 }
 
