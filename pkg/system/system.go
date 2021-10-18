@@ -129,6 +129,7 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	sys.Finalizers = []string{nbv1.GracefulFinalizer}
 	dbType := options.DBType
 	sys.Spec.DBType = nbv1.DBTypes(dbType)
+	sys.Spec.DisableLoadBalancerService = options.DisableLoadBalancerService
 
 	LoadConfigMapFromFlags()
 
