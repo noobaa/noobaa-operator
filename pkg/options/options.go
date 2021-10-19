@@ -30,7 +30,7 @@ const (
 	// ContainerImageRepo is the repo of the default image url
 	ContainerImageRepo = "noobaa-core"
 	// ContainerImageTag is the tag of the default image url
-	ContainerImageTag = "5.9.0-20210722"
+	ContainerImageTag = "5.9.0-20211118"
 	// ContainerImageSemverLowerBound is the lower bound for supported image versions
 	ContainerImageSemverLowerBound = "5.0.0"
 	// ContainerImageSemverUpperBound is the upper bound for supported image versions
@@ -110,6 +110,9 @@ var ImagePullSecret = ""
 // pod)
 var MiniEnv = false
 
+// DisableLoadBalancerService is used for setting the service type to ClusterIP instead of LoadBalancer
+var DisableLoadBalancerService = false
+
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
 	return Namespace + ".noobaa.io"
@@ -178,5 +181,9 @@ func init() {
 	FlagSet.BoolVar(
 		&MiniEnv, "mini",
 		false, "Signal the operator that it is running in a low resource environment",
+	)
+	FlagSet.BoolVar(
+		&DisableLoadBalancerService, "disable-load-balancer",
+		false, "Set the service type to ClusterIP instead of LoadBalancer",
 	)
 }

@@ -170,6 +170,11 @@ type NooBaaSpec struct {
 	// +nullable
 	// +optional
 	Annotations AnnotationsSpec `json:"annotations,omitempty"`
+
+	// DisableLoadBalancerService (optional) sets the service type to ClusterIP instead of LoadBalancer
+	// +nullable
+	// +optional
+	DisableLoadBalancerService bool `json:"disableLoadBalancerService,omitempty"`
 }
 
 // SecuritySpec is security spec to include various security items such as kms

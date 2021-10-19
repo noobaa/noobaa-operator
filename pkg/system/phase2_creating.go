@@ -165,6 +165,12 @@ func (r *Reconciler) SetDesiredServiceAccount() error {
 
 // SetDesiredServiceMgmt updates the ServiceMgmt as desired for reconciling
 func (r *Reconciler) SetDesiredServiceMgmt() error {
+	if 	r.NooBaa.Spec.DisableLoadBalancerService {
+		r.ServiceMgmt.Spec.Type = corev1.ServiceTypeClusterIP
+	} else {
+		// It is here in case disableLoadBalancerService is removed from the crd or changed to false
+		r.ServiceMgmt.Spec.Type = corev1.ServiceTypeLoadBalancer
+	}
 	r.ServiceMgmt.Spec.Selector["noobaa-mgmt"] = r.Request.Name
 	r.ServiceMgmt.Labels["noobaa-mgmt-svc"] = "true"
 	return nil
@@ -172,6 +178,12 @@ func (r *Reconciler) SetDesiredServiceMgmt() error {
 
 // SetDesiredServiceS3 updates the ServiceS3 as desired for reconciling
 func (r *Reconciler) SetDesiredServiceS3() error {
+	if 	r.NooBaa.Spec.DisableLoadBalancerService {
+		r.ServiceS3.Spec.Type = corev1.ServiceTypeClusterIP
+	} else {
+		// It is here in case disableLoadBalancerService is removed from the crd or changed to false
+		r.ServiceS3.Spec.Type = corev1.ServiceTypeLoadBalancer
+	}
 	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
 	r.ServiceS3.Labels["noobaa-s3-svc"] = "true"
 	return nil
