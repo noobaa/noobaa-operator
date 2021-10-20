@@ -30,6 +30,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 // ModeInfo holds local information for a backing store mode.
@@ -448,6 +451,29 @@ func (r *Reconciler) finalizeCore() error {
 	return nil
 }
 
+func (r *Reconciler) deleteS3RGWBucket() error {
+	s3Config, err := util.CephS3Config(r.NooBaa.Name, r.NooBaa.Namespace, options.ServiceServingCertCAFile != "")
+	if err != nil {
+		return err
+	}
+	s3Session, err := session.NewSession(s3Config)
+	if err != nil {
+		return err
+	}
+	s3Client := s3.New(s3Session)
+
+	bucketName := r.BackingStore.Spec.AWSS3.TargetBucket
+	deleteBucketInput := &s3.DeleteBucketInput{Bucket: &bucketName}
+	deleteBucketOutput, err := s3Client.DeleteBucket(deleteBucketInput)
+	if err != nil {
+		r.Logger.Errorf("got error when trying to delete RGW bucket %s. error: %v", bucketName, err)
+		return err
+	} 
+
+	r.Logger.Infof("Successfully deleted RGW bucket %s. result = %v", bucketName, deleteBucketOutput)
+	return nil
+}
+
 // ReconcileDeletion handles the deletion of a backing-store using the noobaa api
 func (r *Reconciler) ReconcileDeletion(systemFound bool) error {
 
@@ -471,10 +497,14 @@ func (r *Reconciler) ReconcileDeletion(systemFound bool) error {
 		}
 	}
 
-	// Release the k8s volumes used
+	// Release the k8s volumes, rgw buckets used
+	_, rgw := r.BackingStore.ObjectMeta.Annotations["rgw"]
 	if r.BackingStore.Spec.Type == nbv1.StoreTypePVPool {
-		err := r.deletePvPool()
-		if err != nil {
+		if err := r.deletePvPool(); err != nil {
+			return err
+		}
+	} else if r.BackingStore.Spec.Type == nbv1.StoreTypeS3Compatible && rgw {
+		if err := r.deleteS3RGWBucket(); err != nil {
 			return err
 		}
 	}

@@ -58,6 +58,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 )
 
 const (
@@ -1788,4 +1791,63 @@ func LoadBucketReplicationJSON(replicationJSONFilePath string) (string, error) {
 	logrus.Infof("✅ Successfully loaded bucket replication %v", string(bytes))
 
 	return string(bytes), nil
+}
+
+// CephS3Config returns s3 config for the ceph storage
+func CephS3Config(systemName, ns string, secureTransport bool) (*aws.Config, error) {
+	log := logrus.WithField("CephS3Config", ns+"/"+systemName)
+
+	cephObjectStoreUser := &cephv1.CephObjectStoreUser{}
+	cephObjectStoreUser.Name = systemName + "-ceph-objectstore-user"
+	cephObjectStoreUser.Namespace = ns
+	if _, _, err := KubeGet(cephObjectStoreUser); err != nil {
+		return nil, NewPersistentError("InvalidCephObjectStoreUser",
+			"Ceph objectstore user is not found")
+	}
+
+	secretName := cephObjectStoreUser.Status.Info["secretName"]
+	if secretName == "" {
+		return nil, NewPersistentError("InvalidCephObjectStoreUser",
+			"Ceph objectstore user is ready but a secret name was not provided")
+	}
+
+	// get access\secret keys from user secret
+	cephObjectStoreUserSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: ns,
+		},
+	}
+	KubeCheck(cephObjectStoreUserSecret)
+	if cephObjectStoreUserSecret.UID == "" {
+		log.Infof("Ceph objectstore user secret %q was not created yet. retry on next reconcile..", secretName)
+		return nil, fmt.Errorf("Ceph objectstore user secret %q is not ready yet", secretName)
+	}
+
+	endpoint := cephObjectStoreUserSecret.StringData["Endpoint"]
+	log.Infof("Will connect to RGW at %q", endpoint)
+
+	region := "us-east-1"
+	forcePathStyle := true
+	client := &http.Client{
+		Transport: InsecureHTTPTransport,
+		Timeout: 10 * time.Second,
+	}
+	if secureTransport {
+		client.Transport = SecureHTTPTransport
+	}
+
+	s3Config := &aws.Config{
+		Credentials: credentials.NewStaticCredentials(
+			cephObjectStoreUserSecret.StringData["AccessKey"],
+			cephObjectStoreUserSecret.StringData["SecretKey"],
+			"",
+		),
+		Endpoint:         &endpoint,
+		Region:           &region,
+		S3ForcePathStyle: &forcePathStyle,
+		HTTPClient:       client,
+	}
+
+	return s3Config, nil
 }

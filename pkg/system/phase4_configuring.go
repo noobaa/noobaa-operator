@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -964,48 +963,9 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		return fmt.Errorf("Ceph objectstore user %q is not ready", r.CephObjectStoreUser.Name)
 	}
 
-	secretName := r.CephObjectStoreUser.Status.Info["secretName"]
-	if secretName == "" {
-		return util.NewPersistentError("InvalidCephObjectStoreUser",
-			"Ceph objectstore user is ready but a secret name was not provided")
-	}
-
-	// get access\secret keys from user secret
-	cephObjectStoreUserSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: options.Namespace,
-		},
-	}
-	util.KubeCheck(cephObjectStoreUserSecret)
-	if cephObjectStoreUserSecret.UID == "" {
-		r.Logger.Infof("Ceph objectstore user secret %q was not created yet. retry on next reconcile..", secretName)
-		return fmt.Errorf("Ceph objectstore user secret %q is not ready yet", secretName)
-	}
-
-	endpoint := cephObjectStoreUserSecret.StringData["Endpoint"]
-	r.Logger.Infof("Will connect to RGW at %q", endpoint)
-
-	region := "us-east-1"
-	forcePathStyle := true
-	client := &http.Client{
-		Transport: util.InsecureHTTPTransport,
-		Timeout: 10 * time.Second, 
-	}	
-	if r.ApplyCAsToPods != "" {
-		client.Transport = util.SecureHTTPTransport
-	}
-	
-	s3Config := &aws.Config{
-		Credentials: credentials.NewStaticCredentials(
-			cephObjectStoreUserSecret.StringData["AccessKey"],
-			cephObjectStoreUserSecret.StringData["SecretKey"],
-			"",
-		),
-		Endpoint:         &endpoint,
-		Region:           &region,
-		S3ForcePathStyle: &forcePathStyle,
-		HTTPClient:       client,
+	s3Config, err := util.CephS3Config(r.Request.Name, r.Request.Namespace, options.ServiceServingCertCAFile != "")
+	if  err != nil {
+		return err
 	}
 
 	bucketName := r.generateBackingStoreTargetName()
@@ -1018,11 +978,12 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		r.DefaultBackingStore.ObjectMeta.Annotations = map[string]string{}
 	}
 	r.DefaultBackingStore.ObjectMeta.Annotations["rgw"] = ""
+	secretName := r.CephObjectStoreUser.Status.Info["secretName"]
 	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeS3Compatible
 	r.DefaultBackingStore.Spec.S3Compatible = &nbv1.S3CompatibleSpec{
 		Secret:           corev1.SecretReference{Name: secretName, Namespace: options.Namespace},
 		TargetBucket:     bucketName,
-		Endpoint:         endpoint,
+		Endpoint:         *s3Config.Endpoint,
 		SignatureVersion: nbv1.S3SignatureVersionV4,
 	}
 
