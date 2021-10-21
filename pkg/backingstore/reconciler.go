@@ -156,10 +156,10 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return res, err
 	}
 
-	if ts := r.BackingStore.DeletionTimestamp; ts != nil {
+	err = r.LoadBackingStoreSecret()
+	if ts := r.BackingStore.DeletionTimestamp; err == nil && ts != nil {
 		log.Infof("BackingStore %q was deleted on %v.", r.BackingStore.Name, ts)
 		err = r.ReconcileDeletion(systemFound)
-		return res, err
 	}
 
 	if !systemFound {
@@ -175,17 +175,15 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			return res, nil
 		}
 	}
-
-	oldStatefulSet := &appsv1.StatefulSet{}
-	oldStatefulSet.Name = fmt.Sprintf("%s-%s-noobaa", r.BackingStore.Name, options.SystemName)
-	oldStatefulSet.Namespace = r.Request.Namespace
-
-	if util.KubeCheck(oldStatefulSet) {
-		err = r.upgradeBackingStore(oldStatefulSet)
-	}
-
+	
 	if err == nil {
-		err = r.LoadBackingStoreSecret()
+		oldStatefulSet := &appsv1.StatefulSet{}
+		oldStatefulSet.Name = fmt.Sprintf("%s-%s-noobaa", r.BackingStore.Name, options.SystemName)
+		oldStatefulSet.Namespace = r.Request.Namespace
+	
+		if util.KubeCheck(oldStatefulSet) {
+			err = r.upgradeBackingStore(oldStatefulSet)
+		}
 	}
 
 	if err == nil {
