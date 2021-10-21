@@ -30,6 +30,12 @@ import (
 type unObj = map[string]interface{}
 type unArr = []interface{}
 
+type generateCSVParams struct {
+	IsForODF  bool
+	SkipRange string
+	Replaces  string
+}
+
 // Cmd returns a CLI command
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -59,6 +65,8 @@ func CmdCatalog() *cobra.Command {
 	cmd.Flags().String("dir", "./build/_output/olm", "The output dir for the OLM package")
 	cmd.Flags().Bool("odf", false, "Build package according to ODF requirements")
 	cmd.Flags().String("csv-name", "", "File name for the CSV YAML")
+	cmd.Flags().String("skip-range", "", "set the olm.skipRange annotation in the CSV")
+	cmd.Flags().String("replaces", "", "set the replaces property in the CSV")
 	return cmd
 }
 
@@ -146,8 +154,14 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 	var versionDir string
 
 	forODF, _ := cmd.Flags().GetBool("odf")
+	skipRange, _ := cmd.Flags().GetString("skip-range")
+	replaces, _ := cmd.Flags().GetString("replaces")
+	csvParams := &generateCSVParams{
+		IsForODF:  forODF,
+		SkipRange: skipRange,
+		Replaces:  replaces,
+	}
 	if forODF {
-		opConf.IsForODF = true
 		versionDir = dir
 	} else {
 		versionDir = dir + version.Version + "/"
@@ -174,7 +188,7 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 	if !forODF {
 		util.Panic(ioutil.WriteFile(dir+"noobaa-operator.package.yaml", pkgBytes, 0644))
 	}
-	util.Panic(util.WriteYamlFile(csvFileName, GenerateCSV(opConf)))
+	util.Panic(util.WriteYamlFile(csvFileName, GenerateCSV(opConf, csvParams)))
 	crd.ForEachCRD(func(c *crd.CRD) {
 		if c.Spec.Group == nbv1.SchemeGroupVersion.Group {
 			util.Panic(util.WriteYamlFile(versionDir+c.Name+".crd.yaml", c))
@@ -185,13 +199,13 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 // RunCSV runs a CLI command
 func RunCSV(cmd *cobra.Command, args []string) {
 	opConf := operator.LoadOperatorConf(cmd)
-	csv := GenerateCSV(opConf)
+	csv := GenerateCSV(opConf, nil)
 	p := printers.YAMLPrinter{}
 	util.Panic(p.PrintObj(csv, os.Stdout))
 }
 
 // GenerateCSV creates the CSV
-func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
+func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.ClusterServiceVersion {
 	almExamples, err := json.Marshal([]runtime.Object{
 		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml),
 		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml),
@@ -236,19 +250,31 @@ func GenerateCSV(opConf *operator.Conf) *operv1.ClusterServiceVersion {
 			Spec: opConf.Deployment.Spec,
 		})
 
-	if opConf.IsForODF {
-		// add anotation to hide the operator in OCP console
-		csv.Annotations["operators.operatorframework.io/operator-type"] = "non-standalone"
-		operatorContainer := &csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec.Containers[0]
-		operatorContainer.Env = append(operatorContainer.Env,
-			corev1.EnvVar{
-				Name:  "NOOBAA_CORE_IMAGE",
-				Value: options.NooBaaImage,
-			},
-			corev1.EnvVar{
-				Name:  "NOOBAA_DB_IMAGE",
-				Value: options.DBImage,
-			})
+	if csvParams != nil {
+		if csvParams.IsForODF {
+			// add anotation to hide the operator in OCP console
+			csv.Annotations["operators.operatorframework.io/operator-type"] = "non-standalone"
+
+			// add env vars for noobaa-core and noobaa-db images
+			operatorContainer := &csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec.Containers[0]
+			operatorContainer.Env = append(operatorContainer.Env,
+				corev1.EnvVar{
+					Name:  "NOOBAA_CORE_IMAGE",
+					Value: options.NooBaaImage,
+				},
+				corev1.EnvVar{
+					Name:  "NOOBAA_DB_IMAGE",
+					Value: options.DBImage,
+				})
+		}
+
+		if csvParams.Replaces != "" {
+			csv.Spec.Replaces = csvParams.Replaces
+		}
+
+		if csvParams.SkipRange != "" {
+			csv.Annotations[operv1.SkipRangeAnnotationKey] = csvParams.SkipRange
+		}
 	}
 
 	csv.Spec.CustomResourceDefinitions.Owned = []operv1.CRDDescription{}
