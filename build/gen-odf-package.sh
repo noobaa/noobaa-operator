@@ -6,7 +6,15 @@ then
   exit 1
 fi
 
-./build/_output/bin/noobaa-operator-local olm catalog -n openshift-storage --dir ${MANIFESTS} --odf --csv-name ${CSV_NAME} --noobaa-image ${CORE_IMAGE} --db-image ${DB_IMAGE} --operator-image ${OPERATOR_IMAGE}
+./build/_output/bin/noobaa-operator-local olm catalog -n openshift-storage \
+--dir ${MANIFESTS} \
+--odf \
+--csv-name ${CSV_NAME} \
+--skip-range "${SKIP_RANGE}" \
+--replaces "${REPLACES}" \
+--noobaa-image ${CORE_IMAGE} \
+--db-image ${DB_IMAGE} \
+--operator-image ${OPERATOR_IMAGE}
 
 temp_csv=$(mktemp)
 
