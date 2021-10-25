@@ -143,9 +143,6 @@ func NewReconciler(
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *Reconciler) Reconcile() (reconcile.Result, error) {
-
-	var err error = nil
-	res := reconcile.Result{}
 	log := r.Logger
 	log.Infof("Start BackingStore Reconcile ...")
 
@@ -153,26 +150,28 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 
 	if !util.KubeCheck(r.BackingStore) {
 		log.Infof("❌ BackingStore %q not found.", r.BackingStore.Name)
-		return res, err
+		return reconcile.Result{}, nil // final state
+	}
+
+	if 	err := r.LoadBackingStoreSecret(); err != nil {
+		return r.completeReconcile(err)
 	}
 
 	if ts := r.BackingStore.DeletionTimestamp; ts != nil {
 		log.Infof("BackingStore %q was deleted on %v.", r.BackingStore.Name, ts)
-		err = r.ReconcileDeletion(systemFound)
-		return res, err
+		err := r.ReconcileDeletion(systemFound)
+		return r.completeReconcile(err)
 	}
 
 	if !systemFound {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
-		return res, nil
+		return r.completeReconcile(nil)
 	}
 
 	if util.EnsureCommonMetaFields(r.BackingStore, nbv1.Finalizer) {
 		if !util.KubeUpdate(r.BackingStore) {
-			log.Errorf("❌ BackingStore %q failed to add mandatory meta fields", r.BackingStore.Name)
-
-			res.RequeueAfter = 3 * time.Second
-			return res, nil
+			err := fmt.Errorf("❌ BackingStore %q failed to add mandatory meta fields", r.BackingStore.Name)
+			return r.completeReconcile(err)
 		}
 	}
 
@@ -181,16 +180,18 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	oldStatefulSet.Namespace = r.Request.Namespace
 
 	if util.KubeCheck(oldStatefulSet) {
-		err = r.upgradeBackingStore(oldStatefulSet)
+		if err := r.upgradeBackingStore(oldStatefulSet); err != nil {
+			return r.completeReconcile(err)
+		}
 	}
 
-	if err == nil {
-		err = r.LoadBackingStoreSecret()
-	}
+	err := r.ReconcilePhases()
+	return r.completeReconcile(err)
+}
 
-	if err == nil {
-		err = r.ReconcilePhases()
-	}
+func (r *Reconciler) completeReconcile(err error) (reconcile.Result, error) {
+	log := r.Logger
+	res := reconcile.Result{}
 
 	if err != nil {
 		if perr, isPERR := err.(*util.PersistentError); isPERR {

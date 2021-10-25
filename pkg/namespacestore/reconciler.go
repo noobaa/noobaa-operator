@@ -116,47 +116,46 @@ func NewReconciler(
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *Reconciler) Reconcile() (reconcile.Result, error) {
-
-	res := reconcile.Result{}
 	log := r.Logger
-	var err error = nil
 	log.Infof("Start NamespaceStore Reconcile ...")
 
 	systemFound := system.CheckSystem(r.NooBaa)
 
 	if !util.KubeCheck(r.NamespaceStore) {
 		log.Infof("❌ NamespaceStore %q not found.", r.NamespaceStore.Name)
-		return res, err
+		return reconcile.Result{}, nil // final state
+	}
+
+	if err := r.LoadNamespaceStoreSecret(); err != nil {
+		return r.completeReconcile(err)
 	}
 
 	if ts := r.NamespaceStore.DeletionTimestamp; ts != nil {
 		log.Infof("❌ NamespaceStore %q was deleted on %v.", r.NamespaceStore.Name, ts)
 
-		err = r.ReconcileDeletion(systemFound)
-		return res, err
+		err := r.ReconcileDeletion(systemFound)
+		return r.completeReconcile(err)
 	}
 
 	if !systemFound {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
-		return reconcile.Result{}, nil
+		return r.completeReconcile(nil)
 	}
 
 	if util.EnsureCommonMetaFields(r.NamespaceStore, nbv1.Finalizer) {
 		if !util.KubeUpdate(r.NamespaceStore) {
-			log.Errorf("❌ NamespaceStore %q failed to add mandatory meta fields", r.NamespaceStore.Name)
-
-			res.RequeueAfter = 3 * time.Second
-			return res, nil
+			err := fmt.Errorf("❌ NamespaceStore %q failed to add mandatory meta fields", r.NamespaceStore.Name)
+			return r.completeReconcile(err)
 		}
 	}
 
-	if err == nil {
-		err = r.LoadNamespaceStoreSecret()
-	}
+	err := r.ReconcilePhases()
+	return r.completeReconcile(err)
+}
 
-	if err == nil {
-		err = r.ReconcilePhases()
-	}
+func (r *Reconciler) completeReconcile(err error) (reconcile.Result, error) {
+	log := r.Logger
+	res := reconcile.Result{}
 
 	if err != nil {
 		if perr, isPERR := err.(*util.PersistentError); isPERR {
