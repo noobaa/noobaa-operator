@@ -51,6 +51,10 @@ func CmdCreate() *cobra.Command {
 		"Set path to specify inner directory in namespace store target path - can be used only while specifing a namespace bucketclass")
 	cmd.Flags().String("replication-policy", "",
 		"Set the json file path that contains replication rules")
+	cmd.Flags().String("max-objects", "",
+		"Set quota max objects quantity config to requested bucket")
+	cmd.Flags().String("max-size", "",
+		"Set quota max size config to requested bucket")
 	return cmd
 }
 
@@ -106,6 +110,8 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if appNamespace == "" {
 		appNamespace = options.Namespace
 	}
+	maxSize, _ := cmd.Flags().GetString("max-size")
+	maxObjects, _ := cmd.Flags().GetString("max-objects")
 
 	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml)
 	obc := o.(*nbv1.ObjectBucketClaim)
@@ -159,6 +165,18 @@ func RunCreate(cmd *cobra.Command, args []string) {
 			log.Fatalf(`❌ %q`, err)
 		}
 		obc.Spec.AdditionalConfig["replicationPolicy"] = replication
+	}
+
+	if maxSize != "" {
+		obc.Spec.AdditionalConfig["maxSize"] = maxSize
+	}
+	if maxObjects != "" {
+		obc.Spec.AdditionalConfig["maxObjects"] = maxObjects
+	}
+
+	err := ValidateOBC(obc)
+	if err != nil {
+		log.Fatalf(`❌ Could not create OBC %q in namespace %q validation failed %q`, obc.Name, obc.Namespace, err)
 	}
 
 	if !util.KubeCreateFailExisting(obc) {
@@ -320,7 +338,8 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		if b.DataCapacity != nil {
 			fmt.Printf("  %-22s : %s\n", "Data Size", nb.BigIntToHumanBytes(b.DataCapacity.Size))
 			fmt.Printf("  %-22s : %s\n", "Data Size Reduced", nb.BigIntToHumanBytes(b.DataCapacity.SizeReduced))
-			fmt.Printf("  %-22s : %s\n", "Data Space Avail", nb.BigIntToHumanBytes(b.DataCapacity.AvailableToUpload))
+			fmt.Printf("  %-22s : %s\n", "Data Space Avail", nb.BigIntToHumanBytes(b.DataCapacity.AvailableSizeToUpload))
+			fmt.Printf("  %-22s : %s\n", "Num Objects Avail", b.DataCapacity.AvailableQuantityToUpload.ToString())
 		}
 		fmt.Printf("\n")
 	}

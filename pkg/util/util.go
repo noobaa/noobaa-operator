@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -44,6 +45,7 @@ import (
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -58,16 +60,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
+const (
+	oAuthWellKnownEndpoint = "https://openshift.default.svc/.well-known/oauth-authorization-server"
+	ibmRegion              = "ibm-cloud.kubernetes.io/region"
+
+	gigabyte             = 1024 * 1024 * 1024
+	petabyte             = gigabyte * 1024 * 1024
+	obcMaxSizeUpperLimit = petabyte * 1023
+)
+
 // OAuth2Endpoints holds OAuth2 endpoints information.
 type OAuth2Endpoints struct {
 	AuthorizationEndpoint string `json:"authorization_endpoint"`
 	TokenEndpoint         string `json:"token_endpoint"`
 }
-
-const (
-	oAuthWellKnownEndpoint  = "https://openshift.default.svc/.well-known/oauth-authorization-server"
-	ibmRegion               = "ibm-cloud.kubernetes.io/region"
-)
 
 var (
 	ctx        = context.TODO()
@@ -87,7 +93,7 @@ var (
 )
 
 // AddToRootCAs adds a local cert file to Our SecureHttpTransport
-func AddToRootCAs(localCertFile string) error{
+func AddToRootCAs(localCertFile string) error {
 	rootCAs, _ := x509.SystemCertPool()
 	if rootCAs == nil {
 		rootCAs = x509.NewCertPool()
@@ -400,7 +406,7 @@ func KubeDeleteNoPolling(obj client.Object, opts ...client.DeleteOption) bool {
 	}
 
 	Panic(err)
-	return(deleted)
+	return (deleted)
 }
 
 // KubeDeleteAllOf deletes an list of objects and reports the status.
@@ -1298,7 +1304,7 @@ func GetCmDataHash(input map[string]string) string {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	
+
 	for _, k := range keys {
 		// Convert each key/value pair in the map to a string
 		fmt.Fprintf(b, "%s=\"%s\"\n", k, input[k])
@@ -1351,19 +1357,19 @@ func HumanizeDuration(duration time.Duration) string {
 
 // IsStringArrayUnorderedEqual checks if two string arrays has the same members
 func IsStringArrayUnorderedEqual(stringsArrayA, stringsArrayB []string) bool {
-    if len(stringsArrayA) != len(stringsArrayB) {
-        return false
-    }
-    existingStrings := make(map[string]bool)
-    for _, item := range stringsArrayA {
-        existingStrings[item] = true
-    }
-    for _, item := range stringsArrayB {
-        if !existingStrings[item] {
-            return false
-        }
-    }
-    return true
+	if len(stringsArrayA) != len(stringsArrayB) {
+		return false
+	}
+	existingStrings := make(map[string]bool)
+	for _, item := range stringsArrayA {
+		existingStrings[item] = true
+	}
+	for _, item := range stringsArrayB {
+		if !existingStrings[item] {
+			return false
+		}
+	}
+	return true
 }
 
 // EnsureCommonMetaFields ensures that the resource has all mandatory meta fields
@@ -1442,4 +1448,33 @@ func noobaaStatus(nb *nbv1.NooBaa, t conditionsv1.ConditionType, status corev1.C
 		}
 	}
 	return false
+}
+
+// ValidateQuotaConfig maxSize and maxObjects value of obc or bucketclass
+func ValidateQuotaConfig(name string, maxSize string, maxObjects string) error {
+
+	// Positive number
+	if maxObjects != "" {
+		obcMaxObjectsInt, err := strconv.ParseInt(maxObjects, 10, 32)
+		if err != nil {
+			return fmt.Errorf("ob %q validation error: failed to parse maxObjects %v, %v", name, maxObjects, err)
+		}
+		if obcMaxObjectsInt < 0 {
+			return fmt.Errorf("ob %q validation error: invalid maxObjects value. O or any positive number ", name)
+		}
+	}
+
+	//Valid range 0, 1G - 1023P
+	if maxSize != "" {
+		quantity, err := resource.ParseQuantity(maxSize)
+		if err != nil {
+			return fmt.Errorf("ob %q validation error: failed to parse obcMaxSize %v, %v", name, maxSize, err)
+		}
+		obcMaxSizeValue := quantity.Value()
+		if obcMaxSizeValue != 0 || obcMaxSizeValue < gigabyte || obcMaxSizeValue > obcMaxSizeUpperLimit {
+			return fmt.Errorf("ob %q validation error: invalid obcMaxSizeValue value: min 1Gi, max 1023Pi, 0 to remove quota", name)
+		}
+	}
+
+	return nil
 }

@@ -199,6 +199,11 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		"noobaa operator started phase 1/2 - \"Verifying\"",
 	)
 
+	err := ValidateBucketClass(r.BucketClass)
+	if err != nil {
+		return util.NewPersistentError("ValidationError", err.Error())
+	}
+
 	if r.NooBaa.UID == "" {
 		return util.NewPersistentError("MissingSystem",
 			fmt.Sprintf("NooBaa system %q not found or deleted", r.NooBaa.Name))
@@ -408,7 +413,6 @@ func (r *Reconciler) UpdateBucketClass(bucketNames []string) error {
 		return fmt.Errorf("BucketClass not loaded %#v", r)
 	}
 
-
 	if r.BucketClass.Spec.PlacementPolicy == nil &&
 		r.BucketClass.Spec.NamespacePolicy != nil {
 		return r.updateNamespaceBucketClass(bucketNames)
@@ -455,8 +459,6 @@ func (r *Reconciler) UpdateBucketClass(bucketNames []string) error {
 		return util.NewPersistentError("InvalidConfReverting", fmt.Sprintf("Unable to change bucketclass due to error: %v", result.ErrorMessage))
 		// return fmt.Errorf("Failed to update bucket class %q with error: %v - Reverting back", r.BucketClass.Name, result.ErrorMessage)
 	}
-
-
 
 	log.Infof("✅ Successfully updated bucket class %q", r.BucketClass.Name)
 	return nil
