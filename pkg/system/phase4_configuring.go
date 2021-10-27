@@ -666,6 +666,16 @@ func (r *Reconciler) preparePVPoolBackingStore() error {
 			corev1.ResourceStorage: *resource.NewQuantity(defaultPVSize, resource.BinarySI),
 		},
 	}
+	if r.NooBaa.Spec.PVPoolDefaultStorageClass != nil {
+		r.DefaultBackingStore.Spec.PVPool.StorageClass = *r.NooBaa.Spec.PVPoolDefaultStorageClass
+	} else {
+		storageClassName, err := r.findLocalStorageClass()
+		if err != nil {
+			r.Logger.Errorf("got error finding a default/local storage class. error: %v", err)
+			return err
+		}
+		r.DefaultBackingStore.Spec.PVPool.StorageClass = storageClassName
+	}
 	return nil
 }
 
