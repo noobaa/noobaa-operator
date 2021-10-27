@@ -38,9 +38,11 @@ jobs:
           echo ::set-output name=version::${VERSION}
           OPERATOR_TAGS="${DOCKER_OPERATOR_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}${{ steps.suffix.outputs.suffix }}"
           OPERATOR_BUNDLE_TAGS="${DOCKER_OPERATOR_BUNDLE_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}${{ steps.suffix.outputs.suffix }}"
+          OPERATOR_OCS_DEV_TAG="ocs-dev/noobaa-operator:${{ github.event.inputs.branch }}-latest"
           echo "::warning ${CORE_TAGS}"
           echo ::set-output name=operatortags::${OPERATOR_TAGS}
           echo ::set-output name=operatorbundletags::${OPERATOR_BUNDLE_TAGS}
+          echo ::set-output name=ocsdevlatest::${OPERATOR_OCS_DEV_TAG}
 
       - name: Update Core Release
         id: update-release
@@ -91,6 +93,14 @@ jobs:
             docker tag ${{ steps.prep.outputs.operatortags }} quay.io/${{ steps.prep.outputs.operatortags }} 
             docker push quay.io/${{ steps.prep.outputs.operatortags }} 
             docker push quay.io/${{ steps.prep.outputs.operatorbundletags }}
+
+      - name: Push to ocs-dev as latest
+        env:
+          DOCKERHUB_OWNER: ${{ secrets.GHACTIONQUAYNAME }}
+        run: |
+          docker login -u="${{ secrets.OCSDEVCIUSER }}" -p="${{ secrets.OCSDEVCITOKEN }}" quay.io
+          docker tag ${{ steps.prep.outputs.operatortags }} quay.io/${{ steps.prep.outputs.ocsdevlatest }} 
+          docker push quay.io/${{ steps.prep.outputs.ocsdevlatest }}
 
       - name: Push CLI Binary
         run: |         
