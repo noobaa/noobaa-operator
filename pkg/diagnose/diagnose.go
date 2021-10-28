@@ -93,6 +93,10 @@ func (c *Collector) CollectCRs() {
 		TypeMeta: metav1.TypeMeta{Kind: "BackingStoreList"},
 	})
 
+	c.CollectCR(&nbv1.NamespaceStoreList{
+		TypeMeta: metav1.TypeMeta{Kind: "NamespaceStoreList"},
+	})
+
 	c.CollectCR(&nbv1.BucketClassList{
 		TypeMeta: metav1.TypeMeta{Kind: "BucketClassList"},
 	})
@@ -108,7 +112,7 @@ func (c *Collector) CollectDescribe(Kind string, Name string) {
 	// handle custom path for kubeconfig file,
 	// see --kubeconfig cli options
 	if len(c.kubeconfig) > 0 {
-		cmd.Env = append(cmd.Env, "KUBECONFIG=" + c.kubeconfig)
+		cmd.Env = append(cmd.Env, "KUBECONFIG="+c.kubeconfig)
 	}
 
 	// open the out file for writing
@@ -154,7 +158,7 @@ func (c *Collector) CollectPodsLogs(listOptions client.ListOptions) {
 	}
 }
 
-// CollectPVs collects describe of PVs 
+// CollectPVs collects describe of PVs
 func (c *Collector) CollectPVs(listOptions client.ListOptions) {
 	// List all PVs and select only noobaa PVs within the relevant namespace
 	c.log.Println("Collecting PV logs")
@@ -171,7 +175,7 @@ func (c *Collector) CollectPVs(listOptions client.ListOptions) {
 	}
 }
 
-// CollectPVCs collects describe of PVCs 
+// CollectPVCs collects describe of PVCs
 func (c *Collector) CollectPVCs(listOptions client.ListOptions) {
 	// List all PVCs and select only noobaa PVCs within the relevant namespace
 	c.log.Println("Collecting PVC logs")
@@ -188,11 +192,11 @@ func (c *Collector) CollectPVCs(listOptions client.ListOptions) {
 	}
 }
 
-// CollectSCC collects the SCC 
+// CollectSCC collects the SCC
 func (c *Collector) CollectSCC() {
 	c.log.Println("Collecting SCC logs")
 	for _, name := range []string{"noobaa", "noobaa-endpoint"} {
-		scc := &secv1.SecurityContextConstraints {
+		scc := &secv1.SecurityContextConstraints{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: options.Namespace,
@@ -200,7 +204,7 @@ func (c *Collector) CollectSCC() {
 		}
 		if util.KubeCheckOptional(scc) {
 			c.CollectDescribe("scc", scc.Name)
-		} 
+		}
 	}
 }
 
