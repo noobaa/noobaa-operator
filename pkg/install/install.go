@@ -6,6 +6,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/crd"
+	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/obc"
 	"github.com/noobaa/noobaa-operator/v5/pkg/operator"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
@@ -111,15 +112,15 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 
 	if cleanup {
 		var decision string
-		
+
 		for {
 			log.Printf("--cleanup removes the CRDs and affecting all noobaa instances, are you sure? y/n ")
 			fmt.Scanln(&decision)
 
-			if (decision == "y") {
+			if decision == "y" {
 				log.Printf("Will remove CRD (cluster scope)")
 				break
-			} else if (decision == "n") {
+			} else if decision == "n" {
 				return
 			}
 		}
@@ -170,6 +171,13 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	fmt.Println("#------------------#")
 	fmt.Println("")
 	backingstore.RunList(cmd, args)
+	fmt.Println("")
+
+	fmt.Println("#--------------------#")
+	fmt.Println("#- Namespace Stores -#")
+	fmt.Println("#--------------------#")
+	fmt.Println("")
+	namespacestore.RunList(cmd, args)
 	fmt.Println("")
 
 	fmt.Println("#------------------#")
