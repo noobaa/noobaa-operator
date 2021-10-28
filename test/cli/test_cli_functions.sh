@@ -125,7 +125,7 @@ function test_noobaa {
 function timeout {
     local PID func
     #the timeout is that big because it sometimes take a while to get pvc
-    local TIMEOUT=180
+    local TIMEOUT=600
     while true
     do
         if [[ ! "${1}" =~ "--" ]]
