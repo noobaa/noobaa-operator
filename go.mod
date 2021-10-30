@@ -17,6 +17,7 @@ require (
 	github.com/go-openapi/spec v0.19.8
 	github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20210818162813-3eee31c01875
+	github.com/libopenstorage/secrets v0.0.0-20201006135900-af310b01fe47
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.14.0

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/libopenstorage/secrets"
+	"github.com/libopenstorage/secrets/vault"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
@@ -721,17 +723,28 @@ func (r *Reconciler) ReconcileRootSecret() error {
 	connectionDetails := r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails
 	authTokenSecretName := r.NooBaa.Spec.Security.KeyManagementService.TokenSecretName
 
+	log.Infof("BSBS reconciling secret")
+
 	// set noobaa root master key secret
 	if len(connectionDetails) != 0 {
+		// TODO: validate additional con details relevant to SA
 		if err := util.ValidateConnectionDetails(connectionDetails, authTokenSecretName, options.Namespace); err != nil {
 			return fmt.Errorf("ReconcileRootSecret: could not get/put key in external KMS: external kms connection details validation failed: %q", err)
 		}
+		log.Infof("BSBS con details validated")
 		kmsProvider := connectionDetails["KMS_PROVIDER"]
+		log.Infof("BSBS kmsProvider = " + kmsProvider)
 		if util.IsVaultKMS(kmsProvider) {
-			keySecretName := "rootkeyb64-" + string(r.NooBaa.ObjectMeta.UID)
-			// reconcile root master key externally (vault)
-			c, err := util.InitVaultClient(connectionDetails, authTokenSecretName, options.Namespace)
-			if err == nil {
+			authMethod := connectionDetails["AUTH_METHOD"]
+			log.Infof("BSBS authMethod = " + authMethod)
+			if(authMethod == "token") {
+				keySecretName := "rootkeyb64-" + string(r.NooBaa.ObjectMeta.UID)
+				// reconcile root master key externally (vault)
+				c, err := util.InitVaultClient(connectionDetails, authTokenSecretName, options.Namespace)
+				if err != nil {
+					return fmt.Errorf("ReconcileRootSecret: could not initialize external KMS client %+v", err)
+				}
+
 				secretPath, err1 := util.BuildExternalSecretPath(c, r.NooBaa.Spec.Security.KeyManagementService, string(r.NooBaa.ObjectMeta.UID))
 				if err1 != nil {
 					return fmt.Errorf("ReconcileRootSecret: could not get/put key in external KMS %+v", err1)
@@ -757,8 +770,34 @@ func (r *Reconciler) ReconcileRootSecret() error {
 					}
 					return fmt.Errorf("ReconcileRootSecret: Error put secret in vault: %+v", err)
 				}
+			} else if(authMethod == "service-account") {
+				log.Infof("BSBS auth method is SA")
+				config := make(map[string]interface{})
+				//TODO: config values to be changed
+				config["VAULT_ADDR"] = "http://127.0.0.1:8200"
+				config["VAULT_TOKEN"] = "s.4vIOTAAO32Zw9ZlpoAsXdD3q"
+
+				// secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+				// secret.Namespace = options.Namespace
+				// secret.Name = authTokenSecretName
+				// token := secret.StringData["token"]
+				// trimmedToken := strings.TrimSuffix(token, "\n")
+				// os.Setenv("VAULT_TOKEN", trimmedToken)
+
+				v, err := vault.New(config)
+				if err != nil {
+					return fmt.Errorf("failed to initialize vault secret store %+v", err)
+				}
+				log.Infof("BSBS Vault initialized")
+
+				keySecretName := "rootkeyb64-" + string(r.NooBaa.ObjectMeta.UID)
+				//TODO: verify if nil is acceptable as keyContext
+				err = r.putSecret(v, keySecretName, r.SecretRootMasterKey.StringData["cipher_key_b64"], nil)
+				if err != nil {
+					return err
+				}
+				log.Infof("BSBS Secret added")
 			}
-			return fmt.Errorf("ReconcileRootSecret: could not initialize external KMS client %+v", err)
 		}
 	}
 	// reconcile root master key as K8s secret
@@ -766,6 +805,47 @@ func (r *Reconciler) ReconcileRootSecret() error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (r *Reconciler) putSecret(v secrets.Secrets, secretName, secretValue string, keyContext map[string]string) error {
+	// First we must see if the key entry already exists, if it does we do nothing
+	key, err := getSecret(v, secretName, keyContext)
+	if err != nil && err != secrets.ErrInvalidSecretId {
+		return fmt.Errorf("failed to get secret %q in vault", secretName)
+	}
+	if key != "" {
+		r.SecretRootMasterKey.StringData["cipher_key_b64"] = key
+		return fmt.Errorf("key %q already exists in vault", secretName)
+	}
+
+	// Build Secret
+	data := make(map[string]interface{})
+	data[secretName] = secretValue
+
+	err = v.PutSecret(secretName, data, keyContext)
+	if err != nil {
+		return fmt.Errorf("failed to put secret %q in vault %q", secretName, err)
+	}
+
+	return nil
+}
+
+func getSecret(v secrets.Secrets, secretName string, keyContext map[string]string) (string, error) {
+	s, err := v.GetSecret(secretName, keyContext)
+	if err != nil {
+		return "", err
+	}
+
+	return s[secretName].(string), nil
+}
+
+func deleteSecret(v secrets.Secrets, secretName string, keyContext map[string]string) error {
+	err := v.DeleteSecret(secretName, keyContext)
+	if err != nil {
+		return fmt.Errorf("failed to delete secret %q in vault %q", secretName, err)
+	}
+
 	return nil
 }
 

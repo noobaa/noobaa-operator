@@ -2661,14 +2661,25 @@ metadata:
 spec:
 `
 
-const Sha256_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml = "498c2013757409432cfd98b21a5934bccf506f1af1b885241db327024aa450fd"
+const Sha256_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml = "cb39bedc7eabe3be6730febcc3bc87e3a6b6a72e251327b7205bb3426c82f7ae"
 
 const File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml = `apiVersion: noobaa.io/v1alpha1
 kind: NooBaa
 metadata:
   name: noobaa
-spec: {}
-`
+spec:
+  security:
+    kms:
+      tokenSecretName: “kms-token-secret2”
+      connectionDetails:
+        VAULT_ADDR: “http://127.0.0.1:8200”
+        VAULT_BACKEND_PATH: “noobaa2/”
+        KMS_PROVIDER: “vault”
+        VAULT_TLS_SERVER_NAME: “vault”
+        VAULT_CACERT: “vault-ca-cert”
+        VAULT_CLIENT_CERT: “vault-client-cert”
+        VAULT_CLIENT_KEY: “vault-client-key”
+        AUTH_METHOD: “service-account“`
 
 const Sha256_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml = "69085515e8d16eaa9f320a32f2881cbd93d232bfbb072eef8692896a86f7b6dd"
 
