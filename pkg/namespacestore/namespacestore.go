@@ -522,10 +522,8 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	fmt.Print(string(output))
 	fmt.Println()
 	if secretRef != nil {
-		fmt.Println("# Secret data:")
-		output, err = sigyaml.Marshal(secret.StringData)
+		_, err = sigyaml.Marshal(secret.StringData)
 		util.Panic(err)
-		fmt.Print(string(output))
 		fmt.Println()
 	}
 }
