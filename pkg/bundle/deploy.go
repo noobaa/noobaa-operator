@@ -4878,7 +4878,7 @@ volumes:
 - secret
 `
 
-const Sha256_deploy_scc_endpoint_yaml = "5b7d6160b89ee45394d9c972fdee8a1f7527fd6bc87de5c90958c4386cd877e5"
+const Sha256_deploy_scc_endpoint_yaml = "ffa08bb5ddf81e493d19dc089e3d5e9be08df971212530654b30da17e91f338a"
 
 const File_deploy_scc_endpoint_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -4889,7 +4889,7 @@ allowHostIPC: false
 allowHostNetwork: false
 allowHostPID: false
 allowHostPorts: false
-allowPrivilegeEscalation: false
+allowPrivilegeEscalation: true
 allowPrivilegedContainer: false
 allowedCapabilities:
 - SETUID
