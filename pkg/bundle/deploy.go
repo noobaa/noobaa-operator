@@ -2679,6 +2679,44 @@ metadata:
 spec: {}
 `
 
+const Sha256_deploy_internal_admission_webhook_yaml = "ff31e4f8fc894f2ebed18058a9a200c2bb66d3045677b84d8fb5f5630bf76ac5"
+
+const File_deploy_internal_admission_webhook_yaml = `apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: admission-validation-webhook
+  annotations:
+    service.beta.openshift.io/inject-cabundle: "true"
+webhooks:
+  - name: admissionwebhook.noobaa.io
+    matchPolicy: Equivalent
+    rules:
+    - apiGroups:   ["noobaa.io"]
+      apiVersions: ["v1alpha1"]
+      operations:  
+      - "CREATE" 
+      - "UPDATE"
+      - "DELETE"
+      resources:   ["backingstores"]
+      scope:       "Namespaced"
+    - apiGroups:   ["noobaa.io"]
+      apiVersions: ["v1alpha1"]
+      operations:  
+      - "CREATE" 
+      - "DELETE"
+      resources:   ["namespacestores, bucketclasses"]
+      scope:       "Namespaced"
+    sideEffects: None
+    clientConfig:
+      service:
+        name: noobaa-operator-service
+        namespace: placeholder
+        path: "/validate"
+      caBundle:
+    admissionReviewVersions: ["v1", "v1beta1"]
+    failurePolicy: Ignore
+    timeoutSeconds: 5`
+
 const Sha256_deploy_internal_ceph_objectstore_user_yaml = "655f33a1e3053847a298294d67d7db647d26fd11d1df7e229af718a8308bbd8e"
 
 const File_deploy_internal_ceph_objectstore_user_yaml = `apiVersion: ceph.rook.io/v1
