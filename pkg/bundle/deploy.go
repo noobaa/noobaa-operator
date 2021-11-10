@@ -2646,7 +2646,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "d098321ca3038440e35b27277c1e38eedea852a5be25371e29a442d5f7987590"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "26b0dc615d97e493cac78d7050e3156d01a1033e3b7b6397fd037a6c74971c0b"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -2696,6 +2696,9 @@ spec:
               cpu: "1"
               memory: "2Gi"
           securityContext:
+            fsGroupChangePolicy: "OnRootMismatch"
+            seLinuxOptions:
+              type: "spc_t"
             capabilities:
               add: ["SETUID", "SETGID"]
           ports:
@@ -4701,7 +4704,7 @@ requiredDropCapabilities:
 runAsUser:
   type: RunAsAny
 seLinuxContext:
-  type: MustRunAs
+  type: RunAsAny
 supplementalGroups:
   type: RunAsAny
 users:
@@ -4732,4 +4735,3 @@ kind: ServiceAccount
 metadata:
   name: noobaa-endpoint
 `
-

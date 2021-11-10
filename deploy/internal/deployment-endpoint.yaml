@@ -46,6 +46,9 @@ spec:
               cpu: "1"
               memory: "2Gi"
           securityContext:
+            fsGroupChangePolicy: "OnRootMismatch"
+            seLinuxOptions:
+              type: "spc_t"
             capabilities:
               add: ["SETUID", "SETGID"]
           ports:
