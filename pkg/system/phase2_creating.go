@@ -732,12 +732,9 @@ func (r *Reconciler) ReconcileRootSecret() error {
 			// reconcile root master key externally (vault)
 			c, err := util.InitVaultClient(connectionDetails, authTokenSecretName, options.Namespace)
 			if err == nil {
-				secretPath, err1 := util.BuildExternalSecretPath(c, r.NooBaa.Spec.Security.KeyManagementService, string(r.NooBaa.ObjectMeta.UID))
-				if err1 != nil {
-					return fmt.Errorf("ReconcileRootSecret: could not get/put key in external KMS %+v", err1)
-				}
+				secretPath := util.BuildExternalSecretPath(r.NooBaa.Spec.Security.KeyManagementService, string(r.NooBaa.ObjectMeta.UID))
 				// get secret from external KMS
-				rootKey, err := util.GetSecret(c, keySecretName, secretPath, connectionDetails["VAULT_BACKEND_PATH"])
+				rootKey, err := util.GetSecret(c, keySecretName, secretPath)
 				if err != nil {
 					return fmt.Errorf("ReconcileRootSecret: got error in fetch root secret from external KMS %v", err)
 				}
@@ -750,7 +747,7 @@ func (r *Reconciler) ReconcileRootSecret() error {
 				// put secret in external KMS
 				if r.NooBaa.DeletionTimestamp == nil {
 					log.Infof("ReconcileRootSecret: could not find root secret in external KMS, will upload new secret root key %v", err)
-					err = util.PutSecret(c, keySecretName, r.SecretRootMasterKey.StringData["cipher_key_b64"], secretPath, connectionDetails["VAULT_BACKEND_PATH"])
+					err = util.PutSecret(c, keySecretName, r.SecretRootMasterKey.StringData["cipher_key_b64"], secretPath)
 					if err == nil {
 						log.Infof("ReconcileRootSecret: uploaded root secret to external KMS successfully")
 						return nil
