@@ -353,6 +353,19 @@ func (r *BucketRequest) CreateBucket(
 		var readResources []nb.NamespaceResourceFullConfig
 		createBucketParams.Namespace = &nb.NamespaceBucketInfo{}
 
+		if r.BucketClass.Spec.PlacementPolicy == nil { // For none-caching will use default bucket class
+			defaultBucketClass, err := GetDefaultBucketClass(p, bucketOptions)
+			if err != nil {
+				return fmt.Errorf("GetDefaultBucketClass for NamespacePolicy failed with error: %v", err)
+			}
+
+			tierName, err := r.CreateTieringStructure(*defaultBucketClass)
+			if err != nil {
+				return fmt.Errorf("CreateTieringStructure for NamespacePolicy failed to create policy %q with error: %v", tierName, err)
+			}
+			createBucketParams.Tiering = tierName
+		}
+
 		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
 			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
 				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource}
