@@ -15,6 +15,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/version"
+	"github.com/pkg/errors"
 
 	routev1 "github.com/openshift/api/route/v1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
@@ -84,7 +85,7 @@ type Reconciler struct {
 	SecretOp                  *corev1.Secret
 	SecretAdmin               *corev1.Secret
 	SecretEndpoints           *corev1.Secret
-	SecretRootMasterKey       *corev1.Secret
+	SecretRootMasterKey       string
 	AWSCloudCreds             *cloudcredsv1.CredentialsRequest
 	AzureCloudCreds           *cloudcredsv1.CredentialsRequest
 	AzureContainerCreds       *corev1.Secret
@@ -143,7 +144,6 @@ func NewReconciler(
 		SecretOp:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretEndpoints:     util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		SecretRootMasterKey: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AzureContainerCreds: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		GCPBucketCreds:      util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AWSCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
@@ -182,7 +182,6 @@ func NewReconciler(
 	r.SecretOp.Namespace = r.Request.Namespace
 	r.SecretAdmin.Namespace = r.Request.Namespace
 	r.SecretEndpoints.Namespace = r.Request.Namespace
-	r.SecretRootMasterKey.Namespace = r.Request.Namespace
 	r.AzureContainerCreds.Namespace = r.Request.Namespace
 	r.GCPBucketCreds.Namespace = r.Request.Namespace
 	r.AWSCloudCreds.Namespace = r.Request.Namespace
@@ -220,7 +219,6 @@ func NewReconciler(
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
 	r.SecretEndpoints.Name = r.Request.Name + "-endpoints"
-	r.SecretRootMasterKey.Name = r.Request.Name + "-root-master-key"
 	r.AWSCloudCreds.Name = r.Request.Name + "-aws-cloud-creds"
 	r.AWSCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-aws-cloud-creds-secret"
 	r.AzureContainerCreds.Name = r.Request.Name + "-azure-container-creds"
@@ -259,9 +257,6 @@ func NewReconciler(
 	r.SecretDB.StringData["user"] = "noobaa"
 	r.SecretDB.StringData["password"] = util.RandomBase64(10)
 
-	// set noobaa root master key secret
-	r.SecretRootMasterKey.StringData["cipher_key_b64"] = util.RandomBase64(32)
-
 	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.Containers[0].DeepCopy()
 	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.DeepCopy()
 	return r
@@ -291,9 +286,6 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.SecretOp)
 	util.KubeCheck(r.SecretEndpoints)
 	util.KubeCheck(r.SecretAdmin)
-	if len(r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails) == 0 {
-		util.KubeCheck(r.SecretRootMasterKey)
-	}
 	util.KubeCheck(r.OBCStorageClass)
 	util.KubeCheck(r.DefaultBucketClass)
 	util.KubeCheck(r.DeploymentEndpoint)
@@ -324,7 +316,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	if !CheckSystem(r.NooBaa) {
 		log.Infof("NooBaa not found or already deleted.")
 		if r.NooBaa.DeletionTimestamp != nil {
-			if err = util.VerifyExternalSecretsDeletion(r.NooBaa.Spec.Security.KeyManagementService, r.NooBaa.Namespace, string(r.NooBaa.ObjectMeta.UID)); err != nil {
+			if err = r.deleteRootSecret(); err != nil {
 				log.Warnf("⏳ Temporary Error: %s", err)
 			}
 			// obc and storage class removal
@@ -400,6 +392,23 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		log.Warnf("⏳ Temporary Error: %s", err)
 	}
 	return res, nil
+}
+
+func (r *Reconciler) deleteRootSecret() error {
+	// External KMS Spec
+	connectionDetails := r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails
+	authTokenSecretName := r.NooBaa.Spec.Security.KeyManagementService.TokenSecretName
+
+	k, err := util.NewKMS(connectionDetails, authTokenSecretName, r.Request.Name, r.Request.Namespace, string(r.NooBaa.UID))
+	if err != nil {
+		// do not block system's deletion, just warn
+		r.Logger.Errorf("deleteRootSecret: invalid KMS connection details %v token %v, error %v", connectionDetails, authTokenSecretName, err)
+		return nil
+	}
+	if err := k.Delete(); err != nil {
+		return  errors.Wrap(err, "deleteRootSecret")
+	}
+	return nil
 }
 
 // VerifyObjectBucketCleanup checks if the un-installation is in mode graceful and

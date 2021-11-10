@@ -1,0 +1,34 @@
+name: KMS Test - TLS Vault, Token Auth
+
+# Run on each new PR and each new push to existing PR
+on: [push, pull_request]
+
+jobs:
+  run-kms-tls-token-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: Set environment variables
+        run: |
+          echo PATH=$PATH:$HOME/go/bin                                          >> $GITHUB_ENV
+          echo OPERATOR_IMAGE=localhost:5000/noobaa/noobaa-operator:integration >> $GITHUB_ENV
+          echo KUBERNETES_AUTH=false                                            >> $GITHUB_ENV
+
+      - name: Build NooBaa
+        run: |
+          make cli
+          make image
+          docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
+
+      - name: Deploy Dependencies
+        run: |
+          bash .travis/install-5nodes-kind-cluster.sh
+          docker push $OPERATOR_IMAGE
+          bash .travis/install-tls-kms-noobaa.sh
+          go get -v github.com/onsi/ginkgo/ginkgo
+          ginkgo version
+
+      - name: Run KMS TLS Token test
+        run: make test-kms-tls-token

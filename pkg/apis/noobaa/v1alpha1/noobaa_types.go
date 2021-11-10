@@ -286,27 +286,28 @@ const (
 	SystemPhaseReady SystemPhase = "Ready"
 )
 
-// ConditionType is a simple string type.
-// Types should be used from the enum below.
-type ConditionType string
-
 // These are the valid conditions types and statuses:
 const (
-	ConditionTypePhase ConditionType = "Phase"
+	ConditionTypeKMSStatus conditionsv1.ConditionType = "KMS-Status"
+	ConditionTypeKMSType   conditionsv1.ConditionType = "KMS-Type"
 )
 
-// ConditionStatus is a simple string type.
-// In addition to the generic True/False/Unknown it also can accept SystemPhase enums
-type ConditionStatus string
-
-// These are general valid condition statuses. "ConditionTrue" means a resource is in the condition.
-// "ConditionFalse" means a resource is not in the condition. "ConditionUnknown" means kubernetes
-// can't decide if a resource is in the condition or not. In the future, we could add other
-// intermediate conditions, e.g. ConditionDegraded.
+// These are NooBaa condition statuses
 const (
-	ConditionTrue    ConditionStatus = "True"
-	ConditionFalse   ConditionStatus = "False"
-	ConditionUnknown ConditionStatus = "Unknown"
+	// External KMS initialized
+	ConditionKMSInit        corev1.ConditionStatus = "Init"
+
+	// The root key was synchronized from external KMS
+	ConditionKMSSync        corev1.ConditionStatus = "Sync"
+
+	// Invalid external KMS definition
+	ConditionKMSInvalid     corev1.ConditionStatus = "Invalid"
+
+	// Error reading secret from external KMS
+	ConditionKMSErrorRead   corev1.ConditionStatus = "ErrorRead"
+
+	// Error writing initial root key to eternal KMS
+	ConditionKMSErrorWrite  corev1.ConditionStatus = "ErrorWrite"
 )
 
 // AccountsStatus is the status info of admin account

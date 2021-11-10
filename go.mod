@@ -15,8 +15,8 @@ require (
 	github.com/coreos/go-semver v0.3.0
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/go-openapi/spec v0.19.8
-	github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20210818162813-3eee31c01875
+	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.14.0
@@ -50,7 +50,9 @@ require (
 
 // Pinned to kubernetes-1.21.3
 replace (
+	// see https://github.com/rook/rook/blob/master/go.mod#L42-L43
 	github.com/moby/term => github.com/moby/term v0.0.0-20201110203204-bea5bbe245bf // indirect
+	github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 	k8s.io/api => k8s.io/api v0.21.3
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.21.3
 	k8s.io/apimachinery => k8s.io/apimachinery v0.21.3
@@ -75,4 +77,9 @@ replace (
 	k8s.io/metrics => k8s.io/metrics v0.21.3
 	k8s.io/mount-utils => k8s.io/mount-utils v0.21.3
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.21.3
+
 )
+
+// https://github.com/rook/rook/blob/master/go.mod#L47-L49
+// This tag doesn't exist, but is imported by github.com/portworx/sched-ops.
+exclude github.com/kubernetes-incubator/external-storage v0.20.4-openstorage-rc2
