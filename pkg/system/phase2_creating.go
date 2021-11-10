@@ -713,56 +713,63 @@ func (r *Reconciler) SetDesiredAgentProfile(profileString string) string {
 	return string(profileBytes)
 }
 
+func (r *Reconciler) reconcileExternalKMS(connectionDetails map[string]string, authTokenSecretName string) error {
+	log := r.Logger
+
+	if err := util.ValidateConnectionDetails(connectionDetails, authTokenSecretName, options.Namespace); err != nil {
+		return fmt.Errorf("ReconcileRootSecret: could not get/put key in external KMS: external kms connection details validation failed: %q", err)
+	}
+
+	// reconcile root master key externally (vault)
+	c, err := util.InitVaultClient(connectionDetails, authTokenSecretName, options.Namespace)
+	if err != nil {
+		return fmt.Errorf("ReconcileRootSecret: could not initialize external KMS client %+v", err)
+	}
+
+	// get secret from external KMS
+	keySecretName := "rootkeyb64-" + string(r.NooBaa.ObjectMeta.UID)
+	secretPath := util.BuildExternalSecretPath(r.NooBaa.Spec.Security.KeyManagementService, string(r.NooBaa.ObjectMeta.UID))
+	rootKey, err := util.GetSecret(c, keySecretName, secretPath)
+	if err != nil {
+		return fmt.Errorf("ReconcileRootSecret: got error in fetch root secret from external KMS %v", err)
+	}
+
+	// root key found
+	if rootKey != "" {
+		log.Infof("ReconcileRootSecret: found root secret in external KMS successfully")
+		r.SecretRootMasterKey.StringData["cipher_key_b64"] = rootKey
+		return nil
+	}
+
+	// the KMS root key was empty
+	// put randmoly generated key in external KMS
+	log.Infof("ReconcileRootSecret: could not find root secret in external KMS, will upload new secret root key %v", err)
+	err = util.PutSecret(c, keySecretName, r.SecretRootMasterKey.StringData["cipher_key_b64"], secretPath)
+	if err != nil {
+		return fmt.Errorf("ReconcileRootSecret: Error put secret in vault: %v", err)
+	}
+
+	log.Infof("ReconcileRootSecret: uploaded root secret to external KMS successfully")
+	return nil
+}
+
 // ReconcileRootSecret choose KMS for root secret key
 func (r *Reconciler) ReconcileRootSecret() error {
-	log := r.Logger
-	var err error
 
+	// External KMS Spec
 	connectionDetails := r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails
 	authTokenSecretName := r.NooBaa.Spec.Security.KeyManagementService.TokenSecretName
 
-	// set noobaa root master key secret
+	// reconcile root master key from external KMS
 	if len(connectionDetails) != 0 {
-		if err := util.ValidateConnectionDetails(connectionDetails, authTokenSecretName, options.Namespace); err != nil {
-			return fmt.Errorf("ReconcileRootSecret: could not get/put key in external KMS: external kms connection details validation failed: %q", err)
-		}
-		kmsProvider := connectionDetails["KMS_PROVIDER"]
-		if util.IsVaultKMS(kmsProvider) {
-			keySecretName := "rootkeyb64-" + string(r.NooBaa.ObjectMeta.UID)
-			// reconcile root master key externally (vault)
-			c, err := util.InitVaultClient(connectionDetails, authTokenSecretName, options.Namespace)
-			if err == nil {
-				secretPath := util.BuildExternalSecretPath(r.NooBaa.Spec.Security.KeyManagementService, string(r.NooBaa.ObjectMeta.UID))
-				// get secret from external KMS
-				rootKey, err := util.GetSecret(c, keySecretName, secretPath)
-				if err != nil {
-					return fmt.Errorf("ReconcileRootSecret: got error in fetch root secret from external KMS %v", err)
-				}
-				if err == nil && rootKey != "" {
-					log.Infof("ReconcileRootSecret: found root secret in external KMS successfully")
-					r.SecretRootMasterKey.StringData["cipher_key_b64"] = rootKey
-					return nil
-				}
-				log.Infof("could not find root secret in external KMS %v", err)
-				// put secret in external KMS
-				if r.NooBaa.DeletionTimestamp == nil {
-					log.Infof("ReconcileRootSecret: could not find root secret in external KMS, will upload new secret root key %v", err)
-					err = util.PutSecret(c, keySecretName, r.SecretRootMasterKey.StringData["cipher_key_b64"], secretPath)
-					if err == nil {
-						log.Infof("ReconcileRootSecret: uploaded root secret to external KMS successfully")
-						return nil
-					}
-					return fmt.Errorf("ReconcileRootSecret: Error put secret in vault: %+v", err)
-				}
-			}
-			return fmt.Errorf("ReconcileRootSecret: could not initialize external KMS client %+v", err)
-		}
+		return r.reconcileExternalKMS(connectionDetails, authTokenSecretName)
 	}
+
 	// reconcile root master key as K8s secret
-	err = r.ReconcileObject(r.SecretRootMasterKey, nil)
-	if err != nil {
+	if err := r.ReconcileObject(r.SecretRootMasterKey, nil); err != nil {
 		return err
 	}
+
 	return nil
 }
 
