@@ -20,11 +20,12 @@ const (
 	vaultCaCert             = "VAULT_CACERT"
 	vaultClientCert         = "VAULT_CLIENT_CERT"
 	vaultClientKey          = "VAULT_CLIENT_KEY"
-	vaultAddr               = "VAULT_ADDR"
+	VaultAddr               = "VAULT_ADDR"
 	vaultCaPath             = "VAULT_CAPATH"
-	vaultBackendPath        = "VAULT_BACKEND_PATH"
+	VaultBackendPath        = "VAULT_BACKEND_PATH"
 	vaultToken              = "VAULT_TOKEN"
-	kmsProvider             = "KMS_PROVIDER"
+	KmsProvider             = "KMS_PROVIDER"
+	KmsProviderVault        = "vault"
 	defaultVaultBackendPath = "secret/"
 )
 
@@ -38,9 +39,9 @@ func VerifyExternalSecretsDeletion(kms nbv1.KeyManagementServiceSpec, namespace 
 		return nil
 	}
 
-	if !isVaultKMS(kms.ConnectionDetails[kmsProvider]) {
-		log.Errorf("Unsupported KMS provider %v", kms.ConnectionDetails[kmsProvider])
-		return fmt.Errorf("Unsupported KMS provider %v", kms.ConnectionDetails[kmsProvider])
+	if !isVaultKMS(kms.ConnectionDetails[KmsProvider]) {
+		log.Errorf("Unsupported KMS provider %v", kms.ConnectionDetails[KmsProvider])
+		return fmt.Errorf("Unsupported KMS provider %v", kms.ConnectionDetails[KmsProvider])
 	}
 
 	c, err := InitVaultClient(kms.ConnectionDetails, kms.TokenSecretName, namespace)
@@ -76,9 +77,9 @@ func InitVaultClient(config map[string]string, tokenSecretName string, namespace
 	}
 
 	// veify backend path, use default value if not set
-	if b, ok := config[vaultBackendPath]; !ok || b == "" {
+	if b, ok := config[VaultBackendPath]; !ok || b == "" {
 		log.Infof("KMS: using default backend path %v", defaultVaultBackendPath)
-		vaultConfig[vaultBackendPath] = defaultVaultBackendPath
+		vaultConfig[VaultBackendPath] = defaultVaultBackendPath
 	}
 
 	// fetch vault token from the secret
@@ -184,7 +185,7 @@ func BuildExternalSecretPath(kms nbv1.KeyManagementServiceSpec, uid string) (str
 
 // isVaultKMS return true if kms provider is vault
 func isVaultKMS(provider string) bool {
-	return provider == "vault"
+	return provider == KmsProviderVault
 }
 
 // ValidateConnectionDetails return error if kms connection details are faulty
@@ -206,7 +207,7 @@ func ValidateConnectionDetails(config map[string]string, tokenSecretName string,
 		return fmt.Errorf("kms token in token secret is missing")
 	}
 	// validate connection details
-	providerType := config[kmsProvider]
+	providerType := config[KmsProvider]
 	if !isVaultKMS(providerType) {
 		return fmt.Errorf("Unsupported kms type: %v", providerType)
 	}
@@ -216,7 +217,7 @@ func ValidateConnectionDetails(config map[string]string, tokenSecretName string,
 
 // validateVaultConnectionDetails return error if vault connection details are faulty
 func validateVaultConnectionDetails(config map[string]string, tokenName string, namespace string) error {
-	if addr, ok := config[vaultAddr]; !ok || addr == "" {
+	if addr, ok := config[VaultAddr]; !ok || addr == "" {
 		return fmt.Errorf("failed to validate vault connection details: vault address is missing")
 	}
 	if capPath, ok := config[vaultCaPath]; ok && capPath != "" {

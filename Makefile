@@ -193,3 +193,8 @@ test-hac:
 	ginkgo -v pkg/controller/ha
 	@echo "✅ test-hac"
 .PHONY: test-hac
+
+test-kms:
+	ginkgo -v pkg/util/test
+	@echo "✅ test-kms"
+.PHONY: test-kms
