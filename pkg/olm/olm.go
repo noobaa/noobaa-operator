@@ -19,9 +19,11 @@ import (
 	"github.com/blang/semver/v4"
 	operv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/spf13/cobra"
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/printers"
 	sigyaml "sigs.k8s.io/yaml"
@@ -654,6 +656,27 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 		}
 	})
 
+	aw := util.KubeObject(bundle.File_deploy_internal_admission_webhook_yaml).(*admissionv1.ValidatingWebhookConfiguration)
+	vaw := aw.Webhooks[0]
+
+	webhookDefinition := operv1.WebhookDescription{
+		Type: operv1.ValidatingAdmissionWebhook,
+		AdmissionReviewVersions: vaw.AdmissionReviewVersions,
+		ContainerPort: 443,
+		TargetPort: &intstr.IntOrString{
+			Type: intstr.Int,
+			IntVal: 8080,
+			StrVal: "8080",
+		},
+		DeploymentName: "noobaa-operator",
+		FailurePolicy: vaw.FailurePolicy,
+		MatchPolicy: vaw.MatchPolicy,
+		GenerateName: vaw.Name,
+		Rules: vaw.Rules,
+		SideEffects: vaw.SideEffects,
+		WebhookPath: vaw.ClientConfig.Service.Path,
+	}
+	csv.Spec.WebhookDefinitions = append(csv.Spec.WebhookDefinitions, webhookDefinition)
 	return csv
 }
 
