@@ -268,6 +268,15 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 					Name:  "NOOBAA_DB_IMAGE",
 					Value: options.DBImage,
 				})
+
+			csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec.Tolerations = []corev1.Toleration{
+				{
+					Key:      "node.ocs.openshift.io/storage",
+					Effect:   corev1.TaintEffectNoSchedule,
+					Operator: corev1.TolerationOpEqual,
+					Value:    "true",
+				},
+			}
 		}
 
 		if csvParams.Replaces != "" {
