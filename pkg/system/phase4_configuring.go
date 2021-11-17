@@ -775,8 +775,9 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		r.AzureContainerCreds.StringData["AccountKey"] = key
 	}
 
+	azureContainerName := ""
 	if r.AzureContainerCreds.StringData["targetBlobContainer"] == "" {
-		var azureContainerName = strings.ToLower(randname.GenerateWithPrefix("noobaacontainer", 5))
+		azureContainerName = strings.ToLower(randname.GenerateWithPrefix("noobaacontainer", 5))
 		_, err := r.CreateContainer(r.AzureContainerCreds.StringData["AccountName"], azureGroupName, azureContainerName)
 		if err != nil {
 			return err
@@ -791,7 +792,7 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 	// create backing store
 	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeAzureBlob
 	r.DefaultBackingStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
-		TargetBlobContainer: r.AzureContainerCreds.StringData["targetBlobContainer"],
+		TargetBlobContainer: azureContainerName,
 		Secret: corev1.SecretReference{
 			Name:      r.AzureContainerCreds.Name,
 			Namespace: r.AzureContainerCreds.Namespace,
@@ -1000,12 +1001,12 @@ func (r *Reconciler) prepareCephBackingStore() error {
 	forcePathStyle := true
 	client := &http.Client{
 		Transport: util.InsecureHTTPTransport,
-		Timeout: 10 * time.Second, 
-	}	
+		Timeout:   10 * time.Second,
+	}
 	if r.ApplyCAsToPods != "" {
 		client.Transport = util.SecureHTTPTransport
 	}
-	
+
 	s3Config := &aws.Config{
 		Credentials: credentials.NewStaticCredentials(
 			cephObjectStoreUserSecret.StringData["AccessKey"],
