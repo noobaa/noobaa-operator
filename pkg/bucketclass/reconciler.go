@@ -282,7 +282,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 		"noobaa operator started phase 2/2 - \"Configuring\"",
 	)
 
-	objectBuckets := &nbv1.ObjectBucketList{}
+	objectBuckets := &util.ObjectBucketList{}
 	obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
 	util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
 

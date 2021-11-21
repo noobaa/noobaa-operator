@@ -401,15 +401,9 @@ func (r *Reconciler) finalizeCore() error {
 		for i := range r.SystemInfo.Accounts {
 			account := &r.SystemInfo.Accounts[i]
 			if account.DefaultResource == r.PoolInfo.Name {
-				allowedBuckets := account.AllowedBuckets
-				if allowedBuckets.PermissionList == nil {
-					allowedBuckets.PermissionList = []string{}
-				}
 				err := r.NBClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
 					Email:        account.Email,
-					S3Access:     account.HasS3Access,
 					DefaultResource:  &internalPoolName,
-					AllowBuckets: &allowedBuckets,
 				})
 				if err != nil {
 					return err

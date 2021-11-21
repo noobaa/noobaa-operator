@@ -58,18 +58,9 @@ type NooBaaAccountSpec struct {
 	// AllowBucketCreate specifies if new buckets can be created by this account
 	AllowBucketCreate bool `json:"allow_bucket_creation"`
 	
-	// AllowedBuckets specifies which buckets this account can access
-	AllowedBuckets AccountAllowedBuckets `json:"allowed_buckets"`
-	
 	// DefaultResource specifies which backingstore this account will use to create new buckets
 	// +optional
 	DefaultResource string `json:"default_resource,omitempty"`
-}
-
-// AccountAllowedBuckets is part of CreateAccountParams
-type AccountAllowedBuckets struct {
-	FullPermission bool     `json:"full_permission"`
-	PermissionList []string `json:"permission_list"`
 }
 
 // NooBaaAccountStatus defines the observed state of NooBaaAccount

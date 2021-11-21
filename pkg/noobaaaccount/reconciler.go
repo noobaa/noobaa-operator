@@ -332,10 +332,6 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 		HasLogin:          false,
 		S3Access:          true,
 		AllowBucketCreate: r.NooBaaAccount.Spec.AllowBucketCreate,
-		AllowedBuckets: nb.AccountAllowedBuckets{
-			FullPermission: r.NooBaaAccount.Spec.AllowedBuckets.FullPermission,
-			PermissionList: r.NooBaaAccount.Spec.AllowedBuckets.PermissionList,
-		},
 	})
 	if err != nil {
 		return err
@@ -382,10 +378,6 @@ func (r *Reconciler) UpdateNooBaaAccount() error {
 			DefaultResource:   &r.NooBaaAccount.Spec.DefaultResource,
 			S3Access:          true,
 			AllowBucketCreation: &r.NooBaaAccount.Spec.AllowBucketCreate,
-			AllowBuckets: &nb.AllowedBuckets{
-				FullPermission: r.NooBaaAccount.Spec.AllowedBuckets.FullPermission,
-				PermissionList: r.NooBaaAccount.Spec.AllowedBuckets.PermissionList,
-			},
 		})
 		if err != nil {
 			return err
@@ -398,10 +390,7 @@ func (r *Reconciler) UpdateNooBaaAccount() error {
 
 func (r *Reconciler) needUpdate() bool {
 	return r.NooBaaAccount.Spec.AllowBucketCreate != r.NooBaaAccountInfo.CanCreateBuckets ||
-		r.NooBaaAccount.Spec.AllowedBuckets.FullPermission != r.NooBaaAccountInfo.AllowedBuckets.FullPermission ||
-		r.NooBaaAccount.Spec.DefaultResource != r.NooBaaAccountInfo.DefaultResource || 
-		!util.IsStringArrayUnorderedEqual(r.NooBaaAccount.Spec.AllowedBuckets.PermissionList, 
-			r.NooBaaAccountInfo.AllowedBuckets.PermissionList)
+		r.NooBaaAccount.Spec.DefaultResource != r.NooBaaAccountInfo.DefaultResource
 }
 
 // ReadSystemInfo loads the information from the noobaa system api,
@@ -426,15 +415,6 @@ func (r *Reconciler) ReadSystemInfo() error {
 		if a.Name == r.NooBaaAccount.Name {
 			r.NooBaaAccountInfo = a
 			break
-		}
-	}
-
-	// Check If all allowed buckets exist
-	for i := range r.NooBaaAccount.Spec.AllowedBuckets.PermissionList {
-		bucket := r.NooBaaAccount.Spec.AllowedBuckets.PermissionList[i]
-		if !IsBucketInBucketsArray(r.SystemInfo.Buckets, bucket) {
-			return util.NewPersistentError("UnknownAllowedBucket",
-			fmt.Sprintf("Account %q allowed buckets list consists a unknown bucket name %q", r.NooBaaAccount.Name, bucket))
 		}
 	}
 

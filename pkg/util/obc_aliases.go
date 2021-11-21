@@ -1,4 +1,4 @@
-package v1alpha1
+package util
 
 import (
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"

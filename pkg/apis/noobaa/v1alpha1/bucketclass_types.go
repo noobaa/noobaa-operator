@@ -168,7 +168,7 @@ type Tier struct {
 	// BackingStores is an unordered list of backing store names.
 	// The meaning of the list depends on the placement.
 	// +optional
-	BackingStores []BackingStoreName `json:"backingStores,omitempty"`
+	BackingStores []string `json:"backingStores,omitempty"`
 }
 
 // TierPlacement is a string enum type for tier placement
@@ -194,7 +194,7 @@ const (
 )
 
 // BackingStoreName is just a name-reference to a BackingStore
-type BackingStoreName = string
+type BackingStoreName string
 
 // BucketClassPhase is a string enum type for system phases
 type BucketClassPhase string

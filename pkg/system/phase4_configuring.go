@@ -1076,7 +1076,7 @@ func (r *Reconciler) ReconcileDefaultBucketClass() error {
 
 	r.DefaultBucketClass.Spec.PlacementPolicy = &nbv1.PlacementPolicy{
 		Tiers: []nbv1.Tier{{
-			BackingStores: []nbv1.BackingStoreName{
+			BackingStores: []string{
 				r.DefaultBackingStore.Name,
 			},
 		}},

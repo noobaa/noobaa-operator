@@ -433,7 +433,7 @@ func (r *Reconciler) VerifyObjectBucketCleanup() error {
 	}
 
 	obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
-	objectBuckets := &nbv1.ObjectBucketList{}
+	objectBuckets := &util.ObjectBucketList{}
 	util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
 
 	if len(objectBuckets.Items) != 0 {

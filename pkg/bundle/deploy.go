@@ -1006,7 +1006,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml = "78e32a4643401cb04cc87ab34c5c655fe2a0299517b244d77eae262d5687f88c"
+const Sha256_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml = "fd0735f0046ad4cb40a0ac4fd97a6f5352d9fff7bc8b8308ad05f2653e630ce8"
 
 const File_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1053,27 +1053,12 @@ spec:
                 description: AllowBucketCreate specifies if new buckets can be created
                   by this account
                 type: boolean
-              allowed_buckets:
-                description: AllowedBuckets specifies which buckets this account can
-                  access
-                properties:
-                  full_permission:
-                    type: boolean
-                  permission_list:
-                    items:
-                      type: string
-                    type: array
-                required:
-                - full_permission
-                - permission_list
-                type: object
               default_resource:
                 description: DefaultResource specifies which backingstore this account
                   will use to create new buckets
                 type: string
             required:
             - allow_bucket_creation
-            - allowed_buckets
             type: object
           status:
             description: Most recently observed status of the NooBaaAccount.

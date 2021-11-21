@@ -86,7 +86,7 @@ func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder recor
 }
 
 // Provision implements lib-bucket-provisioner callback to create a new bucket
-func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBucket, error) {
+func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*util.ObjectBucket, error) {
 
 	log := p.Logger
 	log.Infof("Provision: got request to provision bucket %q", bucketOptions.BucketName)
@@ -125,7 +125,7 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 }
 
 // Grant implements lib-bucket-provisioner callback to use an existing bucket
-func (p *Provisioner) Grant(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBucket, error) {
+func (p *Provisioner) Grant(bucketOptions *obAPI.BucketOptions) (*util.ObjectBucket, error) {
 
 	log := p.Logger
 	log.Infof("Grant: got request to grant access to bucket %q", bucketOptions.BucketName)
@@ -154,7 +154,7 @@ func (p *Provisioner) Grant(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBuc
 }
 
 // Delete implements lib-bucket-provisioner callback to delete a bucket
-func (p *Provisioner) Delete(ob *nbv1.ObjectBucket) error {
+func (p *Provisioner) Delete(ob *util.ObjectBucket) error {
 
 	log := p.Logger
 
@@ -185,7 +185,7 @@ func (p *Provisioner) Delete(ob *nbv1.ObjectBucket) error {
 }
 
 // Revoke implements lib-bucket-provisioner callback to stop using an existing bucket
-func (p *Provisioner) Revoke(ob *nbv1.ObjectBucket) error {
+func (p *Provisioner) Revoke(ob *util.ObjectBucket) error {
 
 	log := p.Logger
 
@@ -205,7 +205,7 @@ func (p *Provisioner) Revoke(ob *nbv1.ObjectBucket) error {
 }
 
 // Update implements lib-bucket-provisioner callback to stop using an existing bucket additional config of OBC
-func (p *Provisioner) Update(ob *nbv1.ObjectBucket) error {
+func (p *Provisioner) Update(ob *util.ObjectBucket) error {
 	log := p.Logger
 	log.Infof("Update: got request to Update access to bucket %q", ob.Name)
 
@@ -223,8 +223,8 @@ func (p *Provisioner) Update(ob *nbv1.ObjectBucket) error {
 // BucketRequest is the context of handling a single bucket request
 type BucketRequest struct {
 	Provisioner *Provisioner
-	OB          *nbv1.ObjectBucket
-	OBC         *nbv1.ObjectBucketClaim
+	OB          *util.ObjectBucket
+	OBC         *util.ObjectBucketClaim
 	BucketName  string
 	AccountName string
 	SysClient   *system.Client
@@ -234,7 +234,7 @@ type BucketRequest struct {
 // NewBucketRequest initializes an obc bucket request
 func NewBucketRequest(
 	p *Provisioner,
-	ob *nbv1.ObjectBucket,
+	ob *util.ObjectBucket,
 	bucketOptions *obAPI.BucketOptions,
 ) (*BucketRequest, error) {
 
@@ -288,10 +288,10 @@ func NewBucketRequest(
 			p.recorder.Event(r.OBC, "Warning", "BucketClassNotReady", msg)
 			return nil, fmt.Errorf(msg)
 		}
-		r.OB = &nbv1.ObjectBucket{
-			Spec: nbv1.ObjectBucketSpec{
-				Connection: &nbv1.ObjectBucketConnection{
-					Endpoint: &nbv1.ObjectBucketEndpoint{
+		r.OB = &util.ObjectBucket{
+			Spec: util.ObjectBucketSpec{
+				Connection: &util.ObjectBucketConnection{
+					Endpoint: &util.ObjectBucketEndpoint{
 						BucketHost:           s3Hostname,
 						BucketPort:           s3Port,
 						BucketName:           r.BucketName,
@@ -458,10 +458,6 @@ func (r *BucketRequest) CreateAccount() error {
 		HasLogin:          false,
 		S3Access:          true,
 		AllowBucketCreate: false,
-		AllowedBuckets: nb.AccountAllowedBuckets{
-			FullPermission: false,
-			PermissionList: []string{r.BucketName},
-		},
 		BucketClaimOwner: r.BucketName,
 	})
 	if err != nil {
@@ -482,8 +478,8 @@ func (r *BucketRequest) CreateAccount() error {
 		accessKeys = accountInfo.AccessKeys[0]
 	}
 
-	r.OB.Spec.Authentication = &nbv1.ObjectBucketAuthentication{
-		AccessKeys: &nbv1.ObjectBucketAccessKeys{
+	r.OB.Spec.Authentication = &util.ObjectBucketAuthentication{
+		AccessKeys: &util.ObjectBucketAccessKeys{
 			AccessKeyID:     accessKeys.AccessKey,
 			SecretAccessKey: accessKeys.SecretKey,
 		},
@@ -631,7 +627,7 @@ func (r *BucketRequest) prepareReplicationParams(replicationPolicy string, updat
 }
 
 // updateReplicationPolicy validates and prepare the replication params
-func (r *BucketRequest) updateReplicationPolicy(ob *nbv1.ObjectBucket) error {
+func (r *BucketRequest) updateReplicationPolicy(ob *util.ObjectBucket) error {
 	log := r.Provisioner.Logger
 	newReplication := ob.Spec.Endpoint.AdditionalConfigData["replicationPolicy"]
 	log.Infof("updateReplicationPolicy: new Replication %q detected on ob: %v", newReplication, ob.Name)

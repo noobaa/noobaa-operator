@@ -26,7 +26,6 @@ type AccountInfo struct {
 	Email              string         `json:"email"`
 	IsSupport          bool           `json:"is_support"`
 	HasLogin           bool           `json:"has_login"`
-	HasS3Access        bool           `json:"has_s3_access"`
 	CanCreateBuckets   bool           `json:"can_create_buckets"`
 	NextPasswordChange int64          `json:"next_password_change"`
 	DefaultResource    string         `json:"default_resource"`
@@ -39,7 +38,6 @@ type AccountInfo struct {
 		Count       int                      `json:"count"`
 		Connections []ExternalConnectionInfo `json:"connections"`
 	} `json:"external_connections"`
-	AllowedBuckets AllowedBuckets `json:"allowed_buckets"`
 	Systems        []struct {
 		Name  string   `json:"name"`
 		Roles []string `json:"roles"`
@@ -339,12 +337,6 @@ type BucketClaimInfo struct {
 	Namespace   string `json:"namespace,omitempty"`
 }
 
-// AccountAllowedBuckets is part of CreateAccountParams
-type AccountAllowedBuckets struct {
-	FullPermission bool     `json:"full_permission"`
-	PermissionList []string `json:"permission_list"`
-}
-
 // CreateAccountParams is the params of account_api.create_account()
 type CreateAccountParams struct {
 	Name              string                `json:"name"`
@@ -352,7 +344,6 @@ type CreateAccountParams struct {
 	HasLogin          bool                  `json:"has_login"`
 	S3Access          bool                  `json:"s3_access"`
 	AllowBucketCreate bool                  `json:"allow_bucket_creation"`
-	AllowedBuckets    AccountAllowedBuckets `json:"allowed_buckets"`
 	DefaultResource   string                `json:"default_resource,omitempty"`
 	BucketClaimOwner  string                `json:"bucket_claim_owner,omitempty"`
 }
@@ -495,7 +486,6 @@ type UpdateAccountS3AccessParams struct {
 	S3Access            bool            `json:"s3_access"`
 	DefaultResource     *string         `json:"default_resource,omitempty"`
 	AllowBucketCreation *bool           `json:"allow_bucket_creation,omitempty"`
-	AllowBuckets        *AllowedBuckets `json:"allowed_buckets,omitempty"`
 }
 
 // UpdateDefaultResourceParams is the params of bucket_api.update_all_buckets_default_pool()
@@ -526,12 +516,6 @@ type BucketClassInfo struct {
 	ErrorMessage   string                  `json:"error_message"`
 	ShouldRevert   bool                    `json:"should_revert"`
 	RevertToPolicy UpdateBucketClassParams `json:"revert_to_policy"`
-}
-
-// AllowedBuckets is a struct for setting which buckets an account can access
-type AllowedBuckets struct {
-	FullPermission bool     `json:"full_permission"`
-	PermissionList []string `json:"permission_list"`
 }
 
 // CloudAuthMethod is an enum

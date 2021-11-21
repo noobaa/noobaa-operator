@@ -33,6 +33,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
+	golang.org/x/tools v0.1.3 // indirect
 	google.golang.org/api v0.32.0
 	k8s.io/api v0.21.3
 	k8s.io/apiextensions-apiserver v0.21.3

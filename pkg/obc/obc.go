@@ -108,7 +108,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 
 	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml)
-	obc := o.(*nbv1.ObjectBucketClaim)
+	obc := o.(*util.ObjectBucketClaim)
 	obc.Name = name
 	obc.Namespace = appNamespace
 	if exact {
@@ -190,7 +190,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	}
 
 	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml)
-	obc := o.(*nbv1.ObjectBucketClaim)
+	obc := o.(*util.ObjectBucketClaim)
 	obc.Name = args[0]
 	obc.Namespace = appNamespace
 
@@ -213,8 +213,8 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		appNamespace = options.Namespace
 	}
 
-	obc := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml).(*nbv1.ObjectBucketClaim)
-	ob := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucket_cr_yaml).(*nbv1.ObjectBucket)
+	obc := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml).(*util.ObjectBucketClaim)
+	ob := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucket_cr_yaml).(*util.ObjectBucket)
 	sc := util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass)
 	cm := util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap)
 	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
@@ -328,7 +328,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 // RunList runs a CLI command
 func RunList(cmd *cobra.Command, args []string) {
-	list := &nbv1.ObjectBucketClaimList{
+	list := &util.ObjectBucketClaimList{
 		TypeMeta: metav1.TypeMeta{Kind: "ObjectBucketClaim"},
 	}
 	if !util.KubeList(list) {
@@ -374,7 +374,7 @@ func RunList(cmd *cobra.Command, args []string) {
 }
 
 // WaitReady waits until the obc phase changes to bound by the operator
-func WaitReady(obc *nbv1.ObjectBucketClaim) bool {
+func WaitReady(obc *util.ObjectBucketClaim) bool {
 	log := util.Logger()
 	klient := util.KubeClient()
 
@@ -399,7 +399,7 @@ func WaitReady(obc *nbv1.ObjectBucketClaim) bool {
 }
 
 // CheckPhase prints the phase and reason for it
-func CheckPhase(obc *nbv1.ObjectBucketClaim) {
+func CheckPhase(obc *util.ObjectBucketClaim) {
 	log := util.Logger()
 
 	switch obc.Status.Phase {

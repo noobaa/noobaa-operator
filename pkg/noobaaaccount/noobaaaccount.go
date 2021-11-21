@@ -48,8 +48,6 @@ func CmdCreate() *cobra.Command {
 		"Should this account be allowed to create new buckets")
 	cmd.Flags().Bool("full_permission", false,
 		"Should this account be allowed to access all the buckets (including future ones)")
-	cmd.Flags().StringSlice("allowed_buckets", nil,
-		"Set the user allowed buckets list (use commas or multiple flags)")
 	cmd.Flags().String("default_resource", "", "Set the default resource, on which new buckets will be created")
 	return cmd
 }
@@ -105,17 +103,6 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 	name := args[0]
 
-	allowedBuckets := []string{}
-	fullPermission, _ := cmd.Flags().GetBool("full_permission")
-	bucketList, _ := cmd.Flags().GetStringSlice("allowed_buckets")
-	allowedBuckets = append(allowedBuckets, bucketList...)
-	if !fullPermission && len(allowedBuckets) == 0 {
-		log.Fatalf(`❌ Must provide at least one allowed buckets, or full_permission`)
-	}
-	if len(allowedBuckets) > 0 &&  fullPermission {
-		log.Fatalf(`❌ Can't provide both full_permission and an allowed buckets list`)
-	}
-	allowBucketCreate, _ := cmd.Flags().GetBool("allow_bucket_create")
 	defaultResource, _ := cmd.Flags().GetString("default_resource")
 
 	// Check and get system
@@ -128,9 +115,6 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	noobaaAccount := o.(*nbv1.NooBaaAccount)
 	noobaaAccount.Name = name
 	noobaaAccount.Namespace = options.Namespace
-	noobaaAccount.Spec.AllowBucketCreate = allowBucketCreate
-	noobaaAccount.Spec.AllowedBuckets.FullPermission = fullPermission
-	noobaaAccount.Spec.AllowedBuckets.PermissionList = allowedBuckets
 
 	if !util.KubeCheck(sys) {
 		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
@@ -304,26 +288,18 @@ func RunList(cmd *cobra.Command, args []string) {
 	}
 	table := (&util.PrintTable{}).AddRow(
 		"NAME",
-		"ALLOWED_BUCKETS",
 		"DEFAULT_RESOURCE",
 		"PHASE",
 		"AGE",
 	)
 	for i := range list.Items {
 		na := &list.Items[i]
-		var allowedBuckets []string
-		if na.Spec.AllowedBuckets.FullPermission {
-			allowedBuckets = append(allowedBuckets, "*")
-		} else {
-			allowedBuckets = na.Spec.AllowedBuckets.PermissionList
-		}
 		defaultResource := na.Spec.DefaultResource
 		if !na.Spec.AllowBucketCreate {
 			defaultResource = "-NO-BUCKET-CREATION-"
 		}
 		table.AddRow(
 			na.Name,
-			fmt.Sprintf("%+v", allowedBuckets),
 			defaultResource,
 			string(na.Status.Phase),
 			time.Since(na.CreationTimestamp.Time).Round(time.Second).String(),

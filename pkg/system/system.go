@@ -267,7 +267,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	log.Infof("Notice: Deletion of External secrets should be preformed manually")
 
 	cleanupData, _ := cmd.Flags().GetBool("cleanup_data")
-	objectBuckets := &nbv1.ObjectBucketList{}
+	objectBuckets := &util.ObjectBucketList{}
 	obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
 	util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
 	finalizersArray := sys.GetFinalizers()
@@ -338,7 +338,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		}
 		util.KubeDelete(bstore, client.GracePeriodSeconds(0))
 	}
-	objectBucketClaims := &nbv1.ObjectBucketClaimList{}
+	objectBucketClaims := &util.ObjectBucketClaimList{}
 	configMaps := &corev1.ConfigMapList{}
 	secrets := &corev1.SecretList{}
 
@@ -349,40 +349,40 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	for i := range objectBucketClaims.Items {
 		obj := &objectBucketClaims.Items[i]
 		log.Warnf("ObjectBucketClaim %q removing without grace", obj.Name)
-		util.RemoveFinalizer(obj, nbv1.ObjectBucketFinalizer)
+		util.RemoveFinalizer(obj, util.ObjectBucketFinalizer)
 		if !util.KubeUpdate(obj) {
 			log.Errorf("ObjectBucketClaim %q failed to remove finalizer %q",
-				obj.Name, nbv1.ObjectBucketFinalizer)
+				obj.Name, util.ObjectBucketFinalizer)
 		}
 		util.KubeDelete(obj, client.GracePeriodSeconds(0))
 	}
 	for i := range objectBuckets.Items {
 		obj := &objectBuckets.Items[i]
 		log.Warnf("ObjectBucket %q removing without grace", obj.Name)
-		util.RemoveFinalizer(obj, nbv1.ObjectBucketFinalizer)
+		util.RemoveFinalizer(obj, util.ObjectBucketFinalizer)
 		if !util.KubeUpdate(obj) {
 			log.Errorf("ObjectBucket %q failed to remove finalizer %q",
-				obj.Name, nbv1.ObjectBucketFinalizer)
+				obj.Name, util.ObjectBucketFinalizer)
 		}
 		util.KubeDelete(obj, client.GracePeriodSeconds(0))
 	}
 	for i := range configMaps.Items {
 		obj := &configMaps.Items[i]
 		log.Warnf("ConfigMap %q removing without grace", obj.Name)
-		util.RemoveFinalizer(obj, nbv1.ObjectBucketFinalizer)
+		util.RemoveFinalizer(obj, util.ObjectBucketFinalizer)
 		if !util.KubeUpdate(obj) {
 			log.Errorf("ObjectBucket %q failed to remove finalizer %q",
-				obj.Name, nbv1.ObjectBucketFinalizer)
+				obj.Name, util.ObjectBucketFinalizer)
 		}
 		util.KubeDelete(obj, client.GracePeriodSeconds(0))
 	}
 	for i := range secrets.Items {
 		obj := &secrets.Items[i]
 		log.Warnf("Secret %q removing without grace", obj.Name)
-		util.RemoveFinalizer(obj, nbv1.ObjectBucketFinalizer)
+		util.RemoveFinalizer(obj, util.ObjectBucketFinalizer)
 		if !util.KubeUpdate(obj) {
 			log.Errorf("ObjectBucket %q failed to remove finalizer %q",
-				obj.Name, nbv1.ObjectBucketFinalizer)
+				obj.Name, util.ObjectBucketFinalizer)
 		}
 		util.KubeDelete(obj, client.GracePeriodSeconds(0))
 	}
