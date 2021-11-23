@@ -49,7 +49,7 @@ cat ${TMP_DIR}/namespace.objects | egrep -v "packagemanifest|NAME" | awk '{print
 while read res
 do 
 	echo "Removing finalizers from $res"
-	kubectl patch -n $1 $res --type json --patch='[ { "op": "remove", "path": "/metadata/finalizers" } ]'
+	kubectl patch -n $1 $res --type json --patch='[ { "op": "remove", "path": "/metadata/finalizers" } ]' || true
 done
 
 echo "Done"
