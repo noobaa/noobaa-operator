@@ -208,3 +208,8 @@ test-kms-tls-token: vendor
 	ginkgo -v pkg/util/test/tls-token
 	@echo "✅ test-kms-tls-token"
 .PHONY: test-kms-tls-token
+
+test-admission: vendor
+	ginkgo -v pkg/admission/test/integ
+	@echo "✅ test-admission"
+.PHONY: test-admission

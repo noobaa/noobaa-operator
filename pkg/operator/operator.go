@@ -122,9 +122,21 @@ func RunInstall(cmd *cobra.Command, args []string) {
 		util.KubeCreateSkipExisting(c.WebhookConfiguration)
 		util.KubeCreateSkipExisting(c.WebhookSecret)
 		util.KubeCreateSkipExisting(c.WebhookService)
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "ENABLE_NOOBAA_ADMISSION",
+			Value: "true",
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
 	}
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "NOOBAA_CLI_DEPLOYMENT",
+			Value: "true",
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
 		util.KubeCreateSkipExisting(c.Deployment)
 	}
 }

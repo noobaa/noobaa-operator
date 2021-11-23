@@ -1,0 +1,71 @@
+package admission
+
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/sirupsen/logrus"
+	admissionv1 "k8s.io/api/admission/v1"
+)
+
+//ServerHandler listen to admission requests and serve responses
+type ServerHandler struct {
+}
+
+func (gs *ServerHandler) serve(w http.ResponseWriter, r *http.Request) {
+	namespace, _ := util.GetWatchNamespace()
+	log := logrus.WithField("admission validator", namespace)
+	var arResponse admissionv1.AdmissionReview
+	var body []byte
+	if r.Body != nil {
+		if data, err := ioutil.ReadAll(r.Body); err == nil {
+			body = data
+		}
+	}
+	if len(body) == 0 {
+		log.Error("empty body")
+		http.Error(w, "empty body", http.StatusBadRequest)
+		return
+	}
+	log.Info("Received request")
+
+	if r.URL.Path != "/validate" {
+		log.Error("no validate")
+		http.Error(w, "no validate", http.StatusBadRequest)
+		return
+	}
+
+	arRequest := admissionv1.AdmissionReview{}
+	if err := json.Unmarshal(body, &arRequest); err != nil {
+		log.Error("incorrect body")
+		http.Error(w, "incorrect body", http.StatusBadRequest)
+		return
+	}
+
+	switch arRequest.Request.Resource.Resource {
+	case "backingstores":
+		arResponse = NewBackingStoreValidator(arRequest).ValidateBackingstore()
+	case "namespacestores":
+		arResponse = NewNamespaceStoreValidator(arRequest).ValidateNamespaceStore()
+	default:
+		log.Error("failed to identify Resource type")
+		http.Error(w, "incorrect body", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := json.Marshal(arResponse)
+	if err != nil {
+		log.Errorf("Can't encode response: %v", err)
+		http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)
+		return
+	}
+	log.Infof("Ready to write response ...")
+	if _, err := w.Write(resp); err != nil {
+		log.Errorf("Can't write response: %v", err)
+		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
+		return
+	}
+}

@@ -154,7 +154,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return reconcile.Result{}, nil // final state
 	}
 
-	if 	err := r.LoadBackingStoreSecret(); err != nil {
+	if err := r.LoadBackingStoreSecret(); err != nil {
 		return r.completeReconcile(err)
 	}
 
@@ -406,10 +406,10 @@ func (r *Reconciler) finalizeCore() error {
 					allowedBuckets.PermissionList = []string{}
 				}
 				err := r.NBClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
-					Email:        account.Email,
-					S3Access:     account.HasS3Access,
-					DefaultResource:  &internalPoolName,
-					AllowBuckets: &allowedBuckets,
+					Email:           account.Email,
+					S3Access:        account.HasS3Access,
+					DefaultResource: &internalPoolName,
+					AllowBuckets:    &allowedBuckets,
 				})
 				if err != nil {
 					return err
@@ -1306,14 +1306,14 @@ func (r *Reconciler) reconcileResources(src, dst *corev1.ResourceList, minCPU, m
 		if qty, ok := (*src)[corev1.ResourceCPU]; ok {
 			if qty.Cmp(minCPU) < 0 {
 				return util.NewPersistentError("MinRequestCpu",
-				fmt.Sprintf("NooBaa BackingStore %v is in rejected phase due to small cpu request %v, min is %v", r.BackingStore.Name, qty.String(), minCPU.String()))
+					fmt.Sprintf("NooBaa BackingStore %v is in rejected phase due to small cpu request %v, min is %v", r.BackingStore.Name, qty.String(), minCPU.String()))
 			}
 			cpu = qty
 		}
 		if qty, ok := (*src)[corev1.ResourceMemory]; ok {
 			if qty.Cmp(minMem) < 0 {
 				return util.NewPersistentError("MinRequestCpu",
-				fmt.Sprintf("NooBaa BackingStore %v is in rejected phase due to small memory request %v, min is %v", r.BackingStore.Name, qty.String(), minMem.String()))
+					fmt.Sprintf("NooBaa BackingStore %v is in rejected phase due to small memory request %v, min is %v", r.BackingStore.Name, qty.String(), minMem.String()))
 			}
 			mem = qty
 		}
