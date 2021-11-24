@@ -2679,14 +2679,12 @@ metadata:
 spec: {}
 `
 
-const Sha256_deploy_internal_admission_webhook_yaml = "ff31e4f8fc894f2ebed18058a9a200c2bb66d3045677b84d8fb5f5630bf76ac5"
+const Sha256_deploy_internal_admission_webhook_yaml = "10f0567d8cd2c7f37d305de4e34787138863546c8ad39c5da6fbfa7b0c4ab587"
 
 const File_deploy_internal_admission_webhook_yaml = `apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: admission-validation-webhook
-  annotations:
-    service.beta.openshift.io/inject-cabundle: "true"
 webhooks:
   - name: admissionwebhook.noobaa.io
     matchPolicy: Equivalent
@@ -2709,13 +2707,14 @@ webhooks:
     sideEffects: None
     clientConfig:
       service:
-        name: noobaa-operator-service
+        name: admission-webhook-service
         namespace: placeholder
         path: "/validate"
       caBundle:
     admissionReviewVersions: ["v1", "v1beta1"]
     failurePolicy: Ignore
-    timeoutSeconds: 5`
+    timeoutSeconds: 5
+`
 
 const Sha256_deploy_internal_ceph_objectstore_user_yaml = "655f33a1e3053847a298294d67d7db647d26fd11d1df7e229af718a8308bbd8e"
 
@@ -3453,6 +3452,21 @@ spec:
     - port: 7004
       name: metrics
 
+`
+
+const Sha256_deploy_internal_service_admission_webhook_yaml = "810a70b263d44621713864aa6e6e72e6079bbdc02f6e2b9143ba9ebf4ab52102"
+
+const File_deploy_internal_service_admission_webhook_yaml = `apiVersion: v1
+kind: Service
+metadata:
+  name: admission-webhook-service
+spec:
+  ports:
+  - name: webhook
+    port: 443
+    targetPort: 8080
+  selector:
+    noobaa-operator: deployment
 `
 
 const Sha256_deploy_internal_servicemonitor_mgmt_yaml = "172b25b71872e74fb32ecf32b9c68d41cc60d155cb469ed5ecf7ad282f3e597a"

@@ -113,6 +113,9 @@ var MiniEnv = false
 // DisableLoadBalancerService is used for setting the service type to ClusterIP instead of LoadBalancer
 var DisableLoadBalancerService = false
 
+// AdmissionWebhook is used for deploying the system with admission validation webhook
+var AdmissionWebhook = false
+
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
 	return Namespace + ".noobaa.io"
@@ -185,5 +188,9 @@ func init() {
 	FlagSet.BoolVar(
 		&DisableLoadBalancerService, "disable-load-balancer",
 		false, "Set the service type to ClusterIP instead of LoadBalancer",
+	)
+	FlagSet.BoolVar(
+		&AdmissionWebhook, "admission",
+		false, "Install the system with admission validation webhook",
 	)
 }

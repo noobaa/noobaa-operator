@@ -2,8 +2,6 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: admission-validation-webhook
-  annotations:
-    service.beta.openshift.io/inject-cabundle: "true"
 webhooks:
   - name: admissionwebhook.noobaa.io
     matchPolicy: Equivalent
@@ -26,7 +24,7 @@ webhooks:
     sideEffects: None
     clientConfig:
       service:
-        name: noobaa-operator-service
+        name: admission-webhook-service
         namespace: placeholder
         path: "/validate"
       caBundle:

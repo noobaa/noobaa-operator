@@ -176,7 +176,7 @@ function install {
     local use_obc_cleanup_policy
     
     [ $((RANDOM%2)) -gt 0 ] && use_obc_cleanup_policy="--use-obc-cleanup-policy"
-    test_noobaa install --mini ${use_obc_cleanup_policy}
+    test_noobaa install --mini --admission ${use_obc_cleanup_policy}
 
     local status=$(kuberun silence get noobaa noobaa -o 'jsonpath={.status.phase}')
     while [ "${status}" != "Ready" ]
@@ -193,6 +193,13 @@ function noobaa_install {
     test_noobaa status
     kuberun get noobaa
     kuberun describe noobaa
+    test_admission_deployment
+}
+
+function test_admission_deployment {
+    kuberun get Secret "admission-webhook-secret"
+    kuberun get ValidatingWebhookConfiguration "admission-validation-webhook"
+    kuberun get Service "admission-webhook-service"
 }
 
 function check_core_config_map {

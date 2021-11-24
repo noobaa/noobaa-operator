@@ -1,9 +1,17 @@
 package operator
 
 import (
+	"bytes"
+	cryptorand "crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
@@ -11,6 +19,7 @@ import (
 
 	secv1 "github.com/openshift/api/security/v1"
 	"github.com/spf13/cobra"
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -106,6 +115,14 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	util.KubeCreateSkipExisting(c.ClusterRoleBinding)
 	util.KubeCreateOptional(c.SecurityContextConstraints)
 	util.KubeCreateOptional(c.SCCEndpoint)
+	admission, _ := cmd.Flags().GetBool("admission")
+	if admission {
+		LoadAdmissionConf(c)
+		AdmissionWebhookSetup(c)
+		util.KubeCreateSkipExisting(c.WebhookConfiguration)
+		util.KubeCreateSkipExisting(c.WebhookSecret)
+		util.KubeCreateSkipExisting(c.WebhookService)
+	}
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		util.KubeCreateSkipExisting(c.Deployment)
@@ -115,6 +132,7 @@ func RunInstall(cmd *cobra.Command, args []string) {
 // RunUninstall runs a CLI command
 func RunUninstall(cmd *cobra.Command, args []string) {
 	c := LoadOperatorConf(cmd)
+	LoadAdmissionConf(c)
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		util.KubeDelete(c.Deployment)
@@ -136,6 +154,9 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	util.KubeDelete(c.Role)
 	util.KubeDelete(c.SAEndpoint)
 	util.KubeDelete(c.SA)
+	util.KubeDelete(c.WebhookConfiguration)
+	util.KubeDelete(c.WebhookSecret)
+	util.KubeDelete(c.WebhookService)
 
 	reservedNS := c.NS.Name == "default" ||
 		strings.HasPrefix(c.NS.Name, "openshift-") ||
@@ -158,6 +179,7 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 // RunStatus runs a CLI command
 func RunStatus(cmd *cobra.Command, args []string) {
 	c := LoadOperatorConf(cmd)
+	LoadAdmissionConf(c)
 	util.KubeCheck(c.NS)
 	if util.KubeCheck(c.SA) && util.KubeCheck(c.SAEndpoint) {
 		// in OLM deployment the roles and bindings have generated names
@@ -171,6 +193,9 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	util.KubeCheck(c.RoleBindingEndpoint)
 	util.KubeCheck(c.ClusterRole)
 	util.KubeCheck(c.ClusterRoleBinding)
+	util.KubeCheckOptional(c.WebhookConfiguration)
+	util.KubeCheckOptional(c.WebhookSecret)
+	util.KubeCheckOptional(c.WebhookService)
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		util.KubeCheck(c.Deployment)
@@ -210,6 +235,9 @@ type Conf struct {
 	SecurityContextConstraints *secv1.SecurityContextConstraints
 	SCCEndpoint                *secv1.SecurityContextConstraints
 	Deployment                 *appsv1.Deployment
+	WebhookConfiguration       *admissionv1.ValidatingWebhookConfiguration
+	WebhookSecret              *corev1.Secret
+	WebhookService             *corev1.Service
 }
 
 // LoadOperatorConf loads and initializes all the objects needed to install the operator
@@ -254,6 +282,7 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 
 	c.SecurityContextConstraints.Users[0] = fmt.Sprintf("system:serviceaccount:%s:%s", options.Namespace, c.SA.Name)
 	c.SCCEndpoint.Users[0] = fmt.Sprintf("system:serviceaccount:%s:%s", options.Namespace, c.SAEndpoint.Name)
+
 	return c
 }
 
@@ -311,4 +340,118 @@ func DetectClusterRole(c *Conf) {
 			}
 		}
 	}
+}
+
+// LoadAdmissionConf loads and initializes all the objects needed to install the admission resources
+func LoadAdmissionConf(c *Conf) {
+	// Load admission resources yaml files
+	c.WebhookConfiguration = util.KubeObject(bundle.File_deploy_internal_admission_webhook_yaml).(*admissionv1.ValidatingWebhookConfiguration)
+	c.WebhookSecret = util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	c.WebhookService = util.KubeObject(bundle.File_deploy_internal_service_admission_webhook_yaml).(*corev1.Service)
+
+	// Set resources Name and Namespace
+	c.WebhookConfiguration.Namespace = options.Namespace
+	c.WebhookSecret.Namespace = options.Namespace
+	c.WebhookService.Namespace = options.Namespace
+	c.WebhookConfiguration.Webhooks[0].ClientConfig.Service.Namespace = options.Namespace
+	c.WebhookSecret.Name = "admission-webhook-secret"
+}
+
+// AdmissionWebhookSetup generate self-signed certificate and add volume mount to the operator deployment
+func AdmissionWebhookSetup(c *Conf) {
+	var caPEM, serverCertPEM, serverPrivKeyPEM *bytes.Buffer
+	// CA config
+	ca := &x509.Certificate{
+		SerialNumber:          big.NewInt(2020),
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(1, 0, 0),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+
+	// CA private key
+	caPrivKey, err := rsa.GenerateKey(cryptorand.Reader, 4096)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Self signed CA certificate
+	caBytes, err := x509.CreateCertificate(cryptorand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// PEM encode CA cert
+	caPEM = new(bytes.Buffer)
+	_ = pem.Encode(caPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caBytes,
+	})
+
+	dnsNames := []string{c.WebhookService.Name, c.WebhookService.Name + "." + options.Namespace, c.WebhookService.Name + "." + options.Namespace + ".svc"}
+	commonName := c.WebhookService.Name + "." + options.Namespace + ".svc"
+
+	// server cert config
+	cert := &x509.Certificate{
+		DNSNames:     dnsNames,
+		SerialNumber: big.NewInt(1658),
+		Subject: pkix.Name{
+			CommonName: commonName,
+		},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(1, 0, 0),
+		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+
+	// server private key
+	serverPrivKey, err := rsa.GenerateKey(cryptorand.Reader, 4096)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// sign the server cert
+	serverCertBytes, err := x509.CreateCertificate(cryptorand.Reader, cert, ca, &serverPrivKey.PublicKey, caPrivKey)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// PEM encode the  server cert and key
+	serverCertPEM = new(bytes.Buffer)
+	_ = pem.Encode(serverCertPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: serverCertBytes,
+	})
+
+	serverPrivKeyPEM = new(bytes.Buffer)
+	_ = pem.Encode(serverPrivKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(serverPrivKey),
+	})
+
+	c.WebhookSecret.Data["tls.cert"] = serverCertPEM.Bytes()
+	c.WebhookSecret.Data["tls.key"] = serverPrivKeyPEM.Bytes()
+	c.WebhookConfiguration.Webhooks[0].ClientConfig.CABundle = caPEM.Bytes()
+
+	volumeMounts := make([]corev1.VolumeMount, 1)
+	volumeMounts[0] = corev1.VolumeMount{
+		Name:      "webhook-certs",
+		MountPath: "/etc/certs",
+		ReadOnly:  true,
+	}
+	c.Deployment.Spec.Template.Spec.Containers[0].VolumeMounts = volumeMounts
+
+	volumes := make([]corev1.Volume, 1)
+	volumes[0] = corev1.Volume{
+		Name: "webhook-certs",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: c.WebhookSecret.Name,
+			},
+		},
+	}
+	c.Deployment.Spec.Template.Spec.Volumes = volumes
 }
