@@ -6,7 +6,9 @@ import (
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	"github.com/spf13/cobra"
@@ -29,6 +31,7 @@ func Cmd() *cobra.Command {
 	}
 	cmd.AddCommand(
 		CmdCreate(),
+		CmdRegenerate(),
 		CmdDelete(),
 		CmdStatus(),
 		CmdList(),
@@ -51,6 +54,16 @@ func CmdCreate() *cobra.Command {
 	cmd.Flags().StringSlice("allowed_buckets", nil,
 		"Set the user allowed buckets list (use commas or multiple flags)")
 	cmd.Flags().String("default_resource", "", "Set the default resource, on which new buckets will be created")
+	return cmd
+}
+
+// CmdRegenerate returns a CLI command
+func CmdRegenerate() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "regenerate <noobaa-account-name>",
+		Short: "Regenerate S3 Credentials",
+		Run:   RunRegenerate,
+	}
 	return cmd
 }
 
@@ -175,6 +188,52 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 }
 
+// RunRegenerate runs a CLI command
+func RunRegenerate(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <noobaa-account-name> %s`, cmd.UsageString())
+	}
+
+	var decision string
+	log.Printf("You are about to regenerate an account's security credentials.")
+	log.Printf("This will invalidate all connections between S3 clients and NooBaa which are connected using the current credentials.")
+	log.Printf("are you sure? y/n")
+	
+	for {
+		fmt.Scanln(&decision)
+		if decision == "y" {
+			break
+		} else if decision == "n" {
+			return 
+		}
+	}
+
+	name := args[0]
+
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
+	noobaaAccount := o.(*nbv1.NooBaaAccount)
+	noobaaAccount.Name = name
+	noobaaAccount.Namespace = options.Namespace
+
+	if !util.KubeCheck(noobaaAccount) && (name != "admin@noobaa.io") {
+		err := GenerateNonCrdAccountKeys(name)
+		if err != nil {
+			log.Fatalf(`❌ Could not regenerate credentials for %q: %v`,name, err)
+		}
+	} else {
+		err := GenerateAccountKeys(name)
+		if err != nil {
+			log.Fatalf(`❌ Could not regenerate credentials for %q: %v`,name, err)
+		}
+	
+		RunStatus(cmd, args)
+	}
+
+	
+}
+
 // RunDelete runs a CLI command
 func RunDelete(cmd *cobra.Command, args []string) {
 
@@ -203,35 +262,44 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <noobaa-account-name> %s`, cmd.UsageString())
 	}
 
+	name := args[0]
+
 	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
 	noobaaAccount := o.(*nbv1.NooBaaAccount)
 	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
 
-	noobaaAccount.Name = args[0]
-	secret.Name = fmt.Sprintf("noobaa-account-%s", args[0])
+	noobaaAccount.Name = name
+	secret.Name = fmt.Sprintf("noobaa-account-%s", name)
 	noobaaAccount.Namespace = options.Namespace
 	secret.Namespace = options.Namespace
 
-	if !util.KubeCheck(noobaaAccount) {
+	if !util.KubeCheck(noobaaAccount) && (name != "admin@noobaa.io") {
 		log.Fatalf(`❌ Could not get NooBaaAccount %q in namespace %q`,
 		noobaaAccount.Name, noobaaAccount.Namespace)
+	} else if (name == "admin@noobaa.io"){
+		secret.Name = "noobaa-admin"
+	} else  {
+		CheckPhase(noobaaAccount)
+
+		fmt.Println()
+		fmt.Println("# NooBaaAccount spec:")
+		output, err := sigyaml.Marshal(noobaaAccount.Spec)
+		util.Panic(err)
+		fmt.Print(string(output))
+		fmt.Println()
 	}
+
 	util.KubeCheck(secret)
 
-	CheckPhase(noobaaAccount)
-
-	fmt.Println()
-	fmt.Println("# NooBaaAccount spec:")
-	output, err := sigyaml.Marshal(noobaaAccount.Spec)
-	util.Panic(err)
-	fmt.Print(string(output))
-	fmt.Println()
 	fmt.Printf("Connection info:\n")
 	credsEnv := ""
 	for k, v := range secret.StringData {
 		if v != "" {
-			fmt.Printf("  %-22s : %s\n", k, v)
-			credsEnv += k + "=" + v + " "
+			//In admin secret there is also the password, email and system that we do not want to print
+			if k == "AWS_ACCESS_KEY_ID" || k == "AWS_SECRET_ACCESS_KEY" {
+				fmt.Printf("  %-22s : %s\n", k, v)
+				credsEnv += k + "=" + v + " "
+			}
 		}
 	}
 	fmt.Println()
@@ -360,3 +428,98 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 	}))
 }
 
+// GenerateAccountKeys regenerate noobaa account (CRD based) S3 keys
+func GenerateAccountKeys(name string) error {
+	log := util.Logger()
+
+	var accessKeys nb.S3AccessKeys
+
+	sysClient, err := system.Connect(true)
+	if err != nil {
+		return err
+	}
+
+	// Checking that we can find the secret before we are calling the RPC to change the credentials.
+	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret.Namespace = options.Namespace
+	// Handling a special case when the account is "admin@noobaa.io" we don't have CRD but have a secret
+	if (name == "admin@noobaa.io"){
+		secret.Name = "noobaa-admin"
+	} else {
+		secret.Name = fmt.Sprintf("noobaa-account-%s", name)
+	}
+	if !util.KubeCheckQuiet(secret) {
+		log.Fatalf(`❌  Could not find secret: %s, will not regenerate keys.`, secret.Name)
+	}
+
+	err = sysClient.NBClient.GenerateAccountKeysAPI(nb.GenerateAccountKeysParams{
+		Email:             name,
+	})
+	if err != nil {
+		return err
+	}
+
+	// GenerateAccountKeysAPI have no replay so we need to read the account in order to get the new credentials
+	accountInfo, err := sysClient.NBClient.ReadAccountAPI(nb.ReadAccountParams{
+		Email: name,
+	})
+	if err != nil {
+		return err
+	}
+ 
+	accessKeys = accountInfo.AccessKeys[0]
+
+	secret.StringData = map[string]string{}
+	secret.StringData["AWS_ACCESS_KEY_ID"] = accessKeys.AccessKey
+	secret.StringData["AWS_SECRET_ACCESS_KEY"] = accessKeys.SecretKey
+
+	//If we will not be able to update the secret we will print the credentials as they allready been changed by the RPC
+	if !util.KubeUpdate(secret) {
+		log.Printf(`❌  Please write the new credentials for account %s:`, name)
+		fmt.Printf("\nAWS_ACCESS_KEY_ID     : %s\n", accessKeys.AccessKey)
+		fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n\n", accessKeys.SecretKey)
+		log.Fatalf(`❌  Failed to update the secret %s with the new accessKeys`, secret.Name)
+	}
+
+	log.Printf("✅ Successfully reganerate s3 credentials for the account %q", name)
+	return nil
+}
+
+// GenerateNonCrdAccountKeys regenerate noobaa account (none CRD based) S3 keys
+func GenerateNonCrdAccountKeys(name string) error {
+	log := util.Logger()
+
+	var accessKeys nb.S3AccessKeys
+
+	sysClient, err := system.Connect(true)
+	if err != nil {
+		return err
+	}
+
+	err = sysClient.NBClient.GenerateAccountKeysAPI(nb.GenerateAccountKeysParams{
+		Email:             name,
+	})
+	if err != nil {
+		if nbErr, ok := err.(*nb.RPCError); ok && nbErr.RPCCode == "NO_SUCH_ACCOUNT" {
+			log.Fatalf(`❌  Could not find the account: %s, will not regenerate keys.`, name)
+		}
+		return err
+	}
+
+	// GenerateAccountKeysAPI have no replay so we need to read the account in order to get the new credentials
+	accountInfo, err := sysClient.NBClient.ReadAccountAPI(nb.ReadAccountParams{
+		Email: name,
+	})
+	if err != nil {
+		log.Fatalf(`❌  Could not read account: %s, keys were allready regenerated, please read the account to get the keys`, name)
+	}
+
+	accessKeys = accountInfo.AccessKeys[0]
+
+	log.Printf("✅ Successfully reganerate s3 credentials for the account %q", name)
+	log.Printf(`✅  Please write the new credentials for account %s:`, name)
+	fmt.Printf("\nAWS_ACCESS_KEY_ID     : %s\n", accessKeys.AccessKey)
+	fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n\n", accessKeys.SecretKey)
+
+	return nil
+}

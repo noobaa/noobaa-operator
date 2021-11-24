@@ -409,6 +409,11 @@ type CreateAccountReply struct {
 	AccessKeys []S3AccessKeys `json:"access_keys"`
 }
 
+// GenerateAccountKeysParams is the params of account_api.generate_account_keys()
+type GenerateAccountKeysParams struct {
+	Email             string                `json:"email"`
+}
+
 // BackingStoreInfo describes backingstore info
 type BackingStoreInfo struct {
 	// Name describes backingstore name
