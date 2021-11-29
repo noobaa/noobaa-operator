@@ -414,6 +414,13 @@ type GenerateAccountKeysParams struct {
 	Email             string                `json:"email"`
 }
 
+// ResetPasswordParams is the params of account_api.reset_password()
+type ResetPasswordParams struct {
+	Email                string       `json:"email"`
+	VerificationPassword MaskedString `json:"verification_password"`
+	Password             MaskedString `json:"password"`
+}
+
 // BackingStoreInfo describes backingstore info
 type BackingStoreInfo struct {
 	// Name describes backingstore name

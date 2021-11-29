@@ -61,6 +61,7 @@ type Client interface {
 	DeleteBucketReplicationAPI(DeleteBucketReplicationParams) error
 
 	GenerateAccountKeysAPI(GenerateAccountKeysParams) error
+	ResetPasswordAPI(ResetPasswordParams) error
 }
 
 // ReadAuthAPI calls auth_api.read_auth()
@@ -408,5 +409,11 @@ func (c *RPCClient) DeleteBucketReplicationAPI(params DeleteBucketReplicationPar
 // GenerateAccountKeysAPI calls account_api.generate_account_keys()
 func (c *RPCClient) GenerateAccountKeysAPI(params GenerateAccountKeysParams) error {
 	req := &RPCMessage{API: "account_api", Method: "generate_account_keys", Params: params}
+	return c.Call(req, nil)
+}
+
+// ResetPasswordAPI calls account_api.reset_password()
+func (c *RPCClient) ResetPasswordAPI(params ResetPasswordParams) error {
+	req := &RPCMessage{API: "account_api", Method: "reset_password", Params: params}
 	return c.Call(req, nil)
 }
