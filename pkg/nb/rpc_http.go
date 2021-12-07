@@ -18,7 +18,7 @@ type RPCConnHTTP struct {
 }
 
 // NewRPCConnHTTP returns a new http connection
-func NewRPCConnHTTP(r *RPC, address string) *RPCConnHTTP {
+func NewRPCConnHTTP(r *RPC, address string) RPCConn {
 	return &RPCConnHTTP{
 		RPC:     r,
 		Address: address,
@@ -28,10 +28,6 @@ func NewRPCConnHTTP(r *RPC, address string) *RPCConnHTTP {
 // GetAddress returns the connection address
 func (c *RPCConnHTTP) GetAddress() string {
 	return c.Address
-}
-
-// Reconnect is doing nothing for http connection
-func (c *RPCConnHTTP) Reconnect() {
 }
 
 // Call calls an API method to noobaa over https

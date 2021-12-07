@@ -14,6 +14,7 @@ import (
 	"nhooyr.io/websocket"
 )
 
+// Websocket timeouts
 const (
 	pingInterval   = 5 * time.Second
 	reconnectDelay = 3 * time.Second
@@ -21,18 +22,28 @@ const (
 	pongTimeout    = time.Minute
 )
 
+// We're reusing existing connections, stored in connMap
+// Upon disconnect store reconnect deadline in reconnMap
+var (
+	connMap   = make(map[string]*RPCConnWS)
+	reconnMap = make(map[string]*time.Time)
+	connMapLock = sync.Mutex{}
+)
+
+
 // RPCConnWS is an websocket connection which is shared and multiplexed
 // for all concurrent requests to the same address
 type RPCConnWS struct {
 	RPC             *RPC
 	Address         string
-	State           string
+	connected       bool
 	WS              *websocket.Conn
 	PendingRequests map[string]*RPCPendingRequest
 	NextRequestID   uint64
 	Lock            sync.Mutex
-	ReconnectDelay  time.Duration
 	cancelPings     context.CancelFunc
+	cancelSend      context.CancelFunc
+	CallChan        chan *RPCPendingRequest
 }
 
 // RPCPendingRequest is a struct that describes the fields related to an rpc pending requests
@@ -43,15 +54,47 @@ type RPCPendingRequest struct {
 	ReplyChan chan error
 }
 
-// NewRPCConnWS returns a new websocket connection
-func NewRPCConnWS(r *RPC, address string) *RPCConnWS {
-	return &RPCConnWS{
+// NewRPCConnWS returns a connected websocket connection
+// or nil if connection refused or within reconnect delay
+func NewRPCConnWS(r *RPC, address string) RPCConn {
+	connMapLock.Lock()
+	defer connMapLock.Unlock()
+
+	// If there is an existing connection to the address, then use it
+	conn := connMap[address]
+	if conn != nil {
+		return conn
+	}
+
+	// Handle reconnect delay
+	reconn := reconnMap[address]
+	if reconn != nil && reconn.After(time.Now()) {
+		logrus.Infof("RPC: no connection to %v, reconnect in %v at %v", address, time.Until(*reconn), reconn)
+		return nil
+	}
+
+	// Create a new connection
+	c := &RPCConnWS{
 		RPC:             r,
 		Address:         address,
-		State:           "init",
+		connected:       false,
 		PendingRequests: map[string]*RPCPendingRequest{},
 		Lock:            sync.Mutex{},
+		CallChan:        make(chan *RPCPendingRequest, 1),
 	}
+
+	// Establish a connection to the server
+	c.WS = c.connect()
+	if c.WS == nil {
+		reconn := time.Now().Add(reconnectDelay)
+		reconnMap[c.Address] = &reconn
+		return nil // connection refused
+	}
+
+	// reuse this connection for next calls
+	connMap[address] = c
+
+	return c
 }
 
 // GetAddress returns the connection address
@@ -59,84 +102,67 @@ func (c *RPCConnWS) GetAddress() string {
 	return c.Address
 }
 
-// Reconnect connects after setting a delay
-func (c *RPCConnWS) Reconnect() {
-	c.Lock.Lock()
-	c.ReconnectDelay = reconnectDelay
-	err := c.ConnectUnderLock()
-	if err != nil {
-		logrus.Errorf("RPC: Reconnect - got error: %v", err)
-	}
-	c.Lock.Unlock()
-
-}
-
 // Call calls an API method to noobaa over wss
 func (c *RPCConnWS) Call(req *RPCMessage, res RPCResponse) error {
-
-	c.Lock.Lock()
-
-	err := c.ConnectUnderLock()
-	if err != nil {
-		c.Lock.Unlock()
-		return err
-	}
-
-	replyChan := c.NewRequest(req, res)
-
-	c.Lock.Unlock()
-
-	err = c.SendMessage(req)
+	replyChan, err := c.NewRequest(req, res)
 	if err != nil {
 		return err
 	}
-
 	return <-replyChan
 }
 
-// ConnectUnderLock is opening a ws connection for new connection or after the previous one closed
-// it can delay the reconnect attempts in case of repeated failures
-// such as when the host is unreachable, etc.
-func (c *RPCConnWS) ConnectUnderLock() error {
-
-	if c.State == "connected" {
-		return nil
-	}
-	if c.State != "init" {
-		return fmt.Errorf("RPC: connection (%p) already closed %+v", c, c)
-	}
-
-	if c.ReconnectDelay != 0 {
-		logrus.Infof("RPC: Reconnect (%p) delay %+v", c, c)
-		time.Sleep(c.ReconnectDelay)
-	}
-
-	logrus.Infof("RPC: Connecting websocket (%p) %+v", c, c)
+// connect establishes connection to the remote server and
+// starts read/write/ping goroutines
+func (c *RPCConnWS) connect() *websocket.Conn {
+	logrus.Infof("RPC: Connecting websocket to %v", c.GetAddress())
 	dialCtx, dialCancel := context.WithTimeout(context.Background(), connectTimeout) 
 	defer dialCancel()
 	ws, _, err := websocket.Dial(dialCtx, c.Address, &websocket.DialOptions{HTTPClient: &c.RPC.HTTPClient})
 	if err != nil {
-		c.CloseUnderLock()
-		return err
+		logrus.Errorf("RPC: websocket dial error: %v", err)
+		return nil
 	}
 
-	logrus.Infof("RPC: Connected websocket (%p) %+v", c, c)
 	ws.SetReadLimit(RPCMaxMessageSize)
 	c.WS = ws
-	c.State = "connected"
+	c.connected = true
+
+	// Start read/write/ping goroutines
 	go c.ReadMessages()
+
 	pingCtx, pingCancel := context.WithCancel(context.Background())
 	go c.SendPings(pingCtx)
 	c.cancelPings = pingCancel
 
-	return nil
+	sendCtx, sendCancel := context.WithCancel(context.Background())
+	go c.SendMessages(sendCtx)
+	c.cancelSend = sendCancel
+
+	logrus.Infof("RPC: Connected websocket (%p) %+v", c, c)
+	return ws
 }
 
+// ping sends a single ping request to the remote server
 func (c *RPCConnWS) ping() error {
 	ctx, cancel := context.WithTimeout(context.Background(), pongTimeout)
 	defer cancel()
-	logrus.Infof("RPC: Ping (%p) %+v", c, c)
 	return c.WS.Ping(ctx)
+}
+
+// SendMessages is a go routine running while a connection is open
+// it pumps request messages from the Call channel into the WE connection
+func (c *RPCConnWS) SendMessages(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case pending := <-c.CallChan:
+			if err := c.SendMessage(pending.Req); err != nil {
+				logrus.Errorf("RPC: SendMessage error: %v", err)
+				c.Close()
+			}
+		}
+	}
 }
 
 // SendPings sends pings to improve detection of server disconnect
@@ -159,20 +185,21 @@ func (c *RPCConnWS) SendPings(ctx context.Context) {
 	}
 }
 
-// Close locks the connection and call close
+// Close releases the connection resources
+// terminates goroutines: ping and send
+// gracefully closes the underlying WS connection
+// once WS connection is closed, read messages goroutine exits
+// pending requests are notified with error
 func (c *RPCConnWS) Close() {
 	c.Lock.Lock()
-	c.CloseUnderLock()
-	c.Lock.Unlock()
-}
+	defer c.Lock.Unlock()
 
-// CloseUnderLock closes the connection
-func (c *RPCConnWS) CloseUnderLock() {
-	if c.State == "closed" {
+	if !c.connected {
 		return
 	}
+	c.connected = false
+
 	logrus.Errorf("RPC: closing connection (%p) %+v", c, c)
-	c.State = "closed"
 
 	// stop ping go routine
 	if c.cancelPings != nil {
@@ -180,15 +207,24 @@ func (c *RPCConnWS) CloseUnderLock() {
 		c.cancelPings = nil
 	}
 
-	// close the websocket
+	// stop send go routine
+	if c.cancelSend != nil {
+		c.cancelSend()
+		c.cancelSend = nil
+	}
+
+	// close the websocket, will close also the read goroutine
 	if c.WS != nil {
 		err := c.WS.Close(
-			websocket.StatusInternalError,
+			websocket.StatusNormalClosure,
 			fmt.Sprintf("RPC: close conn %s", c.Address),
 		)
+
+		// Close errors could be ignored
 		if err != nil {
-			logrus.Errorf("RPC: could not close web socket %s", c.Address)
+			logrus.Warnf("RPC: could not close web socket %s - %v", c.Address, err)
 		}
+		c.WS = nil
 	}
 
 	// wakeup pending waiters with error
@@ -197,25 +233,63 @@ func (c *RPCConnWS) CloseUnderLock() {
 		pending.ReplyChan <- fmt.Errorf("RPC: connection closed while request is pending %s %s", c.Address, reqid)
 	}
 
-	// tell the RPC to remove this connection which will reconnect if desired
-	c.RPC.RemoveConnection(c)
+	// delete the connection from the connection map
+	// and set reconnect time
+	reconn := time.Now().Add(reconnectDelay)
+	connMapLock.Lock()
+	defer connMapLock.Unlock()
+
+	reconnMap[c.Address] = &reconn
+	delete(connMap, c.Address)
+}
+
+// getPending returns a corresponding RPCPendingRequest
+// and removes this request from pending requests map
+func (c *RPCConnWS) getPending(msg *RPCMessage) *RPCPendingRequest {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+
+	pending := c.PendingRequests[msg.RequestID]
+	delete(c.PendingRequests, msg.RequestID)
+	return pending
+}
+
+// setPending inserts the request into pending requests map
+// assigns requests ID and increase the counter
+// returns false if connection is closed, true otherwise
+func (c *RPCConnWS) setPending(pending *RPCPendingRequest) bool {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+
+	if !c.connected {
+		return false
+	}
+
+	pending.Req.RequestID = fmt.Sprintf("%s-%d", c.Address, c.NextRequestID)
+	c.NextRequestID++
+	c.PendingRequests[pending.Req.RequestID] = pending
+	return true
 }
 
 // NewRequest initializes the request id and register it on the connection pending requests
-func (c *RPCConnWS) NewRequest(req *RPCMessage, res RPCResponse) chan error {
+// and pushes new pending request into call channel to SendMessages goroutine
+func (c *RPCConnWS) NewRequest(req *RPCMessage, res RPCResponse) (chan error, error) {
 	pending := &RPCPendingRequest{
 		Req:       req,
 		Res:       res,
 		Conn:      c,
 		ReplyChan: make(chan error, 1),
 	}
-	req.RequestID = fmt.Sprintf("%s-%d", c.Address, c.NextRequestID)
-	c.NextRequestID++
-	c.PendingRequests[req.RequestID] = pending
-	return pending.ReplyChan
+
+	if !c.setPending(pending) {
+		return nil, fmt.Errorf("RPC: setPending failed")
+	}
+
+	c.CallChan <- pending
+	return pending.ReplyChan, nil
 }
 
-// SendMessage sends the pending request
+// SendMessage sends a single pending request
 func (c *RPCConnWS) SendMessage(msg interface{}) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), RPCSendTimeout)
 	defer cancel()
@@ -251,6 +325,7 @@ func (c *RPCConnWS) SendMessage(msg interface{}) error {
 
 	return nil
 }
+
 
 // ReadMessages handles incoming messages
 func (c *RPCConnWS) ReadMessages() {
@@ -322,7 +397,6 @@ func (c *RPCConnWS) ReadMessage() (*RPCMessage, error) {
 	// Read message buffers if any
 	if msg.Buffers != nil && len(msg.Buffers) > 0 {
 		buffers, err := ioutil.ReadAll(reader)
-		// if err != nil && err.Error() != "failed to read: cannot use EOFed reader" {
 		if err != nil {
 			return nil, err
 		}
@@ -366,13 +440,10 @@ func (c *RPCConnWS) HandleRequest(req *RPCMessage) {
 
 // HandleResponse handles an incoming message of type response
 func (c *RPCConnWS) HandleResponse(msg *RPCMessage) {
-	c.Lock.Lock()
-	pending := c.PendingRequests[msg.RequestID]
-	delete(c.PendingRequests, msg.RequestID)
-	c.Lock.Unlock()
+	pending := c.getPending(msg)
 
 	if pending == nil {
-		logrus.Errorf("RPC: no pending request for %s %s", c.Address, msg.RequestID)
+		logrus.Errorf("RPC: no pending request for %s RequestID %v", c.Address, msg.RequestID)
 	} else {
 		err := json.Unmarshal(msg.RawBytes, pending.Res)
 		pending.ReplyChan <- err

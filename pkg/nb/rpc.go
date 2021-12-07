@@ -1,9 +1,9 @@
 package nb
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	util "github.com/noobaa/noobaa-operator/v5/pkg/util"
@@ -33,8 +33,6 @@ func init() {
 // RPC is a struct that describes the relevant fields upon handeling rpc protocol
 type RPC struct {
 	HTTPClient  http.Client
-	ConnMap     map[string]RPCConn
-	ConnMapLock sync.Mutex
 	Handler     RPCHandler
 }
 
@@ -50,8 +48,7 @@ type RPCClient struct {
 type RPCConn interface {
 	// GetAddress returns the connection address
 	GetAddress() string
-	// Reonnect should make sure the connection is ready to be used
-	Reconnect()
+
 	// Call sends request and receives the response
 	Call(req *RPCMessage, res RPCResponse) error
 }
@@ -131,8 +128,6 @@ func NewRPC() *RPC {
 		HTTPClient: http.Client{
 			Transport: util.InsecureHTTPTransport,
 		},
-		ConnMap:     make(map[string]RPCConn),
-		ConnMapLock: sync.Mutex{},
 	}
 }
 
@@ -164,6 +159,10 @@ func (c *RPCClient) Call(req *RPCMessage, res RPCResponse) error {
 	logrus.Infof("✈️  RPC: %s Request: %+v", u, req.Params)
 
 	conn := c.RPC.GetConnection(address)
+	if conn == nil {
+		err := fmt.Errorf("⚠️  RPC: no connection to: %s", address)
+		return err
+	}
 	err := conn.Call(req, res)
 	if err != nil {
 		logrus.Errorf("⚠️  RPC: %s Call failed: %s", u, err)
@@ -184,34 +183,10 @@ func (c *RPCClient) Call(req *RPCMessage, res RPCResponse) error {
 func (r *RPC) GetConnection(address string) RPCConn {
 	var conn RPCConn
 	if strings.HasPrefix(address, "wss:") || strings.HasPrefix(address, "ws:") {
-		r.ConnMapLock.Lock()
-		conn = r.ConnMap[address]
-		if conn == nil {
-			conn = NewRPCConnWS(r, address)
-			logrus.Warnf("RPC: GetConnection creating connection to %s %p", address, conn)
-			r.ConnMap[address] = conn
-		}
-		r.ConnMapLock.Unlock()
+		conn = NewRPCConnWS(r, address)
 	} else {
 		// http connections are transient and not inserted to ConnMap!
 		conn = NewRPCConnHTTP(r, address)
 	}
 	return conn
-}
-
-// RemoveConnection removes the connection from the RPC connections map and start reconnecting
-func (r *RPC) RemoveConnection(conn RPCConn) {
-	r.ConnMapLock.Lock()
-	address := conn.GetAddress()
-	current := r.ConnMap[address]
-	if current == conn {
-		logrus.Warnf("RPC: RemoveConnection %s current=%p conn=%p", address, current, conn)
-		delete(r.ConnMap, address)
-	}
-	if current == conn || current == nil {
-		go func() {
-			r.GetConnection(address).Reconnect()
-		}()
-	}
-	r.ConnMapLock.Unlock()
 }
