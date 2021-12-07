@@ -14,6 +14,13 @@ import (
 	"nhooyr.io/websocket"
 )
 
+const (
+	pingInterval   = 5 * time.Second
+	reconnectDelay = 3 * time.Second
+	connectTimeout = time.Minute
+	pongTimeout    = time.Minute
+)
+
 // RPCConnWS is an websocket connection which is shared and multiplexed
 // for all concurrent requests to the same address
 type RPCConnWS struct {
@@ -25,6 +32,7 @@ type RPCConnWS struct {
 	NextRequestID   uint64
 	Lock            sync.Mutex
 	ReconnectDelay  time.Duration
+	cancelPings     context.CancelFunc
 }
 
 // RPCPendingRequest is a struct that describes the fields related to an rpc pending requests
@@ -54,7 +62,7 @@ func (c *RPCConnWS) GetAddress() string {
 // Reconnect connects after setting a delay
 func (c *RPCConnWS) Reconnect() {
 	c.Lock.Lock()
-	c.ReconnectDelay = 3 * time.Second
+	c.ReconnectDelay = reconnectDelay
 	err := c.ConnectUnderLock()
 	if err != nil {
 		logrus.Errorf("RPC: Reconnect - got error: %v", err)
@@ -104,7 +112,9 @@ func (c *RPCConnWS) ConnectUnderLock() error {
 	}
 
 	logrus.Infof("RPC: Connecting websocket (%p) %+v", c, c)
-	ws, _, err := websocket.Dial(context.TODO(), c.Address, &websocket.DialOptions{HTTPClient: &c.RPC.HTTPClient})
+	dialCtx, dialCancel := context.WithTimeout(context.Background(), connectTimeout) 
+	defer dialCancel()
+	ws, _, err := websocket.Dial(dialCtx, c.Address, &websocket.DialOptions{HTTPClient: &c.RPC.HTTPClient})
 	if err != nil {
 		c.CloseUnderLock()
 		return err
@@ -115,8 +125,38 @@ func (c *RPCConnWS) ConnectUnderLock() error {
 	c.WS = ws
 	c.State = "connected"
 	go c.ReadMessages()
+	pingCtx, pingCancel := context.WithCancel(context.Background())
+	go c.SendPings(pingCtx)
+	c.cancelPings = pingCancel
 
 	return nil
+}
+
+func (c *RPCConnWS) ping() error {
+	ctx, cancel := context.WithTimeout(context.Background(), pongTimeout)
+	defer cancel()
+	logrus.Infof("RPC: Ping (%p) %+v", c, c)
+	return c.WS.Ping(ctx)
+}
+
+// SendPings sends pings to improve detection of server disconnect
+// https://github.com/nhooyr/websocket/issues/265
+func (c *RPCConnWS) SendPings(ctx context.Context) {
+	t := time.NewTimer(pingInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+
+		if err := c.ping(); err != nil {
+			c.Close()
+			return
+		}
+		t.Reset(pingInterval)
+	}
 }
 
 // Close locks the connection and call close
@@ -133,6 +173,12 @@ func (c *RPCConnWS) CloseUnderLock() {
 	}
 	logrus.Errorf("RPC: closing connection (%p) %+v", c, c)
 	c.State = "closed"
+
+	// stop ping go routine
+	if c.cancelPings != nil {
+		c.cancelPings()
+		c.cancelPings = nil
+	}
 
 	// close the websocket
 	if c.WS != nil {
