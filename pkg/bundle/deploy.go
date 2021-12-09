@@ -2863,7 +2863,7 @@ spec:
         claimName: noobaa-pv-claim
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "769cf65b44ae9a93b9ba2c9f0473173aeabbb7a673b94af5e3a6a7498d394aec"
+const Sha256_deploy_internal_prometheus_rules_yaml = "020543cc2d0cae0cec95afc569bca77511e1d8d2d09969b8f303fa7b1c977935"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -2907,7 +2907,7 @@ spec:
         system_vendor: Red Hat
       record: odf_system_health_status
     - expr: |
-        NooBaa_system_capacity
+        NooBaa_total_usage
       labels:
         system_type: OCS
         system_vendor: Red Hat
