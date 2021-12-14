@@ -54,6 +54,7 @@ func (r *Reconciler) CreateStorageAccount(accountName, accountGroupName string) 
 			accountName, err, *result.Message)
 	}
 
+	enableHTTPSTrafficOnly := true
 	future, err := storageAccountsClient.Create(
 		r.Ctx,
 		accountGroupName,
@@ -63,7 +64,7 @@ func (r *Reconciler) CreateStorageAccount(accountName, accountGroupName string) 
 				Name: storage.StandardLRS},
 			Kind:                              storage.Storage,
 			Location:                          to.StringPtr(r.AzureContainerCreds.StringData["azure_region"]),
-			AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{},
+			AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{EnableHTTPSTrafficOnly: &enableHTTPSTrafficOnly},
 		})
 
 	if err != nil {
