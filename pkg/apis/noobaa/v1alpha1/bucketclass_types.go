@@ -19,6 +19,7 @@ func init() {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Placement",type="string",JSONPath=".spec.placementPolicy",description="Placement"
 // +kubebuilder:printcolumn:name="NamespacePolicy",type="string",JSONPath=".spec.namespacePolicy",description="NamespacePolicy"
+// +kubebuilder:printcolumn:name="Quota",type="string",JSONPath=".spec.quota",description="Quota"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type BucketClass struct {
@@ -64,6 +65,10 @@ type BucketClassSpec struct {
 	// NamespacePolicy specifies the namespace policy for the bucket class
 	// +optional
 	NamespacePolicy *NamespacePolicy `json:"namespacePolicy,omitempty"`
+
+	// Quota specifies the quota configuration for the bucket class
+	// +optional
+	Quota *Quota `json:"quota,omitempty"`
 
 	// ReplicationPolicy specifies a json of replication rules for the bucketclass
 	// +optional
@@ -143,6 +148,16 @@ type CacheNamespacePolicy struct {
 
 	// Caching is the cache specification for the ns policy
 	Caching *CacheSpec `json:"caching,omitempty"`
+}
+
+// Quota bucket config
+type Quota struct {
+
+	//limits the max total size of objects per bucket
+	MaxSize string `json:"maxSize,omitempty"`
+
+	//limits the max total quantity of objects per bucket
+	MaxObjects string `json:"maxObjects,omitempty"`
 }
 
 // CacheSpec specifies the cache specifications for the bucket class

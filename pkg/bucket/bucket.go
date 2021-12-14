@@ -83,12 +83,12 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatal(fmt.Errorf("Failed to get default bucketclass with error: %v", err))
 	}
 
-	tierName, err := bucketclass.CreateTieringStructure(*bucketClass, bucketName, nbClient);
+	tierName, err := bucketclass.CreateTieringStructure(*bucketClass, bucketName, nbClient)
 	if err != nil {
 		log.Fatal(fmt.Errorf("CreateTieringStructure for PlacementPolicy failed to create policy %q with error: %v", tierName, err))
 	}
 
-	err = nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName, Tiering : tierName})
+	err = nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName, Tiering: tierName})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	if b.NumObjects != nil {
 		if b.BucketType == "NAMESPACE" {
 			fmt.Printf("  %-22s : N/A\n", "Num Objects")
-		} else {			
+		} else {
 			fmt.Printf("  %-22s : %d\n", "Num Objects", b.NumObjects.Value)
 		}
 	}
@@ -152,7 +152,8 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		} else {
 			fmt.Printf("  %-22s : %s\n", "Data Size", nb.BigIntToHumanBytes(b.DataCapacity.Size))
 			fmt.Printf("  %-22s : %s\n", "Data Size Reduced", nb.BigIntToHumanBytes(b.DataCapacity.SizeReduced))
-			fmt.Printf("  %-22s : %s\n", "Data Space Avail", nb.BigIntToHumanBytes(b.DataCapacity.AvailableToUpload))
+			fmt.Printf("  %-22s : %s\n", "Data Space Avail", nb.BigIntToHumanBytes(b.DataCapacity.AvailableSizeToUpload))
+			fmt.Printf("  %-22s : %s\n", "Num Objects Avail", b.DataCapacity.AvailableQuantityToUpload.ToString())
 		}
 	}
 	fmt.Printf("\n")

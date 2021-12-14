@@ -2,6 +2,8 @@ package nb
 
 import (
 	"encoding/json"
+	"math"
+	"reflect"
 	"strconv"
 )
 
@@ -59,11 +61,12 @@ type BucketInfo struct {
 	BucketClaim  *BucketClaimInfo   `json:"bucket_claim,omitempty"`
 	Tiering      *TieringPolicyInfo `json:"tiering,omitempty"`
 	DataCapacity *struct {
-		Size              *BigInt `json:"size,omitempty"`
-		SizeReduced       *BigInt `json:"size_reduced,omitempty"`
-		Free              *BigInt `json:"free,omitempty"`
-		AvailableToUpload *BigInt `json:"available_for_upload,omitempty"`
-		LastUpdate        int64   `json:"last_update"`
+		Size                      *BigInt `json:"size,omitempty"`
+		SizeReduced               *BigInt `json:"size_reduced,omitempty"`
+		Free                      *BigInt `json:"free,omitempty"`
+		AvailableSizeToUpload     *BigInt `json:"available_size_for_upload,omitempty"`
+		AvailableQuantityToUpload *BigInt `json:"available_quantity_for_upload,omitempty"`
+		LastUpdate                int64   `json:"last_update"`
 	} `json:"data,omitempty"`
 	StorageCapacity *struct {
 		Values     *StorageInfo `json:"values,omitempty"`
@@ -73,10 +76,7 @@ type BucketInfo struct {
 		Value      int64 `json:"value"`
 		LastUpdate int64 `json:"last_update"`
 	} `json:"num_objects,omitempty"`
-	Quota *struct {
-		Size int64  `json:"size"`
-		Unit string `json:"unit"`
-	} `json:"quota,omitempty"`
+	Quota       *QuotaConfig `json:"quota,omitempty"`
 	PolicyModes *struct {
 		ResiliencyStatus string `json:"resiliency_status"`
 		QuotaStatus      string `json:"quota_status"`
@@ -146,6 +146,11 @@ func (n *BigInt) UnmarshalJSON(data []byte) error {
 	}
 	type bigint BigInt
 	return json.Unmarshal(data, (*bigint)(n))
+}
+
+// ToString convert bigInt to string
+func (n *BigInt) ToString() string {
+	return strconv.FormatInt((n.N + (n.Peta * petaInBytes)), 10)
 }
 
 // PoolInfo is a struct of pool info returned by the API
@@ -312,6 +317,39 @@ type CreateBucketParams struct {
 	Tiering     string               `json:"tiering,omitempty"`
 	BucketClaim *BucketClaimInfo     `json:"bucket_claim,omitempty"`
 	Namespace   *NamespaceBucketInfo `json:"namespace,omitempty"`
+	Quota       *QuotaConfig         `json:"quota,omitempty"`
+}
+
+// QuotaConfig quota configuration
+type QuotaConfig struct {
+	Size     *SizeQuotaConfig     `json:"size,omitempty"`
+	Quantity *QuantityQuotaConfig `json:"quantity,omitempty"`
+}
+
+//SizeQuotaConfig size quota configuration
+type SizeQuotaConfig struct {
+	//limits the max total size value
+	Value float64 `json:"value,omitempty"`
+	//Units of max total size per bucket
+	Unit string `json:"unit,omitempty"`
+}
+
+//QuantityQuotaConfig quantity quota configuration
+type QuantityQuotaConfig struct {
+	//limits the max total quantity value
+	Value int `json:"value,omitempty"`
+}
+
+// IsEqual return true if quotas are equal
+func (q *QuotaConfig) IsEqual(q2 *QuotaConfig) bool {
+	if q == nil && q2 == nil {
+		return true
+	}
+	if (q == nil && q2.Size == nil && q2.Quantity == nil) ||
+		(q2 == nil && q.Size == nil && q.Quantity == nil) {
+		return true
+	}
+	return reflect.DeepEqual(q, q2)
 }
 
 // NamespaceBucketInfo is the information needed for creating namespace bucket
@@ -642,19 +680,35 @@ func BigIntToHumanBytes(bi *BigInt) string {
 
 // IntToHumanBytes returns a human readable bytes string
 func IntToHumanBytes(bi int64) string {
-	units := []string{"", "K", "M", "G", "T", "P", "E", "Z", "Y"}
-	f := float64(bi)
-	u := 0
+	f, u := GetBytesAndUnits(bi, -1)
 	s := ""
 	if f < 0 {
 		s = "-"
 		f = -f
 	}
-	for f >= 1024 {
+	return s + strconv.FormatFloat(f, 'f', 3, 64) + " " + u + "B"
+}
+
+// GetBytesAndUnits returns bytes and unit
+// The precision prec controls the number of digits after the decimal point
+func GetBytesAndUnits(bi int64, prec int) (float64, string) {
+	if bi == 0 {
+		return 0, ""
+	}
+	units := []string{"", "K", "M", "G", "T", "P", "E", "Z", "Y"}
+	f := float64(bi)
+	u := 0
+	for f >= 1024 || f <= -1024 {
 		f /= 1024
 		u++
 	}
-	return s + strconv.FormatFloat(f, 'f', 3, 64) + " " + units[u] + "B"
+
+	if prec >= 0 {
+		numDigitsPow := math.Pow(10, float64(prec))
+		f = math.Floor(f*numDigitsPow) / numDigitsPow
+	}
+
+	return f, units[u]
 }
 
 // UInt64ToBigInt convert uint64 based value to BigInt value

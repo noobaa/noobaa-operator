@@ -23,6 +23,7 @@ import (
 	obErrors "github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner/api/errors"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -91,6 +92,11 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 	log := p.Logger
 	log.Infof("Provision: got request to provision bucket %q", bucketOptions.BucketName)
 
+	err := ValidateOBC(bucketOptions.ObjectBucketClaim)
+	if err != nil {
+		return nil, err
+	}
+
 	r, err := NewBucketRequest(p, nil, bucketOptions)
 	if err != nil {
 		return nil, err
@@ -106,7 +112,7 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 	}
 	// TODO: we need to better handle the case that a bucket was created, but Provision failed
 	// right now we will fail on create bucket when Provision is called the second time
-	err = r.CreateBucket(p, bucketOptions)
+	err = r.CreateAndUpdateBucket(p, bucketOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +213,12 @@ func (p *Provisioner) Revoke(ob *nbv1.ObjectBucket) error {
 // Update implements lib-bucket-provisioner callback to stop using an existing bucket additional config of OBC
 func (p *Provisioner) Update(ob *nbv1.ObjectBucket) error {
 	log := p.Logger
-	log.Infof("Update: got request to Update access to bucket %q", ob.Name)
+	log.Infof("Update: got request to Update bucket %q", ob.Name)
+
+	err := ValidateOB(ob)
+	if err != nil {
+		return err
+	}
 
 	r, err := NewBucketRequest(p, ob, nil)
 	if err != nil {
@@ -217,6 +228,11 @@ func (p *Provisioner) Update(ob *nbv1.ObjectBucket) error {
 	if err = r.updateReplicationPolicy(ob); err != nil {
 		return err
 	}
+
+	if err = r.UpdateBucket(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -288,6 +304,11 @@ func NewBucketRequest(
 			p.recorder.Event(r.OBC, "Warning", "BucketClassNotReady", msg)
 			return nil, fmt.Errorf(msg)
 		}
+		additionalConfig := r.OBC.Spec.AdditionalConfig
+		if additionalConfig == nil {
+			additionalConfig = map[string]string{}
+		}
+
 		r.OB = &nbv1.ObjectBucket{
 			Spec: nbv1.ObjectBucketSpec{
 				Connection: &nbv1.ObjectBucketConnection{
@@ -295,7 +316,7 @@ func NewBucketRequest(
 						BucketHost:           s3Hostname,
 						BucketPort:           s3Port,
 						BucketName:           r.BucketName,
-						AdditionalConfigData: map[string]string{},
+						AdditionalConfigData: additionalConfig,
 					},
 					AdditionalState: map[string]string{
 						"account":               r.AccountName, // needed for delete flow
@@ -324,13 +345,16 @@ func NewBucketRequest(
 			p.recorder.Event(r.OBC, "Warning", "MissingBucketClass", msg)
 			return nil, fmt.Errorf(msg)
 		}
+		if r.OB.Spec.Connection.Endpoint.AdditionalConfigData == nil {
+			r.OB.Spec.Connection.Endpoint.AdditionalConfigData = map[string]string{}
+		}
 	}
 
 	return r, nil
 }
 
-// CreateBucket creates the obc bucket
-func (r *BucketRequest) CreateBucket(
+// CreateAndUpdateBucket creates the obc bucket and update
+func (r *BucketRequest) CreateAndUpdateBucket(
 	p *Provisioner,
 	bucketOptions *obAPI.BucketOptions,
 ) error {
@@ -440,7 +464,121 @@ func (r *BucketRequest) CreateBucket(
 	}
 
 	log.Infof("✅ Successfully created bucket %q", r.BucketName)
+
+	return r.UpdateBucket()
+}
+
+//UpdateBucket update obc bucket
+func (r *BucketRequest) UpdateBucket() error {
+
+	log := r.Provisioner.Logger
+
+	if r.BucketClass == nil {
+		return r.LogAndGetError("BucketClass not loaded %#v", r)
+	}
+
+	bucket, err := r.SysClient.NBClient.ReadBucketAPI(nb.ReadBucketParams{Name: r.BucketName})
+	if err != nil {
+		return r.LogAndGetError("Bucket %q doesn't exist", r.BucketName)
+	}
+
+	quotaConfig, err := r.getQuotaConfig()
+	if err != nil {
+		return err
+	}
+	if quotaConfig.IsEqual(bucket.Quota) {
+		r.Provisioner.Logger.Infof("UpdateBucket: no changes in quota config")
+	} else {
+		createBucketParams := &nb.CreateBucketParams{
+			Name:  r.BucketName,
+			Quota: quotaConfig,
+		}
+
+		err = r.SysClient.NBClient.UpdateBucketAPI(*createBucketParams)
+		if err != nil {
+			return r.LogAndGetError("failed to update bucket %q with error: %v", r.BucketName, err)
+		}
+	}
+
+	log.Infof("✅ Successfully update bucket %q", r.BucketName)
 	return nil
+}
+
+// Get minimum QuotaConfig based on OBC config and BucketClass
+func (r *BucketRequest) getQuotaConfig() (*nb.QuotaConfig, error) {
+
+	var obMaxSize, obMaxObjects, bcMaxSize, bcMaxObjects string
+	var minMaxSize, minMaxObjects int64
+
+	// get quota config from ob
+	if r.OB.Spec.Endpoint.AdditionalConfigData != nil {
+		obMaxSize = r.OB.Spec.Endpoint.AdditionalConfigData["maxSize"]
+		obMaxObjects = r.OB.Spec.Endpoint.AdditionalConfigData["maxObjects"]
+	}
+	// get quota config from bucketclass
+	if r.BucketClass.Spec.Quota != nil {
+		bcMaxSize = r.BucketClass.Spec.Quota.MaxSize
+		bcMaxObjects = r.BucketClass.Spec.Quota.MaxObjects
+	}
+
+	r.Provisioner.Logger.Debugf("getQuotaConfig: bucket %q, obMaxSize %q, obMaxObjects %q, bcMaxSize %q, bcMaxObjects %q",
+		r.BucketName, obMaxSize, obMaxObjects, bcMaxSize, bcMaxObjects)
+
+	quota := nb.QuotaConfig{}
+	// In order to remove the bucket quota, returns empty quota config if bucketclass and ob have no quota config
+	if bcMaxSize == "" && bcMaxObjects == "" && obMaxSize == "" && obMaxObjects == "" {
+		return &quota, nil
+	}
+
+	//Parse bucketclass quota and transform to quotaConfig
+	if bcMaxSize != "" {
+		// Validator catchs parsing error
+		quantity, _ := resource.ParseQuantity(bcMaxSize)
+		minMaxSize = quantity.Value()
+	}
+	if bcMaxObjects != "" {
+		// Validator catchs parsing error
+		num, _ := strconv.ParseInt(bcMaxObjects, 10, 32)
+		minMaxObjects = num
+	}
+
+	//Parse obc quota transform to quotaConfig
+	if obMaxSize != "" {
+		// Validator catchs parsing error
+		quantity, _ := resource.ParseQuantity(obMaxSize)
+		obcMaxSizeInt := quantity.Value()
+		//Calculate min maxSize
+		if minMaxSize == 0 || obcMaxSizeInt < minMaxSize {
+			minMaxSize = obcMaxSizeInt
+		}
+	}
+
+	if obMaxObjects != "" {
+		// Validator catchs parsing error
+		obcMaxObjectsInt, _ := strconv.ParseInt(obMaxObjects, 10, 32)
+		//Calculate min maxObjects
+		if minMaxObjects == 0 || obcMaxObjectsInt < minMaxObjects {
+			minMaxObjects = obcMaxObjectsInt
+		}
+	}
+
+	if minMaxSize > 0 {
+		f, u := nb.GetBytesAndUnits(minMaxSize, 2)
+		quota.Size = &nb.SizeQuotaConfig{Value: f, Unit: u}
+	}
+	if minMaxObjects > 0 {
+		quota.Quantity = &nb.QuantityQuotaConfig{Value: int(minMaxObjects)}
+	}
+
+	return &quota, nil
+}
+
+//LogAndGetError error handler. prints error message to log and returns error
+func (r *BucketRequest) LogAndGetError(format string, a ...interface{}) error {
+	log := r.Provisioner.Logger
+	msg := fmt.Sprintf(format, a...)
+	log.Error(msg)
+	return fmt.Errorf(msg)
 }
 
 // CreateAccount creates the obc account

@@ -69,6 +69,10 @@ func CmdCreatePlacementBucketClass() *cobra.Command {
 		"Set first tier backing stores (use commas or multiple flags)")
 	cmd.Flags().String("replication-policy", "",
 		"Set the json file name that contains the replication rules")
+	cmd.Flags().String("max-objects", "",
+		"Set quota max objects quantity config to requested bucket")
+	cmd.Flags().String("max-size", "",
+		"Set quota max size config to requested bucket")
 
 	return cmd
 }
@@ -268,6 +272,15 @@ func RunCreatePlacementBucketClass(cmd *cobra.Command, args []string) {
 		bucketClass.Spec.PlacementPolicy.Tiers = append(bucketClass.Spec.PlacementPolicy.Tiers,
 			nbv1.Tier{Placement: nbv1.TierPlacement(placement), BackingStores: backingStores})
 
+		maxSize, _ := cmd.Flags().GetString("max-size")
+		maxObjects, _ := cmd.Flags().GetString("max-objects")
+		if maxSize != "" || maxObjects != "" {
+			bucketClass.Spec.Quota = &nbv1.Quota{
+				MaxSize:    maxSize,
+				MaxObjects: maxObjects,
+			}
+		}
+
 		return []string{}, backingStores
 	})
 }
@@ -313,6 +326,11 @@ func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType 
 	}
 
 	namespaceStoresArr, backingStoresArr := populate(bucketClass)
+
+	err = ValidateBucketClass(bucketClass)
+	if err != nil {
+		log.Fatalf(`❌ Bucket class validation failed %q`, err)
+	}
 
 	// check that namespace stores exists
 	for _, name := range namespaceStoresArr {
@@ -487,6 +505,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		"NAME",
 		"PLACEMENT",
 		"NAMESPACE-POLICY",
+		"QUOTA",
 		"PHASE",
 		"AGE",
 	)
@@ -494,10 +513,12 @@ func RunList(cmd *cobra.Command, args []string) {
 		bc := &list.Items[i]
 		pp, _ := json.Marshal(bc.Spec.PlacementPolicy)
 		np, _ := json.Marshal(bc.Spec.NamespacePolicy)
+		quota, _ := json.Marshal(bc.Spec.Quota)
 		table.AddRow(
 			bc.Name,
 			fmt.Sprintf("%+v", string(pp)),
 			fmt.Sprintf("%+v", string(np)),
+			fmt.Sprintf("%+v", string(quota)),
 			string(bc.Status.Phase),
 			util.HumanizeDuration(time.Since(bc.CreationTimestamp.Time).Round(time.Second)),
 		)
