@@ -15,6 +15,7 @@ require (
 	github.com/coreos/go-semver v0.3.0
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/go-openapi/spec v0.19.8
+	github.com/google/uuid v1.1.2
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20210818162813-3eee31c01875
 	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
@@ -26,6 +27,7 @@ require (
 	github.com/operator-framework/api v0.10.0
 	github.com/operator-framework/operator-lib v0.6.0
 	github.com/pkg/errors v0.9.1
+	github.com/portworx/kvdb v0.0.0-20200929023115-b312c7519467
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.46.0
 	github.com/rook/rook v1.6.5
 	github.com/sirupsen/logrus v1.7.0

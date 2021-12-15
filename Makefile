@@ -209,6 +209,11 @@ test-kms-tls-token: vendor
 	@echo "✅ test-kms-tls-token"
 .PHONY: test-kms-tls-token
 
+test-kms-ibm-kp: vendor
+	ginkgo -v pkg/util/test/ibm-kp
+	@echo "✅ test-kms-ibm-kp"
+.PHONY: test-kms-ibm-kp
+
 test-admission: vendor
 	ginkgo -v pkg/admission/test/integ
 	@echo "✅ test-admission"
