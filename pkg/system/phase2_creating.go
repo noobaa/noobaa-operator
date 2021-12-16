@@ -484,11 +484,11 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 
 	}
 
-	if r.CoreApp.ObjectMeta.Annotations == nil {
-		r.CoreApp.ObjectMeta.Annotations = make(map[string]string)
+	if r.CoreApp.Spec.Template.Annotations == nil {
+		r.CoreApp.Spec.Template.Annotations = make(map[string]string)
 	}
 
-	r.SetConfigMapAnnotation(r.CoreApp.ObjectMeta.Annotations)
+	r.CoreApp.Spec.Template.Annotations["noobaa.io/configmap-hash"] = r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"]
 
 	phase := r.NooBaa.Status.UpgradePhase
 	replicas := int32(1)
@@ -1209,16 +1209,12 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 		}
 	}
 
-	return nil
-}
-
-// SetConfigMapAnnotation sets the ConfigMapHash annotation with the init data hash string
-func (r *Reconciler) SetConfigMapAnnotation(annotation map[string]string) {
-	if annotation["ConfigMapHash"] == "" {
-		input := &r.CoreAppConfig.Data
-		sha256Hex := util.GetCmDataHash(*input)
-		annotation["ConfigMapHash"] = sha256Hex
+	if r.CoreAppConfig.Annotations == nil {
+		r.CoreAppConfig.Annotations = make(map[string]string)
 	}
+	r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"] = util.GetCmDataHash(r.CoreAppConfig.Data)
+
+	return nil
 }
 
 func (r *Reconciler) findLocalStorageClass() (string, error) {

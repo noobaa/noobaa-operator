@@ -4,8 +4,6 @@ metadata:
   name: noobaa-core
   labels:
     app: noobaa
-  annotations:
-    ConfigMapHash: ""
 spec:
   replicas: 1
   selector:
@@ -20,6 +18,8 @@ spec:
         app: noobaa
         noobaa-core: noobaa
         noobaa-mgmt: noobaa
+      annotations:
+        noobaa.io/configmap-hash: ""
     spec:
       serviceAccountName: noobaa
       volumes:
