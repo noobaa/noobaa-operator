@@ -158,7 +158,7 @@ func (r *Reconciler) SetDesiredSecretOp() error {
 			res2, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
 				Name:     r.Request.Name,
 				Email:    r.SecretAdmin.StringData["email"],
-				Password: r.SecretAdmin.StringData["password"],
+				Password: nb.MaskedString(r.SecretAdmin.StringData["password"]),
 			})
 			if err != nil {
 				return fmt.Errorf("system creation failed, error: %v", err)
