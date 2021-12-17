@@ -48,7 +48,7 @@ spec:
         command:
         - bash
         - -c
-        - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
+        - mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
         resources:
           requests:
             cpu: "2"

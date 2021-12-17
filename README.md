@@ -95,7 +95,7 @@ $ noobaa options
 
 The following options can be passed to any command:
 
-      --db-image='centos/mongodb-36-centos7': The database container image
+      --db-image='mongo:3.6.23': The database container image
       --db-storage-class='': The database volume storage class name
       --db-volume-size-gb=0: The database volume size in GB
       --image-pull-secret='': Image pull secret (must be in same namespace)
