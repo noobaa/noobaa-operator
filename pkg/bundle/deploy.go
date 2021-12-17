@@ -3658,7 +3658,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_db_yaml = "3de515b92c4892045b4e9c0ad8d0b69eaf198b7708818cd9e58c5e4cb53e2073"
+const Sha256_deploy_internal_statefulset_db_yaml = "b607a6a558b1779f2191582a5b77195ed5b3628386c8548b9fd8bb4579ff0690"
 
 const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3710,7 +3710,7 @@ spec:
         command:
         - bash
         - -c
-        - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
+        - mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
         resources:
           requests:
             cpu: "2"
