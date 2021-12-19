@@ -3,7 +3,9 @@ package operator
 import (
 	"context"
 	"fmt"
+	"os"
 
+	"github.com/noobaa/noobaa-operator/v5/pkg/admission"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/version"
@@ -74,6 +76,14 @@ func RunOperator(cmd *cobra.Command, args []string) {
 	// if err != nil {
 	// 	log.Warnf("Failed ExposeMetricsPort: %s", err)
 	// }
+
+	enableAdmission, ok := os.LookupEnv("ENABLE_NOOBAA_ADMISSION")
+	if ok && enableAdmission == "true" {
+		// start webhook server in new routine
+		go func() {
+			admission.RunAdmissionServer()
+		}()
+	}
 
 	// Start the manager
 	log.Info("Starting the Operator ...")

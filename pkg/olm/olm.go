@@ -267,6 +267,10 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 				corev1.EnvVar{
 					Name:  "NOOBAA_DB_IMAGE",
 					Value: options.DBImage,
+				},
+				corev1.EnvVar{
+					Name:  "ENABLE_NOOBAA_ADMISSION",
+					Value: "true",
 				})
 
 			csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec.Tolerations = []corev1.Toleration{
@@ -669,21 +673,21 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 	vaw := aw.Webhooks[0]
 
 	webhookDefinition := operv1.WebhookDescription{
-		Type: operv1.ValidatingAdmissionWebhook,
+		Type:                    operv1.ValidatingAdmissionWebhook,
 		AdmissionReviewVersions: vaw.AdmissionReviewVersions,
-		ContainerPort: 443,
+		ContainerPort:           443,
 		TargetPort: &intstr.IntOrString{
-			Type: intstr.Int,
+			Type:   intstr.Int,
 			IntVal: 8080,
 			StrVal: "8080",
 		},
 		DeploymentName: "noobaa-operator",
-		FailurePolicy: vaw.FailurePolicy,
-		MatchPolicy: vaw.MatchPolicy,
-		GenerateName: vaw.Name,
-		Rules: vaw.Rules,
-		SideEffects: vaw.SideEffects,
-		WebhookPath: vaw.ClientConfig.Service.Path,
+		FailurePolicy:  vaw.FailurePolicy,
+		MatchPolicy:    vaw.MatchPolicy,
+		GenerateName:   vaw.Name,
+		Rules:          vaw.Rules,
+		SideEffects:    vaw.SideEffects,
+		WebhookPath:    vaw.ClientConfig.Service.Path,
 	}
 	csv.Spec.WebhookDefinitions = append(csv.Spec.WebhookDefinitions, webhookDefinition)
 	return csv

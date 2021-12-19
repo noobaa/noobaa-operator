@@ -230,6 +230,11 @@ func KubeApply(obj client.Object) bool {
 		log.Printf("❌ Conflict: %s %q: %s\n", gvk.Kind, objKey.Name, err)
 		return false
 	}
+	statusErr, ok := err.(*errors.StatusError)
+	if ok {
+		log.Printf("❌ Status Error: %s %q: %s\n", gvk.Kind, objKey.Name, statusErr.ErrStatus.Message)
+		return false
+	}
 	Panic(err)
 	return false
 }
@@ -274,6 +279,11 @@ func kubeCreateSkipOrFailExisting(obj client.Object, skipOrFail bool) bool {
 	}
 	if errors.IsInvalid(err) {
 		log.Printf("❌ Invalid: %s %q: %s\n", gvk.Kind, objKey.Name, err)
+		return false
+	}
+	statusErr, ok := err.(*errors.StatusError)
+	if ok {
+		log.Printf("❌ Status Error: %s %q: %s\n", gvk.Kind, objKey.Name, statusErr.ErrStatus.Message)
 		return false
 	}
 	Panic(err)
@@ -354,6 +364,11 @@ func KubeDelete(obj client.Object, opts ...client.DeleteOption) bool {
 		log.Printf("🗑️  Conflict (OK): %s %q: %s\n", gvk.Kind, objKey.Name, err)
 	} else if errors.IsNotFound(err) {
 		return true
+	}
+	statusErr, ok := err.(*errors.StatusError)
+	if ok {
+		log.Printf("❌ Status Error: %s %q: %s\n", gvk.Kind, objKey.Name, statusErr.ErrStatus.Message)
+		return false
 	}
 
 	time.Sleep(10 * time.Millisecond)
@@ -446,6 +461,11 @@ func KubeUpdate(obj client.Object) bool {
 	}
 	if errors.IsNotFound(err) {
 		log.Printf("❌ Not Found: %s %q\n", gvk.Kind, objKey.Name)
+		return false
+	}
+	statusErr, ok := err.(*errors.StatusError)
+	if ok {
+		log.Printf("❌ Status Error: %s %q: %s\n", gvk.Kind, objKey.Name, statusErr.ErrStatus.Message)
 		return false
 	}
 	Panic(err)
