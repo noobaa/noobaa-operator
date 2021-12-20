@@ -3,6 +3,7 @@ package admissionunittests
 import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/admission"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	. "github.com/onsi/ginkgo"
@@ -579,6 +580,82 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 					Expect(result).To(BeTrue())
 					Expect(message).To(Equal("allowed"))
 				})
+			})
+		})
+	})
+})
+
+var _ = Describe("BucketClass admission unit tests", func() {
+	var (
+		bc  *nbv1.BucketClass
+		err error
+	)
+
+	BeforeEach(func() {
+		bc = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass)
+		bc.Name = "bc-name"
+		bc.Namespace = "test"
+	})
+
+	Describe("Validate create operations", func() {
+		Context("Unsupported tiers number", func() {
+			It("Should Deny", func() {
+				bc.Spec.PlacementPolicy = &nbv1.PlacementPolicy{
+					Tiers: []nbv1.Tier{{
+						Placement:     "",
+						BackingStores: []string{"bs-name"},
+					}, {
+						Placement:     "",
+						BackingStores: []string{"bs-name"},
+					}, {
+						Placement:     "",
+						BackingStores: []string{"bs-name"},
+					}},
+				}
+				err = bucketclass.ValidateTiersNumber(bc.Spec.PlacementPolicy.Tiers)
+				Ω(err).Should(HaveOccurred())
+				Expect(err.Error()).To(Equal("unsupported number of tiers, bucketclass supports only 1 or 2 tiers"))
+			})
+			It("Should Allow", func() {
+				bc.Spec.PlacementPolicy = &nbv1.PlacementPolicy{
+					Tiers: []nbv1.Tier{{
+						Placement:     "",
+						BackingStores: []string{"bs-name"},
+					}, {
+						Placement:     "",
+						BackingStores: []string{"bs-name"},
+					}},
+				}
+				err = bucketclass.ValidateTiersNumber(bc.Spec.PlacementPolicy.Tiers)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+		})
+		Context("Validate quota", func() {
+			It("Should Deny", func() {
+				bc.Spec.Quota = &nbv1.Quota{
+					MaxSize:    "2Gi",
+					MaxObjects: "-1",
+				}
+				err = bucketclass.ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
+				Ω(err).Should(HaveOccurred())
+				Expect(err.Error()).To(Equal("ob \"bc-name\" validation error: invalid maxObjects value. O or any positive number "))
+			})
+			It("Should Deny", func() {
+				bc.Spec.Quota = &nbv1.Quota{
+					MaxSize:    "-1Gi",
+					MaxObjects: "10",
+				}
+				err = bucketclass.ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
+				Ω(err).Should(HaveOccurred())
+				Expect(err.Error()).To(Equal("ob \"bc-name\" validation error: invalid obcMaxSizeValue value: min 1Gi, max 1023Pi, 0 to remove quota"))
+			})
+			It("Should Allow", func() {
+				bc.Spec.Quota = &nbv1.Quota{
+					MaxSize:    "20Gi",
+					MaxObjects: "10",
+				}
+				err = bucketclass.ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
+				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
 	})

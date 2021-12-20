@@ -75,6 +75,22 @@ type OAuth2Endpoints struct {
 	TokenEndpoint         string `json:"token_endpoint"`
 }
 
+// ValidationError is a custom error if the validation failed
+type ValidationError struct {
+	Msg string
+}
+
+// IsValidationError check if err is of type ValidationError
+func IsValidationError(err error) bool {
+	_, ok := err.(ValidationError)
+	return ok
+}
+
+// Error returns the ValidationError message
+func (e ValidationError) Error() string {
+	return e.Msg
+}
+
 var (
 	ctx        = context.TODO()
 	log        = logrus.WithContext(ctx)
@@ -1477,10 +1493,14 @@ func ValidateQuotaConfig(name string, maxSize string, maxObjects string) error {
 	if maxObjects != "" {
 		obcMaxObjectsInt, err := strconv.ParseInt(maxObjects, 10, 32)
 		if err != nil {
-			return fmt.Errorf("ob %q validation error: failed to parse maxObjects %v, %v", name, maxObjects, err)
+			return ValidationError{
+				Msg: fmt.Sprintf("ob %q validation error: failed to parse maxObjects %v, %v", name, maxObjects, err),
+			}
 		}
 		if obcMaxObjectsInt < 0 {
-			return fmt.Errorf("ob %q validation error: invalid maxObjects value. O or any positive number ", name)
+			return ValidationError{
+				Msg: fmt.Sprintf("ob %q validation error: invalid maxObjects value. O or any positive number ", name),
+			}
 		}
 	}
 
@@ -1488,11 +1508,14 @@ func ValidateQuotaConfig(name string, maxSize string, maxObjects string) error {
 	if maxSize != "" {
 		quantity, err := resource.ParseQuantity(maxSize)
 		if err != nil {
-			return fmt.Errorf("ob %q validation error: failed to parse obcMaxSize %v, %v", name, maxSize, err)
+			log.Errorf("failed to parse quantity: %v", maxSize)
+			return err
 		}
 		obcMaxSizeValue := quantity.Value()
-		if obcMaxSizeValue != 0 || obcMaxSizeValue < gigabyte || obcMaxSizeValue > obcMaxSizeUpperLimit {
-			return fmt.Errorf("ob %q validation error: invalid obcMaxSizeValue value: min 1Gi, max 1023Pi, 0 to remove quota", name)
+		if obcMaxSizeValue != 0 && (obcMaxSizeValue < gigabyte || obcMaxSizeValue > obcMaxSizeUpperLimit) {
+			return ValidationError{
+				Msg: fmt.Sprintf("ob %q validation error: invalid obcMaxSizeValue value: min 1Gi, max 1023Pi, 0 to remove quota", name),
+			}
 		}
 	}
 

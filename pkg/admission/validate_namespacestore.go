@@ -23,7 +23,6 @@ type NamespaceStoreValidator struct {
 	Logger         *logrus.Entry
 	arRequest      *admissionv1.AdmissionReview
 	arResponse     *admissionv1.AdmissionReview
-	Client         *system.Client
 }
 
 // NewNamespaceStoreValidator initializes a BackingStoreValidator to be used for loading and validating a namespacestore
