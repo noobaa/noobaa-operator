@@ -88,6 +88,8 @@ type Reconciler struct {
 	SecretEndpoints           *corev1.Secret
 	SecretRootMasterKey       string
 	AWSCloudCreds             *cloudcredsv1.CredentialsRequest
+	AWSSTSRoleSessionName     string
+	IsAWSSTSCluster           bool
 	AzureCloudCreds           *cloudcredsv1.CredentialsRequest
 	AzureContainerCreds       *corev1.Secret
 	GCPBucketCreds            *corev1.Secret
@@ -101,7 +103,7 @@ type Reconciler struct {
 	ServiceMonitorS3          *monitoringv1.ServiceMonitor
 	SystemInfo                *nb.SystemInfo
 	CephObjectStoreUser       *cephv1.CephObjectStoreUser
-	CephObjectStore       	  *cephv1.CephObjectStore
+	CephObjectStore           *cephv1.CephObjectStore
 	RouteMgmt                 *routev1.Route
 	RouteS3                   *routev1.Route
 	DeploymentEndpoint        *appsv1.Deployment
@@ -258,6 +260,11 @@ func NewReconciler(
 	r.SecretDB.StringData["user"] = "noobaa"
 	r.SecretDB.StringData["password"] = util.RandomBase64(10)
 
+	// Set STS default backing store session name
+	r.AWSSTSRoleSessionName = "noobaa-sts-default-backing-store-session"
+	// Setting default AWS STS cluster as false
+	r.IsAWSSTSCluster = false
+
 	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.Containers[0].DeepCopy()
 	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.DeepCopy()
 	return r
@@ -309,7 +316,7 @@ func (r *Reconciler) CheckAll() {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *Reconciler) Reconcile() (reconcile.Result, error) {
-    var err error = nil
+	var err error = nil
 	res := reconcile.Result{}
 	log := r.Logger
 	log.Infof("Start NooBaa system Reconcile ...")
@@ -407,7 +414,7 @@ func (r *Reconciler) deleteRootSecret() error {
 		return nil
 	}
 	if err := k.Delete(); err != nil {
-		return  errors.Wrap(err, "deleteRootSecret")
+		return errors.Wrap(err, "deleteRootSecret")
 	}
 	return nil
 }
