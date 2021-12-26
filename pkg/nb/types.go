@@ -9,7 +9,15 @@ import (
 
 const (
 	petaInBytes = 1024 * 1024 * 1024 * 1024 * 1024
+	maskString  = "****"
 )
+
+// MaskedString is a string type for sensitive string, masked when formated
+type MaskedString string
+
+func (MaskedString) String() string {
+	return maskString
+}
 
 // SystemInfo is a struct of system info returned by the API
 type SystemInfo struct {
@@ -300,9 +308,9 @@ type CreateAuthReply struct {
 
 // CreateSystemParams is the params of system_api.create_system()
 type CreateSystemParams struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Name     string       `json:"name"`
+	Email    string       `json:"email"`
+	Password MaskedString `json:"password"`
 }
 
 // CreateSystemReply is the reply of system_api.create_system()
