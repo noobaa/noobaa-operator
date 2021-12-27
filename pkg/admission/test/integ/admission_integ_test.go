@@ -45,6 +45,7 @@ var _ = Describe("Admission server integration tests", func() {
 	var (
 		testBackingstore   *nbv1.BackingStore
 		testNamespacestore *nbv1.NamespaceStore
+		testBucketclass    *nbv1.BucketClass
 		result             bool
 		err                error
 	)
@@ -59,6 +60,9 @@ var _ = Describe("Admission server integration tests", func() {
 			testNamespacestore = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore)
 			testNamespacestore.Name = "ns-name"
 			testNamespacestore.Namespace = namespace
+			testBucketclass = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass)
+			testBucketclass.Name = "bc-name"
+			testBucketclass.Namespace = namespace
 		})
 		Context("Empty secret name", func() {
 			It("Should Deny", func() {
@@ -165,6 +169,22 @@ var _ = Describe("Admission server integration tests", func() {
 				Expect(result).To(BeTrue())
 				Ω(err).ShouldNot(HaveOccurred())
 				Expect(namespacestore.WaitReady(testNamespacestore)).To(BeTrue())
+
+				testBucketclass.Spec.NamespacePolicy = &nbv1.NamespacePolicy{
+					Type: nbv1.NSBucketClassTypeCache,
+					Cache: &nbv1.CacheNamespacePolicy{
+						HubResource: "ns-name",
+						Caching: &nbv1.CacheSpec{
+							TTL:    60,
+							Prefix: "test",
+						},
+					},
+				}
+
+				result, err = KubeCreate(testBucketclass)
+				Expect(result).To(BeTrue())
+				Ω(err).ShouldNot(HaveOccurred())
+				Expect(bucketclass.WaitReady(testBucketclass)).To(BeTrue())
 			})
 		})
 	})
@@ -217,33 +237,20 @@ var _ = Describe("Admission server integration tests", func() {
 				},
 			}
 
+			// try to delete noobaa-default-backing-store and failing because it has data buckets
 			result, err = KubeDelete(defaultBs)
 			Expect(result).To(BeFalse())
 			Ω(err).Should(HaveOccurred())
 			Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: Cannot complete because pool \"noobaa-default-backing-store\" in \"IN_USE\" state"))
 		})
 		It("Should Allow", func() {
-			bsList := &nbv1.BackingStoreList{
-				TypeMeta: metav1.TypeMeta{Kind: "BackingStoreList"},
-			}
-			if !util.KubeList(bsList, &client.ListOptions{Namespace: options.Namespace}) {
-				return
-			}
-			bs := &bsList.Items[0]
-
-			result, err = KubeDelete(bs)
+			// delete "bs-name" backingstore
+			result, err = KubeDelete(testBackingstore)
 			Expect(result).To(BeTrue())
 			Ω(err).ShouldNot(HaveOccurred())
 
-			nsList := &nbv1.NamespaceStoreList{
-				TypeMeta: metav1.TypeMeta{Kind: "NamespaceStoreList"},
-			}
-			if !util.KubeList(nsList, &client.ListOptions{Namespace: options.Namespace}) {
-				return
-			}
-			ns := &nsList.Items[0]
-
-			result, err = KubeDelete(ns)
+			// delete "ns-name" namespacestore
+			result, err = KubeDelete(testNamespacestore)
 			Expect(result).To(BeTrue())
 			Ω(err).ShouldNot(HaveOccurred())
 		})

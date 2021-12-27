@@ -15,15 +15,14 @@ webhooks:
       resources:   
       - "backingstores"
       - "namespacestores"
-      scope:       "Namespaced"
+      scope: "Namespaced"
     - apiGroups:   ["noobaa.io"]
       apiVersions: ["v1alpha1"]
       operations:  
       - "CREATE" 
-      - "DELETE"
       resources:   
       - "bucketclasses"
-      scope:       "Namespaced"
+      scope: "Namespaced"
     sideEffects: None
     clientConfig:
       service:

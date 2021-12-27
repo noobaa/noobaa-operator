@@ -50,9 +50,11 @@ func (gs *ServerHandler) serve(w http.ResponseWriter, r *http.Request) {
 		arResponse = NewBackingStoreValidator(arRequest).ValidateBackingstore()
 	case "namespacestores":
 		arResponse = NewNamespaceStoreValidator(arRequest).ValidateNamespaceStore()
+	case "bucketclasses":
+		arResponse = NewBucketClassValidator(arRequest).ValidateBucketClass()
 	default:
-		log.Error("failed to identify Resource type")
-		http.Error(w, "incorrect body", http.StatusBadRequest)
+		log.Error("failed to identify resource type")
+		http.Error(w, "incorrect resource", http.StatusBadRequest)
 		return
 	}
 
