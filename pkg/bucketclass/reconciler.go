@@ -209,11 +209,6 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			fmt.Sprintf("NooBaa system %q not found or deleted", r.NooBaa.Name))
 	}
 	if r.BucketClass.Spec.PlacementPolicy != nil {
-		numTiers := len(r.BucketClass.Spec.PlacementPolicy.Tiers)
-		if numTiers != 1 && numTiers != 2 {
-			return util.NewPersistentError("UnsupportedNumberOfTiers",
-				"BucketClass supports only 1 or 2 tiers")
-		}
 		for i := range r.BucketClass.Spec.PlacementPolicy.Tiers {
 			tier := &r.BucketClass.Spec.PlacementPolicy.Tiers[i]
 			for _, backingStoreName := range tier.BackingStores {
@@ -239,16 +234,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		}
 	}
 	if r.BucketClass.Spec.NamespacePolicy != nil {
-		nspType := r.BucketClass.Spec.NamespacePolicy.Type
-		var namespaceStoresArr []string
-		if nspType == nbv1.NSBucketClassTypeSingle {
-			namespaceStoresArr = append(namespaceStoresArr, r.BucketClass.Spec.NamespacePolicy.Single.Resource)
-		} else if nspType == nbv1.NSBucketClassTypeMulti {
-			namespaceStoresArr = append(r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources,
-				r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource)
-		} else if nspType == nbv1.NSBucketClassTypeCache {
-			namespaceStoresArr = append(namespaceStoresArr, r.BucketClass.Spec.NamespacePolicy.Cache.HubResource)
-		}
+		namespaceStoresArr := GetBucketclassNamespaceStoreArray(r.BucketClass)
 		// check that namespace stores exists and their phase it ready
 		for _, name := range namespaceStoresArr {
 			nsStore := &nbv1.NamespaceStore{
@@ -268,9 +254,6 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			}
 			if nsStore.Status.Phase != nbv1.NamespaceStorePhaseReady {
 				return fmt.Errorf("NooBaa NamespaceStore %q is not yet ready", name)
-			}
-			if nsStore.Spec.Type == nbv1.NSStoreTypeNSFS && nspType != nbv1.NSBucketClassTypeSingle {
-				return util.NewPersistentError("InvalidNamespaceStoreTypes", fmt.Sprintf("NSFS NamespaceStore %q is allowed on bucketclass of type Single", name))
 			}
 		}
 	}

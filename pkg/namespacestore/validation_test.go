@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -151,6 +152,10 @@ func getDefaultIBMCosNsStore() nbv1.NamespaceStore {
 			IBMCos: &nbv1.IBMCosSpec{
 				SignatureVersion: nbv1.S3SignatureVersionV4,
 				Endpoint:         defaultEndPointURI,
+				Secret: corev1.SecretReference{
+					Name:      "secret-name",
+					Namespace: "namespace",
+				},
 			},
 		},
 		ObjectMeta: metav1.ObjectMeta{Name: "test1"},
@@ -164,6 +169,10 @@ func getDefaultS3CompatibleNsStore() nbv1.NamespaceStore {
 			S3Compatible: &nbv1.S3CompatibleSpec{
 				SignatureVersion: nbv1.S3SignatureVersionV4,
 				Endpoint:         defaultEndPointURI,
+				Secret: corev1.SecretReference{
+					Name:      "secret-name",
+					Namespace: "namespace",
+				},
 			},
 		},
 		ObjectMeta: metav1.ObjectMeta{Name: "test1"},

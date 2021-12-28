@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	math "math"
 	"net/url"
 	"os"
 	"reflect"
@@ -330,6 +329,11 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		"noobaa operator started phase 1/3 - \"Verifying\"",
 	)
 
+	err := ValidateBackingStore(*r.BackingStore)
+	if err != nil {
+		return util.NewPersistentError("BackingStoreValidationError", err.Error())
+	}
+
 	if r.NooBaa.UID == "" {
 		return util.NewPersistentError("MissingSystem",
 			fmt.Sprintf("NooBaa system %q not found or deleted", r.NooBaa.Name))
@@ -528,34 +532,14 @@ func (r *Reconciler) ReadSystemInfo() error {
 			))
 		}
 
-		const maxPoolNameLength = int(43)
-		if len(r.BackingStore.Name) > maxPoolNameLength {
-			return util.NewPersistentError("TooLongPoolName",
-				fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to too long pvpool backingstore name, max allowed is %d", r.BackingStore.Name, maxPoolNameLength))
-		}
-
 		const defaultVolumeSize = int64(20 * 1024 * 1024 * 1024) // 20Gi=20*1024^3
-		const minimalVolumeSize = int64(16 * 1024 * 1024 * 1024) // 16Gi=16*1024^3
 		var volumeSize int64
 		pvPool := r.BackingStore.Spec.PVPool
 		if pvPool.VolumeResources != nil {
 			qty := pvPool.VolumeResources.Requests[corev1.ResourceName(corev1.ResourceStorage)]
 			volumeSize = qty.Value()
-		}
-		if volumeSize < minimalVolumeSize {
-			if volumeSize == 0 {
-				volumeSize = int64(defaultVolumeSize)
-			} else {
-				return util.NewPersistentError("SmallVolumeSize",
-					fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to insufficient size, min is %d=%gGB", r.BackingStore.Name, minimalVolumeSize, (float64(minimalVolumeSize)/(math.Pow(1024, 3)))))
-			}
-		}
-
-		const maxNumVolumes = int(20)
-		var numVolumes = int(pvPool.NumVolumes)
-		if numVolumes > maxNumVolumes {
-			return util.NewPersistentError("MaxNumVolumes",
-				fmt.Sprintf("NooBaa BackingStore %q is in rejected phase due to large amount of volumes, max is %d", r.BackingStore.Name, maxNumVolumes))
+		} else {
+			volumeSize = int64(defaultVolumeSize)
 		}
 
 		if pool == nil {
@@ -682,10 +666,6 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 			conn.AuthMethod = "AWS_V4"
 		} else if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV2 {
 			conn.AuthMethod = "AWS_V2"
-		} else if s3Compatible.SignatureVersion != "" {
-			return nil, util.NewPersistentError("InvalidSignatureVersion",
-				fmt.Sprintf("Invalid s3 signature version %q for backing store %q",
-					s3Compatible.SignatureVersion, r.BackingStore.Name))
 		}
 		if s3Compatible.Endpoint == "" {
 			u := url.URL{
@@ -732,10 +712,6 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 			conn.AuthMethod = "AWS_V4"
 		} else if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV2 {
 			conn.AuthMethod = "AWS_V2"
-		} else if IBMCos.SignatureVersion != "" {
-			return nil, util.NewPersistentError("InvalidSignatureVersion",
-				fmt.Sprintf("Invalid s3 signature version %q for backing store %q",
-					IBMCos.SignatureVersion, r.BackingStore.Name))
 		}
 		if IBMCos.Endpoint == "" {
 			u := url.URL{
@@ -871,8 +847,8 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 		fallthrough
 	case nb.ExternalConnectionInvalidEndpoint:
 		if time.Since(r.BackingStore.CreationTimestamp.Time) < 5*time.Minute {
-			r.Logger.Infof("got invalid endopint. requeuing for 5 minutes to make sure it is not a temporary connection issue")
-			return fmt.Errorf("got invalid endopint. requeue again")
+			r.Logger.Infof("got invalid endpoint. requeuing for 5 minutes to make sure it is not a temporary connection issue")
+			return fmt.Errorf("got invalid endpoint. requeue again")
 		}
 		fallthrough
 	case nb.ExternalConnectionTimeSkew:
@@ -1109,7 +1085,7 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 		envVar := util.GetEnvVariable(&c.Env, name)
 		val, ok := os.LookupEnv(name)
 		if (envVar == nil && ok) || (envVar != nil && (!ok || envVar.Value != val)) {
-			r.Logger.Warnf("Change in Env varaibles detected: os(%s) container(%v)", val, envVar)
+			r.Logger.Warnf("Change in Env variables detected: os(%s) container(%v)", val, envVar)
 			return true
 		}
 	}

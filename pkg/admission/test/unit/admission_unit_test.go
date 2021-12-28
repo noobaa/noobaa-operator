@@ -1,10 +1,13 @@
 package admissionunittests
 
 import (
-	"github.com/noobaa/noobaa-operator/v5/pkg/admission"
+	"fmt"
+
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -15,28 +18,22 @@ import (
 var _ = Describe("BackingStore admission unit tests", func() {
 
 	var (
-		bsv          *admission.BackingStoreValidator
-		backingstore *nbv1.BackingStore
-		result       bool
-		message      string
+		bs  *nbv1.BackingStore
+		err error
 	)
 
 	BeforeEach(func() {
-		backingstore = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
-		backingstore.Name = "bs-name"
-		backingstore.Namespace = "test"
-		bsv = &admission.BackingStoreValidator{
-			BackingStore: backingstore,
-		}
-		result = false
-		message = ""
+		bs = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+		bs.Name = "bs-name"
+		bs.Namespace = "test"
+
 	})
 
 	Describe("Validate create operations", func() {
 		Describe("General backingstore validations", func() {
 			Context("Empty secret name", func() {
 				It("Should Deny", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypeAWSS3,
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "some-target-bucket",
@@ -46,12 +43,12 @@ var _ = Describe("BackingStore admission unit tests", func() {
 							},
 						},
 					}
-					result, message = bsv.ValidateBSEmptySecretName()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Failed creating the Backingstore, please provide secret name"))
+					err = backingstore.ValidateBSEmptySecretName(*bs)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Failed creating the Backingstore, please provide secret name"))
 				})
 				It("Should Allow", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypeAWSS3,
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "some-target-bucket",
@@ -61,14 +58,13 @@ var _ = Describe("BackingStore admission unit tests", func() {
 							},
 						},
 					}
-					result, message = bsv.ValidateBSEmptySecretName()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = backingstore.ValidateBSEmptySecretName(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 			Context("Invalid store type", func() {
 				It("Should Deny", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: "invalid",
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "some-target-bucket",
@@ -79,12 +75,12 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					result, message = bsv.ValidateBackingStoreType()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Invalid Backingstore type, please provide a valid Backingstore type"))
+					err = backingstore.ValidateBackingStore(*bs)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Invalid Backingstore type, please provide a valid Backingstore type"))
 				})
 				It("Should Allow", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypeAWSS3,
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "some-target-bucket",
@@ -95,95 +91,91 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					result, message = bsv.ValidateBackingStoreType()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = backingstore.ValidateBackingStore(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 		})
 		Describe("Pvpool backingstore", func() {
 			Context("Resource name too long", func() {
 				It("Should Deny", func() {
-					bsv.BackingStore.Name = "pvpool-too-long-name-should-fail-after-exceeding-43-characters"
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Name = "pvpool-too-long-name-should-fail-after-exceeding-43-characters"
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 					}
 
-					result, message = bsv.ValidatePvpoolNameLength()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Unsupported BackingStore name length, please provide a name shorter then 43 characters"))
+					err = backingstore.ValidatePvpoolNameLength(*bs)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Unsupported BackingStore name length, please provide a name shorter then 43 characters"))
 				})
 
 				It("Should Allow", func() {
-					bsv.BackingStore.Name = "pvpool-not-too-long-name"
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Name = "pvpool-not-too-long-name"
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 					}
 
-					result, message = bsv.ValidatePvpoolNameLength()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = backingstore.ValidatePvpoolNameLength(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 			Context("Minimum volume count", func() {
 				It("Should Deny", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 						PVPool: &nbv1.PVPoolSpec{
 							NumVolumes: -5,
 						},
 					}
 
-					result, message = bsv.ValidateMinVolumeCount()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Unsupported volume count, the minimum supported volume count is 1"))
+					err = backingstore.ValidateMinVolumeCount(*bs)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Unsupported volume count, the minimum supported volume count is 1"))
 
 				})
 				It("Should Allow", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 						PVPool: &nbv1.PVPoolSpec{
 							NumVolumes: 5,
 						},
 					}
 
-					result, message = bsv.ValidateMinVolumeCount()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = backingstore.ValidateMinVolumeCount(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
 
 				})
 			})
 			Context("Maximum volume count", func() {
 				It("Should Deny", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 						PVPool: &nbv1.PVPoolSpec{
 							NumVolumes: 25,
 						},
 					}
 
-					result, message = bsv.ValidateMaxVolumeCount()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Unsupported volume count, the maximum supported volume count is 20"))
+					err = backingstore.ValidateMaxVolumeCount(*bs)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Unsupported volume count, the maximum supported volume count is 20"))
 
 				})
 				It("Should Allow", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 						PVPool: &nbv1.PVPoolSpec{
 							NumVolumes: 15,
 						},
 					}
 
-					result, message = bsv.ValidateMaxVolumeCount()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = backingstore.ValidateMaxVolumeCount(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
 
 				})
 			})
 			Context("Minimum volume size", func() {
 				It("Should Deny", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 						PVPool: &nbv1.PVPoolSpec{
 							VolumeResources: &corev1.ResourceRequirements{
@@ -194,13 +186,13 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					result, message = bsv.ValidatePvpoolMinVolSize()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Invalid volume size, minimum volume size is 16Gi"))
+					err = backingstore.ValidatePvpoolMinVolSize(*bs)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Invalid volume size, minimum volume size is 16Gi"))
 				})
 
 				It("Should Allow", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 						PVPool: &nbv1.PVPoolSpec{
 							VolumeResources: &corev1.ResourceRequirements{
@@ -211,16 +203,15 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					result, message = bsv.ValidatePvpoolMinVolSize()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = backingstore.ValidatePvpoolMinVolSize(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 		})
 		Describe("S3 Compatible backingstore", func() {
 			Context("Invalid signature version", func() {
 				It("Should Deny", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypeS3Compatible,
 						S3Compatible: &nbv1.S3CompatibleSpec{
 							SignatureVersion: "v5",
@@ -231,13 +222,13 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					result, message = bsv.ValidateS3CompatibleSigVersion()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Invalid S3 compatible Backingstore signature version, please choose either v2/v4"))
+					err = backingstore.ValidateSigVersion(bs.Spec.S3Compatible.SignatureVersion)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Invalid S3 compatible Backingstore signature version, please choose either v2/v4"))
 				})
 
 				It("Should Allow", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypeS3Compatible,
 						S3Compatible: &nbv1.S3CompatibleSpec{
 							SignatureVersion: "v4",
@@ -248,9 +239,8 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					result, message = bsv.ValidateS3CompatibleSigVersion()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = backingstore.ValidateSigVersion(bs.Spec.S3Compatible.SignatureVersion)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 		})
@@ -270,7 +260,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 		Describe("Pvpool backingstore", func() {
 			Context("Scale down node count", func() {
 				It("Should Deny", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 						PVPool: &nbv1.PVPoolSpec{
 							NumVolumes: 10,
@@ -284,13 +274,13 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					result, message = bsv.ValidatePvpoolScaleDown(*updatedBS)
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Scaling down the number of nodes is not currently supported"))
+					err = backingstore.ValidatePvpoolScaleDown(*bs, *updatedBS)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Scaling down the number of nodes is not currently supported"))
 				})
 
 				It("Should Allow", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 						PVPool: &nbv1.PVPoolSpec{
 							NumVolumes: 15,
@@ -304,16 +294,15 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					result, message = bsv.ValidatePvpoolScaleDown(*updatedBS)
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = backingstore.ValidatePvpoolScaleDown(*bs, *updatedBS)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 		})
 		Describe("Cloud backingstore", func() {
 			Context("Update target bucket", func() {
 				It("Should Deny", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypeAWSS3,
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "some-target-bucket",
@@ -327,13 +316,13 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					result, message = bsv.ValidateTargetBucketChange(*updatedBS)
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Changing a Backingstore target bucket is unsupported"))
+					err = backingstore.ValidateTargetBucketChange(*bs, *updatedBS)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Changing a Backingstore target bucket is unsupported"))
 				})
 
 				It("Should Allow", func() {
-					bsv.BackingStore.Spec = nbv1.BackingStoreSpec{
+					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypeAWSS3,
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "same-target-bucket",
@@ -347,9 +336,8 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					result, message = bsv.ValidateTargetBucketChange(*updatedBS)
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = backingstore.ValidateTargetBucketChange(*bs, *updatedBS)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 		})
@@ -359,28 +347,21 @@ var _ = Describe("BackingStore admission unit tests", func() {
 var _ = Describe("NamespaceStore admission unit tests", func() {
 
 	var (
-		nsv            *admission.NamespaceStoreValidator
-		namespacestore *nbv1.NamespaceStore
-		result         bool
-		message        string
+		ns  *nbv1.NamespaceStore
+		err error
 	)
 
 	BeforeEach(func() {
-		namespacestore = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore)
-		namespacestore.Name = "ns-name"
-		namespacestore.Namespace = "test"
-		nsv = &admission.NamespaceStoreValidator{
-			NamespaceStore: namespacestore,
-		}
-		result = false
-		message = ""
+		ns = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore)
+		ns.Name = "ns-name"
+		ns.Namespace = "test"
 	})
 
 	Describe("Validate create operations", func() {
 		Describe("General namespacestore validations", func() {
 			Context("Empty secret name", func() {
 				It("Should Deny", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeAWSS3,
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "some-target-bucket",
@@ -390,12 +371,12 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							},
 						},
 					}
-					result, message = nsv.ValidateNSEmptySecretName()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Failed creating the namespacestore, please provide secret name"))
+					err = namespacestore.ValidateNSEmptySecretName(*ns)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Failed creating the namespacestore, please provide secret name"))
 				})
 				It("Should Allow", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeAWSS3,
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "some-target-bucket",
@@ -405,14 +386,13 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							},
 						},
 					}
-					result, message = nsv.ValidateNSEmptySecretName()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = namespacestore.ValidateNSEmptySecretName(*ns)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 			Context("Invalid store type", func() {
 				It("Should Deny", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: "invalid",
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "some-target-bucket",
@@ -422,13 +402,12 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							},
 						},
 					}
-
-					result, message = nsv.ValidateNamespaceStoreType()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Invalid namespacestore type, please provide a valid one"))
+					err = namespacestore.ValidateNamespaceStore(ns)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Invalid Namespacestore type, please provide a valid Namespacestore type"))
 				})
 				It("Should Allow", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeAWSS3,
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "some-target-bucket",
@@ -438,91 +417,98 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							},
 						},
 					}
-
-					result, message = nsv.ValidateNamespaceStoreType()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = namespacestore.ValidateNamespaceStore(ns)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 		})
 		Describe("NSFS validations", func() {
 			Context("Empty pvc name", func() {
 				It("Should Deny", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeNSFS,
 						NSFS: &nbv1.NSFSSpec{
 							PvcName: "",
 						},
 					}
-					result, message = nsv.ValidateEmptyPvcName()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Failed to create NSFS, please provide pvc name"))
+					err = namespacestore.ValidateNsStoreNSFS(ns)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("PvcName must not be empty"))
 				})
 				It("Should Allow", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeNSFS,
 						NSFS: &nbv1.NSFSSpec{
 							PvcName: "pvc-name",
 						},
 					}
-					result, message = nsv.ValidateEmptyPvcName()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = namespacestore.ValidateNsStoreNSFS(ns)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 			Context("Invalid SubPath", func() {
 				It("Should Deny", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeNSFS,
 						NSFS: &nbv1.NSFSSpec{
+							PvcName: "pvc-name",
 							SubPath: "/path",
 						},
 					}
-					result, message = nsv.ValidateSubPath()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Failed to create NSFS, SubPath must be a relative path"))
+					err = namespacestore.ValidateNsStoreNSFS(ns)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("SubPath /path must be a relative path"))
 				})
 				It("Should Deny", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeNSFS,
 						NSFS: &nbv1.NSFSSpec{
+							PvcName: "pvc-name",
 							SubPath: "../path",
 						},
 					}
-					result, message = nsv.ValidateSubPath()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Failed to create NSFS, SubPath must not contain '..'"))
+					err = namespacestore.ValidateNsStoreNSFS(ns)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("SubPath ../path must not contain '..'"))
 				})
 				It("Should Allow", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeNSFS,
 						NSFS: &nbv1.NSFSSpec{
+							PvcName: "pvc-name",
 							SubPath: "valid/sub/path",
 						},
 					}
-					result, message = nsv.ValidateSubPath()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = namespacestore.ValidateNsStoreNSFS(ns)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 			Context("Validate too long mount path", func() {
 				It("Should Deny", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeNSFS,
+						NSFS: &nbv1.NSFSSpec{
+							PvcName: "pvc-name",
+							SubPath: "valid/sub/path",
+						},
 					}
-					nsv.NamespaceStore.Name = "nsfs-too-long-name-should-fail-after-exceeding-63-characters"
-					result, message = nsv.ValidateMountPath()
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Failed to create NSFS, MountPath must be no more than 63 characters"))
+					ns.Name = "nsfs-too-long-name-should-fail-after-exceeding-63-characters"
+					mountPath := "/nsfs/" + ns.Name
+					err = namespacestore.ValidateNsStoreNSFS(ns)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal(fmt.Sprintf("MountPath %v must be no more than 63 characters", mountPath)))
 				})
 				It("Should Allow", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeNSFS,
+						NSFS: &nbv1.NSFSSpec{
+							PvcName: "pvc-name",
+							SubPath: "valid/sub/path",
+						},
 					}
-					nsv.NamespaceStore.Name = "nsfs-not-too-long-name"
-					result, message = nsv.ValidateMountPath()
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					ns.Name = "nsfs-not-too-long-name"
+					err = namespacestore.ValidateNsStoreNSFS(ns)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 		})
@@ -542,7 +528,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 		Describe("Cloud namespacestore", func() {
 			Context("Update target bucket", func() {
 				It("Should Deny", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeAWSS3,
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "some-target-bucket",
@@ -556,13 +542,13 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 						},
 					}
 
-					result, message = nsv.ValidateTargetBucketChange(*updatedNS)
-					Expect(result).To(BeFalse())
-					Expect(message).To(Equal("Changing a NamespaceStore target bucket is unsupported"))
+					err = namespacestore.ValidateTargetBucketChange(*ns, *updatedNS)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Changing a NamespaceStore target bucket is unsupported"))
 				})
 
 				It("Should Allow", func() {
-					nsv.NamespaceStore.Spec = nbv1.NamespaceStoreSpec{
+					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeAWSS3,
 						AWSS3: &nbv1.AWSS3Spec{
 							TargetBucket: "same-target-bucket",
@@ -576,9 +562,8 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 						},
 					}
 
-					result, message = nsv.ValidateTargetBucketChange(*updatedNS)
-					Expect(result).To(BeTrue())
-					Expect(message).To(Equal("allowed"))
+					err = namespacestore.ValidateTargetBucketChange(*ns, *updatedNS)
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 		})

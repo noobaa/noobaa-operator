@@ -340,6 +340,11 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 
 	populate(backStore, secret)
 
+	validationErr := ValidateBackingStore(*backStore)
+	if validationErr != nil {
+		log.Fatalf(`❌ %s %s`, validationErr, cmd.UsageString())
+	}
+
 	// Create backing store CR
 	util.Panic(controllerutil.SetControllerReference(sys, backStore, scheme.Scheme))
 	if !util.KubeCreateFailExisting(backStore) {
@@ -578,35 +583,35 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 			}
 		}
 
-		var requestCPUQuantity, requestMemoryQuantity,  limitCPUQuantity, limitMemoryQuantity resource.Quantity
+		var requestCPUQuantity, requestMemoryQuantity, limitCPUQuantity, limitMemoryQuantity resource.Quantity
 		var err error
 		requestCPUQuantity, err = resource.ParseQuantity(requestCPU)
 		if err != nil {
 			log.Fatalf(`❌ Could not parse request cpu %q`,
-			requestCPU)
+				requestCPU)
 		}
 		requestMemoryQuantity, err = resource.ParseQuantity(requestMemory)
 		if err != nil {
 			log.Fatalf(`❌ Could not parse request Memory %q`,
-			requestMemory)
+				requestMemory)
 		}
 		limitCPUQuantity, err = resource.ParseQuantity(limitCPU)
 		if err != nil {
 			log.Fatalf(`❌ Could not parse limit cpu %q`,
-			limitCPU)
+				limitCPU)
 		}
 		limitMemoryQuantity, err = resource.ParseQuantity(limitMemory)
 		if err != nil {
 			log.Fatalf(`❌ Could not parse limit Memory %q`,
-			limitMemory)
+				limitMemory)
 		}
 		if requestCPUQuantity.Cmp(limitCPUQuantity) > 0 {
 			log.Fatalf(`❌ Request CPU %v is larger than limit CPU %v`,
-			requestCPUQuantity.String(), limitCPUQuantity.String())
+				requestCPUQuantity.String(), limitCPUQuantity.String())
 		}
 		if requestMemoryQuantity.Cmp(limitMemoryQuantity) > 0 {
 			log.Fatalf(`❌ Request memory %v is larger than limit memory %v`,
-			requestMemoryQuantity.String(), limitMemoryQuantity.String())
+				requestMemoryQuantity.String(), limitMemoryQuantity.String())
 		}
 
 		backStore.Spec.PVPool = &nbv1.PVPoolSpec{
@@ -615,11 +620,11 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 			VolumeResources: &corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: *resource.NewQuantity(int64(pvSizeGB)*1024*1024*1024, resource.BinarySI),
-					corev1.ResourceCPU: requestCPUQuantity,
-					corev1.ResourceMemory: requestMemoryQuantity,
+					corev1.ResourceCPU:     requestCPUQuantity,
+					corev1.ResourceMemory:  requestMemoryQuantity,
 				},
 				Limits: corev1.ResourceList{
-					corev1.ResourceCPU: limitCPUQuantity,
+					corev1.ResourceCPU:    limitCPUQuantity,
 					corev1.ResourceMemory: limitMemoryQuantity,
 				},
 			},

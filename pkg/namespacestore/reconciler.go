@@ -266,7 +266,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 
 	err := ValidateNamespaceStore(r.NamespaceStore)
 	if err != nil {
-		return err
+		return util.NewPersistentError("NamespaceStoreValidationError", err.Error())
 	}
 
 	if r.NooBaa.UID == "" {

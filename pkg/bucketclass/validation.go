@@ -13,6 +13,17 @@ func ValidateBucketClass(bc *nbv1.BucketClass) error {
 	if bc == nil {
 		return nil
 	}
+	if bc.Spec.NamespacePolicy != nil {
+		if err := ValidateNSFSSingleBC(bc); err != nil {
+			return err
+		}
+	}
+	if bc.Spec.PlacementPolicy != nil {
+		if err := ValidateTiersNumber(bc.Spec.PlacementPolicy.Tiers); err != nil {
+			return err
+		}
+	}
+
 	return ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
 }
 
@@ -67,7 +78,7 @@ func ValidateNSFSSingleBC(bc *nbv1.BucketClass) error {
 			},
 		}
 		if !util.KubeCheck(nsStore) {
-			return fmt.Errorf("failed to check namespacestore in NSFS single bucketclass type validation")
+			return fmt.Errorf("failed to KubeCheck namespacestore in NSFS single bucketclass type validation")
 		}
 		if nsStore.Spec.Type == nbv1.NSStoreTypeNSFS {
 			return util.ValidationError{
