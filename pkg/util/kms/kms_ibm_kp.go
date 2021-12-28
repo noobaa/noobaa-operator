@@ -1,4 +1,4 @@
-package util
+package kms
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/libopenstorage/secrets"
 	"github.com/libopenstorage/secrets/ibm"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -20,13 +21,13 @@ const (
 // IBM KP K8S secret driver for NooBaa root master key
 //
 
-// KMSIBM is a NooBaa root master key ibmKpK8sSecret driver
-type KMSIBM struct {
+// IBM is a NooBaa root master key ibmKpK8sSecret driver
+type IBM struct {
 	UID string  // NooBaa system UID
 }
 
 // Config returns ibmKpK8sSecret secret config
-func (k *KMSIBM) Config(config map[string]string, tokenSecretName, namespace string) (map[string]interface{}, error) {
+func (i *IBM) Config(config map[string]string, tokenSecretName, namespace string) (map[string]interface{}, error) {
 	// create a type correct copy of the configuration
 	c := make(map[string]interface{})
 	for k, v := range config {
@@ -48,7 +49,7 @@ func (k *KMSIBM) Config(config map[string]string, tokenSecretName, namespace str
 	_, api := syscall.Getenv(ibm.IbmServiceApiKey)
 	_, crk := syscall.Getenv(ibm.IbmCustomerRootKey)
 	if !api || !crk {
-		if err := k.keysFromSecret(tokenSecretName, namespace, c); err != nil {
+		if err := i.keysFromSecret(tokenSecretName, namespace, c); err != nil {
 			return nil, err
 		}
 	}
@@ -57,11 +58,11 @@ func (k *KMSIBM) Config(config map[string]string, tokenSecretName, namespace str
 }
 
 // keysFromSecret reads API Key and Customer Root Key from k8s secret
-func (k *KMSIBM) keysFromSecret(tokenSecretName, namespace string, c map[string]interface{}) error {
+func (*IBM) keysFromSecret(tokenSecretName, namespace string, c map[string]interface{}) error {
 	secret := &corev1.Secret{}
 	secret.Namespace = namespace
 	secret.Name = tokenSecretName
-	if !KubeCheck(secret) {
+	if !util.KubeCheck(secret) {
 		return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
 	}
 
@@ -78,29 +79,29 @@ func (k *KMSIBM) keysFromSecret(tokenSecretName, namespace string, c map[string]
 }
 
 // Path returns secret id
-func (k *KMSIBM) Path() string {
-	return "rootkeyb64-" + k.UID
+func (i *IBM) Path() string {
+	return "rootkeyb64-" + i.UID
 }
 
 // Name returns root key map key
-func (k *KMSIBM) Name() string {
-	return k.Path()
+func (i *IBM) Name() string {
+	return i.Path()
 }
 
 // custom  key context is used for plaintext keys
 var customCtx = map[string]string{ secrets.CustomSecretData: "true"}
 
 // GetContext returns context used for secret get operation
-func (k *KMSIBM) GetContext() map[string]string {
+func (*IBM) GetContext() map[string]string {
 	return customCtx
 }
 
 // SetContext returns context used for secret set operation
-func (k *KMSIBM) SetContext() map[string]string {
+func (*IBM) SetContext() map[string]string {
 	return customCtx
 }
 
 // DeleteContext returns context used for secret delete operation
-func (k *KMSIBM) DeleteContext() map[string]string {
+func (*IBM) DeleteContext() map[string]string {
 	return customCtx
 }

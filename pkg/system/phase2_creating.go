@@ -12,6 +12,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util/kms"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
@@ -740,7 +741,7 @@ func (r *Reconciler) ReconcileRootSecret() error {
 	connectionDetails := r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails
 	authTokenSecretName := r.NooBaa.Spec.Security.KeyManagementService.TokenSecretName
 
-	k, err := util.NewKMS(connectionDetails, authTokenSecretName, r.Request.Name, r.Request.Namespace, string(r.NooBaa.UID))
+	k, err := kms.NewKMS(connectionDetails, authTokenSecretName, r.Request.Name, r.Request.Namespace, string(r.NooBaa.UID))
 	if err != nil {
 		r.Logger.Errorf("ReconcileRootSecret, NewKMS error %v", err)
 		r.setKMSConditionStatus(nbv1.ConditionKMSInvalid)

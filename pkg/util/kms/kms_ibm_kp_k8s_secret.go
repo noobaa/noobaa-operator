@@ -1,10 +1,11 @@
-package util
+package kms
 
 import (
 	"fmt"
 
 	"github.com/libopenstorage/secrets"
 	"github.com/libopenstorage/secrets/ibm"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/portworx/kvdb"
 	"github.com/portworx/kvdb/mem"
 
@@ -79,7 +80,7 @@ func (i *ibmKpK8sSecret) GetSecret(
 	keyContext map[string]string,
 ) (map[string]interface{}, error) {
 	// Fetch encrypted secret from K8S Secret persistence layer
-	if _, _, err := KubeGet(i.tokenSecret); err != nil {
+	if _, _, err := util.KubeGet(i.tokenSecret); err != nil {
 		return nil, err
 	}
 	encryptedSecret, ok := i.tokenSecret.Data[encryptedSecretKeyName(secretID)]
@@ -127,7 +128,7 @@ func (i *ibmKpK8sSecret) PutSecret(
 
 	// Store the encrypted secret in k8s secret for future GetSecret() use
 	i.tokenSecret.Data[encryptedSecretKeyName(secretID)] = encryptedSecret[secretID].([]uint8)
-	if !KubeUpdate(i.tokenSecret) {
+	if !util.KubeUpdate(i.tokenSecret) {
 		return fmt.Errorf("❌ KMS IBM KP PutSecret Failed to update encrypted secret")
 	}
 
@@ -141,13 +142,13 @@ func (i *ibmKpK8sSecret) DeleteSecret(
 	keyContext map[string]string,
 ) error {
 	// Fetch DEK from K8S Secret persistence layer
-	if _, _, err := KubeGet(i.tokenSecret); err != nil {
+	if _, _, err := util.KubeGet(i.tokenSecret); err != nil {
 		return err
 	}
 
 	// Remove the encrypted secret from k8s secret
 	delete(i.tokenSecret.Data, encryptedSecretKeyName(secretID))
-	if !KubeUpdate(i.tokenSecret) {
+	if !util.KubeUpdate(i.tokenSecret) {
 		return fmt.Errorf("❌ KMS IBM KP DeleteSecret Failed to update encrypted secret secret")
 	}
 

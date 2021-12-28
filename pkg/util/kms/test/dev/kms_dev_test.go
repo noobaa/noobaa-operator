@@ -10,6 +10,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util/kms"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -26,22 +27,22 @@ func getMiniNooBaa() *nbv1.NooBaa {
 
 
 func simpleKmsSpec(token, apiAddress string) nbv1.KeyManagementServiceSpec {
-	kms := nbv1.KeyManagementServiceSpec{}
-	kms.TokenSecretName = token
-	kms.ConnectionDetails = map[string]string{
-		util.VaultAddr : apiAddress,
+	k := nbv1.KeyManagementServiceSpec{}
+	k.TokenSecretName = token
+	k.ConnectionDetails = map[string]string{
+		kms.VaultAddr : apiAddress,
 		vault.VaultBackendPathKey : "noobaa/",
-		util.KmsProvider : vault.Name,
+		kms.Provider : vault.Name,
 	}
 
-	return kms
+	return k
 }
 
 func checkExternalSecret(noobaa *nbv1.NooBaa, expectedNil bool) {
-	kms := noobaa.Spec.Security.KeyManagementService
+	k := noobaa.Spec.Security.KeyManagementService
 	uid := string(noobaa.UID)
-	driver := &util.KMSVault{uid}
-	path := kms.ConnectionDetails[vault.VaultBackendPathKey] + driver.Path()
+	driver := &kms.Vault{uid}
+	path := k.ConnectionDetails[vault.VaultBackendPathKey] + driver.Path()
 	cmd := exec.Command("kubectl", "exec", "vault-0", "--", "vault", "kv", "get", path)
 	logger.Printf("Running command: path %v args %v ", cmd.Path, cmd.Args)
 	err := cmd.Run()
@@ -183,7 +184,7 @@ var _ = Describe("KMS - K8S, Dev Vault", func() {
 		Specify("Ivalid KMS provider", func() {
 			noobaa := getMiniNooBaa()
 			noobaa.Spec.Security.KeyManagementService = simpleKmsSpec(tokenSecretName, apiAddress)
-			noobaa.Spec.Security.KeyManagementService.ConnectionDetails[util.KmsProvider] = "invalid"
+			noobaa.Spec.Security.KeyManagementService.ConnectionDetails[kms.Provider] = "invalid"
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
 			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInvalid)).To(BeTrue())
 			Expect(util.KubeDelete(noobaa)).To(BeTrue())

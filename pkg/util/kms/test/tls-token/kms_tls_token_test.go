@@ -8,6 +8,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util/kms"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -23,19 +24,19 @@ func getMiniNooBaa() *nbv1.NooBaa {
 }
 
 func tlsTokenKMSSpec(token, apiAddress string) nbv1.KeyManagementServiceSpec {
-	kms := nbv1.KeyManagementServiceSpec{}
-	kms.TokenSecretName = token
-	kms.ConnectionDetails = map[string]string{
-		util.VaultAddr : apiAddress,
+	k := nbv1.KeyManagementServiceSpec{}
+	k.TokenSecretName = token
+	k.ConnectionDetails = map[string]string{
+		kms.VaultAddr : apiAddress,
 		vault.VaultBackendPathKey : "noobaa/",
-		util.KmsProvider: vault.Name,
-		util.VaultCaCert: "vault-ca-cert",
-		util.VaultClientCert: "vault-client-cert",
-		util.VaultClientKey: "vault-client-key",
-		util.VaultSkipVerify: "true",
+		kms.Provider: vault.Name,
+		kms.VaultCaCert: "vault-ca-cert",
+		kms.VaultClientCert: "vault-client-cert",
+		kms.VaultClientKey: "vault-client-key",
+		kms.VaultSkipVerify: "true",
 	}
 
-	return kms
+	return k
 }
 
 var _ = Describe("KMS - TLS Vault Token", func() {

@@ -14,6 +14,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util/kms"
 	"github.com/noobaa/noobaa-operator/v5/version"
 	"github.com/pkg/errors"
 
@@ -399,7 +400,7 @@ func (r *Reconciler) deleteRootSecret() error {
 	connectionDetails := r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails
 	authTokenSecretName := r.NooBaa.Spec.Security.KeyManagementService.TokenSecretName
 
-	k, err := util.NewKMS(connectionDetails, authTokenSecretName, r.Request.Name, r.Request.Namespace, string(r.NooBaa.UID))
+	k, err := kms.NewKMS(connectionDetails, authTokenSecretName, r.Request.Name, r.Request.Namespace, string(r.NooBaa.UID))
 	if err != nil {
 		// do not block system's deletion, just warn
 		r.Logger.Errorf("deleteRootSecret: invalid KMS connection details %v token %v, error %v", connectionDetails, authTokenSecretName, err)

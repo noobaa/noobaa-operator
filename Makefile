@@ -195,22 +195,22 @@ test-hac: vendor
 .PHONY: test-hac
 
 test-kms-dev: vendor
-	ginkgo -v pkg/util/test/dev
+	ginkgo -v pkg/util/kms/test/dev
 	@echo "✅ test-kms-dev"
 .PHONY: test-kms-dev
 
 test-kms-tls-sa: vendor
-	ginkgo -v pkg/util/test/tls-sa
+	ginkgo -v pkg/util/kms/test/tls-sa
 	@echo "✅ test-kms-tls-sa"
 .PHONY: test-kms-tls-sa
 
 test-kms-tls-token: vendor
-	ginkgo -v pkg/util/test/tls-token
+	ginkgo -v pkg/util/kms/test/tls-token
 	@echo "✅ test-kms-tls-token"
 .PHONY: test-kms-tls-token
 
 test-kms-ibm-kp: vendor
-	ginkgo -v pkg/util/test/ibm-kp
+	ginkgo -v pkg/util/kms/test/ibm-kp
 	@echo "✅ test-kms-ibm-kp"
 .PHONY: test-kms-ibm-kp
 
