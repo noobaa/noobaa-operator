@@ -1,11 +1,11 @@
-package util
+package kms
 
 import (
 	"github.com/libopenstorage/secrets/k8s"
 )
 
-// KMSK8S is a Kubernetes driver
-type KMSK8S struct {
+// K8S is a Kubernetes driver
+type K8S struct {
 	name string  // NooBaa system name
 	ns   string  // NooBaa system namespace
 }
@@ -15,12 +15,12 @@ type KMSK8S struct {
 //
 
 // Path returns the k8s secret name
-func (k *KMSK8S) Path() string {
+func (k *K8S) Path() string {
 	return k.name + "-root-master-key"
 }
 
 // Name returns root key map key
-func (*KMSK8S) Name() string {
+func (*K8S) Name() string {
 	return "cipher_key_b64"
 }
 
@@ -31,21 +31,21 @@ func k8sContext(ns string) map[string]string {
 }
 
 // GetContext returns context used for secret get operation
-func (k *KMSK8S) GetContext() map[string]string {
+func (k *K8S) GetContext() map[string]string {
 	return k8sContext(k.ns)
 }
 
 // SetContext returns context used for secret set operation
-func (k *KMSK8S) SetContext() map[string]string {
+func (k *K8S) SetContext() map[string]string {
 	return k8sContext(k.ns)
 }
 
 // DeleteContext returns context used for secret delete operation
-func (k *KMSK8S) DeleteContext() map[string]string {
+func (k *K8S) DeleteContext() map[string]string {
 	return k8sContext(k.ns)
 }
 
 // Config returns this driver secret config
-func (k *KMSK8S) Config(map[string]string, string, string) (map[string]interface{}, error) {
+func (k *K8S) Config(map[string]string, string, string) (map[string]interface{}, error) {
 	return nil, nil
 }

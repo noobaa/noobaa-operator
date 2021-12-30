@@ -1476,7 +1476,9 @@ func LoadBucketReplicationJSON(replicationJSONFilePath string) (string, error) {
 	return string(bytes), nil
 }
 
-func noobaaStatus(nb *nbv1.NooBaa, t conditionsv1.ConditionType, status corev1.ConditionStatus) bool {
+// NoobaaStatus returns true if NooBaa condition type and status matches
+// returns false otherwise
+func NoobaaStatus(nb *nbv1.NooBaa, t conditionsv1.ConditionType, status corev1.ConditionStatus) bool {
 	for _, cond := range nb.Status.Conditions {
 		log.Printf("condition type %v status %v", cond.Type, cond.Status)
 		if cond.Type == t && cond.Status == status {
@@ -1520,4 +1522,34 @@ func ValidateQuotaConfig(name string, maxSize string, maxObjects string) error {
 	}
 
 	return nil
+}
+
+//
+// Test shared utilities
+//
+
+// NooBaaCondStatus waits for requested NooBaa CR KMS condition status
+// returns false if timeout
+func NooBaaCondStatus(noobaa* nbv1.NooBaa, s corev1.ConditionStatus) bool {
+	return NooBaaCondition(noobaa, nbv1.ConditionTypeKMSStatus, s)
+}
+
+// NooBaaCondition waits for requested NooBaa CR KMS condition type & status
+// returns false if timeout
+func NooBaaCondition(noobaa* nbv1.NooBaa, t conditionsv1.ConditionType, s corev1.ConditionStatus) bool {
+	found := false
+
+	timeout := 120 // seconds
+	for i := 0; i < timeout; i++ {
+		_, _, err := KubeGet(noobaa)
+		Panic(err)
+
+		if NoobaaStatus(noobaa, t, s) {
+			found = true
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	return found
 }

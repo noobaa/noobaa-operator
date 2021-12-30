@@ -1,9 +1,11 @@
-package util
+package kms
 
 import (
 	"fmt"
 	"io/ioutil"
 	"os"
+
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	"github.com/libopenstorage/secrets"
 	"github.com/libopenstorage/secrets/vault"
@@ -21,8 +23,8 @@ const (
 	RootSecretPath          = "NOOBAA_ROOT_SECRET_PATH"
 )
 
-// KMSVault is a vault driver
-type KMSVault struct {
+// Vault is a vault driver
+type Vault struct {
 	UID string  // NooBaa system UID
 }
 
@@ -31,7 +33,7 @@ type KMSVault struct {
 //
 
 // Config returns this driver secret config
-func (*KMSVault) Config(config map[string]string, tokenSecretName, namespace string) (map[string]interface{}, error) {
+func (*Vault) Config(config map[string]string, tokenSecretName, namespace string) (map[string]interface{}, error) {
 	// create a type correct copy of the configuration
 	c := make(map[string]interface{})
 	for k, v := range config {
@@ -50,39 +52,38 @@ func (*KMSVault) Config(config map[string]string, tokenSecretName, namespace str
 		secret := &corev1.Secret{}
 		secret.Namespace = namespace
 		secret.Name = tokenSecretName
-		if !KubeCheck(secret) {
+		if !util.KubeCheck(secret) {
 			return nil, fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
 		}
 		token := secret.StringData["token"]
 		c[VaultToken] = token
 	}
 
-	log.Infof("KMS vault config: %v", c)
 	return c, nil
 }
 
 // Name returns root key map key
-func (k *KMSVault) Name() string {
-	return "rootkeyb64-" + k.UID
+func (v *Vault) Name() string {
+	return "rootkeyb64-" + v.UID
 }
 
 // Path return vault's kv secret id
-func (k *KMSVault) Path() string {
-	return RootSecretPath + "/rootkeyb64-" + k.UID
+func (v *Vault) Path() string {
+	return RootSecretPath + "/rootkeyb64-" + v.UID
 }
 
 // GetContext returns context used for secret get operation
-func (k *KMSVault) GetContext() map[string]string {
+func (v *Vault) GetContext() map[string]string {
 	return nil
 }
 
 // SetContext returns context used for secret set operation
-func (k *KMSVault) SetContext() map[string]string {
+func (v *Vault) SetContext() map[string]string {
 	return nil
 }
 
 // DeleteContext returns context used for secret delete operation
-func (k *KMSVault) DeleteContext() map[string]string {
+func (v *Vault) DeleteContext() map[string]string {
 	// see https://github.com/libopenstorage/secrets/commit/dde442ea20ec9d59c71cea5ee0f21eeffd17ed19
 	return map[string]string{
 		secrets.DestroySecret: "true",
@@ -100,7 +101,7 @@ func tlsConfig(config map[string]interface{}, namespace string) (error) {
 
 	if caCertSecretName, ok := config[VaultCaCert]; ok {
 		secret.Name = caCertSecretName.(string)
-		if !KubeCheckOptional(secret) {
+		if !util.KubeCheckOptional(secret) {
 			return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
 		}
 		caFileAddr, err := writeCrtsToFile(secret.Name, namespace, secret.Data["cert"], VaultCaCert)
@@ -112,7 +113,7 @@ func tlsConfig(config map[string]interface{}, namespace string) (error) {
 
 	if clientCertSecretName, ok := config[VaultClientCert]; ok {
 		secret.Name = clientCertSecretName.(string)
-		if !KubeCheckOptional(secret) {
+		if !util.KubeCheckOptional(secret) {
 			return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
 		}
 		clientCertFileAddr, err := writeCrtsToFile(secret.Name, namespace, secret.Data["cert"], VaultClientCert)
@@ -124,7 +125,7 @@ func tlsConfig(config map[string]interface{}, namespace string) (error) {
 	}
 	if clientKeySecretName, ok := config[VaultClientKey]; ok {
 		secret.Name = clientKeySecretName.(string)
-		if !KubeCheckOptional(secret) {
+		if !util.KubeCheckOptional(secret) {
 			return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
 		}
 		clientKeyFileAddr, err := writeCrtsToFile(secret.Name, namespace, secret.Data["key"], VaultClientKey)

@@ -1,29 +1,24 @@
-package util
+package kms
 
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/libopenstorage/secrets"
 	"github.com/libopenstorage/secrets/k8s"
 	"github.com/libopenstorage/secrets/vault"
-
-	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
-	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
-	corev1 "k8s.io/api/core/v1"
 )
 
-///////////////////////////////////
-/////////// KMS ///////////
-///////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+/////////// KMS provides uniform access to several backend types ///////////
+////////////////////////////////////////////////////////////////////////////
 const (
-	KmsProvider             = "KMS_PROVIDER"
+	Provider             = "KMS_PROVIDER" // backend type configuration key
 )
 
-// KMSSecret represents a single secret
-// k8s and vault secrets are implemented, more types could be added
-type KMSSecret interface {
+// SingleSecret represents a single secret
+// several backend types are implemented, more types could be added
+type SingleSecret interface {
 	// Get secret value from KMS
 	Get() (string, error)
 
@@ -34,8 +29,8 @@ type KMSSecret interface {
 	Delete() error
 }
 
-// KMSDriver is a type sepcific driver for libopenstorage/secrets framework
-type KMSDriver interface {
+// Driver is a backend type specific driver interface for libopenstorage/secrets framework
+type Driver interface {
 	Path()          string
 	Name()          string
 	Config(connectionDetails map[string]string, tokenSecretName, namespace string)  (map[string]interface{}, error)
@@ -44,11 +39,12 @@ type KMSDriver interface {
 	DeleteContext() map[string]string
 }
 
-// KMS implements KMSSecret interface
+// KMS implements SingleSecret interface using backend implementation of
+// secrets.Secrets interface and using backend type specific driver
 type KMS struct {
 	secrets.Secrets   // secrets interface
-	Type   string     // system type, k8s & vault are supported
-	driver KMSDriver  // type specific driver
+	Type   string     // backend system type, k8s, vault & ibm are supported
+	driver Driver     // backend type specific driver
 }
 
 // NewKMS creates a new secret KMS client
@@ -56,21 +52,25 @@ type KMS struct {
 func NewKMS(connectionDetails map[string]string, tokenSecretName, name, namespace, uid string) (*KMS, error) {
 	t := kmsType(connectionDetails)
 
-	var driver KMSDriver
+	var driver Driver
 	switch t {
 	case k8s.Name:
-		driver = &KMSK8S{name, namespace}
+		driver = &K8S{name, namespace}
 	case vault.Name:
-		driver = &KMSVault{uid}
+		driver = &Vault{uid}
+	case IbmKpK8sSecretName:
+		driver = &IBM{uid}
 	default:
 		return nil, fmt.Errorf("Unsupported KMS type %v", t)
 	}
 
+	// Generate backend configuration using backend driver instance
 	c, err := driver.Config(connectionDetails, tokenSecretName, namespace)
 	if err != nil {
 		return nil, err
 	}
 
+	// Construct new backend
 	s, err := secrets.New(t, c)
 	if err != nil {
 		return nil, err
@@ -110,41 +110,11 @@ func (k *KMS) Delete() error {
 // kmsType returns the secret backend type
 func kmsType(connectionDetails map[string]string) string {
 	if len(connectionDetails) > 0 {
-		if provider, ok := connectionDetails[KmsProvider]; ok {
+		if provider, ok := connectionDetails[Provider]; ok {
 			return provider
 		}
 	}
 
 	// by default use Kubernes secrets
 	return secrets.TypeK8s
-}
-
-//
-// Test shared utilities
-//
-
-// NooBaaCondStatus waits for requested NooBaa CR KSM condition status
-// returns false if timeout
-func NooBaaCondStatus(noobaa* nbv1.NooBaa, s corev1.ConditionStatus) bool {
-	return NooBaaCondition(noobaa, nbv1.ConditionTypeKMSStatus, s)
-}
-
-// NooBaaCondition waits for requested NooBaa CR KSM condition type & status
-// returns false if timeout
-func NooBaaCondition(noobaa* nbv1.NooBaa, t conditionsv1.ConditionType, s corev1.ConditionStatus) bool {
-	found := false
-
-	timeout := 120 // seconds
-	for i := 0; i < timeout; i++ {
-		_, _, err := KubeGet(noobaa)
-		Panic(err)
-
-		if noobaaStatus(noobaa, t, s) {
-			found = true
-			break
-		}
-		time.Sleep(time.Second)
-	}
-
-	return found
 }

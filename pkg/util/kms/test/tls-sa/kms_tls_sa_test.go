@@ -8,6 +8,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util/kms"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -23,20 +24,20 @@ func getMiniNooBaa() *nbv1.NooBaa {
 }
 
 func tlsSAKMSSpec(apiAddress string) nbv1.KeyManagementServiceSpec {
-	kms := nbv1.KeyManagementServiceSpec{}
-	kms.ConnectionDetails = map[string]string{
-		util.VaultAddr : apiAddress,
+	k := nbv1.KeyManagementServiceSpec{}
+	k.ConnectionDetails = map[string]string{
+		kms.VaultAddr : apiAddress,
 		vault.VaultBackendPathKey : "noobaa/",
-		util.KmsProvider: vault.Name,
+		kms.Provider: vault.Name,
 		vault.AuthMethod: vault.AuthMethodKubernetes,
-		util.VaultCaCert: "vault-ca-cert",
-		util.VaultClientCert: "vault-client-cert",
-		util.VaultClientKey: "vault-client-key",
-		util.VaultSkipVerify: "true",
+		kms.VaultCaCert: "vault-ca-cert",
+		kms.VaultClientCert: "vault-client-cert",
+		kms.VaultClientKey: "vault-client-key",
+		kms.VaultSkipVerify: "true",
 		vault.AuthKubernetesRole : "noobaa",
 	}
 
-	return kms
+	return k
 }
 
 var _ = Describe("KMS - TLS Vault SA", func() {
@@ -72,9 +73,9 @@ var _ = Describe("KMS - TLS Vault SA", func() {
 	})
 	Context("Verify Vault TLS fail", func() {
 		noobaa := getMiniNooBaa()
-		kms := tlsSAKMSSpec(apiAddress)
-		delete (kms.ConnectionDetails, util.VaultSkipVerify)
-		noobaa.Spec.Security.KeyManagementService = kms
+		k := tlsSAKMSSpec(apiAddress)
+		delete (k.ConnectionDetails, kms.VaultSkipVerify)
+		noobaa.Spec.Security.KeyManagementService = k
 		Specify("Verify API Address", func() {
 			Expect(apiAddressFound).To(BeTrue())
 		})
