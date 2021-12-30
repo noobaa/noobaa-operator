@@ -1198,7 +1198,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "d0e975cb1cad2ce0d5a9e896b378664f378cf1ea22078530f00c4736f91d94c4"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "1a69fb4b66bd89d1073e4d1659a91c05e2e7f9acacfdd0c941c9a8a460dc0912"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1223,6 +1223,10 @@ spec:
     - description: S3 Endpoints
       jsonPath: .status.services.serviceS3.nodePorts
       name: S3-Endpoints
+      type: string
+    - description: STS Endpoints
+      jsonPath: .status.services.serviceSts.nodePorts
+      name: Sts-Endpoints
       type: string
     - description: Actual Image
       jsonPath: .status.actualImage
@@ -2845,9 +2849,63 @@ spec:
                           type: string
                         type: array
                     type: object
+                  serviceSts:
+                    description: ServiceStatus is the status info and network addresses
+                      of a service
+                    properties:
+                      externalDNS:
+                        description: ExternalDNS are external public addresses for
+                          the service
+                        items:
+                          type: string
+                        type: array
+                      externalIP:
+                        description: ExternalIP are external public addresses for
+                          the service LoadBalancerPorts such as AWS ELB provide public
+                          address and load balancing for the service IngressPorts
+                          are manually created public addresses for the service https://kubernetes.io/docs/concepts/services-networking/service/#external-ips
+                          https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer
+                          https://kubernetes.io/docs/concepts/services-networking/ingress/
+                        items:
+                          type: string
+                        type: array
+                      internalDNS:
+                        description: InternalDNS are internal addresses of the service
+                          inside the cluster
+                        items:
+                          type: string
+                        type: array
+                      internalIP:
+                        description: InternalIP are internal addresses of the service
+                          inside the cluster https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+                        items:
+                          type: string
+                        type: array
+                      nodePorts:
+                        description: NodePorts are the most basic network available.
+                          NodePorts use the networks available on the hosts of kubernetes
+                          nodes. This generally works from within a pod, and from
+                          the internal network of the nodes, but may fail from public
+                          network. https://kubernetes.io/docs/concepts/services-networking/service/#nodeport
+                        items:
+                          type: string
+                        type: array
+                      podPorts:
+                        description: 'PodPorts are the second most basic network address.
+                          Every pod has an IP in the cluster and the pods network
+                          is a mesh so the operator running inside a pod in the cluster
+                          can use this address. Note: pod IPs are not guaranteed to
+                          persist over restarts, so should be rediscovered. Note2:
+                          when running the operator outside of the cluster, pod IP
+                          is not accessible.'
+                        items:
+                          type: string
+                        type: array
+                    type: object
                 required:
                 - serviceMgmt
                 - serviceS3
+                - serviceSts
                 type: object
               upgradePhase:
                 description: Upgrade reports the status of the ongoing upgrade process
@@ -3100,7 +3158,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "24c74b0390b2c409073b63fa2a9cac0857923eb1690c53653c5edb2cccf5b10b"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "6adfd84b4ec66fa67d259195abed8c8d675dd469a9ef93a6a7fb623650f4b3da"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3158,6 +3216,7 @@ spec:
           ports:
             - containerPort: 6001
             - containerPort: 6443
+            - containerPort: 7443
           env:
             - name: NOOBAA_DISABLE_COMPRESSION
               valueFrom:
@@ -3591,6 +3650,26 @@ spec:
   wildcardPolicy: None
 `
 
+const Sha256_deploy_internal_route_sts_yaml = "a593179d9e3864dbc953e61cae744cd747ddd41aeb524248597f8f932680854e"
+
+const File_deploy_internal_route_sts_yaml = `apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: noobaa
+  name: sts
+spec:
+  port:
+    targetPort: sts-https
+  tls:
+    termination: reencrypt
+  to:
+    kind: Service
+    name: sts
+    weight: 100
+  wildcardPolicy: None
+`
+
 const Sha256_deploy_internal_secret_empty_yaml = "d63aaeaf7f9c7c1421fcc138ee2f31d2461de0dec2f68120bc9cce367d4d4186"
 
 const File_deploy_internal_secret_empty_yaml = `apiVersion: v1
@@ -3682,6 +3761,25 @@ spec:
       name: md-https
     - port: 7004
       name: metrics
+
+`
+
+const Sha256_deploy_internal_service_sts_yaml = "51e73a53da81ceaad02fb6380658dee5375b824183aba1a27c83251ce62bccb6"
+
+const File_deploy_internal_service_sts_yaml = `apiVersion: v1
+kind: Service
+metadata:
+  name: sts
+  labels:
+    app: noobaa
+spec:
+  type: LoadBalancer
+  selector:
+    noobaa-s3: SYSNAME
+  ports:
+    - port: 443
+      targetPort: 7443
+      name: sts-https
 
 `
 

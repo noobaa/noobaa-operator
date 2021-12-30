@@ -79,6 +79,7 @@ type Reconciler struct {
 	NooBaaPostgresDB          *appsv1.StatefulSet
 	ServiceMgmt               *corev1.Service
 	ServiceS3                 *corev1.Service
+	ServiceSts                *corev1.Service
 	ServiceDb                 *corev1.Service
 	ServiceDbPg               *corev1.Service
 	SecretServer              *corev1.Secret
@@ -106,6 +107,7 @@ type Reconciler struct {
 	CephObjectStore           *cephv1.CephObjectStore
 	RouteMgmt                 *routev1.Route
 	RouteS3                   *routev1.Route
+	RouteSts                  *routev1.Route
 	DeploymentEndpoint        *appsv1.Deployment
 	DefaultDeploymentEndpoint *corev1.PodSpec
 	HPAEndpoint               *autoscalingv1.HorizontalPodAutoscaler
@@ -142,6 +144,7 @@ func NewReconciler(
 		ServiceDbPg:         util.KubeObject(bundle.File_deploy_internal_service_db_yaml).(*corev1.Service),
 		ServiceMgmt:         util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
 		ServiceS3:           util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
+		ServiceSts:          util.KubeObject(bundle.File_deploy_internal_service_sts_yaml).(*corev1.Service),
 		SecretServer:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretDB:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretOp:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
@@ -162,6 +165,7 @@ func NewReconciler(
 		CephObjectStoreUser: util.KubeObject(bundle.File_deploy_internal_ceph_objectstore_user_yaml).(*cephv1.CephObjectStoreUser),
 		RouteMgmt:           util.KubeObject(bundle.File_deploy_internal_route_mgmt_yaml).(*routev1.Route),
 		RouteS3:             util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
+		RouteSts:            util.KubeObject(bundle.File_deploy_internal_route_sts_yaml).(*routev1.Route),
 		DeploymentEndpoint:  util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
 		HPAEndpoint:         util.KubeObject(bundle.File_deploy_internal_hpa_endpoint_yaml).(*autoscalingv1.HorizontalPodAutoscaler),
 		UpgradeJob:          util.KubeObject(bundle.File_deploy_internal_job_upgrade_db_yaml).(*batchv1.Job),
@@ -178,6 +182,7 @@ func NewReconciler(
 	r.NooBaaPostgresDB.Namespace = r.Request.Namespace
 	r.ServiceMgmt.Namespace = r.Request.Namespace
 	r.ServiceS3.Namespace = r.Request.Namespace
+	r.ServiceSts.Namespace = r.Request.Namespace
 	r.ServiceDb.Namespace = r.Request.Namespace
 	r.ServiceDbPg.Namespace = r.Request.Namespace
 	r.SecretServer.Namespace = r.Request.Namespace
@@ -202,6 +207,7 @@ func NewReconciler(
 	r.CephObjectStoreUser.Namespace = r.Request.Namespace
 	r.RouteMgmt.Namespace = r.Request.Namespace
 	r.RouteS3.Namespace = r.Request.Namespace
+	r.RouteSts.Namespace = r.Request.Namespace
 	r.DeploymentEndpoint.Namespace = r.Request.Namespace
 	r.HPAEndpoint.Namespace = r.Request.Namespace
 	r.UpgradeJob.Namespace = r.Request.Namespace
@@ -215,6 +221,7 @@ func NewReconciler(
 	r.NooBaaPostgresDB.Name = r.Request.Name + "-db-pg"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
 	r.ServiceS3.Name = "s3"
+	r.ServiceSts.Name = "sts"
 	r.ServiceDb.Name = r.Request.Name + "-db"
 	r.ServiceDbPg.Name = r.Request.Name + "-db-pg"
 	r.SecretServer.Name = r.Request.Name + "-server"
@@ -239,6 +246,7 @@ func NewReconciler(
 	r.ServiceMonitorS3.Name = r.ServiceS3.Name + "-service-monitor"
 	r.RouteMgmt.Name = r.ServiceMgmt.Name
 	r.RouteS3.Name = r.ServiceS3.Name
+	r.RouteSts.Name = r.ServiceSts.Name
 	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
 	r.HPAEndpoint.Name = r.Request.Name + "-endpoint"
 	r.UpgradeJob.Name = r.Request.Name + "-upgrade-job"
@@ -246,6 +254,7 @@ func NewReconciler(
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name
 	r.RouteS3.Spec.To.Name = r.ServiceS3.Name
+	r.RouteSts.Spec.To.Name = r.ServiceSts.Name
 
 	// Set the target deployment for the horizontal auto scaler
 	r.HPAEndpoint.Spec.ScaleTargetRef.Name = r.DeploymentEndpoint.Name
@@ -278,6 +287,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.CoreAppConfig)
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
+	util.KubeCheck(r.ServiceSts)
 	if r.NooBaa.Spec.MongoDbURL == "" {
 		if r.NooBaa.Spec.DBType == "postgres" {
 			util.KubeCheck(r.SecretDB)
@@ -309,6 +319,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheckOptional(r.ServiceMonitorS3)
 	util.KubeCheckOptional(r.RouteMgmt)
 	util.KubeCheckOptional(r.RouteS3)
+	util.KubeCheckOptional(r.RouteSts)
 }
 
 // Reconcile reads that state of the cluster for a System object,

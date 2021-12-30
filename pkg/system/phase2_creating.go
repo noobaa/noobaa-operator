@@ -59,6 +59,12 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	if err := r.ReconcileObjectOptional(r.RouteS3, nil); err != nil {
 		return err
 	}
+	if err := r.ReconcileObject(r.ServiceSts, r.SetDesiredServiceSts); err != nil {
+		return err
+	}
+	if err := r.ReconcileObjectOptional(r.RouteSts, nil); err != nil {
+		return err
+	}
 	// the credentials that are created by cloud-credentials-operator sometimes take time
 	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
 	// creating the credential request as early as possible to try and avoid it
@@ -189,6 +195,18 @@ func (r *Reconciler) SetDesiredServiceS3() error {
 	}
 	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
 	r.ServiceS3.Labels["noobaa-s3-svc"] = "true"
+	return nil
+}
+
+// SetDesiredServiceSts updates the ServiceSts as desired for reconciling
+func (r *Reconciler) SetDesiredServiceSts() error {
+	if r.NooBaa.Spec.DisableLoadBalancerService {
+		r.ServiceSts.Spec.Type = corev1.ServiceTypeClusterIP
+	} else {
+		// It is here in case disableLoadBalancerService is removed from the crd or changed to false
+		r.ServiceSts.Spec.Type = corev1.ServiceTypeLoadBalancer
+	}
+	r.ServiceSts.Spec.Selector["noobaa-s3"] = r.Request.Name
 	return nil
 }
 
