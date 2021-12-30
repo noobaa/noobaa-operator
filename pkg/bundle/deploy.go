@@ -5238,6 +5238,24 @@ rules:
   - use
 `
 
+const Sha256_deploy_role_ui_yaml = "49d210f2ec7facbd486e6ac96515c1d2886f26afe6f7155be3994b4f0b1d0311"
+
+const File_deploy_role_ui_yaml = `apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: noobaa-odf-ui
+rules:
+  - verbs:
+      - get
+      - watch
+      - list
+    apiGroups:
+      - noobaa.io
+    resources:
+      - noobaas
+      - bucketclasses
+`
+
 const Sha256_deploy_scc_yaml = "cbb071961f7dd77e5bdca7e36b89e1e1982265c4e7dc95f00109d0acc64a3c06"
 
 const File_deploy_scc_yaml = `apiVersion: security.openshift.io/v1
@@ -5338,5 +5356,13 @@ const File_deploy_service_account_endpoint_yaml = `apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: noobaa-endpoint
+`
+
+const Sha256_deploy_service_account_ui_yaml = "d6cb0e92fdb350148399e1ac42bfa640e254bdbb295c9a15dc9edfd4335e73f6"
+
+const File_deploy_service_account_ui_yaml = `apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: noobaa-odf-ui
 `
 
