@@ -40,10 +40,10 @@ spec:
             - init_endpoint
           resources:
             requests:
-              cpu: "1"
+              cpu: "999m"
               memory: "2Gi"
             limits:
-              cpu: "1"
+              cpu: "999m"
               memory: "2Gi"
           securityContext:
             fsGroupChangePolicy: "OnRootMismatch"

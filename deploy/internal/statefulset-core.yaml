@@ -50,10 +50,10 @@ spec:
               readOnly: true
           resources:
             requests:
-              cpu: "1"
+              cpu: "999m"
               memory: "4Gi"
             limits:
-              cpu: "1"
+              cpu: "999m"
               memory: "4Gi"
           ports:
             - containerPort: 8080
