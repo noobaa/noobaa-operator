@@ -2889,7 +2889,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "26b0dc615d97e493cac78d7050e3156d01a1033e3b7b6397fd037a6c74971c0b"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "24c74b0390b2c409073b63fa2a9cac0857923eb1690c53653c5edb2cccf5b10b"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -2933,10 +2933,10 @@ spec:
             - init_endpoint
           resources:
             requests:
-              cpu: "1"
+              cpu: "999m"
               memory: "2Gi"
             limits:
-              cpu: "1"
+              cpu: "999m"
               memory: "2Gi"
           securityContext:
             fsGroupChangePolicy: "OnRootMismatch"
@@ -3529,7 +3529,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "f7bf9089a492b34c463bd92f621c19ba6908c660518b71b90f1db5b2ab3ee055"
+const Sha256_deploy_internal_statefulset_core_yaml = "9bf8ab915f3d51fe381dd20307cc917791b8f8a34a0384d6ce28cc2234b09014"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3583,10 +3583,10 @@ spec:
               readOnly: true
           resources:
             requests:
-              cpu: "1"
+              cpu: "999m"
               memory: "4Gi"
             limits:
-              cpu: "1"
+              cpu: "999m"
               memory: "4Gi"
           ports:
             - containerPort: 8080
