@@ -140,7 +140,7 @@ func CmdCreateCacheNamespaceBucketclass() *cobra.Command {
 	// cache namespace policy
 	cmd.Flags().String("hub-resource", "",
 		"Set the namespace read and write resource")
-	cmd.Flags().Uint32("ttl", 60000,
+	cmd.Flags().Uint32("ttl", 0,
 		"Set the namespace cache ttl")
 
 	// placement policy flags
