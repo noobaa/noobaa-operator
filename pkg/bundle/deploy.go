@@ -1,6 +1,6 @@
 package bundle
 
-const Version = "5.9.0"
+const Version = "5.9.2"
 
 const Sha256_deploy_cluster_role_yaml = "b3be23b51cbfad068dcf49bffa5f6af04c99dfc9623e2656f872e5f0643a8aeb"
 
@@ -4676,7 +4676,7 @@ volumes:
 - secret
 `
 
-const Sha256_deploy_scc_endpoint_yaml = "5b7d6160b89ee45394d9c972fdee8a1f7527fd6bc87de5c90958c4386cd877e5"
+const Sha256_deploy_scc_endpoint_yaml = "3d3cdf92c4daf77a3754a3c6bd9248d7fa37857e4acd523ec6b3e071961b1c6f"
 
 const File_deploy_scc_endpoint_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -4735,3 +4735,4 @@ kind: ServiceAccount
 metadata:
   name: noobaa-endpoint
 `
+
