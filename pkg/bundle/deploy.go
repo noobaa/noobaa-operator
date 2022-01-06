@@ -1,6 +1,6 @@
 package bundle
 
-const Version = "5.9.0"
+const Version = "5.9.2"
 
 const Sha256_deploy_cluster_role_yaml = "b3be23b51cbfad068dcf49bffa5f6af04c99dfc9623e2656f872e5f0643a8aeb"
 
@@ -2646,7 +2646,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "9e67a262b53e9b336a0d2810d3bf47b373704796ba7007b637492a3fac549ee7"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "26b0dc615d97e493cac78d7050e3156d01a1033e3b7b6397fd037a6c74971c0b"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -2654,8 +2654,6 @@ metadata:
   labels:
     app: noobaa
   name: noobaa-endpoint
-  annotations:
-    ConfigMapHash: ""
 spec:
   replicas: 1
   selector:
@@ -2671,6 +2669,8 @@ spec:
       labels:
         noobaa-s3: noobaa
         app: noobaa
+      annotations:
+        noobaa.io/configmap-hash: ""
     spec:
       serviceAccountName: noobaa-endpoint
       volumes:
@@ -2696,6 +2696,9 @@ spec:
               cpu: "1"
               memory: "2Gi"
           securityContext:
+            fsGroupChangePolicy: "OnRootMismatch"
+            seLinuxOptions:
+              type: "spc_t"
             capabilities:
               add: ["SETUID", "SETGID"]
           ports:
@@ -3268,7 +3271,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "002ed83aac0df2458a67fe77ce70d2028845a415f5fc49ceaaa007ab159a2e3b"
+const Sha256_deploy_internal_statefulset_core_yaml = "f7bf9089a492b34c463bd92f621c19ba6908c660518b71b90f1db5b2ab3ee055"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3276,8 +3279,6 @@ metadata:
   name: noobaa-core
   labels:
     app: noobaa
-  annotations:
-    ConfigMapHash: ""
 spec:
   replicas: 1
   selector:
@@ -3292,6 +3293,8 @@ spec:
         app: noobaa
         noobaa-core: noobaa
         noobaa-mgmt: noobaa
+      annotations:
+        noobaa.io/configmap-hash: ""
     spec:
       serviceAccountName: noobaa
       volumes:
@@ -4673,7 +4676,7 @@ volumes:
 - secret
 `
 
-const Sha256_deploy_scc_endpoint_yaml = "5b7d6160b89ee45394d9c972fdee8a1f7527fd6bc87de5c90958c4386cd877e5"
+const Sha256_deploy_scc_endpoint_yaml = "3d3cdf92c4daf77a3754a3c6bd9248d7fa37857e4acd523ec6b3e071961b1c6f"
 
 const File_deploy_scc_endpoint_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -4701,7 +4704,7 @@ requiredDropCapabilities:
 runAsUser:
   type: RunAsAny
 seLinuxContext:
-  type: MustRunAs
+  type: RunAsAny
 supplementalGroups:
   type: RunAsAny
 users:

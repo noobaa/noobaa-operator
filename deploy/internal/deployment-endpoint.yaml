@@ -4,8 +4,6 @@ metadata:
   labels:
     app: noobaa
   name: noobaa-endpoint
-  annotations:
-    ConfigMapHash: ""
 spec:
   replicas: 1
   selector:
@@ -21,6 +19,8 @@ spec:
       labels:
         noobaa-s3: noobaa
         app: noobaa
+      annotations:
+        noobaa.io/configmap-hash: ""
     spec:
       serviceAccountName: noobaa-endpoint
       volumes:
@@ -46,6 +46,9 @@ spec:
               cpu: "1"
               memory: "2Gi"
           securityContext:
+            fsGroupChangePolicy: "OnRootMismatch"
+            seLinuxOptions:
+              type: "spc_t"
             capabilities:
               add: ["SETUID", "SETGID"]
           ports:

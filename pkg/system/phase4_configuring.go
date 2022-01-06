@@ -28,7 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -90,9 +89,6 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 		return err
 	}
 	if err := r.ReconcileDeploymentEndpointStatus(); err != nil {
-		return err
-	}
-	if err := r.ReconcileSystemConfigMap(); err != nil {
 		return err
 	}
 	return nil
@@ -400,11 +396,11 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
 			util.ReflectEnvVariable(&c.Env, "NO_PROXY")
 
-			if r.DeploymentEndpoint.ObjectMeta.Annotations == nil {
-				r.DeploymentEndpoint.ObjectMeta.Annotations = make(map[string]string)
+			if r.DeploymentEndpoint.Spec.Template.Annotations == nil {
+				r.DeploymentEndpoint.Spec.Template.Annotations = make(map[string]string)
 			}
 
-			r.SetConfigMapAnnotation(r.DeploymentEndpoint.ObjectMeta.Annotations)
+			r.DeploymentEndpoint.Spec.Template.Annotations["noobaa.io/configmap-hash"] = r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"]
 
 			return r.setDesiredEndpointMounts(podSpec, c)
 		}
@@ -1469,49 +1465,5 @@ func (r *Reconciler) ReconcileNamespaceStores(namespaceResources []nb.NamespaceR
 			}
 		}
 	}
-	return nil
-}
-
-// ReconcileSystemConfigMap restarts the core and endpoint pods to recive updates from config map
-func (r *Reconciler) ReconcileSystemConfigMap() error {
-	sha256Hex := util.GetCmDataHash(r.CoreAppConfig.Data)
-
-	if r.DeploymentEndpoint.ObjectMeta.Annotations["ConfigMapHash"] != sha256Hex {
-		epPodList := &corev1.PodList{}
-		epPodSelector, _ := labels.Parse("noobaa-s3=" + r.Request.Name)
-		if !util.KubeList(epPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: epPodSelector}) {
-			r.Logger.Errorf("failed to list to endpoint pods")
-		}
-		r.DeploymentEndpoint.ObjectMeta.Annotations["ConfigMapHash"] = sha256Hex
-
-		if !util.KubeUpdate(r.DeploymentEndpoint) {
-			r.Logger.Infof("NooBaa %q failed to update Deployment Endpoint Config Map Hash", options.SystemName)
-		}
-		for _, pod := range epPodList.Items {
-			util.KubeDeleteNoPolling(&pod)
-		}
-	}
-
-	corePodList := &corev1.PodList{}
-	corePodSelector, _ := labels.Parse("noobaa-core=" + r.Request.Name)
-	if !util.KubeList(corePodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: corePodSelector}) {
-		r.Logger.Errorf("failed to list to core pods")
-	}
-
-	if r.CoreApp.ObjectMeta.Annotations["ConfigMapHash"] != sha256Hex {
-		r.CoreApp.ObjectMeta.Annotations["ConfigMapHash"] = sha256Hex
-
-		if !util.KubeUpdate(r.CoreApp) {
-			r.Logger.Infof("NooBaa %q failed to update Core STS Config Map Hash", options.SystemName)
-		}
-
-		for _, pod := range corePodList.Items {
-			if pod.DeletionTimestamp == nil {
-				util.KubeDeleteNoPolling(&pod)
-			}
-		}
-
-	}
-
 	return nil
 }
