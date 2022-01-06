@@ -16,7 +16,7 @@ require (
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/go-openapi/spec v0.19.8
 	github.com/google/uuid v1.1.2
-	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20210818162813-3eee31c01875
+	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20220104111223-de4727ccf042
 	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
 	github.com/onsi/ginkgo v1.16.4
