@@ -11,6 +11,13 @@ import (
 	admissionv1 "k8s.io/api/admission/v1"
 )
 
+// ResourceValidator struct holds a resource information required to preform the validations
+type ResourceValidator struct {
+	Logger     *logrus.Entry
+	arRequest  *admissionv1.AdmissionReview
+	arResponse *admissionv1.AdmissionReview
+}
+
 //ServerHandler listen to admission requests and serve responses
 type ServerHandler struct {
 }
@@ -70,4 +77,10 @@ func (gs *ServerHandler) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
 		return
 	}
+}
+
+// SetValidationResult responsible of assinging the return values of a validation into the response appropriate fields
+func (rv *ResourceValidator) SetValidationResult(isAllowed bool, message string) {
+	rv.arResponse.Response.Allowed = isAllowed
+	rv.arResponse.Response.Result.Message = message
 }

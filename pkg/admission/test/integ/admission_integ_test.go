@@ -131,7 +131,7 @@ var _ = Describe("Admission server integration tests", func() {
 				result, err = KubeCreate(testNamespacestore)
 				Expect(result).To(BeFalse())
 				Ω(err).Should(HaveOccurred())
-				Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: Invalid namespacestore type, please provide a valid one"))
+				Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: Invalid Namespacestore type, please provide a valid Namespacestore type"))
 			})
 		})
 		Context("Pass create validations", func() {
@@ -241,7 +241,7 @@ var _ = Describe("Admission server integration tests", func() {
 			result, err = KubeDelete(defaultBs)
 			Expect(result).To(BeFalse())
 			Ω(err).Should(HaveOccurred())
-			Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: Cannot complete because pool \"noobaa-default-backing-store\" in \"IN_USE\" state"))
+			Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: cannot complete because pool \"noobaa-default-backing-store\" in \"IN_USE\" state"))
 		})
 		It("Should Allow", func() {
 			// delete "bs-name" backingstore
