@@ -17,6 +17,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -1771,4 +1772,26 @@ func LoadBucketReplicationJSON(replicationJSONFilePath string) (string, error) {
 	logrus.Infof("✅ Successfully loaded bucket replication %v", string(bytes))
 
 	return string(bytes), nil
+}
+
+// GetAvailabeKubeCli will check which k8s cli command is availabe in the system: oc or kubectl
+// returns one of: "oc" or "kubectl"
+func GetAvailabeKubeCli() string {
+	kubeCommand := "kubectl"
+	cmd := exec.Command(kubeCommand)
+	err := cmd.Run(); 
+	if err == nil {
+		log.Printf("✅ kubectl exists - will use it for diagnostics\n")
+	} else {
+		log.Printf("❌ Could not find kubectl, will try to use oc instead, error: %s\n", err)
+		kubeCommand := "oc"
+		cmd = exec.Command(kubeCommand)
+		err = cmd.Run(); 
+		if err == nil {
+			log.Printf("✅ oc exists - will use it for diagnostics\n")
+		} else {
+			log.Fatalf("❌ Could not find both kubectl and oc, will stop running diagnostics, error: %s", err)
+		}
+	}
+	return kubeCommand
 }
