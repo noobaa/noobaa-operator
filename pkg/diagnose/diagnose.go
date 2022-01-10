@@ -22,9 +22,10 @@ import (
 
 // Collector configuration for diagnostics
 type Collector struct {
-	folderName string
-	kubeconfig string
-	log        *logrus.Entry
+	folderName  string
+	kubeconfig  string
+	kubeCommand string
+	log         *logrus.Entry
 }
 
 // Cmd returns a CLI command
@@ -58,6 +59,9 @@ func RunCollect(cmd *cobra.Command, args []string) {
 	if err != nil {
 		c.log.Fatalf(`❌ Could not create directory %s, reason: %s`, c.folderName, err)
 	}
+
+	c.kubeCommand = util.GetAvailabeKubeCli();
+
 
 	// Define to select only noobaa pods within the namespace
 	podSelector, _ := labels.Parse("app=noobaa")
@@ -121,7 +125,7 @@ func (c *Collector) CollectCRs() {
 
 // CollectDescribe collects output of the "describe pod" of a single pod
 func (c *Collector) CollectDescribe(Kind string, Name string) {
-	cmd := exec.Command("kubectl", "describe", Kind, "-n", options.Namespace, Name)
+	cmd := exec.Command(c.kubeCommand, "describe", Kind, "-n", options.Namespace, Name)
 	// handle custom path for kubeconfig file,
 	// see --kubeconfig cli options
 	if len(c.kubeconfig) > 0 {
