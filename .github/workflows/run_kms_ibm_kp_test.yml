@@ -6,9 +6,8 @@ on: [push, pull_request]
 jobs:
   run-kms-ibm-kp-test:
     env:
-      IBM_INSTANCE_ID: ${{ secrets.IBM_INSTANCE_ID }}
-      IBM_SERVICE_API_KEY: ${{ secrets.IBM_SERVICE_API_KEY }}
-      IBM_CUSTOMER_ROOT_KEY: ${{ secrets.IBM_CUSTOMER_ROOT_KEY }}
+      IBM_KP_INSTANCE_ID: ${{ secrets.IBM_INSTANCE_ID }}
+      IBM_KP_SERVICE_API_KEY: ${{ secrets.IBM_SERVICE_API_KEY }}
     runs-on: ubuntu-latest
     steps:
       - name: checkout

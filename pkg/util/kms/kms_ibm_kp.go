@@ -5,23 +5,16 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/libopenstorage/secrets"
-	"github.com/libopenstorage/secrets/ibm"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	corev1 "k8s.io/api/core/v1"
 )
 
-const (
-	// IbmInstanceIDKey is the Key Protect Service's Instance ID
-	IbmInstanceIDKey   = ibm.IbmInstanceIdKey
-)
-
 //
-// IBM KP K8S secret driver for NooBaa root master key
+// IBM KP driver for NooBaa root master key
 //
 
-// IBM is a NooBaa root master key ibmKpK8sSecret driver
+// IBM is a NooBaa root master key ibmKpSecretStorage driver
 type IBM struct {
 	UID string  // NooBaa system UID
 }
@@ -34,10 +27,6 @@ func (i *IBM) Config(config map[string]string, tokenSecretName, namespace string
 		c[k] = v
 	}
 
-	// Pass the token k8s secret to the ibmKpK8sSecret implementation
-	c[secretName]      = tokenSecretName
-	c[secretNamespace] = namespace
-
 	// Cloud service IBM KP Instance ID should be passed from NooBaa CR
 	instanceID, instanceIDFound  := config[IbmInstanceIDKey]
 	if !instanceIDFound {
@@ -45,10 +34,9 @@ func (i *IBM) Config(config map[string]string, tokenSecretName, namespace string
 	}
 	os.Setenv(IbmInstanceIDKey, instanceID)
 
-	// Fetch API Key and Customer Root Key from k8s secret
-	_, api := syscall.Getenv(ibm.IbmServiceApiKey)
-	_, crk := syscall.Getenv(ibm.IbmCustomerRootKey)
-	if !api || !crk {
+	// Fetch API Key from k8s secret
+	_, api := syscall.Getenv(IbmServiceAPIKey)
+	if !api {
 		if err := i.keysFromSecret(tokenSecretName, namespace, c); err != nil {
 			return nil, err
 		}
@@ -57,7 +45,7 @@ func (i *IBM) Config(config map[string]string, tokenSecretName, namespace string
 	return c, nil
 }
 
-// keysFromSecret reads API Key and Customer Root Key from k8s secret
+// keysFromSecret reads API Key from k8s secret
 func (*IBM) keysFromSecret(tokenSecretName, namespace string, c map[string]interface{}) error {
 	secret := &corev1.Secret{}
 	secret.Namespace = namespace
@@ -66,7 +54,7 @@ func (*IBM) keysFromSecret(tokenSecretName, namespace string, c map[string]inter
 		return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
 	}
 
-	for _, key := range []string{ibm.IbmServiceApiKey, ibm.IbmCustomerRootKey} {
+	for _, key := range []string{IbmServiceAPIKey} {
 		val, keyOk := secret.StringData[key]
 		if !keyOk {
 			return fmt.Errorf(`❌ Could not find key %v in secret %q in namespace %q`, key, secret.Name, secret.Namespace)
@@ -88,20 +76,17 @@ func (i *IBM) Name() string {
 	return i.Path()
 }
 
-// custom  key context is used for plaintext keys
-var customCtx = map[string]string{ secrets.CustomSecretData: "true"}
-
 // GetContext returns context used for secret get operation
 func (*IBM) GetContext() map[string]string {
-	return customCtx
+	return nil
 }
 
 // SetContext returns context used for secret set operation
 func (*IBM) SetContext() map[string]string {
-	return customCtx
+	return nil
 }
 
 // DeleteContext returns context used for secret delete operation
 func (*IBM) DeleteContext() map[string]string {
-	return customCtx
+	return nil
 }

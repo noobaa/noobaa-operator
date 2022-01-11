@@ -58,7 +58,7 @@ func NewKMS(connectionDetails map[string]string, tokenSecretName, name, namespac
 		driver = &K8S{name, namespace}
 	case vault.Name:
 		driver = &Vault{uid}
-	case IbmKpK8sSecretName:
+	case IbmKpSecretStorageName:
 		driver = &IBM{uid}
 	default:
 		return nil, fmt.Errorf("Unsupported KMS type %v", t)

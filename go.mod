@@ -9,6 +9,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.12
 	github.com/Azure/go-autorest/autorest/adal v0.9.5
 	github.com/Azure/go-autorest/autorest/to v0.3.1-0.20191028180845-3492b2aff503
+	github.com/IBM/keyprotect-go-client v0.7.0
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
 	github.com/aws/aws-sdk-go v1.37.14
 	github.com/blang/semver/v4 v4.0.0
@@ -27,7 +28,6 @@ require (
 	github.com/operator-framework/api v0.10.0
 	github.com/operator-framework/operator-lib v0.6.0
 	github.com/pkg/errors v0.9.1
-	github.com/portworx/kvdb v0.0.0-20200929023115-b312c7519467
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.46.0
 	github.com/rook/rook v1.6.5
 	github.com/sirupsen/logrus v1.7.0
