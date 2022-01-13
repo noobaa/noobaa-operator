@@ -5,8 +5,6 @@ import (
 	"strings"
 
 	"github.com/libopenstorage/secrets"
-	"github.com/libopenstorage/secrets/k8s"
-	"github.com/libopenstorage/secrets/vault"
 )
 
 ////////////////////////////////////////////////////////////////////////////
@@ -39,6 +37,39 @@ type Driver interface {
 	DeleteContext() map[string]string
 }
 
+// DriverCtor is a Driver constructor function type
+type DriverCtor func(
+	name string,
+	namespace string,
+	uid string,
+) (Driver)
+
+// kmsDrivers is a map of all registered drivers
+var kmsDrivers = make(map[string]DriverCtor)
+
+// RegisterDriver adds a new KMS driver
+func RegisterDriver(name string, ctor DriverCtor) error {
+	if _, exists := kmsDrivers[name]; exists {
+		return fmt.Errorf("KMS driver %v is already registered", name)
+	}
+	kmsDrivers[name] = ctor
+	return nil
+}
+
+// NewDriver returns a new instance of KMS driver identified by
+// the supplied driver type.
+func NewDriver(
+	dType string,
+	name string,
+	namespace string,
+	uid string,
+) (Driver) {
+	if dCtor, exists := kmsDrivers[dType]; exists {
+		return dCtor(name, namespace, uid)
+	}
+	return nil
+}
+
 // KMS implements SingleSecret interface using backend implementation of
 // secrets.Secrets interface and using backend type specific driver
 type KMS struct {
@@ -52,16 +83,10 @@ type KMS struct {
 func NewKMS(connectionDetails map[string]string, tokenSecretName, name, namespace, uid string) (*KMS, error) {
 	t := kmsType(connectionDetails)
 
-	var driver Driver
-	switch t {
-	case k8s.Name:
-		driver = &K8S{name, namespace}
-	case vault.Name:
-		driver = &Vault{uid}
-	case IbmKpSecretStorageName:
-		driver = &IBM{uid}
-	default:
-		return nil, fmt.Errorf("Unsupported KMS type %v", t)
+	// Create KMS driver
+	driver := NewDriver(t, name, namespace, uid)
+	if driver == nil {
+		return nil, fmt.Errorf("Unsupported KMS driver type %v", t)
 	}
 
 	// Generate backend configuration using backend driver instance

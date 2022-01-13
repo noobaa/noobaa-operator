@@ -19,6 +19,15 @@ type IBM struct {
 	UID string  // NooBaa system UID
 }
 
+// NewIBM is IBM KP driver constructor
+func NewIBM(
+	name string,
+	namespace string,
+	uid string,
+) (Driver) {
+	return &IBM{uid}
+}
+
 // Config returns ibmKpK8sSecret secret config
 func (i *IBM) Config(config map[string]string, tokenSecretName, namespace string) (map[string]interface{}, error) {
 	// create a type correct copy of the configuration
@@ -89,4 +98,11 @@ func (*IBM) SetContext() map[string]string {
 // DeleteContext returns context used for secret delete operation
 func (*IBM) DeleteContext() map[string]string {
 	return nil
+}
+
+// Register IBM KP driver with KMS layer
+func init() {
+	if err := RegisterDriver(IbmKpSecretStorageName, NewIBM); err != nil {
+		panic(err.Error())
+	}
 }
