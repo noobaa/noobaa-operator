@@ -59,6 +59,8 @@ type Client interface {
 	PutBucketReplicationAPI(BucketReplicationParams) error
 	ValidateReplicationAPI(BucketReplicationParams) error
 	DeleteBucketReplicationAPI(DeleteBucketReplicationParams) error
+
+	GenerateAccountKeysAPI(GenerateAccountKeysParams) error
 }
 
 // ReadAuthAPI calls auth_api.read_auth()
@@ -400,5 +402,11 @@ func (c *RPCClient) ValidateReplicationAPI(params BucketReplicationParams) error
 // DeleteBucketReplicationAPI calls bucket_api.delete_bucket_replication()
 func (c *RPCClient) DeleteBucketReplicationAPI(params DeleteBucketReplicationParams) error {
 	req := &RPCMessage{API: "bucket_api", Method: "delete_bucket_replication", Params: params}
+	return c.Call(req, nil)
+}
+
+// GenerateAccountKeysAPI calls account_api.generate_account_keys()
+func (c *RPCClient) GenerateAccountKeysAPI(params GenerateAccountKeysParams) error {
+	req := &RPCMessage{API: "account_api", Method: "generate_account_keys", Params: params}
 	return c.Call(req, nil)
 }

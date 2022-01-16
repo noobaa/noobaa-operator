@@ -540,7 +540,48 @@ function account_cycle {
     test_noobaa should_fail account create account5 --full_permission --allowed_buckets ${buckets[0]},${buckets[1]} # can't have both
     test_noobaa should_fail account create account6 --allowed_buckets no_such_bucket --default_resource ${backingstores[0]}
     test_noobaa should_fail account create account7 --full_permission --default_resource no_such_backingstore
+    #account1 is have a secret but and have CRD
+    account_regenerate_keys account1
+    #admin account is have a secret but no CRD 
+    account_regenerate_keys "admin@noobaa.io"
+    #admin account is don't have a secret and don't have CRD 
+    account_regenerate_keys "operator@noobaa.io"
     echo_time "✅  noobaa account cycle is done"
+}
+
+function account_regenerate_keys {
+    local account=${1}
+    local AWS_ACCESS_KEY_ID
+    local AWS_SECRET_ACCESS_KEY
+    while read line
+    do
+        if [[ ${line} =~ (AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY) ]]
+        then
+            eval $(echo ${line//\"/} | sed -e 's/ //g' -e 's/:/=/g')
+        fi
+    done < <(test_noobaa account status ${account})
+
+    local ACCESS_KEY_ID_before=${AWS_ACCESS_KEY_ID}
+    local SECRET_ACCESS_KEY_before=${AWS_SECRET_ACCESS_KEY}
+    while read line
+    do
+        if [[ ${line} =~ (AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY) ]]
+        then
+            eval $(echo ${line//\"/} | sed -e 's/ //g' -e 's/:/=/g')
+        fi
+    done < <(yes | test_noobaa account regenerate ${account})
+
+    if [ "${AWS_ACCESS_KEY_ID}" == "${ACCESS_KEY_ID_before}" ]
+    then
+        echo_time "❌ Looks like the ACCESS_KEY were not regenerated, Exiting"
+        exit 1
+    fi
+
+    if [ "${AWS_SECRET_ACCESS_KEY}" == "${SECRET_ACCESS_KEY_before}" ]
+    then
+        echo_time "❌ Looks like the SECRET_ACCESS were not regenerated, Exiting"
+        exit 1
+    fi
 }
 
 function delete_backingstore_path {
