@@ -751,12 +751,14 @@ func (r *Reconciler) ReconcileRootSecret() error {
 
 	v, err := k.Get()
 	if err != nil {
+		r.Logger.Errorf("ReconcileRootSecret, KMS Get error %v", err)
 		// the KMS root key was empty
 		// Initialize external KMS with a randomly generated key
 		if err == secrets.ErrInvalidSecretId {
 			r.SecretRootMasterKey = util.RandomBase64(32)
 			err := k.Set(r.SecretRootMasterKey)
 			if err != nil {
+				r.Logger.Errorf("ReconcileRootSecret, KMS Set error %v", err)
 				r.setKMSConditionStatus(nbv1.ConditionKMSErrorWrite)
 				return err
 			}

@@ -10,6 +10,15 @@ type K8S struct {
 	ns   string  // NooBaa system namespace
 }
 
+// NewK8S is Kubernetes secret driver constructor
+func NewK8S(
+	name string,
+	namespace string,
+	uid string,
+) (Driver) {
+	return &K8S{name, namespace}
+}
+
 //
 // Kubernetes secret driver for root master key
 //
@@ -48,4 +57,11 @@ func (k *K8S) DeleteContext() map[string]string {
 // Config returns this driver secret config
 func (k *K8S) Config(map[string]string, string, string) (map[string]interface{}, error) {
 	return nil, nil
+}
+
+// Register Kubernetes secret driver with KMS layer
+func init() {
+	if err := RegisterDriver(k8s.Name, NewK8S); err != nil {
+		panic(err.Error())
+	}
 }

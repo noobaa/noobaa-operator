@@ -28,6 +28,15 @@ type Vault struct {
 	UID string  // NooBaa system UID
 }
 
+// NewVault is vault driver constructor
+func NewVault(
+	name string,
+	namespace string,
+	uid string,
+) (Driver) {
+	return &Vault{uid}
+}
+
 //
 // Vault specific driver for root master key
 //
@@ -164,4 +173,11 @@ func writeCrtsToFile(secretName string, namespace string, secretValue []byte, en
 		return "", fmt.Errorf("can not set env var %v %v", envVarKey, envVarValue)
 	}
 	return envVarValue, nil
+}
+
+// Register Vault driver with KMS layer
+func init() {
+	if err := RegisterDriver(vault.Name, NewVault); err != nil {
+		panic(err.Error())
+	}
 }

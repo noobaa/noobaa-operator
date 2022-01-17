@@ -7,6 +7,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/noobaa/noobaa-operator/v5/pkg/util/kms"
 )
 
 var logger *log.Logger
@@ -20,7 +22,7 @@ func TestIBMKPKMS(t *testing.T) {
 		t.Skip() // Not an integration test, skip
 	}
 
-	id, idOk := os.LookupEnv("IBM_INSTANCE_ID")
+	id, idOk := os.LookupEnv(kms.IbmInstanceIDKey)
 	if !idOk || id == "" {
 		t.Skip() // No access to secrets
 	}

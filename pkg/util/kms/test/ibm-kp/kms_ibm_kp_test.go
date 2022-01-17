@@ -29,36 +29,38 @@ func ibmKpKmsSpec(token, instanceID string) nbv1.KeyManagementServiceSpec {
 	k := nbv1.KeyManagementServiceSpec{}
 	k.TokenSecretName = token
 	k.ConnectionDetails = map[string]string{
-		kms.Provider: kms.IbmKpK8sSecretName,
+		kms.Provider: kms.IbmKpSecretStorageName,
 		kms.IbmInstanceIDKey : instanceID,
 	}
 
 	return k
 }
 
-func checkExternalSecret(noobaa *nbv1.NooBaa, expectExists bool) {
+func checkExternalSecret(tokenSecretName string, instanceID string, noobaa *nbv1.NooBaa, expectExists bool) {
+
 	k := noobaa.Spec.Security.KeyManagementService
-
-	secret := &corev1.Secret{}
-	secret.Name = k.TokenSecretName
-	secret.Namespace = noobaa.Namespace
-	_, _, err := util.KubeGet(secret)
-	Expect(err).To(BeNil())
-
 	uid := string(noobaa.UID)
 	driver := &kms.IBM{uid}
-	secretID := driver.Path()
-	wdekName := "wdek_" + secretID
-	_, ok := secret.Data[wdekName]
-	Expect(ok == expectExists).To(BeTrue())
+
+	// Generate backend configuration using backend driver instance
+	c, err := driver.Config(k.ConnectionDetails, k.TokenSecretName, noobaa.Namespace)
+	Expect(err).To(BeNil())
+	
+	// Construct new backend
+	s, err := secrets.New(kms.IbmKpSecretStorageName, c)
+	Expect(err).To(BeNil())
+
+	// Fetch the key
+	_, err = s.GetSecret(driver.Path(), driver.GetContext())
+	Expect((err == nil) == expectExists).To(BeTrue())
 }
 
-func verifyExternalSecretExists(noobaa *nbv1.NooBaa) {
-	checkExternalSecret(noobaa, true)
+func verifyExternalSecretExists(tokenSecretName string, instanceID string, noobaa *nbv1.NooBaa) {
+	checkExternalSecret(tokenSecretName, instanceID, noobaa, true)
 }
 
-func verifyExternalSecretDeleted(noobaa *nbv1.NooBaa) {
-	checkExternalSecret(noobaa, false)
+func verifyExternalSecretDeleted(tokenSecretName string, instanceID string, noobaa *nbv1.NooBaa) {
+	checkExternalSecret(tokenSecretName, instanceID, noobaa, false)
 }
 
 
@@ -85,10 +87,10 @@ var _ = Describe("KMS - IBM KP", func() {
 			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
 		})
 		Specify("Verify KMS condition Type", func() {
-			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, kms.IbmKpK8sSecretName)).To(BeTrue())
+			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, kms.IbmKpSecretStorageName)).To(BeTrue())
 		})
 		Specify("Verify external secrets exists", func() {
-			verifyExternalSecretExists(noobaa)
+			verifyExternalSecretExists(tokenSecretName, instanceID, noobaa)
 		})
 		Specify("Restart NooBaa operator", func() {
 			podList := &corev1.PodList{}
@@ -106,7 +108,7 @@ var _ = Describe("KMS - IBM KP", func() {
 			Expect(util.KubeDelete(noobaa)).To(BeTrue())
 		})
 		Specify("Verify external secrets deletion", func() {
-			verifyExternalSecretDeleted(noobaa)
+			verifyExternalSecretDeleted(tokenSecretName, instanceID, noobaa)
 		})
 	})
 
@@ -116,7 +118,7 @@ var _ = Describe("KMS - IBM KP", func() {
 		kmsSpec := ibmKpKmsSpec(tokenSecretName, instanceID)
 		k, err := kms.NewKMS(kmsSpec.ConnectionDetails, kmsSpec.TokenSecretName, name, corev1.NamespaceDefault, id)
 		Expect(err).To(BeNil())
-		plainText := uuid.New().String()
+		plainText := util.RandomBase64(32)
 
 		Specify("Test params", func() {
 			logger.Printf("💬 Generated noobaa uuid=%v", id)
@@ -137,6 +139,11 @@ var _ = Describe("KMS - IBM KP", func() {
 			logger.Printf("💬 Read back secret s=%v error=%v", s, err)
 			Expect(err).To(BeNil())
 			Expect(s == plainText).To(BeTrue())
+		})
+		Specify("Verify delete", func() {
+			err := k.Delete()
+			logger.Printf("💬 Delete error=%v", err)
+			Expect(err).To(BeNil())
 		})
 	})
 })
