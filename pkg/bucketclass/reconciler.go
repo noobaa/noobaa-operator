@@ -11,6 +11,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -199,7 +200,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		"noobaa operator started phase 1/2 - \"Verifying\"",
 	)
 
-	err := ValidateBucketClass(r.BucketClass)
+	err := validations.ValidateBucketClass(r.BucketClass)
 	if err != nil {
 		return util.NewPersistentError("ValidationError", err.Error())
 	}
@@ -234,7 +235,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		}
 	}
 	if r.BucketClass.Spec.NamespacePolicy != nil {
-		namespaceStoresArr := GetBucketclassNamespaceStoreArray(r.BucketClass)
+		namespaceStoresArr := validations.GetBucketclassNamespaceStoreArray(r.BucketClass)
 		// check that namespace stores exists and their phase it ready
 		for _, name := range namespaceStoresArr {
 			nsStore := &nbv1.NamespaceStore{

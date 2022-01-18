@@ -12,6 +12,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -264,7 +265,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		"noobaa operator started phase 1/3 - \"Verifying\"",
 	)
 
-	err := ValidateNamespaceStore(r.NamespaceStore)
+	err := validations.ValidateNamespaceStore(r.NamespaceStore)
 	if err != nil {
 		return util.NewPersistentError("NamespaceStoreValidationError", err.Error())
 	}

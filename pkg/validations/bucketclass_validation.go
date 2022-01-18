@@ -1,4 +1,4 @@
-package bucketclass
+package validations
 
 import (
 	"fmt"
