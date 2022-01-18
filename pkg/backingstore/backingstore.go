@@ -13,6 +13,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -363,7 +364,7 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 
 	populate(backStore, secret)
 
-	validationErr := ValidateBackingStore(*backStore)
+	validationErr := validations.ValidateBackingStore(*backStore)
 	if validationErr != nil {
 		log.Fatalf(`❌ %s %s`, validationErr, cmd.UsageString())
 	}

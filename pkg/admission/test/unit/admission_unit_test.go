@@ -4,11 +4,9 @@ import (
 	"fmt"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
-	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
-	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -43,7 +41,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 							},
 						},
 					}
-					err = backingstore.ValidateBSEmptySecretName(*bs)
+					err = validations.ValidateBSEmptySecretName(*bs)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Failed creating the Backingstore, please provide secret name"))
 				})
@@ -58,7 +56,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 							},
 						},
 					}
-					err = backingstore.ValidateBSEmptySecretName(*bs)
+					err = validations.ValidateBSEmptySecretName(*bs)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -75,7 +73,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidateBackingStore(*bs)
+					err = validations.ValidateBackingStore(*bs)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Invalid Backingstore type, please provide a valid Backingstore type"))
 				})
@@ -91,7 +89,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidateBackingStore(*bs)
+					err = validations.ValidateBackingStore(*bs)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -104,7 +102,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						Type: nbv1.StoreTypePVPool,
 					}
 
-					err = backingstore.ValidatePvpoolNameLength(*bs)
+					err = validations.ValidatePvpoolNameLength(*bs)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Unsupported BackingStore name length, please provide a name shorter then 43 characters"))
 				})
@@ -115,7 +113,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						Type: nbv1.StoreTypePVPool,
 					}
 
-					err = backingstore.ValidatePvpoolNameLength(*bs)
+					err = validations.ValidatePvpoolNameLength(*bs)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -128,7 +126,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidateMinVolumeCount(*bs)
+					err = validations.ValidateMinVolumeCount(*bs)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Unsupported volume count, the minimum supported volume count is 1"))
 
@@ -141,7 +139,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidateMinVolumeCount(*bs)
+					err = validations.ValidateMinVolumeCount(*bs)
 					Ω(err).ShouldNot(HaveOccurred())
 
 				})
@@ -155,7 +153,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidateMaxVolumeCount(*bs)
+					err = validations.ValidateMaxVolumeCount(*bs)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Unsupported volume count, the maximum supported volume count is 20"))
 
@@ -168,7 +166,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidateMaxVolumeCount(*bs)
+					err = validations.ValidateMaxVolumeCount(*bs)
 					Ω(err).ShouldNot(HaveOccurred())
 
 				})
@@ -186,7 +184,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidatePvpoolMinVolSize(*bs)
+					err = validations.ValidatePvpoolMinVolSize(*bs)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Invalid volume size, minimum volume size is 16Gi"))
 				})
@@ -203,7 +201,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidatePvpoolMinVolSize(*bs)
+					err = validations.ValidatePvpoolMinVolSize(*bs)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -222,7 +220,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidateSigVersion(bs.Spec.S3Compatible.SignatureVersion)
+					err = validations.ValidateSigVersion(bs.Spec.S3Compatible.SignatureVersion)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Invalid S3 compatible Backingstore signature version, please choose either v2/v4"))
 				})
@@ -239,7 +237,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidateSigVersion(bs.Spec.S3Compatible.SignatureVersion)
+					err = validations.ValidateSigVersion(bs.Spec.S3Compatible.SignatureVersion)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -274,7 +272,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidatePvpoolScaleDown(*bs, *updatedBS)
+					err = validations.ValidatePvpoolScaleDown(*bs, *updatedBS)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Scaling down the number of nodes is not currently supported"))
 				})
@@ -294,7 +292,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidatePvpoolScaleDown(*bs, *updatedBS)
+					err = validations.ValidatePvpoolScaleDown(*bs, *updatedBS)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -316,7 +314,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidateTargetBucketChange(*bs, *updatedBS)
+					err = validations.ValidateTargetBSBucketChange(*bs, *updatedBS)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Changing a Backingstore target bucket is unsupported"))
 				})
@@ -336,7 +334,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 						},
 					}
 
-					err = backingstore.ValidateTargetBucketChange(*bs, *updatedBS)
+					err = validations.ValidateTargetBSBucketChange(*bs, *updatedBS)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -371,7 +369,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							},
 						},
 					}
-					err = namespacestore.ValidateNSEmptySecretName(*ns)
+					err = validations.ValidateNSEmptySecretName(*ns)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Failed creating the namespacestore, please provide secret name"))
 				})
@@ -386,7 +384,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							},
 						},
 					}
-					err = namespacestore.ValidateNSEmptySecretName(*ns)
+					err = validations.ValidateNSEmptySecretName(*ns)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -402,7 +400,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							},
 						},
 					}
-					err = namespacestore.ValidateNamespaceStore(ns)
+					err = validations.ValidateNamespaceStore(ns)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Invalid Namespacestore type, please provide a valid Namespacestore type"))
 				})
@@ -417,7 +415,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							},
 						},
 					}
-					err = namespacestore.ValidateNamespaceStore(ns)
+					err = validations.ValidateNamespaceStore(ns)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -431,7 +429,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							PvcName: "",
 						},
 					}
-					err = namespacestore.ValidateNsStoreNSFS(ns)
+					err = validations.ValidateNsStoreNSFS(ns)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("PvcName must not be empty"))
 				})
@@ -442,7 +440,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							PvcName: "pvc-name",
 						},
 					}
-					err = namespacestore.ValidateNsStoreNSFS(ns)
+					err = validations.ValidateNsStoreNSFS(ns)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -455,7 +453,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							SubPath: "/path",
 						},
 					}
-					err = namespacestore.ValidateNsStoreNSFS(ns)
+					err = validations.ValidateNsStoreNSFS(ns)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("SubPath /path must be a relative path"))
 				})
@@ -467,7 +465,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							SubPath: "../path",
 						},
 					}
-					err = namespacestore.ValidateNsStoreNSFS(ns)
+					err = validations.ValidateNsStoreNSFS(ns)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("SubPath ../path must not contain '..'"))
 				})
@@ -479,7 +477,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 							SubPath: "valid/sub/path",
 						},
 					}
-					err = namespacestore.ValidateNsStoreNSFS(ns)
+					err = validations.ValidateNsStoreNSFS(ns)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -494,7 +492,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 					}
 					ns.Name = "nsfs-too-long-name-should-fail-after-exceeding-63-characters"
 					mountPath := "/nsfs/" + ns.Name
-					err = namespacestore.ValidateNsStoreNSFS(ns)
+					err = validations.ValidateNsStoreNSFS(ns)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal(fmt.Sprintf("MountPath %v must be no more than 63 characters", mountPath)))
 				})
@@ -507,7 +505,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 						},
 					}
 					ns.Name = "nsfs-not-too-long-name"
-					err = namespacestore.ValidateNsStoreNSFS(ns)
+					err = validations.ValidateNsStoreNSFS(ns)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -542,7 +540,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 						},
 					}
 
-					err = namespacestore.ValidateTargetBucketChange(*ns, *updatedNS)
+					err = validations.ValidateTargetNSBucketChange(*ns, *updatedNS)
 					Ω(err).Should(HaveOccurred())
 					Expect(err.Error()).To(Equal("Changing a NamespaceStore target bucket is unsupported"))
 				})
@@ -562,7 +560,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 						},
 					}
 
-					err = namespacestore.ValidateTargetBucketChange(*ns, *updatedNS)
+					err = validations.ValidateTargetNSBucketChange(*ns, *updatedNS)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -597,7 +595,7 @@ var _ = Describe("BucketClass admission unit tests", func() {
 						BackingStores: []string{"bs-name"},
 					}},
 				}
-				err = bucketclass.ValidateTiersNumber(bc.Spec.PlacementPolicy.Tiers)
+				err = validations.ValidateTiersNumber(bc.Spec.PlacementPolicy.Tiers)
 				Ω(err).Should(HaveOccurred())
 				Expect(err.Error()).To(Equal("unsupported number of tiers, bucketclass supports only 1 or 2 tiers"))
 			})
@@ -611,7 +609,7 @@ var _ = Describe("BucketClass admission unit tests", func() {
 						BackingStores: []string{"bs-name"},
 					}},
 				}
-				err = bucketclass.ValidateTiersNumber(bc.Spec.PlacementPolicy.Tiers)
+				err = validations.ValidateTiersNumber(bc.Spec.PlacementPolicy.Tiers)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
@@ -621,7 +619,7 @@ var _ = Describe("BucketClass admission unit tests", func() {
 					MaxSize:    "2Gi",
 					MaxObjects: "-1",
 				}
-				err = bucketclass.ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
+				err = validations.ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
 				Ω(err).Should(HaveOccurred())
 				Expect(err.Error()).To(Equal("ob \"bc-name\" validation error: invalid maxObjects value. O or any positive number "))
 			})
@@ -630,7 +628,7 @@ var _ = Describe("BucketClass admission unit tests", func() {
 					MaxSize:    "-1Gi",
 					MaxObjects: "10",
 				}
-				err = bucketclass.ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
+				err = validations.ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
 				Ω(err).Should(HaveOccurred())
 				Expect(err.Error()).To(Equal("ob \"bc-name\" validation error: invalid obcMaxSizeValue value: min 1Gi, max 1023Pi, 0 to remove quota"))
 			})
@@ -639,7 +637,7 @@ var _ = Describe("BucketClass admission unit tests", func() {
 					MaxSize:    "20Gi",
 					MaxObjects: "10",
 				}
-				err = bucketclass.ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
+				err = validations.ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})

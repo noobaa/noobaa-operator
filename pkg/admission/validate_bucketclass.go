@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 	"github.com/sirupsen/logrus"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,18 +60,18 @@ func (bcv *ResourceValidator) ValidateCreateBC() {
 		return
 	}
 
-	if err := bucketclass.ValidateQuotaConfig(bc.Name, bc.Spec.Quota); err != nil && util.IsValidationError(err) {
+	if err := validations.ValidateQuotaConfig(bc.Name, bc.Spec.Quota); err != nil && util.IsValidationError(err) {
 		bcv.SetValidationResult(false, err.Error())
 		return
 	}
 	if bc.Spec.NamespacePolicy != nil {
-		if err := bucketclass.ValidateNSFSSingleBC(bc); err != nil && util.IsValidationError(err) {
+		if err := validations.ValidateNSFSSingleBC(bc); err != nil && util.IsValidationError(err) {
 			bcv.SetValidationResult(false, err.Error())
 			return
 		}
 	}
 	if bc.Spec.PlacementPolicy != nil {
-		if err := bucketclass.ValidateTiersNumber(bc.Spec.PlacementPolicy.Tiers); err != nil {
+		if err := validations.ValidateTiersNumber(bc.Spec.PlacementPolicy.Tiers); err != nil {
 			bcv.SetValidationResult(false, err.Error())
 			return
 		}

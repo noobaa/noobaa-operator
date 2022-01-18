@@ -1,10 +1,10 @@
-package backingstore
+package validations
 
 import (
 	"fmt"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v5/pkg/system"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -49,30 +49,11 @@ func ValidateBackingStore(bs nbv1.BackingStore) error {
 	return nil
 }
 
-// ValidateBSEmptyAWSSTSARN validates if AWS STS ARN is provided for AWSS3 backingstores
-func ValidateBSEmptyAWSSTSARN(bs nbv1.BackingStore) error {
-	if bs.Spec.Type == nbv1.StoreTypeAWSS3 {
-		if bs.Spec.AWSS3.AWSSTSRoleARN != nil {
-			if len(*bs.Spec.AWSS3.AWSSTSRoleARN) == 0 {
-				return util.ValidationError{
-					Msg: "Failed creating the Backingstore, please provide  AWS STS ARN",
-				}
-			}
-		}
-	}
-	return nil
-}
-
 // ValidateBSEmptySecretName validates a secret name is provided for cloud backingstores
 func ValidateBSEmptySecretName(bs nbv1.BackingStore) error {
 	switch bs.Spec.Type {
 	case nbv1.StoreTypeAWSS3:
 		if len(bs.Spec.AWSS3.Secret.Name) == 0 {
-			if err := ValidateBSEmptyAWSSTSARN(bs); err != nil {
-				return util.ValidationError{
-					Msg: "Failed creating the Backingstore, please provide secret name or AWS STS ARN",
-				}
-			}
 			return util.ValidationError{
 				Msg: "Failed creating the Backingstore, please provide secret name",
 			}
@@ -177,8 +158,8 @@ func ValidatePvpoolScaleDown(bs nbv1.BackingStore, oldBs nbv1.BackingStore) erro
 	return nil
 }
 
-// ValidateTargetBucketChange validates the user is not trying to update the backingstore target bucket
-func ValidateTargetBucketChange(bs nbv1.BackingStore, oldBs nbv1.BackingStore) error {
+// ValidateTargetBSBucketChange validates the user is not trying to update the backingstore target bucket
+func ValidateTargetBSBucketChange(bs nbv1.BackingStore, oldBs nbv1.BackingStore) error {
 	switch bs.Spec.Type {
 	case nbv1.StoreTypeAWSS3:
 		if oldBs.Spec.AWSS3.TargetBucket != bs.Spec.AWSS3.TargetBucket {
@@ -219,16 +200,7 @@ func ValidateTargetBucketChange(bs nbv1.BackingStore, oldBs nbv1.BackingStore) e
 }
 
 // ValidateBackingstoreDeletion validates the deleted backingstore not containing data buckets
-func ValidateBackingstoreDeletion(bs nbv1.BackingStore) error {
-	sysClient, err := system.Connect(false)
-	if err != nil {
-		return fmt.Errorf("failed to load noobaa system connection info")
-	}
-	systemInfo, err := sysClient.NBClient.ReadSystemAPI()
-	if err != nil {
-		return fmt.Errorf("failed to call ReadSystemInfo API")
-	}
-
+func ValidateBackingstoreDeletion(bs nbv1.BackingStore, systemInfo nb.SystemInfo) error {
 	for _, pool := range systemInfo.Pools {
 		if pool.Name == bs.Name {
 			if pool.Undeletable == "IS_BACKINGSTORE" || pool.Undeletable == "BEING_DELETED" {

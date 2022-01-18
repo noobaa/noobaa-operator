@@ -17,6 +17,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
@@ -331,7 +332,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		"noobaa operator started phase 1/3 - \"Verifying\"",
 	)
 
-	err := ValidateBackingStore(*r.BackingStore)
+	err := validations.ValidateBackingStore(*r.BackingStore)
 	if err != nil {
 		return util.NewPersistentError("BackingStoreValidationError", err.Error())
 	}
