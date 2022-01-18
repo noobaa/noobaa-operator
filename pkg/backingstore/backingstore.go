@@ -53,11 +53,34 @@ func CmdCreate() *cobra.Command {
 	}
 	cmd.AddCommand(
 		CmdCreateAWSS3(),
+		CmdCreateAWSSTSS3(),
 		CmdCreateS3Compatible(),
 		CmdCreateIBMCos(),
 		CmdCreateAzureBlob(),
 		CmdCreateGoogleCloudStorage(),
 		CmdCreatePVPool(),
+	)
+	return cmd
+}
+
+// CmdCreateAWSSTSS3 returns a cli command
+func CmdCreateAWSSTSS3() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "aws-sts-s3 <backing-store-name>",
+		Short: "Create aws-sts-s3 backing store",
+		Run:   RunCreateAWSSTSS3,
+	}
+	cmd.Flags().String(
+		"target-bucket", "",
+		"The target bucket name on the cloud",
+	)
+	cmd.Flags().String(
+		"aws-sts-arn", "",
+		"The AWS STS Role ARN which will assume role",
+	)
+	cmd.Flags().String(
+		"region", "",
+		"The AWS bucket region",
 	)
 	return cmd
 }
@@ -359,6 +382,56 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 		}
 	}
 
+	log.Printf("")
+	util.PrintThisNoteWhenFinishedApplyingAndStartWaitLoop()
+	log.Printf("")
+	log.Printf("BackingStore Wait Ready:")
+	if WaitReady(backStore) {
+		log.Printf("")
+		log.Printf("")
+		RunStatus(cmd, args)
+	}
+}
+
+// RunCreateAWSSTSS3 runs a cli command
+func RunCreateAWSSTSS3(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
+	}
+	name := args[0]
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	sys := o.(*nbv1.NooBaa)
+	sys.Name = options.SystemName
+	sys.Namespace = options.Namespace
+
+	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml)
+	backStore := o.(*nbv1.BackingStore)
+	backStore.Name = name
+	backStore.Namespace = options.Namespace
+	backStore.Spec = nbv1.BackingStoreSpec{Type: nbv1.StoreTypeAWSS3}
+
+	if !util.KubeCheck(sys) {
+		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
+	}
+
+	err := util.KubeClient().Get(util.Context(), util.ObjectKey(backStore), backStore)
+	if err == nil {
+		log.Fatalf(`❌ BackingStore %q already exists in namespace %q`, backStore.Name, backStore.Namespace)
+	}
+	awsSTSARN := util.GetFlagStringOrPrompt(cmd, "aws-sts-arn")
+	targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
+	region, _ := cmd.Flags().GetString("region")
+	backStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
+		TargetBucket:  targetBucket,
+		Region:        region,
+		AWSSTSRoleARN: &awsSTSARN,
+	}
+	// Create backing store CR
+	util.Panic(controllerutil.SetControllerReference(sys, backStore, scheme.Scheme))
+	if !util.KubeCreateFailExisting(backStore) {
+		log.Fatalf(`❌ Could not create BackingStore %q in Namespace %q (conflict)`, backStore.Name, backStore.Namespace)
+	}
 	log.Printf("")
 	util.PrintThisNoteWhenFinishedApplyingAndStartWaitLoop()
 	log.Printf("")
@@ -762,17 +835,18 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Could not get BackingStore %q in namespace %q`,
 			backStore.Name, backStore.Namespace)
 	}
-
 	secretRef := GetBackingStoreSecret(backStore)
-	if secretRef != nil {
-		secret.Name = secretRef.Name
-		secret.Namespace = secretRef.Namespace
-		if secret.Namespace == "" {
-			secret.Namespace = backStore.Namespace
-		}
-		if !util.KubeCheck(secret) {
-			log.Errorf(`❌ Could not get Secret %q in namespace %q`,
-				secret.Name, secret.Namespace)
+	if !util.IsSTSClusterBS(backStore) {
+		if secretRef != nil {
+			secret.Name = secretRef.Name
+			secret.Namespace = secretRef.Namespace
+			if secret.Namespace == "" {
+				secret.Namespace = backStore.Namespace
+			}
+			if !util.KubeCheck(secret) {
+				log.Errorf(`❌ Could not get Secret %q in namespace %q`,
+					secret.Name, secret.Namespace)
+			}
 		}
 	}
 

@@ -117,7 +117,7 @@ type NooBaaSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=all;nsfs;warn;default_level
 	DebugLevel int `json:"debugLevel,omitempty"`
-	
+
 	// PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes.
 	// This affects where the system stores data chunks (encrypted).
 	// Updates to this field will only affect new pv-pools,
@@ -175,6 +175,9 @@ type NooBaaSpec struct {
 	// +nullable
 	// +optional
 	DisableLoadBalancerService bool `json:"disableLoadBalancerService,omitempty"`
+
+	// +optional
+	DefaultBackingStoreSpec *BackingStoreSpec `json:"defaultBackingStoreSpec,omitempty"`
 }
 
 // SecuritySpec is security spec to include various security items such as kms
@@ -295,19 +298,19 @@ const (
 // These are NooBaa condition statuses
 const (
 	// External KMS initialized
-	ConditionKMSInit        corev1.ConditionStatus = "Init"
+	ConditionKMSInit corev1.ConditionStatus = "Init"
 
 	// The root key was synchronized from external KMS
-	ConditionKMSSync        corev1.ConditionStatus = "Sync"
+	ConditionKMSSync corev1.ConditionStatus = "Sync"
 
 	// Invalid external KMS definition
-	ConditionKMSInvalid     corev1.ConditionStatus = "Invalid"
+	ConditionKMSInvalid corev1.ConditionStatus = "Invalid"
 
 	// Error reading secret from external KMS
-	ConditionKMSErrorRead   corev1.ConditionStatus = "ErrorRead"
+	ConditionKMSErrorRead corev1.ConditionStatus = "ErrorRead"
 
 	// Error writing initial root key to eternal KMS
-	ConditionKMSErrorWrite  corev1.ConditionStatus = "ErrorWrite"
+	ConditionKMSErrorWrite corev1.ConditionStatus = "ErrorWrite"
 )
 
 // AccountsStatus is the status info of admin account

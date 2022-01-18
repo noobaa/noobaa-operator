@@ -14,9 +14,20 @@ spec:
         noobaa-operator: deployment
     spec:
       serviceAccountName: noobaa
+      volumes:
+      - name: oidc-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: oidc-token
+              expirationSeconds: 3600
+              audience: api
       containers:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
+          volumeMounts:
+          - mountPath: /var/run/secrets/openshift/serviceaccount
+            name: oidc-token
           resources:
             limits:
               cpu: "250m"

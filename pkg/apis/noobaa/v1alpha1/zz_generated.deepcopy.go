@@ -14,6 +14,11 @@ import (
 func (in *AWSS3Spec) DeepCopyInto(out *AWSS3Spec) {
 	*out = *in
 	out.Secret = in.Secret
+	if in.AWSSTSRoleARN != nil {
+		in, out := &in.AWSSTSRoleARN, &out.AWSSTSRoleARN
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
@@ -219,7 +224,7 @@ func (in *BackingStoreSpec) DeepCopyInto(out *BackingStoreSpec) {
 	if in.AWSS3 != nil {
 		in, out := &in.AWSS3, &out.AWSS3
 		*out = new(AWSS3Spec)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.S3Compatible != nil {
 		in, out := &in.S3Compatible, &out.S3Compatible
@@ -770,7 +775,7 @@ func (in *NamespaceStoreSpec) DeepCopyInto(out *NamespaceStoreSpec) {
 	if in.AWSS3 != nil {
 		in, out := &in.AWSS3, &out.AWSS3
 		*out = new(AWSS3Spec)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.S3Compatible != nil {
 		in, out := &in.S3Compatible, &out.S3Compatible
@@ -1106,6 +1111,11 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 			}
 			(*out)[key] = outVal
 		}
+	}
+	if in.DefaultBackingStoreSpec != nil {
+		in, out := &in.DefaultBackingStoreSpec, &out.DefaultBackingStoreSpec
+		*out = new(BackingStoreSpec)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }

@@ -977,6 +977,22 @@ func IsAWSPlatform() bool {
 	return isAWS
 }
 
+// IsSTSClusterNB returns true if it is running on an STS cluster
+func IsSTSClusterNB(nb *nbv1.NooBaa) bool {
+	if nb.Spec.DefaultBackingStoreSpec != nil {
+		return nb.Spec.DefaultBackingStoreSpec.AWSS3.AWSSTSRoleARN != nil
+	}
+	return false
+}
+
+// IsSTSClusterBS returns true if it is running on an STS cluster
+func IsSTSClusterBS(bs *nbv1.BackingStore) bool {
+	if bs.Spec.Type == nbv1.StoreTypeAWSS3 {
+		return bs.Spec.AWSS3.AWSSTSRoleARN != nil
+	}
+	return false
+}
+
 // IsAzurePlatform returns true if this cluster is running on Azure
 func IsAzurePlatform() bool {
 	nodesList := &corev1.NodeList{}
@@ -1531,13 +1547,13 @@ func ValidateQuotaConfig(name string, maxSize string, maxObjects string) error {
 
 // NooBaaCondStatus waits for requested NooBaa CR KMS condition status
 // returns false if timeout
-func NooBaaCondStatus(noobaa* nbv1.NooBaa, s corev1.ConditionStatus) bool {
+func NooBaaCondStatus(noobaa *nbv1.NooBaa, s corev1.ConditionStatus) bool {
 	return NooBaaCondition(noobaa, nbv1.ConditionTypeKMSStatus, s)
 }
 
 // NooBaaCondition waits for requested NooBaa CR KMS condition type & status
 // returns false if timeout
-func NooBaaCondition(noobaa* nbv1.NooBaa, t conditionsv1.ConditionType, s corev1.ConditionStatus) bool {
+func NooBaaCondition(noobaa *nbv1.NooBaa, t conditionsv1.ConditionType, s corev1.ConditionStatus) bool {
 	found := false
 
 	timeout := 120 // seconds

@@ -601,8 +601,10 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		log.Infof("Backing store %s already exists. skipping ReconcileCloudCredentials", r.DefaultBackingStore.Name)
 		return nil
 	}
-
-	if r.CephObjectStoreUser.UID != "" {
+	if r.NooBaa.Spec.DefaultBackingStoreSpec != nil {
+		r.DefaultBackingStore.Spec = *r.NooBaa.Spec.DefaultBackingStoreSpec
+		log.Infof("DefaultBacking store spec %s already exists. skipping ReconcileCloudCredentials", r.DefaultBackingStore.Name)
+	} else if r.CephObjectStoreUser.UID != "" {
 		log.Infof("CephObjectStoreUser %q created. Creating default backing store on ceph objectstore", r.CephObjectStoreUser.Name)
 		if err := r.prepareCephBackingStore(); err != nil {
 			return err

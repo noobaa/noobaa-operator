@@ -168,7 +168,7 @@ func (r *Reconciler) SetDesiredServiceAccount() error {
 
 // SetDesiredServiceMgmt updates the ServiceMgmt as desired for reconciling
 func (r *Reconciler) SetDesiredServiceMgmt() error {
-	if 	r.NooBaa.Spec.DisableLoadBalancerService {
+	if r.NooBaa.Spec.DisableLoadBalancerService {
 		r.ServiceMgmt.Spec.Type = corev1.ServiceTypeClusterIP
 	} else {
 		// It is here in case disableLoadBalancerService is removed from the crd or changed to false
@@ -181,7 +181,7 @@ func (r *Reconciler) SetDesiredServiceMgmt() error {
 
 // SetDesiredServiceS3 updates the ServiceS3 as desired for reconciling
 func (r *Reconciler) SetDesiredServiceS3() error {
-	if 	r.NooBaa.Spec.DisableLoadBalancerService {
+	if r.NooBaa.Spec.DisableLoadBalancerService {
 		r.ServiceS3.Spec.Type = corev1.ServiceTypeClusterIP
 	} else {
 		// It is here in case disableLoadBalancerService is removed from the crd or changed to false
@@ -506,6 +506,11 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	// Skip if joining another NooBaa
 	r.Logger.Info("Reconciling Backing Store Credentials")
 	if r.JoinSecret != nil {
+		return nil
+	}
+	// If DefaultBackingStore Spec is set do nothing
+	if r.NooBaa.Spec.DefaultBackingStoreSpec != nil {
+		r.Logger.Info("DefaultBackingStoreSpec found Skipping Reconciling Backing Store Credentials")
 		return nil
 	}
 
@@ -1234,7 +1239,7 @@ func (r *Reconciler) findLocalStorageClass() (string, error) {
 	}
 	if len(lsoStorageClassNames) == 0 {
 		return "", fmt.Errorf("Error: found no LSO storage class and no storage class was marked as default")
-	} 
+	}
 	if len(lsoStorageClassNames) > 1 {
 		return "", fmt.Errorf("Error: found more than one LSO storage class and none was marked as default")
 	}

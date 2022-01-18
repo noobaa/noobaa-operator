@@ -148,6 +148,7 @@ type AWSS3Spec struct {
 
 	// Secret refers to a secret that provides the credentials
 	// The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+	// +optional
 	Secret corev1.SecretReference `json:"secret"`
 
 	// Region is the AWS region
@@ -157,6 +158,9 @@ type AWSS3Spec struct {
 	// SSLDisabled allows to disable SSL and use plain http
 	// +optional
 	SSLDisabled bool `json:"sslDisabled,omitempty"`
+
+	// +optional
+	AWSSTSRoleARN *string `json:"awsSTSRoleARN,omitempty"`
 }
 
 // S3CompatibleSpec specifies a backing store of type s3-compatible

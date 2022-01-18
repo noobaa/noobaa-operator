@@ -602,6 +602,8 @@ const (
 
 	// EndpointTypeAws enum
 	EndpointTypeAws EndpointType = "AWS"
+	// EndpointTypeAwsSTS enum
+	EndpointTypeAwsSTS EndpointType = "AWSSTS"
 	// EndpointTypeAzure enum
 	EndpointTypeAzure EndpointType = "AZURE"
 	// EndpointTypeGoogle enum
@@ -649,6 +651,8 @@ type AddExternalConnectionParams struct {
 	Identity     string          `json:"identity"`
 	Secret       string          `json:"secret"`
 	AuthMethod   CloudAuthMethod `json:"auth_method,omitempty"`
+	AWSSTSARN    string          `json:"aws_sts_arn,omitempty"`
+	Region       string          `json:"region,omitempty"`
 }
 
 // CheckExternalConnectionReply is the reply of account_api.check_external_connection()

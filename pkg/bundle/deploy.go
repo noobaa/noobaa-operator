@@ -90,7 +90,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "29e4e3ad73831cc5b1b071b8c3573a34e3a7e7eaac121fd6c0bd493d95bd6d76"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "21d7000fc44c8205f57d01bf5a5489e8822d078230ee749876ea86890947b5b9"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -140,6 +140,8 @@ spec:
               awsS3:
                 description: AWSS3Spec specifies a backing store of type aws-s3
                 properties:
+                  awsSTSRoleARN:
+                    type: string
                   region:
                     description: Region is the AWS region
                     type: string
@@ -163,7 +165,6 @@ spec:
                     description: TargetBucket is the name of the target S3 bucket
                     type: string
                 required:
-                - secret
                 - targetBucket
                 type: object
               azureBlob:
@@ -714,7 +715,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "75ea24de1ab0e53c7cdebe2e1f55fe7cd0dc28f469920d64a8451d5429967c8f"
+const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "f7541d48fbef88f3eefaa1b70dbbdfdc45182121b6286e2cca2017f09685d009"
 
 const File_deploy_crds_noobaa_io_namespacestores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -764,6 +765,8 @@ spec:
               awsS3:
                 description: AWSS3Spec specifies a namespace store of type aws-s3
                 properties:
+                  awsSTSRoleARN:
+                    type: string
                   region:
                     description: Region is the AWS region
                     type: string
@@ -787,7 +790,6 @@ spec:
                     description: TargetBucket is the name of the target S3 bucket
                     type: string
                 required:
-                - secret
                 - targetBucket
                 type: object
               azureBlob:
@@ -1196,7 +1198,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a716415c7ed63a0445c8d79c14898e98733a32e133df23c11b1825418195af53"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "d0e975cb1cad2ce0d5a9e896b378664f378cf1ea22078530f00c4736f91d94c4"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2209,6 +2211,215 @@ spec:
                 - warn
                 - default_level
                 type: integer
+              defaultBackingStoreSpec:
+                description: BackingStoreSpec defines the desired state of BackingStore
+                properties:
+                  awsS3:
+                    description: AWSS3Spec specifies a backing store of type aws-s3
+                    properties:
+                      awsSTSRoleARN:
+                        type: string
+                      region:
+                        description: Region is the AWS region
+                        type: string
+                      secret:
+                        description: Secret refers to a secret that provides the credentials
+                          The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      sslDisabled:
+                        description: SSLDisabled allows to disable SSL and use plain
+                          http
+                        type: boolean
+                      targetBucket:
+                        description: TargetBucket is the name of the target S3 bucket
+                        type: string
+                    required:
+                    - targetBucket
+                    type: object
+                  azureBlob:
+                    description: AzureBlob specifies a backing store of type azure-blob
+                    properties:
+                      secret:
+                        description: Secret refers to a secret that provides the credentials
+                          The secret should define AccountName and AccountKey as provided
+                          by Azure Blob.
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      targetBlobContainer:
+                        description: TargetBlobContainer is the name of the target
+                          Azure Blob container
+                        type: string
+                    required:
+                    - secret
+                    - targetBlobContainer
+                    type: object
+                  googleCloudStorage:
+                    description: GoogleCloudStorage specifies a backing store of type
+                      google-cloud-storage
+                    properties:
+                      secret:
+                        description: Secret refers to a secret that provides the credentials
+                          The secret should define GoogleServiceAccountPrivateKeyJson
+                          containing the entire json string as provided by Google.
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      targetBucket:
+                        description: TargetBucket is the name of the target S3 bucket
+                        type: string
+                    required:
+                    - secret
+                    - targetBucket
+                    type: object
+                  ibmCos:
+                    description: IBMCos specifies a backing store of type ibm-cos
+                    properties:
+                      endpoint:
+                        description: 'Endpoint is the IBM COS compatible endpoint:
+                          http(s)://host:port'
+                        type: string
+                      secret:
+                        description: Secret refers to a secret that provides the credentials
+                          The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      signatureVersion:
+                        description: SignatureVersion specifies the client signature
+                          version to use when signing requests.
+                        type: string
+                      targetBucket:
+                        description: TargetBucket is the name of the target IBM COS
+                          bucket
+                        type: string
+                    required:
+                    - endpoint
+                    - secret
+                    - targetBucket
+                    type: object
+                  pvPool:
+                    description: PVPool specifies a backing store of type pv-pool
+                    properties:
+                      numVolumes:
+                        description: NumVolumes is the number of volumes to allocate
+                        type: integer
+                      resources:
+                        description: VolumeResources represents the minimum resources
+                          each volume should have.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                        type: object
+                      secret:
+                        description: Secret refers to a secret that provides the agent
+                          configuration The secret should define AGENT_CONFIG containing
+                          agent_configuration from noobaa-core.
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      storageClass:
+                        description: StorageClass is the name of the storage class
+                          to use for the PV's
+                        type: string
+                    required:
+                    - numVolumes
+                    type: object
+                  s3Compatible:
+                    description: S3Compatible specifies a backing store of type s3-compatible
+                    properties:
+                      endpoint:
+                        description: 'Endpoint is the S3 compatible endpoint: http(s)://host:port'
+                        type: string
+                      secret:
+                        description: Secret refers to a secret that provides the credentials
+                          The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      signatureVersion:
+                        description: SignatureVersion specifies the client signature
+                          version to use when signing requests.
+                        type: string
+                      targetBucket:
+                        description: TargetBucket is the name of the target S3 bucket
+                        type: string
+                    required:
+                    - endpoint
+                    - secret
+                    - targetBucket
+                    type: object
+                  type:
+                    description: Type is an enum of supported types
+                    type: string
+                required:
+                - type
+                type: object
               disableLoadBalancerService:
                 description: DisableLoadBalancerService (optional) sets the service
                   type to ClusterIP instead of LoadBalancer
@@ -3529,7 +3740,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "9bf8ab915f3d51fe381dd20307cc917791b8f8a34a0384d6ce28cc2234b09014"
+const Sha256_deploy_internal_statefulset_core_yaml = "3b0aec2d946e02a9d8b44b8f191c335be33a75c8c2d2dc2f04c64cf37ecbfa3f"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3566,6 +3777,13 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
+        - name: oidc-token
+          projected:
+            sources:
+            - serviceAccountToken:
+                path: oidc-token
+                expirationSeconds: 3600
+                audience: api
       containers:
         #----------------#
         # CORE CONTAINER #
@@ -3580,6 +3798,9 @@ spec:
               readOnly: true
             - name: s3-secret
               mountPath: /etc/s3-secret
+              readOnly: true
+            - mountPath: /var/run/secrets/openshift/serviceaccount
+              name: oidc-token
               readOnly: true
           resources:
             requests:
@@ -4644,7 +4865,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "3030f31026433e2737957a3f153739ce3d1a69cf11813d27b4fd95e7452ee3df"
+const Sha256_deploy_operator_yaml = "2870838f688bf1691d85c64dc5e302eb6575996427c7cfdb7143f322ff0dbd18"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4662,9 +4883,20 @@ spec:
         noobaa-operator: deployment
     spec:
       serviceAccountName: noobaa
+      volumes:
+      - name: oidc-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: oidc-token
+              expirationSeconds: 3600
+              audience: api
       containers:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
+          volumeMounts:
+          - mountPath: /var/run/secrets/openshift/serviceaccount
+            name: oidc-token
           resources:
             limits:
               cpu: "250m"

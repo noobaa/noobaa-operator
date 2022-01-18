@@ -46,6 +46,8 @@ spec:
               awsS3:
                 description: AWSS3Spec specifies a backing store of type aws-s3
                 properties:
+                  awsSTSRoleARN:
+                    type: string
                   region:
                     description: Region is the AWS region
                     type: string
@@ -69,7 +71,6 @@ spec:
                     description: TargetBucket is the name of the target S3 bucket
                     type: string
                 required:
-                - secret
                 - targetBucket
                 type: object
               azureBlob:

@@ -1009,6 +1009,215 @@ spec:
                 - warn
                 - default_level
                 type: integer
+              defaultBackingStoreSpec:
+                description: BackingStoreSpec defines the desired state of BackingStore
+                properties:
+                  awsS3:
+                    description: AWSS3Spec specifies a backing store of type aws-s3
+                    properties:
+                      awsSTSRoleARN:
+                        type: string
+                      region:
+                        description: Region is the AWS region
+                        type: string
+                      secret:
+                        description: Secret refers to a secret that provides the credentials
+                          The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      sslDisabled:
+                        description: SSLDisabled allows to disable SSL and use plain
+                          http
+                        type: boolean
+                      targetBucket:
+                        description: TargetBucket is the name of the target S3 bucket
+                        type: string
+                    required:
+                    - targetBucket
+                    type: object
+                  azureBlob:
+                    description: AzureBlob specifies a backing store of type azure-blob
+                    properties:
+                      secret:
+                        description: Secret refers to a secret that provides the credentials
+                          The secret should define AccountName and AccountKey as provided
+                          by Azure Blob.
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      targetBlobContainer:
+                        description: TargetBlobContainer is the name of the target
+                          Azure Blob container
+                        type: string
+                    required:
+                    - secret
+                    - targetBlobContainer
+                    type: object
+                  googleCloudStorage:
+                    description: GoogleCloudStorage specifies a backing store of type
+                      google-cloud-storage
+                    properties:
+                      secret:
+                        description: Secret refers to a secret that provides the credentials
+                          The secret should define GoogleServiceAccountPrivateKeyJson
+                          containing the entire json string as provided by Google.
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      targetBucket:
+                        description: TargetBucket is the name of the target S3 bucket
+                        type: string
+                    required:
+                    - secret
+                    - targetBucket
+                    type: object
+                  ibmCos:
+                    description: IBMCos specifies a backing store of type ibm-cos
+                    properties:
+                      endpoint:
+                        description: 'Endpoint is the IBM COS compatible endpoint:
+                          http(s)://host:port'
+                        type: string
+                      secret:
+                        description: Secret refers to a secret that provides the credentials
+                          The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      signatureVersion:
+                        description: SignatureVersion specifies the client signature
+                          version to use when signing requests.
+                        type: string
+                      targetBucket:
+                        description: TargetBucket is the name of the target IBM COS
+                          bucket
+                        type: string
+                    required:
+                    - endpoint
+                    - secret
+                    - targetBucket
+                    type: object
+                  pvPool:
+                    description: PVPool specifies a backing store of type pv-pool
+                    properties:
+                      numVolumes:
+                        description: NumVolumes is the number of volumes to allocate
+                        type: integer
+                      resources:
+                        description: VolumeResources represents the minimum resources
+                          each volume should have.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                        type: object
+                      secret:
+                        description: Secret refers to a secret that provides the agent
+                          configuration The secret should define AGENT_CONFIG containing
+                          agent_configuration from noobaa-core.
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      storageClass:
+                        description: StorageClass is the name of the storage class
+                          to use for the PV's
+                        type: string
+                    required:
+                    - numVolumes
+                    type: object
+                  s3Compatible:
+                    description: S3Compatible specifies a backing store of type s3-compatible
+                    properties:
+                      endpoint:
+                        description: 'Endpoint is the S3 compatible endpoint: http(s)://host:port'
+                        type: string
+                      secret:
+                        description: Secret refers to a secret that provides the credentials
+                          The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                        properties:
+                          name:
+                            description: Name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: Namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                      signatureVersion:
+                        description: SignatureVersion specifies the client signature
+                          version to use when signing requests.
+                        type: string
+                      targetBucket:
+                        description: TargetBucket is the name of the target S3 bucket
+                        type: string
+                    required:
+                    - endpoint
+                    - secret
+                    - targetBucket
+                    type: object
+                  type:
+                    description: Type is an enum of supported types
+                    type: string
+                required:
+                - type
+                type: object
               disableLoadBalancerService:
                 description: DisableLoadBalancerService (optional) sets the service
                   type to ClusterIP instead of LoadBalancer
