@@ -16,7 +16,7 @@ const (
 	// IbmServiceAPIKey is the service ID API Key
 	IbmServiceAPIKey = "IBM_KP_SERVICE_API_KEY"
 	// IbmInstanceIDKey is the Key Protect Service's Instance ID
-	IbmInstanceIDKey = "IBM_KP_INSTANCE_ID"
+	IbmInstanceIDKey = "IBM_KP_SERVICE_INSTANCE_ID"
 	// IbmBaseURLKey is the Key Protect Service's Base URL
 	IbmBaseURLKey = "IBM_KP_BASE_URL"
 	// IbmTokenURLKey is the Key Protect Service's Token URL
