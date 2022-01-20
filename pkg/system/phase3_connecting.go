@@ -31,6 +31,7 @@ func (r *Reconciler) ReconcilePhaseConnecting() error {
 	}
 
 	r.CheckServiceStatus(r.ServiceS3, r.RouteS3, &r.NooBaa.Status.Services.ServiceS3, "s3-https")
+	r.CheckServiceStatus(r.ServiceSts, r.RouteSts, &r.NooBaa.Status.Services.ServiceSts, "sts-https")
 
 	return nil
 

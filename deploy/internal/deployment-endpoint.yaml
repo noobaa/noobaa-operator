@@ -54,6 +54,7 @@ spec:
           ports:
             - containerPort: 6001
             - containerPort: 6443
+            - containerPort: 7443
           env:
             - name: NOOBAA_DISABLE_COMPRESSION
               valueFrom:
