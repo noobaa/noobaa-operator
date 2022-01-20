@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 	"github.com/sirupsen/logrus"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +65,7 @@ func (bsv *ResourceValidator) ValidateCreateBS() {
 		return
 	}
 
-	if err := backingstore.ValidateBackingStore(*bs); err != nil && util.IsValidationError(err) {
+	if err := validations.ValidateBackingStore(*bs); err != nil && util.IsValidationError(err) {
 		bsv.SetValidationResult(false, err.Error())
 		return
 	}
@@ -79,19 +80,19 @@ func (bsv *ResourceValidator) ValidateUpdateBS() {
 		return
 	}
 
-	if err := backingstore.ValidateBackingStore(*bs); err != nil && util.IsValidationError(err) {
+	if err := validations.ValidateBackingStore(*bs); err != nil && util.IsValidationError(err) {
 		bsv.SetValidationResult(false, err.Error())
 		return
 	}
 
 	switch bs.Spec.Type {
 	case nbv1.StoreTypePVPool:
-		if err := backingstore.ValidatePvpoolScaleDown(*bs, *oldBS); err != nil && util.IsValidationError(err) {
+		if err := validations.ValidatePvpoolScaleDown(*bs, *oldBS); err != nil && util.IsValidationError(err) {
 			bsv.SetValidationResult(false, err.Error())
 			return
 		}
 	case nbv1.StoreTypeAWSS3, nbv1.StoreTypeIBMCos, nbv1.StoreTypeAzureBlob, nbv1.StoreTypeGoogleCloudStorage:
-		if err := backingstore.ValidateTargetBucketChange(*bs, *oldBS); err != nil && util.IsValidationError(err) {
+		if err := validations.ValidateTargetBSBucketChange(*bs, *oldBS); err != nil && util.IsValidationError(err) {
 			bsv.SetValidationResult(false, err.Error())
 			return
 		}
@@ -105,7 +106,16 @@ func (bsv *ResourceValidator) ValidateDeleteBS() {
 		return
 	}
 
-	if err := backingstore.ValidateBackingstoreDeletion(*bs); err != nil && util.IsValidationError(err) {
+	sysClient, err := system.Connect(false)
+	if err != nil {
+		return
+	}
+	systemInfo, err := sysClient.NBClient.ReadSystemAPI()
+	if err != nil {
+		return
+	}
+
+	if err := validations.ValidateBackingstoreDeletion(*bs, systemInfo); err != nil && util.IsValidationError(err) {
 		bsv.SetValidationResult(false, err.Error())
 		return
 	}
