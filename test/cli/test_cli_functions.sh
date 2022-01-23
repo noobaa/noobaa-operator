@@ -546,6 +546,8 @@ function account_cycle {
     account_regenerate_keys "admin@noobaa.io"
     #admin account is don't have a secret and don't have CRD 
     account_regenerate_keys "operator@noobaa.io"
+    # testing account reset password
+    account_reset_password "admin@noobaa.io"
     echo_time "✅  noobaa account cycle is done"
 }
 
@@ -582,6 +584,32 @@ function account_regenerate_keys {
         echo_time "❌ Looks like the SECRET_ACCESS were not regenerated, Exiting"
         exit 1
     fi
+}
+
+function account_reset_password {
+    local account=${1}
+    local password
+    eval $(get_admin_password)
+    #reset password should work
+    test_noobaa account passwd ${account} --old-password ${password} --new-password "test" --retype-new-password "test"
+    # Should fail if the old password is not correct
+    test_noobaa should_fail account passwd ${account} --old-password "test1" --new-password "test" --retype-new-password "test"
+    # Should fail if we got the same password as the old one
+    test_noobaa should_fail account passwd ${account} --old-password "test" --new-password "test" --retype-new-password "test"
+    # Should fail if we got the same password twice 
+    test_noobaa should_fail account passwd ${account} --old-password "test" --new-password "test1" --retype-new-password "test2"
+}
+
+function get_admin_password {
+    local password
+    while read line
+    do
+        if [[ ${line} =~ "password" ]]
+        then
+            password=$(echo ${line//\"/} | sed -e 's/ //g' -e 's/:/=/g')
+        fi
+    done < <(yes | test_noobaa status)
+    echo ${password}
 }
 
 function delete_backingstore_path {
