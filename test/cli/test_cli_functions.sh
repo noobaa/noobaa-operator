@@ -490,6 +490,13 @@ function bucketclass_cycle {
     echo_time "✅  bucketclass cycle is done"
 }
 
+function bz_2038884 {
+    test_noobaa bucketclass create placement-bucketclass testbucketclass --backingstores=noobaa-default-backing-store
+    test_noobaa obc create --bucketclass=testbucketclass testobc
+    test_noobaa bucketclass delete testbucketclass
+    test_noobaa obc delete testobc
+}
+
 function check_obc {
     local bucket
     test_noobaa obc list
