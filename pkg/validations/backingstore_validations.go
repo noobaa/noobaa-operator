@@ -54,8 +54,8 @@ func ValidateBSEmptySecretName(bs nbv1.BackingStore) error {
 	switch bs.Spec.Type {
 	case nbv1.StoreTypeAWSS3:
 		if len(bs.Spec.AWSS3.Secret.Name) == 0 {
-			return util.ValidationError{
-				Msg: "Failed creating the Backingstore, please provide secret name",
+			if err := ValidateAWSSTSARN(bs); err != nil {
+				return err
 			}
 		}
 	case nbv1.StoreTypeS3Compatible:
@@ -87,6 +87,18 @@ func ValidateBSEmptySecretName(bs nbv1.BackingStore) error {
 	default:
 		return util.ValidationError{
 			Msg: "Invalid Backingstore type, please provide a valid Backingstore type",
+		}
+	}
+	return nil
+}
+
+// ValidateAWSSTSARN validates the existence of the AWS STS ARN string
+func ValidateAWSSTSARN(bs nbv1.BackingStore) error {
+	if bs.Spec.AWSS3 != nil {
+		if bs.Spec.AWSS3.AWSSTSRoleARN == nil {
+			return util.ValidationError{
+				Msg: "Failed creating the Backingstore, please provide a valid ARN or secret name",
+			}
 		}
 	}
 	return nil
