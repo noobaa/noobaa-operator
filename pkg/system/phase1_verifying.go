@@ -10,6 +10,7 @@ import (
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 )
 
 // ReconcilePhaseVerifying runs the reconcile verify phase
@@ -129,6 +130,16 @@ func (r *Reconciler) CheckSystemCR() error {
 	err = CheckMongoURL(r.NooBaa)
 	if err != nil {
 		return util.NewPersistentError("InvalidMongoDbURL", fmt.Sprintf(`%s`, err))
+	}
+	// Validate the DefaultBackingStore Spec
+	if r.NooBaa.Spec.DefaultBackingStoreSpec != nil {
+		bs := nbv1.BackingStore{
+			Spec: *r.NooBaa.Spec.DefaultBackingStoreSpec,
+		}
+		err = validations.ValidateBackingStore(bs)
+		if err != nil {
+			return util.NewPersistentError("InvalidDefaultBackingStoreSpec", fmt.Sprintf(`%s`, err))
+		}
 	}
 
 	return nil
