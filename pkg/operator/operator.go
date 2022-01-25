@@ -237,9 +237,11 @@ func RunYaml(cmd *cobra.Command, args []string) {
 type Conf struct {
 	NS                         *corev1.Namespace
 	SA                         *corev1.ServiceAccount
+	SAUI                       *corev1.ServiceAccount
 	SAEndpoint                 *corev1.ServiceAccount
 	Role                       *rbacv1.Role
 	RoleEndpoint               *rbacv1.Role
+	RoleUI                     *rbacv1.Role
 	RoleBinding                *rbacv1.RoleBinding
 	RoleBindingEndpoint        *rbacv1.RoleBinding
 	ClusterRole                *rbacv1.ClusterRole
@@ -259,8 +261,10 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.NS = util.KubeObject(bundle.File_deploy_namespace_yaml).(*corev1.Namespace)
 	c.SA = util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount)
 	c.SAEndpoint = util.KubeObject(bundle.File_deploy_service_account_endpoint_yaml).(*corev1.ServiceAccount)
+	c.SAUI = util.KubeObject(bundle.File_deploy_service_account_ui_yaml).(*corev1.ServiceAccount)
 	c.Role = util.KubeObject(bundle.File_deploy_role_yaml).(*rbacv1.Role)
 	c.RoleEndpoint = util.KubeObject(bundle.File_deploy_role_endpoint_yaml).(*rbacv1.Role)
+	c.RoleUI = util.KubeObject(bundle.File_deploy_role_ui_yaml).(*rbacv1.Role)
 	c.RoleBinding = util.KubeObject(bundle.File_deploy_role_binding_yaml).(*rbacv1.RoleBinding)
 	c.RoleBindingEndpoint = util.KubeObject(bundle.File_deploy_role_binding_endpoint_yaml).(*rbacv1.RoleBinding)
 	c.ClusterRole = util.KubeObject(bundle.File_deploy_cluster_role_yaml).(*rbacv1.ClusterRole)

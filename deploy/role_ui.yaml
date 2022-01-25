@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: noobaa-odf-ui
+rules:
+  - verbs:
+      - get
+      - watch
+      - list
+    apiGroups:
+      - noobaa.io
+    resources:
+      - noobaas
+      - bucketclasses
