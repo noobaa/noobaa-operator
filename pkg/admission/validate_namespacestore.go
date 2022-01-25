@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 	"github.com/sirupsen/logrus"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,7 +66,7 @@ func (nsv *ResourceValidator) ValidateCreateNS() {
 		return
 	}
 
-	if err := namespacestore.ValidateNamespaceStore(ns); err != nil && util.IsValidationError(err) {
+	if err := validations.ValidateNamespaceStore(ns); err != nil && util.IsValidationError(err) {
 		nsv.SetValidationResult(false, err.Error())
 		return
 	}
@@ -80,14 +81,14 @@ func (nsv *ResourceValidator) ValidateUpdateNS() {
 		return
 	}
 
-	if err := namespacestore.ValidateNamespaceStore(ns); err != nil && util.IsValidationError(err) {
+	if err := validations.ValidateNamespaceStore(ns); err != nil && util.IsValidationError(err) {
 		nsv.SetValidationResult(false, err.Error())
 		return
 	}
 
 	switch ns.Spec.Type {
 	case nbv1.NSStoreTypeAWSS3, nbv1.NSStoreTypeS3Compatible, nbv1.NSStoreTypeIBMCos, nbv1.NSStoreTypeAzureBlob:
-		if err := namespacestore.ValidateTargetBucketChange(*ns, *oldNS); err != nil && util.IsValidationError(err) {
+		if err := validations.ValidateTargetNSBucketChange(*ns, *oldNS); err != nil && util.IsValidationError(err) {
 			nsv.SetValidationResult(false, err.Error())
 			return
 		}
@@ -100,8 +101,18 @@ func (nsv *ResourceValidator) ValidateDeleteNS() {
 	if ns == nil {
 		return
 	}
+	sysClient, err := system.Connect(false)
+	if err != nil {
+		nsv.Logger.Errorf("failed to load noobaa system connection info")
+		return
+	}
+	systemInfo, err := sysClient.NBClient.ReadSystemAPI()
+	if err != nil {
+		nsv.Logger.Errorf("failed to call ReadSystemInfo API")
+		return
+	}
 
-	if err := namespacestore.ValidateNamespacestoreDeletion(*ns); err != nil && util.IsValidationError(err) {
+	if err := validations.ValidateNamespacestoreDeletion(*ns, systemInfo); err != nil && util.IsValidationError(err) {
 		nsv.SetValidationResult(false, err.Error())
 		return
 	}

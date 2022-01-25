@@ -1,4 +1,4 @@
-package namespacestore
+package validations
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v5/pkg/system"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 )
 
@@ -28,11 +28,6 @@ func ValidateNamespaceStore(nsStore *nbv1.NamespaceStore) error {
 		return ValidateNsStoreNSFS(nsStore)
 
 	case nbv1.NSStoreTypeAWSS3:
-		if nsStore.Spec.AWSS3.AWSSTSRoleARN != nil {
-			return util.ValidationError{
-				Msg: "AWS STS feature is not supported for NamespaceStore",
-			}
-		}
 		return nil
 
 	case nbv1.NSStoreTypeS3Compatible:
@@ -221,8 +216,8 @@ func ValidateNSEmptySecretName(ns nbv1.NamespaceStore) error {
 	return nil
 }
 
-// ValidateTargetBucketChange validates the user is not trying to update the namespacestore target bucket
-func ValidateTargetBucketChange(ns nbv1.NamespaceStore, oldNs nbv1.NamespaceStore) error {
+// ValidateTargetNSBucketChange validates the user is not trying to update the namespacestore target bucket
+func ValidateTargetNSBucketChange(ns nbv1.NamespaceStore, oldNs nbv1.NamespaceStore) error {
 	switch ns.Spec.Type {
 	case nbv1.NSStoreTypeAWSS3:
 		if oldNs.Spec.AWSS3.TargetBucket != ns.Spec.AWSS3.TargetBucket {
@@ -271,16 +266,7 @@ func ValidateNSEmptyAWSARN(ns nbv1.NamespaceStore) error {
 }
 
 // ValidateNamespacestoreDeletion validates the deleted namespacestore not containing data buckets
-func ValidateNamespacestoreDeletion(ns nbv1.NamespaceStore) error {
-	sysClient, err := system.Connect(false)
-	if err != nil {
-		return fmt.Errorf("failed to load noobaa system connection info")
-	}
-	systemInfo, err := sysClient.NBClient.ReadSystemAPI()
-	if err != nil {
-		return fmt.Errorf("failed to call ReadSystemInfo API")
-	}
-
+func ValidateNamespacestoreDeletion(ns nbv1.NamespaceStore, systemInfo nb.SystemInfo) error {
 	for _, nsr := range systemInfo.NamespaceResources {
 		if nsr.Name == ns.Name {
 			if nsr.Undeletable == "IN_USE" {

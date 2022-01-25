@@ -11,6 +11,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -327,7 +328,7 @@ func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType 
 
 	namespaceStoresArr, backingStoresArr := populate(bucketClass)
 
-	err = ValidateBucketClass(bucketClass)
+	err = validations.ValidateBucketClass(bucketClass)
 	if err != nil {
 		log.Fatalf(`❌ Bucket class validation failed %q`, err)
 	}
