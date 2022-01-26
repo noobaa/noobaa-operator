@@ -1581,7 +1581,7 @@ func GetAvailabeKubeCli() string {
 		log.Printf("✅ kubectl exists - will use it for diagnostics\n")
 	} else {
 		log.Printf("❌ Could not find kubectl, will try to use oc instead, error: %s\n", err)
-		kubeCommand := "oc"
+		kubeCommand = "oc"
 		cmd = exec.Command(kubeCommand)
 		err = cmd.Run(); 
 		if err == nil {
