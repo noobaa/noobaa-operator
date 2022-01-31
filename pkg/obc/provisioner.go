@@ -341,9 +341,7 @@ func NewBucketRequest(
 			},
 		}
 		if !util.KubeCheck(r.BucketClass) {
-			msg := fmt.Sprintf("BucketClass %q not found in provisioner namespace %q", bucketClassName, p.Namespace)
-			p.recorder.Event(r.OBC, "Warning", "MissingBucketClass", msg)
-			return nil, fmt.Errorf(msg)
+			p.Logger.Warnf("BucketClass %q not found in provisioner namespace %q", bucketClassName, p.Namespace)
 		}
 		if r.OB.Spec.Connection.Endpoint.AdditionalConfigData == nil {
 			r.OB.Spec.Connection.Endpoint.AdditionalConfigData = map[string]string{}

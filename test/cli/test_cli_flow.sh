@@ -59,6 +59,7 @@ function post_install_tests {
     check_namespacestore
     create_replication_files
     bucketclass_cycle
+    bz_2038884
     obc_cycle
     replication_cycle
     check_backingstore
