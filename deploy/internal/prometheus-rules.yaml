@@ -40,7 +40,7 @@ spec:
         system_vendor: Red Hat
       record: odf_system_health_status
     - expr: |
-        NooBaa_system_capacity
+        NooBaa_total_usage
       labels:
         system_type: OCS
         system_vendor: Red Hat
