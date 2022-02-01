@@ -20,7 +20,7 @@ then
     fi
 fi
 
-PLATFORM="$(uname)"
+PLATFORM="x86_64"
 ARCHITECTURE="$(uname -m)"
 if [ "${PLATFORM}" == "Darwin" ] 
 then 
