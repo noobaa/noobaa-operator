@@ -22,7 +22,7 @@ const (
 	port       = "8080"
 	tlscert    = "/etc/certs/tls.cert"
 	tlskey     = "/etc/certs/tls.key"
-	tlscertolm = "/tmp/k8s-webhook-server/serving-certs/tls.cert"
+	tlscertolm = "/tmp/k8s-webhook-server/serving-certs/tls.crt"
 	tlskeyolm  = "/tmp/k8s-webhook-server/serving-certs/tls.key"
 )
 
