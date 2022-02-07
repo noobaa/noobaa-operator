@@ -3065,7 +3065,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "4d18ac61f52f46c0764b8ae4f1a17912c3afda2f1655406ae338579cc3821bed"
+const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "016881f9a5e0561dbf10e7034dead0ee636556c162439d4d54c974a65253357c"
 
 const File_deploy_internal_configmap_postgres_initdb_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3086,6 +3086,14 @@ data:
           # Wrap the postgres binary, force huge_pages=off for initdb
           # see https://bugzilla.redhat.com/show_bug.cgi?id=1946792
           p=/opt/rh/rh-postgresql12/root/usr/bin/postgres
+
+          # Latest RH images moved the postgres binary
+          # from /opt/rh/rh-postgresql12/root/usr/bin/postgres to /usr/bin/postgres
+          # see https://bugzilla.redhat.com/show_bug.cgi?id=2051249
+          if [ ! -x $p ]; then
+            p=/usr/bin/postgres
+          fi
+
           mv $p $p.orig
           echo exec $p.orig \"\$@\" -c huge_pages=off > $p
           chmod 755 $p
