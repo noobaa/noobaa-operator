@@ -61,6 +61,25 @@ spec:
                 description: DefaultResource specifies which backingstore this account
                   will use to create new buckets
                 type: string
+              nsfs_account_config:
+                description: NsfsAccountConfig specifies the configurations on Namespace
+                  FS
+                nullable: true
+                properties:
+                  gid:
+                    type: integer
+                  new_buckets_path:
+                    type: string
+                  nsfs_only:
+                    type: boolean
+                  uid:
+                    type: integer
+                required:
+                - gid
+                - new_buckets_path
+                - nsfs_only
+                - uid
+                type: object
             required:
             - allow_bucket_creation
             - allowed_buckets

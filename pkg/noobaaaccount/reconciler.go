@@ -3,6 +3,7 @@ package noobaaaccount
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -325,7 +326,7 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 		return fmt.Errorf("NooBaaAccount not loaded %#v", r)
 	}
 
-	accountInfo, err := r.NBClient.CreateAccountAPI(nb.CreateAccountParams{
+	createAccountParams := nb.CreateAccountParams{
 		Name:              r.NooBaaAccount.Name,
 		Email:             r.NooBaaAccount.Name,
 		DefaultResource:   r.NooBaaAccount.Spec.DefaultResource,
@@ -336,7 +337,18 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 			FullPermission: r.NooBaaAccount.Spec.AllowedBuckets.FullPermission,
 			PermissionList: r.NooBaaAccount.Spec.AllowedBuckets.PermissionList,
 		},
-	})
+	}
+
+	if r.NooBaaAccount.Spec.NsfsAccountConfig != nil {
+		createAccountParams.NsfsAccountConfig = &nbv1.AccountNsfsConfig{
+			UID:            r.NooBaaAccount.Spec.NsfsAccountConfig.UID,
+			GID:            r.NooBaaAccount.Spec.NsfsAccountConfig.GID,
+			NewBucketsPath: r.NooBaaAccount.Spec.NsfsAccountConfig.NewBucketsPath,
+			NsfsOnly:       r.NooBaaAccount.Spec.NsfsAccountConfig.NsfsOnly,
+		}
+	}
+
+	accountInfo, err := r.NBClient.CreateAccountAPI(createAccountParams)
 	if err != nil {
 		return err
 	}
@@ -377,7 +389,8 @@ func (r *Reconciler) UpdateNooBaaAccount() error {
 	}
 
 	if r.needUpdate() {
-		err := r.NBClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
+
+		updateAccountS3AccessParams := nb.UpdateAccountS3AccessParams{
 			Email:             r.NooBaaAccount.Name,
 			DefaultResource:   &r.NooBaaAccount.Spec.DefaultResource,
 			S3Access:          true,
@@ -386,7 +399,18 @@ func (r *Reconciler) UpdateNooBaaAccount() error {
 				FullPermission: r.NooBaaAccount.Spec.AllowedBuckets.FullPermission,
 				PermissionList: r.NooBaaAccount.Spec.AllowedBuckets.PermissionList,
 			},
-		})
+		}
+	
+		if r.NooBaaAccount.Spec.NsfsAccountConfig != nil {
+			updateAccountS3AccessParams.NsfsAccountConfig = &nbv1.AccountNsfsConfig{
+				UID:            r.NooBaaAccount.Spec.NsfsAccountConfig.UID,
+				GID:            r.NooBaaAccount.Spec.NsfsAccountConfig.GID,
+				NewBucketsPath: r.NooBaaAccount.Spec.NsfsAccountConfig.NewBucketsPath,
+				NsfsOnly:       r.NooBaaAccount.Spec.NsfsAccountConfig.NsfsOnly,
+			}
+		}
+
+		err := r.NBClient.UpdateAccountS3Access(updateAccountS3AccessParams)
 		if err != nil {
 			return err
 		}
@@ -400,6 +424,8 @@ func (r *Reconciler) needUpdate() bool {
 	return r.NooBaaAccount.Spec.AllowBucketCreate != r.NooBaaAccountInfo.CanCreateBuckets ||
 		r.NooBaaAccount.Spec.AllowedBuckets.FullPermission != r.NooBaaAccountInfo.AllowedBuckets.FullPermission ||
 		r.NooBaaAccount.Spec.DefaultResource != r.NooBaaAccountInfo.DefaultResource || 
+		!reflect.DeepEqual(r.NooBaaAccount.Spec.NsfsAccountConfig, r.NooBaaAccountInfo.NsfsAccountConfig) ||
+		r.NooBaaAccount.Spec.NsfsAccountConfig != nil && r.NooBaaAccountInfo.NsfsAccountConfig == nil ||
 		!util.IsStringArrayUnorderedEqual(r.NooBaaAccount.Spec.AllowedBuckets.PermissionList, 
 			r.NooBaaAccountInfo.AllowedBuckets.PermissionList)
 }
