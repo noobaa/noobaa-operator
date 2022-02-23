@@ -11,7 +11,7 @@ import (
 
 // const configuration values for the validation checks
 const (
-	MinimumVolumeSize       = 16
+	MinimumVolumeSize       = 16 * 1024 * 1024 * 1024 // 16Gi
 	MaximumPvpoolNameLength = 43
 	MaximumVolumeCount      = 20
 )
@@ -107,7 +107,7 @@ func ValidatePvpoolMinVolSize(bs nbv1.BackingStore) error {
 	if bs.Spec.PVPool.VolumeResources == nil {
 		return nil
 	}
-	min := *resource.NewScaledQuantity(int64(MinimumVolumeSize), resource.Giga)
+	min := *resource.NewQuantity(int64(MinimumVolumeSize), resource.BinarySI)
 	if bs.Spec.PVPool.VolumeResources.Requests.Storage().Cmp(min) == -1 {
 		return util.ValidationError{
 			Msg: "Invalid volume size, minimum volume size is 16Gi",
