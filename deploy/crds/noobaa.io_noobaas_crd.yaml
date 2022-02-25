@@ -929,6 +929,10 @@ spec:
                       to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                     type: object
                 type: object
+              dbConf:
+                description: DBConf (optional) overrides the default postgresql db
+                  config
+                type: string
               dbImage:
                 description: DBImage (optional) overrides the default image for the
                   db container

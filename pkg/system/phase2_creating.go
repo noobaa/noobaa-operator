@@ -853,6 +853,15 @@ func (r *Reconciler) ReconcileDBConfigMap(cm *corev1.ConfigMap, desiredFunc func
 func (r *Reconciler) SetDesiredPostgresDBConf() error {
 	dbConfigYaml := util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap)
 	r.PostgresDBConf.Data = dbConfigYaml.Data
+
+	overrideField := "noobaa-postgres.conf"
+	operator := r.NooBaa
+	if operator.Spec.DBConf != nil {
+		// If the user has specified a custom "dbConf" in the NooBaa CR then proceed to append that configuration
+		// to the pre-defined configuration
+		r.PostgresDBConf.Data[overrideField] = dbConfigYaml.Data[overrideField] + "\n" + *operator.Spec.DBConf
+	}
+
 	return nil
 }
 

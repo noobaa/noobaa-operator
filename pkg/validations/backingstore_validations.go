@@ -11,9 +11,9 @@ import (
 
 // const configuration values for the validation checks
 const (
-	MinimumVolumeSize       = 16 * 1024 * 1024 * 1024 // 16Gi
-	MaximumPvpoolNameLength = 43
-	MaximumVolumeCount      = 20
+	MinimumVolumeSize       int64 = 16 * 1024 * 1024 * 1024 // 16Gi
+	MaximumPvpoolNameLength       = 43
+	MaximumVolumeCount            = 20
 )
 
 // ValidateBackingStore validates create validations on resource Backinstore

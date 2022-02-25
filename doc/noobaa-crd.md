@@ -219,3 +219,29 @@ The operator will detect deletion of a system CR, and will followup by deleting 
 This is done by connecting owner references and letting Garbage Collection do the rest as described here:
 
 https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/
+
+# Database Configuration
+
+NooBaa allows database configuration via `dbConf` field under `spec` in the NooBaa CR. This field accepts string which can contain custom database configuration.
+
+## Example
+Following example will change PostgreSQL database `max_connections` to 1000 (default being 600).
+
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: NooBaa
+metadata:
+  name: noobaa
+  namespace: noobaa
+spec:
+  image: noobaa/noobaa-core:5.9.0
+  dbImage: centos/postgresql-12-centos7
+  dbType: postgres
+  dbConf: |+
+    max_connections = 1000
+```
+
+## Notes
+1. `dbConf` field will have no effect if `dbType` is not "postgres".
+2. `dbConf` configuration is not validated.
+3. NooBaa uses `ConfigMap` to pass database configuration to the databases. Althought the ConfigMap is editable, it should not and cannot be used to pass custom database overrides. The reason being that NooBaa operator, as part of its reconcile process will overwrite the ConfigMap to the default values.

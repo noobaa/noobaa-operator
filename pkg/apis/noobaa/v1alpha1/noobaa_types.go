@@ -81,6 +81,10 @@ type NooBaaSpec struct {
 	// +optional
 	DBImage *string `json:"dbImage,omitempty"`
 
+	// DBConf (optional) overrides the default postgresql db config
+	// +optional
+	DBConf *string `json:"dbConf,omitempty"`
+
 	// DBType (optional) overrides the default type image for the db container
 	// +optional
 	// +kubebuilder:validation:Enum=mongodb;postgres

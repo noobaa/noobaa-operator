@@ -66,6 +66,7 @@ function post_install_tests {
     account_cycle
     check_deletes
     delete_replication_files
+    check_pgdb_config_override
 }
 
 function main {

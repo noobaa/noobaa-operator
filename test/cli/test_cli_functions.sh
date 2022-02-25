@@ -237,6 +237,37 @@ function check_change_debug_level_in_config_map {
     fi
 }
 
+function check_pgdb_config_override {
+    local timeout=0
+    local temp_file=`echo /tmp/test-$(date +%s).json`
+    local current_max_connections=`${kubectl} exec noobaa-db-pg-0 -- psql -c "SELECT MAX(setting) FROM pg_file_settings WHERE name = 'max_connections';" | awk 'NR==3 {print $1}'`
+    local final_max_connections=$((current_max_connections + 100))
+    printf "{\"spec\":{\"dbConf\":\"\\\nmax_connections = $final_max_connections\"}}" > $temp_file
+
+    kuberun silence patch noobaas.noobaa.io noobaa --patch-file $temp_file --type merge
+
+    while [[ "${final_max_connections}" != "${current_max_connections}" ]]
+    do
+        echo_time "💬  Waiting for PostgreSQL DB max_connections to match the value specified in dbConf"
+        timeout=$((timeout+10))
+        sleep 10
+        current_max_connections=`${kubectl} exec noobaa-db-pg-0 -- psql -c "SELECT MAX(setting) FROM pg_file_settings WHERE name = 'max_connections';" | awk 'NR==3 {print $1}'`
+        if [ ${timeout} -ge 180 ] 
+        then
+            echo_time "❌  reached the timeout for waiting to the update"
+            break
+        fi
+    done 
+
+    if [[ "${final_max_connections}" == "${current_max_connections}" ]]
+    then
+        echo_time "✅  PostgreSQL DB config updated successfully"
+    else
+        echo_time "❌  PostgreSQL DB config didn't got updated, Exiting"
+        exit 1
+    fi
+}
+
 function aws_credentials {
     while read line
     do
