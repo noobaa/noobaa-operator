@@ -1091,7 +1091,29 @@ func IsValidS3BucketName(name string) bool {
 	return validBucketNameRegex.MatchString(name)
 }
 
-// GetFlagStringOrPrompt returns flag value but if empty will promtp to read from stdin
+// GetFlagIntOrPrompt returns flag value but if empty will prompt to read from stdin
+func GetFlagIntOrPrompt(cmd *cobra.Command, flag string) int {
+	val, _ := cmd.Flags().GetInt(flag)
+	if val != -1 {
+		return val
+	}
+	fmt.Printf("Enter %s: ", flag)
+	_, err := fmt.Scan(&val)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "expected integer") {
+			log.Fatalf(`❌ The flag %s must be an integer`, flag)
+		}
+	}
+
+	Panic(err)
+	if val == -1 {
+		log.Fatalf(`❌ Missing %s %s`, flag, cmd.UsageString())
+	}
+	return val
+}
+
+// GetFlagStringOrPrompt returns flag value but if empty will prompt to read from stdin
 func GetFlagStringOrPrompt(cmd *cobra.Command, flag string) string {
 	str, _ := cmd.Flags().GetString(flag)
 	if str != "" {

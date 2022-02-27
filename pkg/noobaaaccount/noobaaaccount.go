@@ -55,6 +55,11 @@ func CmdCreate() *cobra.Command {
 	cmd.Flags().StringSlice("allowed_buckets", nil,
 		"Set the user allowed buckets list (use commas or multiple flags)")
 	cmd.Flags().String("default_resource", "", "Set the default resource, on which new buckets will be created")
+	cmd.Flags().Bool("nsfs_account_config", false, "This flag is for creating nsfs account")
+	cmd.Flags().Int("uid", -1, "Set the nsfs uid")
+	cmd.Flags().Int("gid", -1, "Set the nsfs gid")
+	cmd.Flags().String("new_buckets_path", "/", "Change the path where new buckets will be created")
+	cmd.Flags().Bool("nsfs_only", true, "Set if this account is used only for nsfs")
 	return cmd
 }
 
@@ -144,6 +149,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	allowedBuckets := []string{}
 	fullPermission, _ := cmd.Flags().GetBool("full_permission")
 	bucketList, _ := cmd.Flags().GetStringSlice("allowed_buckets")
+
 	allowedBuckets = append(allowedBuckets, bucketList...)
 	if !fullPermission && len(allowedBuckets) == 0 {
 		log.Fatalf(`❌ Must provide at least one allowed buckets, or full_permission`)
@@ -151,8 +157,14 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if len(allowedBuckets) > 0 &&  fullPermission {
 		log.Fatalf(`❌ Can't provide both full_permission and an allowed buckets list`)
 	}
+
 	allowBucketCreate, _ := cmd.Flags().GetBool("allow_bucket_create")
 	defaultResource, _ := cmd.Flags().GetString("default_resource")
+
+	nsfsAccountConfig, _ := cmd.Flags().GetBool("nsfs_account_config")
+
+	newBucketsPath, _ := cmd.Flags().GetString("new_buckets_path")
+	nsfsOnly, _ := cmd.Flags().GetBool("nsfs_only")
 
 	// Check and get system
 	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
@@ -167,6 +179,25 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	noobaaAccount.Spec.AllowBucketCreate = allowBucketCreate
 	noobaaAccount.Spec.AllowedBuckets.FullPermission = fullPermission
 	noobaaAccount.Spec.AllowedBuckets.PermissionList = allowedBuckets
+
+	if nsfsAccountConfig {
+		nsfsUID := util.GetFlagIntOrPrompt(cmd, "uid")
+		if nsfsUID < 0 {
+			log.Fatalf(`❌  uid must be a whole positive number`)
+		}
+
+		nsfsGID := util.GetFlagIntOrPrompt(cmd, "gid")
+		if nsfsGID < 0 {
+			log.Fatalf(`❌  gid must be a whole positive number`)
+		}
+
+		noobaaAccount.Spec.NsfsAccountConfig = &nbv1.AccountNsfsConfig{
+			UID: nsfsUID,
+			GID: nsfsGID,
+			NewBucketsPath: newBucketsPath,
+			NsfsOnly: nsfsOnly,
+		}
+	}
 
 	if !util.KubeCheck(sys) {
 		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
