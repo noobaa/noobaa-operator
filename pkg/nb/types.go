@@ -5,6 +5,8 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 )
 
 const (
@@ -57,6 +59,10 @@ type AccountInfo struct {
 	Preferences struct {
 		UITheme string `json:"ui_theme"`
 	} `json:"preferences"`
+	// NsfsAccountConfig specifies the configurations on Namespace FS
+	// +nullable
+	// +optional
+	NsfsAccountConfig *nbv1.AccountNsfsConfig	`json:"nsfs_account_config,omitempty"`
 }
 
 // BucketInfo is a struct of bucket info returned by the API
@@ -393,14 +399,15 @@ type AccountAllowedBuckets struct {
 
 // CreateAccountParams is the params of account_api.create_account()
 type CreateAccountParams struct {
-	Name              string                `json:"name"`
-	Email             string                `json:"email"`
-	HasLogin          bool                  `json:"has_login"`
-	S3Access          bool                  `json:"s3_access"`
-	AllowBucketCreate bool                  `json:"allow_bucket_creation"`
-	AllowedBuckets    AccountAllowedBuckets `json:"allowed_buckets"`
-	DefaultResource   string                `json:"default_resource,omitempty"`
-	BucketClaimOwner  string                `json:"bucket_claim_owner,omitempty"`
+    Name              string                    `json:"name"`
+    Email             string                    `json:"email"`
+    HasLogin          bool                      `json:"has_login"`
+    S3Access          bool                      `json:"s3_access"`
+    AllowBucketCreate bool                      `json:"allow_bucket_creation"`
+    AllowedBuckets    AccountAllowedBuckets     `json:"allowed_buckets"`
+    DefaultResource   string                    `json:"default_resource,omitempty"`
+    BucketClaimOwner  string                    `json:"bucket_claim_owner,omitempty"`
+    NsfsAccountConfig *nbv1.AccountNsfsConfig   `json:"nsfs_account_config,omitempty"`
 }
 
 // CreateAccountReply is the reply of account_api.create_account()
@@ -549,11 +556,12 @@ type DeleteNamespaceResourceParams struct {
 
 // UpdateAccountS3AccessParams is the params of account_api.update_account_s3_access()
 type UpdateAccountS3AccessParams struct {
-	Email               string          `json:"email"`
-	S3Access            bool            `json:"s3_access"`
-	DefaultResource     *string         `json:"default_resource,omitempty"`
-	AllowBucketCreation *bool           `json:"allow_bucket_creation,omitempty"`
-	AllowBuckets        *AllowedBuckets `json:"allowed_buckets,omitempty"`
+    Email               string                  `json:"email"`
+    S3Access            bool                    `json:"s3_access"`
+    DefaultResource     *string                 `json:"default_resource,omitempty"`
+    AllowBucketCreation *bool                   `json:"allow_bucket_creation,omitempty"`
+    AllowBuckets        *AllowedBuckets         `json:"allowed_buckets,omitempty"`
+    NsfsAccountConfig   *nbv1.AccountNsfsConfig `json:"nsfs_account_config,omitempty"`
 }
 
 // UpdateDefaultResourceParams is the params of bucket_api.update_all_buckets_default_pool()
