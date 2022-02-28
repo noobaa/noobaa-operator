@@ -11,7 +11,7 @@ data:
     huge_pages = off
 
     # postgres tuning
-    max_connections = 300
+    max_connections = 600
     shared_buffers = 1GB
     effective_cache_size = 3GB
     maintenance_work_mem = 256MB
