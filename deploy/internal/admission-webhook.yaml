@@ -23,6 +23,14 @@ webhooks:
       resources:   
       - "bucketclasses"
       scope: "Namespaced"
+    - apiGroups:   ["noobaa.io"]
+      apiVersions: ["v1alpha1"]
+      operations:  
+      - "CREATE" 
+      - "UPDATE"
+      resources:   
+      - "noobaaaccounts"
+      scope: "Namespaced"
     sideEffects: None
     clientConfig:
       service:
