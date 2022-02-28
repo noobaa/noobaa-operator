@@ -3035,7 +3035,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_configmap_postgres_db_yaml = "d35c0d8efb46f8ff6a5be4ca66a4e462cff69b60c6fa9e315fb61308e6e84215"
+const Sha256_deploy_internal_configmap_postgres_db_yaml = "afe8a865abf2b033229df9dcea392abc1cb27df965d5ff0181f6d931504dce4e"
 
 const File_deploy_internal_configmap_postgres_db_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3050,7 +3050,7 @@ data:
     huge_pages = off
 
     # postgres tuning
-    max_connections = 300
+    max_connections = 600
     shared_buffers = 1GB
     effective_cache_size = 3GB
     maintenance_work_mem = 256MB
