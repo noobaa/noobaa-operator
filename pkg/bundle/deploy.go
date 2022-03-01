@@ -2982,7 +2982,7 @@ metadata:
 spec: {}
 `
 
-const Sha256_deploy_internal_admission_webhook_yaml = "bbfc8f0f288a423b8304575aed0fc12e6b747c47b86c35c81fcb2be40904d31e"
+const Sha256_deploy_internal_admission_webhook_yaml = "0a6723515b4d26c49de29573430caad20ed4eb56b6860ee21d5f374f45b34876"
 
 const File_deploy_internal_admission_webhook_yaml = `apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -3008,6 +3008,14 @@ webhooks:
       - "CREATE" 
       resources:   
       - "bucketclasses"
+      scope: "Namespaced"
+    - apiGroups:   ["noobaa.io"]
+      apiVersions: ["v1alpha1"]
+      operations:  
+      - "CREATE" 
+      - "UPDATE"
+      resources:   
+      - "noobaaaccounts"
       scope: "Namespaced"
     sideEffects: None
     clientConfig:
