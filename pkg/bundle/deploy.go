@@ -1023,7 +1023,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml = "78e32a4643401cb04cc87ab34c5c655fe2a0299517b244d77eae262d5687f88c"
+const Sha256_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml = "7526b82c1d939e8876604ca7f4893ac83eca229061b05df7b8886fd08685bea7"
 
 const File_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1088,6 +1088,25 @@ spec:
                 description: DefaultResource specifies which backingstore this account
                   will use to create new buckets
                 type: string
+              nsfs_account_config:
+                description: NsfsAccountConfig specifies the configurations on Namespace
+                  FS
+                nullable: true
+                properties:
+                  gid:
+                    type: integer
+                  new_buckets_path:
+                    type: string
+                  nsfs_only:
+                    type: boolean
+                  uid:
+                    type: integer
+                required:
+                - gid
+                - new_buckets_path
+                - nsfs_only
+                - uid
+                type: object
             required:
             - allow_bucket_creation
             - allowed_buckets
@@ -2905,7 +2924,7 @@ metadata:
 spec: {}
 `
 
-const Sha256_deploy_internal_admission_webhook_yaml = "bbfc8f0f288a423b8304575aed0fc12e6b747c47b86c35c81fcb2be40904d31e"
+const Sha256_deploy_internal_admission_webhook_yaml = "0a6723515b4d26c49de29573430caad20ed4eb56b6860ee21d5f374f45b34876"
 
 const File_deploy_internal_admission_webhook_yaml = `apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -2931,6 +2950,14 @@ webhooks:
       - "CREATE" 
       resources:   
       - "bucketclasses"
+      scope: "Namespaced"
+    - apiGroups:   ["noobaa.io"]
+      apiVersions: ["v1alpha1"]
+      operations:  
+      - "CREATE" 
+      - "UPDATE"
+      resources:   
+      - "noobaaaccounts"
       scope: "Namespaced"
     sideEffects: None
     clientConfig:

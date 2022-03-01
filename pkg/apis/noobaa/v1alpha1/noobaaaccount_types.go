@@ -60,6 +60,11 @@ type NooBaaAccountSpec struct {
 	
 	// AllowedBuckets specifies which buckets this account can access
 	AllowedBuckets AccountAllowedBuckets `json:"allowed_buckets"`
+
+	// NsfsAccountConfig specifies the configurations on Namespace FS
+	// +nullable
+	// +optional
+	NsfsAccountConfig *AccountNsfsConfig		`json:"nsfs_account_config,omitempty"`
 	
 	// DefaultResource specifies which backingstore this account will use to create new buckets
 	// +optional
@@ -70,6 +75,14 @@ type NooBaaAccountSpec struct {
 type AccountAllowedBuckets struct {
 	FullPermission bool     `json:"full_permission"`
 	PermissionList []string `json:"permission_list"`
+}
+
+// AccountNsfsConfig is the configuration of NSFS of CreateAccountParams
+type AccountNsfsConfig struct {
+    UID int                 `json:"uid"`
+    GID int                 `json:"gid"`
+    NewBucketsPath string   `json:"new_buckets_path"`
+    NsfsOnly bool           `json:"nsfs_only"`
 }
 
 // NooBaaAccountStatus defines the observed state of NooBaaAccount
