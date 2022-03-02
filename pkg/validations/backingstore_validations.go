@@ -21,6 +21,9 @@ func ValidateBackingStore(bs nbv1.BackingStore) error {
 	if err := ValidateBSEmptySecretName(bs); err != nil {
 		return err
 	}
+	if err := ValidateBSEmptyTargetBucket(bs); err != nil {
+		return err
+	}
 	switch bs.Spec.Type {
 	case nbv1.StoreTypePVPool:
 		if err := ValidatePvpoolNameLength(bs); err != nil {
@@ -80,6 +83,49 @@ func ValidateBSEmptySecretName(bs nbv1.BackingStore) error {
 		if len(bs.Spec.GoogleCloudStorage.Secret.Name) == 0 {
 			return util.ValidationError{
 				Msg: "Failed creating the Backingstore, please provide secret name",
+			}
+		}
+	case nbv1.StoreTypePVPool:
+		break
+	default:
+		return util.ValidationError{
+			Msg: "Invalid Backingstore type, please provide a valid Backingstore type",
+		}
+	}
+	return nil
+}
+
+// ValidateBSEmptyTargetBucket validates a target bucket name is provided for cloud backingstores
+func ValidateBSEmptyTargetBucket(bs nbv1.BackingStore) error {
+	switch bs.Spec.Type {
+	case nbv1.StoreTypeAWSS3:
+		if len(bs.Spec.AWSS3.TargetBucket) == 0 {
+			return util.ValidationError{
+				Msg: "Failed creating the Backingstore, please provide target bucket",
+			}
+		}
+	case nbv1.StoreTypeS3Compatible:
+		if len(bs.Spec.S3Compatible.TargetBucket) == 0 {
+			return util.ValidationError{
+				Msg: "Failed creating the Backingstore, please provide target bucket",
+			}
+		}
+	case nbv1.StoreTypeIBMCos:
+		if len(bs.Spec.IBMCos.TargetBucket) == 0 {
+			return util.ValidationError{
+				Msg: "Failed creating the Backingstore, please provide target bucket",
+			}
+		}
+	case nbv1.StoreTypeAzureBlob:
+		if len(bs.Spec.AzureBlob.TargetBlobContainer) == 0 {
+			return util.ValidationError{
+				Msg: "Failed creating the Backingstore, please provide target bucket",
+			}
+		}
+	case nbv1.StoreTypeGoogleCloudStorage:
+		if len(bs.Spec.GoogleCloudStorage.TargetBucket) == 0 {
+			return util.ValidationError{
+				Msg: "Failed creating the Backingstore, please provide target bucket",
 			}
 		}
 	case nbv1.StoreTypePVPool:
