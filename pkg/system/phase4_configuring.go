@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -37,12 +38,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/sts"
 )
 
 const (
-	ibmEndpoint = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
-	ibmLocation = "%s-standard"
-	ibmCOSCred  = "ibm-cloud-cos-creds"
+	ibmEndpoint                      = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
+	ibmLocation                      = "%s-standard"
+	ibmCOSCred                       = "ibm-cloud-cos-creds"
+	projectedServiceAccountTokenFile = "/var/run/secrets/openshift/serviceaccount/oidc-token"
 )
 
 type gcpAuthJSON struct {
@@ -603,6 +606,16 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	}
 	if r.NooBaa.Spec.DefaultBackingStoreSpec != nil {
 		r.DefaultBackingStore.Spec = *r.NooBaa.Spec.DefaultBackingStoreSpec
+		if util.IsSTSClusterBS(r.DefaultBackingStore) {
+			if r.DefaultBackingStore.Spec.AWSS3.TargetBucket == "" {
+				log.Info("No TargetBucket for AWS STS type BackingStore creating one.")
+				r.DefaultBackingStore.Spec.AWSS3.TargetBucket = r.generateBackingStoreTargetName()
+				if err := r.prepareAWSSTSBackingStore(); err != nil {
+					return err
+				}
+			}
+		}
+
 		log.Infof("DefaultBacking store spec %s already exists. skipping ReconcileCloudCredentials", r.DefaultBackingStore.Name)
 	} else if r.CephObjectStoreUser.UID != "" {
 		log.Infof("CephObjectStoreUser %q created. Creating default backing store on ceph objectstore", r.CephObjectStoreUser.Name)
@@ -717,6 +730,52 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 	r.DefaultBackingStore.Spec.AWSS3.Secret.Name = cloudCredsSecret.Name
 	r.DefaultBackingStore.Spec.AWSS3.Secret.Namespace = cloudCredsSecret.Namespace
 	r.DefaultBackingStore.Spec.AWSS3.Region = region
+	return nil
+}
+
+func (r *Reconciler) prepareAWSSTSBackingStore() error {
+	region, err := util.GetAWSRegion()
+	if err != nil {
+		r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DefaultBackingStoreFailure",
+			"Failed to get AWSRegion. using	 us-east-1 as the default region. %q", err)
+		region = "us-east-1"
+	}
+	r.Logger.Infof("identified aws region %s", region)
+	sess, err := session.NewSession(&aws.Config{
+		Region: &region,
+	})
+	if err != nil {
+		return err
+	}
+	bytes, err := ioutil.ReadFile(projectedServiceAccountTokenFile)
+	if err != nil {
+		r.Logger.Errorf("Failed to read file %q: %v", projectedServiceAccountTokenFile, err)
+		return err
+	}
+	webIdentitytoken := string(bytes)
+	svc := sts.New(sess)
+	webIdentityOutput, err := svc.AssumeRoleWithWebIdentity(&sts.AssumeRoleWithWebIdentityInput{
+		RoleArn:          r.DefaultBackingStore.Spec.AWSS3.AWSSTSRoleARN,
+		RoleSessionName:  &r.AWSSTSRoleSessionName,
+		WebIdentityToken: &webIdentitytoken,
+	})
+	if err != nil {
+		r.Logger.Errorf("Unable to assume role for ARN %q : %v", *r.NooBaa.Spec.DefaultBackingStoreSpec.AWSS3.AWSSTSRoleARN, err)
+		return err
+	}
+
+	s3Config := &aws.Config{
+		Credentials: credentials.NewStaticCredentials(
+			*webIdentityOutput.Credentials.AccessKeyId,
+			*webIdentityOutput.Credentials.SecretAccessKey,
+			*webIdentityOutput.Credentials.SessionToken,
+		),
+		Region: &region,
+	}
+	bucketName := r.DefaultBackingStore.Spec.AWSS3.TargetBucket
+	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
+		return err
+	}
 	return nil
 }
 

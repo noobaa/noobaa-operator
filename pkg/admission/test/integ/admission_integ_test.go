@@ -80,7 +80,7 @@ var _ = Describe("Admission server integration tests", func() {
 				result, err = KubeCreate(testBackingstore)
 				Expect(result).To(BeFalse())
 				Ω(err).Should(HaveOccurred())
-				Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: Failed creating the Backingstore, please provide secret name"))
+				Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: Failed creating the Backingstore, please provide a valid ARN or secret name"))
 
 				testNamespacestore.Spec = nbv1.NamespaceStoreSpec{
 					Type: nbv1.NSStoreTypeAWSS3,
@@ -97,6 +97,26 @@ var _ = Describe("Admission server integration tests", func() {
 				Expect(result).To(BeFalse())
 				Ω(err).Should(HaveOccurred())
 				Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: Failed creating the namespacestore, please provide secret name"))
+			})
+		})
+		Context("Non Empty AWS STS ARN", func() {
+			arnString := "some-aws-arn"
+			It("Should Allow", func() {
+				stsBackingStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				stsBackingStore.Name = "sts-bs-name"
+				stsBackingStore.Namespace = namespace
+
+				stsBackingStore.Spec = nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAWSS3,
+					AWSS3: &nbv1.AWSS3Spec{
+						TargetBucket:  "some-target-bucket",
+						AWSSTSRoleARN: &arnString,
+					},
+				}
+
+				result, err = KubeCreate(stsBackingStore)
+				Expect(result).To(BeTrue())
+				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
 		Context("Invalid store type", func() {

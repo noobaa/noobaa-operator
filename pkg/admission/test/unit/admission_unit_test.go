@@ -43,7 +43,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 					}
 					err = validations.ValidateBSEmptySecretName(*bs)
 					Ω(err).Should(HaveOccurred())
-					Expect(err.Error()).To(Equal("Failed creating the Backingstore, please provide secret name"))
+					Expect(err.Error()).To(Equal("Failed creating the Backingstore, please provide a valid ARN or secret name"))
 				})
 				It("Should Allow", func() {
 					bs.Spec = nbv1.BackingStoreSpec{
