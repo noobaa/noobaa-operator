@@ -60,6 +60,29 @@ var _ = Describe("BackingStore admission unit tests", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
+			Context("Empty Target Bucket", func() {
+				It("Should Deny", func() {
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAWSS3,
+						AWSS3: &nbv1.AWSS3Spec{
+							TargetBucket: "",
+						},
+					}
+					err = validations.ValidateBSEmptyTargetBucket(*bs)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Failed creating the Backingstore, please provide target bucket"))
+				})
+				It("Should Allow", func() {
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAWSS3,
+						AWSS3: &nbv1.AWSS3Spec{
+							TargetBucket: "some-target-bucket",
+						},
+					}
+					err = validations.ValidateBSEmptyTargetBucket(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
 			Context("Invalid store type", func() {
 				It("Should Deny", func() {
 					bs.Spec = nbv1.BackingStoreSpec{
@@ -385,6 +408,29 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 						},
 					}
 					err = validations.ValidateNSEmptySecretName(*ns)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+			Context("Empty Target Bucket", func() {
+				It("Should Deny", func() {
+					ns.Spec = nbv1.NamespaceStoreSpec{
+						Type: nbv1.NSStoreTypeAWSS3,
+						AWSS3: &nbv1.AWSS3Spec{
+							TargetBucket: "",
+						},
+					}
+					err = validations.ValidateNSEmptyTargetBucket(*ns)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Failed creating the namespacestore, please provide target bucket"))
+				})
+				It("Should Allow", func() {
+					ns.Spec = nbv1.NamespaceStoreSpec{
+						Type: nbv1.NSStoreTypeAWSS3,
+						AWSS3: &nbv1.AWSS3Spec{
+							TargetBucket: "some-target-bucket",
+						},
+					}
+					err = validations.ValidateNSEmptyTargetBucket(*ns)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})

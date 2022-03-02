@@ -22,6 +22,9 @@ func ValidateNamespaceStore(nsStore *nbv1.NamespaceStore) error {
 	if err := ValidateNSEmptySecretName(*nsStore); err != nil {
 		return err
 	}
+	if err := ValidateNSEmptyTargetBucket(*nsStore); err != nil {
+		return err
+	}
 	switch nsStore.Spec.Type {
 
 	case nbv1.NSStoreTypeNSFS:
@@ -204,6 +207,43 @@ func ValidateNSEmptySecretName(ns nbv1.NamespaceStore) error {
 		if len(ns.Spec.AzureBlob.Secret.Name) == 0 {
 			return util.ValidationError{
 				Msg: "Failed creating the namespacestore, please provide secret name",
+			}
+		}
+	case nbv1.NSStoreTypeNSFS:
+		break
+	default:
+		return util.ValidationError{
+			Msg: "Invalid Namespacestore type, please provide a valid Namespacestore type",
+		}
+	}
+	return nil
+}
+
+// ValidateNSEmptyTargetBucket validates a target bucket name is provided for cloud namespacestore
+func ValidateNSEmptyTargetBucket(ns nbv1.NamespaceStore) error {
+	switch ns.Spec.Type {
+	case nbv1.NSStoreTypeAWSS3:
+		if len(ns.Spec.AWSS3.TargetBucket) == 0 {
+			return util.ValidationError{
+				Msg: "Failed creating the namespacestore, please provide target bucket",
+			}
+		}
+	case nbv1.NSStoreTypeS3Compatible:
+		if len(ns.Spec.S3Compatible.TargetBucket) == 0 {
+			return util.ValidationError{
+				Msg: "Failed creating the namespacestore, please provide target bucket",
+			}
+		}
+	case nbv1.NSStoreTypeIBMCos:
+		if len(ns.Spec.IBMCos.TargetBucket) == 0 {
+			return util.ValidationError{
+				Msg: "Failed creating the namespacestore, please provide target bucket",
+			}
+		}
+	case nbv1.NSStoreTypeAzureBlob:
+		if len(ns.Spec.AzureBlob.TargetBlobContainer) == 0 {
+			return util.ValidationError{
+				Msg: "Failed creating the namespacestore, please provide target bucket",
 			}
 		}
 	case nbv1.NSStoreTypeNSFS:
