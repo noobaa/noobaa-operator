@@ -20,8 +20,8 @@ then
     fi
 fi
 
-PLATFORM="x86_64"
-ARCHITECTURE="$(uname -m)"
+PLATFORM="$(uname)"
+ARCHITECTURE="x86_64"
 if [ "${PLATFORM}" == "Darwin" ] 
 then 
     SDK_RELEASE="https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-${ARCHITECTURE}-apple-darwin"
