@@ -689,3 +689,121 @@ var _ = Describe("BucketClass admission unit tests", func() {
 		})
 	})
 })
+
+var _ = Describe("NooBaaAccount admission unit tests", func() {
+
+	var (
+		na  *nbv1.NooBaaAccount
+		err error
+	)
+
+	BeforeEach(func() {
+		na = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml).(*nbv1.NooBaaAccount)
+		na.Name = "na-name"
+		na.Namespace = "test"
+	})
+
+	Describe("Validate create operations", func() {
+		Describe("Noobaaaccount NSFS create validations", func() {
+			Context("UID and GID are a whole positive number", func() {
+				It("Should Deny Negative UID", func() {
+					na.Spec = nbv1.NooBaaAccountSpec{
+						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
+							UID:            -3,
+							GID:            2,
+							NewBucketsPath: "/",
+							NsfsOnly:       true,
+						},
+					}
+					err = validations.ValidateNSFSConfig(*na)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("UID must be a whole positive number"))
+				})
+				It("Should Deny Negative GID", func() {
+					na.Spec = nbv1.NooBaaAccountSpec{
+						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
+							UID:            3,
+							GID:            -2,
+							NewBucketsPath: "/",
+							NsfsOnly:       true,
+						},
+					}
+					err = validations.ValidateNSFSConfig(*na)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("GID must be a whole positive number"))
+				})
+				It("Should Allow", func() {
+					na.Spec = nbv1.NooBaaAccountSpec{
+						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
+							UID:            3,
+							GID:            2,
+							NewBucketsPath: "/",
+							NsfsOnly:       true,
+						},
+					}
+					err = validations.ValidateNSFSConfig(*na)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+		})
+	})
+
+	Describe("Validate update operations", func() {
+		var (
+			updatedNA *nbv1.NooBaaAccount
+		)
+
+		BeforeEach(func() {
+			updatedNA = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml).(*nbv1.NooBaaAccount)
+			updatedNA.Name = "na-name"
+			updatedNA.Namespace = "test"
+		})
+
+		Describe("Noobaaaccount NSFS update validations", func() {
+			Context("Remove NSFSAccountConfig from NooBaaAccountSpec", func() {
+				It("Should Deny", func() {
+					na.Spec = nbv1.NooBaaAccountSpec{
+						AllowBucketCreate: true,
+						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
+							UID:            3,
+							GID:            2,
+							NewBucketsPath: "/",
+							NsfsOnly:       true,
+						},
+					}
+
+					updatedNA.Spec = nbv1.NooBaaAccountSpec{
+					}
+
+					err = validations.ValidateRemoveNSFSConfig(*updatedNA, *na)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Removing the NsfsAccountConfig is unsupported"))
+				})
+			})
+			Context("Update NSFSAccountConfig In NooBaaAccountSpec", func() {
+				It("Should Allow", func() {
+					na.Spec = nbv1.NooBaaAccountSpec{
+						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
+							UID:            3,
+							GID:            2,
+							NewBucketsPath: "/",
+							NsfsOnly:       true,
+						},
+					}
+
+					updatedNA.Spec = nbv1.NooBaaAccountSpec{
+						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
+							UID:            30,
+							GID:            20,
+							NewBucketsPath: "/new/",
+							NsfsOnly:       false,
+						},
+					}
+
+					err = validations.ValidateRemoveNSFSConfig(*na, *updatedNA)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+		})
+	})
+})
