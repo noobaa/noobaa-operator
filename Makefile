@@ -183,6 +183,11 @@ test-cli-flow:
 	@echo "✅ test-cli-flow"
 .PHONY: test-cli-flow
 
+test-core-config-map-flow:
+	$(TIME) ./test/cli/test_cli_flow.sh --check_core_config_map
+	@echo "✅ test-core-config-map-flow"
+.PHONY: test-core-config-map-flow
+
 # test-olm runs tests for the OLM package
 test-olm: $(OPERATOR_SDK) gen-olm
 	$(TIME) ./test/test-olm.sh $(CATALOG_IMAGE)
