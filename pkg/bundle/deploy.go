@@ -1217,7 +1217,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "1a69fb4b66bd89d1073e4d1659a91c05e2e7f9acacfdd0c941c9a8a460dc0912"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "85f16eb011f71179da009e729a7e32ad8a886a092cc896d2869edd30c358ad97"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2150,6 +2150,10 @@ spec:
                       to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                     type: object
                 type: object
+              dbConf:
+                description: DBConf (optional) overrides the default postgresql db
+                  config
+                type: string
               dbImage:
                 description: DBImage (optional) overrides the default image for the
                   db container
