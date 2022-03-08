@@ -2,7 +2,7 @@
 name: NS FS Bug Report
 about: Create a report to help us improve the NS FS project
 title: ''
-labels: NS FS
+labels: NS-FS
 assignees: ''
 
 ---
