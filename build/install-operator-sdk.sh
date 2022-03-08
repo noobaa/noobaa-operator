@@ -21,7 +21,7 @@ then
 fi
 
 PLATFORM="$(uname)"
-ARCHITECTURE="$(uname -m)"
+ARCHITECTURE="x86_64"
 if [ "${PLATFORM}" == "Darwin" ] 
 then 
     SDK_RELEASE="https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-${ARCHITECTURE}-apple-darwin"

@@ -52,7 +52,6 @@ NAMESPACE='test'
 # AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=YYY aws s3 --endpoint-url XXX ls BUCKETNAME ❌
 
 function post_install_tests {
-    check_core_config_map
     aws_credentials
     check_pv_pool_resources
     check_S3_compatible
@@ -71,18 +70,24 @@ function post_install_tests {
 
 function main {
     noobaa_install
-    post_install_tests
+    if ${CM}
+    then
+        check_core_config_map
+    else
+        post_install_tests
+    fi
     noobaa_uninstall
  }
 
 function usage {
     set +x
     echo -e "\nUsage: ${0} [options]"
-    echo "--namespace       -   Change the namespace (default: ${NAMESPACE})"
-    echo "--mongo-image     -   Change the mongo image"
-    echo "--noobaa-image    -   Change the noobaa image"
-    echo "--operator-image  -   Change the operator image"
-    echo -e "--help         -   print this help\n"
+    echo "--namespace             -   Change the namespace (default: ${NAMESPACE})"
+    echo "--mongo-image           -   Change the mongo image"
+    echo "--noobaa-image          -   Change the noobaa image"
+    echo "--operator-image        -   Change the operator image"
+    echo "--check_core_config_map -   Check Only core config map"
+    echo -e "--help               -   print this help\n"
     exit 1
 }
 
@@ -110,16 +115,18 @@ do
     fi
 
     case ${1} in
-        --mongo-image)      MONGO_IMAGE=${2}
-                            shift 2;;
-        --noobaa-image)     NOOBAA_IMAGE=${2}
-                            shift 2;;
-        --operator-image)   OPERATOR_IMAGE=${2}
-                            shift 2;;
-        -n|--namespace)     NAMESPACE=${2}
-                            shift 2;;
-        -h|--help)          usage;;
-        *)                  usage;;
+        --mongo-image)           MONGO_IMAGE=${2}
+                                 shift 2;;
+        --noobaa-image)          NOOBAA_IMAGE=${2}
+                                 shift 2;;
+        --operator-image)        OPERATOR_IMAGE=${2}
+                                 shift 2;;
+        -n|--namespace)          NAMESPACE=${2}
+                                 shift 2;;
+        --check_core_config_map) CM=true
+                                 shift;;       
+        -h|--help)               usage;;
+        *)                       usage;;
     esac
 done
 
