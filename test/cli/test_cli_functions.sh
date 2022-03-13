@@ -555,6 +555,8 @@ function account_cycle {
     account_regenerate_keys "operator@noobaa.io"
     # testing account reset password
     account_reset_password "admin@noobaa.io"
+    # testing nsfs accounts
+    account_nsfs_cycle
     echo_time "✅  noobaa account cycle is done"
 }
 
@@ -617,6 +619,20 @@ function get_admin_password {
         fi
     done < <(yes | test_noobaa status)
     echo ${password}
+}
+
+function account_nsfs_cycle {
+    local default_resource= "fs1"
+    # Creating namespacestore to use by the account 
+    test_noobaa namespacestore create nsfs ${default_resource} --pvc-name='nsfs-vol' --fs-backend='GPFS'
+    # Testing that we can create account using namespacestore
+    test_noobaa account create fsaccount1 --full_permission --default_resource ${default_resource} --nsfs_account_config --uid 123 --gid 456
+    # should fail if the default_resource does not exists
+    test_noobaa should_fail account create fsaccount2 --full_permission --default_resource not_exists --nsfs_account_config --uid 123 --gid 456
+    # should fail if the uid is not a number   
+    test_noobaa should_fail account create fsaccount3 --full_permission --default_resource ${default_resource} --nsfs_account_config --uid fail --gid 456
+    # should fail if the gid is not a number
+    test_noobaa should_fail account create fsaccount4 --full_permission --default_resource ${default_resource} --nsfs_account_config --uid 123 --gid fail
 }
 
 function delete_backingstore_path {
