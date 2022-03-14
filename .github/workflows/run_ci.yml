@@ -7,7 +7,7 @@ env:
   ACTIONS_ALLOW_UNSECURE_COMMANDS: "true"
   GO111MODULE: "on"
   GOPROXY: "https://proxy.golang.org"
-  KUBERNETES_VERSION: "v1.17.3"
+  KUBERNETES_VERSION: "v1.22.2"
 
 jobs:
   run-tests:
