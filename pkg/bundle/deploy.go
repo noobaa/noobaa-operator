@@ -3669,7 +3669,7 @@ spec:
   wildcardPolicy: None
 `
 
-const Sha256_deploy_internal_route_s3_yaml = "e5d832cf3912c648ab4b799ded80a70eaec9fc13d6181726d934af99f71a6686"
+const Sha256_deploy_internal_route_s3_yaml = "16050267fd5cb0a34ff7b4d849a601d2583da1a11394a94f38c4f066c1613f34"
 
 const File_deploy_internal_route_s3_yaml = `apiVersion: route.openshift.io/v1
 kind: Route
@@ -3681,6 +3681,7 @@ spec:
   port:
     targetPort: s3-https
   tls:
+    insecureEdgeTerminationPolicy: Allow
     termination: reencrypt
   to:
     kind: Service
