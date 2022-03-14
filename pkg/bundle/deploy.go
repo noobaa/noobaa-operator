@@ -1217,7 +1217,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "85f16eb011f71179da009e729a7e32ad8a886a092cc896d2869edd30c358ad97"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "4e67ec9309050db9456c89073739b9e4e09bd52fabfcbe4341ab7c98d9ed35bc"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1567,7 +1567,7 @@ spec:
                                     field and the ones listed in the namespaces field.
                                     null selector and null or empty namespaces list
                                     means "this pod's namespace". An empty selector
-                                    ({}) matches all namespaces. This field is alpha-level
+                                    ({}) matches all namespaces. This field is beta-level
                                     and is only honored when PodAffinityNamespaceSelector
                                     feature is enabled.
                                   properties:
@@ -1723,7 +1723,7 @@ spec:
                                 the ones listed in the namespaces field. null selector
                                 and null or empty namespaces list means "this pod's
                                 namespace". An empty selector ({}) matches all namespaces.
-                                This field is alpha-level and is only honored when
+                                This field is beta-level and is only honored when
                                 PodAffinityNamespaceSelector feature is enabled.
                               properties:
                                 matchExpressions:
@@ -1876,7 +1876,7 @@ spec:
                                     field and the ones listed in the namespaces field.
                                     null selector and null or empty namespaces list
                                     means "this pod's namespace". An empty selector
-                                    ({}) matches all namespaces. This field is alpha-level
+                                    ({}) matches all namespaces. This field is beta-level
                                     and is only honored when PodAffinityNamespaceSelector
                                     feature is enabled.
                                   properties:
@@ -2032,7 +2032,7 @@ spec:
                                 the ones listed in the namespaces field. null selector
                                 and null or empty namespaces list means "this pod's
                                 namespace". An empty selector ({}) matches all namespaces.
-                                This field is alpha-level and is only honored when
+                                This field is beta-level and is only honored when
                                 PodAffinityNamespaceSelector feature is enabled.
                               properties:
                                 matchExpressions:
