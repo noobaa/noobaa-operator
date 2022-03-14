@@ -158,6 +158,7 @@ replace (
 	// see https://github.com/rook/rook/blob/master/go.mod#L42-L43
 	github.com/moby/term => github.com/moby/term v0.0.0-20201110203204-bea5bbe245bf // indirect
 	github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 )
 
 // https://github.com/rook/rook/blob/master/go.mod#L47-L49
