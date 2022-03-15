@@ -208,18 +208,19 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 
 	if r.NooBaaAccount.Spec.AllowBucketCreate && r.NooBaaAccount.Spec.DefaultResource == "" {
 		return util.NewPersistentError("MissingDefaultResource",
-			fmt.Sprintf("Account %q is allowed to create buckets, but no default resource is provided", r.NooBaaAccount.Name))
+			fmt.Sprintf("Account %q is allowed to create buckets, but no resource is provided", r.NooBaaAccount.Name))
 	}
 
 	if r.NooBaaAccount.Spec.DefaultResource != "" {
-		o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml)
-		backStore := o.(*nbv1.BackingStore)
-		backStore.Name = r.NooBaaAccount.Spec.DefaultResource
-		backStore.Namespace = options.Namespace
-		if !util.KubeCheck(backStore) {
+		isResourceBackingStore := checkResourceBackingStore(r.NooBaaAccount.Spec.DefaultResource) 
+		isResourceNamespaceStore := checkResourceNamespaceStore(r.NooBaaAccount.Spec.DefaultResource)
+		if !isResourceBackingStore && !isResourceNamespaceStore {
 			return util.NewPersistentError("MissingDefaultResource",
-				fmt.Sprintf("Account %q is allowed to create buckets, but default resource %q not found", 
+				fmt.Sprintf("Account %q is allowed to create buckets, but resource %q was not found", 
 					r.NooBaaAccount.Name, r.NooBaaAccount.Spec.DefaultResource))
+		} else if isResourceBackingStore && isResourceNamespaceStore {
+			return util.NewPersistentError("MissingDefaultResource",
+				fmt.Sprintf("BackingStore and NamespaceStore should not have the same name: %q, ", r.NooBaaAccount.Spec.DefaultResource))
 		}
 	}
 

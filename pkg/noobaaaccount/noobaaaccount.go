@@ -206,18 +206,18 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if defaultResource == "" { // if user doesn't provide default resource we will use the default backingstore
 		defaultResource = sys.Name + "-default-backing-store"
 	} 
-	// check that default backing store exists
-	defaultRes := &nbv1.BackingStore{
-		TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      defaultResource,
-			Namespace: options.Namespace,
-		},
+
+	isResourceBackingStore := checkResourceBackingStore(defaultResource) 
+	isResourceNamespaceStore := checkResourceNamespaceStore(defaultResource)
+
+	if isResourceBackingStore && isResourceNamespaceStore {
+		log.Fatalf(`❌  got BackingStore and NamespaceStore %q in namespace %q`,
+			defaultResource, options.Namespace) 
+	} else if !isResourceBackingStore && !isResourceNamespaceStore {
+		log.Fatalf(`❌ Could not get BackingStore or NamespaceStore %q in namespace %q`,
+			defaultResource, options.Namespace)
 	}
-	if !util.KubeCheck(defaultRes) {
-		log.Fatalf(`❌ Could not get BackingStore %q in namespace %q`,
-			defaultResource, noobaaAccount.Namespace)
-	}
+
 	noobaaAccount.Spec.DefaultResource = defaultResource
 
 	err := util.KubeClient().Get(util.Context(), util.ObjectKey(noobaaAccount), noobaaAccount)
@@ -664,4 +664,32 @@ func PasswordResstrictions(oldPassword string, newPassword string, retypeNewPass
 	// length of password
 	// charecters
 
+}
+
+// checkResourceBackingStore checks if a resourceName exists and if BackingStore
+func checkResourceBackingStore(resourceName string) bool {
+	// check that a backing store exists
+	resourceBackingStore := &nbv1.BackingStore{
+		TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      resourceName,
+			Namespace: options.Namespace,
+		},
+	}
+
+	return util.KubeCheckQuiet(resourceBackingStore)
+}
+
+// checkResourceNamespaceStore checks if a resourceName exists and if NamespaceStore
+func checkResourceNamespaceStore(resourceName string) bool {
+	// check that a namespace store exists
+	resourceNamespaceStore := &nbv1.NamespaceStore{
+		TypeMeta: metav1.TypeMeta{Kind: "NamespaceStore"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      resourceName,
+			Namespace: options.Namespace,
+		},
+	}
+
+	return util.KubeCheckQuiet(resourceNamespaceStore)
 }
