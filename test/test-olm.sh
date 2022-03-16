@@ -23,24 +23,16 @@ fi
 
 function install_olm() {
     echo "----> Install OLM and Operator Marketplace ..."
-    ${OPERATOR_SDK} olm install --version 0.16.1 || true
-    # kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.10.0/crds.yaml
-    # kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.10.0/olm.yaml
-    # kubectl apply -f https://github.com/operator-framework/operator-marketplace/raw/master/deploy/upstream/01_namespace.yaml
-    # kubectl apply -f https://github.com/operator-framework/operator-marketplace/raw/master/deploy/upstream/02_catalogsourceconfig.crd.yaml
-    # kubectl apply -f https://github.com/operator-framework/operator-marketplace/raw/master/deploy/upstream/03_operatorsource.crd.yaml
-    # kubectl apply -f https://github.com/operator-framework/operator-marketplace/raw/master/deploy/upstream/04_service_account.yaml
-    # kubectl apply -f https://github.com/operator-framework/operator-marketplace/raw/master/deploy/upstream/05_role.yaml
-    # kubectl apply -f https://github.com/operator-framework/operator-marketplace/raw/master/deploy/upstream/06_role_binding.yaml
-    # kubectl apply -f https://github.com/operator-framework/operator-marketplace/raw/master/deploy/upstream/07_upstream_operatorsource.cr.yaml
-    # kubectl apply -f https://github.com/operator-framework/operator-marketplace/raw/master/deploy/upstream/08_operator.yaml
+    curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.20.0/install.sh -o install.sh
+    chmod +x install.sh
+    ./install.sh v0.20.0    
 }
 
 function create_catalog() {
     echo "----> Creating CatalogSource ..."
     # kubectl delete -n olm catalogsource operatorhubio-catalog
     yq write deploy/olm/catalog-source.yaml spec.image $CATALOG_IMAGE | kubectl apply -f -
-    # yq eval ".spec.image = \"$CATALOG_IMAGE"\" deploy/olm/catalog-source.yaml
+    # yq eval ".spec.image = \"$CATALOG_IMAGE"\" deploy/olm/catalog-source.yaml | kubectl apply -f -
 }
 
 function create_subscription() {
@@ -58,6 +50,7 @@ function wait_for_operator() {
     echo "----> Wait for CSV to be ready ..."
     while [ "$(kubectl get csv noobaa-operator.v$VERSION -o jsonpath={.status.phase})" != "Succeeded" ]
     do
+        kubectl describe csv noobaa-operator.v$VERSION || true
         echo -n '.'
         sleep 1
     done
