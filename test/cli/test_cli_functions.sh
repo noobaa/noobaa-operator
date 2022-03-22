@@ -222,6 +222,54 @@ function check_namespacestore {
     echo_time "✅  namespace store s3 compatible cycle is done"
 }
 
+function check_pv_pool_resources {
+    echo_time "💬  Staring PV Pool resources cycle"
+
+    # Minimum CPU     100m
+    #         Memory  400Mi
+    test_noobaa should_fail backingstore create pv-pool request-small-cpu \
+            --num-volumes 1 \
+            --pv-size-gb 16 \
+            --request-cpu 50m
+
+    test_noobaa should_fail backingstore create pv-pool request-small-memory \
+            --num-volumes 1 \
+            --pv-size-gb 16 \
+            --request-memory 100Mi
+
+    test_noobaa should_fail backingstore create pv-pool request-larger-limit \
+            --num-volumes 1 \
+            --pv-size-gb 16 \
+            --request-cpu 300m \
+            --limit-cpu 200m
+
+    test_noobaa backingstore create pv-pool minimum-request-limit \
+            --num-volumes 1 \
+            --pv-size-gb 16 \
+            --request-cpu 100m \
+            --request-memory 400Mi \
+            --limit-cpu 100m \
+            --limit-memory 400Mi
+
+    test_noobaa backingstore create pv-pool large-request-limit \
+            --num-volumes 1 \
+            --pv-size-gb 16 \
+            --request-cpu 300m \
+            --request-memory 500Mi \
+            --limit-cpu 400m \
+            --limit-memory 600Mi
+
+    test_noobaa backingstore list
+    test_noobaa status
+    kuberun get backingstore
+    kuberun describe backingstore
+
+    test_noobaa backingstore delete minimum-request-limit
+    test_noobaa backingstore delete large-request-limit
+
+    echo_time "✅  PV Pool resources cycle is done"
+}
+
 function check_S3_compatible {
     echo_time "💬  Staring compatible cycle"
     local cycle
