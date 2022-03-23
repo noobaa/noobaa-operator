@@ -49,6 +49,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/printers"
@@ -57,8 +58,11 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -106,6 +110,15 @@ var (
 	// SecureHTTPTransport is a global secure http transport
 	SecureHTTPTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+	}
+
+	// MapStorTypeToMandatoryProperties holds a map of store type -> credentials mandatory properties
+	MapStorTypeToMandatoryProperties = map[nbv1.StoreType][]string{
+		nbv1.StoreTypeAWSS3:              {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
+		nbv1.StoreTypeS3Compatible:       {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
+		nbv1.StoreTypeIBMCos:             {"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"},
+		nbv1.StoreTypeGoogleCloudStorage: {"GoogleServiceAccountPrivateKeyJson"},
+		nbv1.StoreTypeAzureBlob:          {"AccountName", "AccountKey"},
 	}
 )
 
@@ -204,7 +217,7 @@ func KubeClient() client.Client {
 	return lazyClient
 }
 
-// KubeObject loads a text yaml/json to a kubernets object.
+// KubeObject loads a text yaml/json to a kubernetes object.
 func KubeObject(text string) runtime.Object {
 	// Decode text (yaml/json) to kube api object
 	deserializer := serializer.NewCodecFactory(scheme.Scheme).UniversalDeserializer()
@@ -737,7 +750,7 @@ func GetContainerStatusLine(cont *corev1.ContainerStatus) string {
 	return s
 }
 
-// Panic is conviniently calling panic only if err is not nil
+// Panic is conveniently calling panic only if err is not nil
 func Panic(err error) {
 	if err != nil {
 		reason := errors.ReasonForError(err)
@@ -1021,7 +1034,7 @@ func IsIBMPlatform() bool {
 	}
 	isIBM := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "ibm")
 	if isIBM {
-		// Incase of Satellite cluster is deplyed in user provided infrastructure
+		// Incase of Satellite cluster is deployed in user provided infrastructure
 		if strings.Contains(nodesList.Items[0].Spec.ProviderID, "/sat-") {
 			isIBM = false
 		}
@@ -1306,7 +1319,7 @@ func Contains(s string, arr []string) bool {
 	return false
 }
 
-// GetEnvVariable is looknig for env variable called name in env and return a pointer to the variable
+// GetEnvVariable is looking for env variable called name in env and return a pointer to the variable
 func GetEnvVariable(env *[]corev1.EnvVar, name string) *corev1.EnvVar {
 	for i := range *env {
 		e := &(*env)[i]
@@ -1370,7 +1383,7 @@ func MergeVolumeMountList(existing, template *[]corev1.VolumeMount) {
 	}
 }
 
-// GetCmDataHash calculates a Hash string repersnting an array of key value strings
+// GetCmDataHash calculates a Hash string representing an array of key value strings
 func GetCmDataHash(input map[string]string) string {
 	b := new(bytes.Buffer)
 
@@ -1598,14 +1611,14 @@ func NooBaaCondition(noobaa *nbv1.NooBaa, t conditionsv1.ConditionType, s corev1
 func GetAvailabeKubeCli() string {
 	kubeCommand := "kubectl"
 	cmd := exec.Command(kubeCommand)
-	err := cmd.Run(); 
+	err := cmd.Run()
 	if err == nil {
 		log.Printf("✅ kubectl exists - will use it for diagnostics\n")
 	} else {
 		log.Printf("❌ Could not find kubectl, will try to use oc instead, error: %s\n", err)
 		kubeCommand = "oc"
 		cmd = exec.Command(kubeCommand)
-		err = cmd.Run(); 
+		err = cmd.Run()
 		if err == nil {
 			log.Printf("✅ oc exists - will use it for diagnostics\n")
 		} else {
@@ -1613,4 +1626,290 @@ func GetAvailabeKubeCli() string {
 		}
 	}
 	return kubeCommand
+}
+
+// GetBackingStoreSecret returns the secret reference of the backing store if it is relevant to the type
+func GetBackingStoreSecret(bs *nbv1.BackingStore) (*corev1.SecretReference, error) {
+	switch bs.Spec.Type {
+	case nbv1.StoreTypeAWSS3:
+		return &bs.Spec.AWSS3.Secret, nil
+	case nbv1.StoreTypeS3Compatible:
+		return &bs.Spec.S3Compatible.Secret, nil
+	case nbv1.StoreTypeIBMCos:
+		return &bs.Spec.IBMCos.Secret, nil
+	case nbv1.StoreTypeAzureBlob:
+		return &bs.Spec.AzureBlob.Secret, nil
+	case nbv1.StoreTypeGoogleCloudStorage:
+		return &bs.Spec.GoogleCloudStorage.Secret, nil
+	case nbv1.StoreTypePVPool:
+		return &bs.Spec.PVPool.Secret, nil
+	default:
+		return nil, fmt.Errorf("failed to get secret reference from backingstore %q", bs.Name)
+	}
+}
+
+// SetBackingStoreSecretRef setting a backingstore secret reference to the provided one
+func SetBackingStoreSecretRef(bs *nbv1.BackingStore, ref *corev1.SecretReference) error {
+	switch bs.Spec.Type {
+	case nbv1.StoreTypeAWSS3:
+		bs.Spec.AWSS3.Secret = *ref
+		return nil
+	case nbv1.StoreTypeS3Compatible:
+		bs.Spec.S3Compatible.Secret = *ref
+		return nil
+	case nbv1.StoreTypeIBMCos:
+		bs.Spec.IBMCos.Secret = *ref
+		return nil
+	case nbv1.StoreTypeAzureBlob:
+		bs.Spec.AzureBlob.Secret = *ref
+		return nil
+	case nbv1.StoreTypeGoogleCloudStorage:
+		bs.Spec.GoogleCloudStorage.Secret = *ref
+		return nil
+	case nbv1.StoreTypePVPool:
+		bs.Spec.PVPool.Secret = *ref
+		return nil
+	default:
+		return fmt.Errorf("failed to set backingstore %q secret reference", bs.Name)
+	}
+}
+
+// GetBackingStoreTargetBucket returns the target bucket of the backing store if it is relevant to the type
+func GetBackingStoreTargetBucket(bs *nbv1.BackingStore) (string, error) {
+	switch bs.Spec.Type {
+	case nbv1.StoreTypeAWSS3:
+		return bs.Spec.AWSS3.TargetBucket, nil
+	case nbv1.StoreTypeS3Compatible:
+		return bs.Spec.S3Compatible.TargetBucket, nil
+	case nbv1.StoreTypeIBMCos:
+		return bs.Spec.IBMCos.TargetBucket, nil
+	case nbv1.StoreTypeAzureBlob:
+		return bs.Spec.AzureBlob.TargetBlobContainer, nil
+	case nbv1.StoreTypeGoogleCloudStorage:
+		return bs.Spec.GoogleCloudStorage.TargetBucket, nil
+	case nbv1.StoreTypePVPool:
+		return "", nil
+	default:
+		return "", fmt.Errorf("failed to get backingstore %q target bucket", bs.Name)
+	}
+}
+
+// GetNamespaceStoreSecret returns the secret reference of the namespace store if it is relevant to the type
+func GetNamespaceStoreSecret(ns *nbv1.NamespaceStore) (*corev1.SecretReference, error) {
+	switch ns.Spec.Type {
+	case nbv1.NSStoreTypeAWSS3:
+		return &ns.Spec.AWSS3.Secret, nil
+	case nbv1.NSStoreTypeS3Compatible:
+		return &ns.Spec.S3Compatible.Secret, nil
+	case nbv1.NSStoreTypeIBMCos:
+		return &ns.Spec.IBMCos.Secret, nil
+	case nbv1.NSStoreTypeAzureBlob:
+		return &ns.Spec.AzureBlob.Secret, nil
+	case nbv1.NSStoreTypeNSFS:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("failed to get namespacestore %q secret", ns.Name)
+	}
+}
+
+// SetNamespaceStoreSecretRef setting a namespacestore secret reference to the provided one
+func SetNamespaceStoreSecretRef(ns *nbv1.NamespaceStore, ref *corev1.SecretReference) error {
+	switch ns.Spec.Type {
+	case nbv1.NSStoreTypeAWSS3:
+		ns.Spec.AWSS3.Secret = *ref
+		return nil
+	case nbv1.NSStoreTypeS3Compatible:
+		ns.Spec.S3Compatible.Secret = *ref
+		return nil
+	case nbv1.NSStoreTypeIBMCos:
+		ns.Spec.IBMCos.Secret = *ref
+		return nil
+	case nbv1.NSStoreTypeAzureBlob:
+		ns.Spec.AzureBlob.Secret = *ref
+		return nil
+	case nbv1.NSStoreTypeNSFS:
+		return nil
+	default:
+		return fmt.Errorf("failed to set namespacestore %q secret reference", ns.Name)
+	}
+}
+
+// GetNamespaceStoreTargetBucket returns the target bucket of the namespace store if it is relevant to the type
+func GetNamespaceStoreTargetBucket(ns *nbv1.NamespaceStore) (string, error) {
+	switch ns.Spec.Type {
+	case nbv1.NSStoreTypeAWSS3:
+		return ns.Spec.AWSS3.TargetBucket, nil
+	case nbv1.NSStoreTypeS3Compatible:
+		return ns.Spec.S3Compatible.TargetBucket, nil
+	case nbv1.NSStoreTypeIBMCos:
+		return ns.Spec.IBMCos.TargetBucket, nil
+	case nbv1.NSStoreTypeAzureBlob:
+		return ns.Spec.AzureBlob.TargetBlobContainer, nil
+	case nbv1.NSStoreTypeNSFS:
+		return "", nil
+	default:
+		return "", fmt.Errorf("failed to ger namespacestore %q target bucket", ns.Name)
+	}
+}
+
+// GetSecretFromSecretReference search and retruns a secret obj from a provided secret reference
+func GetSecretFromSecretReference(secretRef *corev1.SecretReference) (*corev1.Secret, error) {
+	if secretRef == nil || secretRef.Name == "" {
+		return nil, nil
+	}
+
+	o := KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+	secret := o.(*corev1.Secret)
+
+	secret.Name = secretRef.Name
+	secret.Namespace = secretRef.Namespace
+
+	if !KubeCheck(secret) {
+		return nil, fmt.Errorf(`❌ Could not get Secret %q in namespace %q`, secret.Name, secret.Namespace)
+	}
+
+	return secret, nil
+}
+
+// CheckForIdenticalSecretsCreds search and returns a secret name with identical credentials in the provided secret
+// the credentials to compare stored in mandatoryProp
+func CheckForIdenticalSecretsCreds(secret *corev1.Secret, mandatoryProp []string) *corev1.Secret {
+	if secret == nil {
+		return nil
+	}
+	nsList := &nbv1.NamespaceStoreList{
+		TypeMeta: metav1.TypeMeta{Kind: "NamespaceStoreList"},
+	}
+	bsList := &nbv1.BackingStoreList{
+		TypeMeta: metav1.TypeMeta{Kind: "BackingStoreList"},
+	}
+	KubeList(bsList, &client.ListOptions{Namespace: secret.Namespace})
+	KubeList(nsList, &client.ListOptions{Namespace: secret.Namespace})
+
+	for _, bs := range bsList.Items {
+		if bs.Spec.Type != nbv1.StoreTypePVPool {
+			secretRef, err := GetBackingStoreSecret(&bs)
+			if err != nil {
+				log.Errorf("%s", err)
+			}
+			if secretRef != nil {
+				usedSecret, err := GetSecretFromSecretReference(secretRef)
+				if err != nil {
+					log.Errorf("%s", err)
+				}
+				if usedSecret != nil && usedSecret.Name != secret.Name {
+					found := true
+					for _, key := range mandatoryProp {
+						found = found && usedSecret.StringData[key] == secret.StringData[key]
+					}
+					if found {
+						return usedSecret
+					}
+				}
+			}
+		}
+	}
+
+	for _, ns := range nsList.Items {
+		if ns.Spec.Type != nbv1.NSStoreTypeNSFS {
+			secretRef, err := GetNamespaceStoreSecret(&ns)
+			if err != nil {
+				log.Errorf("%s", err)
+			}
+			if secretRef != nil {
+				usedSecret, err := GetSecretFromSecretReference(secretRef)
+				if err != nil {
+					log.Errorf("%s", err)
+				}
+				if usedSecret != nil && usedSecret.Name != secret.Name {
+					found := true
+					for _, key := range mandatoryProp {
+						found = found && usedSecret.StringData[key] == secret.StringData[key]
+					}
+					if found {
+						return usedSecret
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// SetOwnerReference setting a owner reference of owner to dependent metadata with the field of blockOwnerDeletion: true
+// controllerutil.SetOwnerReference is doing the same thing but without blockOwnerDeletion: true
+// If a reference to the same object already exists, it'll return an AlreadyOwnedError. see:
+// https://github.com/kubernetes-sigs/controller-runtime/blob/master/pkg/controller/controllerutil/controllerutil.go#L93
+func SetOwnerReference(owner, dependent metav1.Object, scheme *runtime.Scheme) error {
+	// Validate the owner.
+	ro, ok := owner.(runtime.Object)
+	if !ok {
+		return fmt.Errorf("%T is not a runtime.Object, cannot call SetControllerReference", owner)
+	}
+	if err := validateOwner(owner, dependent); err != nil {
+		return err
+	}
+	// Create a new ref.
+	gvk, err := apiutil.GVKForObject(ro, scheme)
+	if err != nil {
+		return err
+	}
+	ref := metav1.OwnerReference{
+		APIVersion:         gvk.GroupVersion().String(),
+		Kind:               gvk.Kind,
+		Name:               owner.GetName(),
+		UID:                owner.GetUID(),
+		BlockOwnerDeletion: pointer.BoolPtr(true),
+	}
+
+	owners := dependent.GetOwnerReferences()
+	if idx := indexOwnerRef(owners, ref); idx == -1 {
+		owners = append(owners, ref)
+	} else {
+		return &controllerutil.AlreadyOwnedError{
+			Object: dependent,
+			Owner:  ref,
+		}
+	}
+	dependent.SetOwnerReferences(owners)
+	return nil
+}
+
+func validateOwner(owner, object metav1.Object) error {
+	ownerNs := owner.GetNamespace()
+	if ownerNs != "" {
+		objNs := object.GetNamespace()
+		if objNs == "" {
+			return fmt.Errorf("cluster-scoped resource must not have a namespace-scoped owner, owner's namespace %s", ownerNs)
+		}
+		if ownerNs != objNs {
+			return fmt.Errorf("cross-namespace owner references are disallowed, owner's namespace %s, object's namespace %s", owner.GetNamespace(), object.GetNamespace())
+		}
+	}
+	return nil
+}
+
+// indexOwnerRef returns the index of the owner reference in the slice if found, or -1.
+func indexOwnerRef(ownerReferences []metav1.OwnerReference, ref metav1.OwnerReference) int {
+	for index, r := range ownerReferences {
+		if referSameObject(r, ref) {
+			return index
+		}
+	}
+	return -1
+}
+
+// Returns true if a and b point to the same object.
+func referSameObject(a, b metav1.OwnerReference) bool {
+	aGV, err := schema.ParseGroupVersion(a.APIVersion)
+	if err != nil {
+		return false
+	}
+
+	bGV, err := schema.ParseGroupVersion(b.APIVersion)
+	if err != nil {
+		return false
+	}
+
+	return aGV.Group == bGV.Group && a.Kind == b.Kind && a.Name == b.Name
 }

@@ -65,8 +65,9 @@ type Reconciler struct {
 	ExternalConnectionInfo *nb.ExternalConnectionInfo
 	NamespaceResourceinfo  *nb.NamespaceResourceInfo
 
-	AddExternalConnectionParams   *nb.AddExternalConnectionParams
-	CreateNamespaceResourceParams *nb.CreateNamespaceResourceParams
+	AddExternalConnectionParams    *nb.AddExternalConnectionParams
+	CreateNamespaceResourceParams  *nb.CreateNamespaceResourceParams
+	UpdateExternalConnectionParams *nb.UpdateExternalConnectionParams
 }
 
 // Own sets the object owner references to the namespacestore
@@ -475,6 +476,11 @@ func (r *Reconciler) ReadSystemInfo() error {
 			nsr.Endpoint != conn.Endpoint ||
 			nsr.Identity != conn.Identity {
 			r.Logger.Warnf("using existing namespace resource but connection mismatch %+v namespace store %+v", conn, nsr)
+			r.UpdateExternalConnectionParams = &nb.UpdateExternalConnectionParams{
+				Name:     conn.Name,
+				Identity: conn.Identity,
+				Secret:   conn.Secret,
+			}
 		}
 	}
 
@@ -494,10 +500,15 @@ func (r *Reconciler) ReadSystemInfo() error {
 
 	r.AddExternalConnectionParams = conn
 
+	targetBucket, err := util.GetNamespaceStoreTargetBucket(r.NamespaceStore)
+	if err != nil {
+		return err
+	}
+
 	r.CreateNamespaceResourceParams = &nb.CreateNamespaceResourceParams{
 		Name:         r.NamespaceStore.Name,
 		Connection:   conn.Name,
-		TargetBucket: GetNamespaceStoreTargetBucket(r.NamespaceStore),
+		TargetBucket: targetBucket,
 		NamespaceStore: &nb.NamespaceStoreInfo{
 			Name:      r.NamespaceStore.Name,
 			Namespace: options.Namespace,
@@ -509,8 +520,44 @@ func (r *Reconciler) ReadSystemInfo() error {
 
 // LoadNamespaceStoreSecret loads the secret to the reconciler struct
 func (r *Reconciler) LoadNamespaceStoreSecret() error {
-	secretRef := GetNamespaceStoreSecret(r.NamespaceStore)
+	secretRef, err := util.GetNamespaceStoreSecret(r.NamespaceStore)
+	if err != nil {
+		return err
+	}
 	if secretRef != nil {
+		secret, err := util.GetSecretFromSecretReference(secretRef)
+		if err != nil {
+			return err
+		}
+
+		// check the existence of another secret in the system that contains the same credentials,
+		// if found, point this NS secret reference to it.
+		// so if the user will update the credentials, it will trigger updateExternalConnection in all the Namespacestores
+		if secret != nil {
+			suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, util.MapStorTypeToMandatoryProperties[nbv1.StoreType(r.NamespaceStore.Spec.Type)])
+			if suggestedSecret != nil {
+				secretRef.Name = suggestedSecret.Name
+				secretRef.Namespace = suggestedSecret.Namespace
+				err := util.SetNamespaceStoreSecretRef(r.NamespaceStore, secretRef)
+				if err != nil {
+					return err
+				}
+				if !util.KubeUpdate(r.NamespaceStore) {
+					return fmt.Errorf("failed to update NamespaceStore: %q secret reference", r.NamespaceStore.Name)
+				}
+				secret = suggestedSecret
+			}
+			err = util.SetOwnerReference(r.NamespaceStore, secret, r.Scheme)
+			if _, ok := err.(*controllerutil.AlreadyOwnedError); !ok {
+				if err == nil {
+					if !util.KubeUpdate(secret) {
+						return fmt.Errorf("failed to update secret: %q owner reference", r.NamespaceStore.Name)
+					}
+				}
+			} else {
+				return err
+			}
+		}
 		r.Secret.Name = secretRef.Name
 		r.Secret.Namespace = secretRef.Namespace
 		if r.Secret.Namespace == "" {
@@ -619,21 +666,57 @@ func (r *Reconciler) fixAlternateKeysNames() {
 
 // ReconcileExternalConnection handles the external connection using noobaa api
 func (r *Reconciler) ReconcileExternalConnection() error {
-	logrus.Infof("ReconcileExternalConnection")
 
-	// TODO we only support creation here, but not updates
 	if r.ExternalConnectionInfo != nil {
-		logrus.Infof("ReconcileExternalConnection1")
-		return nil
-	}
-	if r.AddExternalConnectionParams == nil {
-		logrus.Infof("ReconcileExternalConnection2")
 		return nil
 	}
 
-	res, err := r.NBClient.CheckExternalConnectionAPI(*r.AddExternalConnectionParams)
+	if r.AddExternalConnectionParams == nil {
+		return nil
+	}
+
+	checkConnectionParams := &nb.CheckExternalConnectionParams{
+		Name:         r.AddExternalConnectionParams.Name,
+		EndpointType: r.AddExternalConnectionParams.EndpointType,
+		Endpoint:     r.AddExternalConnectionParams.Endpoint,
+		Identity:     r.AddExternalConnectionParams.Identity,
+		Secret:       r.AddExternalConnectionParams.Secret,
+		AuthMethod:   r.AddExternalConnectionParams.AuthMethod,
+	}
+
+	if r.UpdateExternalConnectionParams != nil {
+		checkConnectionParams.IgnoreNameAlreadyExist = true
+		err := r.CheckExternalConnection(checkConnectionParams)
+		if err != nil {
+			return err
+		}
+
+		err = r.NBClient.UpdateExternalConnectionAPI(*r.UpdateExternalConnectionParams)
+		if err != nil {
+			return err
+		}
+		r.UpdateExternalConnectionParams = nil
+		return nil
+	}
+
+	checkConnectionParams.IgnoreNameAlreadyExist = false
+	err := r.CheckExternalConnection(checkConnectionParams)
 	if err != nil {
-		logrus.Infof("ReconcileExternalConnection3 %+v", err)
+		return err
+	}
+
+	err = r.NBClient.AddExternalConnectionAPI(*r.AddExternalConnectionParams)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CheckExternalConnection chacks an extenal connection using the noobaa api
+func (r *Reconciler) CheckExternalConnection(connInfo *nb.CheckExternalConnectionParams) error {
+	res, err := r.NBClient.CheckExternalConnectionAPI(*connInfo)
+	if err != nil {
 		if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
 			if rpcErr.RPCCode == "INVALID_SCHEMA_PARAMS" {
 				return util.NewPersistentError("InvalidConnectionParams", rpcErr.Message)
@@ -646,18 +729,14 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 
 	case nb.ExternalConnectionSuccess:
 		// good
-		logrus.Infof("ReconcileExternalConnection4 ExternalConnectionSuccess")
 
 	case nb.ExternalConnectionInvalidCredentials:
-		logrus.Infof("ReconcileExternalConnection5 ExternalConnectionInvalidCredentials")
-
 		if time.Since(r.NamespaceStore.CreationTimestamp.Time) < 5*time.Minute {
 			r.Logger.Infof("got invalid credentials. sometimes access keys take time to propagate inside AWS. requeuing for 5 minutes")
 			return fmt.Errorf("Got InvalidCredentials. requeue again")
 		}
 		fallthrough
 	case nb.ExternalConnectionInvalidEndpoint:
-		logrus.Infof("ReconcileExternalConnection6 ExternalConnectionInvalidEndpoint")
 		if time.Since(r.NamespaceStore.CreationTimestamp.Time) < 5*time.Minute {
 			r.Logger.Infof("got invalid endopint. requeuing for 5 minutes to make sure it is not a temporary connection issue")
 			return fmt.Errorf("got invalid endopint. requeue again")
@@ -666,29 +745,17 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	case nb.ExternalConnectionTimeSkew:
 		fallthrough
 	case nb.ExternalConnectionNotSupported:
-		logrus.Infof("ReconcileExternalConnection7 ExternalConnectionNotSupported")
 		return util.NewPersistentError(string(res.Status),
 			fmt.Sprintf("NamespaceStore %q invalid external connection %q", r.NamespaceStore.Name, res.Status))
-
 	case nb.ExternalConnectionTimeout:
 		fallthrough
 	case nb.ExternalConnectionUnknownFailure:
 		fallthrough
 	default:
-		logrus.Infof("ReconcileExternalConnection8 default")
-
 		return fmt.Errorf("CheckExternalConnection Status=%s Error=%s Message=%s",
 			res.Status, res.Error.Code, res.Error.Message)
 	}
 
-	logrus.Infof("ReconcileExternalConnection8 %+v", r.AddExternalConnectionParams)
-	err = r.NBClient.AddExternalConnectionAPI(*r.AddExternalConnectionParams)
-	if err != nil {
-		logrus.Infof("ReconcileExternalConnection9 %+v", err)
-		return err
-	}
-
-	logrus.Infof("ReconcileExternalConnection10")
 	return nil
 }
 

@@ -176,7 +176,7 @@ var _ = Describe("Admission server integration tests", func() {
 				testNamespacestore.Spec = nbv1.NamespaceStoreSpec{
 					Type: nbv1.NSStoreTypeS3Compatible,
 					S3Compatible: &nbv1.S3CompatibleSpec{
-						TargetBucket: "test.bucket",
+						TargetBucket: "first.bucket",
 						Endpoint:     "s3." + namespace + ".svc.cluster.local:443",
 						Secret: corev1.SecretReference{
 							Name:      "noobaa-admin",

@@ -27,7 +27,7 @@ head -n ${n} ${MANIFESTS}/${CSV_NAME} > ${temp_csv}
 cat >> ${temp_csv} << EOF
   relatedImages:
   - image: ${CORE_IMAGE}
-    name: noboaa-core
+    name: noobaa-core
   - image: ${DB_IMAGE}
     name: noobaa-db
   - image: ${OPERATOR_IMAGE}
