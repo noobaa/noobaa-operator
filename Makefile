@@ -23,6 +23,8 @@ BIN ?= $(OUTPUT)/bin
 OLM ?= $(OUTPUT)/olm
 VENV ?= $(OUTPUT)/venv
 
+BUNDLE_IMAGE ?= noobaa/noobaa-operator-bundle:$(VERSION)
+
 export OPERATOR_SDK_VERSION ?= v0.17.2
 export OPERATOR_SDK ?= build/_tools/operator-sdk-$(OPERATOR_SDK_VERSION)
 
@@ -126,6 +128,10 @@ gen-olm: $(OPERATOR_SDK) gen
 	@echo "✅ gen-olm"
 .PHONY: gen-olm
 
+
+bundle-image:
+	docker pull alpine:latest
+	docker tag alpine:latest ${BUNDLE_IMAGE} 
 
 #-----------#
 #- Testing -#
