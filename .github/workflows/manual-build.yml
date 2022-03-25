@@ -1,0 +1,119 @@
+name: Manual Operator Build Dispatch
+
+on: 
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to Build From'
+        required: true
+      tag:
+        description: 'Additional tag for the build (such as alpha, beta, etc.) - Optional'
+        default: ''
+
+jobs:
+  publish-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Get Current Date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y%m%d')"
+
+      - name: Prepare Suffix
+        id: suffix
+        if: ${{ github.event.inputs.tag != '' }}
+        run: echo ::set-output name=suffix::"-${{ github.event.inputs.tag }}"
+
+      - name: Prepare Tags
+        id: prep
+        run: |
+          DOCKER_OPERATOR_IMAGE=noobaa/noobaa-operator
+          DOCKER_OPERATOR_BUNDLE_IMAGE=noobaa/noobaa-operator-bundle
+          VERSION="${{ steps.date.outputs.date }}"
+          echo "::warning ${VERSION}"
+          echo ::set-output name=version::${VERSION}
+          OPERATOR_TAGS="${DOCKER_OPERATOR_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}${{ steps.suffix.outputs.suffix }}"
+          OPERATOR_BUNDLE_TAGS="${DOCKER_OPERATOR_BUNDLE_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}${{ steps.suffix.outputs.suffix }}"
+          OPERATOR_OCS_DEV_TAG="ocs-dev/noobaa-operator:${{ github.event.inputs.branch }}-latest"
+          echo "::warning ${CORE_TAGS}"
+          echo ::set-output name=operatortags::${OPERATOR_TAGS}
+          echo ::set-output name=operatorbundletags::${OPERATOR_BUNDLE_TAGS}
+          echo ::set-output name=ocsdevlatest::${OPERATOR_OCS_DEV_TAG}
+
+      - name: Update Core Release
+        id: update-release
+        run: |
+          curl --silent -f -lSL "https://index.docker.io/v1/repositories/noobaa/noobaa-core/tags/${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}" > /dev/null || exit 1
+          echo "::found version ${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}, updating image version"
+
+      - name: Login to DockerHub Registry
+        run: echo ${{ secrets.GHACTIONSDOCKERHUB }} | docker login -u ${{ secrets.GHACTIONSDOCKERHUBNAME }} --password-stdin
+
+      - name: Update Core Release Image
+        id: update-release-image
+        run: |
+          # docker pull "noobaa/noobaa-core:${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}"
+          echo "::found version ${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}, updating image version in options.go"
+          # Update local files
+          sed -i 's:ContainerImageTag =.*:ContainerImageTag = "${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}":' pkg/options/options.go
+
+          # Commit Changes
+          # git config --local user.email "action@github.com"
+          # git config --local user.name "GitHub Action"
+          # git commit -m "Auto update core image" -a
+
+      - name: Build & Push Docker Image to DockerHub
+        env:
+          DOCKERHUB_OWNER: ${{ secrets.GHACTIONSDOCKERHUBNAME }}
+        run: |
+            make image VERSION=latest
+            docker tag  noobaa/noobaa-operator ${{ steps.prep.outputs.operatortags }}
+            docker push ${{ steps.prep.outputs.operatortags }}
+
+      - name: Build Bundle
+        run: |
+          make bundle-image \
+          csv-name=noobaa-operator.clusterserviceversion.yaml \
+          core-image=quay.io/${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }} \
+          operator-image=quay.io/${{ steps.prep.outputs.operatortags }} \
+          db-image=centos/postgresql-12-centos7 \
+          BUNDLE_IMAGE=quay.io/${{ steps.prep.outputs.operatorbundletags }}
+
+      - name: Login to Quay.io Registry
+        run: echo ${{ secrets.GHACTIONQUAYTOKEN }} | docker login quay.io -u ${{ secrets.GHACTIONQUAYNAME }} --password-stdin
+
+      - name: Push Docker Images to Quay
+        env:
+          DOCKERHUB_OWNER: ${{ secrets.GHACTIONQUAYNAME }}
+        run: |
+            docker tag ${{ steps.prep.outputs.operatortags }} quay.io/${{ steps.prep.outputs.operatortags }} 
+            docker push quay.io/${{ steps.prep.outputs.operatortags }} 
+            docker push quay.io/${{ steps.prep.outputs.operatorbundletags }}
+
+      - name: Push to ocs-dev as latest
+        env:
+          DOCKERHUB_OWNER: ${{ secrets.GHACTIONQUAYNAME }}
+        run: |
+          docker login -u="${{ secrets.OCSDEVCIUSER }}" -p="${{ secrets.OCSDEVCITOKEN }}" quay.io
+          docker tag ${{ steps.prep.outputs.operatortags }} quay.io/${{ steps.prep.outputs.ocsdevlatest }} 
+          docker push quay.io/${{ steps.prep.outputs.ocsdevlatest }}
+
+      - name: Push CLI Binary
+        run: |         
+          make cli
+          make release-cli VERSION=-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}
+          #noobaa-operator-cli
+
+          s3AccessKey="${{ secrets.AWSACCESSKEY }}"
+          s3SecretKey="${{ secrets.AWSSECRETKEY }}"
+          s3Bucket="noobaa-operator-cli"
+          region="us-east-2"
+          fileName="noobaa-linux-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}"
+
+          cp build-releases/noobaa-linux-v-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }} ${fileName}
+
+          .travis/upload-s3-object-using-curl.sh ${s3AccessKey} ${s3SecretKey} ${s3Bucket}@${region} ${fileName} ${fileName}
