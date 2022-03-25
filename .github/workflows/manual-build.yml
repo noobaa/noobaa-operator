@@ -74,46 +74,4 @@ jobs:
             docker tag  noobaa/noobaa-operator ${{ steps.prep.outputs.operatortags }}
             docker push ${{ steps.prep.outputs.operatortags }}
 
-      - name: Build Bundle
-        run: |
-          make bundle-image \
-          csv-name=noobaa-operator.clusterserviceversion.yaml \
-          core-image=quay.io/${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }} \
-          operator-image=quay.io/${{ steps.prep.outputs.operatortags }} \
-          db-image=centos/postgresql-12-centos7 \
-          BUNDLE_IMAGE=quay.io/${{ steps.prep.outputs.operatorbundletags }}
-
-      - name: Login to Quay.io Registry
-        run: echo ${{ secrets.GHACTIONQUAYTOKEN }} | docker login quay.io -u ${{ secrets.GHACTIONQUAYNAME }} --password-stdin
-
-      - name: Push Docker Images to Quay
-        env:
-          DOCKERHUB_OWNER: ${{ secrets.GHACTIONQUAYNAME }}
-        run: |
-            docker tag ${{ steps.prep.outputs.operatortags }} quay.io/${{ steps.prep.outputs.operatortags }} 
-            docker push quay.io/${{ steps.prep.outputs.operatortags }} 
-            docker push quay.io/${{ steps.prep.outputs.operatorbundletags }}
-
-      - name: Push to ocs-dev as latest
-        env:
-          DOCKERHUB_OWNER: ${{ secrets.GHACTIONQUAYNAME }}
-        run: |
-          docker login -u="${{ secrets.OCSDEVCIUSER }}" -p="${{ secrets.OCSDEVCITOKEN }}" quay.io
-          docker tag ${{ steps.prep.outputs.operatortags }} quay.io/${{ steps.prep.outputs.ocsdevlatest }} 
-          docker push quay.io/${{ steps.prep.outputs.ocsdevlatest }}
-
-      - name: Push CLI Binary
-        run: |         
-          make cli
-          make release-cli VERSION=-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}
-          #noobaa-operator-cli
-
-          s3AccessKey="${{ secrets.AWSACCESSKEY }}"
-          s3SecretKey="${{ secrets.AWSSECRETKEY }}"
-          s3Bucket="noobaa-operator-cli"
-          region="us-east-2"
-          fileName="noobaa-linux-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}"
-
-          cp build-releases/noobaa-linux-v-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }} ${fileName}
-
-          .travis/upload-s3-object-using-curl.sh ${s3AccessKey} ${s3SecretKey} ${s3Bucket}@${region} ${fileName} ${fileName}
+    
