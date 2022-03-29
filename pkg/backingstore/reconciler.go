@@ -311,14 +311,14 @@ func (r *Reconciler) LoadBackingStoreSecret() error {
 						secret = suggestedSecret
 					}
 					err = util.SetOwnerReference(r.BackingStore, secret, r.Scheme)
-					if _, ok := err.(*controllerutil.AlreadyOwnedError); !ok {
+					if _, isAlreadyOwnedErr := err.(*controllerutil.AlreadyOwnedError); !isAlreadyOwnedErr {
 						if err == nil {
 							if !util.KubeUpdate(secret) {
 								return fmt.Errorf("failed to update secret: %q owner reference", r.BackingStore.Name)
 							}
+						} else {
+							return err
 						}
-					} else {
-						return err
 					}
 				}
 			}
