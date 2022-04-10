@@ -734,14 +734,14 @@ func (r *BucketRequest) prepareReplicationParams(replicationPolicy string, updat
 		return nil, deleteReplicationParams, nil
 	}
 
-	var replicationRules []interface{}
+	var replicationRules nb.ReplicationPolicy
 	err := json.Unmarshal([]byte(replicationPolicy), &replicationRules)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to parse replication json %q: %v", replicationRules, err)
 	}
 	log.Infof("prepareReplicationParams: newReplication %+v", replicationRules)
 
-	if len(replicationRules) == 0 {
+	if len(replicationRules.Rules) == 0 {
 		if update {
 			return nil, deleteReplicationParams, nil
 		}
@@ -757,8 +757,13 @@ func (r *BucketRequest) prepareReplicationParams(replicationPolicy string, updat
 	err = r.SysClient.NBClient.ValidateReplicationAPI(*replicationParams)
 	if err != nil {
 		rpcErr, isRPCErr := err.(*nb.RPCError)
-		if isRPCErr && rpcErr.RPCCode == "INVALID_REPLICATION_POLICY" {
-			return nil, nil, fmt.Errorf("Bucket replication configuration is invalid")
+		if isRPCErr {
+			if rpcErr.RPCCode == "INVALID_REPLICATION_POLICY" {
+				return nil, nil, fmt.Errorf("Bucket replication configuration is invalid")
+			}
+			if rpcErr.RPCCode == "INVALID_LOG_REPLICATION_INFO" {
+				return nil, nil, fmt.Errorf("Bucket log replication info configuration is invalid")
+			}
 		}
 		return nil, nil, fmt.Errorf("Provisioner Failed to validate replication of bucket %q with error: %v", r.BucketName, err)
 	}
