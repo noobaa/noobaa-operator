@@ -6,6 +6,7 @@ export PS4='\e[36m+ ${FUNCNAME:-main}\e[0m@\e[32m${BASH_SOURCE}:\e[35m${LINENO} 
 #Also assuming aws cli is installed
 
 NAMESPACE='test'
+CM=false
 
 function post_install_tests {
     aws_credentials
@@ -28,7 +29,7 @@ function post_install_tests {
 
 function main {
     noobaa_install
-    if ${CM}
+    if [ "${CM}" == "true" ]
     then
         check_core_config_map
     else
