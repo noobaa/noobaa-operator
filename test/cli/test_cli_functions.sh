@@ -953,3 +953,20 @@ function check_dbdump {
     # Remove diagnostics and dump files
     rm -rf /tmp/$rand_dir
 }
+
+function test_noobaa_cr_deletion() {
+    local resp
+    resp=$(kubectl -n ${NAMESPACE} delete noobaas.noobaa.io noobaa 2>&1 >/dev/null)
+    if [ $? -ne 0 ]; then
+        echo $resp
+        if [[ $resp == *"Deletion of NooBaa resource is prohibited"* ]]; then
+            echo_time "✅  Noobaa CR deletion test passed"
+        else
+            echo_time "❌  Noobaa CR deletion test failed"
+            exit 1
+        fi
+    else
+        echo_time "❌  Noobaa CR deletion test failed: kubectl delete returned 0"
+        exit 1
+    fi
+}

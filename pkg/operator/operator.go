@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -470,4 +471,52 @@ func AdmissionWebhookSetup(c *Conf) {
 		},
 	}
 	c.Deployment.Spec.Template.Spec.Volumes = volumes
+}
+
+// RemoveRuleFromNoobaaAdmissionWebhook removes the rule from the noobaa internal admission webhook
+func RemoveRuleFromNoobaaAdmissionWebhook(rule *admissionv1.RuleWithOperations) {
+	wc := util.KubeObject(bundle.File_deploy_internal_admission_webhook_yaml).(*admissionv1.ValidatingWebhookConfiguration)
+
+	removeAdmissionRule(wc, rule)
+
+	// Find the pre-existing admission webhook
+	wcClone := wc.DeepCopy()
+	if _, _, err := util.KubeGet(wcClone); err != nil {
+		return
+	}
+
+	wc.SetResourceVersion(wcClone.GetResourceVersion())
+	util.KubeUpdate(wc)
+}
+
+// removeAdmissionRule removes the matching rule from the given webhook
+func removeAdmissionRule(wc *admissionv1.ValidatingWebhookConfiguration, rule *admissionv1.RuleWithOperations) {
+	for i, r := range wc.Webhooks[0].Rules {
+		if r.Scope == nil && rule.Scope != nil && *rule.Scope != "*" {
+			continue
+		}
+		if rule.Scope == nil && r.Scope != nil && *r.Scope != "*" {
+			continue
+		}
+		if r.Scope != nil && rule.Scope != nil && *r.Scope != *rule.Scope {
+			continue
+		}
+		if !reflect.DeepEqual(r.Operations, rule.Operations) {
+			continue
+		}
+		if !reflect.DeepEqual(r.APIGroups, rule.APIGroups) {
+			continue
+		}
+		if !reflect.DeepEqual(r.APIVersions, rule.APIVersions) {
+			continue
+		}
+		if !reflect.DeepEqual(r.Resources, rule.Resources) {
+			continue
+		}
+
+		wc.Webhooks[0].Rules = append(
+			wc.Webhooks[0].Rules[:i],
+			wc.Webhooks[0].Rules[i+1:]...,
+		)
+	}
 }

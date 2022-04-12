@@ -61,6 +61,8 @@ func (gs *ServerHandler) serve(w http.ResponseWriter, r *http.Request) {
 		arResponse = NewBucketClassValidator(arRequest).ValidateBucketClass()
 	case "noobaaaccounts":
 		arResponse = NewNoobaaAccountValidator(arRequest).ValidateNoobaAaccount()
+	case "noobaas":
+		arResponse = NewNoobaaValidator(arRequest).ValidateNoobaa()
 	default:
 		log.Error("failed to identify resource type")
 		http.Error(w, "incorrect resource", http.StatusBadRequest)

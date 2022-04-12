@@ -14,6 +14,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/spf13/cobra"
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 )
 
 // CmdInstall returns a CLI command
@@ -131,6 +132,18 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	log.Printf("Namespace: %s", options.Namespace)
 	log.Printf("")
 	log.Printf("System Delete:")
+	// First ensure that webhook allows NooBaa CR deletion
+	scopeNamespaced := admissionv1.ScopeType("Namespaced")
+	operator.RemoveRuleFromNoobaaAdmissionWebhook(&admissionv1.RuleWithOperations{
+		Operations: []admissionv1.OperationType{admissionv1.Delete},
+		Rule: admissionv1.Rule{
+			APIGroups:   []string{"noobaa.io"},
+			APIVersions: []string{"v1alpha1"},
+			Resources:   []string{"noobaas"},
+			Scope:       &scopeNamespaced,
+		},
+	})
+	// Attempt to delete the system
 	system.RunDelete(cmd, args)
 	log.Printf("")
 	log.Printf("Operator Delete:")

@@ -23,6 +23,7 @@ function post_install_tests {
     check_deletes
     delete_replication_files
     check_pgdb_config_override
+    test_noobaa_cr_deletion
 }
 
 function main {
