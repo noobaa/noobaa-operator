@@ -1217,7 +1217,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "4e67ec9309050db9456c89073739b9e4e09bd52fabfcbe4341ab7c98d9ed35bc"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "8b54bf712425e99e288c40417e1b7d722e86ba551e5d562210cd269215c0ac4a"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2928,7 +2928,6 @@ spec:
                 required:
                 - serviceMgmt
                 - serviceS3
-                - serviceSts
                 type: object
               upgradePhase:
                 description: Upgrade reports the status of the ongoing upgrade process
