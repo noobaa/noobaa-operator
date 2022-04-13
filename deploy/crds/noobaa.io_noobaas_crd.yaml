@@ -1707,7 +1707,6 @@ spec:
                 required:
                 - serviceMgmt
                 - serviceS3
-                - serviceSts
                 type: object
               upgradePhase:
                 description: Upgrade reports the status of the ongoing upgrade process

@@ -327,7 +327,8 @@ type AccountsStatus struct {
 type ServicesStatus struct {
 	ServiceMgmt ServiceStatus `json:"serviceMgmt"`
 	ServiceS3   ServiceStatus `json:"serviceS3"`
-	ServiceSts  ServiceStatus `json:"serviceSts"`
+	// +optional
+	ServiceSts ServiceStatus `json:"serviceSts,omitempty"`
 }
 
 // UserStatus is the status info of a user secret
