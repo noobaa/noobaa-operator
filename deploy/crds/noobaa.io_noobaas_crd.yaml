@@ -897,6 +897,8 @@ spec:
                 description: CleanupPolicy (optional) Indicates user's policy for
                   deletion
                 properties:
+                  allowNoobaaDeletion:
+                    type: boolean
                   confirmation:
                     description: CleanupConfirmationProperty is a string that specifies
                       cleanup confirmation
