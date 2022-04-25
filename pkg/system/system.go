@@ -273,6 +273,10 @@ func RunDelete(cmd *cobra.Command, args []string) {
 
 	log.Infof("Notice: Deletion of External secrets should be preformed manually")
 
+	if err := RemoveRuleFromNoobaaAdmissionWebhook(GetNoobaaCRDeletionAdmissionRule()); err != nil {
+		log.Errorf("NooBaa %q failed to update cleanup policy - deletion may fail", options.SystemName)
+	}
+
 	cleanupData, _ := cmd.Flags().GetBool("cleanup_data")
 	objectBuckets := &nbv1.ObjectBucketList{}
 	obcSelector, _ := labels.Parse("noobaa-domain=" + options.SubDomainNS())
