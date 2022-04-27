@@ -1006,13 +1006,25 @@ func IsSTSClusterBS(bs *nbv1.BackingStore) bool {
 	return false
 }
 
-// IsAzurePlatform returns true if this cluster is running on Azure
-func IsAzurePlatform() bool {
+// IsAzurePlatformNonGovernment returns true if this cluster is running on Azure and also not on azure government\DOD cloud
+func IsAzurePlatformNonGovernment() bool {
 	nodesList := &corev1.NodeList{}
 	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
 		Panic(fmt.Errorf("failed to list kubernetes nodes"))
 	}
-	isAzure := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "azure")
+	const regionLabel string = "topology.kubernetes.io/region"
+	node := nodesList.Items[0]
+	isAzure := strings.HasPrefix(node.Spec.ProviderID, "azure")
+	if isAzure {
+		nodeLabels := node.GetLabels()
+		region, ok := nodeLabels[regionLabel]
+		if !ok {
+			log.Warnf("did not find the expected label %q on node %q to determine azure region", regionLabel, node.Name)
+		} else if strings.HasPrefix(region, "usgov") || strings.HasPrefix(region, "usdod") {
+			log.Infof("identified the region [%q] as an Azure gov/DOD region", region)
+			return false
+		}
+	}
 	return isAzure
 }
 
