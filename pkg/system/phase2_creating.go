@@ -517,7 +517,7 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	if util.IsAWSPlatform() {
 		return r.ReconcileAWSCredentials()
 	}
-	if util.IsAzurePlatform() {
+	if util.IsAzurePlatformNonGovernment() {
 		return r.ReconcileAzureCredentials()
 	}
 	if util.IsGCPPlatform() {
