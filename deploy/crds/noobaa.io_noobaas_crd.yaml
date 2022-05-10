@@ -14,10 +14,6 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: Management Endpoints
-      jsonPath: .status.services.serviceMgmt.nodePorts
-      name: Mgmt-Endpoints
-      type: string
     - description: S3 Endpoints
       jsonPath: .status.services.serviceS3.nodePorts
       name: S3-Endpoints
