@@ -267,10 +267,6 @@ func (r *Reconciler) LoadBackingStoreSecret() error {
 			r.Secret.Name = secretRef.Name
 			r.Secret.Namespace = secretRef.Namespace
 
-			if r.Secret.Namespace == "" {
-				r.Secret.Namespace = r.BackingStore.Namespace
-			}
-
 			if r.Secret.Name == "" {
 				if r.BackingStore.Spec.Type != nbv1.StoreTypePVPool {
 					return util.NewPersistentError("EmptySecretName",
