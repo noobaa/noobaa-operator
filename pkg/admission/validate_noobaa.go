@@ -42,5 +42,6 @@ func (nv *ResourceValidator) ValidateNoobaa() admissionv1.AdmissionReview {
 
 // ValidateDeleteNoobaa runs all the validations tests for DELETE operations
 func (nv *ResourceValidator) ValidateDeleteNoobaa() {
+	nv.Logger.Infof("Validating DELETE operation")
 	nv.SetValidationResult(false, "Deletion of NooBaa resource is prohibited")
 }

@@ -2,7 +2,7 @@ package bundle
 
 const Version = "5.10.0"
 
-const Sha256_deploy_cluster_role_yaml = "b3be23b51cbfad068dcf49bffa5f6af04c99dfc9623e2656f872e5f0643a8aeb"
+const Sha256_deploy_cluster_role_yaml = "b342000bd728bd1661dedbbd00ac9066d560920285b451b2f8f72b830e039098"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -72,6 +72,13 @@ rules:
       - subjectaccessreviews
     verbs:
       - create
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - validatingwebhookconfigurations
+    verbs:
+      - get
+      - update
 `
 
 const Sha256_deploy_cluster_role_binding_yaml = "15c78355aefdceaf577bd96b4ae949ae424a3febdc8853be0917cf89a63941fc"
@@ -1217,7 +1224,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "8b54bf712425e99e288c40417e1b7d722e86ba551e5d562210cd269215c0ac4a"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "4f713c96db90ca5fe0f6fe5de8eea1fc5bae2d47aa2e57ac8e0a2760c732cdaa"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2118,6 +2125,8 @@ spec:
                 description: CleanupPolicy (optional) Indicates user's policy for
                   deletion
                 properties:
+                  allowNoobaaDeletion:
+                    type: boolean
                   confirmation:
                     description: CleanupConfirmationProperty is a string that specifies
                       cleanup confirmation

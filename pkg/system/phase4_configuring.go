@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sirupsen/logrus"
@@ -61,6 +63,9 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 		"noobaa operator started phase 4/4 - \"Configuring\"",
 	)
 
+	if err := r.ReconcileNoobaaDeletionPolicy(); err != nil {
+		return err
+	}
 	if err := r.ReconcileSystemSecrets(); err != nil {
 		return err
 	}
@@ -94,6 +99,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileDeploymentEndpointStatus(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1522,4 +1528,143 @@ func (r *Reconciler) ReconcileNamespaceStores(namespaceResources []nb.NamespaceR
 		}
 	}
 	return nil
+}
+
+// ReconcileNoobaaDeletionPolicy reconciles the deletion policy of a Noobaa resource
+// and configures the noobaa admission controller appropriately.
+func (r *Reconciler) ReconcileNoobaaDeletionPolicy() error {
+	noobaaAdmissionEnabled := os.Getenv("ENABLE_NOOBAA_ADMISSION")
+	if strings.ToLower(noobaaAdmissionEnabled) != "true" {
+		return nil
+	}
+
+	rule := GetNoobaaCRDeletionAdmissionRule()
+
+	if r.NooBaa.Spec.CleanupPolicy.AllowNoobaaDeletion {
+		return RemoveRuleFromNoobaaAdmissionWebhook(rule)
+	}
+
+	return AddRuleToNoobaaAdmissionWebhook(rule)
+}
+
+// RemoveRuleFromNoobaaAdmissionWebhook removes the rule from the noobaa internal admission webhook
+// if it exists
+func RemoveRuleFromNoobaaAdmissionWebhook(rule *admissionv1.RuleWithOperations) error {
+	wc := &admissionv1.ValidatingWebhookConfiguration{}
+	wc.SetName("admission-validation-webhook")
+
+	// Find the pre-existing admission webhook
+	if _, _, err := util.KubeGet(wc); err != nil {
+		return fmt.Errorf("failed to get webhook: %v", err)
+	}
+
+	// If no rule was removed then return
+	if !removeAdmissionRule(wc, rule) {
+		return nil
+	}
+
+	if !util.KubeUpdate(wc) {
+		return fmt.Errorf("failed to update webhook")
+	}
+
+	return nil
+}
+
+// AddRuleToNoobaaAdmissionWebhook adds the rule to the noobaa admission webhook if it
+// doesn't exists
+func AddRuleToNoobaaAdmissionWebhook(rule *admissionv1.RuleWithOperations) error {
+	wc := &admissionv1.ValidatingWebhookConfiguration{}
+	wc.SetName("admission-validation-webhook")
+
+	// Find the pre-existing admission webhook
+	if _, _, err := util.KubeGet(wc); err != nil {
+		return fmt.Errorf("failed to get webhook: %v", err)
+	}
+
+	// If no rule was added then return
+	if !addAdmissionRule(wc, rule) {
+		return nil
+	}
+
+	if !util.KubeUpdate(wc) {
+		return fmt.Errorf("failed to update webhook")
+	}
+
+	return nil
+}
+
+// removeAdmissionRule removes the matching rule from the given webhook and returns true
+// if rule was deleted or else returns false
+func removeAdmissionRule(wc *admissionv1.ValidatingWebhookConfiguration, rule *admissionv1.RuleWithOperations) bool {
+	ruleIdx, found := findAdmissionRule(wc, rule)
+	if !found {
+		return false
+	}
+
+	wc.Webhooks[0].Rules = append(
+		wc.Webhooks[0].Rules[:ruleIdx],
+		wc.Webhooks[0].Rules[ruleIdx+1:]...,
+	)
+
+	return true
+}
+
+// addAdmissionRule takes in pointer to validationwebhookconfiguration and adds the given rule to it and returns true
+// if rule was added or else returns false
+//
+// NOTE: It will not add the rule if it exists
+func addAdmissionRule(wc *admissionv1.ValidatingWebhookConfiguration, rule *admissionv1.RuleWithOperations) bool {
+	_, found := findAdmissionRule(wc, rule)
+	if found {
+		return false
+	}
+
+	wc.Webhooks[0].Rules = append(wc.Webhooks[0].Rules, *rule)
+
+	return true
+}
+
+func findAdmissionRule(wc *admissionv1.ValidatingWebhookConfiguration, rule *admissionv1.RuleWithOperations) (int, bool) {
+	for i, r := range wc.Webhooks[0].Rules {
+		if r.Scope == nil && rule.Scope != nil && *rule.Scope != "*" {
+			continue
+		}
+		if rule.Scope == nil && r.Scope != nil && *r.Scope != "*" {
+			continue
+		}
+		if r.Scope != nil && rule.Scope != nil && *r.Scope != *rule.Scope {
+			continue
+		}
+		if !util.IsArrayUnorderedEqual(r.Operations, rule.Operations, nil) {
+			continue
+		}
+		if !util.IsArrayUnorderedEqual(r.APIGroups, rule.APIGroups, nil) {
+			continue
+		}
+		if !util.IsArrayUnorderedEqual(r.APIVersions, rule.APIVersions, nil) {
+			continue
+		}
+		if !util.IsArrayUnorderedEqual(r.Resources, rule.Resources, nil) {
+			continue
+		}
+
+		return i, true
+	}
+
+	return 0, false
+}
+
+// GetNoobaaCRDeletionAdmissionRule returns the noobaa custom resource deletion admission rule
+func GetNoobaaCRDeletionAdmissionRule() *admissionv1.RuleWithOperations {
+	scopeNamespaced := admissionv1.ScopeType("Namespaced")
+	rule := &admissionv1.RuleWithOperations{
+		Operations: []admissionv1.OperationType{admissionv1.Delete},
+		Rule: admissionv1.Rule{
+			APIGroups:   []string{"noobaa.io"},
+			APIVersions: []string{"v1alpha1"},
+			Resources:   []string{"noobaas"},
+			Scope:       &scopeNamespaced,
+		},
+	}
+	return rule
 }

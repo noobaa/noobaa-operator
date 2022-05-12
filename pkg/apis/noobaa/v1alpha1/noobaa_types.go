@@ -403,6 +403,9 @@ const (
 // CleanupPolicySpec specifies the cleanup policy
 type CleanupPolicySpec struct {
 	Confirmation CleanupConfirmationProperty `json:"confirmation,omitempty"`
+
+	// +optional
+	AllowNoobaaDeletion bool `json:"allowNoobaaDeletion,omitempty"`
 }
 
 // CleanupConfirmationProperty is a string that specifies cleanup confirmation
