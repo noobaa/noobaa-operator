@@ -369,7 +369,10 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 		log.Fatalf(`❌ %s %s`, validationErr, cmd.UsageString())
 	}
 
-	suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, util.MapStorTypeToMandatoryProperties[storeType])
+	var suggestedSecret *corev1.Secret = nil
+	if storeType != nbv1.StoreTypePVPool {
+		suggestedSecret = util.CheckForIdenticalSecretsCreds(secret, util.MapStorTypeToMandatoryProperties[storeType])
+	}
 	if suggestedSecret != nil {
 		var decision string
 		log.Printf("Found a Secret in the system with the same credentials (%s)", suggestedSecret.Name)
