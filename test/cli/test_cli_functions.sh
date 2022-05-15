@@ -899,8 +899,8 @@ fi
 
 
 function create_replication_files {
-    echo "[{ \"rule_id\": \"rule-1\", \"destination_bucket\": \"first.bucket\", \"filter\": {\"prefix\": \"d\"}} ]" > replication1.json
-    echo "[{ \"rule_id\": \"rule-2\", \"destination_bucket\": \"first.bucket\", \"filter\": {\"prefix\": \"e\"}} ]" > replication2.json
+    echo "{\"rules\":[{ \"rule_id\": \"rule-1\", \"destination_bucket\": \"first.bucket\", \"filter\": {\"prefix\": \"d\"}} ]}" > replication1.json
+    echo "{\"rules\":[{ \"rule_id\": \"rule-2\", \"destination_bucket\": \"first.bucket\", \"filter\": {\"prefix\": \"e\"}} ]}" > replication2.json
 }
 
 function delete_replication_files {

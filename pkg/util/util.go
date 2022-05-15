@@ -1530,7 +1530,7 @@ func LoadBucketReplicationJSON(replicationJSONFilePath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed to read file %q: %v", replicationJSONFilePath, err)
 	}
-	var replicationJSON []interface{}
+	var replicationJSON interface{}
 	err = json.Unmarshal(bytes, &replicationJSON)
 	if err != nil {
 		return "", fmt.Errorf("Failed to parse json file %q: %v", replicationJSONFilePath, err)

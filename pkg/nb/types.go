@@ -578,8 +578,14 @@ type UpdateBucketClassParams struct {
 
 // BucketReplicationParams is the params of bucket_api.put_bucket_replication()
 type BucketReplicationParams struct {
-	Name              string        `json:"name"`
-	ReplicationPolicy []interface{} `json:"replication_policy"`
+	Name              string            `json:"name"`
+	ReplicationPolicy ReplicationPolicy `json:"replication_policy"`
+}
+
+// ReplicationPolicy is the struct representing replication configuration
+type ReplicationPolicy struct {
+	Rules              []interface{} `json:"rules,omitempty"`
+	LogReplicationInfo interface{}   `json:"log_replication_info,omitempty"`
 }
 
 // DeleteBucketReplicationParams is the params of bucket_api.delete_bucket_replication()
