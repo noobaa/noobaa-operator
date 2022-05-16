@@ -25,6 +25,13 @@ func ValidateNamespaceStore(nsStore *nbv1.NamespaceStore) error {
 	if err := ValidateNSEmptyTargetBucket(*nsStore); err != nil {
 		return err
 	}
+
+	if  nsStore.Spec.Type != nbv1.NSStoreTypeNSFS {
+		if err :=  ValidateNamespacestoreSecretRefNamespace(*nsStore); err != nil {
+			return err
+		}
+	}
+
 	switch nsStore.Spec.Type {
 
 	case nbv1.NSStoreTypeNSFS:
@@ -314,4 +321,22 @@ func ValidateNamespacestoreDeletion(ns nbv1.NamespaceStore, systemInfo nb.System
 	}
 
 	return nil
+}
+
+// ValidateNamespacestoreSecretRefNamespace validates that the secretref have namespace in it.
+func ValidateNamespacestoreSecretRefNamespace(ns nbv1.NamespaceStore) error{
+	secretRef, err := util.GetNamespaceStoreSecretByType(&ns);
+	if err != nil {
+		return util.ValidationError{
+			Msg: err.Error(),
+		}
+	}
+	if secretRef.Namespace == "" {
+		return util.ValidationError{
+			Msg: fmt.Sprintf("Secret ref %q in NamespaceStore %q must have namespace", secretRef.Name, ns.Name),
+		}
+	}
+
+	return nil
+
 }

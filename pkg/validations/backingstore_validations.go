@@ -24,6 +24,7 @@ func ValidateBackingStore(bs nbv1.BackingStore) error {
 	if err := ValidateBSEmptyTargetBucket(bs); err != nil {
 		return err
 	}
+	
 	switch bs.Spec.Type {
 	case nbv1.StoreTypePVPool:
 		if err := ValidatePvpoolNameLength(bs); err != nil {
@@ -39,10 +40,25 @@ func ValidateBackingStore(bs nbv1.BackingStore) error {
 			return err
 		}
 	case nbv1.StoreTypeS3Compatible:
-		return ValidateSigVersion(bs.Spec.S3Compatible.SignatureVersion)
+		if err := ValidateSigVersion(bs.Spec.S3Compatible.SignatureVersion); err != nil {
+			return err
+		}
+		if err := ValidateBackingstoreSecretRefNamespace(bs); err != nil {
+			return err
+		}
+		return nil
 	case nbv1.StoreTypeIBMCos:
-		return ValidateSigVersion(bs.Spec.IBMCos.SignatureVersion)
+		if err := ValidateSigVersion(bs.Spec.IBMCos.SignatureVersion); err != nil {
+			return err
+		}
+		if err := ValidateBackingstoreSecretRefNamespace(bs); err != nil {
+			return err
+		}
+		return nil
 	case nbv1.StoreTypeAWSS3, nbv1.StoreTypeAzureBlob, nbv1.StoreTypeGoogleCloudStorage:
+		if err := ValidateBackingstoreSecretRefNamespace(bs); err != nil {
+			return err
+		}
 		return nil
 	default:
 		return util.ValidationError{
@@ -271,4 +287,22 @@ func ValidateBackingstoreDeletion(bs nbv1.BackingStore, systemInfo nb.SystemInfo
 	}
 
 	return nil
+}
+
+// ValidateBackingstoreSecretRefNamespace validates that the secretref have namespace in it.
+func ValidateBackingstoreSecretRefNamespace(bs nbv1.BackingStore) error{
+	secretRef, err := util.GetBackingStoreSecretByType(&bs);
+	if err != nil {
+		return util.ValidationError{
+			Msg: err.Error(),
+		}
+	}
+	if secretRef.Namespace == "" {
+		return util.ValidationError{
+			Msg: fmt.Sprintf("Secret ref %q in Backingstore %q must have namespace", secretRef.Name, bs.Name),
+		}
+	}
+
+	return nil
+
 }

@@ -92,6 +92,10 @@ func (nsv *ResourceValidator) ValidateUpdateNS() {
 			nsv.SetValidationResult(false, err.Error())
 			return
 		}
+		if err := validations.ValidateNamespacestoreSecretRefNamespace(*ns); err != nil && util.IsValidationError(err) {
+			nsv.SetValidationResult(false, err.Error())
+			return
+		}
 	}
 }
 
