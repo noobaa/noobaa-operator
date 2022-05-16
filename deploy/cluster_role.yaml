@@ -73,3 +73,4 @@ rules:
     verbs:
       - get
       - update
+      - list

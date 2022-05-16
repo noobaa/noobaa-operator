@@ -2,7 +2,7 @@ package bundle
 
 const Version = "5.11.0"
 
-const Sha256_deploy_cluster_role_yaml = "b342000bd728bd1661dedbbd00ac9066d560920285b451b2f8f72b830e039098"
+const Sha256_deploy_cluster_role_yaml = "5f07526991bfd118aa3ffe74a2ec9860f15a6e7cbbe9fb0eee3237fe0a32447d"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -79,6 +79,7 @@ rules:
     verbs:
       - get
       - update
+      - list
 `
 
 const Sha256_deploy_cluster_role_binding_yaml = "15c78355aefdceaf577bd96b4ae949ae424a3febdc8853be0917cf89a63941fc"
