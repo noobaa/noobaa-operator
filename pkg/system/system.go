@@ -415,7 +415,6 @@ func RunList(cmd *cobra.Command, args []string) {
 	table := (&util.PrintTable{}).AddRow(
 		"NAMESPACE",
 		"NAME",
-		"MGMT-ENDPOINTS",
 		"S3-ENDPOINTS",
 		"STS-ENDPOINTS",
 		"IMAGE",
@@ -427,7 +426,6 @@ func RunList(cmd *cobra.Command, args []string) {
 		table.AddRow(
 			s.Namespace,
 			s.Name,
-			fmt.Sprint(s.Status.Services.ServiceMgmt.NodePorts),
 			fmt.Sprint(s.Status.Services.ServiceS3.NodePorts),
 			fmt.Sprint(s.Status.Services.ServiceSts.NodePorts),
 			s.Status.ActualImage,
@@ -579,25 +577,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	util.KubeCheck(secret)
 
 	fmt.Println("")
-	fmt.Println("#------------------#")
-	fmt.Println("#- Mgmt Addresses -#")
-	fmt.Println("#------------------#")
-	fmt.Println("")
-
-	fmt.Println("ExternalDNS :", r.NooBaa.Status.Services.ServiceMgmt.ExternalDNS)
-	fmt.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceMgmt.ExternalIP)
-	fmt.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceMgmt.NodePorts)
-	fmt.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceMgmt.InternalDNS)
-	fmt.Println("InternalIP  :", r.NooBaa.Status.Services.ServiceMgmt.InternalIP)
-	fmt.Println("PodPorts    :", r.NooBaa.Status.Services.ServiceMgmt.PodPorts)
-
-	fmt.Println("")
-	fmt.Println("#--------------------#")
-	fmt.Println("#- Mgmt Credentials -#")
-	fmt.Println("#--------------------#")
-	fmt.Println("")
-	fmt.Printf("email    : %s\n", secret.StringData["email"])
-	fmt.Printf("password : %s\n", secret.StringData["password"])
+	fmt.Printf("%s password : %s\n", secret.StringData["email"], secret.StringData["password"])
 
 	fmt.Println("")
 	fmt.Println("#-----------------#")

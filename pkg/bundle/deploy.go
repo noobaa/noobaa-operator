@@ -1224,7 +1224,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "4f713c96db90ca5fe0f6fe5de8eea1fc5bae2d47aa2e57ac8e0a2760c732cdaa"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "2b33414098bb5801ce4390ff74ebbe3ccb64ab9d4eebd42a042464b6c5ce4143"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1242,10 +1242,6 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: Management Endpoints
-      jsonPath: .status.services.serviceMgmt.nodePorts
-      name: Mgmt-Endpoints
-      type: string
     - description: S3 Endpoints
       jsonPath: .status.services.serviceS3.nodePorts
       name: S3-Endpoints
@@ -4270,7 +4266,7 @@ const File_deploy_internal_text_system_status_readme_progress_tmpl = `
 	NooBaa Operator Version: {{.OperatorVersion}}
 `
 
-const Sha256_deploy_internal_text_system_status_readme_ready_tmpl = "ed4077141304bbf69b08401f314b70c381523c60a7e18211576ba5275a286c30"
+const Sha256_deploy_internal_text_system_status_readme_ready_tmpl = "224e606bf5eee299b2b2070a193a6579f9cb685e78e47d7b92fe9714c9eee63f"
 
 const File_deploy_internal_text_system_status_readme_ready_tmpl = `
 
@@ -4281,18 +4277,7 @@ const File_deploy_internal_text_system_status_readme_ready_tmpl = `
 
 	Lets get started:
 
-	1. Connect to Management console:
-
-		Read your mgmt console login information (email & password) from secret: "{{.SecretAdmin.Name}}".
-
-			kubectl get secret {{.SecretAdmin.Name}} -n {{.SecretAdmin.Namespace}} -o json | jq '.data|map_values(@base64d)'
-
-		Open the management console service - take External IP/DNS or Node Port or use port forwarding:
-
-			kubectl port-forward -n {{.ServiceMgmt.Namespace}} service/{{.ServiceMgmt.Name}} 11443:443 &
-			open https://localhost:11443
-
-	2. Test S3 client:
+	Test S3 client:
 
 		kubectl port-forward -n {{.ServiceS3.Namespace}} service/{{.ServiceS3.Name}} 10443:443 &
 		NOOBAA_ACCESS_KEY=$(kubectl get secret {{.SecretAdmin.Name}} -n {{.SecretAdmin.Namespace}} -o json | jq -r '.data.AWS_ACCESS_KEY_ID|@base64d')
