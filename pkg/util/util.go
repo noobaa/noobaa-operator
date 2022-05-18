@@ -1640,25 +1640,38 @@ func GetAvailabeKubeCli() string {
 	}
 	return kubeCommand
 }
-
-// GetBackingStoreSecret returns the secret reference of the backing store if it is relevant to the type
-func GetBackingStoreSecret(bs *nbv1.BackingStore) (*corev1.SecretReference, error) {
+// GetBackingStoreSecretByType returns the secret reference of the backing store if it is relevant to the type
+func GetBackingStoreSecretByType(bs *nbv1.BackingStore) (*corev1.SecretReference, error) { 
+	var secretRef corev1.SecretReference
 	switch bs.Spec.Type {
 	case nbv1.StoreTypeAWSS3:
-		return &bs.Spec.AWSS3.Secret, nil
+		secretRef = bs.Spec.AWSS3.Secret
 	case nbv1.StoreTypeS3Compatible:
-		return &bs.Spec.S3Compatible.Secret, nil
+		secretRef = bs.Spec.S3Compatible.Secret
 	case nbv1.StoreTypeIBMCos:
-		return &bs.Spec.IBMCos.Secret, nil
+		secretRef = bs.Spec.IBMCos.Secret
 	case nbv1.StoreTypeAzureBlob:
-		return &bs.Spec.AzureBlob.Secret, nil
+		secretRef = bs.Spec.AzureBlob.Secret
 	case nbv1.StoreTypeGoogleCloudStorage:
-		return &bs.Spec.GoogleCloudStorage.Secret, nil
+		secretRef = bs.Spec.GoogleCloudStorage.Secret
 	case nbv1.StoreTypePVPool:
-		return &bs.Spec.PVPool.Secret, nil
+		secretRef = bs.Spec.PVPool.Secret
 	default:
 		return nil, fmt.Errorf("failed to get secret reference from backingstore %q", bs.Name)
 	}
+	return &secretRef, nil
+}
+
+// GetBackingStoreSecret returns the secret and adding the namespace if it is missing
+func GetBackingStoreSecret(bs *nbv1.BackingStore) (*corev1.SecretReference, error) {
+	secretRef, err := GetBackingStoreSecretByType(bs)
+	if err != nil {
+		return nil, err
+	}
+	if secretRef.Namespace == "" {
+		secretRef.Namespace = bs.Namespace
+	}
+	return secretRef, nil
 }
 
 // SetBackingStoreSecretRef setting a backingstore secret reference to the provided one
@@ -1707,22 +1720,37 @@ func GetBackingStoreTargetBucket(bs *nbv1.BackingStore) (string, error) {
 	}
 }
 
-// GetNamespaceStoreSecret returns the secret reference of the namespace store if it is relevant to the type
-func GetNamespaceStoreSecret(ns *nbv1.NamespaceStore) (*corev1.SecretReference, error) {
+// GetNamespaceStoreSecretByType returns the secret reference of the namespace store if it is relevant to the type
+func GetNamespaceStoreSecretByType(ns *nbv1.NamespaceStore) (*corev1.SecretReference, error) {
+	var secretRef corev1.SecretReference
 	switch ns.Spec.Type {
 	case nbv1.NSStoreTypeAWSS3:
-		return &ns.Spec.AWSS3.Secret, nil
+		secretRef = ns.Spec.AWSS3.Secret
 	case nbv1.NSStoreTypeS3Compatible:
-		return &ns.Spec.S3Compatible.Secret, nil
+		secretRef = ns.Spec.S3Compatible.Secret
 	case nbv1.NSStoreTypeIBMCos:
-		return &ns.Spec.IBMCos.Secret, nil
+		secretRef = ns.Spec.IBMCos.Secret
 	case nbv1.NSStoreTypeAzureBlob:
-		return &ns.Spec.AzureBlob.Secret, nil
+		secretRef = ns.Spec.AzureBlob.Secret
 	case nbv1.NSStoreTypeNSFS:
 		return nil, nil
 	default:
 		return nil, fmt.Errorf("failed to get namespacestore %q secret", ns.Name)
 	}
+
+	return &secretRef, nil
+}
+
+// GetNamespaceStoreSecret returns the secret and adding the namespace if it is missing
+func GetNamespaceStoreSecret(ns *nbv1.NamespaceStore) (*corev1.SecretReference, error) {
+	secretRef, err := GetNamespaceStoreSecretByType(ns)
+	if err != nil {
+		return nil, err
+	}
+	if secretRef.Namespace == "" {
+		secretRef.Namespace = ns.Namespace
+	}
+	return secretRef, nil
 }
 
 // SetNamespaceStoreSecretRef setting a namespacestore secret reference to the provided one
