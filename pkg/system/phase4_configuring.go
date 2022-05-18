@@ -1550,12 +1550,9 @@ func (r *Reconciler) ReconcileNoobaaDeletionPolicy() error {
 // RemoveRuleFromNoobaaAdmissionWebhook removes the rule from the noobaa internal admission webhook
 // if it exists
 func RemoveRuleFromNoobaaAdmissionWebhook(rule *admissionv1.RuleWithOperations) error {
-	wc := &admissionv1.ValidatingWebhookConfiguration{}
-	wc.SetName("admission-validation-webhook")
-
-	// Find the pre-existing admission webhook
-	if _, _, err := util.KubeGet(wc); err != nil {
-		return fmt.Errorf("failed to get webhook: %v", err)
+	wc, err := FindNoobaaAdmissionController()
+	if err != nil {
+		return err
 	}
 
 	// If no rule was removed then return
@@ -1573,12 +1570,9 @@ func RemoveRuleFromNoobaaAdmissionWebhook(rule *admissionv1.RuleWithOperations) 
 // AddRuleToNoobaaAdmissionWebhook adds the rule to the noobaa admission webhook if it
 // doesn't exists
 func AddRuleToNoobaaAdmissionWebhook(rule *admissionv1.RuleWithOperations) error {
-	wc := &admissionv1.ValidatingWebhookConfiguration{}
-	wc.SetName("admission-validation-webhook")
-
-	// Find the pre-existing admission webhook
-	if _, _, err := util.KubeGet(wc); err != nil {
-		return fmt.Errorf("failed to get webhook: %v", err)
+	wc, err := FindNoobaaAdmissionController()
+	if err != nil {
+		return err
 	}
 
 	// If no rule was added then return
@@ -1667,4 +1661,21 @@ func GetNoobaaCRDeletionAdmissionRule() *admissionv1.RuleWithOperations {
 		},
 	}
 	return rule
+}
+
+// FindNoobaaAdmissionController returns the noobaa admission object
+func FindNoobaaAdmissionController() (*admissionv1.ValidatingWebhookConfiguration, error) {
+	wcl := &admissionv1.ValidatingWebhookConfigurationList{}
+
+	if !util.KubeList(wcl, client.InNamespace(options.Namespace)) {
+		return nil, fmt.Errorf("failed to list cluster webhooks")
+	}
+
+	for _, wc := range wcl.Items {
+		if wc.Webhooks[0].Name == "admissionwebhook.noobaa.io" {
+			return &wc, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to find noobaa admission webhook")
 }
