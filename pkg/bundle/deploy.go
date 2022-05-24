@@ -3485,7 +3485,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "3921b3a648538a7f4ec337c34b59a837b4a3385cc0c52ce00389e0be6a5cb64e"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "5dae4085bd2473538f1409b9344c176c596923afb301e5b3e6ca86e75f8e9466"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3532,6 +3532,8 @@ spec:
         env:
           - name: POSTGRESQL_DATABASE
             value: nbcore
+          - name: LC_COLLATE
+            value: C
           - name: POSTGRESQL_USER
           - name: POSTGRESQL_PASSWORD
         command:
@@ -3562,6 +3564,8 @@ spec:
         env:
           - name: POSTGRESQL_DATABASE
             value: nbcore
+          - name: LC_COLLATE
+            value: C
           - name: POSTGRESQL_USER
           - name: POSTGRESQL_PASSWORD
         imagePullPolicy: "IfNotPresent"
