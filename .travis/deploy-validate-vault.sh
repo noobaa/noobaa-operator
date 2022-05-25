@@ -126,9 +126,38 @@ function deploy_vault {
   fi
 }
 
+function create_noobaa_sa_token {
+  echo "💬 Get secrets, NAMESPACE=$NAMESPACE"
+  kubectl -n "$NAMESPACE" get secret
+
+  VAULT_SA_TOKEN_SECRET_YAML=/tmp/noobaa_sa_token.yaml
+  cat > $VAULT_SA_TOKEN_SECRET_YAML <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: $VAULT_SA_SECRET_NAME
+  annotations:
+    kubernetes.io/service-account.name: $VAULT_SA
+type: kubernetes.io/service-account-token
+EOF
+  echo "💬 Token secret yaml, VAULT_SA_TOKEN_SECRET_YAML=$VAULT_SA_TOKEN_SECRET_YAML"
+  cat $VAULT_SA_TOKEN_SECRET_YAML
+  kubectl -n "$NAMESPACE" create -f $VAULT_SA_TOKEN_SECRET_YAML
+  sleep 5
+
+  echo "💬 Token secret, NAMESPACE=$NAMESPACE VAULT_SA_SECRET_NAME=$VAULT_SA_SECRET_NAME"
+  kubectl -n "$NAMESPACE" get secret $VAULT_SA_SECRET_NAME -o yaml
+  echo "💬 Token service account, NAMESPACE=$NAMESPACE VAULT_SA=$VAULT_SA"
+  kubectl -n "$NAMESPACE" get sa $VAULT_SA -o yaml
+}
+
 function set_up_vault_kubernetes_auth {
-  # get the service account common.yaml created earlier
+  # get the service account created earlier
   VAULT_SA_SECRET_NAME=$(kubectl -n "$NAMESPACE" get sa "$VAULT_SA" -o jsonpath="{.secrets[*]['name']}")
+  if [ -z "$VAULT_SA_SECRET_NAME" ]; then
+     VAULT_SA_SECRET_NAME=noobaa-sa-token
+     create_noobaa_sa_token
+  fi
 
   # Set SA_JWT_TOKEN value to the service account JWT used to access the TokenReview API
   SA_JWT_TOKEN=$(kubectl -n "$NAMESPACE" get secret "$VAULT_SA_SECRET_NAME" -o jsonpath="{.data.token}" | base64 --decode)
