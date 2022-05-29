@@ -7,12 +7,6 @@ rules:
   - noobaa.io
   resources:
   - '*'
-  - noobaas
-  - backingstores
-  - bucketclasses
-  - noobaas/finalizers
-  - backingstores/finalizers
-  - bucketclasses/finalizers
   verbs:
   - '*'
 - apiGroups:
@@ -132,10 +126,8 @@ rules:
   - watch
   - delete
 - apiGroups:
-  - security.openshift.io 
-  resourceNames:
-  - noobaa 
+  - rbac.authorization.k8s.io
   resources:
-  - securitycontextconstraints 
+  - '*'
   verbs: 
-  - use
+  - '*'

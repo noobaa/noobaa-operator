@@ -69,6 +69,9 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileSystemSecrets(); err != nil {
 		return err
 	}
+	if err := r.reconcileEndpointRBAC(); err != nil {
+		return err
+	}
 	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
 		return err
 	}
@@ -1678,4 +1681,13 @@ func FindNoobaaAdmissionController() (*admissionv1.ValidatingWebhookConfiguratio
 	}
 
 	return nil, fmt.Errorf("failed to find noobaa admission webhook")
+}
+
+// reconcileEndpointRBAC creates Endpoint scc, role, rolebinding and service account
+func (r* Reconciler) reconcileEndpointRBAC() error {
+	return r.reconcileRbac(
+		bundle.File_deploy_scc_endpoint_yaml,
+		bundle.File_deploy_service_account_endpoint_yaml,
+		bundle.File_deploy_role_endpoint_yaml,
+		bundle.File_deploy_role_binding_endpoint_yaml)
 }

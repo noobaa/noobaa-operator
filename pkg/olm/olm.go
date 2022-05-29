@@ -242,11 +242,6 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 		})
 	csv.Spec.InstallStrategy.StrategySpec.Permissions = append(csv.Spec.InstallStrategy.StrategySpec.Permissions,
 		operv1.StrategyDeploymentPermissions{
-			ServiceAccountName: opConf.SAEndpoint.Name,
-			Rules:              opConf.RoleEndpoint.Rules,
-		})
-	csv.Spec.InstallStrategy.StrategySpec.Permissions = append(csv.Spec.InstallStrategy.StrategySpec.Permissions,
-		operv1.StrategyDeploymentPermissions{
 			ServiceAccountName: opConf.SAUI.Name,
 			Rules:              opConf.RoleUI.Rules,
 		})

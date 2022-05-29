@@ -1,38 +1,23 @@
 apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
 metadata:
-  name: noobaa
+  name: noobaa-db
+allowPrivilegeEscalation: true
 allowHostDirVolumePlugin: false
 allowHostIPC: false
 allowHostNetwork: false
 allowHostPID: false
 allowHostPorts: false
-allowPrivilegeEscalation: true
 allowPrivilegedContainer: false
-allowedCapabilities: []
-defaultAddCapabilities: []
-fsGroup:
-  type: MustRunAs
-groups: []
-priority: null
 readOnlyRootFilesystem: false
-requiredDropCapabilities:
-- KILL
-- MKNOD
+allowedCapabilities:
 - SETUID
 - SETGID
+fsGroup:
+  type: MustRunAs
 runAsUser:
   type: RunAsAny
 seLinuxContext:
   type: MustRunAs
 supplementalGroups:
   type: RunAsAny
-users:
-- system:serviceaccount:openshift-storage:noobaa
-volumes:
-- configMap
-- downwardAPI
-- emptyDir
-- persistentVolumeClaim
-- projected
-- secret
