@@ -131,9 +131,6 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	log.Printf("Namespace: %s", options.Namespace)
 	log.Printf("")
 	log.Printf("System Delete:")
-	if err := system.RemoveRuleFromNoobaaAdmissionWebhook(system.GetNoobaaCRDeletionAdmissionRule()); err != nil {
-		log.Printf("Failed to remove noobaa admission webhook rule: %v - deletion process may fail", err)
-	}
 	system.RunDelete(cmd, args)
 	log.Printf("")
 	log.Printf("Operator Delete:")
