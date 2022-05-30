@@ -273,7 +273,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 
 	log.Infof("Notice: Deletion of External secrets should be preformed manually")
 
-	if err := RemoveRuleFromNoobaaAdmissionWebhook(GetNoobaaCRDeletionAdmissionRule()); err != nil {
+	if err := SetAllowNoobaaDeletion(sys); err != nil {
 		log.Errorf("NooBaa %q failed to update cleanup policy - deletion may fail", options.SystemName)
 	}
 
@@ -979,4 +979,16 @@ func LoadConfigMapFromFlags() {
 
 		util.KubeCreateSkipExisting(cm)
 	}
+}
+
+// SetAllowNoobaaDeletion sets AllowNoobaaDeletion Noobaa CR field to true so the webhook won't block the deletion
+func SetAllowNoobaaDeletion(noobaa *nbv1.NooBaa) error {
+	// Explicitly allow deletion of NooBaa CR
+	if !noobaa.Spec.CleanupPolicy.AllowNoobaaDeletion {
+		noobaa.Spec.CleanupPolicy.AllowNoobaaDeletion = true
+		if !util.KubeUpdate(noobaa) {
+			return fmt.Errorf("failed to update AllowNoobaaDeletion")
+		}
+	}
+	return nil
 }

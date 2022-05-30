@@ -19,7 +19,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -1640,8 +1639,9 @@ func GetAvailabeKubeCli() string {
 	}
 	return kubeCommand
 }
+
 // GetBackingStoreSecretByType returns the secret reference of the backing store if it is relevant to the type
-func GetBackingStoreSecretByType(bs *nbv1.BackingStore) (*corev1.SecretReference, error) { 
+func GetBackingStoreSecretByType(bs *nbv1.BackingStore) (*corev1.SecretReference, error) {
 	var secretRef corev1.SecretReference
 	switch bs.Spec.Type {
 	case nbv1.StoreTypeAWSS3:
@@ -1953,52 +1953,4 @@ func referSameObject(a, b metav1.OwnerReference) bool {
 	}
 
 	return aGV.Group == bGV.Group && a.Kind == b.Kind && a.Name == b.Name
-}
-
-// IsArrayUnorderedEqual takes in 2 slices that are supposed to be compared and a comparison which will
-// be invoked on each element of the slices and returns true if the slices are equal
-//
-// If the comparison function is nil then the default comparison function will be used which compares
-// the elements using "==" operator
-func IsArrayUnorderedEqual(arr1, arr2 interface{}, cmp func(v1, v2 interface{}) bool) bool {
-	if reflect.TypeOf(arr1).Kind() != reflect.Slice {
-		return false
-	}
-	if reflect.TypeOf(arr2).Kind() != reflect.Slice {
-		return false
-	}
-
-	arr1Len := reflect.ValueOf(arr1).Len()
-	arr2Len := reflect.ValueOf(arr2).Len()
-
-	if arr1Len != arr2Len {
-		return false
-	}
-
-	if cmp == nil {
-		cmp = func(v1, v2 interface{}) bool {
-			return v1 == v2
-		}
-	}
-
-	arr1Map := make(map[interface{}]uint, arr1Len)
-	arr2Map := make(map[interface{}]uint, arr2Len)
-
-	for i := 0; i < arr1Len; i++ {
-		val := reflect.ValueOf(arr1).Index(i).Interface()
-		arr1Map[val]++
-	}
-
-	for i := 0; i < arr2Len; i++ {
-		val := reflect.ValueOf(arr2).Index(i).Interface()
-		arr2Map[val]++
-	}
-
-	for k, v := range arr1Map {
-		if !cmp(v, arr2Map[k]) {
-			return false
-		}
-	}
-
-	return true
 }

@@ -772,8 +772,7 @@ var _ = Describe("NooBaaAccount admission unit tests", func() {
 						},
 					}
 
-					updatedNA.Spec = nbv1.NooBaaAccountSpec{
-					}
+					updatedNA.Spec = nbv1.NooBaaAccountSpec{}
 
 					err = validations.ValidateRemoveNSFSConfig(*updatedNA, *na)
 					Ω(err).Should(HaveOccurred())
@@ -801,6 +800,43 @@ var _ = Describe("NooBaaAccount admission unit tests", func() {
 					}
 
 					err = validations.ValidateRemoveNSFSConfig(*na, *updatedNA)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+		})
+	})
+})
+
+var _ = Describe("Noobaa admission unit tests", func() {
+
+	var (
+		nb  *nbv1.NooBaa
+		err error
+	)
+
+	BeforeEach(func() {
+		nb = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa)
+		nb.Name = "noobaa"
+		nb.Namespace = "test"
+
+	})
+
+	Describe("Validate delete operations", func() {
+		Describe("General noobaa validations", func() {
+			Context("cleanup policy not set", func() {
+				It("Should Deny", func() {
+					err = validations.ValidateNoobaaDeletion(*nb)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Noobaa cleanup policy is not set, blocking Noobaa deletion"))
+				})
+				It("Should Allow", func() {
+					nb.Spec = nbv1.NooBaaSpec{
+						CleanupPolicy: nbv1.CleanupPolicySpec{
+							Confirmation:        "confirmed",
+							AllowNoobaaDeletion: true,
+						},
+					}
+					err = validations.ValidateNoobaaDeletion(*nb)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
