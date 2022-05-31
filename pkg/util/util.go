@@ -1747,7 +1747,7 @@ func GetNamespaceStoreSecret(ns *nbv1.NamespaceStore) (*corev1.SecretReference, 
 	if err != nil {
 		return nil, err
 	}
-	if secretRef.Namespace == "" {
+	if secretRef != nil && secretRef.Namespace == "" {
 		secretRef.Namespace = ns.Namespace
 	}
 	return secretRef, nil
