@@ -123,7 +123,6 @@ Load noobaa completion to bash:
 			noobaaaccount.Cmd(),
 			obc.Cmd(),
 			diagnose.Cmd(),
-			system.CmdUI(),
 			dbdump.Cmd(),
 		},
 	}, {

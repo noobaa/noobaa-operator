@@ -31,7 +31,6 @@ type AnnotationsSpec map[string]Annotations
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=nb
-// +kubebuilder:printcolumn:name="Mgmt-Endpoints",type="string",JSONPath=".status.services.serviceMgmt.nodePorts",description="Management Endpoints"
 // +kubebuilder:printcolumn:name="S3-Endpoints",type="string",JSONPath=".status.services.serviceS3.nodePorts",description="S3 Endpoints"
 // +kubebuilder:printcolumn:name="Sts-Endpoints",type="string",JSONPath=".status.services.serviceSts.nodePorts",description="STS Endpoints"
 // +kubebuilder:printcolumn:name="Image",type="string",JSONPath=".status.actualImage",description="Actual Image"

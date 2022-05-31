@@ -7,18 +7,7 @@
 
 	Lets get started:
 
-	1. Connect to Management console:
-
-		Read your mgmt console login information (email & password) from secret: "{{.SecretAdmin.Name}}".
-
-			kubectl get secret {{.SecretAdmin.Name}} -n {{.SecretAdmin.Namespace}} -o json | jq '.data|map_values(@base64d)'
-
-		Open the management console service - take External IP/DNS or Node Port or use port forwarding:
-
-			kubectl port-forward -n {{.ServiceMgmt.Namespace}} service/{{.ServiceMgmt.Name}} 11443:443 &
-			open https://localhost:11443
-
-	2. Test S3 client:
+	Test S3 client:
 
 		kubectl port-forward -n {{.ServiceS3.Namespace}} service/{{.ServiceS3.Name}} 10443:443 &
 		NOOBAA_ACCESS_KEY=$(kubectl get secret {{.SecretAdmin.Name}} -n {{.SecretAdmin.Namespace}} -o json | jq -r '.data.AWS_ACCESS_KEY_ID|@base64d')

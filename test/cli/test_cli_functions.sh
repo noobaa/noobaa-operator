@@ -683,8 +683,7 @@ function account_regenerate_keys {
 
 function account_reset_password {
     local account=${1}
-    local password
-    eval $(get_admin_password)
+    local password=$(get_admin_password)
     #reset password should work
     test_noobaa account passwd ${account} --old-password ${password} --new-password "test" --retype-new-password "test"
     # Should fail if the old password is not correct
@@ -701,7 +700,7 @@ function get_admin_password {
     do
         if [[ ${line} =~ "password" ]]
         then
-            password=$(echo ${line//\"/} | sed -e 's/ //g' -e 's/:/=/g')
+            password=$(echo ${line//\"/} | awk -F ":" '{print $2}')
         fi
     done < <(yes | test_noobaa status)
     echo ${password}
