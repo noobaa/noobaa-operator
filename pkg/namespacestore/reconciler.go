@@ -534,7 +534,7 @@ func (r *Reconciler) LoadNamespaceStoreSecret() error {
 		// if found, point this NS secret reference to it.
 		// so if the user will update the credentials, it will trigger updateExternalConnection in all the Namespacestores
 		if secret != nil {
-			suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, util.MapStorTypeToMandatoryProperties[nbv1.StoreType(r.NamespaceStore.Spec.Type)])
+			suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, string(nbv1.StoreType(r.NamespaceStore.Spec.Type)))
 			if suggestedSecret != nil {
 				secretRef.Name = suggestedSecret.Name
 				secretRef.Namespace = suggestedSecret.Namespace
