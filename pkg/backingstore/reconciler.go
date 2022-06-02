@@ -293,7 +293,7 @@ func (r *Reconciler) LoadBackingStoreSecret() error {
 					return nil
 				}
 				if secret != nil {
-					suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, util.MapStorTypeToMandatoryProperties[r.BackingStore.Spec.Type])
+					suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, string(r.BackingStore.Spec.Type))
 					if suggestedSecret != nil {
 						secretRef.Name = suggestedSecret.Name
 						secretRef.Namespace = suggestedSecret.Namespace

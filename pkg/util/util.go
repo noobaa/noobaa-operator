@@ -113,12 +113,15 @@ var (
 	}
 
 	// MapStorTypeToMandatoryProperties holds a map of store type -> credentials mandatory properties
-	MapStorTypeToMandatoryProperties = map[nbv1.StoreType][]string{
-		nbv1.StoreTypeAWSS3:              {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
-		nbv1.StoreTypeS3Compatible:       {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
-		nbv1.StoreTypeIBMCos:             {"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"},
-		nbv1.StoreTypeGoogleCloudStorage: {"GoogleServiceAccountPrivateKeyJson"},
-		nbv1.StoreTypeAzureBlob:          {"AccountName", "AccountKey"},
+	// note that this map holds the mandatory properties for both backingstores and namespacestores
+	MapStorTypeToMandatoryProperties = map[string][]string{
+		"aws-s3":               {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},         // backingstores and namespacestores
+		"s3-compatible":        {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},         // backingstores and namespacestores
+		"ibm-cos":              {"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"}, // backingstores and namespacestores
+		"google-cloud-storage": {"GoogleServiceAccountPrivateKeyJson"},                 // backingstores
+		"azure-blob":           {"AccountName", "AccountKey"},                          // backingstores and namespacestores
+		"pv-pool":              {},                                                     // backingstores
+		"nsfs":                 {},                                                     // namespacestores
 	}
 )
 
@@ -1814,8 +1817,12 @@ func GetSecretFromSecretReference(secretRef *corev1.SecretReference) (*corev1.Se
 
 // CheckForIdenticalSecretsCreds search and returns a secret name with identical credentials in the provided secret
 // the credentials to compare stored in mandatoryProp
-func CheckForIdenticalSecretsCreds(secret *corev1.Secret, mandatoryProp []string) *corev1.Secret {
-	if secret == nil {
+func CheckForIdenticalSecretsCreds(secret *corev1.Secret, storeTypeStr string) *corev1.Secret {
+	mandatoryProp, ok := MapStorTypeToMandatoryProperties[storeTypeStr]
+	if !ok {
+		log.Errorf("❌  failed to map store type %q to mandatory properties", storeTypeStr)
+	}
+	if secret == nil || len(mandatoryProp) == 0 {
 		return nil
 	}
 	nsList := &nbv1.NamespaceStoreList{
@@ -1838,7 +1845,7 @@ func CheckForIdenticalSecretsCreds(secret *corev1.Secret, mandatoryProp []string
 				if err != nil {
 					log.Errorf("%s", err)
 				}
-				if usedSecret != nil && usedSecret.Name != secret.Name {
+				if usedSecret != nil && usedSecret.Name != secret.Name && string(bs.Spec.Type) == storeTypeStr {
 					found := true
 					for _, key := range mandatoryProp {
 						found = found && usedSecret.StringData[key] == secret.StringData[key]
@@ -1862,7 +1869,7 @@ func CheckForIdenticalSecretsCreds(secret *corev1.Secret, mandatoryProp []string
 				if err != nil {
 					log.Errorf("%s", err)
 				}
-				if usedSecret != nil && usedSecret.Name != secret.Name {
+				if usedSecret != nil && usedSecret.Name != secret.Name && string(ns.Spec.Type) == storeTypeStr {
 					found := true
 					for _, key := range mandatoryProp {
 						found = found && usedSecret.StringData[key] == secret.StringData[key]
