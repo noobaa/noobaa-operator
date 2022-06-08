@@ -1,6 +1,11 @@
 package admission
 
 import (
+	"encoding/json"
+
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 	"github.com/sirupsen/logrus"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,8 +45,25 @@ func (nv *ResourceValidator) ValidateNoobaa() admissionv1.AdmissionReview {
 	return *nv.arResponse
 }
 
+// DeserializeNB extract noobaa cr from the request
+func (nv *ResourceValidator) DeserializeNB(rawNB []byte) *nbv1.NooBaa {
+	NB := nbv1.NooBaa{}
+	if err := json.Unmarshal(rawNB, &NB); err != nil {
+		nv.Logger.Error("error deserializing noobaa")
+	}
+	return &NB
+}
+
 // ValidateDeleteNoobaa runs all the validations tests for DELETE operations
 func (nv *ResourceValidator) ValidateDeleteNoobaa() {
-	nv.Logger.Infof("Validating DELETE operation")
-	nv.SetValidationResult(false, "Deletion of NooBaa resource is prohibited")
+	noobaaCR := nv.DeserializeNB(nv.arRequest.Request.OldObject.Raw)
+	if noobaaCR == nil {
+		nv.SetValidationResult(false, "failed deserializing noobaa")
+		return
+	}
+
+	if err := validations.ValidateNoobaaDeletion(*noobaaCR); err != nil && util.IsValidationError(err) {
+		nv.SetValidationResult(false, err.Error())
+		return
+	}
 }

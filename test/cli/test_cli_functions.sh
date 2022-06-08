@@ -965,7 +965,7 @@ function test_noobaa_cr_deletion() {
     resp=$(kubectl -n ${NAMESPACE} delete noobaas.noobaa.io noobaa 2>&1 >/dev/null)
     if [ $? -ne 0 ]; then
         echo $resp
-        if [[ $resp == *"Deletion of NooBaa resource is prohibited"* ]]; then
+        if [[ $resp == *"Noobaa cleanup policy is not set, blocking Noobaa deletion"* ]]; then
             echo_time "✅  Noobaa CR deletion test passed"
         else
             echo_time "❌  Noobaa CR deletion test failed"
