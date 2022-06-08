@@ -522,6 +522,9 @@ func (r *Reconciler) ReadSystemInfo() error {
 
 // LoadNamespaceStoreSecret loads the secret to the reconciler struct
 func (r *Reconciler) LoadNamespaceStoreSecret() error {
+	if util.IsSTSClusterNS(r.NamespaceStore) {
+		return nil
+	}
 	secretRef, err := util.GetNamespaceStoreSecret(r.NamespaceStore)
 	if err != nil {
 		return err
@@ -585,9 +588,14 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 	switch r.NamespaceStore.Spec.Type {
 
 	case nbv1.NSStoreTypeAWSS3:
-		conn.EndpointType = nb.EndpointTypeAws
-		conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
-		conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+		if util.IsSTSClusterNS(r.NamespaceStore) {
+			conn.EndpointType = nb.EndpointTypeAwsSTS
+			conn.AWSSTSARN = *r.NamespaceStore.Spec.AWSS3.AWSSTSRoleARN
+		} else {
+			conn.EndpointType = nb.EndpointTypeAws
+			conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
+			conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+		}
 		awsS3 := r.NamespaceStore.Spec.AWSS3
 		u := url.URL{
 			Scheme: "https",
@@ -635,10 +643,11 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		return nil, util.NewPersistentError("InvalidType",
 			fmt.Sprintf("Invalid namespace store type %q", r.NamespaceStore.Spec.Type))
 	}
-
-	if !util.IsStringGraphicOrSpacesCharsOnly(conn.Identity) || !util.IsStringGraphicOrSpacesCharsOnly(conn.Secret) {
-		return nil, util.NewPersistentError("InvalidSecret",
-			fmt.Sprintf("Invalid secret containing non graphic characters (perhaps not base64 encoded?) %q", r.Secret.Name))
+	if util.IsSTSClusterNS(r.NamespaceStore) {
+		if !util.IsStringGraphicOrSpacesCharsOnly(conn.Identity) || !util.IsStringGraphicOrSpacesCharsOnly(conn.Secret) {
+			return nil, util.NewPersistentError("InvalidSecret",
+				fmt.Sprintf("Invalid secret containing non graphic characters (perhaps not base64 encoded?) %q", r.Secret.Name))
+		}
 	}
 
 	return conn, nil
@@ -686,6 +695,7 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 		Identity:     r.AddExternalConnectionParams.Identity,
 		Secret:       r.AddExternalConnectionParams.Secret,
 		AuthMethod:   r.AddExternalConnectionParams.AuthMethod,
+		AWSSTSARN:    r.AddExternalConnectionParams.AWSSTSARN,
 	}
 
 	if r.UpdateExternalConnectionParams != nil {

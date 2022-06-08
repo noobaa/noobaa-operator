@@ -187,9 +187,6 @@ func ValidateNSEmptySecretName(ns nbv1.NamespaceStore) error {
 			if err := ValidateNSEmptyAWSARN(ns); err != nil {
 				return err
 			}
-			return util.ValidationError{
-				Msg: "Failed creating the namespacestore, please provide secret name",
-			}
 		}
 	case nbv1.NSStoreTypeS3Compatible:
 		if len(ns.Spec.S3Compatible.Secret.Name) == 0 {
@@ -293,12 +290,10 @@ func ValidateTargetNSBucketChange(ns nbv1.NamespaceStore, oldNs nbv1.NamespaceSt
 
 // ValidateNSEmptyAWSARN validates if ARN is present in the NamespaceStore Spec
 func ValidateNSEmptyAWSARN(ns nbv1.NamespaceStore) error {
-	if ns.Spec.Type == nbv1.NSStoreTypeAWSS3 {
-		if ns.Spec.AWSS3.AWSSTSRoleARN != nil {
-			if len(*ns.Spec.AWSS3.AWSSTSRoleARN) != 0 {
+	if ns.Spec.AWSS3 != nil { 
+		if ns.Spec.AWSS3.AWSSTSRoleARN == nil {
 				return util.ValidationError{
-					Msg: "Failed creating the namespacestore, AWS STS feature is not supported for namespacestore",
-				}
+					Msg: "Failed creating the NamespaceStore, please provide a valid ARN or secret name",
 			}
 		}
 	}

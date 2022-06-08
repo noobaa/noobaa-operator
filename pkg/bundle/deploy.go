@@ -3235,7 +3235,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "6adfd84b4ec66fa67d259195abed8c8d675dd469a9ef93a6a7fb623650f4b3da"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "e2f7a049793e8f36151d349aefdc40c5a17d4de950bbcfd022ee2a4c07b9a067"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3271,6 +3271,13 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
+        - name: oidc-token
+          projected:
+            sources:
+            - serviceAccountToken:
+                path: oidc-token
+                expirationSeconds: 3600
+                audience: api
       containers:
         - name: endpoint
           image: NOOBAA_CORE_IMAGE
@@ -3353,6 +3360,10 @@ spec:
               readOnly: true
             - name: s3-secret
               mountPath: /etc/s3-secret
+              readOnly: true
+            # used for aws sts endpoint type
+            - name: oidc-token
+              mountPath: /var/run/secrets/openshift/serviceaccount
               readOnly: true
           readinessProbe: # must be configured to support rolling updates
             tcpSocket:
