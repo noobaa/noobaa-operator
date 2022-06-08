@@ -1961,3 +1961,13 @@ func referSameObject(a, b metav1.OwnerReference) bool {
 
 	return aGV.Group == bGV.Group && a.Kind == b.Kind && a.Name == b.Name
 }
+
+// IsOwnedByNoobaa receives an array of owner references and returns true if one of them is of a noobaa resource
+func IsOwnedByNoobaa(ownerReferences []metav1.OwnerReference) bool {
+	for _, ownerRef := range ownerReferences {
+		if strings.Contains(ownerRef.APIVersion, "noobaa") {
+			return true
+		}
+	}
+	return false
+}
