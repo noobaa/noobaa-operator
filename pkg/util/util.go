@@ -992,18 +992,18 @@ func IsAWSPlatform() bool {
 	return isAWS
 }
 
-// IsSTSClusterNB returns true if it is running on an STS cluster
-func IsSTSClusterNB(nb *nbv1.NooBaa) bool {
-	if nb.Spec.DefaultBackingStoreSpec != nil {
-		return nb.Spec.DefaultBackingStoreSpec.AWSS3.AWSSTSRoleARN != nil
-	}
-	return false
-}
-
 // IsSTSClusterBS returns true if it is running on an STS cluster
 func IsSTSClusterBS(bs *nbv1.BackingStore) bool {
 	if bs.Spec.Type == nbv1.StoreTypeAWSS3 {
 		return bs.Spec.AWSS3.AWSSTSRoleARN != nil
+	}
+	return false
+}
+
+// IsSTSClusterNS returns true if it is running on an STS cluster
+func IsSTSClusterNS(ns *nbv1.NamespaceStore) bool {
+	if ns.Spec.Type == nbv1.NSStoreTypeAWSS3 {
+		return ns.Spec.AWSS3.AWSSTSRoleARN != nil
 	}
 	return false
 }

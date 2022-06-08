@@ -394,7 +394,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 					}
 					err = validations.ValidateNSEmptySecretName(*ns)
 					Ω(err).Should(HaveOccurred())
-					Expect(err.Error()).To(Equal("Failed creating the namespacestore, please provide secret name"))
+					Expect(err.Error()).To(Equal("Failed creating the NamespaceStore, please provide a valid ARN or secret name"))
 				})
 				It("Should Allow", func() {
 					ns.Spec = nbv1.NamespaceStoreSpec{
