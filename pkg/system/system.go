@@ -979,6 +979,14 @@ func CheckSystem(sys *nbv1.NooBaa) bool {
 		log.Printf("❌ NooBaa system deleted at %v", ts)
 		return false // deleted
 	}
+
+	if util.EnsureCommonMetaFields(sys, nbv1.GracefulFinalizer) {
+		if !util.KubeUpdate(sys) {
+			log.Errorf("❌ NooBaa %q failed to add mandatory meta fields", sys.Name)
+			return false
+		}
+	}
+
 	if sys.Status.Accounts == nil {
 		sys.Status.Accounts = &nbv1.AccountsStatus{}
 	}
