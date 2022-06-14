@@ -275,7 +275,7 @@ function aws_credentials {
         then
             eval $(echo ${line//\"/} | sed -e 's/ //g' -e 's/:/=/g')
         fi
-    done < <(test_noobaa silence status)
+    done < <(test_noobaa silence status --show-secrets)
     if [ -z ${AWS_ACCESS_KEY_ID} ] || [ -z ${AWS_SECRET_ACCESS_KEY} ]
     then
         echo_time "❌  Could not get AWS credentials, Exiting"
@@ -655,7 +655,7 @@ function account_regenerate_keys {
             then
                 eval $(echo ${line//\"/} | sed -e 's/ //g' -e 's/:/=/g')
             fi
-        done < <(test_noobaa account status ${account})
+        done < <(test_noobaa account status ${account} --show-secrets)
     fi
 
     local ACCESS_KEY_ID_before=${AWS_ACCESS_KEY_ID}
@@ -666,7 +666,7 @@ function account_regenerate_keys {
         then
             eval $(echo ${line//\"/} | sed -e 's/ //g' -e 's/:/=/g')
         fi
-    done < <(yes | test_noobaa account regenerate ${account})
+    done < <(yes | test_noobaa account regenerate ${account} --show-secrets)
 
     if [ "${AWS_ACCESS_KEY_ID}" == "${ACCESS_KEY_ID_before}" ]
     then
@@ -702,7 +702,7 @@ function get_admin_password {
         then
             password=$(echo ${line//\"/} | awk -F ":" '{print $2}')
         fi
-    done < <(yes | test_noobaa status)
+    done < <(yes | test_noobaa status --show-secrets)
     echo ${password}
 }
 

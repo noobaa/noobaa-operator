@@ -116,6 +116,9 @@ var DisableLoadBalancerService = false
 // AdmissionWebhook is used for deploying the system with admission validation webhook
 var AdmissionWebhook = false
 
+// ShowSecrets is used to show the secrets in the status output
+var ShowSecrets = false
+
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
 	return Namespace + ".noobaa.io"
@@ -192,5 +195,9 @@ func init() {
 	FlagSet.BoolVar(
 		&AdmissionWebhook, "admission",
 		false, "Install the system with admission validation webhook",
+	)
+	FlagSet.BoolVar(
+		&ShowSecrets, "show-secrets",
+		false, "Show the secrets in the status output",
 	)
 }

@@ -577,7 +577,11 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	util.KubeCheck(secret)
 
 	fmt.Println("")
-	fmt.Printf("%s password : %s\n", secret.StringData["email"], secret.StringData["password"])
+	if options.ShowSecrets {
+		fmt.Printf("%s password : %s\n", secret.StringData["email"], secret.StringData["password"])
+	} else {
+		fmt.Printf("%s password : %s\n", secret.StringData["email"], nb.MaskedString(secret.StringData["password"]))
+	}
 
 	fmt.Println("")
 	fmt.Println("#-----------------#")
@@ -610,9 +614,14 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	fmt.Println("#- S3 Credentials -#")
 	fmt.Println("#------------------#")
 	fmt.Println("")
-	fmt.Printf("AWS_ACCESS_KEY_ID     : %s\n", secret.StringData["AWS_ACCESS_KEY_ID"])
-	fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n", secret.StringData["AWS_SECRET_ACCESS_KEY"])
-	fmt.Println("")
+	if options.ShowSecrets {
+		fmt.Printf("AWS_ACCESS_KEY_ID     : %s\n", secret.StringData["AWS_ACCESS_KEY_ID"])
+		fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n", secret.StringData["AWS_SECRET_ACCESS_KEY"])
+	} else {
+		fmt.Printf("AWS_ACCESS_KEY_ID     : %s\n", nb.MaskedString(secret.StringData["AWS_ACCESS_KEY_ID"]))
+		fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n", nb.MaskedString(secret.StringData["AWS_SECRET_ACCESS_KEY"]))
+	}
+
 }
 
 // RunReconcile runs a CLI command
