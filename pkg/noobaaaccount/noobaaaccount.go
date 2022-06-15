@@ -154,7 +154,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if !fullPermission && len(allowedBuckets) == 0 {
 		log.Fatalf(`❌ Must provide at least one allowed buckets, or full_permission`)
 	}
-	if len(allowedBuckets) > 0 &&  fullPermission {
+	if len(allowedBuckets) > 0 && fullPermission {
 		log.Fatalf(`❌ Can't provide both full_permission and an allowed buckets list`)
 	}
 
@@ -192,10 +192,10 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		}
 
 		noobaaAccount.Spec.NsfsAccountConfig = &nbv1.AccountNsfsConfig{
-			UID: nsfsUID,
-			GID: nsfsGID,
+			UID:            nsfsUID,
+			GID:            nsfsGID,
 			NewBucketsPath: newBucketsPath,
-			NsfsOnly: nsfsOnly,
+			NsfsOnly:       nsfsOnly,
 		}
 	}
 
@@ -205,14 +205,14 @@ func RunCreate(cmd *cobra.Command, args []string) {
 
 	if defaultResource == "" { // if user doesn't provide default resource we will use the default backingstore
 		defaultResource = sys.Name + "-default-backing-store"
-	} 
+	}
 
-	isResourceBackingStore := checkResourceBackingStore(defaultResource) 
+	isResourceBackingStore := checkResourceBackingStore(defaultResource)
 	isResourceNamespaceStore := checkResourceNamespaceStore(defaultResource)
 
 	if isResourceBackingStore && isResourceNamespaceStore {
 		log.Fatalf(`❌  got BackingStore and NamespaceStore %q in namespace %q`,
-			defaultResource, options.Namespace) 
+			defaultResource, options.Namespace)
 	} else if !isResourceBackingStore && !isResourceNamespaceStore {
 		log.Fatalf(`❌ Could not get BackingStore or NamespaceStore %q in namespace %q`,
 			defaultResource, options.Namespace)
@@ -254,13 +254,13 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 	log.Printf("You are about to regenerate an account's security credentials.")
 	log.Printf("This will invalidate all connections between S3 clients and NooBaa which are connected using the current credentials.")
 	log.Printf("are you sure? y/n")
-	
+
 	for {
 		fmt.Scanln(&decision)
 		if decision == "y" {
 			break
 		} else if decision == "n" {
-			return 
+			return
 		}
 	}
 
@@ -274,18 +274,17 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 	if !util.KubeCheck(noobaaAccount) && (name != "admin@noobaa.io") {
 		err := GenerateNonCrdAccountKeys(name)
 		if err != nil {
-			log.Fatalf(`❌ Could not regenerate credentials for %q: %v`,name, err)
+			log.Fatalf(`❌ Could not regenerate credentials for %q: %v`, name, err)
 		}
 	} else {
 		err := GenerateAccountKeys(name)
 		if err != nil {
-			log.Fatalf(`❌ Could not regenerate credentials for %q: %v`,name, err)
+			log.Fatalf(`❌ Could not regenerate credentials for %q: %v`, name, err)
 		}
-	
+
 		RunStatus(cmd, args)
 	}
 
-	
 }
 
 // RunPasswd runs a CLI command
@@ -304,7 +303,7 @@ func RunPasswd(cmd *cobra.Command, args []string) {
 
 	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
 
-	if (name == "admin@noobaa.io"){
+	if name == "admin@noobaa.io" {
 		secret.Name = "noobaa-admin"
 	} else {
 		secret.Name = fmt.Sprintf("noobaa-account-%s", name)
@@ -314,13 +313,13 @@ func RunPasswd(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌  Could not find secret: %s, will not reset password`, secret.Name)
 	}
 
-	if ( oldPassword != secret.StringData["password"] ){
+	if oldPassword != secret.StringData["password"] {
 		log.Fatalf(`❌  Password is incorrect, aborting.`)
 	}
 
 	err := ResetPassword(name, oldPassword, newPassword, retypeNewPassword)
 	if err != nil {
-		log.Fatalf(`❌ Could not reset password for %q: %v`,name, err)
+		log.Fatalf(`❌ Could not reset password for %q: %v`, name, err)
 	}
 
 	secret.StringData = map[string]string{}
@@ -351,7 +350,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 
 	if !util.KubeDelete(noobaaAccount) {
 		log.Fatalf(`❌ Could not delete NooBaaAccount %q in namespace %q`,
-		noobaaAccount.Name, noobaaAccount.Namespace)
+			noobaaAccount.Name, noobaaAccount.Namespace)
 	}
 }
 
@@ -376,10 +375,10 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 	if !util.KubeCheck(noobaaAccount) && (name != "admin@noobaa.io") {
 		log.Fatalf(`❌ Could not get NooBaaAccount %q in namespace %q`,
-		noobaaAccount.Name, noobaaAccount.Namespace)
-	} else if (name == "admin@noobaa.io"){
+			noobaaAccount.Name, noobaaAccount.Namespace)
+	} else if name == "admin@noobaa.io" {
 		secret.Name = "noobaa-admin"
-	} else  {
+	} else {
 		CheckPhase(noobaaAccount)
 
 		fmt.Println()
@@ -398,7 +397,11 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		if v != "" {
 			//In admin secret there is also the password, email and system that we do not want to print
 			if k == "AWS_ACCESS_KEY_ID" || k == "AWS_SECRET_ACCESS_KEY" {
-				fmt.Printf("  %-22s : %s\n", k, v)
+				if options.ShowSecrets {
+					fmt.Printf("  %-22s : %s\n", k, v)
+				} else {
+					fmt.Printf("  %-22s : %s\n", k, nb.MaskedString(v))
+				}
 				credsEnv += k + "=" + v + " "
 			}
 		}
@@ -544,7 +547,7 @@ func GenerateAccountKeys(name string) error {
 	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
 	secret.Namespace = options.Namespace
 	// Handling a special case when the account is "admin@noobaa.io" we don't have CRD but have a secret
-	if (name == "admin@noobaa.io"){
+	if name == "admin@noobaa.io" {
 		secret.Name = "noobaa-admin"
 	} else {
 		secret.Name = fmt.Sprintf("noobaa-account-%s", name)
@@ -554,7 +557,7 @@ func GenerateAccountKeys(name string) error {
 	}
 
 	err = sysClient.NBClient.GenerateAccountKeysAPI(nb.GenerateAccountKeysParams{
-		Email:             name,
+		Email: name,
 	})
 	if err != nil {
 		return err
@@ -567,7 +570,7 @@ func GenerateAccountKeys(name string) error {
 	if err != nil {
 		return err
 	}
- 
+
 	accessKeys = accountInfo.AccessKeys[0]
 
 	secret.StringData = map[string]string{}
@@ -598,7 +601,7 @@ func GenerateNonCrdAccountKeys(name string) error {
 	}
 
 	err = sysClient.NBClient.GenerateAccountKeysAPI(nb.GenerateAccountKeysParams{
-		Email:             name,
+		Email: name,
 	})
 	if err != nil {
 		if nbErr, ok := err.(*nb.RPCError); ok && nbErr.RPCCode == "NO_SUCH_ACCOUNT" {
@@ -635,9 +638,9 @@ func ResetPassword(name string, oldPassword string, newPassword string, retypeNe
 	PasswordResstrictions(oldPassword, newPassword, retypeNewPassword)
 
 	err = sysClient.NBClient.ResetPasswordAPI(nb.ResetPasswordParams{
-		Email:					name,
-		VerificationPassword:	nb.MaskedString(oldPassword),
-		Password:				nb.MaskedString(newPassword),
+		Email:                name,
+		VerificationPassword: nb.MaskedString(oldPassword),
+		Password:             nb.MaskedString(newPassword),
 	})
 	if err != nil {
 		return err
@@ -647,20 +650,20 @@ func ResetPassword(name string, oldPassword string, newPassword string, retypeNe
 }
 
 // PasswordResstrictions checks for all kind of password restrictions
-func PasswordResstrictions(oldPassword string, newPassword string, retypeNewPassword string){
+func PasswordResstrictions(oldPassword string, newPassword string, retypeNewPassword string) {
 	log := util.Logger()
 
 	//Checking that we did not get the same password as the old one
-	if (newPassword == oldPassword) { 
+	if newPassword == oldPassword {
 		log.Fatalf(`❌  The password cannot match the old password, aborting.`)
 	}
 
-	//Checking that we got the same password twice 
-	if (newPassword != retypeNewPassword) { 
+	//Checking that we got the same password twice
+	if newPassword != retypeNewPassword {
 		log.Fatalf(`❌  The password and is not matching the retype, aborting.`)
 	}
 
-	//TODO... This is the place for adding more restrictions 
+	//TODO... This is the place for adding more restrictions
 	// length of password
 	// charecters
 

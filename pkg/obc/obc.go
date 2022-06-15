@@ -217,13 +217,13 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 	log.Printf("You are about to regenerate an OBC's security credentials.")
 	log.Printf("This will invalidate all connections between S3 clients and NooBaa which are connected using the current credentials.")
 	log.Printf("are you sure? y/n")
-	
+
 	for {
 		fmt.Scanln(&decision)
 		if decision == "y" {
 			break
 		} else if decision == "n" {
-			return 
+			return
 		}
 	}
 
@@ -232,7 +232,7 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 		appNamespace = options.Namespace
 	}
 
-	name :=  args[0]
+	name := args[0]
 
 	obc := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml).(*nbv1.ObjectBucketClaim)
 	ob := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucket_cr_yaml).(*nbv1.ObjectBucket)
@@ -250,7 +250,7 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 		ob.Name = fmt.Sprintf("obc-%s-%s", appNamespace, name)
 	}
 
-	if !util.KubeCheck(ob){
+	if !util.KubeCheck(ob) {
 		log.Fatalf(`❌ Could not find OB %q`, ob.Name)
 	}
 
@@ -262,7 +262,7 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 	}
 
 	RunStatus(cmd, args)
-	
+
 }
 
 // RunDelete runs a CLI command
@@ -383,8 +383,13 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	credsEnv := ""
 	for k, v := range secret.StringData {
 		if v != "" {
-			fmt.Printf("  %-22s : %s\n", k, v)
-			credsEnv += k + "=" + v + " "
+			if options.ShowSecrets {
+				fmt.Printf("  %-22s : %s\n", k, v)
+				credsEnv += k + "=" + v + " "
+			} else {
+				fmt.Printf("  %-22s : %s\n", k, nb.MaskedString(v))
+				credsEnv += k + "=" + string(nb.MaskedString(v)) + " "
+			}
 		}
 	}
 	fmt.Printf("\n")
@@ -531,7 +536,7 @@ func GenerateAccountKeys(name string, accountName string) error {
 	}
 
 	err = sysClient.NBClient.GenerateAccountKeysAPI(nb.GenerateAccountKeysParams{
-		Email:	accountName,
+		Email: accountName,
 	})
 	if err != nil {
 		return err
@@ -544,7 +549,7 @@ func GenerateAccountKeys(name string, accountName string) error {
 	if err != nil {
 		return err
 	}
- 
+
 	accessKeys = accountInfo.AccessKeys[0]
 
 	secret.StringData = map[string]string{}
