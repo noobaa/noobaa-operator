@@ -49,8 +49,9 @@ func Cmd() *cobra.Command {
 // CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create <backing-store-type> <backing-store-name>",
 		Short: "Create backing store",
+		Run:   RunCreate,
 	}
 	cmd.AddCommand(
 		CmdCreateAWSS3(),
@@ -420,6 +421,18 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 		log.Printf("")
 		log.Printf("")
 		RunStatus(cmd, args)
+	}
+}
+
+// RunCreate runs a cli command
+func RunCreate(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <backing-store-type> %s`, cmd.UsageString())
+	}
+	if args[0] != "aws-s3" && args[0] != "aws-sts-s3" && args[0] != "google-cloud-storage" &&
+		args[0] != "azure-blob" && args[0] != "ibm-cos" && args[0] != "pv-pool" && args[0] != "s3-compatible" {
+		log.Fatalf(`❌ Unsupported <backing-store-type> -> %s %s`, args[0], cmd.UsageString())
 	}
 }
 
