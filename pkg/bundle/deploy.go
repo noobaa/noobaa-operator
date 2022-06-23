@@ -3999,7 +3999,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "2cd6f3fdb0087481d8d692dece6f68e5d75fd4f46233db7b1e37c1c3665233c7"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "4ee587dcc35a363230bda91ec6f939b351f5efd205fdd9fed8cf69fc8f405d16"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4046,6 +4046,8 @@ spec:
         env:
           - name: POSTGRESQL_DATABASE
             value: nbcore
+          - name: LC_COLLATE
+            value: C
           - name: POSTGRESQL_USER
             valueFrom:
               secretKeyRef:
@@ -4084,6 +4086,8 @@ spec:
         env:
           - name: POSTGRESQL_DATABASE
             value: nbcore
+          - name: LC_COLLATE
+            value: C
           - name: POSTGRESQL_USER
             valueFrom:
               secretKeyRef:
