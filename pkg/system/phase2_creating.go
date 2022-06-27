@@ -161,12 +161,14 @@ func (r *Reconciler) SetDesiredServiceAccount() error {
 // SetDesiredServiceMgmt updates the ServiceMgmt as desired for reconciling
 func (r *Reconciler) SetDesiredServiceMgmt() error {
 	r.ServiceMgmt.Spec.Selector["noobaa-mgmt"] = r.Request.Name
+	r.ServiceMgmt.Labels["noobaa-mgmt-svc"] = "true"
 	return nil
 }
 
 // SetDesiredServiceS3 updates the ServiceS3 as desired for reconciling
 func (r *Reconciler) SetDesiredServiceS3() error {
 	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
+	r.ServiceS3.Labels["noobaa-s3-svc"] = "true"
 	return nil
 }
 
