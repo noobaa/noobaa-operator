@@ -636,7 +636,7 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 		logrus.Infof("ReconcileExternalConnection3 %+v", err)
 		if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
 			if rpcErr.RPCCode == "INVALID_SCHEMA_PARAMS" {
-				return util.NewPersistentError("InvalidConnectionParams", rpcErr.Message)
+				return fmt.Errorf("InvalidSchemaParams  Message=%s", rpcErr.Message)
 			}
 		}
 		return err
