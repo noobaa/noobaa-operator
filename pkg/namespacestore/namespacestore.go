@@ -44,8 +44,9 @@ func Cmd() *cobra.Command {
 // CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create <namespace-store-type> <namespace-store-name>",
 		Short: "Create namespace store",
+		Run:   RunCreate,
 	}
 	cmd.AddCommand(
 		CmdCreateAWSS3(),
@@ -335,6 +336,18 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 		log.Printf("")
 		log.Printf("")
 		RunStatus(cmd, args)
+	}
+}
+
+// RunCreate runs a cli command
+func RunCreate(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <namespace-store-type> %s`, cmd.UsageString())
+	}
+	if args[0] != "aws-s3" && args[0] != "azure-blob" && args[0] != "ibm-cos" &&
+		args[0] != "nsfs" && args[0] != "s3-compatible" {
+		log.Fatalf(`❌ Unsupported <namespace-store-type> -> %s %s`, args[0], cmd.UsageString())
 	}
 }
 
