@@ -722,6 +722,20 @@ type UpdateEndpointGroupParams struct {
 	EndpointRange IntRange `json:"endpoint_range"`
 }
 
+// SetDebugLevelParams - params for debug_api.set_debug_level
+type SetDebugLevelParams struct {
+	Module string `json:"module"`
+	Level  int    `json:"level"`
+}
+
+// PublishToClusterParams are the parmas for redirector_api.publish_to_cluster
+type PublishToClusterParams struct {
+	Target        string      `json:"target"`
+	MethodAPI     string      `json:"method_api"`
+	MethodName    string      `json:"method_name"`
+	RequestParams interface{} `json:"request_params"`
+}
+
 // BigIntToHumanBytes returns a human readable bytes string
 func BigIntToHumanBytes(bi *BigInt) string {
 	return IntToHumanBytes(bi.N + (bi.Peta * petaInBytes))

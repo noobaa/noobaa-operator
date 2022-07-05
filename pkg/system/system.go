@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,6 +42,7 @@ func Cmd() *cobra.Command {
 		CmdCreate(),
 		CmdDelete(),
 		CmdStatus(),
+		CmdSetDebugLevel(),
 		CmdList(),
 		CmdReconcile(),
 		CmdYaml(),
@@ -94,6 +96,17 @@ func CmdStatus() *cobra.Command {
 		Short: "Status of a noobaa system",
 		Run:   RunStatus,
 		Args:  cobra.NoArgs,
+	}
+	return cmd
+}
+
+// CmdSetDebugLevel returns a CLI command
+func CmdSetDebugLevel() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "set-debug-level <level>",
+		Short: "Sets core and endpoints debug level. level can be 'warn' or 0-5",
+		Run:   RunSetDebugLevel,
+		Args:  cobra.ExactArgs(1),
 	}
 	return cmd
 }
@@ -622,6 +635,37 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n", nb.MaskedString(secret.StringData["AWS_SECRET_ACCESS_KEY"]))
 	}
 
+}
+
+// RunSetDebugLevel sets the system debug level
+func RunSetDebugLevel(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	level := 0
+	if args[0] == "warn" {
+		level = -1
+	} else {
+		var err error
+		level, err = strconv.Atoi(args[0])
+		if err != nil || level < 0 || level > 5 {
+			log.Fatalf(`invalid debug-level argument. must be 'warn' or 0 to 5. %s`, cmd.UsageString())
+		}
+	}
+	nbClient := GetNBClient()
+	err := nbClient.PublishToCluster(nb.PublishToClusterParams{
+		Target:     "",
+		MethodAPI:  "debug_api",
+		MethodName: "set_debug_level",
+		RequestParams: nb.SetDebugLevelParams{
+			Module: "core",
+			Level:  level,
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("")
+	fmt.Printf("Debug level was set to %s successfully\n", args[0])
+	fmt.Println("Debug level is not persistent and is only effective for the currently running core and endpoints pods")
 }
 
 // RunReconcile runs a CLI command
