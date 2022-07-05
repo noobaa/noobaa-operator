@@ -9,8 +9,8 @@ Multiple types of Namespace-Store are currently supported: aws-s3, s3-compatible
 
 # Definitions
 
-- CRD: [noobaa.io_NamespaceStores_crd.yaml](../deploy/crds/noobaa.io_NamespaceStores_crd.yaml)
-- CR: [noobaa.io_v1alpha1_NamespaceStore_cr.yaml](../deploy/crds/noobaa.io_v1alpha1_NamespaceStore_cr.yaml)
+- CRD: [noobaa.io_NamespaceStores_crd.yaml](../deploy/crds/noobaa.io_namespacestores_crd.yaml)
+- CR: [noobaa.io_v1alpha1_NamespaceStore_cr.yaml](../deploy/crds/noobaa.io_v1alpha1_namespacestore_cr.yaml)
 
 
 # Reconcile
