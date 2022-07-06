@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	obAPI "github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner/api"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v5/pkg/crd"
@@ -32,8 +33,18 @@ import (
 type unObj = map[string]interface{}
 type unArr = []interface{}
 
+const (
+	// OBCOwned is the value owned for the obc-crd flag
+	OBCOwned string = "owned"
+	// OBCRequired is the default value for the obc-crd flag
+	OBCRequired string = "required"
+	// OBCNone is the value none for the obc-crd flag
+	OBCNone string = "none"
+)
+
 type generateCSVParams struct {
 	IsForODF  bool
+	OBCMode   string
 	SkipRange string
 	Replaces  string
 }
@@ -66,6 +77,7 @@ func CmdCatalog() *cobra.Command {
 	}
 	cmd.Flags().String("dir", "./build/_output/olm", "The output dir for the OLM package")
 	cmd.Flags().Bool("odf", false, "Build package according to ODF requirements")
+	cmd.Flags().String("obc-crd", OBCRequired, "Determine if the OB/OBC CRDs are required, owned, or none")
 	cmd.Flags().String("csv-name", "", "File name for the CSV YAML")
 	cmd.Flags().String("skip-range", "", "set the olm.skipRange annotation in the CSV")
 	cmd.Flags().String("replaces", "", "set the replaces property in the CSV")
@@ -156,10 +168,16 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 	var versionDir string
 
 	forODF, _ := cmd.Flags().GetBool("odf")
+	obcMode, _ := cmd.Flags().GetString("obc-crd")
+	if obcMode != OBCOwned && obcMode != OBCRequired && obcMode != OBCNone {
+		log.Fatalf(`Invalid value for --obc-crd: %s. should be [%s|%s|%s]`, obcMode, OBCOwned, OBCRequired, OBCNone)
+	}
+
 	skipRange, _ := cmd.Flags().GetString("skip-range")
 	replaces, _ := cmd.Flags().GetString("replaces")
 	csvParams := &generateCSVParams{
 		IsForODF:  forODF,
+		OBCMode:   obcMode,
 		SkipRange: skipRange,
 		Replaces:  replaces,
 	}
@@ -192,7 +210,7 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 	}
 	util.Panic(util.WriteYamlFile(csvFileName, GenerateCSV(opConf, csvParams)))
 	crd.ForEachCRD(func(c *crd.CRD) {
-		if c.Spec.Group == nbv1.SchemeGroupVersion.Group {
+		if c.Spec.Group == nbv1.SchemeGroupVersion.Group || (csvParams.OBCMode == OBCOwned && c.Spec.Group == obAPI.Domain) {
 			util.Panic(util.WriteYamlFile(versionDir+c.Name+".crd.yaml", c))
 		}
 	})
@@ -667,8 +685,15 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 				operv1.APIResourceReference{Name: "statefulsets.apps", Kind: "StatefulSet", Version: "v1"},
 			},
 		}
+
 		if c.Spec.Group == nbv1.SchemeGroupVersion.Group {
 			csv.Spec.CustomResourceDefinitions.Owned = append(csv.Spec.CustomResourceDefinitions.Owned, crdDesc)
+		} else if c.Spec.Group == obAPI.Domain {
+			if csvParams.OBCMode == OBCOwned {
+				csv.Spec.CustomResourceDefinitions.Owned = append(csv.Spec.CustomResourceDefinitions.Owned, crdDesc)
+			} else if csvParams.OBCMode == OBCRequired {
+				csv.Spec.CustomResourceDefinitions.Required = append(csv.Spec.CustomResourceDefinitions.Required, crdDesc)
+			}
 		} else {
 			csv.Spec.CustomResourceDefinitions.Required = append(csv.Spec.CustomResourceDefinitions.Required, crdDesc)
 		}

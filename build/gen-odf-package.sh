@@ -14,7 +14,8 @@ fi
 --replaces "${REPLACES}" \
 --noobaa-image ${CORE_IMAGE} \
 --db-image ${DB_IMAGE} \
---operator-image ${OPERATOR_IMAGE}
+--operator-image ${OPERATOR_IMAGE} \
+--obc-crd=${OBC_CRD} 
 
 temp_csv=$(mktemp)
 
