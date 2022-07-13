@@ -137,6 +137,7 @@ type MultiNamespacePolicy struct {
 	ReadResources []string `json:"readResources,omitempty"`
 
 	// WriteResource is the write resource name to use
+	// +optional
 	WriteResource string `json:"writeResource,omitempty"`
 }
 

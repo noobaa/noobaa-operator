@@ -43,6 +43,9 @@ spec:
           spec:
             description: Specification of the desired behavior of the noobaa NamespaceStore.
             properties:
+              accessMode:
+                description: AccessMode is an enum of supported access modes
+                type: string
               awsS3:
                 description: AWSS3Spec specifies a namespace store of type aws-s3
                 properties:

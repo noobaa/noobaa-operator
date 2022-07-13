@@ -441,6 +441,11 @@ func (r *Reconciler) ReadSystemInfo() error {
 
 	nsr := r.NamespaceResourceinfo
 
+	accessMode := nb.APIAccessModeReadWrite
+	if r.NamespaceStore.Spec.AccessMode == nbv1.AccessModeReadOnly {
+		accessMode = nb.APIAccessModeReadOnly
+	}
+
 	// handling namespace fs resource
 	if r.NamespaceStore.Spec.Type == nbv1.NSStoreTypeNSFS {
 		fsRootPath := "/nsfs/" + r.NamespaceStore.Name
@@ -454,6 +459,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 				Name:      r.NamespaceStore.Name,
 				Namespace: options.Namespace,
 			},
+			AccessMode: accessMode,
 		}
 		return nil
 	}
@@ -508,6 +514,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 			Name:      r.NamespaceStore.Name,
 			Namespace: options.Namespace,
 		},
+		AccessMode: accessMode,
 	}
 
 	return nil
@@ -710,7 +717,7 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	return nil
 }
 
-// CheckExternalConnection chacks an extenal connection using the noobaa api
+// CheckExternalConnection checks an external connection using the noobaa api
 func (r *Reconciler) CheckExternalConnection(connInfo *nb.CheckExternalConnectionParams) error {
 	res, err := r.NBClient.CheckExternalConnectionAPI(*connInfo)
 	if err != nil {
@@ -730,8 +737,8 @@ func (r *Reconciler) CheckExternalConnection(connInfo *nb.CheckExternalConnectio
 		fallthrough
 	case nb.ExternalConnectionInvalidEndpoint:
 		if time.Since(r.NamespaceStore.CreationTimestamp.Time) < 5*time.Minute {
-			r.Logger.Infof("got invalid endopint. requeuing for 5 minutes to make sure it is not a temporary connection issue")
-			return fmt.Errorf("got invalid endopint. requeue again")
+			r.Logger.Infof("got invalid endpoint. requeuing for 5 minutes to make sure it is not a temporary connection issue")
+			return fmt.Errorf("got invalid endpoint. requeue again")
 		}
 		fallthrough
 	case nb.ExternalConnectionTimeSkew:
