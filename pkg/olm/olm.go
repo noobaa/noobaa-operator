@@ -684,11 +684,11 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 		if c.Spec.Group == nbv1.SchemeGroupVersion.Group {
 			csv.Spec.CustomResourceDefinitions.Owned = append(csv.Spec.CustomResourceDefinitions.Owned, crdDesc)
 		} else if c.Spec.Group == obAPI.Domain {
-			if csvParams.OBCMode == OBCOwned {
+			if csvParams != nil && csvParams.OBCMode == OBCOwned {
 				csv.Spec.CustomResourceDefinitions.Owned = append(csv.Spec.CustomResourceDefinitions.Owned, crdDesc)
-			} else if csvParams.OBCMode == OBCRequired {
+			} else if csvParams == nil || csvParams.OBCMode == OBCRequired {
 				csv.Spec.CustomResourceDefinitions.Required = append(csv.Spec.CustomResourceDefinitions.Required, crdDesc)
-			}
+			} // else OBCMode == OBCNone, do nothing
 		} else {
 			csv.Spec.CustomResourceDefinitions.Required = append(csv.Spec.CustomResourceDefinitions.Required, crdDesc)
 		}
