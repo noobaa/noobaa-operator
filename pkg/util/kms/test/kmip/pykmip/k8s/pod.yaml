@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pykmip
+  labels:
+    app: kmip
+spec:
+  containers:
+    - image: localhost:5000/noobaa/pykmip:integration
+      imagePullPolicy: Always
+      name: pykmip
+      ports:
+        - containerPort: 5696
+          name: kmip
