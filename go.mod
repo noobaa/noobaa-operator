@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go v1.37.19
 	github.com/blang/semver/v4 v4.0.0
 	github.com/coreos/go-semver v0.3.0
-	github.com/docker/distribution v2.7.1+incompatible
+	github.com/docker/distribution v2.8.0+incompatible
 	github.com/google/uuid v1.1.2
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20220105185820-c1da9586e05b
 	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
