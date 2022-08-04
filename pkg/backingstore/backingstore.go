@@ -892,7 +892,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 			if secret.Namespace == "" {
 				secret.Namespace = backStore.Namespace
 			}
-			if !util.KubeCheck(secret) {
+			if backStore.Spec.Type != nbv1.StoreTypePVPool && !util.KubeCheck(secret) {
 				log.Errorf(`❌ Could not get Secret %q in namespace %q`,
 					secret.Name, secret.Namespace)
 			}
@@ -907,7 +907,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	util.Panic(err)
 	fmt.Print(string(output))
 	fmt.Println()
-	if secretRef != nil {
+	if secretRef != nil && secret.Name != "" {
 		_, err = sigyaml.Marshal(secret.StringData)
 		util.Panic(err)
 		fmt.Println()

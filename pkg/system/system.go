@@ -634,6 +634,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		fmt.Printf("AWS_ACCESS_KEY_ID     : %s\n", nb.MaskedString(secret.StringData["AWS_ACCESS_KEY_ID"]))
 		fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n", nb.MaskedString(secret.StringData["AWS_SECRET_ACCESS_KEY"]))
 	}
+	fmt.Println("")
 
 }
 
