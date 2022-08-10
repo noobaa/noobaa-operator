@@ -604,7 +604,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	fmt.Println("#-----------------#")
 	fmt.Println("")
 
-	fmt.Println("ExternalDNS :", r.NooBaa.Status.Services.ServiceSts.ExternalDNS)
+	util.PrettyPrint("ExternalDNS", r.NooBaa.Status.Services.ServiceSts.ExternalDNS)
 	fmt.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceSts.ExternalIP)
 	fmt.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceSts.NodePorts)
 	fmt.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceSts.InternalDNS)
@@ -617,7 +617,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	fmt.Println("#----------------#")
 	fmt.Println("")
 
-	fmt.Println("ExternalDNS :", r.NooBaa.Status.Services.ServiceS3.ExternalDNS)
+	util.PrettyPrint("ExternalDNS", r.NooBaa.Status.Services.ServiceS3.ExternalDNS)
 	fmt.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceS3.ExternalIP)
 	fmt.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceS3.NodePorts)
 	fmt.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceS3.InternalDNS)

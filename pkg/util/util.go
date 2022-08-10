@@ -1970,3 +1970,19 @@ func IsOwnedByNoobaa(ownerReferences []metav1.OwnerReference) bool {
 	}
 	return false
 }
+
+// PrettyPrint the string array in multiple lines, if length greater than 1
+func PrettyPrint(key string, strArray []string) {
+	if len(strArray) > 1 {
+		fmt.Printf("%s : [ %s,\n", key, strArray[0])
+		for indx, i := range strArray[1:] {
+			if indx != len(strArray)-2 {
+				fmt.Printf("\t\t%s,\n", i)
+			} else {
+				fmt.Printf("\t\t%s ]\n", i)
+			}
+		}
+	} else {
+		fmt.Printf("%s : %s\n", key, strArray)
+	}
+}
