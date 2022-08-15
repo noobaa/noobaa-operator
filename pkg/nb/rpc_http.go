@@ -3,7 +3,7 @@ package nb
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -57,7 +57,7 @@ func (c *RPCConnHTTP) Call(req *RPCMessage, res RPCResponse) error {
 		return err
 	}
 
-	resBytes, err := ioutil.ReadAll(httpResponse.Body)
+	resBytes, err := io.ReadAll(httpResponse.Body)
 	if err != nil {
 		return err
 	}
