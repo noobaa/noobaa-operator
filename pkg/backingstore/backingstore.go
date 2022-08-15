@@ -3,7 +3,7 @@ package backingstore
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -618,7 +618,7 @@ func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 
 		if secretName == "" {
 			privateKeyJSONFile := util.GetFlagStringOrPrompt(cmd, "private-key-json-file")
-			bytes, err := ioutil.ReadFile(privateKeyJSONFile)
+			bytes, err := os.ReadFile(privateKeyJSONFile)
 			if err != nil {
 				log.Fatalf("Failed to read file %q: %v", privateKeyJSONFile, err)
 			}

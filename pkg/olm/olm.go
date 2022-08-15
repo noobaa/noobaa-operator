@@ -3,7 +3,6 @@ package olm
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -206,7 +205,7 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 
 	util.Panic(os.MkdirAll(versionDir, 0755))
 	if !forODF {
-		util.Panic(ioutil.WriteFile(dir+"noobaa-operator.package.yaml", pkgBytes, 0644))
+		util.Panic(os.WriteFile(dir+"noobaa-operator.package.yaml", pkgBytes, 0644))
 	}
 	util.Panic(util.WriteYamlFile(csvFileName, GenerateCSV(opConf, csvParams)))
 	crd.ForEachCRD(func(c *crd.CRD) {
