@@ -35,6 +35,8 @@ webhooks:
       apiVersions: ["v1alpha1"]
       operations:  
       - "DELETE"
+      - "CREATE"
+      - "UPDATE"
       resources:   
       - "noobaas"
       scope: "Namespaced"

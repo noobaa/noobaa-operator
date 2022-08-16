@@ -12,7 +12,7 @@ metadata:
     service.beta.openshift.io/serving-cert-secret-name: noobaa-mgmt-serving-cert
     service.alpha.openshift.io/serving-cert-secret-name: noobaa-mgmt-serving-cert
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     noobaa-mgmt: SYSNAME
   ports:

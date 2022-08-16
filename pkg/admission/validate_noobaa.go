@@ -36,6 +36,10 @@ func NewNoobaaValidator(arRequest admissionv1.AdmissionReview) *ResourceValidato
 // ValidateNoobaa call appropriate validations based on the operation
 func (nv *ResourceValidator) ValidateNoobaa() admissionv1.AdmissionReview {
 	switch nv.arRequest.Request.Operation {
+	case admissionv1.Create:
+		nv.ValidateNoobaaCreate()
+	case admissionv1.Update:
+		nv.ValidateNoobaaUpdate()
 	case admissionv1.Delete:
 		nv.ValidateDeleteNoobaa()
 	default:
@@ -63,6 +67,34 @@ func (nv *ResourceValidator) ValidateDeleteNoobaa() {
 	}
 
 	if err := validations.ValidateNoobaaDeletion(*noobaaCR); err != nil && util.IsValidationError(err) {
+		nv.SetValidationResult(false, err.Error())
+		return
+	}
+}
+
+// ValidateNoobaaUpdate runs all the validations tests for UPDATE operations
+func (nv *ResourceValidator) ValidateNoobaaUpdate() {
+	noobaaCR := nv.DeserializeNB(nv.arRequest.Request.Object.Raw)
+	if noobaaCR == nil {
+		nv.SetValidationResult(false, "failed deserializing noobaa")
+		return
+	}
+
+	if err := validations.ValidateNoobaaUpdate(*noobaaCR); err != nil && util.IsValidationError(err) {
+		nv.SetValidationResult(false, err.Error())
+		return
+	}
+}
+
+// ValidateNoobaaCreate runs all the validations tests for CREATE operations
+func (nv *ResourceValidator) ValidateNoobaaCreate() {
+	noobaaCR := nv.DeserializeNB(nv.arRequest.Request.Object.Raw)
+	if noobaaCR == nil {
+		nv.SetValidationResult(false, "failed deserializing noobaa")
+		return
+	}
+
+	if err := validations.ValidateNoobaaCreation(*noobaaCR); err != nil && util.IsValidationError(err) {
 		nv.SetValidationResult(false, err.Error())
 		return
 	}

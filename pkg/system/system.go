@@ -144,6 +144,8 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	dbType := options.DBType
 	sys.Spec.DBType = nbv1.DBTypes(dbType)
 	sys.Spec.DisableLoadBalancerService = options.DisableLoadBalancerService
+	sys.Spec.LoadBalancerSourceSubnets.S3 = options.S3LoadBalancerSourceSubnets
+	sys.Spec.LoadBalancerSourceSubnets.STS = options.STSLoadBalancerSourceSubnets
 
 	LoadConfigMapFromFlags()
 

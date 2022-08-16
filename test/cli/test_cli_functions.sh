@@ -976,3 +976,54 @@ function test_noobaa_cr_deletion() {
         exit 1
     fi
 }
+
+function test_noobaa_loadbalancer_source_subnet() {
+    local timeout=0
+    local temp_file=`echo /tmp/test-$(date +%s).json`
+    local subnet1=10.0.0.0/16
+    local subnet2=172.18.0.0/32
+    cat <<EOF > $temp_file
+{
+    "spec": {
+        "loadBalancerSourceSubnets":  {
+            "s3": ["$subnet1"],
+            "sts": ["$subnet2"]
+        }   
+    }
+}
+EOF
+
+    kuberun silence patch noobaas.noobaa.io noobaa --patch-file $temp_file --type merge
+
+    while [ $timeout -lt 60 ]; do
+        sleep 1
+        timeout=$((timeout+1))
+        if [ $timeout -eq 60 ]; then
+            echo_time "❌  Noobaa loadbalancer source subnet test failed"
+            exit 1
+        fi
+
+        local passed=true
+
+        local loadBalancerSourceRanges=`kubectl get services s3 -n ${NAMESPACE} -o json | jq -rc '.spec.loadBalancerSourceRanges'`
+        if [ "$loadBalancerSourceRanges" == "[\"$subnet1\"]" ]; then
+            echo_time "✅  Noobaa loadbalancer source subnet verified for service s3"
+        else
+            echo_time "❌  Noobaa loadbalancer source subnet test failed for service s3"
+            passed=false
+        fi
+
+        local loadBalancerSourceRanges=`kubectl get services sts -n ${NAMESPACE} -o json | jq -rc '.spec.loadBalancerSourceRanges'`
+        if [ "$loadBalancerSourceRanges" == "[\"$subnet2\"]" ]; then
+            echo_time "✅  Noobaa loadbalancer source subnet verified for service sts"
+        else
+            echo_time "❌  Noobaa loadbalancer source subnet test failed for service sts"
+            passed=false
+        fi
+
+        if [ "$passed" == "true" ]; then
+            echo_time "✅  Noobaa loadbalancer source subnet test passed"
+            break
+        fi
+    done
+}

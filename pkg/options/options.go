@@ -94,7 +94,7 @@ var DBStorageClass = ""
 // it can be overridden for testing or different url.
 var MongoDbURL = ""
 
-//DebugLevel can be used to override the default debug level
+// DebugLevel can be used to override the default debug level
 var DebugLevel = "default_level"
 
 // PVPoolDefaultStorageClass is used for PVC's allocation for the noobaa server data
@@ -115,6 +115,14 @@ var DisableLoadBalancerService = false
 
 // AdmissionWebhook is used for deploying the system with admission validation webhook
 var AdmissionWebhook = false
+
+// S3LoadBalancerSourceSubnets is used for setting the source subnets for the load balancer
+// created for noobaa S3 service
+var S3LoadBalancerSourceSubnets = []string{}
+
+// STSLoadBalancerSourceSubnets is used for setting the source subnets for the load balancer
+// created for noobaa STS service
+var STSLoadBalancerSourceSubnets = []string{}
 
 // ShowSecrets is used to show the secrets in the status output
 var ShowSecrets = false
@@ -199,5 +207,13 @@ func init() {
 	FlagSet.BoolVar(
 		&ShowSecrets, "show-secrets",
 		false, "Show the secrets in the status output",
+	)
+	FlagSet.StringArrayVar(
+		&S3LoadBalancerSourceSubnets, "s3-load-balancer-source-subnets",
+		[]string{}, "The source subnets for the S3 service load balancer",
+	)
+	FlagSet.StringArrayVar(
+		&STSLoadBalancerSourceSubnets, "sts-load-balancer-source-subnets",
+		[]string{}, "The source subnets for the STS service load balancer",
 	)
 }
