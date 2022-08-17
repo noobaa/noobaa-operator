@@ -25,6 +25,7 @@ function post_install_tests {
     delete_replication_files
     check_pgdb_config_override
     test_noobaa_cr_deletion
+    test_noobaa_loadbalancer_source_subnet
 }
 
 function main {

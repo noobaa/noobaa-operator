@@ -1316,6 +1316,25 @@ spec:
                 nullable: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              loadBalancerSourceSubnets:
+                description: LoadBalancerSourceSubnets (optional) if given will allow
+                  access to the NooBaa services only from the listed subnets. This
+                  field will have no effect if DisableLoadBalancerService is set to
+                  true
+                properties:
+                  s3:
+                    description: S3 is a list of subnets that will be allowed to access
+                      the Noobaa S3 service
+                    items:
+                      type: string
+                    type: array
+                  sts:
+                    description: STS is a list of subnets that will be allowed to
+                      access the Noobaa STS service
+                    items:
+                      type: string
+                    type: array
+                type: object
               mongoDbURL:
                 description: MongoDbURL (optional) overrides the default mongo db
                   remote url

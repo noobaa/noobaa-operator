@@ -182,6 +182,23 @@ type NooBaaSpec struct {
 
 	// +optional
 	DefaultBackingStoreSpec *BackingStoreSpec `json:"defaultBackingStoreSpec,omitempty"`
+
+	// LoadBalancerSourceSubnets (optional) if given will allow access to the NooBaa services
+	// only from the listed subnets. This field will have no effect if DisableLoadBalancerService is set
+	// to true
+	// +optional
+	LoadBalancerSourceSubnets LoadBalancerSourceSubnetSpec `json:"loadBalancerSourceSubnets,omitempty"`
+}
+
+// LoadBalancerSourceSubnetSpec defines the subnets that will be allowed to access the NooBaa services
+type LoadBalancerSourceSubnetSpec struct {
+	// S3 is a list of subnets that will be allowed to access the Noobaa S3 service
+	// +optional
+	S3 []string `json:"s3,omitempty"`
+
+	// STS is a list of subnets that will be allowed to access the Noobaa STS service
+	// +optional
+	STS []string `json:"sts,omitempty"`
 }
 
 // SecuritySpec is security spec to include various security items such as kms

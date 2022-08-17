@@ -1231,7 +1231,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "2b33414098bb5801ce4390ff74ebbe3ccb64ab9d4eebd42a042464b6c5ce4143"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a0c90aee88345fbe92f3d1df9b304cfd451e7b4e4321d408fc13500ff4c9d4b5"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2551,6 +2551,25 @@ spec:
                 nullable: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              loadBalancerSourceSubnets:
+                description: LoadBalancerSourceSubnets (optional) if given will allow
+                  access to the NooBaa services only from the listed subnets. This
+                  field will have no effect if DisableLoadBalancerService is set to
+                  true
+                properties:
+                  s3:
+                    description: S3 is a list of subnets that will be allowed to access
+                      the Noobaa S3 service
+                    items:
+                      type: string
+                    type: array
+                  sts:
+                    description: STS is a list of subnets that will be allowed to
+                      access the Noobaa STS service
+                    items:
+                      type: string
+                    type: array
+                type: object
               mongoDbURL:
                 description: MongoDbURL (optional) overrides the default mongo db
                   remote url
@@ -2997,7 +3016,7 @@ metadata:
 spec: {}
 `
 
-const Sha256_deploy_internal_admission_webhook_yaml = "a9d71b881748ed66ec0447d16a41fc7004a3db0634e455f10e5ed41f4c010f47"
+const Sha256_deploy_internal_admission_webhook_yaml = "6ac4c09a3923e2545fe484dbf68171d718669cf03e874889f44e005ed5f8529c"
 
 const File_deploy_internal_admission_webhook_yaml = `apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -3036,6 +3055,8 @@ webhooks:
       apiVersions: ["v1alpha1"]
       operations:  
       - "DELETE"
+      - "CREATE"
+      - "UPDATE"
       resources:   
       - "noobaas"
       scope: "Namespaced"
@@ -3760,7 +3781,7 @@ spec:
       name: mongodb
 `
 
-const Sha256_deploy_internal_service_mgmt_yaml = "89c34cdc0078bec5fdd4146775838248fccfb30032ffe8279e62b460a3856204"
+const Sha256_deploy_internal_service_mgmt_yaml = "fa5f052fb360e6893fc446a318413a6f494a8610706ae7e36ff985b3b3a5c070"
 
 const File_deploy_internal_service_mgmt_yaml = `apiVersion: v1
 kind: Service
@@ -3776,7 +3797,7 @@ metadata:
     service.beta.openshift.io/serving-cert-secret-name: noobaa-mgmt-serving-cert
     service.alpha.openshift.io/serving-cert-secret-name: noobaa-mgmt-serving-cert
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     noobaa-mgmt: SYSNAME
   ports:

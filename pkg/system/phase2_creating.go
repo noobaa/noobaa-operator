@@ -176,12 +176,6 @@ func (r *Reconciler) SetDesiredServiceAccount() error {
 
 // SetDesiredServiceMgmt updates the ServiceMgmt as desired for reconciling
 func (r *Reconciler) SetDesiredServiceMgmt() error {
-	if r.NooBaa.Spec.DisableLoadBalancerService {
-		r.ServiceMgmt.Spec.Type = corev1.ServiceTypeClusterIP
-	} else {
-		// It is here in case disableLoadBalancerService is removed from the crd or changed to false
-		r.ServiceMgmt.Spec.Type = corev1.ServiceTypeLoadBalancer
-	}
 	r.ServiceMgmt.Spec.Selector["noobaa-mgmt"] = r.Request.Name
 	r.ServiceMgmt.Labels["noobaa-mgmt-svc"] = "true"
 	return nil
@@ -191,9 +185,11 @@ func (r *Reconciler) SetDesiredServiceMgmt() error {
 func (r *Reconciler) SetDesiredServiceS3() error {
 	if r.NooBaa.Spec.DisableLoadBalancerService {
 		r.ServiceS3.Spec.Type = corev1.ServiceTypeClusterIP
+		r.ServiceS3.Spec.LoadBalancerSourceRanges = []string{}
 	} else {
 		// It is here in case disableLoadBalancerService is removed from the crd or changed to false
 		r.ServiceS3.Spec.Type = corev1.ServiceTypeLoadBalancer
+		r.ServiceS3.Spec.LoadBalancerSourceRanges = r.NooBaa.Spec.LoadBalancerSourceSubnets.S3
 	}
 	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
 	r.ServiceS3.Labels["noobaa-s3-svc"] = "true"
@@ -204,9 +200,11 @@ func (r *Reconciler) SetDesiredServiceS3() error {
 func (r *Reconciler) SetDesiredServiceSts() error {
 	if r.NooBaa.Spec.DisableLoadBalancerService {
 		r.ServiceSts.Spec.Type = corev1.ServiceTypeClusterIP
+		r.ServiceSts.Spec.LoadBalancerSourceRanges = []string{}
 	} else {
 		// It is here in case disableLoadBalancerService is removed from the crd or changed to false
 		r.ServiceSts.Spec.Type = corev1.ServiceTypeLoadBalancer
+		r.ServiceSts.Spec.LoadBalancerSourceRanges = r.NooBaa.Spec.LoadBalancerSourceSubnets.STS
 	}
 	r.ServiceSts.Spec.Selector["noobaa-s3"] = r.Request.Name
 	return nil
@@ -801,7 +799,7 @@ func (r *Reconciler) ReconcileRootSecret() error {
 	return nil
 }
 
-func (r* Reconciler) reconcileRbac(scc, sa, role, binding string) error {
+func (r *Reconciler) reconcileRbac(scc, sa, role, binding string) error {
 	SCC := util.KubeObject(scc).(*secv1.SecurityContextConstraints)
 	util.KubeCreateOptional(SCC)
 
@@ -825,7 +823,7 @@ func (r* Reconciler) reconcileRbac(scc, sa, role, binding string) error {
 }
 
 // reconcileDBRBAC creates DB scc, role, rolebinding and service account
-func (r* Reconciler) reconcileDBRBAC() error {
+func (r *Reconciler) reconcileDBRBAC() error {
 	return r.reconcileRbac(
 		bundle.File_deploy_scc_db_yaml,
 		bundle.File_deploy_service_account_db_yaml,
