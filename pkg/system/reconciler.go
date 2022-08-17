@@ -333,8 +333,8 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	log.Infof("Start NooBaa system Reconcile ...")
 
 	if !CheckSystem(r.NooBaa) {
-		log.Infof("NooBaa not found or already deleted.")
 		if r.NooBaa.DeletionTimestamp != nil {
+			log.Infof("NooBaa not found or already deleted.")
 			if err = r.deleteRootSecret(); err != nil {
 				log.Warnf("⏳ Temporary Error: %s", err)
 			}
@@ -343,17 +343,10 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 				r.SetPhase("", "TemporaryError", err.Error())
 				log.Warnf("⏳ Temporary Error: %s", err)
 			}
+			return res, err
 		}
-		return res, err
-	}
-
-	if util.EnsureCommonMetaFields(r.NooBaa, nbv1.GracefulFinalizer) {
-		if !util.KubeUpdate(r.NooBaa) {
-			log.Errorf("❌ NooBaa %q failed to add mandatory meta fields", r.NooBaa.Name)
-
-			res.RequeueAfter = 3 * time.Second
-			return res, nil
-		}
+		res.RequeueAfter = 3 * time.Second
+		return res, nil
 	}
 
 	if r.NooBaa.Spec.JoinSecret != nil {
