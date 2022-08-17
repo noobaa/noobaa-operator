@@ -2,7 +2,6 @@ package kms
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
@@ -14,18 +13,18 @@ import (
 
 // Vault authentication config options
 const (
-	VaultAddr               = "VAULT_ADDR"
-	VaultCaCert             = "VAULT_CACERT"
-	VaultClientCert         = "VAULT_CLIENT_CERT"
-	VaultClientKey          = "VAULT_CLIENT_KEY"
-	VaultSkipVerify         = "VAULT_SKIP_VERIFY"
-	VaultToken              = "VAULT_TOKEN"
-	RootSecretPath          = "NOOBAA_ROOT_SECRET_PATH"
+	VaultAddr       = "VAULT_ADDR"
+	VaultCaCert     = "VAULT_CACERT"
+	VaultClientCert = "VAULT_CLIENT_CERT"
+	VaultClientKey  = "VAULT_CLIENT_KEY"
+	VaultSkipVerify = "VAULT_SKIP_VERIFY"
+	VaultToken      = "VAULT_TOKEN"
+	RootSecretPath  = "NOOBAA_ROOT_SECRET_PATH"
 )
 
 // Vault is a vault driver
 type Vault struct {
-	UID string  // NooBaa system UID
+	UID string // NooBaa system UID
 }
 
 // NewVault is vault driver constructor
@@ -33,7 +32,7 @@ func NewVault(
 	name string,
 	namespace string,
 	uid string,
-) (Driver) {
+) Driver {
 	return &Vault{uid}
 }
 
@@ -104,7 +103,7 @@ func (v *Vault) DeleteContext() map[string]string {
 //
 
 // tlsConfig create temp files with TLS keys and certs
-func tlsConfig(config map[string]interface{}, namespace string) (error) {
+func tlsConfig(config map[string]interface{}, namespace string) error {
 	secret := &corev1.Secret{}
 	secret.Namespace = namespace
 
@@ -153,13 +152,16 @@ func writeCrtsToFile(secretName string, namespace string, secretValue []byte, en
 	}
 
 	// Generate a temp file
-	file, err := ioutil.TempFile("", "")
+	file, err := os.CreateTemp("", "")
 	if err != nil {
 		return "", fmt.Errorf("failed to generate temp file for k8s secret %q content, %v", secretName, err)
 	}
 
+	// close the temp file when out of scope
+	defer file.Close()
+
 	// Write into a file
-	err = ioutil.WriteFile(file.Name(), secretValue, 0444)
+	err = os.WriteFile(file.Name(), secretValue, 0444)
 	if err != nil {
 		return "", fmt.Errorf("failed to write k8s secret %q content to a file %v", secretName, err)
 	}

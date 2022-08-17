@@ -3,7 +3,7 @@ package admission
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
@@ -28,7 +28,7 @@ func (gs *ServerHandler) serve(w http.ResponseWriter, r *http.Request) {
 	var arResponse admissionv1.AdmissionReview
 	var body []byte
 	if r.Body != nil {
-		if data, err := ioutil.ReadAll(r.Body); err == nil {
+		if data, err := io.ReadAll(r.Body); err == nil {
 			body = data
 		}
 	}
