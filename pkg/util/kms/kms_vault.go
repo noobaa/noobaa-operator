@@ -157,6 +157,9 @@ func writeCrtsToFile(secretName string, namespace string, secretValue []byte, en
 		return "", fmt.Errorf("failed to generate temp file for k8s secret %q content, %v", secretName, err)
 	}
 
+	// close the temp file when out of scope
+	defer file.Close()
+
 	// Write into a file
 	err = os.WriteFile(file.Name(), secretValue, 0444)
 	if err != nil {
