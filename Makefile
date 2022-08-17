@@ -220,6 +220,11 @@ test-kms-ibm-kp: vendor
 	@echo "✅ test-kms-ibm-kp"
 .PHONY: test-kms-ibm-kp
 
+test-kms-kmip: vendor
+	ginkgo -v pkg/util/kms/test/kmip
+	@echo "✅ test-kms-kmip"
+.PHONY: test-kms-kmip
+
 test-admission: vendor
 	ginkgo -v pkg/admission/test/integ
 	@echo "✅ test-admission"
