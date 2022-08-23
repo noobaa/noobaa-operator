@@ -836,11 +836,6 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 
 	res, err := r.NBClient.CheckExternalConnectionAPI(*r.AddExternalConnectionParams)
 	if err != nil {
-		if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
-			if rpcErr.RPCCode == "INVALID_SCHEMA_PARAMS" {
-				return util.NewPersistentError("InvalidConnectionParams", rpcErr.Message)
-			}
-		}
 		return err
 	}
 
