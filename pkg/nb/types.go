@@ -684,6 +684,7 @@ type CheckExternalConnectionParams struct {
 	Identity               string          `json:"identity"`
 	Secret                 string          `json:"secret"`
 	AuthMethod             CloudAuthMethod `json:"auth_method,omitempty"`
+	AWSSTSARN              string          `json:"aws_sts_arn,omitempty"`
 	IgnoreNameAlreadyExist bool            `json:"ignore_name_already_exist,omitempty"`
 }
 
