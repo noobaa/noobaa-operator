@@ -889,6 +889,7 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 		Identity:     r.AddExternalConnectionParams.Identity,
 		Secret:       r.AddExternalConnectionParams.Secret,
 		AuthMethod:   r.AddExternalConnectionParams.AuthMethod,
+		AWSSTSARN:    r.AddExternalConnectionParams.AWSSTSARN,
 	}
 
 	if r.UpdateExternalConnectionParams != nil {
