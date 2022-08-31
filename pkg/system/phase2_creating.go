@@ -47,6 +47,10 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 			r.NooBaaMongoDB.Name, r.NooBaaMongoDB.Spec.ServiceName)
 	}
 
+	if err := r.ReconcileCAInject(); err != nil {
+		return err
+	}
+
 	if err := r.ReconcileObject(r.ServiceAccount, r.SetDesiredServiceAccount); err != nil {
 		return err
 	}
@@ -470,7 +474,15 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			if r.NooBaa.Spec.CoreResources != nil {
 				c.Resources = *r.NooBaa.Spec.CoreResources
 			}
-		}
+			if util.KubeCheckQuiet(r.CaBundleConf) {
+				configMapVolumeMounts := []corev1.VolumeMount {{
+					Name:      r.CaBundleConf.Name,
+					MountPath: "/etc/pki/ca-trust/extracted/pem",
+					ReadOnly: true,
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
+			}
+}
 	}
 	if r.NooBaa.Spec.ImagePullSecret == nil {
 		podSpec.ImagePullSecrets =
@@ -515,6 +527,24 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 		replicas = int32(0)
 	}
 	r.CoreApp.Spec.Replicas = &replicas
+
+	if util.KubeCheckQuiet(r.CaBundleConf) {
+		configMapVolumes := []corev1.Volume {{
+			Name: r.CaBundleConf.Name,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: r.CaBundleConf.Name,
+					},
+					Items: []corev1.KeyToPath{{
+						Key:  "ca-bundle.crt",
+						Path: "tls-ca-bundle.pem",
+					}},
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &configMapVolumes)
+	}
 	return nil
 }
 
@@ -715,6 +745,24 @@ func (r *Reconciler) ReconcileIBMCredentials() error {
 	if r.IBMCloudCOSCreds.UID == "" {
 		r.Logger.Infof("%q secret is not present", r.IBMCloudCOSCreds.Name)
 		return nil
+	}
+	return nil
+}
+
+// ReconcileCAInject checks if a namespace called openshift-config exist (OCP)
+// if so creates a cofig map for OCP to inject supported CAs to
+func (r *Reconciler) ReconcileCAInject() error {
+	ocpConfigNamespace := &corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{Kind: "Namespace"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "openshift-config",
+		},
+	}
+	if util.KubeCheckQuiet(ocpConfigNamespace) {
+		r.Logger.Infof("Found openshift-config ns - will reconcile CA inject configmap: %q", r.CaBundleConf.Name)
+		if err := r.ReconcileObject(r.CaBundleConf, nil); err != nil {
+			return err
+		}
 	}
 	return nil
 }
