@@ -110,6 +110,9 @@ func (r *Reconciler) ReconcileSystemSecrets() error {
 		}
 
 		// Point the admin account secret reference to the admin secret.
+		if r.NooBaa.Status.Accounts == nil {
+			r.NooBaa.Status.Accounts = &nbv1.AccountsStatus{}
+		}
 		r.NooBaa.Status.Accounts.Admin.SecretRef.Name = r.SecretAdmin.Name
 		r.NooBaa.Status.Accounts.Admin.SecretRef.Namespace = r.SecretAdmin.Namespace
 	}

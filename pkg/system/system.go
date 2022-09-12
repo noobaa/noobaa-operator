@@ -987,13 +987,6 @@ func CheckSystem(sys *nbv1.NooBaa) bool {
 		}
 	}
 
-	if sys.Status.Accounts == nil {
-		sys.Status.Accounts = &nbv1.AccountsStatus{}
-	}
-	if sys.Status.Services == nil {
-		sys.Status.Services = &nbv1.ServicesStatus{}
-	}
-
 	// a hack to better set the DBType in cases where DBType is not set.
 	// if dbtype is not set, try to infer it from the db image. this only update dbtype in memory
 	if sys.Spec.DBType == "" {

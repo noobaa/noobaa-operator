@@ -23,6 +23,12 @@ func (r *Reconciler) ReconcilePhaseConnecting() error {
 		"noobaa operator started phase 3/4 - \"Connecting\"",
 	)
 
+	// Make sure services status instance exists
+	// see https://bugzilla.redhat.com/show_bug.cgi?id=2125775
+	if r.NooBaa.Status.Services == nil {
+		r.NooBaa.Status.Services = &nbv1.ServicesStatus{}
+	}
+
 	if r.JoinSecret == nil {
 		r.CheckServiceStatus(r.ServiceMgmt, r.RouteMgmt, &r.NooBaa.Status.Services.ServiceMgmt, "mgmt-https")
 	}
