@@ -50,7 +50,7 @@ jobs:
       - name: Update Core Release
         id: update-release
         run: |
-          curl --silent -f -lSL "https://index.docker.io/v1/repositories/noobaa/noobaa-core/tags/${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}" > /dev/null || exit 1
+          docker manifest inspect noobaa/noobaa-core:${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }} > /dev/null || exit 1
           echo "::found version ${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}, updating image version"
 
       - name: Login to DockerHub Registry
