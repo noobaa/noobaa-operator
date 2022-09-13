@@ -594,11 +594,7 @@ func (r *BucketRequest) CreateAccount() error {
 		HasLogin:          false,
 		S3Access:          true,
 		AllowBucketCreate: false,
-		AllowedBuckets: nb.AccountAllowedBuckets{
-			FullPermission: false,
-			PermissionList: []string{r.BucketName},
-		},
-		BucketClaimOwner: r.BucketName,
+		BucketClaimOwner:  r.BucketName,
 	})
 	if err != nil {
 		return err

@@ -623,15 +623,9 @@ function obc_cycle {
 function account_cycle {
     local buckets=($(test_noobaa silence bucket list  | grep -v "BUCKET-NAME" | awk '{print $1}'))
     local backingstores=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
-    test_noobaa account create account1 --allowed_buckets ${buckets[0]} --default_resource ${backingstores[0]}
-    test_noobaa account create account2 --allowed_buckets ${buckets[0]},${buckets[1]} --allow_bucket_create=false # no need for default_resource
-    test_noobaa account create account3 --full_permission # default_resource should be the system default
-    test_noobaa should_fail account create account4 --default_resource ${backingstores[0]} # missing allowed_bucket
-    test_noobaa should_fail account create account5 --full_permission --allowed_buckets ${buckets[0]},${buckets[1]} # can't have both
-    test_noobaa should_fail account create account6 --allowed_buckets no_such_bucket --default_resource ${backingstores[0]}
-    test_noobaa should_fail account create account7 --full_permission --default_resource no_such_backingstore
-    #account1 have a secret and have CRD
-    account_regenerate_keys account1
+    test_noobaa account create account1  #default_resource should be the system default
+    test_noobaa account create account2 --default_resource ${backingstores[0]}
+
     #admin account that have a secret but no CRD 
     account_regenerate_keys "admin@noobaa.io"
     #admin account that don't have a secret and don't have CRD 
