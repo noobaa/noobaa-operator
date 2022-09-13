@@ -3465,7 +3465,7 @@ spec:
         claimName: noobaa-pv-claim
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "0ee2d80583887530fce5c1e5e7e56d7ae33c3d2c29526e44ccfb0539b72a24be"
+const Sha256_deploy_internal_prometheus_rules_yaml = "cb2ad373486d32ee49226251ebe7f07ff0f189c4efe9cfaa6e2d8b23f606a6d6"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -3527,13 +3527,13 @@ spec:
         system_vendor: Red Hat
       record: odf_system_throughput_total_bytes
     - expr: |
-        sum by (namespace, job, service) (NooBaa_num_buckets + NooBaa_num_buckets_claims)
+        sum(NooBaa_num_buckets + NooBaa_num_buckets_claims)
       record: odf_system_bucket_count
       labels:
         system_type: OCS
         system_vendor: Red Hat
     - expr: |
-        sum by (namespace, job, service) (NooBaa_num_objects + NooBaa_num_objects_buckets_claims)
+        sum(NooBaa_num_objects + NooBaa_num_objects_buckets_claims)
       record: odf_system_objects_total
       labels:
         system_type: OCS
