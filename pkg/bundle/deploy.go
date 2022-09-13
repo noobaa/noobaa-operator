@@ -3465,7 +3465,7 @@ spec:
         claimName: noobaa-pv-claim
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "020543cc2d0cae0cec95afc569bca77511e1d8d2d09969b8f303fa7b1c977935"
+const Sha256_deploy_internal_prometheus_rules_yaml = "0ee2d80583887530fce5c1e5e7e56d7ae33c3d2c29526e44ccfb0539b72a24be"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -3526,6 +3526,18 @@ spec:
         system_type: OCS
         system_vendor: Red Hat
       record: odf_system_throughput_total_bytes
+    - expr: |
+        sum by (namespace, job, service) (NooBaa_num_buckets + NooBaa_num_buckets_claims)
+      record: odf_system_bucket_count
+      labels:
+        system_type: OCS
+        system_vendor: Red Hat
+    - expr: |
+        sum by (namespace, job, service) (NooBaa_num_objects + NooBaa_num_objects_buckets_claims)
+      record: odf_system_objects_total
+      labels:
+        system_type: OCS
+        system_vendor: Red Hat
   - name: noobaa-replication.rules
     rules:
     - expr: |
