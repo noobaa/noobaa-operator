@@ -195,15 +195,16 @@ type PoolInfo struct {
 
 // NamespaceResourceInfo is a struct of namespace resource info returned by the API
 type NamespaceResourceInfo struct {
-	Name         string          `json:"name"`
-	Mode         string          `json:"mode,omitempty"`
-	Undeletable  string          `json:"undeletable,omitempty"`
-	EndpointType EndpointType    `json:"endpoint_type,omitempty"`
-	Endpoint     string          `json:"endpoint,omitempty"`
-	TargetBucket string          `json:"target_bucket,omitempty"`
-	Identity     string          `json:"identity,omitempty"`
-	AuthMethod   CloudAuthMethod `json:"auth_method,omitempty"`
-	CpCode       string          `json:"cp_code,omitempty"`
+	Name         string              `json:"name"`
+	Mode         string              `json:"mode,omitempty"`
+	Undeletable  string              `json:"undeletable,omitempty"`
+	EndpointType EndpointType        `json:"endpoint_type,omitempty"`
+	Endpoint     string              `json:"endpoint,omitempty"`
+	TargetBucket string              `json:"target_bucket,omitempty"`
+	AccessMode   nbv1.AccessModeType `json:"access_mode"`
+	Identity     string              `json:"identity,omitempty"`
+	AuthMethod   CloudAuthMethod     `json:"auth_method,omitempty"`
+	CpCode       string              `json:"cp_code,omitempty"`
 }
 
 // NamespaceResourceOperatorInfo is a struct of namespace resource secrets returned by the API
@@ -367,7 +368,7 @@ func (q *QuotaConfig) IsEqual(q2 *QuotaConfig) bool {
 
 // NamespaceBucketInfo is the information needed for creating namespace bucket
 type NamespaceBucketInfo struct {
-	WriteResource NamespaceResourceFullConfig   `json:"write_resource"`
+	WriteResource NamespaceResourceFullConfig   `json:"write_resource,omitempty"`
 	ReadResources []NamespaceResourceFullConfig `json:"read_resources,omitempty"`
 	Caching       *CacheSpec                    `json:"caching,omitempty"`
 }
@@ -477,9 +478,20 @@ type CreateNamespaceResourceParams struct {
 	Name           string              `json:"name"`
 	Connection     string              `json:"connection"`
 	TargetBucket   string              `json:"target_bucket"`
+	AccessMode     APIAccessModeType   `json:"access_mode"`
 	NSFSConfig     *NSFSConfig         `json:"nsfs_config,omitempty"`
 	NamespaceStore *NamespaceStoreInfo `json:"namespace_store,omitempty"`
 }
+
+// APIAccessModeType is the type of all the optional access modes
+type APIAccessModeType = string
+
+const (
+	// APIAccessModeReadWrite is the read-write access mode
+	APIAccessModeReadWrite APIAccessModeType = "READ_WRITE"
+	// APIAccessModeReadOnly is the read-only access mode
+	APIAccessModeReadOnly APIAccessModeType = "READ_ONLY"
+)
 
 // NSFSConfig is the namespace fs config needed for creating namespace resource of type fs()
 type NSFSConfig struct {

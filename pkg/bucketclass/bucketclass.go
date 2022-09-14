@@ -217,12 +217,15 @@ func RunCreateMultiNamespaceBucketClass(cmd *cobra.Command, args []string) {
 	createCommonBucketclass(cmd, args, nbv1.NSBucketClassTypeMulti, func(bucketClass *nbv1.BucketClass) ([]string, []string) {
 		writeResource, _ := cmd.Flags().GetString("write-resource")
 		readResources, _ := cmd.Flags().GetStringSlice("read-resources")
-		if writeResource == "" || len(readResources) == 0 {
-			log.Fatalf(`❌ Must provide one namespace store as write resource and at least one read resource`)
+		if len(readResources) == 0 {
+			log.Fatalf(`❌ Must provide at least one read resource`)
 		}
 		bucketClass.Spec.NamespacePolicy.Multi = &nbv1.MultiNamespacePolicy{
 			WriteResource: writeResource,
 			ReadResources: readResources,
+		}
+		if writeResource == "" {
+			return readResources, []string{}
 		}
 		return append(readResources, writeResource), []string{}
 	})

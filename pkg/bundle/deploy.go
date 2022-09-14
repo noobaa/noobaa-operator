@@ -729,7 +729,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "f7541d48fbef88f3eefaa1b70dbbdfdc45182121b6286e2cca2017f09685d009"
+const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "e84413f2a694ea50bc74deac1acbd25f8f4b7dc8355e7eb1985928b796a13571"
 
 const File_deploy_crds_noobaa_io_namespacestores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -776,6 +776,9 @@ spec:
           spec:
             description: Specification of the desired behavior of the noobaa NamespaceStore.
             properties:
+              accessMode:
+                description: AccessMode is an enum of supported access modes
+                type: string
               awsS3:
                 description: AWSS3Spec specifies a namespace store of type aws-s3
                 properties:

@@ -357,8 +357,10 @@ func (r *Reconciler) updateNamespaceBucketClass(bucketNames []string) error {
 				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource})
 
 		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource}
+			if r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource != "" {
+				createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
+					Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource}
+			}
 
 			for i := range r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources {
 				rr := r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources[i]

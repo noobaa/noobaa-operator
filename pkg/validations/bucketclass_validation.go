@@ -54,8 +54,12 @@ func GetBucketclassNamespaceStoreArray(bc *nbv1.BucketClass) []string {
 	case nbv1.NSBucketClassTypeCache:
 		namespaceStoresArr = append(namespaceStoresArr, bc.Spec.NamespacePolicy.Cache.HubResource)
 	case nbv1.NSBucketClassTypeMulti:
-		namespaceStoresArr = append(bc.Spec.NamespacePolicy.Multi.ReadResources,
-			bc.Spec.NamespacePolicy.Multi.WriteResource)
+		if bc.Spec.NamespacePolicy.Multi.WriteResource == "" {
+			namespaceStoresArr = bc.Spec.NamespacePolicy.Multi.ReadResources
+		} else {
+			namespaceStoresArr = append(bc.Spec.NamespacePolicy.Multi.ReadResources,
+				bc.Spec.NamespacePolicy.Multi.WriteResource)
+		}
 	case nbv1.NSBucketClassTypeSingle:
 		namespaceStoresArr = append(namespaceStoresArr, bc.Spec.NamespacePolicy.Single.Resource)
 	}
