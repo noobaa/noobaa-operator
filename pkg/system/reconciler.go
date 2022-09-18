@@ -113,6 +113,7 @@ type Reconciler struct {
 	HPAEndpoint               *autoscalingv1.HorizontalPodAutoscaler
 	JoinSecret                *corev1.Secret
 	UpgradeJob                *batchv1.Job
+	CaBundleConf              *corev1.ConfigMap
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -169,6 +170,7 @@ func NewReconciler(
 		DeploymentEndpoint:  util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
 		HPAEndpoint:         util.KubeObject(bundle.File_deploy_internal_hpa_endpoint_yaml).(*autoscalingv1.HorizontalPodAutoscaler),
 		UpgradeJob:          util.KubeObject(bundle.File_deploy_internal_job_upgrade_db_yaml).(*batchv1.Job),
+		CaBundleConf:        util.KubeObject(bundle.File_deploy_internal_configmap_ca_inject_yaml).(*corev1.ConfigMap),
 	}
 
 	// Set Namespace
@@ -211,6 +213,7 @@ func NewReconciler(
 	r.DeploymentEndpoint.Namespace = r.Request.Namespace
 	r.HPAEndpoint.Namespace = r.Request.Namespace
 	r.UpgradeJob.Namespace = r.Request.Namespace
+	r.CaBundleConf.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -250,6 +253,7 @@ func NewReconciler(
 	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
 	r.HPAEndpoint.Name = r.Request.Name + "-endpoint"
 	r.UpgradeJob.Name = r.Request.Name + "-upgrade-job"
+	r.CaBundleConf.Name = r.Request.Name + "-ca-inject"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name

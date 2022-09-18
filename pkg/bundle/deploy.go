@@ -3126,6 +3126,17 @@ spec:
     skipServiceCheck: true
 `
 
+const Sha256_deploy_internal_configmap_ca_inject_yaml = "75f8ab503a683bcebd2ed6a2c9f8da0a4c174a62b4e6ca7e97ebc3da847ca866"
+
+const File_deploy_internal_configmap_ca_inject_yaml = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    config.openshift.io/inject-trusted-cabundle: "true"
+  name: noobaa-ca-inject
+data: {}
+`
+
 const Sha256_deploy_internal_configmap_empty_yaml = "6405c531c6522ecd54808f5cb531c1001b9ad01a73917427c523a92be44f348f"
 
 const File_deploy_internal_configmap_empty_yaml = `apiVersion: v1
