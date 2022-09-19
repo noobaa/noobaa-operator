@@ -3,7 +3,6 @@ package bucketclass
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -12,6 +11,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -199,6 +199,7 @@ func CmdReconcile() *cobra.Command {
 
 // RunCreateSingleNamespaceBucketClass runs a CLI command
 func RunCreateSingleNamespaceBucketClass(cmd *cobra.Command, args []string) {
+	log := util.Logger()
 	createCommonBucketclass(cmd, args, nbv1.NSBucketClassTypeSingle, func(bucketClass *nbv1.BucketClass) ([]string, []string) {
 		resource, _ := cmd.Flags().GetString("resource")
 		if resource == "" {
@@ -214,6 +215,7 @@ func RunCreateSingleNamespaceBucketClass(cmd *cobra.Command, args []string) {
 
 // RunCreateMultiNamespaceBucketClass runs a CLI command
 func RunCreateMultiNamespaceBucketClass(cmd *cobra.Command, args []string) {
+	log := util.Logger()
 	createCommonBucketclass(cmd, args, nbv1.NSBucketClassTypeMulti, func(bucketClass *nbv1.BucketClass) ([]string, []string) {
 		writeResource, _ := cmd.Flags().GetString("write-resource")
 		readResources, _ := cmd.Flags().GetStringSlice("read-resources")
@@ -233,6 +235,7 @@ func RunCreateMultiNamespaceBucketClass(cmd *cobra.Command, args []string) {
 
 // RunCreateCacheNamespaceBucketClass runs a CLI command
 func RunCreateCacheNamespaceBucketClass(cmd *cobra.Command, args []string) {
+	log := util.Logger()
 	createCommonBucketclass(cmd, args, nbv1.NSBucketClassTypeCache, func(bucketClass *nbv1.BucketClass) ([]string, []string) {
 		hubResource, _ := cmd.Flags().GetString("hub-resource")
 		cacheTTL, _ := cmd.Flags().GetUint32("ttl")
@@ -264,6 +267,7 @@ func RunCreateCacheNamespaceBucketClass(cmd *cobra.Command, args []string) {
 
 // RunCreatePlacementBucketClass runs a CLI command
 func RunCreatePlacementBucketClass(cmd *cobra.Command, args []string) {
+	log := util.Logger()
 	createCommonBucketclass(cmd, args, "", func(bucketClass *nbv1.BucketClass) ([]string, []string) {
 		placement, _ := cmd.Flags().GetString("placement")
 		if placement != "" && placement != "Spread" && placement != "Mirror" {
@@ -581,13 +585,12 @@ func ParseBucketClassType(cmd *cobra.Command) nbv1.StoreType {
 // MapBackingstoreToBucketclasses returns a list of bucketclasses that uses the backingstore in their tiering policy
 // used by bucketclass_contorller to watch backingstore changes
 func MapBackingstoreToBucketclasses(backingstore types.NamespacedName) []reconcile.Request {
-	log := util.Logger()
-	log.Infof("checking which bucketclasses to reconcile. mapping backingstore %v to bucketclasses", backingstore)
+	logrus.Infof("checking which bucketclasses to reconcile. mapping backingstore %v to bucketclasses", backingstore)
 	bucketclassList := &nbv1.BucketClassList{
 		TypeMeta: metav1.TypeMeta{Kind: "BucketClassList"},
 	}
 	if !util.KubeList(bucketclassList, &client.ListOptions{Namespace: backingstore.Namespace}) {
-		log.Infof("Could not found bucketClasses in namespace %q", backingstore.Namespace)
+		logrus.Infof("Could not found bucketClasses in namespace %q", backingstore.Namespace)
 		return nil
 	}
 
@@ -610,7 +613,7 @@ func MapBackingstoreToBucketclasses(backingstore types.NamespacedName) []reconci
 			}
 		}
 	}
-	log.Infof("will reconcile these bucketclasses: %v", reqs)
+	logrus.Infof("will reconcile these bucketclasses: %v", reqs)
 
 	return reqs
 }
@@ -618,13 +621,12 @@ func MapBackingstoreToBucketclasses(backingstore types.NamespacedName) []reconci
 // MapNamespacestoreToBucketclasses returns a list of bucketclasses that uses the namespacestore in their namespace policy
 // used by bucketclass_contorller to watch namespacestores changes
 func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []reconcile.Request {
-	log := util.Logger()
-	log.Infof("checking which bucketclasses to reconcile. mapping namespacestore %v to bucketclasses", namespacestore)
+	logrus.Infof("checking which bucketclasses to reconcile. mapping namespacestore %v to bucketclasses", namespacestore)
 	bucketclassList := &nbv1.BucketClassList{
 		TypeMeta: metav1.TypeMeta{Kind: "BucketClassList"},
 	}
 	if !util.KubeList(bucketclassList, &client.ListOptions{Namespace: namespacestore.Namespace}) {
-		log.Infof("did not find namespace stores in namespace %q", namespacestore.Namespace)
+		logrus.Infof("did not find namespace stores in namespace %q", namespacestore.Namespace)
 		return nil
 	}
 
@@ -677,7 +679,7 @@ func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []rec
 			}
 		}
 	}
-	log.Infof("will reconcile these bucketclasses: %v", reqs)
+	logrus.Infof("will reconcile these bucketclasses: %v", reqs)
 
 	return reqs
 }
