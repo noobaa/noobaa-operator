@@ -2,7 +2,6 @@ package bucket
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
@@ -161,6 +160,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 // RunList runs a CLI command
 func RunList(cmd *cobra.Command, args []string) {
+	log := util.Logger()
 	nbClient := system.GetNBClient()
 	list, err := nbClient.ListBucketsAPI()
 	if err != nil {
