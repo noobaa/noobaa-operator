@@ -257,73 +257,75 @@ func (r *Reconciler) ReconcilePhases() error {
 
 // LoadBackingStoreSecret loads the secret to the reconciler struct
 func (r *Reconciler) LoadBackingStoreSecret() error {
-	if !util.IsSTSClusterBS(r.BackingStore) {
-		secretRef, err := util.GetBackingStoreSecret(r.BackingStore)
-		if err != nil {
-			return err
-		}
+	if util.IsSTSClusterBS(r.BackingStore) {
+		return nil
+	}
+	
+	secretRef, err := util.GetBackingStoreSecret(r.BackingStore)
+	if err != nil {
+		return err
+	}
 
-		if secretRef != nil {
-			r.Secret.Name = secretRef.Name
-			r.Secret.Namespace = secretRef.Namespace
+	if secretRef != nil {
+		r.Secret.Name = secretRef.Name
+		r.Secret.Namespace = secretRef.Namespace
 
-			if r.Secret.Name == "" {
-				if r.BackingStore.Spec.Type != nbv1.StoreTypePVPool {
+		if r.Secret.Name == "" {
+			if r.BackingStore.Spec.Type != nbv1.StoreTypePVPool {
+				return util.NewPersistentError("EmptySecretName",
+					"BackingStore Secret reference has an empty name")
+			}
+			r.Secret.Name = fmt.Sprintf("backing-store-%s-%s", nbv1.StoreTypePVPool, r.BackingStore.Name)
+			r.Secret.Namespace = r.BackingStore.Namespace
+			r.Secret.StringData = map[string]string{}
+			r.Secret.Data = nil
+
+			if !util.KubeCheck(r.Secret) {
+				r.Own(r.Secret)
+				if !util.KubeCreateFailExisting(r.Secret) {
 					return util.NewPersistentError("EmptySecretName",
-						"BackingStore Secret reference has an empty name")
+						fmt.Sprintf("Could not create Secret %q in Namespace %q (conflict)", r.Secret.Name, r.Secret.Namespace))
 				}
-				r.Secret.Name = fmt.Sprintf("backing-store-%s-%s", nbv1.StoreTypePVPool, r.BackingStore.Name)
-				r.Secret.Namespace = r.BackingStore.Namespace
-				r.Secret.StringData = map[string]string{}
-				r.Secret.Data = nil
-
-				if !util.KubeCheck(r.Secret) {
-					r.Own(r.Secret)
-					if !util.KubeCreateFailExisting(r.Secret) {
-						return util.NewPersistentError("EmptySecretName",
-							fmt.Sprintf("Could not create Secret %q in Namespace %q (conflict)", r.Secret.Name, r.Secret.Namespace))
+			}
+		} else {
+			// check the existence of another secret in the system that contains the same credentials,
+			// if found, point this BS secret reference to it.
+			// so if the user will update the credentials, it will trigger updateExternalConnection in all the Backingstores
+			secret, err := util.GetSecretFromSecretReference(secretRef)
+			if err != nil {
+				return nil
+			}
+			if secret != nil {
+				suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, string(r.BackingStore.Spec.Type))
+				if suggestedSecret != nil {
+					secretRef.Name = suggestedSecret.Name
+					secretRef.Namespace = suggestedSecret.Namespace
+					err := util.SetBackingStoreSecretRef(r.BackingStore, secretRef)
+					if err != nil {
+						return err
 					}
-				}
-			} else {
-				// check the existence of another secret in the system that contains the same credentials,
-				// if found, point this BS secret reference to it.
-				// so if the user will update the credentials, it will trigger updateExternalConnection in all the Backingstores
-				secret, err := util.GetSecretFromSecretReference(secretRef)
-				if err != nil {
-					return nil
-				}
-				if secret != nil {
-					suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, string(r.BackingStore.Spec.Type))
-					if suggestedSecret != nil {
-						secretRef.Name = suggestedSecret.Name
-						secretRef.Namespace = suggestedSecret.Namespace
-						err := util.SetBackingStoreSecretRef(r.BackingStore, secretRef)
-						if err != nil {
-							return err
-						}
-						if !util.KubeUpdate(r.BackingStore) {
-							return fmt.Errorf("failed to update Backingstore: %q secret reference", r.BackingStore.Name)
-						}
-						secret = suggestedSecret
+					if !util.KubeUpdate(r.BackingStore) {
+						return fmt.Errorf("failed to update Backingstore: %q secret reference", r.BackingStore.Name)
 					}
-					if util.IsOwnedByNoobaa(secret.ObjectMeta.OwnerReferences) {
-						err = util.SetOwnerReference(r.BackingStore, secret, r.Scheme)
-						if _, isAlreadyOwnedErr := err.(*controllerutil.AlreadyOwnedError); !isAlreadyOwnedErr {
-							if err == nil {
-								if !util.KubeUpdate(secret) {
-									return fmt.Errorf("failed to update secret: %q owner reference", r.BackingStore.Name)
-								}
-							} else {
-								return err
+					secret = suggestedSecret
+				}
+				if util.IsOwnedByNoobaa(secret.ObjectMeta.OwnerReferences) {
+					err = util.SetOwnerReference(r.BackingStore, secret, r.Scheme)
+					if _, isAlreadyOwnedErr := err.(*controllerutil.AlreadyOwnedError); !isAlreadyOwnedErr {
+						if err == nil {
+							if !util.KubeUpdate(secret) {
+								return fmt.Errorf("failed to update secret: %q owner reference", r.BackingStore.Name)
 							}
+						} else {
+							return err
 						}
 					}
 				}
 			}
 		}
-
-		util.KubeCheck(r.Secret)
 	}
+
+	util.KubeCheck(r.Secret)
 	return nil
 }
 
@@ -675,7 +677,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 }
 
 // MakeExternalConnectionParams translates the backing store spec and secret,
-// to noobaa api structures to be used for creating/updating external connetion and pool
+// to noobaa api structures to be used for creating/updating external connection and pool
 func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionParams, error) {
 
 	conn := &nb.AddExternalConnectionParams{

@@ -96,7 +96,7 @@ var _ = Describe("Admission server integration tests", func() {
 				result, err = KubeCreate(testNamespacestore)
 				Expect(result).To(BeFalse())
 				Ω(err).Should(HaveOccurred())
-				Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: Failed creating the namespacestore, please provide secret name"))
+				Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: Failed creating the NamespaceStore, please provide a valid ARN or secret name"))
 			})
 		})
 		Context("Non Empty AWS STS ARN", func() {
