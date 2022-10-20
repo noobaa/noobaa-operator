@@ -134,7 +134,6 @@ func AddToRootCAs(localCertFile string) error {
 	// Read in the cert file
 	certs, err := os.ReadFile(localCertFile)
 	if err != nil {
-		log.Errorf("Failed to append %q to RootCAs: %v", localCertFile, err)
 		return err
 	}
 
@@ -772,8 +771,8 @@ func IgnoreError(err error) {
 }
 
 // InitLogger initializes the logrus logger with defaults
-func InitLogger() {
-	logrus.SetLevel(logrus.DebugLevel)
+func InitLogger(lvl logrus.Level) {
+	logrus.SetLevel(lvl)
 	logrus.SetFormatter(&logrus.TextFormatter{
 		// FullTimestamp: true,
 	})

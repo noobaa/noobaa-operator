@@ -475,14 +475,14 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				c.Resources = *r.NooBaa.Spec.CoreResources
 			}
 			if util.KubeCheckQuiet(r.CaBundleConf) {
-				configMapVolumeMounts := []corev1.VolumeMount {{
+				configMapVolumeMounts := []corev1.VolumeMount{{
 					Name:      r.CaBundleConf.Name,
 					MountPath: "/etc/pki/ca-trust/extracted/pem",
-					ReadOnly: true,
+					ReadOnly:  true,
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
 			}
-}
+		}
 	}
 	if r.NooBaa.Spec.ImagePullSecret == nil {
 		podSpec.ImagePullSecrets =
@@ -529,7 +529,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.Replicas = &replicas
 
 	if util.KubeCheckQuiet(r.CaBundleConf) {
-		configMapVolumes := []corev1.Volume {{
+		configMapVolumes := []corev1.Volume{{
 			Name: r.CaBundleConf.Name,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -1311,7 +1311,7 @@ func (r *Reconciler) SetEndpointsDeploymentReplicas(replicas int32) error {
 	})
 }
 
-// SetDesiredCoreAppConfig initiate the config map with predifined environment variables and their valuse
+// SetDesiredCoreAppConfig initiate the config map with predifined environment variables and their values
 func (r *Reconciler) SetDesiredCoreAppConfig() error {
 	// Reowning the ConfigMap, incase the CreateOrUpdate removed the OwnerRefernce
 	r.Own(r.CoreAppConfig)

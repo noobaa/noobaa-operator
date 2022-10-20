@@ -24,6 +24,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/pkg/version"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -63,7 +64,7 @@ func Run() {
 // Cmd returns a CLI command
 func Cmd() *cobra.Command {
 
-	util.InitLogger()
+	util.InitLogger(logrus.DebugLevel)
 
 	rand.Seed(time.Now().UTC().UnixNano())
 

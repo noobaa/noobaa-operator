@@ -24,8 +24,7 @@ const (
 var compiledNameRE = regexp.MustCompile(nameRE)
 
 func main() {
-
-	util.InitLogger()
+	util.InitLogger(logrus.DebugLevel)
 
 	src := os.Args[1]
 	out := os.Args[2]
