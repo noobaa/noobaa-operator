@@ -84,6 +84,7 @@ jobs:
           core-image=quay.io/${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }} \
           operator-image=quay.io/${{ steps.prep.outputs.operatortags }} \
           db-image=centos/postgresql-12-centos7 \
+          obc-crd="owned" \
           BUNDLE_IMAGE=quay.io/${{ steps.prep.outputs.operatorbundletags }}
 
       - name: Login to Quay.io Registry
