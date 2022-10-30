@@ -260,7 +260,7 @@ func (r *Reconciler) LoadBackingStoreSecret() error {
 	if util.IsSTSClusterBS(r.BackingStore) {
 		return nil
 	}
-	
+
 	secretRef, err := util.GetBackingStoreSecret(r.BackingStore)
 	if err != nil {
 		return err
@@ -845,25 +845,10 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 }
 
 func (r *Reconciler) fixAlternateKeysNames() {
-
-	alternateAccessKeyNames := []string{"aws_access_key_id", "AccessKey"}
-	alternateSecretKeyNames := []string{"aws_secret_access_key", "SecretKey"}
-
-	if r.Secret.StringData["AWS_ACCESS_KEY_ID"] == "" {
-		for _, key := range alternateAccessKeyNames {
-			if r.Secret.StringData[key] != "" {
-				r.Secret.StringData["AWS_ACCESS_KEY_ID"] = r.Secret.StringData[key]
-				break
-			}
-		}
-	}
-
-	if r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] == "" {
-		for _, key := range alternateSecretKeyNames {
-			if r.Secret.StringData[key] != "" {
-				r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = r.Secret.StringData[key]
-				break
-			}
+	keyNames := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
+	for _, key := range keyNames {
+		if r.Secret.StringData[key] == "" {
+			r.Secret.StringData[key] = util.MapAlternateKeysValue(r.Secret.StringData, key)
 		}
 	}
 }
