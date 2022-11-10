@@ -4939,7 +4939,7 @@ s3 ls s3://first.bucket
 ` + "`" + `` + "`" + `` + "`" + `
 `
 
-const Sha256_deploy_olm_noobaa_operator_clusterserviceversion_yaml = "b9bb7c35dacebb254fddffe38f7d2f79021605207ebe9fa7ac621fd780abc577"
+const Sha256_deploy_olm_noobaa_operator_clusterserviceversion_yaml = "900ed615837a7f63510de5bff4bd8ffdcc02bea8cec0cf231d21e32812f78ed7"
 
 const File_deploy_olm_noobaa_operator_clusterserviceversion_yaml = `apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
@@ -4954,6 +4954,7 @@ metadata:
     description: NooBaa is an object data service for hybrid and multi cloud environments.
     support: Red Hat
     alm-examples: placeholder
+    operators.openshift.io/infrastructure-features: '["disconnected"]'
   name: placeholder
   namespace: placeholder
 spec:
