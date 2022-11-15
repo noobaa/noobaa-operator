@@ -327,6 +327,12 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 	}
 
 	populate(namespaceStore, secret)
+	if secretName != "" {
+		if !util.KubeCheck(secret) {
+			log.Fatalf(`❌ Could not find the suggested secret: name %q namespace %q`, secret.Name, secret.Namespace)
+			return
+		}
+	}
 
 	suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, string(nbv1.StoreType(namespaceStore.Spec.Type)))
 	if suggestedSecret != nil {
@@ -445,7 +451,7 @@ func RunCreateAWSSTSS3(cmd *cobra.Command, args []string) {
 	namespaceStore := o.(*nbv1.NamespaceStore)
 	namespaceStore.Name = name
 	namespaceStore.Namespace = options.Namespace
-	namespaceStore.Spec =  nbv1.NamespaceStoreSpec{Type: nbv1.NSStoreTypeAWSS3}
+	namespaceStore.Spec = nbv1.NamespaceStoreSpec{Type: nbv1.NSStoreTypeAWSS3}
 
 	if !util.KubeCheck(sys) {
 		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
@@ -478,7 +484,6 @@ func RunCreateAWSSTSS3(cmd *cobra.Command, args []string) {
 		RunStatus(cmd, args)
 	}
 }
-
 
 // RunCreateS3Compatible runs a CLI command
 func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
