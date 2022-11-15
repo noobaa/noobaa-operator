@@ -364,6 +364,12 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 	}
 
 	populate(backStore, secret)
+	if secretName != "" {
+		if !util.KubeCheck(secret) {
+			log.Fatalf(`❌ Could not find the suggested secret: name %q namespace %q`, secret.Name, secret.Namespace)
+			return
+		}
+	}
 
 	validationErr := validations.ValidateBackingStore(*backStore)
 	if validationErr != nil {
