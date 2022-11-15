@@ -278,6 +278,12 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 	}
 
 	populate(namespaceStore, secret)
+	if secretName != "" {
+		if !util.KubeCheck(secret) {
+			log.Fatalf(`❌ Could not find the suggested secret: name %q namespace %q`, secret.Name, secret.Namespace)
+			return
+		}
+	}
 
 	suggestedSecret := util.CheckForIdenticalSecretsCreds(secret, string(nbv1.StoreType(namespaceStore.Spec.Type)))
 	if suggestedSecret != nil {
