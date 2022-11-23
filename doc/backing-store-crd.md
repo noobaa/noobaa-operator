@@ -6,7 +6,7 @@ These storage targets are used to store deduped+compressed+encrypted chunks of d
 Backing-stores are referred to by name when defining [BucketClass](bucket-class-crd.md).
 
 Multiple types of backing-stores are currently supported: aws-s3, s3-compatible, ibm-cos, google-cloud-storage, azure-blob, pv-pool.
-Backing-store type pv-pool is not yet supported by the operator. Instead, the web management console must be used to administer pv-pool backing-stores.
+
 Adding support for a new type of backing-store is rather easy as it requires just GET/PUT key-value store, see [Backing-stores supported by NooBaa](https://github.com/noobaa/noobaa-core/tree/master/src/agent/block_store_services).
 
 
@@ -181,7 +181,7 @@ In case the credentials of a backing-store need to be updated due to a periodic 
 
 # Read Status
 
-Here is an example healthy status (see below example of non-healthy status):
+Here is an example of healthy status (see below an example of non-healthy status):
 
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -228,9 +228,9 @@ The operator will use the `finalizer` pattern as explained in the link below, an
 
 https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#finalizers
 
-After marking a backing-store for deletion, the operator will notify the NooBaa server on the deletion which will enter a *decommissioning* state, in which NooBaa will attempt to rebuild the data to a new backing-store location. Once the decomissioning process completes the operator will remove the finalizer and allow the CR to be deleted.
+After marking a backing-store for deletion, the operator will notify the NooBaa server on the deletion which will enter a *decommissioning* state, in which NooBaa will attempt to rebuild the data to a new backing-store location. Once the decommissioning process completes the operator will remove the finalizer and allow the CR to be deleted.
 
-There are cases where the decommissioning cannot complete due to inability to read the data from the backing-store that is already not serving - for example if the target bucket was already deleted or the credentials were invalidated or there is no network from the system to the backing-store service. In such cases the system status will be used to report these issues and suggest manual resolution for example:
+There are cases where the decommissioning cannot complete due to inability to read the data from the backing-store that is already not serving - for example, if the target bucket was already deleted or the credentials were invalidated or there is no network from the system to the backing-store service. In such cases the system status will be used to report these issues and suggest a manual resolution for example:
 
 ```yaml
 apiVersion: noobaa.io/v1alpha1
