@@ -1846,7 +1846,7 @@ func CheckForIdenticalSecretsCreds(secret *corev1.Secret, storeTypeStr string) *
 				if usedSecret != nil && usedSecret.Name != secret.Name && string(bs.Spec.Type) == storeTypeStr {
 					found := true
 					for _, key := range mandatoryProp {
-						found = found && usedSecret.StringData[key] == secret.StringData[key]
+						found = found && MapAlternateKeysValue(usedSecret.StringData, key) == secret.StringData[key]
 					}
 					if found {
 						return usedSecret
@@ -1870,7 +1870,7 @@ func CheckForIdenticalSecretsCreds(secret *corev1.Secret, storeTypeStr string) *
 				if usedSecret != nil && usedSecret.Name != secret.Name && string(ns.Spec.Type) == storeTypeStr {
 					found := true
 					for _, key := range mandatoryProp {
-						found = found && usedSecret.StringData[key] == secret.StringData[key]
+						found = found && MapAlternateKeysValue(usedSecret.StringData, key) == secret.StringData[key]
 					}
 					if found {
 						return usedSecret
@@ -1984,4 +1984,24 @@ func PrettyPrint(key string, strArray []string) {
 	} else {
 		fmt.Printf("%s : %s\n", key, strArray)
 	}
+}
+
+// MapAlternateKeysValue scans the map, returning the alternative key name's value if present
+// the canonical key name value otherwise
+// used to map values from secrets using alternative names
+func MapAlternateKeysValue(stringData map[string]string, key string) string {
+	alternativeNames := map[string][]string{
+		"AWS_ACCESS_KEY_ID":     {"aws_access_key_id", "AccessKey"},
+		"AWS_SECRET_ACCESS_KEY": {"aws_secret_access_key", "SecretKey"},
+	}
+
+	if stringData[key] == "" {
+		for _, altKey := range alternativeNames[key] {
+			if stringData[altKey] != "" {
+				return stringData[altKey]
+			}
+		}
+	}
+
+	return stringData[key]
 }
