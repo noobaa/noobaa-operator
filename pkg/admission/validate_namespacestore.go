@@ -87,7 +87,7 @@ func (nsv *ResourceValidator) ValidateUpdateNS() {
 	}
 
 	switch ns.Spec.Type {
-	case nbv1.NSStoreTypeAWSS3, nbv1.NSStoreTypeS3Compatible, nbv1.NSStoreTypeIBMCos, nbv1.NSStoreTypeAzureBlob:
+	case nbv1.NSStoreTypeAWSS3, nbv1.NSStoreTypeS3Compatible, nbv1.NSStoreTypeIBMCos, nbv1.NSStoreTypeAzureBlob, nbv1.NSStoreTypeGoogleCloudStorage:
 		if err := validations.ValidateTargetNSBucketChange(*ns, *oldNS); err != nil && util.IsValidationError(err) {
 			nsv.SetValidationResult(false, err.Error())
 			return

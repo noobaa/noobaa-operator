@@ -2,6 +2,7 @@ package namespacestore
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
@@ -638,6 +639,23 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		conn.Endpoint = "https://blob.core.windows.net"
 		conn.Identity = r.Secret.StringData["AccountName"]
 		conn.Secret = r.Secret.StringData["AccountKey"]
+
+	case nbv1.NSStoreTypeGoogleCloudStorage:
+		conn.EndpointType = nb.EndpointTypeGoogle
+		conn.Endpoint = "https://www.googleapis.com"
+		privateKeyJSON := r.Secret.StringData["GoogleServiceAccountPrivateKeyJson"]
+		privateKey := &struct {
+			ID string `json:"private_key_id"`
+		}{}
+		err := json.Unmarshal([]byte(privateKeyJSON), privateKey)
+		if err != nil {
+			return nil, util.NewPersistentError("InvalidGoogleSecret", fmt.Sprintf(
+				"Invalid secret for google type %q expected JSON in data.GoogleServiceAccountPrivateKeyJson",
+				r.Secret.Name,
+			))
+		}
+		conn.Identity = privateKey.ID
+		conn.Secret = privateKeyJSON
 
 	default:
 		return nil, util.NewPersistentError("InvalidType",

@@ -80,6 +80,10 @@ type NamespaceStoreSpec struct {
 	// +optional
 	AzureBlob *AzureBlobSpec `json:"azureBlob,omitempty"`
 
+	// GoogleCloudStorage specifies a namespace store of type google-cloud-storage
+	// +optional
+	GoogleCloudStorage *GoogleCloudStorageSpec `json:"googleCloudStorage,omitempty"`
+
 	// NSFS specifies a namespace store of type nsfs
 	// +optional
 	NSFS *NSFSSpec `json:"nsfs,omitempty"`
@@ -159,6 +163,9 @@ const (
 
 	// NSStoreTypeAzureBlob is used to connect to Azure Blob
 	NSStoreTypeAzureBlob NSType = "azure-blob"
+
+	// NSStoreTypeGoogleCloudStorage is used to connect to Google Cloud Storage
+	NSStoreTypeGoogleCloudStorage NSType = "google-cloud-storage"
 
 	// NSStoreTypeNSFS is used to connect to a file system
 	NSStoreTypeNSFS NSType = "nsfs"

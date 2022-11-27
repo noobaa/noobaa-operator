@@ -813,6 +813,11 @@ func (in *NamespaceStoreSpec) DeepCopyInto(out *NamespaceStoreSpec) {
 		*out = new(AzureBlobSpec)
 		**out = **in
 	}
+	if in.GoogleCloudStorage != nil {
+		in, out := &in.GoogleCloudStorage, &out.GoogleCloudStorage
+		*out = new(GoogleCloudStorageSpec)
+		**out = **in
+	}
 	if in.NSFS != nil {
 		in, out := &in.NSFS, &out.NSFS
 		*out = new(NSFSSpec)
