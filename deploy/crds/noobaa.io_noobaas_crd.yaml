@@ -1008,7 +1008,8 @@ spec:
                 - default_level
                 type: integer
               defaultBackingStoreSpec:
-                description: BackingStoreSpec defines the desired state of BackingStore
+                description: 'Deprecated: DefaultBackingStoreSpec is not supported
+                  anymore, use DisableDefaultBackingStore instead.'
                 properties:
                   awsS3:
                     description: AWSS3Spec specifies a backing store of type aws-s3
@@ -1216,6 +1217,11 @@ spec:
                 required:
                 - type
                 type: object
+              disableDefaultBackingStore:
+                description: DisableDefaultBackingStore (optional - default value
+                  is false) if true it will allow the user to delete DefaultBackingStore
+                nullable: true
+                type: boolean
               disableLoadBalancerService:
                 description: DisableLoadBalancerService (optional) sets the service
                   type to ClusterIP instead of LoadBalancer

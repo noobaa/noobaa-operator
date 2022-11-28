@@ -1219,7 +1219,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a04493f5b341dd61972a1e61620e2226efde852d05702d25defc26479b1a5d5d"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "feffcab4b5f33abf49068c9796597a6a8c1c0c8fd9fae4fa6257ba135a03d3c3"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2231,7 +2231,8 @@ spec:
                 - default_level
                 type: integer
               defaultBackingStoreSpec:
-                description: BackingStoreSpec defines the desired state of BackingStore
+                description: 'Deprecated: DefaultBackingStoreSpec is not supported
+                  anymore, use DisableDefaultBackingStore instead.'
                 properties:
                   awsS3:
                     description: AWSS3Spec specifies a backing store of type aws-s3
@@ -2439,6 +2440,11 @@ spec:
                 required:
                 - type
                 type: object
+              disableDefaultBackingStore:
+                description: DisableDefaultBackingStore (optional - default value
+                  is false) if true it will allow the user to delete DefaultBackingStore
+                nullable: true
+                type: boolean
               disableLoadBalancerService:
                 description: DisableLoadBalancerService (optional) sets the service
                   type to ClusterIP instead of LoadBalancer
@@ -5467,4 +5473,3 @@ kind: ServiceAccount
 metadata:
   name: noobaa-odf-ui
 `
-

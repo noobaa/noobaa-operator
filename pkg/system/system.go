@@ -62,7 +62,6 @@ func CmdCreate() *cobra.Command {
 	cmd.Flags().String("db-resources", "", "DB resources JSON")
 	cmd.Flags().String("endpoint-resources", "", "Endpoint resources JSON")
 	cmd.Flags().Bool("use-obc-cleanup-policy", false, "Create NooBaa system with obc cleanup policy")
-	cmd.Flags().String("default-backingstore-spec", "", "Create Noobaa System with DefaultBackingStore Spec")
 	return cmd
 }
 
@@ -236,7 +235,6 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	dbResourcesJSON, _ := cmd.Flags().GetString("db-resources")
 	endpointResourcesJSON, _ := cmd.Flags().GetString("endpoint-resources")
 	useOBCCleanupPolicy, _ := cmd.Flags().GetBool("use-obc-cleanup-policy")
-	defaultBackingStoreSpecJSON, _ := cmd.Flags().GetString("default-backingstore-spec")
 
 	if useOBCCleanupPolicy {
 		sys.Spec.CleanupPolicy.Confirmation = nbv1.DeleteOBCConfirmation
@@ -255,10 +253,6 @@ func RunCreate(cmd *cobra.Command, args []string) {
 			}
 		}
 		util.Panic(json.Unmarshal([]byte(endpointResourcesJSON), &sys.Spec.Endpoints.Resources))
-	}
-	if defaultBackingStoreSpecJSON != "" {
-		util.Panic(json.Unmarshal([]byte(defaultBackingStoreSpecJSON), &sys.Spec.DefaultBackingStoreSpec))
-
 	}
 
 	err := CheckMongoURL(sys)

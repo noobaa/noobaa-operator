@@ -556,9 +556,9 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	if r.JoinSecret != nil {
 		return nil
 	}
-	// If DefaultBackingStore Spec is set do nothing
-	if r.NooBaa.Spec.DefaultBackingStoreSpec != nil {
-		r.Logger.Info("DefaultBackingStoreSpec found Skipping Reconciling Backing Store Credentials")
+	// If default backing store is disabled
+	if r.NooBaa.Spec.DisableDefaultBackingStore {
+		r.Logger.Info("DisabledDefaultBackingStore is true, Skip Reconciling Backing Store Credentials")
 		return nil
 	}
 
