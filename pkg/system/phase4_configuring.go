@@ -23,6 +23,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	secv1 "github.com/openshift/api/security/v1"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sirupsen/logrus"
@@ -64,9 +65,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileSystemSecrets(); err != nil {
 		return err
 	}
-	if err := r.reconcileEndpointRBAC(); err != nil {
-		return err
-	}
+	util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints))
 	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
 		return err
 	}
@@ -420,7 +419,7 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 	container.VolumeMounts = r.DefaultDeploymentEndpoint.Containers[0].VolumeMounts
 
 	if util.KubeCheckQuiet(r.CaBundleConf) {
-		configMapVolumes := []corev1.Volume {{
+		configMapVolumes := []corev1.Volume{{
 			Name: r.CaBundleConf.Name,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -435,10 +434,10 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 			},
 		}}
 		util.MergeVolumeList(&podSpec.Volumes, &configMapVolumes)
-		configMapVolumeMounts := []corev1.VolumeMount {{
+		configMapVolumeMounts := []corev1.VolumeMount{{
 			Name:      r.CaBundleConf.Name,
 			MountPath: "/etc/pki/ca-trust/extracted/pem",
-			ReadOnly: true,
+			ReadOnly:  true,
 		}}
 		util.MergeVolumeMountList(&container.VolumeMounts, &configMapVolumeMounts)
 	}
@@ -1553,6 +1552,7 @@ func (r *Reconciler) ReconcileNamespaceStores(namespaceResources []nb.NamespaceR
 }
 
 // reconcileEndpointRBAC creates Endpoint scc, role, rolebinding and service account
+/*
 func (r *Reconciler) reconcileEndpointRBAC() error {
 	return r.reconcileRbac(
 		bundle.File_deploy_scc_endpoint_yaml,
@@ -1560,3 +1560,4 @@ func (r *Reconciler) reconcileEndpointRBAC() error {
 		bundle.File_deploy_role_endpoint_yaml,
 		bundle.File_deploy_role_binding_endpoint_yaml)
 }
+*/
