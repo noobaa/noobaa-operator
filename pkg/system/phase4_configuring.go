@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -772,7 +772,7 @@ func (r *Reconciler) prepareAWSSTSBackingStore() error {
 	if err != nil {
 		return err
 	}
-	bytes, err := ioutil.ReadFile(projectedServiceAccountTokenFile)
+	bytes, err := os.ReadFile(projectedServiceAccountTokenFile)
 	if err != nil {
 		r.Logger.Errorf("Failed to read file %q: %v", projectedServiceAccountTokenFile, err)
 		return err

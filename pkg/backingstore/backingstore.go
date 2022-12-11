@@ -3,7 +3,7 @@ package backingstore
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -363,6 +363,12 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 	}
 
 	populate(backStore, secret)
+	if secretName != "" {
+		if !util.KubeCheck(secret) {
+			log.Fatalf(`❌ Could not find the suggested secret: name %q namespace %q`, secret.Name, secret.Namespace)
+			return
+		}
+	}
 
 	validationErr := validations.ValidateBackingStore(*backStore)
 	if validationErr != nil {
@@ -605,7 +611,7 @@ func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 
 		if secretName == "" {
 			privateKeyJSONFile := util.GetFlagStringOrPrompt(cmd, "private-key-json-file")
-			bytes, err := ioutil.ReadFile(privateKeyJSONFile)
+			bytes, err := os.ReadFile(privateKeyJSONFile)
 			if err != nil {
 				log.Fatalf("Failed to read file %q: %v", privateKeyJSONFile, err)
 			}
