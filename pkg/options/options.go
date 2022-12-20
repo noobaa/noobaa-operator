@@ -127,6 +127,9 @@ var STSLoadBalancerSourceSubnets = []string{}
 // ShowSecrets is used to show the secrets in the status output
 var ShowSecrets = false
 
+// DisableDefaultBackingStore is used for disabling and allow deletion of default backingstore
+var DisableDefaultBackingStore = false
+
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
 	return Namespace + ".noobaa.io"
@@ -225,5 +228,9 @@ func init() {
 	FlagSet.StringArrayVar(
 		&STSLoadBalancerSourceSubnets, "sts-load-balancer-source-subnets",
 		[]string{}, "The source subnets for the STS service load balancer",
+	)
+	FlagSet.BoolVar(
+		&DisableDefaultBackingStore, "disable-default-backingstore",
+		false, "allow to delete the default backingstore",
 	)
 }
