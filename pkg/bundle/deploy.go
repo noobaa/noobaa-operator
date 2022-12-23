@@ -1219,7 +1219,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "feffcab4b5f33abf49068c9796597a6a8c1c0c8fd9fae4fa6257ba135a03d3c3"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "4d75ce7a53fe6c4b03dc3a8580f0723ad296a699b8852237844ec836837c153d"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -5473,3 +5473,4 @@ kind: ServiceAccount
 metadata:
   name: noobaa-odf-ui
 `
+
