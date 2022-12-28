@@ -164,6 +164,7 @@ golangci-lint: gen
 
 lint: gen
 	GO111MODULE=off go get -u -a golang.org/x/lint/golint
+	GO111MODULE=off go install -a golang.org/x/lint/golint
 	GO111MODULE=off go run golang.org/x/lint/golint \
 		-set_exit_status=1 \
 		$$(go list ./... | cut -d'/' -f5- | sed 's/^\(.*\)$$/\.\/\1\//' | grep -v ./pkg/apis/noobaa/v1alpha1/ | grep -v ./pkg/bundle/)

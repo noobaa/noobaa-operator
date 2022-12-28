@@ -104,7 +104,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "21d7000fc44c8205f57d01bf5a5489e8822d078230ee749876ea86890947b5b9"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "3027bd7e2d6ce876ed7c6fad8cbe3dd48513b1ace2f3b35a5d10a330eb094a3c"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -164,11 +164,11 @@ spec:
                       The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
                     properties:
                       name:
-                        description: Name is unique within a namespace to reference
+                        description: name is unique within a namespace to reference
                           a secret resource.
                         type: string
                       namespace:
-                        description: Namespace defines the space within which the
+                        description: namespace defines the space within which the
                           secret name must be unique.
                         type: string
                     type: object
@@ -190,11 +190,11 @@ spec:
                       by Azure Blob.
                     properties:
                       name:
-                        description: Name is unique within a namespace to reference
+                        description: name is unique within a namespace to reference
                           a secret resource.
                         type: string
                       namespace:
-                        description: Namespace defines the space within which the
+                        description: namespace defines the space within which the
                           secret name must be unique.
                         type: string
                     type: object
@@ -216,11 +216,11 @@ spec:
                       containing the entire json string as provided by Google.
                     properties:
                       name:
-                        description: Name is unique within a namespace to reference
+                        description: name is unique within a namespace to reference
                           a secret resource.
                         type: string
                       namespace:
-                        description: Namespace defines the space within which the
+                        description: namespace defines the space within which the
                           secret name must be unique.
                         type: string
                     type: object
@@ -242,11 +242,11 @@ spec:
                       The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY
                     properties:
                       name:
-                        description: Name is unique within a namespace to reference
+                        description: name is unique within a namespace to reference
                           a secret resource.
                         type: string
                       namespace:
-                        description: Namespace defines the space within which the
+                        description: namespace defines the space within which the
                           secret name must be unique.
                         type: string
                     type: object
@@ -301,11 +301,11 @@ spec:
                       agent_configuration from noobaa-core.
                     properties:
                       name:
-                        description: Name is unique within a namespace to reference
+                        description: name is unique within a namespace to reference
                           a secret resource.
                         type: string
                       namespace:
-                        description: Namespace defines the space within which the
+                        description: namespace defines the space within which the
                           secret name must be unique.
                         type: string
                     type: object
@@ -327,11 +327,11 @@ spec:
                       The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
                     properties:
                       name:
-                        description: Name is unique within a namespace to reference
+                        description: name is unique within a namespace to reference
                           a secret resource.
                         type: string
                       namespace:
-                        description: Namespace defines the space within which the
+                        description: namespace defines the space within which the
                           secret name must be unique.
                         type: string
                     type: object
@@ -402,31 +402,31 @@ spec:
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:
-                  description: 'ObjectReference contains enough information to let
+                  description: "ObjectReference contains enough information to let
                     you inspect or modify the referred object. --- New uses of this
                     type are discouraged because of difficulty describing its usage
                     when embedded in APIs.  1. Ignored fields.  It includes many fields
                     which are not generally honored.  For instance, ResourceVersion
                     and FieldPath are both very rarely valid in actual usage.  2.
                     Invalid usage help.  It is impossible to add specific help for
-                    individual usage.  In most embedded usages, there are particular     restrictions
-                    like, "must refer only to types A and B" or "UID not honored"
-                    or "name must be restricted".     Those cannot be well described
-                    when embedded.  3. Inconsistent validation.  Because the usages
-                    are different, the validation rules are different by usage, which
-                    makes it hard for users to predict what will happen.  4. The fields
-                    are both imprecise and overly precise.  Kind is not a precise
-                    mapping to a URL. This can produce ambiguity     during interpretation
-                    and require a REST mapping.  In most cases, the dependency is
-                    on the group,resource tuple     and the version of the actual
-                    struct is irrelevant.  5. We cannot easily change it.  Because
-                    this type is embedded in many locations, updates to this type     will
-                    affect numerous schemas.  Don''t make new APIs embed an underspecified
-                    API type they do not control. Instead of using this type, create
-                    a locally provided and used type that is well-focused on your
-                    reference. For example, ServiceReferences for admission registration:
-                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
-                    .'
+                    individual usage.  In most embedded usages, there are particular
+                    \    restrictions like, \"must refer only to types A and B\" or
+                    \"UID not honored\" or \"name must be restricted\".     Those
+                    cannot be well described when embedded.  3. Inconsistent validation.
+                    \ Because the usages are different, the validation rules are different
+                    by usage, which makes it hard for users to predict what will happen.
+                    \ 4. The fields are both imprecise and overly precise.  Kind is
+                    not a precise mapping to a URL. This can produce ambiguity     during
+                    interpretation and require a REST mapping.  In most cases, the
+                    dependency is on the group,resource tuple     and the version
+                    of the actual struct is irrelevant.  5. We cannot easily change
+                    it.  Because this type is embedded in many locations, updates
+                    to this type     will affect numerous schemas.  Don't make new
+                    APIs embed an underspecified API type they do not control. \n
+                    Instead of using this type, create a locally provided and used
+                    type that is well-focused on your reference. For example, ServiceReferences
+                    for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    ."
                   properties:
                     apiVersion:
                       description: API version of the referent.
@@ -470,7 +470,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "f61325186856036886a6758a34b1770d12d16a6fec1feca58e2fa6dc5921fe49"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "191c182d176270769416393926ca85198f43e94168f4bfa40e0a6aa2bfb04b79"
 
 const File_deploy_crds_noobaa_io_bucketclasses_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -661,31 +661,31 @@ spec:
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:
-                  description: 'ObjectReference contains enough information to let
+                  description: "ObjectReference contains enough information to let
                     you inspect or modify the referred object. --- New uses of this
                     type are discouraged because of difficulty describing its usage
                     when embedded in APIs.  1. Ignored fields.  It includes many fields
                     which are not generally honored.  For instance, ResourceVersion
                     and FieldPath are both very rarely valid in actual usage.  2.
                     Invalid usage help.  It is impossible to add specific help for
-                    individual usage.  In most embedded usages, there are particular     restrictions
-                    like, "must refer only to types A and B" or "UID not honored"
-                    or "name must be restricted".     Those cannot be well described
-                    when embedded.  3. Inconsistent validation.  Because the usages
-                    are different, the validation rules are different by usage, which
-                    makes it hard for users to predict what will happen.  4. The fields
-                    are both imprecise and overly precise.  Kind is not a precise
-                    mapping to a URL. This can produce ambiguity     during interpretation
-                    and require a REST mapping.  In most cases, the dependency is
-                    on the group,resource tuple     and the version of the actual
-                    struct is irrelevant.  5. We cannot easily change it.  Because
-                    this type is embedded in many locations, updates to this type     will
-                    affect numerous schemas.  Don''t make new APIs embed an underspecified
-                    API type they do not control. Instead of using this type, create
-                    a locally provided and used type that is well-focused on your
-                    reference. For example, ServiceReferences for admission registration:
-                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
-                    .'
+                    individual usage.  In most embedded usages, there are particular
+                    \    restrictions like, \"must refer only to types A and B\" or
+                    \"UID not honored\" or \"name must be restricted\".     Those
+                    cannot be well described when embedded.  3. Inconsistent validation.
+                    \ Because the usages are different, the validation rules are different
+                    by usage, which makes it hard for users to predict what will happen.
+                    \ 4. The fields are both imprecise and overly precise.  Kind is
+                    not a precise mapping to a URL. This can produce ambiguity     during
+                    interpretation and require a REST mapping.  In most cases, the
+                    dependency is on the group,resource tuple     and the version
+                    of the actual struct is irrelevant.  5. We cannot easily change
+                    it.  Because this type is embedded in many locations, updates
+                    to this type     will affect numerous schemas.  Don't make new
+                    APIs embed an underspecified API type they do not control. \n
+                    Instead of using this type, create a locally provided and used
+                    type that is well-focused on your reference. For example, ServiceReferences
+                    for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    ."
                   properties:
                     apiVersion:
                       description: API version of the referent.
@@ -729,7 +729,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "e84413f2a694ea50bc74deac1acbd25f8f4b7dc8355e7eb1985928b796a13571"
+const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "94617b9c3967ae0d8515f6196e9a6571242e74ebca91eedba56b57e8ac460551"
 
 const File_deploy_crds_noobaa_io_namespacestores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -792,11 +792,11 @@ spec:
                       The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
                     properties:
                       name:
-                        description: Name is unique within a namespace to reference
+                        description: name is unique within a namespace to reference
                           a secret resource.
                         type: string
                       namespace:
-                        description: Namespace defines the space within which the
+                        description: namespace defines the space within which the
                           secret name must be unique.
                         type: string
                     type: object
@@ -818,11 +818,11 @@ spec:
                       by Azure Blob.
                     properties:
                       name:
-                        description: Name is unique within a namespace to reference
+                        description: name is unique within a namespace to reference
                           a secret resource.
                         type: string
                       namespace:
-                        description: Namespace defines the space within which the
+                        description: namespace defines the space within which the
                           secret name must be unique.
                         type: string
                     type: object
@@ -845,11 +845,11 @@ spec:
                       The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY
                     properties:
                       name:
-                        description: Name is unique within a namespace to reference
+                        description: name is unique within a namespace to reference
                           a secret resource.
                         type: string
                       namespace:
-                        description: Namespace defines the space within which the
+                        description: namespace defines the space within which the
                           secret name must be unique.
                         type: string
                     type: object
@@ -897,11 +897,11 @@ spec:
                       The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
                     properties:
                       name:
-                        description: Name is unique within a namespace to reference
+                        description: name is unique within a namespace to reference
                           a secret resource.
                         type: string
                       namespace:
-                        description: Namespace defines the space within which the
+                        description: namespace defines the space within which the
                           secret name must be unique.
                         type: string
                     type: object
@@ -972,31 +972,31 @@ spec:
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:
-                  description: 'ObjectReference contains enough information to let
+                  description: "ObjectReference contains enough information to let
                     you inspect or modify the referred object. --- New uses of this
                     type are discouraged because of difficulty describing its usage
                     when embedded in APIs.  1. Ignored fields.  It includes many fields
                     which are not generally honored.  For instance, ResourceVersion
                     and FieldPath are both very rarely valid in actual usage.  2.
                     Invalid usage help.  It is impossible to add specific help for
-                    individual usage.  In most embedded usages, there are particular     restrictions
-                    like, "must refer only to types A and B" or "UID not honored"
-                    or "name must be restricted".     Those cannot be well described
-                    when embedded.  3. Inconsistent validation.  Because the usages
-                    are different, the validation rules are different by usage, which
-                    makes it hard for users to predict what will happen.  4. The fields
-                    are both imprecise and overly precise.  Kind is not a precise
-                    mapping to a URL. This can produce ambiguity     during interpretation
-                    and require a REST mapping.  In most cases, the dependency is
-                    on the group,resource tuple     and the version of the actual
-                    struct is irrelevant.  5. We cannot easily change it.  Because
-                    this type is embedded in many locations, updates to this type     will
-                    affect numerous schemas.  Don''t make new APIs embed an underspecified
-                    API type they do not control. Instead of using this type, create
-                    a locally provided and used type that is well-focused on your
-                    reference. For example, ServiceReferences for admission registration:
-                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
-                    .'
+                    individual usage.  In most embedded usages, there are particular
+                    \    restrictions like, \"must refer only to types A and B\" or
+                    \"UID not honored\" or \"name must be restricted\".     Those
+                    cannot be well described when embedded.  3. Inconsistent validation.
+                    \ Because the usages are different, the validation rules are different
+                    by usage, which makes it hard for users to predict what will happen.
+                    \ 4. The fields are both imprecise and overly precise.  Kind is
+                    not a precise mapping to a URL. This can produce ambiguity     during
+                    interpretation and require a REST mapping.  In most cases, the
+                    dependency is on the group,resource tuple     and the version
+                    of the actual struct is irrelevant.  5. We cannot easily change
+                    it.  Because this type is embedded in many locations, updates
+                    to this type     will affect numerous schemas.  Don't make new
+                    APIs embed an underspecified API type they do not control. \n
+                    Instead of using this type, create a locally provided and used
+                    type that is well-focused on your reference. For example, ServiceReferences
+                    for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    ."
                   properties:
                     apiVersion:
                       description: API version of the referent.
@@ -1040,7 +1040,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml = "6a83158a5150833e5c6e337b3a7f88d03c656de195e4b360085c506b064beac7"
+const Sha256_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml = "5f3305547e62fc4d42e8ec78e66176a69e4747c01e25ce148570b7f3de3cc072"
 
 const File_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1151,31 +1151,31 @@ spec:
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:
-                  description: 'ObjectReference contains enough information to let
+                  description: "ObjectReference contains enough information to let
                     you inspect or modify the referred object. --- New uses of this
                     type are discouraged because of difficulty describing its usage
                     when embedded in APIs.  1. Ignored fields.  It includes many fields
                     which are not generally honored.  For instance, ResourceVersion
                     and FieldPath are both very rarely valid in actual usage.  2.
                     Invalid usage help.  It is impossible to add specific help for
-                    individual usage.  In most embedded usages, there are particular     restrictions
-                    like, "must refer only to types A and B" or "UID not honored"
-                    or "name must be restricted".     Those cannot be well described
-                    when embedded.  3. Inconsistent validation.  Because the usages
-                    are different, the validation rules are different by usage, which
-                    makes it hard for users to predict what will happen.  4. The fields
-                    are both imprecise and overly precise.  Kind is not a precise
-                    mapping to a URL. This can produce ambiguity     during interpretation
-                    and require a REST mapping.  In most cases, the dependency is
-                    on the group,resource tuple     and the version of the actual
-                    struct is irrelevant.  5. We cannot easily change it.  Because
-                    this type is embedded in many locations, updates to this type     will
-                    affect numerous schemas.  Don''t make new APIs embed an underspecified
-                    API type they do not control. Instead of using this type, create
-                    a locally provided and used type that is well-focused on your
-                    reference. For example, ServiceReferences for admission registration:
-                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
-                    .'
+                    individual usage.  In most embedded usages, there are particular
+                    \    restrictions like, \"must refer only to types A and B\" or
+                    \"UID not honored\" or \"name must be restricted\".     Those
+                    cannot be well described when embedded.  3. Inconsistent validation.
+                    \ Because the usages are different, the validation rules are different
+                    by usage, which makes it hard for users to predict what will happen.
+                    \ 4. The fields are both imprecise and overly precise.  Kind is
+                    not a precise mapping to a URL. This can produce ambiguity     during
+                    interpretation and require a REST mapping.  In most cases, the
+                    dependency is on the group,resource tuple     and the version
+                    of the actual struct is irrelevant.  5. We cannot easily change
+                    it.  Because this type is embedded in many locations, updates
+                    to this type     will affect numerous schemas.  Don't make new
+                    APIs embed an underspecified API type they do not control. \n
+                    Instead of using this type, create a locally provided and used
+                    type that is well-focused on your reference. For example, ServiceReferences
+                    for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    ."
                   properties:
                     apiVersion:
                       description: API version of the referent.
@@ -1219,7 +1219,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a0c90aee88345fbe92f3d1df9b304cfd451e7b4e4321d408fc13500ff4c9d4b5"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a04493f5b341dd61972a1e61620e2226efde852d05702d25defc26479b1a5d5d"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1565,9 +1565,7 @@ spec:
                                     field and the ones listed in the namespaces field.
                                     null selector and null or empty namespaces list
                                     means "this pod's namespace". An empty selector
-                                    ({}) matches all namespaces. This field is beta-level
-                                    and is only honored when PodAffinityNamespaceSelector
-                                    feature is enabled.
+                                    ({}) matches all namespaces.
                                   properties:
                                     matchExpressions:
                                       description: matchExpressions is a list of label
@@ -1622,7 +1620,7 @@ spec:
                                     term is applied to the union of the namespaces
                                     listed in this field and the ones selected by
                                     namespaceSelector. null or empty namespaces list
-                                    and null namespaceSelector means "this pod's namespace"
+                                    and null namespaceSelector means "this pod's namespace".
                                   items:
                                     type: string
                                   type: array
@@ -1721,8 +1719,6 @@ spec:
                                 the ones listed in the namespaces field. null selector
                                 and null or empty namespaces list means "this pod's
                                 namespace". An empty selector ({}) matches all namespaces.
-                                This field is beta-level and is only honored when
-                                PodAffinityNamespaceSelector feature is enabled.
                               properties:
                                 matchExpressions:
                                   description: matchExpressions is a list of label
@@ -1773,7 +1769,7 @@ spec:
                                 to the union of the namespaces listed in this field
                                 and the ones selected by namespaceSelector. null or
                                 empty namespaces list and null namespaceSelector means
-                                "this pod's namespace"
+                                "this pod's namespace".
                               items:
                                 type: string
                               type: array
@@ -1874,9 +1870,7 @@ spec:
                                     field and the ones listed in the namespaces field.
                                     null selector and null or empty namespaces list
                                     means "this pod's namespace". An empty selector
-                                    ({}) matches all namespaces. This field is beta-level
-                                    and is only honored when PodAffinityNamespaceSelector
-                                    feature is enabled.
+                                    ({}) matches all namespaces.
                                   properties:
                                     matchExpressions:
                                       description: matchExpressions is a list of label
@@ -1931,7 +1925,7 @@ spec:
                                     term is applied to the union of the namespaces
                                     listed in this field and the ones selected by
                                     namespaceSelector. null or empty namespaces list
-                                    and null namespaceSelector means "this pod's namespace"
+                                    and null namespaceSelector means "this pod's namespace".
                                   items:
                                     type: string
                                   type: array
@@ -2030,8 +2024,6 @@ spec:
                                 the ones listed in the namespaces field. null selector
                                 and null or empty namespaces list means "this pod's
                                 namespace". An empty selector ({}) matches all namespaces.
-                                This field is beta-level and is only honored when
-                                PodAffinityNamespaceSelector feature is enabled.
                               properties:
                                 matchExpressions:
                                   description: matchExpressions is a list of label
@@ -2082,7 +2074,7 @@ spec:
                                 to the union of the namespaces listed in this field
                                 and the ones selected by namespaceSelector. null or
                                 empty namespaces list and null namespaceSelector means
-                                "this pod's namespace"
+                                "this pod's namespace".
                               items:
                                 type: string
                               type: array
@@ -2254,11 +2246,11 @@ spec:
                           The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
                         properties:
                           name:
-                            description: Name is unique within a namespace to reference
+                            description: name is unique within a namespace to reference
                               a secret resource.
                             type: string
                           namespace:
-                            description: Namespace defines the space within which
+                            description: namespace defines the space within which
                               the secret name must be unique.
                             type: string
                         type: object
@@ -2281,11 +2273,11 @@ spec:
                           by Azure Blob.
                         properties:
                           name:
-                            description: Name is unique within a namespace to reference
+                            description: name is unique within a namespace to reference
                               a secret resource.
                             type: string
                           namespace:
-                            description: Namespace defines the space within which
+                            description: namespace defines the space within which
                               the secret name must be unique.
                             type: string
                         type: object
@@ -2307,11 +2299,11 @@ spec:
                           containing the entire json string as provided by Google.
                         properties:
                           name:
-                            description: Name is unique within a namespace to reference
+                            description: name is unique within a namespace to reference
                               a secret resource.
                             type: string
                           namespace:
-                            description: Namespace defines the space within which
+                            description: namespace defines the space within which
                               the secret name must be unique.
                             type: string
                         type: object
@@ -2334,11 +2326,11 @@ spec:
                           The secret should define IBM_COS_ACCESS_KEY_ID and IBM_COS_SECRET_ACCESS_KEY
                         properties:
                           name:
-                            description: Name is unique within a namespace to reference
+                            description: name is unique within a namespace to reference
                               a secret resource.
                             type: string
                           namespace:
-                            description: Namespace defines the space within which
+                            description: namespace defines the space within which
                               the secret name must be unique.
                             type: string
                         type: object
@@ -2395,11 +2387,11 @@ spec:
                           agent_configuration from noobaa-core.
                         properties:
                           name:
-                            description: Name is unique within a namespace to reference
+                            description: name is unique within a namespace to reference
                               a secret resource.
                             type: string
                           namespace:
-                            description: Namespace defines the space within which
+                            description: namespace defines the space within which
                               the secret name must be unique.
                             type: string
                         type: object
@@ -2421,11 +2413,11 @@ spec:
                           The secret should define AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
                         properties:
                           name:
-                            description: Name is unique within a namespace to reference
+                            description: name is unique within a namespace to reference
                               a secret resource.
                             type: string
                           namespace:
-                            description: Namespace defines the space within which
+                            description: namespace defines the space within which
                               the secret name must be unique.
                             type: string
                         type: object
@@ -2520,11 +2512,11 @@ spec:
                   another cluster and point to a secret that holds the join information
                 properties:
                   name:
-                    description: Name is unique within a namespace to reference a
+                    description: name is unique within a namespace to reference a
                       secret resource.
                     type: string
                   namespace:
-                    description: Namespace defines the space within which the secret
+                    description: namespace defines the space within which the secret
                       name must be unique.
                     type: string
                 type: object
@@ -2643,11 +2635,11 @@ spec:
                           It has enough information to retrieve secret in any namespace
                         properties:
                           name:
-                            description: Name is unique within a namespace to reference
+                            description: name is unique within a namespace to reference
                               a secret resource.
                             type: string
                           namespace:
-                            description: Namespace defines the space within which
+                            description: namespace defines the space within which
                               the secret name must be unique.
                             type: string
                         type: object
@@ -2722,31 +2714,31 @@ spec:
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:
-                  description: 'ObjectReference contains enough information to let
+                  description: "ObjectReference contains enough information to let
                     you inspect or modify the referred object. --- New uses of this
                     type are discouraged because of difficulty describing its usage
                     when embedded in APIs.  1. Ignored fields.  It includes many fields
                     which are not generally honored.  For instance, ResourceVersion
                     and FieldPath are both very rarely valid in actual usage.  2.
                     Invalid usage help.  It is impossible to add specific help for
-                    individual usage.  In most embedded usages, there are particular     restrictions
-                    like, "must refer only to types A and B" or "UID not honored"
-                    or "name must be restricted".     Those cannot be well described
-                    when embedded.  3. Inconsistent validation.  Because the usages
-                    are different, the validation rules are different by usage, which
-                    makes it hard for users to predict what will happen.  4. The fields
-                    are both imprecise and overly precise.  Kind is not a precise
-                    mapping to a URL. This can produce ambiguity     during interpretation
-                    and require a REST mapping.  In most cases, the dependency is
-                    on the group,resource tuple     and the version of the actual
-                    struct is irrelevant.  5. We cannot easily change it.  Because
-                    this type is embedded in many locations, updates to this type     will
-                    affect numerous schemas.  Don''t make new APIs embed an underspecified
-                    API type they do not control. Instead of using this type, create
-                    a locally provided and used type that is well-focused on your
-                    reference. For example, ServiceReferences for admission registration:
-                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
-                    .'
+                    individual usage.  In most embedded usages, there are particular
+                    \    restrictions like, \"must refer only to types A and B\" or
+                    \"UID not honored\" or \"name must be restricted\".     Those
+                    cannot be well described when embedded.  3. Inconsistent validation.
+                    \ Because the usages are different, the validation rules are different
+                    by usage, which makes it hard for users to predict what will happen.
+                    \ 4. The fields are both imprecise and overly precise.  Kind is
+                    not a precise mapping to a URL. This can produce ambiguity     during
+                    interpretation and require a REST mapping.  In most cases, the
+                    dependency is on the group,resource tuple     and the version
+                    of the actual struct is irrelevant.  5. We cannot easily change
+                    it.  Because this type is embedded in many locations, updates
+                    to this type     will affect numerous schemas.  Don't make new
+                    APIs embed an underspecified API type they do not control. \n
+                    Instead of using this type, create a locally provided and used
+                    type that is well-focused on your reference. For example, ServiceReferences
+                    for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    ."
                   properties:
                     apiVersion:
                       description: API version of the referent.
