@@ -1905,7 +1905,7 @@ func SetOwnerReference(owner, dependent metav1.Object, scheme *runtime.Scheme) e
 		Kind:               gvk.Kind,
 		Name:               owner.GetName(),
 		UID:                owner.GetUID(),
-		BlockOwnerDeletion: pointer.BoolPtr(true),
+		BlockOwnerDeletion: pointer.Bool(true),
 	}
 
 	owners := dependent.GetOwnerReferences()
