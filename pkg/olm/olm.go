@@ -304,6 +304,26 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 					Value:    "true",
 				},
 			}
+
+			csv.Spec.InstallModes = []operv1.InstallMode{
+				{
+					Type:      operv1.InstallModeTypeOwnNamespace,
+					Supported: false,
+				},
+				{
+					Type:      operv1.InstallModeTypeSingleNamespace,
+					Supported: false,
+				},
+				{
+					Type:      operv1.InstallModeTypeMultiNamespace,
+					Supported: false,
+				},
+				{
+					Type:      operv1.InstallModeTypeAllNamespaces,
+					Supported: true,
+				},
+			}
+
 		}
 
 		if csvParams.Replaces != "" {
