@@ -4,14 +4,14 @@ go 1.18
 
 require (
 	cloud.google.com/go/storage v1.27.0
-	github.com/Azure/azure-sdk-for-go v61.4.0+incompatible
+	github.com/Azure/azure-sdk-for-go v62.0.0+incompatible
 	github.com/Azure/azure-storage-blob-go v0.14.0
 	github.com/Azure/go-autorest/autorest v0.11.27
 	github.com/Azure/go-autorest/autorest/adal v0.9.20
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/IBM/keyprotect-go-client v0.8.0
-	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
-	github.com/aws/aws-sdk-go v1.44.71
+	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef
+	github.com/aws/aws-sdk-go v1.44.95
 	github.com/blang/semver/v4 v4.0.0
 	github.com/coreos/go-semver v0.3.0
 	github.com/docker/distribution v2.8.0+incompatible
@@ -75,10 +75,11 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/pkg v0.0.0-20220709002704-04386ae12ed0 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
+	github.com/frankban/quicktest v1.14.2 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/gemalto/flume v0.13.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
@@ -97,10 +98,10 @@ require (
 	github.com/googleapis/gax-go/v2 v2.7.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-hclog v1.2.2 // indirect
+	github.com/hashicorp/go-hclog v1.3.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-plugin v1.4.4 // indirect
+	github.com/hashicorp/go-plugin v1.4.5 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.2 // indirect
@@ -110,11 +111,11 @@ require (
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/hashicorp/hcl v1.0.1-vault-3 // indirect
-	github.com/hashicorp/vault v1.11.2 // indirect
-	github.com/hashicorp/vault/api v1.7.2 // indirect
+	github.com/hashicorp/hcl v1.0.1-vault-5 // indirect
+	github.com/hashicorp/vault v1.12.2 // indirect
+	github.com/hashicorp/vault/api v1.8.0 // indirect
 	github.com/hashicorp/vault/api/auth/approle v0.2.0 // indirect
-	github.com/hashicorp/vault/sdk v0.5.3 // indirect
+	github.com/hashicorp/vault/sdk v0.6.1-0.20221102145943-1e9b0a1225c3 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -136,7 +137,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
-	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
+	github.com/moby/term v0.0.0-20220808134915-39b0c02b01ae // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -155,7 +156,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
-	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
+	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/net v0.3.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783 // indirect
