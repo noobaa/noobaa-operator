@@ -163,6 +163,7 @@ require (
 
 // Pinned to kubernetes-1.21.3
 replace (
+	github.com/Masterminds/goutils => github.com/Masterminds/goutils v1.1.1 // indirect
 	// see https://github.com/rook/rook/blob/master/go.mod#L42-L43
 	github.com/moby/term => github.com/moby/term v0.0.0-20201110203204-bea5bbe245bf // indirect
 	github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
