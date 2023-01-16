@@ -38,6 +38,8 @@ func (bcv *ResourceValidator) ValidateBucketClass() admissionv1.AdmissionReview 
 	switch bcv.arRequest.Request.Operation {
 	case admissionv1.Create:
 		bcv.ValidateCreateBC()
+	case admissionv1.Update:
+		bcv.ValidateUpdateBC()
 	default:
 		bcv.Logger.Error("Failed to identify bucketclass operation type")
 	}
@@ -75,5 +77,16 @@ func (bcv *ResourceValidator) ValidateCreateBC() {
 			bcv.SetValidationResult(false, err.Error())
 			return
 		}
+	}
+}
+
+// ValidateUpdateBC runs all the validations tests for UPDATE operations
+func (bcv *ResourceValidator) ValidateUpdateBC() {
+	oldBC := bcv.DeserializeBC(bcv.arRequest.Request.OldObject.Raw)
+	newBC := bcv.DeserializeBC(bcv.arRequest.Request.Object.Raw)
+
+	if err := validations.ValidateImmutLabelChange(newBC, oldBC, map[string]struct{}{"noobaa-operator": {}}); err != nil {
+		bcv.SetValidationResult(false, err.Error())
+		return
 	}
 }

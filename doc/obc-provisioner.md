@@ -57,7 +57,7 @@ spec:
 
 # OBC with specific BucketClass
 
-Applications that require a bucket from a specific BucketClass can create an OBC with the default StorageClass, but override the BucketClass specifically for that claim using the `spec.additionalConfig.bucketclass` property.
+Applications that require a bucket from a specific BucketClass can create an OBC with the default StorageClass, but override the BucketClass specifically for that claim using the `spec.additionalConfig.bucketclass` property. The BucketClass can exist either in the same namespace as that of OBC or it can exist in NooBaa system namespace. In case of a conflict, BucketClass that exists in the OBC namespace will take priority over the BucketClass in NooBaa system.
 
 Example:
 

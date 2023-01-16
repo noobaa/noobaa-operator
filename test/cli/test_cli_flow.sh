@@ -26,6 +26,7 @@ function post_install_tests {
     check_pgdb_config_override
     test_noobaa_cr_deletion
     test_noobaa_loadbalancer_source_subnet
+    test_multinamespace_bucketclass
 }
 
 function main {

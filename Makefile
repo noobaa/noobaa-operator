@@ -230,3 +230,23 @@ test-admission: vendor
 	ginkgo -v pkg/admission/test/integ
 	@echo "✅ test-admission"
 .PHONY: test-admission
+
+test-bucketclass: vendor
+	ginkgo -v pkg/bucketclass pkg/controller/bucketclass
+	@echo "✅ test-bucketclass"
+.PHONY: test-bucketclass
+
+test-obc: vendor
+	ginkgo -v pkg/obc
+	@echo "✅ test-obc"
+.PHONY: test-obc
+
+test-operator: vendor
+	ginkgo -v pkg/operator
+	@echo "✅ test-operator"
+.PHONY: test-operator
+
+test-util: vendor
+	ginkgo -v pkg/util
+	@echo "✅ test-util"
+.PHONY: test-util

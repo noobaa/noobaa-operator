@@ -1021,3 +1021,169 @@ EOF
         fi
     done
 }
+
+function test_multinamespace_bucketclass() {
+
+    # Helper function to create and test bucketclass
+    function test_create_bucketclass() {
+        local timeout=0
+        local fail_time=600
+        local bucketclass_name=$1
+        local backingstore_name=$2
+        local namespace=$3
+        local provisioner=$4
+        local fail=$5
+
+        cat <<EOF | kubectl -n $namespace apply -f -
+apiVersion: noobaa.io/v1alpha1
+kind: BucketClass
+metadata:
+    name: $bucketclass_name
+    labels:
+        noobaa-operator: $provisioner
+spec:
+    placementPolicy:
+        tiers:
+        - backingStores:
+          - $backingstore_name
+EOF
+
+        # If fail is set to true then expect the test to fail
+        if [ "$fail" == "true" ]; then
+            local bucketclass=`kubectl -n $namespace get bucketclass $bucketclass_name -o=go-template='{{.status}}'`
+            if [ "$bucketclass" == "<no value>" ]; then
+                echo_time "✅  [${FUNCNAME[0]}]: Noobaa bucketclass creation - not picked by the operator - test passed"
+            else
+                echo_time "❌  [${FUNCNAME[0]}]: Noobaa bucketclass creation - picked by the operator - test failed"
+                exit 1
+            fi
+        else
+            while [ $timeout -lt $fail_time ]; do
+                sleep 1
+                timeout=$((timeout+1))
+                if [ $timeout -eq $fail_time ]; then
+                    echo_time "❌  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass test failed"
+                    exit 1
+                fi
+
+                local bucketclass=`kubectl -n $namespace get bucketclass $bucketclass_name -o=go-template='{{.status.phase}}'`
+                if [ "$bucketclass" == "" ]; then
+                    echo_time "❌  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass test failed for bucketclass $bucketclass_name"
+                elif [ "$bucketclass" == "Ready" ]; then
+                    echo_time "✅  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass verified for bucketclass $bucketclass_name"
+                    break
+                else
+                    echo_time "❌  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass test failed for bucketclass $bucketclass_name - status is $bucketclass"
+                fi
+            done
+        fi
+    }
+
+
+    # Helper function to create OBC
+    function test_create_obc() {
+        local timeout=0
+        local obc_name=$1
+        local bucketclass_name=$2
+        local namespace=$3
+
+        cat <<EOF | kubectl -n $namespace apply -f -
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+    name: $obc_name
+spec:
+    bucketName: $obc_name
+    storageClassName: ${NAMESPACE}.noobaa.io
+    additionalConfig:
+        bucketclass: $bucketclass_name
+EOF
+
+        while [ $timeout -lt 600 ]; do
+            sleep 1
+            timeout=$((timeout+1))
+            if [ $timeout -eq 600 ]; then
+                echo_time "❌  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass test failed"
+                exit 1
+            fi
+
+
+            local obc=`kubectl -n $namespace get obc $obc_name -o=go-template='{{.status.phase}}'`
+            if [ "$obc" == "" ]; then
+                echo_time "❌  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass test failed for obc $obc_name"
+            elif [ "$obc" == "Bound" ]; then
+                echo_time "✅  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass verified for obc $obc_name"
+                break
+            else
+                echo_time "❌  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass test failed for obc $obc_name - status is $obc"
+            fi
+        done
+    }
+
+    # Helper function to delete OBC
+    function test_delete_obc() {
+        local timeout=0
+        local obc_name=$1
+        local namespace=$2
+
+        kubectl -n $namespace delete obc $obc_name
+    }
+
+    # Helper function to delete bucketclass
+    function test_delete_bucketclass() {
+        local timeout=0
+        local bucketclass_name=$1
+        local namespace=$2
+
+        kubectl -n $namespace delete bucketclass $bucketclass_name
+    }
+
+    # Test multinamespace bucketclass - system namespace
+    function test_multinamespace_bucketclass_system_namespace() {
+        test_create_bucketclass multinamespace-bucketclass noobaa-default-backing-store ${NAMESPACE} ${NAMESPACE}
+        test_create_obc multinamespace-obc multinamespace-bucketclass ${NAMESPACE}
+
+        test_delete_obc multinamespace-obc ${NAMESPACE}
+        test_delete_bucketclass multinamespace-bucketclass ${NAMESPACE}
+
+        echo_time "✅  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass test passed"
+    }
+
+    # Test multinamespace bucketclass - non-system namespace correct operator
+    function test_multinamespace_bucketclass_non_system_namespace_correct_operator() {
+        local random_namespace=`echo test-ns-$(date +%s)`
+
+        kubectl create namespace $random_namespace
+
+        test_create_bucketclass multinamespace-bucketclass noobaa-default-backing-store ${random_namespace} ${NAMESPACE}
+        test_create_obc multinamespace-obc multinamespace-bucketclass ${random_namespace}
+
+        test_delete_obc multinamespace-obc ${random_namespace}
+        test_delete_bucketclass multinamespace-bucketclass ${random_namespace}
+
+        kubectl delete namespace $random_namespace
+
+        echo_time "✅  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass test passed"
+    }
+
+    # Test multinamespace bucketclass - non-system namespace incorrect operator
+    function test_multinamespace_bucketclass_non_system_namespace_incorrect_operator() {
+        local random_namespace=`echo test-ns-$(date +%s)`
+        local random_operator=`echo test-op-$(date +%s)`
+
+        kubectl create namespace $random_namespace
+
+        test_create_bucketclass multinamespace-bucketclass noobaa-default-backing-store ${random_namespace} ${random_operator} "true"
+        test_delete_bucketclass multinamespace-bucketclass ${random_namespace}
+
+        kubectl delete namespace $random_namespace
+
+        echo_time "✅  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass test passed"
+    }
+
+    test_multinamespace_bucketclass_system_namespace
+    test_multinamespace_bucketclass_non_system_namespace_correct_operator
+    test_multinamespace_bucketclass_non_system_namespace_incorrect_operator
+
+    echo_time "✅  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass test passed"
+}

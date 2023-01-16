@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,7 +28,7 @@ const (
 
 // RunAdmissionServer starts the admission https server
 func RunAdmissionServer() {
-	namespace, _ := util.GetWatchNamespace()
+	namespace := options.Namespace
 	log := logrus.WithField("admission server", namespace)
 
 	_, ok := os.LookupEnv("NOOBAA_CLI_DEPLOYMENT")

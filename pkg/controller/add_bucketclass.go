@@ -5,6 +5,7 @@ import (
 )
 
 func init() {
-	// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
-	AddToManagerFuncs = append(AddToManagerFuncs, bucketclass.Add)
+	// AddToClusterScopedManagerFuncs is a list of functions to create controllers and add them to
+	// cluster scoped manager.
+	AddToClusterScopedManagerFuncs = append(AddToClusterScopedManagerFuncs, bucketclass.Add)
 }

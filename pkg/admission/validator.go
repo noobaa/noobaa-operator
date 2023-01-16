@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/sirupsen/logrus"
 	admissionv1 "k8s.io/api/admission/v1"
 )
@@ -23,7 +23,7 @@ type ServerHandler struct {
 }
 
 func (gs *ServerHandler) serve(w http.ResponseWriter, r *http.Request) {
-	namespace, _ := util.GetWatchNamespace()
+	namespace := options.Namespace
 	log := logrus.WithField("admission validator", namespace)
 	var arResponse admissionv1.AdmissionReview
 	var body []byte
