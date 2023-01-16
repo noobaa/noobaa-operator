@@ -557,8 +557,8 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 		return nil
 	}
 	// If default backing store is disabled
-	if r.NooBaa.Spec.DisableDefaultBackingStore {
-		r.Logger.Info("DisabledDefaultBackingStore is true, Skip Reconciling Backing Store Credentials")
+	if r.NooBaa.Spec.ManualDefaultBackingStore {
+		r.Logger.Info("ManualDefaultBackingStore is true, Skip Reconciling Backing Store Credentials")
 		return nil
 	}
 

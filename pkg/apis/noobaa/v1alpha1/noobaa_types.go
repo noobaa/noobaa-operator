@@ -180,14 +180,17 @@ type NooBaaSpec struct {
 	// +optional
 	DisableLoadBalancerService bool `json:"disableLoadBalancerService,omitempty"`
 
-	// Deprecated: DefaultBackingStoreSpec is not supported anymore, use DisableDefaultBackingStore instead.
+	// Deprecated: DefaultBackingStoreSpec is not supported anymore, use ManualDefaultBackingStore instead.
 	// +optional
 	DefaultBackingStoreSpec *BackingStoreSpec `json:"defaultBackingStoreSpec,omitempty"`
 
-	// DisableDefaultBackingStore (optional - default value is false) if true it will allow the user to delete DefaultBackingStore
+	// ManualDefaultBackingStore (optional - default value is false) if true the default backingstore will
+	// not be reconciled by the operator and it should be manually handled by the user. It will allow the
+	// user to  delete DefaultBackingStore, user needs to delete associated buckets and update the admin
+	// account with new BackingStore in order to delete the DefaultBackingStore
 	// +nullable
 	// +optional
-	DisableDefaultBackingStore bool `json:"disableDefaultBackingStore,omitempty"`
+	ManualDefaultBackingStore bool `json:"manualDefaultBackingStore,omitempty"`
 
 	// LoadBalancerSourceSubnets (optional) if given will allow access to the NooBaa services
 	// only from the listed subnets. This field will have no effect if DisableLoadBalancerService is set

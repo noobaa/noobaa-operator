@@ -1219,7 +1219,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "4d75ce7a53fe6c4b03dc3a8580f0723ad296a699b8852237844ec836837c153d"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "b1b29dbd1ee360be1495188d47810941a29dbbedf8db4cc0b80190bc3751a9d3"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2232,7 +2232,7 @@ spec:
                 type: integer
               defaultBackingStoreSpec:
                 description: 'Deprecated: DefaultBackingStoreSpec is not supported
-                  anymore, use DisableDefaultBackingStore instead.'
+                  anymore, use ManualDefaultBackingStore instead.'
                 properties:
                   awsS3:
                     description: AWSS3Spec specifies a backing store of type aws-s3
@@ -2440,11 +2440,6 @@ spec:
                 required:
                 - type
                 type: object
-              disableDefaultBackingStore:
-                description: DisableDefaultBackingStore (optional - default value
-                  is false) if true it will allow the user to delete DefaultBackingStore
-                nullable: true
-                type: boolean
               disableLoadBalancerService:
                 description: DisableLoadBalancerService (optional) sets the service
                   type to ClusterIP instead of LoadBalancer
@@ -2556,6 +2551,15 @@ spec:
                       type: string
                     type: array
                 type: object
+              manualDefaultBackingStore:
+                description: ManualDefaultBackingStore (optional - default value is
+                  false) if true the default backingstore will not be reconciled by
+                  the operator and it should be manually handled by the user. It will
+                  allow the user to  delete DefaultBackingStore, user needs to delete
+                  associated buckets and update the admin account with new BackingStore
+                  in order to delete the DefaultBackingStore
+                nullable: true
+                type: boolean
               mongoDbURL:
                 description: MongoDbURL (optional) overrides the default mongo db
                   remote url

@@ -629,8 +629,8 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		return nil
 	}
 	// If default backing store is disabled
-	if r.NooBaa.Spec.DisableDefaultBackingStore {
-		r.Logger.Info("DisableDefaultBackingStore is true, Skip Reconciling Backing Store Creation")
+	if r.NooBaa.Spec.ManualDefaultBackingStore {
+		r.Logger.Info("ManualDefaultBackingStore is true, Skip Reconciling Backing Store Creation")
 		return nil
 	}
 	if r.CephObjectStoreUser.UID != "" {

@@ -1009,7 +1009,7 @@ spec:
                 type: integer
               defaultBackingStoreSpec:
                 description: 'Deprecated: DefaultBackingStoreSpec is not supported
-                  anymore, use DisableDefaultBackingStore instead.'
+                  anymore, use ManualDefaultBackingStore instead.'
                 properties:
                   awsS3:
                     description: AWSS3Spec specifies a backing store of type aws-s3
@@ -1217,11 +1217,6 @@ spec:
                 required:
                 - type
                 type: object
-              disableDefaultBackingStore:
-                description: DisableDefaultBackingStore (optional - default value
-                  is false) if true it will allow the user to delete DefaultBackingStore
-                nullable: true
-                type: boolean
               disableLoadBalancerService:
                 description: DisableLoadBalancerService (optional) sets the service
                   type to ClusterIP instead of LoadBalancer
@@ -1333,6 +1328,15 @@ spec:
                       type: string
                     type: array
                 type: object
+              manualDefaultBackingStore:
+                description: ManualDefaultBackingStore (optional - default value is
+                  false) if true the default backingstore will not be reconciled by
+                  the operator and it should be manually handled by the user. It will
+                  allow the user to  delete DefaultBackingStore, user needs to delete
+                  associated buckets and update the admin account with new BackingStore
+                  in order to delete the DefaultBackingStore
+                nullable: true
+                type: boolean
               mongoDbURL:
                 description: MongoDbURL (optional) overrides the default mongo db
                   remote url
