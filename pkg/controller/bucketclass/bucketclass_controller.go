@@ -5,11 +5,13 @@ import (
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -52,34 +54,67 @@ func Add(mgr manager.Manager) error {
 
 	// Watch for changes on resources to trigger reconcile
 	err = c.Watch(&source.Kind{Type: &nbv1.BucketClass{}}, &handler.EnqueueRequestForObject{},
-		bucketClassPredicate, &logEventsPredicate)
+		ignoreUnmatchedProvisioner(options.Namespace), bucketClassPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
 
 	backingStoreHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
-			return bucketclass.MapBackingstoreToBucketclasses(types.NamespacedName{
-				Name:      obj.GetName(),
-				Namespace: obj.GetNamespace(),
-			})
-		},
+		return bucketclass.MapBackingstoreToBucketclasses(types.NamespacedName{
+			Name:      obj.GetName(),
+			Namespace: obj.GetNamespace(),
+		})
+	},
 	)
-	err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, backingStoreHandler, logEventsPredicate)
+	err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, backingStoreHandler,
+		util.IgnoreIfNotInNamespace(options.Namespace), logEventsPredicate)
 	if err != nil {
 		return err
 	}
 
 	namespaceStoreHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
-			return bucketclass.MapNamespacestoreToBucketclasses(types.NamespacedName{
-				Name:      obj.GetName(),
-				Namespace: obj.GetNamespace(),
-			})
-		},
+		return bucketclass.MapNamespacestoreToBucketclasses(types.NamespacedName{
+			Name:      obj.GetName(),
+			Namespace: obj.GetNamespace(),
+		})
+	},
 	)
-	err = c.Watch(&source.Kind{Type: &nbv1.NamespaceStore{}}, namespaceStoreHandler, logEventsPredicate)
+	err = c.Watch(&source.Kind{Type: &nbv1.NamespaceStore{}}, namespaceStoreHandler,
+		util.IgnoreIfNotInNamespace(options.Namespace), logEventsPredicate)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func ignoreUnmatchedProvisioner(noobaaOperatorNamespace string) predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return isObjectForProvisioner(e.Object, noobaaOperatorNamespace)
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return isObjectForProvisioner(e.Object, noobaaOperatorNamespace)
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return isObjectForProvisioner(e.ObjectNew, noobaaOperatorNamespace)
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			return isObjectForProvisioner(e.Object, noobaaOperatorNamespace)
+		},
+	}
+}
+
+func isObjectForProvisioner(obj client.Object, noobaaOperatorNamespace string) bool {
+	noobaaOperatorLabel := "noobaa-operator"
+	provisionerLable, ok := obj.GetLabels()[noobaaOperatorLabel]
+	if !ok {
+		// If the object doesn't have the provisioner label, it is only for the provisioner
+		// if it is in the provisioner namespace
+		return obj.GetNamespace() == noobaaOperatorNamespace
+	}
+
+	// If the object has the provisioner label, it is only for the provisioner
+	// if the label value is the provisioner namespace
+	return provisionerLable == noobaaOperatorNamespace
 }

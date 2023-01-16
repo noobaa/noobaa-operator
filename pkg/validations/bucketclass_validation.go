@@ -27,6 +27,26 @@ func ValidateBucketClass(bc *nbv1.BucketClass) error {
 	return ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
 }
 
+// ValidateImmutLabelChange validates that immutable labels are not changed
+func ValidateImmutLabelChange(bc *nbv1.BucketClass, oldBC *nbv1.BucketClass, immuts map[string]struct{}) error {
+	if bc == nil || oldBC == nil {
+		return nil
+	}
+
+	for immutableLabel := range immuts {
+		val1 := oldBC.GetLabels()[immutableLabel]
+		val2 := bc.GetLabels()[immutableLabel]
+
+		if val1 != val2 {
+			return util.ValidationError{
+				Msg: fmt.Sprintf("immutable label %q cannot be changed", immutableLabel),
+			}
+		}
+	}
+
+	return nil
+}
+
 // ValidateQuotaConfig validates the quota values
 func ValidateQuotaConfig(bcName string, quota *nbv1.Quota) error {
 	if quota == nil {

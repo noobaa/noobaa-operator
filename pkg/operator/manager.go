@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/admission"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
@@ -50,6 +51,7 @@ func RunOperator(cmd *cobra.Command, args []string) {
 	}
 
 	// Create a new Cmd to provide shared dependencies and start components
+	// mgr => namespace scoped manager
 	mgr, err := manager.New(config, manager.Options{
 		Namespace:          options.Namespace,
 		MapperProvider:     util.MapperProvider, // restmapper.NewDynamicRESTMapper,
@@ -57,6 +59,15 @@ func RunOperator(cmd *cobra.Command, args []string) {
 	})
 	if err != nil {
 		log.Fatalf("Failed to create manager: %s", err)
+	}
+
+	// cmgr => cluster scoped manager
+	cmgr, err := manager.New(config, manager.Options{
+		MapperProvider:     util.MapperProvider, // restmapper.NewDynamicRESTMapper,
+		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort+1),
+	})
+	if err != nil {
+		log.Fatalf("Failed to create cluster scoped manager: %s", err)
 	}
 
 	log.Info("Registering Components.")
@@ -69,6 +80,9 @@ func RunOperator(cmd *cobra.Command, args []string) {
 	// Setup all Controllers
 	if err := controller.AddToManager(mgr); err != nil {
 		log.Fatalf("Failed AddToManager: %s", err)
+	}
+	if err := controller.AddToClusterScopedManager(cmgr); err != nil {
+		log.Fatalf("Failed AddToClusterScopedManager: %s", err)
 	}
 
 	util.Panic(mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
@@ -92,7 +106,21 @@ func RunOperator(cmd *cobra.Command, args []string) {
 
 	// Start the manager
 	log.Info("Starting the Operator ...")
-	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-		log.Fatalf("Manager exited non-zero: %s", err)
+	mgrs := []manager.Manager{mgr, cmgr}
+
+	ctx := signals.SetupSignalHandler()
+	var wg sync.WaitGroup
+
+	for _, mgr := range mgrs {
+		wg.Add(1)
+
+		go func(mgr manager.Manager) {
+			defer wg.Done()
+			if err := mgr.Start(ctx); err != nil {
+				log.Errorf("Manager exited non-zero: %s", err)
+			}
+		}(mgr)
 	}
+
+	wg.Wait()
 }

@@ -61,7 +61,7 @@ func NewReconciler(
 
 	// Set Namespace
 	r.BucketClass.Namespace = r.Request.Namespace
-	r.NooBaa.Namespace = r.Request.Namespace
+	r.NooBaa.Namespace = options.Namespace
 
 	// Set Names
 	r.BucketClass.Name = r.Request.Name
@@ -242,7 +242,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 				TypeMeta: metav1.TypeMeta{Kind: "NamespaceStore"},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
-					Namespace: options.Namespace,
+					Namespace: r.NooBaa.Namespace,
 				},
 			}
 			if !util.KubeCheck(nsStore) {

@@ -165,3 +165,38 @@ func (p LogEventsPredicate) Generic(e event.GenericEvent) bool {
 	}
 	return true
 }
+
+// IgnoreIfNotInNamespace returns a predicate function that ignores the object
+// if it is not in the given namespace
+func IgnoreIfNotInNamespace(ns string) *predicate.Funcs {
+	return &predicate.Funcs{
+		CreateFunc: func(ce event.CreateEvent) bool {
+			if ce.Object == nil {
+				return false
+			}
+
+			return ce.Object.GetNamespace() == ns
+		},
+		DeleteFunc: func(de event.DeleteEvent) bool {
+			if de.Object == nil {
+				return false
+			}
+
+			return de.Object.GetNamespace() == ns
+		},
+		UpdateFunc: func(ue event.UpdateEvent) bool {
+			if ue.ObjectNew == nil {
+				return false
+			}
+
+			return ue.ObjectNew.GetNamespace() == ns
+		},
+		GenericFunc: func(ge event.GenericEvent) bool {
+			if ge.Object == nil {
+				return false
+			}
+
+			return ge.Object.GetNamespace() == ns
+		},
+	}
+}

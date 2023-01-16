@@ -137,6 +137,16 @@ func ObjectBucketProvisionerName() string {
 	return SubDomainNS() + "/obc"
 }
 
+// WatchNamespace returns the namespace which NooBaa operator will watch for changes
+func WatchNamespace() string {
+	ns, err := util.GetWatchNamespace()
+	if err == nil {
+		return ns
+	}
+
+	return Namespace
+}
+
 // FlagSet defines the
 var FlagSet = pflag.NewFlagSet("noobaa", pflag.ContinueOnError)
 

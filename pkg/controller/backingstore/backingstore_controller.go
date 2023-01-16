@@ -62,8 +62,7 @@ func Add(mgr manager.Manager) error {
 	// Watch for changes on resources to trigger reconcile
 	ownerHandler := &handler.EnqueueRequestForOwner{IsController: true, OwnerType: &nbv1.BackingStore{}}
 
-	err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, &handler.EnqueueRequestForObject{},
-		backingStorePredicate, &logEventsPredicate)
+	err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, &handler.EnqueueRequestForObject{}, backingStorePredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}

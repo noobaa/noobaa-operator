@@ -104,17 +104,17 @@ func Add(mgr manager.Manager) error {
 	}
 
 	storageClassHandler := handler.EnqueueRequestsFromMapFunc(func(mo client.Object) []reconcile.Request {
-			sc, ok := mo.(*storagev1.StorageClass)
-			if !ok || sc.Provisioner != options.ObjectBucketProvisionerName() {
-				return nil
-			}
-			return []reconcile.Request{{
-				NamespacedName: types.NamespacedName{
-					Name:      options.SystemName,
-					Namespace: options.Namespace,
-				},
-			}}
-		},
+		sc, ok := mo.(*storagev1.StorageClass)
+		if !ok || sc.Provisioner != options.ObjectBucketProvisionerName() {
+			return nil
+		}
+		return []reconcile.Request{{
+			NamespacedName: types.NamespacedName{
+				Name:      options.SystemName,
+				Namespace: options.Namespace,
+			},
+		}}
+	},
 	)
 
 	// Watch for StorageClass changes to trigger reconcile and recreate it when deleted
