@@ -17,12 +17,12 @@ require (
 	github.com/docker/distribution v2.8.1+incompatible
 	github.com/gemalto/kmip-go v0.0.8
 	github.com/google/uuid v1.3.0
-	github.com/kedacore/keda/v2 v2.7.0
-	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20221122204822-d1a8c34382f1
+	github.com/kedacore/keda/v2 v2.9.1
+	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20220811192603-abc54caa34ac
 	github.com/libopenstorage/secrets v0.0.0-20230117230814-885ae38d82f8
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.27.1
+	github.com/onsi/gomega v1.24.1
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/cloud-credential-operator v0.0.0-20210716145643-0ee1808fb8ed
 	github.com/openshift/custom-resource-status v1.1.2

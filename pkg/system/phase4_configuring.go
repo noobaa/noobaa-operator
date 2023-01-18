@@ -26,8 +26,10 @@ import (
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -43,6 +45,7 @@ const (
 	ibmEndpoint = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
 	ibmLocation = "%s-standard"
 	ibmCOSCred  = "ibm-cloud-cos-creds"
+	schema      = "https://"
 )
 
 type gcpAuthJSON struct {
@@ -536,7 +539,6 @@ func (r *Reconciler) awaitEndpointDeploymentPods() error {
 func (r *Reconciler) ReconcileHPAEndpoint() error {
 	// Wait for the the endpoint deployment to become ready
 	// only if HPA was not created yet
-
 	if r.HPAEndpoint.UID == "" {
 		if err := r.awaitEndpointDeploymentPods(); err != nil {
 			return err
@@ -558,20 +560,36 @@ func (r *Reconciler) updateNoobaaEndpoint() error {
 		max = endpointsSpec.MaxCount
 	}
 
-	region := ""
-	if r.NooBaa.Spec.Region != nil {
-		region = *r.NooBaa.Spec.Region
+func deployedPrometheus(log *logrus.Entry) *monitoringv1.PrometheusList {
+	prometheusList := &monitoringv1.PrometheusList{}
+	if !util.KubeList(prometheusList) {
+		return nil
 	}
+	if len(prometheusList.Items) == 0 {
+		log.Infof("❌  No prometheus found")
+		return nil
+	}
+	return prometheusList
+}
 
-	return r.NBClient.UpdateEndpointGroupAPI(nb.UpdateEndpointGroupParams{
-		GroupName: fmt.Sprint(r.NooBaa.UID),
-		IsRemote:  r.JoinSecret != nil,
-		Region:    region,
-		EndpointRange: nb.IntRange{
-			Min: min,
-			Max: max,
-		},
-	})
+func (r *Reconciler) checkAndCreatePrometheusSecret(serviceAccountName string, promethesNamespace string) error {
+	secretList := &corev1.SecretList{}
+	if !util.KubeList(secretList, &client.ListOptions{Namespace: promethesNamespace}) {
+		return fmt.Errorf("No prometheus secrets found ")
+	}
+	if len(secretList.Items) == 0 {
+		return fmt.Errorf("No prometheus secret found")
+	}
+	for _, secret := range secretList.Items {
+		if strings.Contains(secret.Name, serviceAccountName+"-token") {
+			kedaSecret := util.KubeObject(bundle.File_deploy_internal_hpa_keda_secret_yaml)
+			kedaSecretObject := kedaSecret.(*corev1.Secret)
+			kedaSecretObject.Namespace = r.Request.Namespace
+			kedaSecretObject.Data = secret.Data
+			util.KubeCreateSkipExisting(kedaSecretObject)
+		}
+	}
+	return nil
 }
 
 // SetDesiredHPAEndpoint updates the endpoint horizontal pod autoscaler as desired for reconciling
