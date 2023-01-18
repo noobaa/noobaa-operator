@@ -11,13 +11,13 @@ require (
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/IBM/keyprotect-go-client v0.8.0
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef
-	github.com/aws/aws-sdk-go v1.44.95
+	github.com/aws/aws-sdk-go v1.44.164
 	github.com/blang/semver/v4 v4.0.0
 	github.com/coreos/go-semver v0.3.0
 	github.com/docker/distribution v2.8.1+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20220811192603-abc54caa34ac
-	github.com/libopenstorage/secrets v0.0.0-20220710000753-f1eb4e951e29
+	github.com/libopenstorage/secrets v0.0.0-20230117230814-885ae38d82f8
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.1
@@ -79,7 +79,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
-	github.com/frankban/quicktest v1.14.2 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/gemalto/flume v0.13.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
@@ -145,7 +144,7 @@ require (
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
-	github.com/portworx/sched-ops v0.0.0-20200831185134-3e8010dc7056 // indirect
+	github.com/portworx/sched-ops v1.20.4-rc1.0.20220208024433-611d861089d4 // indirect
 	github.com/prometheus/client_golang v1.13.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
@@ -181,11 +180,8 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-replace (
-	github.com/hashicorp/consul-template => github.com/hashicorp/consul-template v0.29.6
-	// see https://github.com/rook/rook/blob/master/go.mod#L42-L43
-	github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
-)
+// see https://github.com/rook/rook/blob/master/go.mod#L42-L43
+replace github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 
 // https://github.com/rook/rook/blob/master/go.mod#L47-L49
 exclude (
