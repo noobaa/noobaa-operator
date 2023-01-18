@@ -881,6 +881,24 @@ spec:
                 nullable: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              autoscaler:
+                description: Configuration related to autoscaling
+                properties:
+                  autoscalerType:
+                    description: Type of autoscaling (optional) for noobaa-endpoint,
+                      hpav1 - default kubernetes based, hpav2 and keda - Prometheus
+                      metrics based
+                    enum:
+                    - hpav1
+                    - hpav2
+                    - keda
+                    type: string
+                  prometheusNamespace:
+                    description: Prometheus namespace that scrap metrics from noobaa
+                    type: string
+                required:
+                - autoscalerType
+                type: object
               cleanupPolicy:
                 description: CleanupPolicy (optional) Indicates user's policy for
                   deletion

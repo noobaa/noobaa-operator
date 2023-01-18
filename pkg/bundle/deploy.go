@@ -2,7 +2,7 @@ package bundle
 
 const Version = "5.13.0"
 
-const Sha256_deploy_cluster_role_yaml = "af479a2ade093cf0a2c220fe4650151075cc0aaa58a01dd0ae60e7f7022d42d5"
+const Sha256_deploy_cluster_role_yaml = "b88a4dd75765daafbe629cb4ddf4ed5a795de9819039f0bedd395f7152f50d65"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -39,6 +39,7 @@ rules:
       - ""
     resources:
       - namespaces
+      - services
     verbs:
       - get
   - apiGroups:
@@ -86,6 +87,28 @@ rules:
       - securitycontextconstraints
     verbs:
       - '*'
+  - apiGroups:
+      - keda.sh
+    resources:
+      - clustertriggerauthentications
+      - scaledobjects
+      - triggerauthentications
+      - scaledjobs
+    verbs: 
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  - apiGroups:
+    - monitoring.coreos.com
+    resources:
+    - prometheuses
+    verbs:
+    - get
+    - list
+    - watch
 `
 
 const Sha256_deploy_cluster_role_binding_yaml = "15c78355aefdceaf577bd96b4ae949ae424a3febdc8853be0917cf89a63941fc"
@@ -1265,7 +1288,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "813b6af0d38eddc034a7bec55c1fff5255d8d7e3707da939abb060803c55c6b8"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "317f93d895ce9390304bef23f11f5f08dad040cefd6194f15bf99ebc50bdc31d"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2150,6 +2173,24 @@ spec:
                 nullable: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              autoscaler:
+                description: Configuration related to autoscaling
+                properties:
+                  autoscalerType:
+                    description: Type of autoscaling (optional) for noobaa-endpoint,
+                      hpav1 - default kubernetes based, hpav2 and keda - Prometheus
+                      metrics based
+                    enum:
+                    - hpav1
+                    - hpav2
+                    - keda
+                    type: string
+                  prometheusNamespace:
+                    description: Prometheus namespace that scrap metrics from noobaa
+                    type: string
+                required:
+                - autoscalerType
+                type: object
               cleanupPolicy:
                 description: CleanupPolicy (optional) Indicates user's policy for
                   deletion
@@ -3549,6 +3590,59 @@ spec:
     kind: Deployment
     name: noobaa-endpoint
   targetCPUUtilizationPercentage: 80
+`
+
+const Sha256_deploy_internal_hpa_keda_scaled_object_yaml = "677b591e1d33aff3e176d0a46876f906cf477f6aa02dead72bd198297ece91fa"
+
+const File_deploy_internal_hpa_keda_scaled_object_yaml = `apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: noobaa-endpoint
+  labels:
+    deploymentName: noobaa-endpoint
+    origin: keda
+    app: noobaa
+    scaledobject.keda.sh/name: prometheus-scaledobject
+spec:
+  cooldownPeriod: 150
+  maxReplicaCount: 2
+  minReplicaCount: 1
+  pollingInterval: 30
+  scaleTargetRef:
+    name: noobaa-endpoint
+  triggers:
+    - authenticationRef: 
+        name: keda-prom-creds
+      metadata:
+        authModes: bearer
+        metricName: NooBaa_num_namespace_buckets
+        query: '(sum(irate(container_network_receive_bytes_total{pod=~"noobaa-endpoint-.*", namespace="placeholder"}[5m])) by (pod, namespace))'
+        threshold: '9000000'
+      type: prometheus
+`
+
+const Sha256_deploy_internal_hpa_keda_secret_yaml = "f3afaa7cbda1cde7d38a722661c4694227172603dc7f52dbb608463a10ba2e22"
+
+const File_deploy_internal_hpa_keda_secret_yaml = `apiVersion: v1
+kind: Secret
+metadata:
+  name: prometheus-k8s-token
+  labels:
+    origin: keda
+type: Opaque
+data: {}
+`
+
+const Sha256_deploy_internal_hpa_keda_trigger_authentication_yaml = "55e1a26af5761d17c32ae145623f78b639e44abc2364fdc0002269e343013d23"
+
+const File_deploy_internal_hpa_keda_trigger_authentication_yaml = `apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-prom-creds
+  labels:
+    origin: keda
+spec:
+  secretTargetRef: []
 `
 
 const Sha256_deploy_internal_job_upgrade_db_yaml = "4ae1ae1f6009e578ea4cc937c305068dd8f21b93b0d7fd43350628e84725f337"
@@ -5235,7 +5329,7 @@ spec:
                   fieldPath: metadata.namespace
 `
 
-const Sha256_deploy_role_yaml = "99798a1daa31e0f0546dbea3ba11411f0298051c64c401c9f168120ef2a9ef46"
+const Sha256_deploy_role_yaml = "ce3cbcb74a9309158d7cf71ef38e747fe76c1bc0fb0f15d3e5404a746ce988e1"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -5352,6 +5446,7 @@ rules:
   - patch
   - list
   - watch
+  - delete
 - apiGroups:
   - batch
   resources:

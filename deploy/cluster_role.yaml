@@ -33,6 +33,7 @@ rules:
       - ""
     resources:
       - namespaces
+      - services
     verbs:
       - get
   - apiGroups:
@@ -80,3 +81,25 @@ rules:
       - securitycontextconstraints
     verbs:
       - '*'
+  - apiGroups:
+      - keda.sh
+    resources:
+      - clustertriggerauthentications
+      - scaledobjects
+      - triggerauthentications
+      - scaledjobs
+    verbs: 
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  - apiGroups:
+    - monitoring.coreos.com
+    resources:
+    - prometheuses
+    verbs:
+    - get
+    - list
+    - watch

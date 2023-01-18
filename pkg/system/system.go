@@ -149,6 +149,12 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 
 	LoadConfigMapFromFlags()
 
+	if options.DefaultAutoscalerType != "" {
+		sys.Spec.Autoscaler.AutoscalerType = nbv1.AutoscalerTypes(options.DefaultAutoscalerType)
+	}
+	if options.PrometheusNamespace != "" {
+		sys.Spec.Autoscaler.PrometheusNamespace = options.PrometheusNamespace
+	}
 	if options.NooBaaImage != "" {
 		image := options.NooBaaImage
 		sys.Spec.Image = &image
@@ -437,6 +443,8 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		}
 		util.KubeDelete(obj, client.GracePeriodSeconds(0))
 	}
+
+	deleteKedaResources()
 }
 
 // RunList runs a CLI command

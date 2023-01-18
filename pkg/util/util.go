@@ -25,6 +25,7 @@ import (
 	"time"
 	"unicode"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/v5/pkg/apis"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -160,6 +161,7 @@ func init() {
 	Panic(routev1.AddToScheme(scheme.Scheme))
 	Panic(secv1.AddToScheme(scheme.Scheme))
 	Panic(autoscalingv1.AddToScheme(scheme.Scheme))
+	Panic(kedav1alpha1.AddToScheme(scheme.Scheme))
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)
@@ -194,6 +196,7 @@ func MapperProvider(config *rest.Config) (meta.RESTMapper, error) {
 				g.Name == "ceph.rook.io" ||
 				g.Name == "autoscaling" ||
 				g.Name == "batch" ||
+				g.Name == "keda.sh" ||
 				strings.HasSuffix(g.Name, ".k8s.io") {
 				return true
 			}
