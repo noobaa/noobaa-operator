@@ -1,8 +1,8 @@
 name: Run Operator Unit Tests
-
-# Run on each new PR and each new push to existing PR
 on: [push, pull_request]
-
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 env:
   ACTIONS_ALLOW_UNSECURE_COMMANDS: "true"
   GO111MODULE: "on"
@@ -12,10 +12,12 @@ env:
 jobs:
   run-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - name: checkout
-        uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+        uses: actions/checkout@v3
+      - uses: actions/setup-go@v2 # Could not change to version 3, see issue:
+        # https://github.com/noobaa/noobaa-operator/issues/1031
         with:
           go-version: "1.18"
 
@@ -44,6 +46,7 @@ jobs:
 
   run-cli-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - name: checkout
         uses: actions/checkout@v2
@@ -72,6 +75,7 @@ jobs:
 
   run-core-config-map-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - name: checkout
         uses: actions/checkout@v2

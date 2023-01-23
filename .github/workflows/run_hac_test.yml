@@ -1,15 +1,17 @@
 name: HAC on KIND cluster Test
-
-# Run on each new PR and each new push to existing PR
 on: [push, pull_request]
 
 jobs:
   run-hac-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: checkout
-        uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+        uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
         with:
           go-version: "1.18"
 

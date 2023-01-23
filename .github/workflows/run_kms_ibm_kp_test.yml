@@ -1,6 +1,4 @@
 name: KMS Test - IBM KP
-
-# Run on each new PR and each new push to existing PR
 on: [push, pull_request]
 
 jobs:
@@ -9,10 +7,14 @@ jobs:
       IBM_KP_SERVICE_INSTANCE_ID: ${{ secrets.IBM_INSTANCE_ID }}
       IBM_KP_SERVICE_API_KEY: ${{ secrets.IBM_SERVICE_API_KEY }}
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: checkout
-        uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+        uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
         with:
           go-version: "1.18"
 
