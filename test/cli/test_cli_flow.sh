@@ -27,6 +27,7 @@ function post_install_tests {
     test_noobaa_cr_deletion
     test_noobaa_loadbalancer_source_subnet
     test_multinamespace_bucketclass
+    check_default_backingstore #It deletes all the buckets and non-default accounts, creates new backingstore and attach it to default admin account and then deletes default backingstore
 }
 
 function main {

@@ -1219,7 +1219,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "a04493f5b341dd61972a1e61620e2226efde852d05702d25defc26479b1a5d5d"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "b1b29dbd1ee360be1495188d47810941a29dbbedf8db4cc0b80190bc3751a9d3"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2231,7 +2231,8 @@ spec:
                 - default_level
                 type: integer
               defaultBackingStoreSpec:
-                description: BackingStoreSpec defines the desired state of BackingStore
+                description: 'Deprecated: DefaultBackingStoreSpec is not supported
+                  anymore, use ManualDefaultBackingStore instead.'
                 properties:
                   awsS3:
                     description: AWSS3Spec specifies a backing store of type aws-s3
@@ -2550,6 +2551,15 @@ spec:
                       type: string
                     type: array
                 type: object
+              manualDefaultBackingStore:
+                description: ManualDefaultBackingStore (optional - default value is
+                  false) if true the default backingstore will not be reconciled by
+                  the operator and it should be manually handled by the user. It will
+                  allow the user to  delete DefaultBackingStore, user needs to delete
+                  associated buckets and update the admin account with new BackingStore
+                  in order to delete the DefaultBackingStore
+                nullable: true
+                type: boolean
               mongoDbURL:
                 description: MongoDbURL (optional) overrides the default mongo db
                   remote url

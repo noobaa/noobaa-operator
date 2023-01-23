@@ -1008,7 +1008,8 @@ spec:
                 - default_level
                 type: integer
               defaultBackingStoreSpec:
-                description: BackingStoreSpec defines the desired state of BackingStore
+                description: 'Deprecated: DefaultBackingStoreSpec is not supported
+                  anymore, use ManualDefaultBackingStore instead.'
                 properties:
                   awsS3:
                     description: AWSS3Spec specifies a backing store of type aws-s3
@@ -1327,6 +1328,15 @@ spec:
                       type: string
                     type: array
                 type: object
+              manualDefaultBackingStore:
+                description: ManualDefaultBackingStore (optional - default value is
+                  false) if true the default backingstore will not be reconciled by
+                  the operator and it should be manually handled by the user. It will
+                  allow the user to  delete DefaultBackingStore, user needs to delete
+                  associated buckets and update the admin account with new BackingStore
+                  in order to delete the DefaultBackingStore
+                nullable: true
+                type: boolean
               mongoDbURL:
                 description: MongoDbURL (optional) overrides the default mongo db
                   remote url

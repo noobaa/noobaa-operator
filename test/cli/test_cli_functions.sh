@@ -807,7 +807,7 @@ function delete_namespacestore_path {
 }
 
 function delete_account {
-    local accounts=($(test_noobaa silence accounts list | grep -v "NAME" | awk '{print $1}'))
+    local accounts=($(test_noobaa silence account list | grep -v "NAME" | awk '{print $1}'))
     for account in ${accounts[@]}
     do
         test_noobaa account delete ${account}
@@ -916,6 +916,67 @@ function check_backingstore {
 
     echo_time "💬  Deleting bucket testbucket"
     test_noobaa bucket delete "testbucket"
+}
+
+function check_default_backingstore {
+    echo_time "💬 Checking if Noobaa Default Backingstore is already present"
+    local default_backing=$(kuberun get backingstore | grep -w noobaa-default-backing-store | wc -l)
+    if [[ "${default_backing}" =~ "1" ]]
+    then
+        echo_time "✅  Default Backingstore is already present"
+    else
+        echo_time "❌  Default Backingstore is not already present, Exiting"
+        exit 1
+    fi
+
+    echo_time "💬 Disabling Noobaa default backingstore"
+	kuberun patch noobaa/noobaa --type json --patch='[{"op":"add","path":"/spec/manualDefaultBackingStore","value":true}]'
+
+    echo_time "💬 Deleting Noobaa default backingstore and its connected instances"
+    echo_time "💬 Deleting buckets"
+    NOOBAA_ACCESS_KEY=$(kuberun get secret noobaa-admin -n test -o json | jq -r '.data.AWS_ACCESS_KEY_ID|@base64d')
+    NOOBAA_SECRET_KEY=$(kuberun get secret noobaa-admin -n test -o json | jq -r '.data.AWS_SECRET_ACCESS_KEY|@base64d')
+    ENDPOINT=$(kuberun get noobaa noobaa -n test -o json | jq -r '.status.services.serviceS3.nodePorts[0]')
+    echo $ENDPOINT
+    AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 ls
+    for bucket in $(AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 ls | awk '{print $3}'); 
+    do  
+        AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 rb "s3://${bucket}" --force ; 
+    done
+    "💬 Deleting non-default accounts"
+    delete_account
+
+    echo_time "💬 Creating new-default-backing-store and updating the admin account default_resourse with it"
+    test_noobaa backingstore create pv-pool new-default-backing-store --num-volumes 1 --pv-size-gb 16
+    test_noobaa api account update_account_s3_access '{"email":"admin@noobaa.io","s3_access":true,"default_resource":"new-default-backing-store"}'
+    test_noobaa api account list_accounts {}
+    test_noobaa account list
+
+    echo_time "💬 Deleting backingstore noobaa-default-backing-store"
+    kuberun delete backingstore noobaa-default-backing-store -n test | kubectl patch -n test backingstore/noobaa-default-backing-store --type json --patch='[ { "op": "remove", "path": "/metadata/finalizers" } ]'
+
+    default_backing=$(kuberun get backingstore | grep -w noobaa-default-backing-store | wc -l)
+    while [[ "${default_backing}" =~ "1" ]]
+    do
+        echo_time "💬  Waiting for default backingstore to be deleted"
+        sleep 3
+        default_backing=$(kuberun get backingstore | grep -w noobaa-default-backing-store | wc -l)
+    done
+    sleep 20
+
+    echo_time "💬 Checking if Noobaa Default Backingstore is Reconciled"
+    local default_backing=$(kuberun get backingstore | grep -w noobaa-default-backing-store | wc -l)
+    if [[ "${default_backing}" =~ "0" ]]
+    then
+        echo_time "✅  Default Backingstore is not reconciled, Successful"
+    else
+        echo_time "❌  Default Backingstore is reconciled, Exiting"
+        exit 1
+    fi
+
+    echo_time "💬 Enabling Noobaa default backingstore"
+    kuberun patch noobaa/noobaa --type json --patch='[{"op":"add","path":"/spec/manualDefaultBackingStore","value":false}]'
+    sleep 10s
 }
 
 function check_dbdump {
