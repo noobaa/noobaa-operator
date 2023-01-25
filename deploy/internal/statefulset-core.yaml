@@ -33,6 +33,10 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
+        - name: noobaa-server
+          secret:
+            secretName: noobaa-server
+            optional: true    
         - name: oidc-token
           projected:
             sources:
@@ -54,6 +58,9 @@ spec:
               readOnly: true
             - name: s3-secret
               mountPath: /etc/s3-secret
+              readOnly: true
+            - name: noobaa-server
+              mountPath: /etc/noobaa-server
               readOnly: true
             - mountPath: /var/run/secrets/openshift/serviceaccount
               name: oidc-token
@@ -100,16 +107,6 @@ spec:
               value: mongodb
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: noobaa-server
-                  key: jwt
-            - name: SERVER_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: noobaa-server
-                  key: server_secret
             - name: NOOBAA_ROOT_SECRET
             - name: NODE_EXTRA_CA_CERTS
             - name: AGENT_PROFILE
