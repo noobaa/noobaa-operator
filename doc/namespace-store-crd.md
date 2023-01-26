@@ -5,7 +5,7 @@ NamespaceStore CRD represents an underlying storage to be used as read or write 
 namespace buckets.
 These storage targets are used to store plain data.
 Namespace-Store are referred to by name when defining [BucketClass](bucket-class-crd.md).
-Multiple types of Namespace-Store are currently supported: aws-s3, s3-compatible, ibm-cos, azure-blob.
+Multiple types of Namespace-Store are currently supported: aws-s3, s3-compatible, ibm-cos, google-cloud-storage, azure-blob.
 
 # Definitions
 
@@ -92,6 +92,31 @@ spec:
     signatureVersion: v2
     targetBucket: BUCKET
   type: ibm-cos
+```
+
+#### GOOGLE-CLOUD-STORAGE type
+
+Create a cloud resource within the NooBaa brain and use Google Cloud Storage API for reading or writing data in any Google Cloud Storage API compatible endpoint.
+```shell
+noobaa -n noobaa namespacestore create google-cloud-storage ns --private-key-json-file key.json --target-bucket BUCKET
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: NamespaceStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  labels:
+    app: noobaa
+  name: bs
+  namespace: noobaa
+spec:
+  googleCloudStorage:
+    secret:
+      name: namespace-store-google-cloud-storage-bs
+      namespace: noobaa
+    targetBucket: BUCKET
+  type: google-cloud-storage
 ```
 
 #### AZURE-BLOB type

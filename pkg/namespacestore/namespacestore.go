@@ -1,7 +1,9 @@
 package namespacestore
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -51,6 +53,7 @@ func CmdCreate() *cobra.Command {
 	cmd.AddCommand(
 		CmdCreateAWSS3(),
 		CmdCreateAWSSTSS3(),
+		CmdCreateGoogleCloudStorage(),
 		CmdCreateS3Compatible(),
 		CmdCreateIBMCos(),
 		CmdCreateAzureBlob(),
@@ -111,6 +114,29 @@ func CmdCreateAWSSTSS3() *cobra.Command {
 	cmd.Flags().String(
 		"region", "",
 		"The AWS bucket region",
+	)
+	return cmd
+}
+
+// CmdCreateGoogleCloudStorage returns a CLI command
+func CmdCreateGoogleCloudStorage() *cobra.Command {
+	cmd := &cobra.Command{
+		Hidden: true, //TODO: remove once we want to expose it. 
+		Use:   "google-cloud-storage <namespace-store-name>",
+		Short: "Create google-cloud-storage namespace store",
+		Run:   RunCreateGoogleCloudStorage,
+	}
+	cmd.Flags().String(
+		"target-bucket", "",
+		"The target bucket name on Google cloud storage",
+	)
+	cmd.Flags().String(
+		"private-key-json-file", "",
+		`private-key-json-file is the path to the json file provided by google for service account authentication`,
+	)
+	cmd.Flags().String(
+		"secret-name", "",
+		`The name of a secret for authentication - should have GoogleServiceAccountPrivateKeyJson property`,
 	)
 	return cmd
 }
@@ -483,6 +509,42 @@ func RunCreateAWSSTSS3(cmd *cobra.Command, args []string) {
 		log.Printf("")
 		RunStatus(cmd, args)
 	}
+}
+
+// RunCreateGoogleCloudStorage runs a CLI command
+func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	createCommon(cmd, args, nbv1.NSStoreTypeGoogleCloudStorage, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
+		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
+		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"GoogleServiceAccountPrivateKeyJson"}
+
+		if secretName == "" {
+			privateKeyJSONFile := util.GetFlagStringOrPrompt(cmd, "private-key-json-file")
+			bytes, err := os.ReadFile(privateKeyJSONFile)
+			if err != nil {
+				log.Fatalf("Failed to read file %q: %v", privateKeyJSONFile, err)
+			}
+			var privateKeyJSON map[string]interface{}
+			err = json.Unmarshal(bytes, &privateKeyJSON)
+			if err != nil {
+				log.Fatalf("Failed to parse json file %q: %v", privateKeyJSONFile, err)
+			}
+			secret.StringData["GoogleServiceAccountPrivateKeyJson"] = string(bytes)
+		} else {
+			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
+			secret.Name = secretName
+			secret.Namespace = options.Namespace
+		}
+
+		namespaceStore.Spec.GoogleCloudStorage = &nbv1.GoogleCloudStorageSpec{
+			TargetBucket: targetBucket,
+			Secret: corev1.SecretReference{
+				Name:      secret.Name,
+				Namespace: secret.Namespace,
+			},
+		}
+	})
 }
 
 // RunCreateS3Compatible runs a CLI command

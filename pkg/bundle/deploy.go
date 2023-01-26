@@ -729,7 +729,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "94617b9c3967ae0d8515f6196e9a6571242e74ebca91eedba56b57e8ac460551"
+const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "091c20d3b5d3f245a83def2dccc11ae255a08ddd703b3915e9ecb890d01042ec"
 
 const File_deploy_crds_noobaa_io_namespacestores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -833,6 +833,31 @@ spec:
                 required:
                 - secret
                 - targetBlobContainer
+                type: object
+              googleCloudStorage:
+                description: GoogleCloudStorage specifies a namespace store of type
+                  google-cloud-storage
+                properties:
+                  secret:
+                    description: Secret refers to a secret that provides the credentials
+                      The secret should define GoogleServiceAccountPrivateKeyJson
+                      containing the entire json string as provided by Google.
+                    properties:
+                      name:
+                        description: name is unique within a namespace to reference
+                          a secret resource.
+                        type: string
+                      namespace:
+                        description: namespace defines the space within which the
+                          secret name must be unique.
+                        type: string
+                    type: object
+                  targetBucket:
+                    description: TargetBucket is the name of the target S3 bucket
+                    type: string
+                required:
+                - secret
+                - targetBucket
                 type: object
               ibmCos:
                 description: IBMCos specifies a namespace store of type ibm-cos

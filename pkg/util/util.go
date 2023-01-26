@@ -117,7 +117,7 @@ var (
 		"aws-s3":               {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},         // backingstores and namespacestores
 		"s3-compatible":        {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},         // backingstores and namespacestores
 		"ibm-cos":              {"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"}, // backingstores and namespacestores
-		"google-cloud-storage": {"GoogleServiceAccountPrivateKeyJson"},                 // backingstores
+		"google-cloud-storage": {"GoogleServiceAccountPrivateKeyJson"},                 // backingstores and namespacestores
 		"azure-blob":           {"AccountName", "AccountKey"},                          // backingstores and namespacestores
 		"pv-pool":              {},                                                     // backingstores
 		"nsfs":                 {},                                                     // namespacestores
@@ -1732,6 +1732,8 @@ func GetNamespaceStoreSecretByType(ns *nbv1.NamespaceStore) (*corev1.SecretRefer
 		secretRef = ns.Spec.IBMCos.Secret
 	case nbv1.NSStoreTypeAzureBlob:
 		secretRef = ns.Spec.AzureBlob.Secret
+	case nbv1.NSStoreTypeGoogleCloudStorage:
+		secretRef = ns.Spec.GoogleCloudStorage.Secret
 	case nbv1.NSStoreTypeNSFS:
 		return nil, nil
 	default:
@@ -1768,6 +1770,9 @@ func SetNamespaceStoreSecretRef(ns *nbv1.NamespaceStore, ref *corev1.SecretRefer
 	case nbv1.NSStoreTypeAzureBlob:
 		ns.Spec.AzureBlob.Secret = *ref
 		return nil
+	case nbv1.NSStoreTypeGoogleCloudStorage:
+		ns.Spec.GoogleCloudStorage.Secret = *ref
+		return nil
 	case nbv1.NSStoreTypeNSFS:
 		return nil
 	default:
@@ -1786,6 +1791,8 @@ func GetNamespaceStoreTargetBucket(ns *nbv1.NamespaceStore) (string, error) {
 		return ns.Spec.IBMCos.TargetBucket, nil
 	case nbv1.NSStoreTypeAzureBlob:
 		return ns.Spec.AzureBlob.TargetBlobContainer, nil
+	case nbv1.NSStoreTypeGoogleCloudStorage:
+		return ns.Spec.GoogleCloudStorage.TargetBucket, nil
 	case nbv1.NSStoreTypeNSFS:
 		return "", nil
 	default:

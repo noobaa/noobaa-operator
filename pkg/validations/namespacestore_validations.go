@@ -42,6 +42,9 @@ func ValidateNamespaceStore(nsStore *nbv1.NamespaceStore) error {
 	case nbv1.NSStoreTypeAzureBlob:
 		return nil
 
+	case nbv1.NSStoreTypeGoogleCloudStorage:
+		return nil
+
 	default:
 		return util.ValidationError{
 			Msg: "Invalid Namespacestore type, please provide a valid Namespacestore type",
@@ -206,6 +209,12 @@ func ValidateNSEmptySecretName(ns nbv1.NamespaceStore) error {
 				Msg: "Failed creating the namespacestore, please provide secret name",
 			}
 		}
+	case nbv1.NSStoreTypeGoogleCloudStorage:
+		if len(ns.Spec.GoogleCloudStorage.Secret.Name) == 0 {
+			return util.ValidationError{
+				Msg: "Failed creating the namespacestore, please provide secret name",
+			}
+		}
 	case nbv1.NSStoreTypeNSFS:
 		break
 	default:
@@ -243,6 +252,12 @@ func ValidateNSEmptyTargetBucket(ns nbv1.NamespaceStore) error {
 				Msg: "Failed creating the namespacestore, please provide target bucket",
 			}
 		}
+	case nbv1.NSStoreTypeGoogleCloudStorage:
+		if len(ns.Spec.GoogleCloudStorage.TargetBucket) == 0 {
+			return util.ValidationError{
+				Msg: "Failed creating the namespacestore, please provide target bucket",
+			}
+		}
 	case nbv1.NSStoreTypeNSFS:
 		break
 	default:
@@ -276,6 +291,12 @@ func ValidateTargetNSBucketChange(ns nbv1.NamespaceStore, oldNs nbv1.NamespaceSt
 		}
 	case nbv1.NSStoreTypeAzureBlob:
 		if oldNs.Spec.AzureBlob.TargetBlobContainer != ns.Spec.AzureBlob.TargetBlobContainer {
+			return util.ValidationError{
+				Msg: "Changing a NamespaceStore target bucket is unsupported",
+			}
+		}
+	case nbv1.NSStoreTypeGoogleCloudStorage:
+		if oldNs.Spec.GoogleCloudStorage.TargetBucket != ns.Spec.GoogleCloudStorage.TargetBucket {
 			return util.ValidationError{
 				Msg: "Changing a NamespaceStore target bucket is unsupported",
 			}
