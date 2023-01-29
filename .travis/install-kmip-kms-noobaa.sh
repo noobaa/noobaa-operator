@@ -4,7 +4,7 @@ set -o errexit
 container=$(docker run -d \
     -e "DOCKER_STEPCA_INIT_NAME=The Authority" \
     -e "DOCKER_STEPCA_INIT_DNS_NAMES=localhost,$(hostname -f)" \
-    smallstep/step-ca:0.23.0)
+    smallstep/step-ca:0.22.1)
 echo "💬 Generate certificates in container $container"
 while [ "$(docker inspect -f {{.State.Running}} $container)" != "true" ]; do
     echo "💬 Wait for container $container to start running, state running $(docker inspect -f {{.State.Running}} $container)"
