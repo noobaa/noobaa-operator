@@ -120,7 +120,7 @@ Secret:
 apiVersion: v1
 data:
   AWS_ACCESS_KEY_ID: UU1odkFSWjNiMWplTmx2UnZpcHU=
-  AWS_SECRET_ACCESS_KEY: eTdFdlkva1FSQVEzWElWWXB3L2ZYdVBZdG8wSDBxaVlBSUpraW1iTA==
+  AWS_SECRET_ACCESS_KEY: EXAMPLEeTdFdlkva1FSQVEzWElWWXB3L2ZYdVBZdG8wSDBxaVlBSUpraW1iTA==
 kind: Secret
 metadata:
   creationTimestamp: "2020-01-14T08:05:31Z"
