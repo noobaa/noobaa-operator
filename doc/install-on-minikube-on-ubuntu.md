@@ -214,7 +214,7 @@ PodPorts    : [https://172.17.0.5:6443]
 #------------------#
 
 AWS_ACCESS_KEY_ID     : ku2pBEPGqsTvGd47qfL9
-AWS_SECRET_ACCESS_KEY : KQTQOIK1BGZcYYPqaYw8RFfpt0RmsVsyfdn/BR4J
+AWS_SECRET_ACCESS_KEY : EXAMPLEKQTQOIK1BGZcYYPqaYw8RFfpt0RmsVsyfdn/BR4J
 
 #------------------#
 #- Backing Stores -#
