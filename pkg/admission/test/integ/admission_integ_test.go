@@ -2,6 +2,7 @@ package admissionintegtests
 
 import (
 	"context"
+	"fmt"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
@@ -9,8 +10,10 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/operator"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -256,19 +259,31 @@ var _ = Describe("Admission server integration tests", func() {
 					Namespace: namespace,
 				},
 			}
+			nbClient := system.GetNBClient()
+			err := nbClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
+				Email:           "admin@noobaa.io",
+				S3Access:        true,
+				DefaultResource: &defaultBs.Name,
+			})
+			if err != nil {
+				fmt.Printf("SDSD after setting the default resource err message %s\n", err)
+			}
 
-			// try to delete noobaa-default-backing-store and failing because it has data buckets
+			//try to delete noobaa-default-backing-store
 			result, err = KubeDelete(defaultBs)
 			Expect(result).To(BeFalse())
 			Ω(err).Should(HaveOccurred())
 			Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: cannot complete because pool \"noobaa-default-backing-store\" in \"IN_USE\" state"))
 		})
-		It("Should Allow", func() {
+		It("Should Allow bs", func() {
 			// delete "bs-name" backingstore
 			result, err = KubeDelete(testBackingstore)
+			fmt.Printf("SDSD result %t err message %s", result, err)
+			fmt.Println("SDSD", testBackingstore)
 			Expect(result).To(BeTrue())
 			Ω(err).ShouldNot(HaveOccurred())
-
+		})
+		It("Should Allow ns", func() { //separate to 2 tests
 			// delete "ns-name" namespacestore
 			result, err = KubeDelete(testNamespacestore)
 			Expect(result).To(BeTrue())
