@@ -1,7 +1,5 @@
 name: Admission Webhook Tests
-
-# Run on each new PR and each new push to existing PR
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   run-admission-test:
@@ -11,9 +9,24 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
-      - name: checkout
+      - name: Checkout noobaa-core
         uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+        with:
+          repository: 'noobaa/noobaa-core'
+          path: "noobaa-core"
+          # Freeze the version of core
+          # to avoid a failed run due to code changes in the core repo.
+          # Need to update the commit once in a while
+          ref: 293fefb9e755fa0d6bf1cc8b31f74259a0001730
+
+      - name: Checkout noobaa-operator
+        uses: actions/checkout@v3
+        with:
+          repository: 'noobaa/noobaa-operator'
+          path: "noobaa-operator"
+
+      - name: Setup Go on runner
+        uses: actions/setup-go@v3
         with:
           go-version: "1.18"
 
@@ -22,30 +35,78 @@ jobs:
           echo PATH=$PATH:$HOME/go/bin                           >> $GITHUB_ENV
           echo OPERATOR_IMAGE=noobaa/noobaa-operator:integration >> $GITHUB_ENV
           echo CHANGE_MINIKUBE_NONE_USER=true                    >> $GITHUB_ENV
- 
-      - name: Deploy Dependencies
+
+      - name: Deploy dependencies
         run: |
           set -x
+          cd ./noobaa-operator
           sudo bash .travis/install-minikube.sh
           go get -v github.com/onsi/ginkgo/ginkgo
           go install -v github.com/onsi/ginkgo/ginkgo
           ginkgo version
 
-      - name: Update Kubectl Context
+      - name: Change settings for k8s and minikube
         run: |
           sudo mv /root/.kube /root/.minikube $HOME
           sudo chown -R $USER $HOME/.kube $HOME/.minikube
           sed "s/root/home\/$USER/g" $HOME/.kube/config > tmp; mv tmp $HOME/.kube/config
 
-      - name: Build NooBaa
+      - name: Build noobaa image
         run: |
+          cd ./noobaa-core
+          make noobaa NOOBAA_TAG=noobaa-core:admission-test
+
+      - name: Build operator image
+        run: |
+          set -x
+          cd ./noobaa-operator
           make cli
           make image
           sudo docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
 
-      - name: Install NooBaa
+      - name: Install noobaa system
         run: |
-          ./build/_output/bin/noobaa-operator -n test --mini --admission --operator-image=$OPERATOR_IMAGE install
+          cd ./noobaa-operator
+          ./build/_output/bin/noobaa-operator crd create -n test
+          ./build/_output/bin/noobaa-operator operator install --operator-image=$OPERATOR_IMAGE --admission -n test
+          ./build/_output/bin/noobaa-operator system create \
+          --db-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
+          --core-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
+          --endpoint-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
+          --noobaa-image='noobaa-core:admission-test' -n test
+          ./build/_output/bin/noobaa-operator status -n test
+          # we added the sleep since the test pool is in phase ready and condition available
+          # but the test pool storage is not ready yet, see issue:
+          # https://github.com/noobaa/noobaa-operator/issues/1007
+          sleep 3m
+          kubectl wait --for=condition=available backingstore/noobaa-default-backing-store --timeout=3m -n test
 
       - name: Run Admission test
-        run: make test-admission
+        run: |
+          set -x
+          cd ./noobaa-operator
+          make test-admission
+
+      - name: Collect logs
+        if: ${{ failure() }}
+        run: |
+          set -x
+          cd ./noobaa-operator
+          kubectl get events --sort-by='.metadata.creationTimestamp' -A > logs_kubectl_events.txt
+          ./build/_output/bin/noobaa-operator diagnose --db-dump --dir=admission-tests-logs -n test
+          # We have a problem with the db-dump on namespaces which are not default
+          # https://github.com/noobaa/noobaa-operator/issues/1040
+          mv logs_kubectl_events.txt ./admission-tests-logs
+
+      - name: Save logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: admission-tests-logs
+          path: noobaa-operator/admission-tests-logs
+
+      # Uncomment this step in case where you want to connect to the VM of this workflow using SSH.
+      # Pay attention that this workflow was configured with a timeout, and you might change it for this step.
+      # - name: Setup tmate session
+      #   if: ${{ failure() }}
+      #   uses: mxschmitt/action-tmate@v3
