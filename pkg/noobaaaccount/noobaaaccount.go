@@ -355,11 +355,11 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	noobaaAccount.Namespace = options.Namespace
 	secret.Namespace = options.Namespace
 
-	if !util.KubeCheck(noobaaAccount) && (name != "admin@noobaa.io") {
+	if name == "admin@noobaa.io" {
+		secret.Name = "noobaa-admin"
+	} else if !util.KubeCheck(noobaaAccount) {
 		log.Fatalf(`❌ Could not get NooBaaAccount %q in namespace %q`,
 			noobaaAccount.Name, noobaaAccount.Namespace)
-	} else if name == "admin@noobaa.io" {
-		secret.Name = "noobaa-admin"
 	} else {
 		CheckPhase(noobaaAccount)
 
