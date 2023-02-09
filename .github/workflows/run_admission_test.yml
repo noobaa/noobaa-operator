@@ -1,21 +1,31 @@
 name: Admission Webhook Tests
-
-# Run on each new PR and each new push to existing PR
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   run-admission-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+   # timeout-minutes: 90
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
-      - name: checkout
+      - name: Checkout noobaa-core
         uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
         with:
-          go-version: "1.18"
+          repository: 'shirady/noobaa-core'
+          path: 'noobaa-core'
+          ref: 'backing-store-status'
+
+      - name: Checkout noobaa-operator
+        uses: actions/checkout@v3
+        with:
+          repository: 'noobaa/noobaa-operator'
+          path: 'noobaa-operator'
+        
+      - name: Setup Go on runner
+        uses: actions/setup-go@v3
+        with:
+         go-version: "1.18"
 
       - name: Set environment variables
         run: |
@@ -23,29 +33,74 @@ jobs:
           echo OPERATOR_IMAGE=noobaa/noobaa-operator:integration >> $GITHUB_ENV
           echo CHANGE_MINIKUBE_NONE_USER=true                    >> $GITHUB_ENV
  
-      - name: Deploy Dependencies
+      - name: Deploy dependencies
         run: |
           set -x
+          cd ./noobaa-operator
           sudo bash .travis/install-minikube.sh
           go get -v github.com/onsi/ginkgo/ginkgo
           go install -v github.com/onsi/ginkgo/ginkgo
           ginkgo version
 
-      - name: Update Kubectl Context
+      - name: Change settings for k8s and minikube
         run: |
           sudo mv /root/.kube /root/.minikube $HOME
           sudo chown -R $USER $HOME/.kube $HOME/.minikube
           sed "s/root/home\/$USER/g" $HOME/.kube/config > tmp; mv tmp $HOME/.kube/config
 
-      - name: Build NooBaa
+      - name: Build noobaa image
         run: |
+         cd ./noobaa-core
+         make noobaa NOOBAA_TAG=noobaa-core:backing-store-status
+
+      - name: Build operator image
+        run: |
+          set -x
+          cd ./noobaa-operator
           make cli
           make image
           sudo docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
 
-      - name: Install NooBaa
+      - name: Install noobaa system
         run: |
-          ./build/_output/bin/noobaa-operator -n test --mini --admission --operator-image=$OPERATOR_IMAGE install
+         cd ./noobaa-operator
+         ./build/_output/bin/noobaa-operator crd create -n test
+         ./build/_output/bin/noobaa-operator operator install --operator-image=$OPERATOR_IMAGE --admission -n test
+         ./build/_output/bin/noobaa-operator system create \
+         --db-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
+         --core-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
+         --endpoint-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
+         --noobaa-image='noobaa-core:backing-store-status' -n test
+         ./build/_output/bin/noobaa-operator status -n test
+          sleep 3m
+          kubectl wait --for=condition=available backingstore/noobaa-default-backing-store --timeout=3m -n test
 
       - name: Run Admission test
-        run: make test-admission
+        run: |
+          set -x
+          cd ./noobaa-operator
+          make test-admission
+
+      - name: Collect logs
+        if: ${{ always() }}
+        run: |
+         set -x
+         cd ./noobaa-operator
+         kubectl logs -n test $(kubectl get pods -n test | grep operator | awk '{ print $1}') > logs_operator.txt
+         kubectl logs -n test $(kubectl get pods -n test | grep core | awk '{ print $1}') > logs_core.txt
+         kubectl get events --sort-by='.metadata.creationTimestamp' -A > logs_kubectl_events.txt
+         ./build/_output/bin/noobaa-operator diagnose --db-dump --dir=admission-tests-logs -n test
+         mv logs_operator.txt ./admission-tests-logs
+         mv logs_core.txt ./admission-tests-logs
+         mv logs_kubectl_events.txt ./admission-tests-logs
+
+      - name: Save logs
+        if: ${{ always() }}    
+        uses: actions/upload-artifact@v3
+        with:
+          name: admission-tests-logs
+          path: noobaa-operator/admission-tests-logs
+
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
