@@ -27,13 +27,13 @@ func Cmd() *cobra.Command {
 
 // Collector configuration for diagnostics
 type Collector struct {
-	folderName			string // Local folder to store the raw db dump
-	dbDumpFolderPath	string // Local path of the folder containing the raw dump file
-	remoteFolderPath	string // Remote folder (at pod) to store the raw db dump
-	remoteTarPath		string // Remote path (at pod) of tar'd db dump
-	kubeconfig 			string
-	kubeCommand			string
-	log					*logrus.Entry
+	folderName       string // Local folder to store the raw db dump
+	dbDumpFolderPath string // Local path of the folder containing the raw dump file
+	remoteFolderPath string // Remote folder (at pod) to store the raw db dump
+	remoteTarPath    string // Remote path (at pod) of tar'd db dump
+	kubeconfig       string
+	kubeCommand      string
+	log              *logrus.Entry
 }
 
 func newCollector(kubeconfig string) *Collector {
@@ -61,9 +61,9 @@ func CollectDBDump(kubeconfig string, destDir string) {
 	c.log.Println("Collecting db dump")
 
 	err := c.generateDBDump(destDir)
-	if(err == nil) {
+	if err == nil {
 		err = c.exportDBDump(destDir)
-		if(err == nil) {
+		if err == nil {
 			c.deleteRawResources()
 		}
 	}
@@ -73,11 +73,12 @@ func CollectDBDump(kubeconfig string, destDir string) {
 func (c *Collector) generatePostgresDump(destDir string) error {
 	// In case of a postgres db, the dump is a single file so in this case we can
 	// redirect the output of the dump straight to a local file
-	cmd := exec.Command(c.kubeCommand, "exec", "-it", "pod/noobaa-db-pg-0", "--", "pg_dumpall")
+	cmd := exec.Command(c.kubeCommand, "exec", "-n", options.Namespace, "-it", "pod/noobaa-db-pg-0", "--", "pg_dumpall")
+
 	// handle custom path for kubeconfig file,
 	// see --kubeconfig cli options
 	if len(c.kubeconfig) > 0 {
-		cmd.Env = append(cmd.Env, "KUBECONFIG=" + c.kubeconfig)
+		cmd.Env = append(cmd.Env, "KUBECONFIG="+c.kubeconfig)
 	}
 
 	// Compose the path of the folder containing the dump file
@@ -125,11 +126,11 @@ func (c *Collector) generateMongoDBDump(destDir string) error {
 
 	// Compose the path containing the dump folder at the remote machine
 	c.remoteFolderPath = fmt.Sprintf("%s/%s", "/tmp", c.folderName)
-	cmd := exec.Command(c.kubeCommand, "exec", "pod/noobaa-db-0", "--", "mongodump", "--db", "nbcore", "-o", c.remoteFolderPath)
+	cmd := exec.Command(c.kubeCommand, "exec", "-n", options.Namespace, "pod/noobaa-db-0", "--", "mongodump", "--db", "nbcore", "-o", c.remoteFolderPath)
 	// handle custom path for kubeconfig file,
 	// see --kubeconfig cli options
 	if len(c.kubeconfig) > 0 {
-		cmd.Env = append(cmd.Env, "KUBECONFIG=" + c.kubeconfig)
+		cmd.Env = append(cmd.Env, "KUBECONFIG="+c.kubeconfig)
 	}
 
 	// Generate db dump folder
@@ -139,7 +140,7 @@ func (c *Collector) generateMongoDBDump(destDir string) error {
 	}
 
 	// Tar the raw db dump
-	cmd = exec.Command(c.kubeCommand, "exec", "pod/noobaa-db-0", "--", "tar", "-C", "/tmp", "-cvzf", c.remoteTarPath, c.folderName)
+	cmd = exec.Command(c.kubeCommand, "exec", "-n", options.Namespace, "pod/noobaa-db-0", "--", "tar", "-C", "/tmp", "-cvzf", c.remoteTarPath, c.folderName)
 	if err := cmd.Run(); err != nil {
 		c.log.Printf(`❌ failed to tar remote dump folder`)
 		return err
@@ -188,7 +189,7 @@ func (c *Collector) exportPostgresDump(destDir string) error {
 	return nil
 }
 
-// Copy dump resources from remote machine 
+// Copy dump resources from remote machine
 func (c *Collector) exportMongoDBDump(destDir string) error {
 	// In case of a mongo db, the db dump was generated and tar'd at the remote machine,
 	// all is left to do is copy the tarball to the local machine
@@ -203,13 +204,13 @@ func (c *Collector) exportMongoDBDump(destDir string) error {
 
 	// Compose the full path to copy the tarball from
 	fullTarPath := fmt.Sprintf("%s:%s", "noobaa-db-0", c.remoteTarPath)
-		
+
 	// Create the command to copy the tarball
 	cmd := exec.Command(c.kubeCommand, "cp", fullTarPath, localPath)
 	// handle custom path for kubeconfig file,
 	// see --kubeconfig cli options
 	if len(c.kubeconfig) > 0 {
-		cmd.Env = append(cmd.Env, "KUBECONFIG=" + c.kubeconfig)
+		cmd.Env = append(cmd.Env, "KUBECONFIG="+c.kubeconfig)
 	}
 
 	// Execute the command, copying the tarball
@@ -256,7 +257,7 @@ func (c *Collector) deleteMongoDBRawResources() {
 	// all is left to do is clean the remote machine
 
 	// Compose the deletion command of the raw resources
-	cmd := exec.Command(c.kubeCommand, "exec", "pod/noobaa-db-0", "--", "rm", "-rf", c.remoteFolderPath)
+	cmd := exec.Command(c.kubeCommand, "exec", "-n", options.Namespace, "pod/noobaa-db-0", "--", "rm", "-rf", c.remoteFolderPath)
 
 	// Execute deletion of the raw resources
 	if err := cmd.Run(); err != nil {
@@ -264,9 +265,9 @@ func (c *Collector) deleteMongoDBRawResources() {
 	}
 
 	// Compose the deletion command of the tar'd resources
-	cmd = exec.Command(c.kubeCommand, "exec", "pod/noobaa-db-0", "--", "rm", c.remoteTarPath)
+	cmd = exec.Command(c.kubeCommand, "exec", "-n", options.Namespace, "pod/noobaa-db-0", "--", "rm", c.remoteTarPath)
 
-	// Execute deletion of the tar'd resources	
+	// Execute deletion of the tar'd resources
 	if err := cmd.Run(); err != nil {
 		c.log.Printf(`❌ failed to tar remove dump tar file`)
 	}
