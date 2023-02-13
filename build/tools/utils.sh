@@ -43,7 +43,7 @@ function version_with_v() {
 # Example: get_noobaa_version 1 # returns version with "v" prefix
 function get_noobaa_version() {
   local version=$(go run cmd/version/main.go)
-  if [[ $# -gte 1 ]]; then
+  if [[ $# -ge 1 ]]; then
     version_with_v "$version"
   else
     version_without_v "$version"
