@@ -39,7 +39,7 @@ function commit_changes() {
 	local version=$(get_noobaa_version 1)
 
 	git add .
-	git commit -m "Automated commit to update README for version: ${version}"
+	git commit -m "Automated commit to update README for version: ${version}" --allow-empty
 	git push
 
 	# If TAG=1 is provided, then create a tag
