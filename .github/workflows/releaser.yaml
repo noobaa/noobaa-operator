@@ -1,0 +1,47 @@
+name: Releaser
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'The base branch to release from'
+        required: true 
+
+permissions:
+  contents: write
+
+jobs:
+  releaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set branch
+        run: echo "BRANCH=${{ github.event.inputs.base_branch }}" >> $GITHUB_ENV
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.BRANCH }}
+      - name: Fetch all tags
+        run: git fetch --force --tags
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GHACTION_TOKEN_WRITE }}
+          DOCKERHUB_USERNAME: ${{ secrets.GHACTIONSDOCKERHUBNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.GHACTIONSDOCKERHUB }}
+          QUAY_USERNAME: ${{ secrets.GHACTIONQUAYNAME }}
+          QUAY_TOKEN: ${{ secrets.GHACTIONQUAYTOKEN }}
+          HOMEBREW_CORE_REPO: "noobaa/homebrew-noobaa"
+          OCI_ORG: ${{ secrets.GHACTIONSDOCKERHUBNAME }}
+          OPERATOR_HUB_REPO: "k8s-operatorhub/community-operators"
+          TAG: "1"
+        run: |
+          git config --global user.email "github-action@noobaa.io"
+          git config --global user.name "NooBaa GitHub Action"
+
+          bash build/tools/builder.sh --oci-org $OCI_ORG --gh-org noobaa --gh-repo noobaa-operator || exit 1
+          bash build/tools/releaser.sh --oci-org $OCI_ORG --gh-org noobaa --gh-repo noobaa-operator || exit 1
+      # - name: "Krew Release"
+      #   uses: rajatjindal/krew-release-bot@v0.0.40
