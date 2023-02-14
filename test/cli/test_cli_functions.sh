@@ -634,7 +634,64 @@ function account_cycle {
     account_reset_password "admin@noobaa.io"
     # testing nsfs accounts
     # account_nsfs_cycle TODO re-enable.
+    # update account default resource
+    account_update
+    # update crd account default resource
+    account_update "crd"
     echo_time "✅  noobaa account cycle is done"
+}
+
+function account_update {
+    local crd=${1}
+    local new_default_resource="backing-store-upd"
+    if [ "$(kuberun get backingstore | grep -w ${new_default_resource} | wc -l)" != "1" ]
+    then
+        echo_time "💬  Creating backingstore ${new_default_resource}"
+        test_noobaa backingstore create pv-pool ${new_default_resource} --num-volumes 1 --pv-size-gb 16
+    fi
+    if [ -z ${crd} ]
+    then
+        echo_time "💬  Checking account update cycle"
+        local account_name=$(test_noobaa api account list_accounts {} -o json | jq -r '.accounts[0].email')
+        local default_resource=$(test_noobaa api account list_accounts {} -o json | jq -r '.accounts[0].default_resource')
+        echo_time "💬  Updating ${new_default_resource} as default_resource for noobaa account"
+        test_noobaa account update ${account_name} --new_default_resource=${new_default_resource}
+        local curr_default_resource=$(test_noobaa api account list_accounts {} -o json | jq -r '.accounts[0].default_resource')
+        if [ "${new_default_resource}" != "${curr_default_resource}" ]
+        then
+            echo_time "❌ Looks like account not updated, Exiting"
+            exit 1
+        else
+            echo_time "✅  Update account default_resource successful"
+            test_noobaa account update ${account_name} --new_default_resource=${default_resource}
+            curr_default_resource=$(test_noobaa api account list_accounts {} -o json | jq -r '.accounts[0].default_resource')
+            if [ "${default_resource}" != "${curr_default_resource}" ]
+            then
+                echo_time "❌ Looks like account not updated to default state, Exiting"
+                exit 1
+            fi
+        fi
+    else
+        echo_time "💬  Checking crd based account update cycle"
+        local account_name="test-account"
+        echo_time "💬  Creating crd account ${account_name}"
+        test_noobaa account create ${account_name}
+        local default_resource=$(kuberun get NoobaaAccount ${account_name} -n test -o json | jq -r '.spec.default_resource')
+        echo_time "💬  Updating ${new_default_resource} as default_resource for noobaa account"
+        test_noobaa account update ${account_name} --new_default_resource=${new_default_resource}
+        local curr_default_resource=$(kuberun get NoobaaAccount ${account_name} -n test -o json | jq -r '.spec.default_resource')
+        if [ "${new_default_resource}" != "${curr_default_resource}" ]
+        then
+            echo_time "❌ Looks like crd account not updated, Exiting"
+            exit 1
+        else
+            echo_time "✅  Update crd account default_resource successful"
+            echo_time "💬  Deleting crd account ${account_name}"
+            test_noobaa account delete ${account_name}
+            echo_time "💬  Deleting backingstore ${new_default_resource}"
+            test_noobaa backingstore delete ${new_default_resource}
+        fi
+    fi
 }
 
 function account_regenerate_keys {
@@ -948,7 +1005,7 @@ function check_default_backingstore {
 
     echo_time "💬 Creating new-default-backing-store and updating the admin account default_resourse with it"
     test_noobaa backingstore create pv-pool new-default-backing-store --num-volumes 1 --pv-size-gb 16
-    test_noobaa api account update_account_s3_access '{"email":"admin@noobaa.io","s3_access":true,"default_resource":"new-default-backing-store"}'
+    test_noobaa account update admin@noobaa.io --new_default_resource=new-default-backing-store
     test_noobaa api account list_accounts {}
     test_noobaa account list
 
