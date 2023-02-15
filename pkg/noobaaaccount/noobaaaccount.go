@@ -31,6 +31,7 @@ func Cmd() *cobra.Command {
 	}
 	cmd.AddCommand(
 		CmdCreate(),
+		CmdUpdate(),
 		CmdRegenerate(),
 		CmdPasswd(),
 		CmdDelete(),
@@ -56,6 +57,17 @@ func CmdCreate() *cobra.Command {
 	cmd.Flags().Int("gid", -1, "Set the nsfs gid")
 	cmd.Flags().String("new_buckets_path", "/", "Change the path where new buckets will be created")
 	cmd.Flags().Bool("nsfs_only", true, "Set if this account is used only for nsfs")
+	return cmd
+}
+
+// CmdUpdate returns a CLI command
+func CmdUpdate() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update <noobaa-accout-name>",
+		Short: "Update noobaa account",
+		Run:   RunUpdate,
+	}
+	cmd.Flags().String("new_default_resource", "", "(must be provided) update the default resource on which new buckets will be created")
 	return cmd
 }
 
@@ -221,6 +233,83 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Printf("")
 		log.Printf("")
 		RunStatus(cmd, args)
+	}
+}
+
+// RunUpdate runs a CLI command
+func RunUpdate(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <noobaa-account-name> %s`, cmd.UsageString())
+	}
+	name := args[0]
+
+	newDefaultResource := util.GetFlagStringOrPrompt(cmd, "new_default_resource")
+
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
+	noobaaAccount := o.(*nbv1.NooBaaAccount)
+	noobaaAccount.Name = name
+	noobaaAccount.Namespace = options.Namespace
+
+	isResourceBackingStore := checkResourceBackingStore(newDefaultResource)
+	isResourceNamespaceStore := checkResourceNamespaceStore(newDefaultResource)
+
+	if isResourceBackingStore && isResourceNamespaceStore {
+		log.Fatalf(`❌  got BackingStore and NamespaceStore %q in namespace %q`,
+			newDefaultResource, options.Namespace)
+	} else if !isResourceBackingStore && !isResourceNamespaceStore {
+		log.Fatalf(`❌ Could not get BackingStore or NamespaceStore %q in namespace %q`,
+			newDefaultResource, options.Namespace)
+	}
+
+	// Checking if noobaaAccount is a CRD account
+	if util.KubeCheck(noobaaAccount) {
+		noobaaAccount.Spec.DefaultResource = newDefaultResource
+
+		err := util.KubeClient().Get(util.Context(), util.ObjectKey(noobaaAccount), noobaaAccount)
+		if err != nil {
+			log.Fatalf(`❌ noobaaAccount %q does not exists in namespace %q`, noobaaAccount.Name, noobaaAccount.Namespace)
+		}
+
+		noobaaAccount.Spec.DefaultResource = newDefaultResource
+
+		if !util.KubeUpdate(noobaaAccount) {
+			log.Fatalf(`❌ Unable to update account`)
+		}
+
+		log.Printf("")
+		util.PrintThisNoteWhenFinishedApplyingAndStartWaitLoop()
+		log.Printf("")
+		log.Printf("NooBaaAccount Wait Ready:")
+		if WaitReady(noobaaAccount) {
+			log.Printf("")
+			log.Printf("")
+			RunStatus(cmd, args)
+		}
+	} else {
+		sysClient, err := system.Connect(true)
+		if err != nil {
+			log.Fatalf(`❌ Unable to create RPC client %s`, err)
+		}
+		NBClient := sysClient.NBClient
+
+		readAccountParams := nb.ReadAccountParams{Email: name}
+		accountInfo, err := NBClient.ReadAccountAPI(readAccountParams)
+		if err != nil {
+			log.Fatalf(`❌ Unable to read account %s`, err)
+		}
+
+		updateAccountS3AccessParams := nb.UpdateAccountS3AccessParams{
+			Email:           name,
+			DefaultResource: &newDefaultResource,
+			S3Access:        accountInfo.HasS3Access,
+		}
+
+		err = NBClient.UpdateAccountS3Access(updateAccountS3AccessParams)
+		if err != nil {
+			log.Fatalf(`❌ Unable to update account %s`, err)
+		}
 	}
 }
 
