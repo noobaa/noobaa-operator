@@ -43,6 +43,7 @@ func (r *Reconciler) CreateStorageAccount(accountName, accountGroupName string) 
 	// if the name is not available, CreateStorageAccount will return an error, and a different name will be used next time
 
 	enableHTTPSTrafficOnly := true
+	allowBlobPublicAccess := false
 	future, err := storageAccountsClient.Create(
 		r.Ctx,
 		accountGroupName,
@@ -54,6 +55,7 @@ func (r *Reconciler) CreateStorageAccount(accountName, accountGroupName string) 
 			Location: to.StringPtr(r.AzureContainerCreds.StringData["azure_region"]),
 			AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
 				EnableHTTPSTrafficOnly: &enableHTTPSTrafficOnly,
+				AllowBlobPublicAccess:  &allowBlobPublicAccess,
 				MinimumTLSVersion:      storage.TLS12,
 			},
 		})
@@ -120,7 +122,7 @@ func (r *Reconciler) CreateContainer(accountName, accountGroupName, containerNam
 	_, err := c.Create(
 		r.Ctx,
 		azblob.Metadata{},
-		azblob.PublicAccessContainer)
+		azblob.PublicAccessNone)
 	return c, err
 }
 
