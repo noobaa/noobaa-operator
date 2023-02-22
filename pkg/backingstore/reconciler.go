@@ -212,14 +212,18 @@ func (r *Reconciler) completeReconcile(err error) (reconcile.Result, error) {
 		mode := r.BackingStore.Status.Mode.ModeCode
 		phaseInfo, exist := bsModeInfoMap[mode]
 
-		if exist && phaseInfo.Phase != r.BackingStore.Status.Phase {
-			phaseName := fmt.Sprintf("BackingStorePhase%s", phaseInfo.Phase)
-			desc := fmt.Sprintf("Backing store mode: %s", mode)
-			r.SetPhase(phaseInfo.Phase, desc, phaseName)
-			if r.Recorder != nil {
-				r.Recorder.Eventf(r.BackingStore, phaseInfo.Severity, phaseName, desc)
+		if exist {
+			if phaseInfo.Phase != r.BackingStore.Status.Phase {
+				phaseName := fmt.Sprintf("BackingStorePhase%s", phaseInfo.Phase)
+				desc := fmt.Sprintf("Backing store mode: %s", mode)
+				r.SetPhase(phaseInfo.Phase, desc, phaseName)
+				if r.Recorder != nil {
+					r.Recorder.Eventf(r.BackingStore, phaseInfo.Severity, phaseName, desc)
+				}
 			}
 		} else {
+			// We will get here in case we do not have a mapping inside bsModeInfoMap
+			// The default phase that was chosen was phase ready
 			r.SetPhase(
 				nbv1.BackingStorePhaseReady,
 				"BackingStorePhaseReady",
