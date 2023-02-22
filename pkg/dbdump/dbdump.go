@@ -73,7 +73,7 @@ func CollectDBDump(kubeconfig string, destDir string) {
 func (c *Collector) generatePostgresDump(destDir string) error {
 	// In case of a postgres db, the dump is a single file so in this case we can
 	// redirect the output of the dump straight to a local file
-	cmd := exec.Command(c.kubeCommand, "exec", "-it", "pod/noobaa-db-pg-0", "--", "pg_dumpall")
+	cmd := exec.Command(c.kubeCommand, "exec", "-n", options.Namespace, "-it", "pod/noobaa-db-pg-0", "--", "pg_dumpall")
 	// handle custom path for kubeconfig file,
 	// see --kubeconfig cli options
 	if len(c.kubeconfig) > 0 {
