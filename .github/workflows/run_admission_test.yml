@@ -17,7 +17,7 @@ jobs:
           # Freeze the version of core
           # to avoid a failed run due to code changes in the core repo.
           # Need to update the commit once in a while
-          ref: 293fefb9e755fa0d6bf1cc8b31f74259a0001730
+          ref: c97e4ddd2e5fcc110a3242c224eeea97d228c6eb
 
       - name: Checkout noobaa-operator
         uses: actions/checkout@v3
@@ -75,11 +75,12 @@ jobs:
           --endpoint-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
           --noobaa-image='noobaa-core:admission-test' -n test
           ./build/_output/bin/noobaa-operator status -n test
-          # we added the sleep since the test pool is in phase ready and condition available
-          # but the test pool storage is not ready yet, see issue:
-          # https://github.com/noobaa/noobaa-operator/issues/1007
-          sleep 3m
-          kubectl wait --for=condition=available backingstore/noobaa-default-backing-store --timeout=3m -n test
+
+      - name: Wait for phase Ready in the backingstore pod
+        run: |
+          cd ./noobaa-operator
+          ./.travis/number_of_pods_in_system.sh --namespace test --pods 5
+          kubectl wait --for=condition=available backingstore/noobaa-default-backing-store --timeout=5m -n test
 
       - name: Run Admission test
         run: |
@@ -94,8 +95,6 @@ jobs:
           cd ./noobaa-operator
           kubectl get events --sort-by='.metadata.creationTimestamp' -A > logs_kubectl_events.txt
           ./build/_output/bin/noobaa-operator diagnose --db-dump --dir=admission-tests-logs -n test
-          # We have a problem with the db-dump on namespaces which are not default
-          # https://github.com/noobaa/noobaa-operator/issues/1040
           mv logs_kubectl_events.txt ./admission-tests-logs
 
       - name: Save logs
