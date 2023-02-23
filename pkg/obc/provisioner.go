@@ -104,7 +104,7 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 
 	if r.SysClient.NooBaa.DeletionTimestamp != nil {
 		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
-		if util.Contains(nbv1.GracefulFinalizer, finalizersArray) {
+		if util.Contains(finalizersArray, nbv1.GracefulFinalizer) {
 			msg := "NooBaa is in deleting state, new requests will be ignored"
 			log.Errorf(msg)
 			return nil, obErrors.NewBucketExistsError(msg)
@@ -143,7 +143,7 @@ func (p *Provisioner) Grant(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBuc
 
 	if r.SysClient.NooBaa.DeletionTimestamp != nil {
 		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
-		if util.Contains(nbv1.GracefulFinalizer, finalizersArray) {
+		if util.Contains(finalizersArray, nbv1.GracefulFinalizer) {
 			msg := "NooBaa is in deleting state, new requests will be ignored"
 			log.Errorf(msg)
 			return nil, obErrors.NewBucketExistsError(msg)
@@ -700,7 +700,7 @@ func (r *BucketRequest) putBucketTagging() error {
 	taggingArray := []*s3.Tag{}
 	for key, value := range r.OBC.Labels {
 		// no need to put tagging of these labels
-		if !util.Contains(key, []string{"app", "noobaa-domain", "bucket-provisioner"}) {
+		if !util.Contains([]string{"app", "noobaa-domain", "bucket-provisioner"}, key) {
 			keyPointer := key
 			valuePointer := value
 			taggingArray = append(taggingArray, &s3.Tag{Key: &keyPointer, Value: &valuePointer})

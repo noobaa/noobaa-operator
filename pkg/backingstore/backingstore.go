@@ -1073,3 +1073,31 @@ func MapSecretToBackingStores(secret types.NamespacedName) []reconcile.Request {
 
 	return reqs
 }
+
+// MapNoobaaToBackingStores returns a list of backingstores that are inside Noobaa system
+// used by backingstore_contorller to watch Noobaa CR changes
+func MapNoobaaToBackingStores(noobaa types.NamespacedName) []reconcile.Request {
+	log := util.Logger()
+	log.Infof("checking which backingstore to reconcile. mapping Noobaa %v to backingstores", noobaa)
+	bsList := &nbv1.BackingStoreList{
+		TypeMeta: metav1.TypeMeta{Kind: "BackingStoreList"},
+	}
+	if !util.KubeList(bsList, &client.ListOptions{Namespace: noobaa.Namespace}) {
+		log.Infof("Cloud not found backingStores in namespace %q, while trying to find Backingstore that inside %s Noobaa system", noobaa.Namespace, noobaa.Name)
+		return nil
+	}
+
+	reqs := []reconcile.Request{}
+
+	for _, bs := range bsList.Items {
+		reqs = append(reqs, reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      bs.Name,
+				Namespace: bs.Namespace,
+			},
+		})
+	}
+	log.Infof("will reconcile all backingstores: %v", reqs)
+
+	return reqs
+}

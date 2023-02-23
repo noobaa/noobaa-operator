@@ -257,12 +257,8 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec
-	if r.NooBaa.Spec.Tolerations != nil {
-		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
-	}
-	if r.NooBaa.Spec.Affinity != nil {
-		podSpec.Affinity = r.NooBaa.Spec.Affinity
-	}
+	podSpec.Tolerations = r.NooBaa.Spec.Tolerations
+	podSpec.Affinity = r.NooBaa.Spec.Affinity
 	if r.NooBaa.Spec.ImagePullSecret == nil {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{}

@@ -293,7 +293,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	util.KubeList(objectBuckets, &client.ListOptions{LabelSelector: obcSelector})
 	finalizersArray := sys.GetFinalizers()
 
-	if util.Contains(nbv1.GracefulFinalizer, finalizersArray) {
+	if util.Contains(finalizersArray, nbv1.GracefulFinalizer) {
 
 		confirm := sys.Spec.CleanupPolicy.Confirmation
 		if !cleanupData && len(objectBuckets.Items) != 0 && confirm != nbv1.DeleteOBCConfirmation {
