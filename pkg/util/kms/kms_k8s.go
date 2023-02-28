@@ -6,8 +6,8 @@ import (
 
 // K8S is a Kubernetes driver
 type K8S struct {
-	name string  // NooBaa system name
-	ns   string  // NooBaa system namespace
+	name string // NooBaa system name
+	ns   string // NooBaa system namespace
 }
 
 // NewK8S is Kubernetes secret driver constructor
@@ -15,7 +15,7 @@ func NewK8S(
 	name string,
 	namespace string,
 	uid string,
-) (Driver) {
+) Driver {
 	return &K8S{name, namespace}
 }
 
@@ -23,7 +23,7 @@ func NewK8S(
 // Kubernetes secret driver for root master key
 //
 
-// Path returns the k8s secret name
+// Path returns the old format k8s secret name
 func (k *K8S) Path() string {
 	return k.name + "-root-master-key"
 }
@@ -35,7 +35,7 @@ func (*K8S) Name() string {
 
 func k8sContext(ns string) map[string]string {
 	return map[string]string{
-		k8s.SecretNamespace : ns,
+		k8s.SecretNamespace: ns,
 	}
 }
 
@@ -57,6 +57,11 @@ func (k *K8S) DeleteContext() map[string]string {
 // Config returns this driver secret config
 func (k *K8S) Config(map[string]string, string, string) (map[string]interface{}, error) {
 	return nil, nil
+}
+
+// Version returns the driver version
+func (k *K8S) Version(kms *KMS) Version {
+	return &VersionRotatingSecret{VersionBase{kms, nil}, k.name, k.ns}
 }
 
 // Register Kubernetes secret driver with KMS layer

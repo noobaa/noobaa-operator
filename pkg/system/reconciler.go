@@ -89,6 +89,7 @@ type Reconciler struct {
 	SecretAdmin               *corev1.Secret
 	SecretEndpoints           *corev1.Secret
 	SecretRootMasterKey       string
+	SecretRootMasterMap       *corev1.Secret
 	AWSCloudCreds             *cloudcredsv1.CredentialsRequest
 	AWSSTSRoleSessionName     string
 	IsAWSSTSCluster           bool
@@ -154,6 +155,7 @@ func NewReconciler(
 		SecretOp:                  util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretAdmin:               util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretEndpoints:           util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretRootMasterMap:       util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AzureContainerCreds:       util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		GCPBucketCreds:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		AWSCloudCreds:             util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
@@ -197,6 +199,7 @@ func NewReconciler(
 	r.SecretOp.Namespace = r.Request.Namespace
 	r.SecretAdmin.Namespace = r.Request.Namespace
 	r.SecretEndpoints.Namespace = r.Request.Namespace
+	r.SecretRootMasterMap.Namespace = r.Request.Namespace
 	r.AzureContainerCreds.Namespace = r.Request.Namespace
 	r.GCPBucketCreds.Namespace = r.Request.Namespace
 	r.AWSCloudCreds.Namespace = r.Request.Namespace
@@ -237,6 +240,7 @@ func NewReconciler(
 	r.SecretOp.Name = r.Request.Name + "-operator"
 	r.SecretAdmin.Name = r.Request.Name + "-admin"
 	r.SecretEndpoints.Name = r.Request.Name + "-endpoints"
+	r.SecretRootMasterMap.Name = r.Request.Name + "-root-master-key-volume"
 	r.AWSCloudCreds.Name = r.Request.Name + "-aws-cloud-creds"
 	r.AWSCloudCreds.Spec.SecretRef.Name = r.Request.Name + "-aws-cloud-creds-secret"
 	r.AzureContainerCreds.Name = r.Request.Name + "-azure-container-creds"
@@ -295,6 +299,7 @@ func NewReconciler(
 func (r *Reconciler) CheckAll() {
 
 	CheckSystem(r.NooBaa)
+	r.reportKMSConditionStatus()
 	util.KubeCheck(r.CoreApp)
 	util.KubeCheck(r.CoreAppConfig)
 	util.KubeCheck(r.ServiceMgmt)

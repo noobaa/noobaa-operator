@@ -390,6 +390,33 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 	return nil
 }
 
+func (r *Reconciler) setDesiredRootMasterKeyMounts(podSpec *corev1.PodSpec, container *corev1.Container) {
+	// Don't map secret map volume if the string secret is used
+	if len(r.SecretRootMasterKey) > 0 {
+		return
+	}
+
+	if !util.KubeCheckQuiet(r.SecretRootMasterMap) {
+		return
+	}
+
+	rootMasterKeyVolumes := []corev1.Volume{{
+		Name: r.SecretRootMasterMap.Name,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: r.SecretRootMasterMap.Name,
+			},
+		},
+	}}
+	util.MergeVolumeList(&podSpec.Volumes, &rootMasterKeyVolumes)
+	rootMasterKeyVolumeMounts := []corev1.VolumeMount{{
+		Name:      r.SecretRootMasterMap.Name,
+		MountPath: "/etc/noobaa-server/root_keys",
+		ReadOnly:  true,
+	}}
+	util.MergeVolumeMountList(&container.VolumeMounts, &rootMasterKeyVolumeMounts)
+}
+
 func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container *corev1.Container) error {
 
 	namespaceStoreList := &nbv1.NamespaceStoreList{}
@@ -422,6 +449,8 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 		}}
 		util.MergeVolumeMountList(&container.VolumeMounts, &configMapVolumeMounts)
 	}
+
+	r.setDesiredRootMasterKeyMounts(podSpec, container)
 
 	for _, nsStore := range namespaceStoreList.Items {
 		// Since namespacestore is able to get a rejected state on runtime errors,

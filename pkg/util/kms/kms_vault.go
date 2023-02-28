@@ -177,6 +177,12 @@ func writeCrtsToFile(secretName string, namespace string, secretValue []byte, en
 	return envVarValue, nil
 }
 
+// Version returns the current driver KMS version
+// either single string or map, i.e. rotating key
+func (*Vault) Version(kms *KMS) Version {
+	return &VersionSingleSecret{kms, nil}
+}
+
 // Register Vault driver with KMS layer
 func init() {
 	if err := RegisterDriver(vault.Name, NewVault); err != nil {

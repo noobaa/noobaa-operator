@@ -1288,7 +1288,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "317f93d895ce9390304bef23f11f5f08dad040cefd6194f15bf99ebc50bdc31d"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "358ce59efe08f5cd594649cbd2bc49a1cbc4d9771328567d5c9ba897e7263083"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2776,6 +2776,10 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      enableKeyRotation:
+                        type: boolean
+                      schedule:
+                        type: string
                       tokenSecretName:
                         type: string
                     type: object
@@ -2897,6 +2901,11 @@ spec:
                 - readyCount
                 - virtualHosts
                 type: object
+              lastKeyRotateTime:
+                description: LastKeyRotateTime is the time system ran an encryption
+                  key rotate
+                format: date-time
+                type: string
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
                   for this noobaa system. It corresponds to the CR generation, which

@@ -206,6 +206,11 @@ test-kms-dev: vendor
 	@echo "✅ test-kms-dev"
 .PHONY: test-kms-dev
 
+test-kms-key-rotate: vendor
+	ginkgo -v pkg/util/kms/test/rotate
+	@echo "✅ test-kms-key-rotate"
+.PHONY: test-kms-key-rotate
+
 test-kms-tls-sa: vendor
 	ginkgo -v pkg/util/kms/test/tls-sa
 	@echo "✅ test-kms-tls-sa"
