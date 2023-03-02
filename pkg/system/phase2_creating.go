@@ -296,12 +296,8 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
-	if r.NooBaa.Spec.Tolerations != nil {
-		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
-	}
-	if r.NooBaa.Spec.Affinity != nil {
-		podSpec.Affinity = r.NooBaa.Spec.Affinity
-	}
+	podSpec.Tolerations = r.NooBaa.Spec.Tolerations
+	podSpec.Affinity = r.NooBaa.Spec.Affinity
 
 	if NooBaaDB.UID == "" {
 		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
@@ -491,12 +487,8 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
-	if r.NooBaa.Spec.Tolerations != nil {
-		podSpec.Tolerations = r.NooBaa.Spec.Tolerations
-	}
-	if r.NooBaa.Spec.Affinity != nil {
-		podSpec.Affinity = r.NooBaa.Spec.Affinity
-	}
+	podSpec.Tolerations = r.NooBaa.Spec.Tolerations
+	podSpec.Affinity = r.NooBaa.Spec.Affinity
 
 	if r.CoreApp.UID == "" {
 		// generate info event for the first creation of noobaa

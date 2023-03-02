@@ -1064,15 +1064,6 @@ func (r *Reconciler) reconcilePvPool() error {
 	return r.reconcileExistingPods(podsList)
 }
 
-func contains(slice []string, str string) bool {
-	for _, s := range slice {
-		if s == str {
-			return true
-		}
-	}
-	return false
-}
-
 func (r *Reconciler) reconcileMissingPods(podsList *corev1.PodList, pvcsList *corev1.PersistentVolumeClaimList) error {
 	claimNames := []string{}
 	for _, pod := range podsList.Items {
@@ -1082,7 +1073,7 @@ func (r *Reconciler) reconcileMissingPods(podsList *corev1.PodList, pvcsList *co
 		return err
 	}
 	for _, pvc := range pvcsList.Items {
-		if !contains(claimNames, pvc.Name) {
+		if !util.Contains(claimNames, pvc.Name) {
 			i := strings.LastIndex(pvc.Name, "-")
 			postfix := pvc.Name[i+1:]
 			newPod := r.PodAgentTemplate.DeepCopy()
@@ -1187,6 +1178,45 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 		r.Logger.Warnf("Change in Image Pull Secrets detected: NoobaaSecret(%v) Spec(%v)", noobaaSecret, podSecrets)
 		return true
 	}
+
+	// In case noobaa CR was changed and a new toleration was added
+	// we want that change to pass to the backingstore pod as well.
+	// This change does not support removal of a toleration, in this case
+	// the user will need to manually terminate the backingstore pod.
+	podTolerations := pod.Spec.Tolerations
+	noobaaTolerations := r.NooBaa.Spec.Tolerations
+	for _, noobaaToleration := range noobaaTolerations {
+		if !util.Contains(podTolerations, noobaaToleration) {
+			return true
+		}
+	}
+
+	// In case noobaa CR was changed and a new affinity was added
+	// we want that change to pass to the backingstore pod as well.
+	podAffinitiesPtr := pod.Spec.Affinity
+	noobaaAffinitiesPtr := r.NooBaa.Spec.Affinity
+	// There 4 cases
+	//                                          noobaaAffinitiesPtr value
+	//                  |         | nil                         | not nil                        |
+	//                  | ------- | --------------------------- | ------------------------------ |
+	// podAffinitiesPtr | nil     | false (nothing changed)     | true (affinity was added)      |
+	// value            | not nil | true (affinity was deleted) | depends on the reference value |
+	//                  | ------- | --------------------------- | ------------------------------ |
+	if noobaaAffinitiesPtr != nil {
+		noobaaAffinities := *noobaaAffinitiesPtr
+		if podAffinitiesPtr == nil {
+			return true
+		}
+		podAffinities := *noobaaAffinitiesPtr
+		if podAffinities != noobaaAffinities {
+			return true
+		}
+	} else {
+		if podAffinitiesPtr != nil {
+			return true
+		}
+	}
+
 	return false
 }
 

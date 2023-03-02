@@ -89,6 +89,19 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 
+	// Setting another handler to watch events on noobaa system that are not necessarily owned by the backingstore.
+	// For example: modify toleration in Noobaa CR should pass to the backingstores.
+	noobaaHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+		return backingstore.MapNoobaaToBackingStores(types.NamespacedName{
+			Name:      obj.GetName(),
+			Namespace: obj.GetNamespace(),
+		})
+	})
+	err = c.Watch(&source.Kind{Type: &nbv1.NooBaa{}}, noobaaHandler, logEventsPredicate)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

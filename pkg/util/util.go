@@ -628,7 +628,7 @@ func RemoveFinalizer(obj metav1.Object, finalizer string) bool {
 
 // AddFinalizer adds the finalizer to the object if it doesn't contains it already
 func AddFinalizer(obj metav1.Object, finalizer string) bool {
-	if !Contains(finalizer, obj.GetFinalizers()) {
+	if !Contains(obj.GetFinalizers(), finalizer) {
 		finalizers := append(obj.GetFinalizers(), finalizer)
 		obj.SetFinalizers(finalizers)
 		return true
@@ -1322,14 +1322,29 @@ func WriteYamlFile(name string, obj runtime.Object, moreObjects ...runtime.Objec
 	return nil
 }
 
-// Contains checks if string array arr contains string s
-func Contains(s string, arr []string) bool {
-	for _, b := range arr {
-		b = strings.TrimSpace(b)
-		if b == s {
+// Contains is a generic function
+// that receives a slice and an element from comparable type (sould be from the same type)
+// and returns true if the slice contains the element, otherwise false
+func Contains[T comparable](arr []T, item T) bool {
+	return ContainsAny(
+		arr,
+		item,
+		func(a, b T) bool {
+			return a == b
+		},
+	)
+}
+
+// ContainsAny is a generic function
+// that receives a slice, an element and a function to compare
+// and returns true if the function executed on the item and the slice return true
+func ContainsAny[T any](arr []T, item T, eq func(T, T) bool) bool {
+	for _, element := range arr {
+		if eq(element, item) {
 			return true
 		}
 	}
+
 	return false
 }
 
