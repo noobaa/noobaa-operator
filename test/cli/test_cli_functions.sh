@@ -1055,9 +1055,9 @@ function check_dbdump {
     # Remove dump file
     rm /tmp/$rand_dir/$dump_file_name
 
-    # Generate db dump through diagnose API
-    echo_time "💬  Generating db dump through diagnose"
-    test_noobaa diagnose --db-dump --dir /tmp/$rand_dir
+    # Generate db dump through diagnostics API
+    echo_time "💬  Generating db dump through diagnostics"
+    test_noobaa diagnostics collect --db-dump --dir /tmp/$rand_dir
 
     # Check whether dump was created
     diagnose_file_name=`ls -l /tmp/$rand_dir | grep noobaa_diagnostics | awk '{ print $9 }'`

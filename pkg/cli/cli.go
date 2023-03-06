@@ -11,8 +11,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucket"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/crd"
-	"github.com/noobaa/noobaa-operator/v5/pkg/dbdump"
-	"github.com/noobaa/noobaa-operator/v5/pkg/diagnose"
+	"github.com/noobaa/noobaa-operator/v5/pkg/diagnostics"
 	"github.com/noobaa/noobaa-operator/v5/pkg/install"
 	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/noobaaaccount"
@@ -53,7 +52,7 @@ const ASCIILogo2 = `
 #      N O O B A A      # 
 `
 
-//Run runs
+// Run runs
 func Run() {
 	err := Cmd().Execute()
 	if err != nil {
@@ -123,8 +122,9 @@ Load noobaa completion to bash:
 			bucketclass.Cmd(),
 			noobaaaccount.Cmd(),
 			obc.Cmd(),
-			diagnose.Cmd(),
-			dbdump.Cmd(),
+			diagnostics.CmdDiagnoseDeprecated(),
+			diagnostics.CmdDbDumpDeprecated(),
+			diagnostics.Cmd(),
 		},
 	}, {
 		Message: "Advanced:",

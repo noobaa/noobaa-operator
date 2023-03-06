@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1667,6 +1668,72 @@ func GetAvailabeKubeCli() string {
 		}
 	}
 	return kubeCommand
+}
+
+// GetEndpointByBackingStoreType returns the endpoint url the of the backing store if it is relevant to the type
+func GetEndpointByBackingStoreType(bs *nbv1.BackingStore) (string, error) {
+	var endpoint string
+	switch bs.Spec.Type {
+	case nbv1.StoreTypeAWSS3:
+		awsS3 := bs.Spec.AWSS3
+		u := url.URL{
+			Scheme: "https",
+			Host:   "s3.amazonaws.com",
+		}
+		if awsS3.SSLDisabled {
+			u.Scheme = "http"
+		}
+		if awsS3.Region != "" {
+			u.Host = fmt.Sprintf("s3.%s.amazonaws.com", awsS3.Region)
+		}
+		endpoint = u.String()
+	case nbv1.StoreTypeS3Compatible:
+		endpoint = bs.Spec.S3Compatible.Endpoint
+	case nbv1.StoreTypeIBMCos:
+		endpoint = bs.Spec.IBMCos.Endpoint
+	case nbv1.StoreTypeAzureBlob:
+		endpoint = "https://blob.core.windows.net"
+	case nbv1.StoreTypeGoogleCloudStorage:
+		endpoint = "https://www.googleapis.com"
+	case nbv1.StoreTypePVPool:
+		return endpoint, fmt.Errorf("%q type does not have endpoint parameter %q", bs.Spec.Type, bs.Name)
+	default:
+		return endpoint, fmt.Errorf("failed to get endpoint url from backingstore %q", bs.Name)
+	}
+	return endpoint, nil
+}
+
+// GetEndpointByNamespaceStoreType returns the endpoint url the of the backing store if it is relevant to the type
+func GetEndpointByNamespaceStoreType(ns *nbv1.NamespaceStore) (string, error) {
+	var endpoint string
+	switch ns.Spec.Type {
+	case nbv1.NSStoreTypeAWSS3:
+		awsS3 := ns.Spec.AWSS3
+		u := url.URL{
+			Scheme: "https",
+			Host:   "s3.amazonaws.com",
+		}
+		if awsS3.SSLDisabled {
+			u.Scheme = "http"
+		}
+		if awsS3.Region != "" {
+			u.Host = fmt.Sprintf("s3.%s.amazonaws.com", awsS3.Region)
+		}
+		endpoint = u.String()
+	case nbv1.NSStoreTypeS3Compatible:
+		endpoint = ns.Spec.S3Compatible.Endpoint
+	case nbv1.NSStoreTypeIBMCos:
+		endpoint = ns.Spec.IBMCos.Endpoint
+	case nbv1.NSStoreTypeAzureBlob:
+		endpoint = "https://blob.core.windows.net"
+	case nbv1.NSStoreTypeGoogleCloudStorage:
+		endpoint = "https://www.googleapis.com"
+	case nbv1.NSStoreTypeNSFS:
+		return endpoint, fmt.Errorf("%q type does not have endpoint parameter %q", ns.Spec.Type, ns.Name)
+	default:
+		return endpoint, fmt.Errorf("failed to get endpoint url from backingstore %q", ns.Name)
+	}
+	return endpoint, nil
 }
 
 // GetBackingStoreSecretByType returns the secret reference of the backing store if it is relevant to the type

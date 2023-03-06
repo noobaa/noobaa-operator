@@ -4607,6 +4607,51 @@ const File_deploy_internal_text_system_status_readme_rejected_tmpl = `
 	NooBaa Operator Version: {{.OperatorVersion}}
 `
 
+const Sha256_deploy_job_analyze_resource_yml = "a171cf51d8c8561de04d921fbccb43b87f25daadd86211900765a4cf1ae080a5"
+
+const File_deploy_job_analyze_resource_yml = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: noobaa-analyze-resource
+  labels:
+    app: noobaa
+spec:
+  completions: 1
+  parallelism: 1
+  backoffLimit: 0
+  activeDeadlineSeconds: 60
+  ttlSecondsAfterFinished: 10
+  template:
+    spec:
+      volumes:
+      - name: cloud-credentials
+        secret:
+          secretName: SECRET_NAME_PLACEHOLDER
+          optional: true
+      containers:
+      - name: noobaa-analyze-resource
+        image: NOOBAA_CORE_IMAGE_PLACEHOLDER
+        env:
+          - name: RESOURCE_TYPE
+          - name: RESOURCE_NAME
+          - name: BUCKET
+          - name: ENDPOINT
+          - name: S3_SIGNATURE_VERSION
+          - name: HTTP_PROXY
+          - name: HTTPS_PROXY
+          - name: NO_PROXY
+          - name: NODE_EXTRA_CA_CERTS
+        command: 
+            - /bin/bash
+            - -c
+            - "cd /root/node_modules/noobaa-core/; node ./src/tools/diagnostics/analyze_resource/analyze_resource.js"
+        volumeMounts:
+            - name: cloud-credentials
+              mountPath: "/etc/cloud-credentials"
+              readOnly: true
+      restartPolicy: Never
+`
+
 const Sha256_deploy_namespace_yaml = "303398323535d7f8229cb1a5378ad019cf4fa7930891688e3eea55c77e7bf69a"
 
 const File_deploy_namespace_yaml = `apiVersion: v1
