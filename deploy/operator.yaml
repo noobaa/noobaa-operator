@@ -14,6 +14,10 @@ spec:
         noobaa-operator: deployment
     spec:
       serviceAccountName: noobaa
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        runAsNonRoot: true
       volumes:
       - name: oidc-token
         projected:
