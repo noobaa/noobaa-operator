@@ -5019,7 +5019,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "2870838f688bf1691d85c64dc5e302eb6575996427c7cfdb7143f322ff0dbd18"
+const Sha256_deploy_operator_yaml = "7c4a0b3f43fcf06a10db4dfc4fa3a4f4e1a26be35cb890e64007405ec7129dec"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -5037,6 +5037,10 @@ spec:
         noobaa-operator: deployment
     spec:
       serviceAccountName: noobaa
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        runAsNonRoot: true
       volumes:
       - name: oidc-token
         projected:
