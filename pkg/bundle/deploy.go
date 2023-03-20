@@ -3235,7 +3235,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "e2f7a049793e8f36151d349aefdc40c5a17d4de950bbcfd022ee2a4c07b9a067"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "591b74cab691e57295c490d0963131b4eefb345aef08c383ef01a9ed4e19ca2b"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3278,6 +3278,14 @@ spec:
                 path: oidc-token
                 expirationSeconds: 3600
                 audience: api
+        - name: noobaa-auth-token
+          secret:
+            secretName: noobaa-endpoints
+            optional: true
+        - name: noobaa-server
+          secret:
+            secretName: noobaa-server
+            optional: true   
       containers:
         - name: endpoint
           image: NOOBAA_CORE_IMAGE
@@ -3328,14 +3336,8 @@ spec:
             - name: ENDPOINT_GROUP_ID
             - name: LOCAL_MD_SERVER
             - name: LOCAL_N2N_AGENT
-            - name: JWT_SECRET
             - name: NOOBAA_ROOT_SECRET
             - name: NODE_EXTRA_CA_CERTS
-            - name: NOOBAA_AUTH_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: noobaa-endpoints
-                  key: auth_token
             - name: CONTAINER_CPU_REQUEST
               valueFrom:
                 resourceFieldRef:
@@ -3360,6 +3362,12 @@ spec:
               readOnly: true
             - name: s3-secret
               mountPath: /etc/s3-secret
+              readOnly: true
+            - name: noobaa-auth-token
+              mountPath: /etc/noobaa-auth-token
+              readOnly: true
+            - name: noobaa-server
+              mountPath: /etc/noobaa-server
               readOnly: true
             # used for aws sts endpoint type
             - name: oidc-token
@@ -3939,7 +3947,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "3b0aec2d946e02a9d8b44b8f191c335be33a75c8c2d2dc2f04c64cf37ecbfa3f"
+const Sha256_deploy_internal_statefulset_core_yaml = "acb0b7199dfc55c7e4ceaff49d2ab754c527ad6bc9be7af539153e10b07294d3"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -3976,6 +3984,10 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
+        - name: noobaa-server
+          secret:
+            secretName: noobaa-server
+            optional: true    
         - name: oidc-token
           projected:
             sources:
@@ -3997,6 +4009,9 @@ spec:
               readOnly: true
             - name: s3-secret
               mountPath: /etc/s3-secret
+              readOnly: true
+            - name: noobaa-server
+              mountPath: /etc/noobaa-server
               readOnly: true
             - mountPath: /var/run/secrets/openshift/serviceaccount
               name: oidc-token
@@ -4043,16 +4058,6 @@ spec:
               value: mongodb
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: noobaa-server
-                  key: jwt
-            - name: SERVER_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: noobaa-server
-                  key: server_secret
             - name: NOOBAA_ROOT_SECRET
             - name: NODE_EXTRA_CA_CERTS
             - name: AGENT_PROFILE

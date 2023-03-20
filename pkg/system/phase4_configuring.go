@@ -337,17 +337,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					if r.JoinSecret == nil {
 						c.Env[j].Value = "true"
 					}
-				case "JWT_SECRET":
-					if r.JoinSecret == nil {
-						c.Env[j].ValueFrom = &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "noobaa-server",
-								},
-								Key: "jwt",
-							},
-						}
-					}
 				case "NOOBAA_ROOT_SECRET":
 					c.Env[j].Value = r.SecretRootMasterKey
 				case "VIRTUAL_HOSTS":
