@@ -9,15 +9,6 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
-      - name: Checkout noobaa-core
-        uses: actions/checkout@v3
-        with:
-          repository: 'noobaa/noobaa-core'
-          path: "noobaa-core"
-          # Freeze the version of core
-          # to avoid a failed run due to code changes in the core repo.
-          # Need to update the commit once in a while
-          ref: c97e4ddd2e5fcc110a3242c224eeea97d228c6eb
 
       - name: Checkout noobaa-operator
         uses: actions/checkout@v3
@@ -51,11 +42,6 @@ jobs:
           sudo chown -R $USER $HOME/.kube $HOME/.minikube
           sed "s/root/home\/$USER/g" $HOME/.kube/config > tmp; mv tmp $HOME/.kube/config
 
-      - name: Build noobaa image
-        run: |
-          cd ./noobaa-core
-          make noobaa NOOBAA_TAG=noobaa-core:admission-test
-
       - name: Build operator image
         run: |
           set -x
@@ -73,7 +59,7 @@ jobs:
           --db-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
           --core-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
           --endpoint-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
-          --noobaa-image='noobaa-core:admission-test' -n test
+          -n test
           ./build/_output/bin/noobaa-operator status -n test
 
       - name: Wait for phase Ready in the backingstore pod
