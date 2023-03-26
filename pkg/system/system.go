@@ -186,16 +186,16 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	}
 	if options.MiniEnv {
 		coreResourceList := corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(100), resource.Milli),
+			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(200), resource.Milli),
 			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(1), resource.Giga),
 		}
 		dbResourceList := corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(100), resource.Milli),
-			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(500), resource.Mega),
+			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(200), resource.Milli),
+			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(2), resource.Giga),
 		}
 		endpointResourceList := corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(100), resource.Milli),
-			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(500), resource.Mega),
+			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(200), resource.Milli),
+			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(1), resource.Giga),
 		}
 		sys.Spec.CoreResources = &corev1.ResourceRequirements{
 			Requests: coreResourceList,
