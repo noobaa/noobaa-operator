@@ -14,7 +14,7 @@ allowedCapabilities:
 - SETUID
 - SETGID
 fsGroup:
-  type: MustRunAs
+  type: RunAsAny
 runAsUser:
   type: RunAsAny
 seLinuxContext:

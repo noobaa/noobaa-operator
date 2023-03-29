@@ -271,9 +271,6 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	podSpec.SecurityContext.RunAsGroup = &defaulfGID
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
-		if c.Name == "init" {
-			c.Image = r.NooBaa.Status.ActualImage
-		}
 		if c.Name == "initialize-database" {
 			c.Image = GetDesiredDBImage(r.NooBaa)
 		}
@@ -1111,12 +1108,6 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 		if err := r.ReconcileObject(mongoSts, func() error { // remove old sts pods when finish migrating
 			podSpec := &mongoSts.Spec.Template.Spec
 			podSpec.ServiceAccountName = "noobaa"
-			for i := range podSpec.InitContainers {
-				c := &podSpec.InitContainers[i]
-				if c.Name == "init" {
-					c.Image = r.NooBaa.Status.ActualImage
-				}
-			}
 			for i := range podSpec.Containers {
 				c := &podSpec.Containers[i]
 				if c.Name == "db" {
@@ -1137,16 +1128,15 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 		}
 
 		// when starting - restart the db pod. This is a fix for https://bugzilla.redhat.com/show_bug.cgi?id=1922113
-		r.Logger.Info("getting noobaa-db-0 pod and deleting it if init container is old")
+		r.Logger.Info("getting noobaa-db-0 pod and restarting it if needed")
 		dbPod := &corev1.Pod{}
 		err := r.Client.Get(r.Ctx, types.NamespacedName{Namespace: options.Namespace, Name: "noobaa-db-0"}, dbPod)
 		if err != nil {
 			r.Logger.Errorf("got error when trying to get noobaa-db-0 pod - %v", err)
 			return err
 		}
-		if dbPod.Spec.InitContainers[0].Image != r.NooBaa.Status.ActualImage ||
-			dbPod.Spec.Containers[0].Image != options.DBMongoImage {
-			r.Logger.Info("identified old init container on ")
+		if dbPod.Spec.Containers[0].Image != options.DBMongoImage {
+			r.Logger.Info("identified incorrect DB image - deleting noobaa-db-0 pod ")
 			err = r.Client.Delete(r.Ctx, dbPod)
 			if err != nil {
 				r.Logger.Errorf("got error on deletion of noobaa-db-0 pod")
