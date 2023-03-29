@@ -263,6 +263,10 @@ func ValidateBackingstoreDeletion(bs nbv1.BackingStore, systemInfo nb.SystemInfo
 		if pool.Name == bs.Name {
 			if pool.Undeletable == "IS_BACKINGSTORE" || pool.Undeletable == "BEING_DELETED" {
 				return nil
+			} else if pool.Undeletable == "CONNECTED_BUCKET_DELETING" {
+				return util.ValidationError{
+					Msg: fmt.Sprintf("cannot complete because objects in Backingstore %q are still being deleted, Please try later", pool.Name),
+				}
 			}
 			return util.ValidationError{
 				Msg: fmt.Sprintf("cannot complete because pool %q in %q state", pool.Name, pool.Undeletable),
