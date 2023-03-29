@@ -4239,7 +4239,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_db_yaml = "b6039d7ba3604deb54fdf6c48a7df758e1768e1af294ea21d0988cf30103c1c4"
+const Sha256_deploy_internal_statefulset_db_yaml = "25924f84967caebdeb5d61c2181f0ba04da92306fed7e44834dbcc7480b8d48a"
 
 const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4263,25 +4263,6 @@ spec:
     spec:
       serviceAccountName: noobaa-db
       terminationGracePeriodSeconds: 60
-      initContainers:
-      #----------------#
-      # INIT CONTAINER #
-      #----------------#
-      - name: init
-        image: NOOBAA_CORE_IMAGE
-        command:
-        - /noobaa_init_files/noobaa_init.sh
-        - init_mongo
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "500Mi"
-          limits:
-            cpu: "500m"
-            memory: "500Mi"
-        volumeMounts:
-        - name: db
-          mountPath: /mongo_data
       containers:
       #--------------------#
       # DATABASE CONTAINER #
@@ -4318,7 +4299,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "98abe98cd3089424ef5a7dcebd973b1c307f879d434872029b58c0be392b2756"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "0accc047982dbd1b8c207c81ef2bb1ae8c61c312915d3c2d196799ca6f146816"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4345,21 +4326,6 @@ spec:
       #-----------------#
       # INIT CONTAINERS #
       #-----------------#
-      - name: init
-        image: NOOBAA_CORE_IMAGE
-        command:
-        - /noobaa_init_files/noobaa_init.sh
-        - init_postgres
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "500Mi"
-          limits:
-            cpu: "500m"
-            memory: "500Mi"
-        volumeMounts:
-        - name: db
-          mountPath: /var/lib/pgsql
       - name: initialize-database
         image: NOOBAA_DB_IMAGE
         env:
@@ -4444,6 +4410,8 @@ spec:
       securityContext: 
         runAsUser: 10001
         runAsGroup: 0
+        fsGroup: 0
+        fsGroupChangePolicy: "OnRootMismatch"
   volumeClaimTemplates:
     - metadata:
         name: db
@@ -5535,7 +5503,7 @@ rules:
       - bucketclasses
 `
 
-const Sha256_deploy_scc_db_yaml = "49d970f874b9f458e286badddd46d772bbf8270b4d28a7c02002f1eef4d226be"
+const Sha256_deploy_scc_db_yaml = "d91c727214d8879843da81ee8778bf6ad6d06af6bdea0a36ac494b5ccc706d7a"
 
 const File_deploy_scc_db_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -5553,7 +5521,7 @@ allowedCapabilities:
 - SETUID
 - SETGID
 fsGroup:
-  type: MustRunAs
+  type: RunAsAny
 runAsUser:
   type: RunAsAny
 seLinuxContext:
