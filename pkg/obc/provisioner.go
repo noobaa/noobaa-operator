@@ -86,6 +86,12 @@ func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder recor
 	return nil
 }
 
+// GenerateUserID implements lib-bucket-provisioner callback to generate a user ID
+func (p Provisioner) GenerateUserID(obc *nbv1.ObjectBucketClaim, ob *nbv1.ObjectBucket) (string, error) {
+	// We do not implement this
+	return "", nil
+}
+
 // Provision implements lib-bucket-provisioner callback to create a new bucket
 func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBucket, error) {
 
