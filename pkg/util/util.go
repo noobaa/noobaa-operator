@@ -1071,6 +1071,8 @@ func GetIBMRegion() (string, error) {
 func GetAWSRegion() (string, error) {
 	// parse the node name to get AWS region according to this:
 	// https://docs.aws.amazon.com/en_pv/vpc/latest/userguide/vpc-dns.html#vpc-dns-hostnames
+	// The list of regions can be found here:
+	// https://docs.aws.amazon.com/general/latest/gr/rande.html
 	var mapValidAWSRegions = map[string]string{
 		"compute-1":      "us-east-1",
 		"ec2":            "us-east-1",
@@ -1080,21 +1082,29 @@ func GetAWSRegion() (string, error) {
 		"us-west-2":      "us-west-2",
 		"ca-central-1":   "ca-central-1",
 		"eu-central-1":   "eu-central-1",
+		"eu-central-2":   "eu-central-2",
 		"eu-west-1":      "eu-west-1",
 		"eu-west-2":      "eu-west-2",
 		"eu-west-3":      "eu-west-3",
 		"eu-north-1":     "eu-north-1",
+		"eu-south-1":     "eu-south-1",
+		"eu-south-2":     "eu-south-2",
 		"ap-east-1":      "ap-east-1",
 		"ap-northeast-1": "ap-northeast-1",
 		"ap-northeast-2": "ap-northeast-2",
 		"ap-northeast-3": "ap-northeast-3",
 		"ap-southeast-1": "ap-southeast-1",
 		"ap-southeast-2": "ap-southeast-2",
+		"ap-southeast-3": "ap-southeast-3",
+		"ap-southeast-4": "ap-southeast-4",
 		"ap-south-1":     "ap-south-1",
+		"ap-south-2":     "ap-south-2",
 		"me-south-1":     "me-south-1",
+		"me-central-1":   "me-central-1",
 		"sa-east-1":      "sa-east-1",
 		"us-gov-west-1":  "us-gov-west-1",
 		"us-gov-east-1":  "us-gov-east-1",
+		"af-south-1":     "af-south-1",
 	}
 	nodesList := &corev1.NodeList{}
 	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
