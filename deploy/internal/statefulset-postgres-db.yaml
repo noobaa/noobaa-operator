@@ -23,21 +23,6 @@ spec:
       #-----------------#
       # INIT CONTAINERS #
       #-----------------#
-      - name: init
-        image: NOOBAA_CORE_IMAGE
-        command:
-        - /noobaa_init_files/noobaa_init.sh
-        - init_postgres
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "500Mi"
-          limits:
-            cpu: "500m"
-            memory: "500Mi"
-        volumeMounts:
-        - name: db
-          mountPath: /var/lib/pgsql
       - name: initialize-database
         image: NOOBAA_DB_IMAGE
         env:
@@ -122,6 +107,8 @@ spec:
       securityContext: 
         runAsUser: 10001
         runAsGroup: 0
+        fsGroup: 0
+        fsGroupChangePolicy: "OnRootMismatch"
   volumeClaimTemplates:
     - metadata:
         name: db
