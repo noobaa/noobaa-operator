@@ -619,8 +619,8 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 		mandatoryProperties := []string{"AccountName", "AccountKey"}
 
 		if secretName == "" {
-			accountName := util.GetFlagStringOrPrompt(cmd, "account-name")
-			accountKey := util.GetFlagStringOrPrompt(cmd, "account-key")
+			accountName := util.GetFlagStringOrPromptPassword(cmd, "account-name")
+			accountKey := util.GetFlagStringOrPromptPassword(cmd, "account-key")
 			secret.StringData["AccountName"] = accountName
 			secret.StringData["AccountKey"] = accountKey
 		} else {
