@@ -20,25 +20,6 @@ spec:
     spec:
       serviceAccountName: noobaa-db
       terminationGracePeriodSeconds: 60
-      initContainers:
-      #----------------#
-      # INIT CONTAINER #
-      #----------------#
-      - name: init
-        image: NOOBAA_CORE_IMAGE
-        command:
-        - /noobaa_init_files/noobaa_init.sh
-        - init_mongo
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "500Mi"
-          limits:
-            cpu: "500m"
-            memory: "500Mi"
-        volumeMounts:
-        - name: db
-          mountPath: /mongo_data
       containers:
       #--------------------#
       # DATABASE CONTAINER #
