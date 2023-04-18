@@ -110,6 +110,11 @@ var ImagePullSecret = ""
 // pod)
 var MiniEnv = false
 
+// DevEnv setting this option indicates to the operator that it is deployed on development environment
+// This info is used by the operator for environment based decisions (e.g. number of resources to request per
+// pod)
+var DevEnv = false
+
 // DisableLoadBalancerService is used for setting the service type to ClusterIP instead of LoadBalancer
 var DisableLoadBalancerService = false
 
@@ -208,6 +213,10 @@ func init() {
 	FlagSet.BoolVar(
 		&MiniEnv, "mini",
 		false, "Signal the operator that it is running in a low resource environment",
+	)
+	FlagSet.BoolVar(
+		&DevEnv, "dev",
+		false, "Set sufficient resources for dev env",
 	)
 	FlagSet.BoolVar(
 		&DisableLoadBalancerService, "disable-load-balancer",

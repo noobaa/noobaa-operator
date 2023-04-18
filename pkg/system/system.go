@@ -213,6 +213,36 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 				Limits:   endpointResourceList,
 			}}
 	}
+	if options.DevEnv {
+		coreResourceList := corev1.ResourceList{
+			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(500), resource.Milli),
+			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(1), resource.Giga),
+		}
+		dbResourceList := corev1.ResourceList{
+			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(1000), resource.Milli),
+			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(2), resource.Giga),
+		}
+		endpointResourceList := corev1.ResourceList{
+			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(500), resource.Milli),
+			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(500), resource.Mega),
+		}
+		sys.Spec.CoreResources = &corev1.ResourceRequirements{
+			Requests: coreResourceList,
+			Limits:   coreResourceList,
+		}
+		sys.Spec.DBResources = &corev1.ResourceRequirements{
+			Requests: dbResourceList,
+			Limits:   dbResourceList,
+		}
+		sys.Spec.Endpoints = &nbv1.EndpointsSpec{
+			MinCount: 1,
+			MaxCount: 1,
+			Resources: &corev1.ResourceRequirements{
+				Requests: endpointResourceList,
+				Limits:   endpointResourceList,
+			}}
+	}
+
 	return sys
 }
 
