@@ -18,6 +18,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
+	"github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	"github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner"
 	obAPI "github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner/api"
 	obErrors "github.com/kube-object-storage/lib-bucket-provisioner/pkg/provisioner/api/errors"
@@ -94,46 +95,28 @@ func (p Provisioner) GenerateUserID(obc *nbv1.ObjectBucketClaim, ob *nbv1.Object
 
 // Provision implements lib-bucket-provisioner callback to create a new bucket
 func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBucket, error) {
-
-	log := p.Logger
-	log.Infof("Provision: got request to provision bucket %q", bucketOptions.BucketName)
-
-	err := ValidateOBC(bucketOptions.ObjectBucketClaim)
-	if err != nil {
-		return nil, err
+	obc := bucketOptions.ObjectBucketClaim
+	if p.shouldProvision(obc) {
+		return p.provision(bucketOptions)
 	}
 
-	r, err := NewBucketRequest(p, nil, bucketOptions)
-	if err != nil {
-		return nil, err
+	ob := &nbv1.ObjectBucket{}
+	ob.SetName(p.getOBNameFromOBC(obc))
+	ob.SetNamespace(bucketOptions.ObjectBucketClaim.Namespace)
+
+	if !util.KubeCheck(ob) {
+		return nil, fmt.Errorf(
+			"expected object bucket %q to exist in namespace: %q",
+			ob.Name,
+			bucketOptions.ObjectBucketClaim.Namespace,
+		)
 	}
 
-	if r.SysClient.NooBaa.DeletionTimestamp != nil {
-		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
-		if util.Contains(finalizersArray, nbv1.GracefulFinalizer) {
-			msg := "NooBaa is in deleting state, new requests will be ignored"
-			log.Errorf(msg)
-			return nil, obErrors.NewBucketExistsError(msg)
-		}
-	}
-	// TODO: we need to better handle the case that a bucket was created, but Provision failed
-	// right now we will fail on create bucket when Provision is called the second time
-	err = r.CreateAndUpdateBucket(p, bucketOptions)
-	if err != nil {
-		return nil, err
-	}
+	ob.ResourceVersion = ""
+	ob.Spec.Endpoint.AdditionalConfigData = util.CloneMap(obc.Spec.AdditionalConfig)
 
-	// create account and give permissions for bucket
-	err = r.CreateAccount()
-	if err != nil {
-		return nil, err
-	}
-
-	err = r.putBucketTagging()
-	if err != nil {
-		logrus.Warnf("failed executing putBucketTagging on bucket: %v, %v", r.BucketName, err)
-	}
-	return r.OB, nil
+	err := p.update(ob)
+	return ob, err
 }
 
 // Grant implements lib-bucket-provisioner callback to use an existing bucket
@@ -216,8 +199,60 @@ func (p *Provisioner) Revoke(ob *nbv1.ObjectBucket) error {
 	return nil
 }
 
-// Update implements lib-bucket-provisioner callback to stop using an existing bucket additional config of OBC
-func (p *Provisioner) Update(ob *nbv1.ObjectBucket) error {
+func (p *Provisioner) shouldProvision(obc *nbv1.ObjectBucketClaim) bool {
+	log := p.Logger
+	log.Info("checking OBC for OB name, this indicates provisioning is complete", obc.Name)
+	if obc.Spec.ObjectBucketName != "" && obc.Status.Phase == v1alpha1.ObjectBucketClaimStatusPhaseBound {
+		log.Info("provisioning already completed", "ObjectBucket", obc.Spec.ObjectBucketName)
+		return false
+	}
+
+	return true
+}
+
+func (p *Provisioner) provision(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBucket, error) {
+	log := p.Logger
+	log.Infof("Provision: got request to provision bucket %q", bucketOptions.BucketName)
+
+	err := ValidateOBC(bucketOptions.ObjectBucketClaim)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := NewBucketRequest(p, nil, bucketOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.SysClient.NooBaa.DeletionTimestamp != nil {
+		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
+		if util.Contains(finalizersArray, nbv1.GracefulFinalizer) {
+			msg := "NooBaa is in deleting state, new requests will be ignored"
+			log.Errorf(msg)
+			return nil, obErrors.NewBucketExistsError(msg)
+		}
+	}
+	// TODO: we need to better handle the case that a bucket was created, but Provision failed
+	// right now we will fail on create bucket when Provision is called the second time
+	err = r.CreateAndUpdateBucket(p, bucketOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	// create account and give permissions for bucket
+	err = r.CreateAccount()
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.putBucketTagging()
+	if err != nil {
+		logrus.Warnf("failed executing putBucketTagging on bucket: %v, %v", r.BucketName, err)
+	}
+	return r.OB, nil
+}
+
+func (p *Provisioner) update(ob *nbv1.ObjectBucket) error {
 	log := p.Logger
 	log.Infof("Update: got request to Update bucket %q", ob.Name)
 
@@ -239,7 +274,14 @@ func (p *Provisioner) Update(ob *nbv1.ObjectBucket) error {
 		return err
 	}
 
-	return nil
+	return r.loadAuthentication()
+}
+
+func (p *Provisioner) getOBNameFromOBC(obc *nbv1.ObjectBucketClaim) string {
+	log := p.Logger
+	log.Infof("getOBNameFromOBC: got request to get OB name from OBC %q", obc.Name)
+
+	return fmt.Sprintf("obc-%s-%s", obc.Namespace, obc.Name)
 }
 
 // BucketRequest is the context of handling a single bucket request
@@ -508,6 +550,24 @@ func (r *BucketRequest) UpdateBucket() error {
 	}
 
 	log.Infof("✅ Successfully update bucket %q", r.BucketName)
+	return nil
+}
+
+func (r *BucketRequest) loadAuthentication() error {
+	readAccountReply, err := r.SysClient.NBClient.ReadAccountAPI(nb.ReadAccountParams{Email: r.AccountName})
+	if err != nil {
+		return err
+	}
+
+	accessKeys := readAccountReply.AccessKeys[0]
+
+	r.OB.Spec.Authentication = &nbv1.ObjectBucketAuthentication{
+		AccessKeys: &nbv1.ObjectBucketAccessKeys{
+			AccessKeyID:     accessKeys.AccessKey,
+			SecretAccessKey: accessKeys.SecretKey,
+		},
+	}
+
 	return nil
 }
 

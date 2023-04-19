@@ -2036,3 +2036,12 @@ func MapAlternateKeysValue(stringData map[string]string, key string) string {
 
 	return stringData[key]
 }
+
+// CloneMap creates a shallow clone of the given map
+func CloneMap[K comparable, V any](src map[K]V) map[K]V {
+	dst := make(map[K]V)
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
