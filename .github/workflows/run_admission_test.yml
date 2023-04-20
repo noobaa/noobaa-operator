@@ -1,5 +1,12 @@
 name: Admission Webhook Tests
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    paths-ignore:
+      - 'doc/**'
+  pull_request:
+    paths-ignore:
+      - 'doc/**'
+  workflow_dispatch:
 
 jobs:
   run-admission-test:

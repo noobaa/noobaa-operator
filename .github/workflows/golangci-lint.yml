@@ -1,5 +1,12 @@
 name: golangci-lint
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - 'doc/**'
+  pull_request:
+    paths-ignore:
+      - 'doc/**'
+  workflow_dispatch:
 
 jobs:
   golangci:
