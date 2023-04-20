@@ -1,5 +1,12 @@
 name: Testing flows
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - 'doc/**'
+  pull_request:
+    paths-ignore:
+      - 'doc/**'
+  workflow_dispatch:
 
 jobs:
   auto-update:

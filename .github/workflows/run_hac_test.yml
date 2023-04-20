@@ -1,5 +1,12 @@
 name: HAC on KIND cluster Test
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - 'doc/**'
+  pull_request:
+    paths-ignore:
+      - 'doc/**'
+  workflow_dispatch:
 
 jobs:
   run-hac-test:
