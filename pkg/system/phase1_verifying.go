@@ -136,6 +136,12 @@ func (r *Reconciler) CheckSystemCR() error {
 		return util.NewPersistentError("Invalid, DefaultBackingStoreSpec was deprecated", fmt.Sprintf(`%s`, err))
 	}
 
+	if r.NooBaa.Spec.Autoscaler.AutoscalerType != nbv1.AutoscalerTypeHPAV1 &&
+		r.NooBaa.Spec.Autoscaler.PrometheusNamespace == "" {
+		return util.NewPersistentError("InvalidEndpointsAutoscalerConfiguration",
+			fmt.Sprintf("Autoscaler %s missing prometheusNamespace property ", r.NooBaa.Spec.Autoscaler.AutoscalerType))
+	}
+
 	return nil
 }
 

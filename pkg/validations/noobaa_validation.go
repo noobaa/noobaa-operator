@@ -20,11 +20,17 @@ func ValidateNoobaaDeletion(nb nbv1.NooBaa) error {
 
 // ValidateNoobaaUpdate validates that the updated Noobaa CR is valid
 func ValidateNoobaaUpdate(nb nbv1.NooBaa) error {
+	if err := validateNoobaaAutoscalerConfig(nb); err != nil {
+		return err
+	}
 	return validateNoobaaLoadbalancerSourceSubnets(nb)
 }
 
 // ValidateNoobaaCreation validates that the created Noobaa CR is valid
 func ValidateNoobaaCreation(nb nbv1.NooBaa) error {
+	if err := validateNoobaaAutoscalerConfig(nb); err != nil {
+		return err
+	}
 	return validateNoobaaLoadbalancerSourceSubnets(nb)
 }
 
@@ -56,5 +62,15 @@ func validateCIDR(cidr string) error {
 		return err
 	}
 
+	return nil
+}
+
+func validateNoobaaAutoscalerConfig(nb nbv1.NooBaa) error {
+	if nb.Spec.Autoscaler.AutoscalerType != nbv1.AutoscalerTypeHPAV1 &&
+		nb.Spec.Autoscaler.PrometheusNamespace == "" {
+		return util.ValidationError{
+			Msg: fmt.Sprintf("Autoscaler %s missing prometheusNamespace property", nb.Spec.Autoscaler.AutoscalerType),
+		}
+	}
 	return nil
 }

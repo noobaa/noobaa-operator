@@ -18,6 +18,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/version"
 	"github.com/pkg/errors"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -114,6 +115,8 @@ type Reconciler struct {
 	JoinSecret                *corev1.Secret
 	UpgradeJob                *batchv1.Job
 	CaBundleConf              *corev1.ConfigMap
+	KedaTriggerAuthentication *kedav1alpha1.TriggerAuthentication
+	KedaScaled                *kedav1alpha1.ScaledObject
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -125,52 +128,54 @@ func NewReconciler(
 ) *Reconciler {
 
 	r := &Reconciler{
-		Request:             req,
-		Client:              client,
-		Scheme:              scheme,
-		Recorder:            recorder,
-		OperatorVersion:     version.Version,
-		CoreVersion:         options.ContainerImageTag,
-		Ctx:                 context.TODO(),
-		Logger:              logrus.WithField("sys", req.Namespace+"/"+req.Name),
-		NooBaa:              util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
-		ServiceAccount:      util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
-		CoreApp:             util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
-		CoreAppConfig:       util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap),
-		NooBaaMongoDB:       util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet),
-		PostgresDBConf:      util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap),
-		PostgresDBInitDb:    util.KubeObject(bundle.File_deploy_internal_configmap_postgres_initdb_yaml).(*corev1.ConfigMap),
-		NooBaaPostgresDB:    util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet),
-		ServiceDb:           util.KubeObject(bundle.File_deploy_internal_service_db_yaml).(*corev1.Service),
-		ServiceDbPg:         util.KubeObject(bundle.File_deploy_internal_service_db_yaml).(*corev1.Service),
-		ServiceMgmt:         util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
-		ServiceS3:           util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
-		ServiceSts:          util.KubeObject(bundle.File_deploy_internal_service_sts_yaml).(*corev1.Service),
-		SecretServer:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		SecretDB:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		SecretOp:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		SecretAdmin:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		SecretEndpoints:     util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		AzureContainerCreds: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		GCPBucketCreds:      util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		AWSCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
-		AzureCloudCreds:     util.KubeObject(bundle.File_deploy_internal_cloud_creds_azure_cr_yaml).(*cloudcredsv1.CredentialsRequest),
-		GCPCloudCreds:       util.KubeObject(bundle.File_deploy_internal_cloud_creds_gcp_cr_yaml).(*cloudcredsv1.CredentialsRequest),
-		IBMCloudCOSCreds:    util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		DefaultBackingStore: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
-		DefaultBucketClass:  util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
-		OBCStorageClass:     util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
-		PrometheusRule:      util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
-		ServiceMonitorMgmt:  util.KubeObject(bundle.File_deploy_internal_servicemonitor_mgmt_yaml).(*monitoringv1.ServiceMonitor),
-		ServiceMonitorS3:    util.KubeObject(bundle.File_deploy_internal_servicemonitor_s3_yaml).(*monitoringv1.ServiceMonitor),
-		CephObjectStoreUser: util.KubeObject(bundle.File_deploy_internal_ceph_objectstore_user_yaml).(*cephv1.CephObjectStoreUser),
-		RouteMgmt:           util.KubeObject(bundle.File_deploy_internal_route_mgmt_yaml).(*routev1.Route),
-		RouteS3:             util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
-		RouteSts:            util.KubeObject(bundle.File_deploy_internal_route_sts_yaml).(*routev1.Route),
-		DeploymentEndpoint:  util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
-		HPAEndpoint:         util.KubeObject(bundle.File_deploy_internal_hpa_endpoint_yaml).(*autoscalingv1.HorizontalPodAutoscaler),
-		UpgradeJob:          util.KubeObject(bundle.File_deploy_internal_job_upgrade_db_yaml).(*batchv1.Job),
-		CaBundleConf:        util.KubeObject(bundle.File_deploy_internal_configmap_ca_inject_yaml).(*corev1.ConfigMap),
+		Request:                   req,
+		Client:                    client,
+		Scheme:                    scheme,
+		Recorder:                  recorder,
+		OperatorVersion:           version.Version,
+		CoreVersion:               options.ContainerImageTag,
+		Ctx:                       context.TODO(),
+		Logger:                    logrus.WithField("sys", req.Namespace+"/"+req.Name),
+		NooBaa:                    util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
+		ServiceAccount:            util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
+		CoreApp:                   util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
+		CoreAppConfig:             util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap),
+		NooBaaMongoDB:             util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet),
+		PostgresDBConf:            util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap),
+		PostgresDBInitDb:          util.KubeObject(bundle.File_deploy_internal_configmap_postgres_initdb_yaml).(*corev1.ConfigMap),
+		NooBaaPostgresDB:          util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet),
+		ServiceDb:                 util.KubeObject(bundle.File_deploy_internal_service_db_yaml).(*corev1.Service),
+		ServiceDbPg:               util.KubeObject(bundle.File_deploy_internal_service_db_yaml).(*corev1.Service),
+		ServiceMgmt:               util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
+		ServiceS3:                 util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
+		ServiceSts:                util.KubeObject(bundle.File_deploy_internal_service_sts_yaml).(*corev1.Service),
+		SecretServer:              util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretDB:                  util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretOp:                  util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretAdmin:               util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretEndpoints:           util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		AzureContainerCreds:       util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		GCPBucketCreds:            util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		AWSCloudCreds:             util.KubeObject(bundle.File_deploy_internal_cloud_creds_aws_cr_yaml).(*cloudcredsv1.CredentialsRequest),
+		AzureCloudCreds:           util.KubeObject(bundle.File_deploy_internal_cloud_creds_azure_cr_yaml).(*cloudcredsv1.CredentialsRequest),
+		GCPCloudCreds:             util.KubeObject(bundle.File_deploy_internal_cloud_creds_gcp_cr_yaml).(*cloudcredsv1.CredentialsRequest),
+		IBMCloudCOSCreds:          util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		DefaultBackingStore:       util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
+		DefaultBucketClass:        util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
+		OBCStorageClass:           util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
+		PrometheusRule:            util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
+		ServiceMonitorMgmt:        util.KubeObject(bundle.File_deploy_internal_servicemonitor_mgmt_yaml).(*monitoringv1.ServiceMonitor),
+		ServiceMonitorS3:          util.KubeObject(bundle.File_deploy_internal_servicemonitor_s3_yaml).(*monitoringv1.ServiceMonitor),
+		CephObjectStoreUser:       util.KubeObject(bundle.File_deploy_internal_ceph_objectstore_user_yaml).(*cephv1.CephObjectStoreUser),
+		RouteMgmt:                 util.KubeObject(bundle.File_deploy_internal_route_mgmt_yaml).(*routev1.Route),
+		RouteS3:                   util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
+		RouteSts:                  util.KubeObject(bundle.File_deploy_internal_route_sts_yaml).(*routev1.Route),
+		DeploymentEndpoint:        util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
+		HPAEndpoint:               util.KubeObject(bundle.File_deploy_internal_hpa_endpoint_yaml).(*autoscalingv1.HorizontalPodAutoscaler),
+		UpgradeJob:                util.KubeObject(bundle.File_deploy_internal_job_upgrade_db_yaml).(*batchv1.Job),
+		CaBundleConf:              util.KubeObject(bundle.File_deploy_internal_configmap_ca_inject_yaml).(*corev1.ConfigMap),
+		KedaTriggerAuthentication: util.KubeObject(bundle.File_deploy_internal_hpa_keda_trigger_authentication_yaml).(*kedav1alpha1.TriggerAuthentication),
+		KedaScaled:                util.KubeObject(bundle.File_deploy_internal_hpa_keda_scaled_object_yaml).(*kedav1alpha1.ScaledObject),
 	}
 
 	// Set Namespace
@@ -280,6 +285,9 @@ func NewReconciler(
 
 	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.Containers[0].DeepCopy()
 	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.DeepCopy()
+
+	r.KedaTriggerAuthentication.Namespace = r.Request.Namespace
+	r.KedaScaled.Namespace = r.Request.Namespace
 	return r
 }
 

@@ -1,0 +1,25 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: noobaa-endpoint
+  labels:
+    deploymentName: noobaa-endpoint
+    origin: keda
+    app: noobaa
+    scaledobject.keda.sh/name: prometheus-scaledobject
+spec:
+  cooldownPeriod: 150
+  maxReplicaCount: 2
+  minReplicaCount: 1
+  pollingInterval: 30
+  scaleTargetRef:
+    name: noobaa-endpoint
+  triggers:
+    - authenticationRef: 
+        name: keda-prom-creds
+      metadata:
+        authModes: bearer
+        metricName: NooBaa_num_namespace_buckets
+        query: '(sum(irate(container_network_receive_bytes_total{pod=~"noobaa-endpoint-.*", namespace="placeholder"}[5m])) by (pod, namespace))'
+        threshold: '9000000'
+      type: prometheus

@@ -135,6 +135,14 @@ var ShowSecrets = false
 // ManualDefaultBackingStore is used for disabling and allow deletion of default backingstore
 var ManualDefaultBackingStore = false
 
+// DefaultAutoscalerType is the default noobaa-endpoint autoscaler type
+// it can be overridden for testing or different types. for now default is hpav1 it will replace with hpav2 in future
+var DefaultAutoscalerType = "hpav1"
+
+// PrometheusNamespace is prometheus installed namespace
+// it can be overridden for testing or different namespace.
+var PrometheusNamespace = ""
+
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
 	return Namespace + ".noobaa.io"
@@ -241,5 +249,14 @@ func init() {
 	FlagSet.BoolVar(
 		&ManualDefaultBackingStore, "manual-default-backingstore",
 		false, "allow to delete the default backingstore",
+	)
+	FlagSet.StringVar(
+		&DefaultAutoscalerType, "autoscaler-type",
+		DefaultAutoscalerType, "The type of autoscaler (hpav1, hpav2, keda)",
+	)
+
+	FlagSet.StringVar(
+		&PrometheusNamespace, "prometheus-namespace",
+		PrometheusNamespace, "namespace with installed prometheus for autoscaler",
 	)
 }

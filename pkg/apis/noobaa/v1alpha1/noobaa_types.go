@@ -197,6 +197,21 @@ type NooBaaSpec struct {
 	// to true
 	// +optional
 	LoadBalancerSourceSubnets LoadBalancerSourceSubnetSpec `json:"loadBalancerSourceSubnets,omitempty"`
+
+	// Configuration related to autoscaling
+	// +optional
+	Autoscaler AutoscalerSpec `json:"autoscaler,omitempty"`
+}
+
+// AutoscalerSpec defines different actoscaling spec such as autoscaler type and prometheus namespace
+type AutoscalerSpec struct {
+	// Type of autoscaling (optional) for noobaa-endpoint, hpav1 - default kubernetes based, hpav2 and keda - Prometheus metrics based
+	// +kubebuilder:validation:Enum=hpav1;hpav2;keda
+	AutoscalerType AutoscalerTypes `json:"autoscalerType"`
+
+	// Prometheus namespace that scrap metrics from noobaa
+	// +optional
+	PrometheusNamespace string `json:"prometheusNamespace,omitempty"`
 }
 
 // LoadBalancerSourceSubnetSpec defines the subnets that will be allowed to access the NooBaa services
@@ -456,4 +471,17 @@ const (
 	DBTypeMongo DBTypes = "mongodb"
 	// DBTypePostgres is postgres
 	DBTypePostgres DBTypes = "postgres"
+)
+
+// AutoscalerTypes is a string enum type for specifying the types of autoscaling supported.
+type AutoscalerTypes string
+
+// These are the valid AutoscalerTypes types:
+const (
+	// AutoscalerTypeHPAV1 is hpa
+	AutoscalerTypeHPAV1 AutoscalerTypes = "hpav1"
+	// AutoscalerTypeKeda is keda
+	AutoscalerTypeKeda AutoscalerTypes = "keda"
+	// AutoscalerTypeHPAV2 is hpav2
+	AutoscalerTypeHPAV2 AutoscalerTypes = "hpav2"
 )

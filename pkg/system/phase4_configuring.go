@@ -23,7 +23,6 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	secv1 "github.com/openshift/api/security/v1"
-
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -537,20 +536,26 @@ func (r *Reconciler) awaitEndpointDeploymentPods() error {
 func (r *Reconciler) ReconcileHPAEndpoint() error {
 	// Wait for the the endpoint deployment to become ready
 	// only if HPA was not created yet
+
 	if r.HPAEndpoint.UID == "" {
 		if err := r.awaitEndpointDeploymentPods(); err != nil {
 			return err
 		}
 	}
-
-	if err := r.ReconcileObject(r.HPAEndpoint, r.SetDesiredHPAEndpoint); err != nil {
+	if err := r.reconcileAutoscaler(); err != nil {
 		return err
 	}
+	return r.updateNoobaaEndpoint()
 
-	max := r.HPAEndpoint.Spec.MaxReplicas
-	min := r.HPAEndpoint.Spec.MaxReplicas
-	if r.HPAEndpoint.Spec.MinReplicas != nil {
-		min = *r.HPAEndpoint.Spec.MinReplicas
+}
+
+func (r *Reconciler) updateNoobaaEndpoint() error {
+
+	endpointsSpec := r.NooBaa.Spec.Endpoints
+	var max, min int32
+	if endpointsSpec != nil {
+		min = endpointsSpec.MinCount
+		max = endpointsSpec.MaxCount
 	}
 
 	region := ""
