@@ -1,12 +1,5 @@
 name: KMS Test - IBM KP
-on:
-  push:
-    paths-ignore:
-      - 'doc/**'
-  pull_request:
-    paths-ignore:
-      - 'doc/**'
-  workflow_dispatch:
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   run-kms-ibm-kp-test:

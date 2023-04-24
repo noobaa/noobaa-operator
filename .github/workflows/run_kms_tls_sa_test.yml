@@ -1,12 +1,5 @@
 name: KMS Test - TLS Vault, K8S ServiceAccount Auth
-on:
-  push:
-    paths-ignore:
-      - 'doc/**'
-  pull_request:
-    paths-ignore:
-      - 'doc/**'
-  workflow_dispatch:
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   run-kms-tls-sa-test:

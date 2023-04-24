@@ -1,12 +1,5 @@
 name: Run Operator Unit Tests
-on:
-  push:
-    paths-ignore:
-      - 'doc/**'
-  pull_request:
-    paths-ignore:
-      - 'doc/**'
-  workflow_dispatch:
+on: [push, pull_request, workflow_dispatch]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
