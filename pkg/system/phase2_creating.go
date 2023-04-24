@@ -267,8 +267,21 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	podSpec.ServiceAccountName = "noobaa-db"
 	defaultUID := int64(10001)
 	defaulfGID := int64(0)
+	defaultFSGroup := int64(0)
+	defaultFSGroupChangePolicy := corev1.FSGroupChangeOnRootMismatch
+
 	podSpec.SecurityContext.RunAsUser = &defaultUID
 	podSpec.SecurityContext.RunAsGroup = &defaulfGID
+	podSpec.SecurityContext.FSGroup = &defaultFSGroup
+	podSpec.SecurityContext.FSGroupChangePolicy = &defaultFSGroupChangePolicy
+	podSpec.InitContainers = util.FilterSlice(
+		podSpec.InitContainers,
+		func(c corev1.Container) bool {
+			// remove the init container that is not needed
+			return c.Name != "init"
+		},
+	)
+
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
 		if c.Name == "initialize-database" {
