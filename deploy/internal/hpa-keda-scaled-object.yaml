@@ -9,8 +9,6 @@ metadata:
     scaledobject.keda.sh/name: prometheus-scaledobject
 spec:
   cooldownPeriod: 150
-  maxReplicaCount: 2
-  minReplicaCount: 1
   pollingInterval: 30
   scaleTargetRef:
     name: noobaa-endpoint
@@ -18,8 +16,7 @@ spec:
     - authenticationRef: 
         name: keda-prom-creds
       metadata:
-        authModes: bearer
         metricName: NooBaa_num_namespace_buckets
-        query: '(sum(irate(container_network_receive_bytes_total{pod=~"noobaa-endpoint-.*", namespace="placeholder"}[5m])) by (pod, namespace))'
+        query: '(sum(irate(container_cpu_usage_seconds_total{pod=~"noobaa-endpoint-.*", namespace="placeholder"}[5m])) by (namespace))'
         threshold: '9000000'
       type: prometheus

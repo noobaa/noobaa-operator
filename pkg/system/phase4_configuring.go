@@ -566,11 +566,10 @@ func (r *Reconciler) ReconcileHPAEndpoint() error {
 	// Wait for the the endpoint deployment to become ready
 	// only if HPA was not created yet
 
-	if r.HPAEndpoint.UID == "" {
-		if err := r.awaitEndpointDeploymentPods(); err != nil {
-			return err
-		}
+	if err := r.awaitEndpointDeploymentPods(); err != nil {
+		return err
 	}
+
 	if err := r.reconcileAutoscaler(); err != nil {
 		return err
 	}
@@ -601,23 +600,6 @@ func (r *Reconciler) updateNoobaaEndpoint() error {
 			Max: max,
 		},
 	})
-}
-
-// SetDesiredHPAEndpoint updates the endpoint horizontal pod autoscaler as desired for reconciling
-func (r *Reconciler) SetDesiredHPAEndpoint() error {
-	var minReplicas int32 = 1
-	var maxReplicas int32 = 2
-
-	endpointsSpec := r.NooBaa.Spec.Endpoints
-	if endpointsSpec != nil {
-		minReplicas = endpointsSpec.MinCount
-		maxReplicas = endpointsSpec.MaxCount
-	}
-
-	r.HPAEndpoint.Spec.MinReplicas = &minReplicas
-	r.HPAEndpoint.Spec.MaxReplicas = maxReplicas
-
-	return nil
 }
 
 // RegisterToCluster registers the noobaa client with the noobaa cluster

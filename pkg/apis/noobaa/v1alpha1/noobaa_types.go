@@ -205,9 +205,10 @@ type NooBaaSpec struct {
 
 // AutoscalerSpec defines different actoscaling spec such as autoscaler type and prometheus namespace
 type AutoscalerSpec struct {
-	// Type of autoscaling (optional) for noobaa-endpoint, hpav1 - default kubernetes based, hpav2 and keda - Prometheus metrics based
-	// +kubebuilder:validation:Enum=hpav1;hpav2;keda
-	AutoscalerType AutoscalerTypes `json:"autoscalerType"`
+	// Type of autoscaling (optional) for noobaa-endpoint, hpav2(default) and keda - Prometheus metrics based
+	// +kubebuilder:validation:Enum=hpav2;keda
+	// +optional
+	AutoscalerType AutoscalerTypes `json:"autoscalerType,omitempty"`
 
 	// Prometheus namespace that scrap metrics from noobaa
 	// +optional
@@ -495,8 +496,6 @@ type AutoscalerTypes string
 
 // These are the valid AutoscalerTypes types:
 const (
-	// AutoscalerTypeHPAV1 is hpa
-	AutoscalerTypeHPAV1 AutoscalerTypes = "hpav1"
 	// AutoscalerTypeKeda is keda
 	AutoscalerTypeKeda AutoscalerTypes = "keda"
 	// AutoscalerTypeHPAV2 is hpav2

@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app: prometheus-adapter
+  name: prometheus-adapter-hpa-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus-adapter-server-resources
+subjects:
+- kind: ServiceAccount
+  name: custom-metrics-prometheus-adapter

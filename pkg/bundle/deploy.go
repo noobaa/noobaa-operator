@@ -2,7 +2,7 @@ package bundle
 
 const Version = "5.13.0"
 
-const Sha256_deploy_cluster_role_yaml = "b88a4dd75765daafbe629cb4ddf4ed5a795de9819039f0bedd395f7152f50d65"
+const Sha256_deploy_cluster_role_yaml = "5ed4a0b2ebfd74e0427d3fc1db8567df452311aa66432409c5da9013bef71a6e"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -40,8 +40,11 @@ rules:
     resources:
       - namespaces
       - services
+      - pods
     verbs:
       - get
+      - list
+      - watch
   - apiGroups:
       - storage.k8s.io
     resources:
@@ -100,6 +103,54 @@ rules:
       - watch
       - create
       - update
+      - delete
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - prometheuses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterrolebindings
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - delete
+  - apiGroups:
+      - apiregistration.k8s.io
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - delete
+    resources:
+      - 'apiservices'
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - rolebindings
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - delete
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterroles
+    verbs:
+      - create
+      - get
+      - list
+      - watch
       - delete
   - apiGroups:
     - monitoring.coreos.com
@@ -1288,7 +1339,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "358ce59efe08f5cd594649cbd2bc49a1cbc4d9771328567d5c9ba897e7263083"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "98544e410993f14da10ce425f1bc939238ee8ade0011c4ef9c720f1dc8b53543"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2178,18 +2229,14 @@ spec:
                 properties:
                   autoscalerType:
                     description: Type of autoscaling (optional) for noobaa-endpoint,
-                      hpav1 - default kubernetes based, hpav2 and keda - Prometheus
-                      metrics based
+                      hpav2(default) and keda - Prometheus metrics based
                     enum:
-                    - hpav1
                     - hpav2
                     - keda
                     type: string
                   prometheusNamespace:
                     description: Prometheus namespace that scrap metrics from noobaa
                     type: string
-                required:
-                - autoscalerType
                 type: object
               cleanupPolicy:
                 description: CleanupPolicy (optional) Indicates user's policy for
@@ -3583,25 +3630,7 @@ spec:
         runAsGroup: 0
 `
 
-const Sha256_deploy_internal_hpa_endpoint_yaml = "5f6d756b2a8a7419b0d3b103c0289e911cba08748da2d36db0c0c7e497e6f423"
-
-const File_deploy_internal_hpa_endpoint_yaml = `apiVersion: autoscaling/v1
-kind: HorizontalPodAutoscaler
-metadata:
-  labels:
-    app: noobaa
-  name: noobaa-endpoint
-spec:
-  maxReplicas: 3
-  minReplicas: 1
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: noobaa-endpoint
-  targetCPUUtilizationPercentage: 80
-`
-
-const Sha256_deploy_internal_hpa_keda_scaled_object_yaml = "677b591e1d33aff3e176d0a46876f906cf477f6aa02dead72bd198297ece91fa"
+const Sha256_deploy_internal_hpa_keda_scaled_object_yaml = "16cf6a7587f44acaad171e3541f044fe3af1568a0ea60e28e4e37b3eb81e0238"
 
 const File_deploy_internal_hpa_keda_scaled_object_yaml = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -3614,8 +3643,6 @@ metadata:
     scaledobject.keda.sh/name: prometheus-scaledobject
 spec:
   cooldownPeriod: 150
-  maxReplicaCount: 2
-  minReplicaCount: 1
   pollingInterval: 30
   scaleTargetRef:
     name: noobaa-endpoint
@@ -3623,21 +3650,21 @@ spec:
     - authenticationRef: 
         name: keda-prom-creds
       metadata:
-        authModes: bearer
         metricName: NooBaa_num_namespace_buckets
-        query: '(sum(irate(container_network_receive_bytes_total{pod=~"noobaa-endpoint-.*", namespace="placeholder"}[5m])) by (pod, namespace))'
+        query: '(sum(irate(container_cpu_usage_seconds_total{pod=~"noobaa-endpoint-.*", namespace="placeholder"}[5m])) by (namespace))'
         threshold: '9000000'
       type: prometheus
 `
 
-const Sha256_deploy_internal_hpa_keda_secret_yaml = "f3afaa7cbda1cde7d38a722661c4694227172603dc7f52dbb608463a10ba2e22"
+const Sha256_deploy_internal_hpa_keda_secret_yaml = "bb193ad94aef5d5a4398c9d50f7fba4ae56a9db5da0080c1211d34f6fc88a682"
 
 const File_deploy_internal_hpa_keda_secret_yaml = `apiVersion: v1
 kind: Secret
 metadata:
-  name: prometheus-k8s-token
+  name: prometheus-k8s-secret
   labels:
     origin: keda
+    app: noobaa
 type: Opaque
 data: {}
 `
@@ -3652,6 +3679,263 @@ metadata:
     origin: keda
 spec:
   secretTargetRef: []
+`
+
+const Sha256_deploy_internal_hpav2_apiservice_yaml = "87f414bb02c6cf05700fdf2733fb253f970290633b658bfa2b2ea6799cf565c9"
+
+const File_deploy_internal_hpav2_apiservice_yaml = `apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  labels:
+    app: prometheus-adapter
+  name: v1beta1.custom.metrics.k8s.io
+spec:
+  service:
+    name: custom-metrics-prometheus-adapter
+  group: custom.metrics.k8s.io
+  version: v1beta1
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 100
+  versionPriority: 100
+`
+
+const Sha256_deploy_internal_hpav2_autoscaling_yaml = "a0b4c55d02b8314d8c6c7858ae18a6c43861d38bbaa2d8d0b7d641b1d9d45b8c"
+
+const File_deploy_internal_hpav2_autoscaling_yaml = `kind: HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
+metadata:
+  labels:
+    app: noobaa
+  name: hpav2-noobaa-endpoint
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: noobaa-endpoint
+  metrics:
+  - type: Object
+    object:
+      metric:
+        # this is dummy metrics, original metrics will replace this
+        name: container_cpu_usage_seconds_per_second
+      describedObject:
+        apiVersion: v1
+        kind: Pod
+        name: noobaa-core-0
+      target:
+        averageValue: 9M
+        type: AverageValue
+`
+
+const Sha256_deploy_internal_hpav2_configmap_adapter_yaml = "8f857756f46511c8763fbc03e9373cb3eec11c2251d7a844ae4990d55208336b"
+
+const File_deploy_internal_hpav2_configmap_adapter_yaml = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: prometheus-adapter
+  name: adapter-config
+data:
+  config.yaml: |
+    rules:
+    - seriesQuery: 'container_cpu_usage_seconds_total{namespace="placeholder",pod=~"noobaa-endpoint-.*"}'
+      resources:
+        overrides:
+          namespace:
+            resource: namespace
+          pod:
+            resource: pod
+      name:
+        matches: "^(.*)_total"
+        as: "${1}_per_second"
+      metricsQuery: (sum(irate(<<.Series>>{<<.LabelMatchers>>}[5m])) by (<<.GroupBy>>))
+`
+
+const Sha256_deploy_internal_hpav2_deployment_adapter_yaml = "097a81580b56da76caee3022d682d7eee1fd58acd46fed383039188026102429"
+
+const File_deploy_internal_hpav2_deployment_adapter_yaml = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: metrics-adapter
+    app.kubernetes.io/name: prometheus-adapter
+    app.kubernetes.io/version: 0.10.0
+    app: prometheus-adapter
+  name: prometheus-adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: metrics-adapter
+      app.kubernetes.io/name: prometheus-adapter
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: metrics-adapter
+        app.kubernetes.io/name: prometheus-adapter
+        app.kubernetes.io/version: 0.10.0
+    spec:
+      automountServiceAccountToken: true
+      containers:
+      - args:
+        - --v=6
+        - --config=/etc/adapter/config.yaml
+        - --logtostderr=true
+        - --metrics-relist-interval=1m
+        - --secure-port=6443
+        - --tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+        image: registry.k8s.io/prometheus-adapter/prometheus-adapter:v0.10.0
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /livez
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        name: prometheus-adapter
+        ports:
+        - containerPort: 6443
+          name: https
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /readyz
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: 102m
+            memory: 180Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmpfs
+          readOnly: true
+        - mountPath: /var/run/serving-cert
+          name: volume-serving-cert
+          readOnly: false
+        - mountPath: /etc/adapter
+          name: config
+          readOnly: true
+        - name: prometheus-adapter-prometheus-config
+          mountPath: /etc/prometheus-config
+        - name: serving-certs-ca-bundle
+          mountPath: /etc/ssl/certs
+          readOnly: true
+        - mountPath: /var/run/empty/serving-cert
+          name: volume-empty-serving-cert
+          readOnly: false
+      nodeSelector:
+        kubernetes.io/os: linux
+      securityContext: {}
+      serviceAccountName: custom-metrics-prometheus-adapter
+      volumes:
+      - emptyDir: {}
+        name: tmpfs
+      - name: volume-serving-cert
+        secret:
+          secretName: prometheus-adapter-serving-cert
+          defaultMode: 420
+          optional: true
+      - name: config
+        configMap:
+          name: adapter-config
+          optional: true
+      - name: prometheus-adapter-prometheus-config
+        configMap:
+          name: prometheus-adapter-prometheus-config
+          optional: true
+          defaultMode: 420
+      - name: serving-certs-ca-bundle
+        configMap:
+          name: serving-certs-ca-bundle
+          items:
+            - key: service-ca.crt
+              path: service-ca.crt
+          optional: true
+          defaultMode: 420
+      - name: volume-empty-serving-cert
+        emptyDir: {}
+`
+
+const Sha256_deploy_internal_hpav2_prometheus_auth_config_yaml = "191fea97f0e4552cca83902cff8fc7ff1c3d13f5d900499a6e5aac51a50c1a16"
+
+const File_deploy_internal_hpav2_prometheus_auth_config_yaml = `kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: prometheus-adapter-prometheus-config
+  labels:
+    app: prometheus-adapter
+data:
+  prometheus-config.yaml: |
+    apiVersion: v1
+    clusters:
+    - cluster:
+        certificate-authority: /etc/ssl/certs/service-ca.crt
+        server: prometheus-url-placeholder
+      name: prometheus-k8s
+    contexts:
+    - context:
+        cluster: prometheus-k8s
+        user: prometheus-k8s
+      name: prometheus-k8s
+    current-context: prometheus-k8s
+    kind: Config
+    preferences: {}
+    users:
+    - name: prometheus-k8s
+      user:
+        tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+`
+
+const Sha256_deploy_internal_hpav2_service_adapter_yaml = "0d08c1a3835ccf284f29fdf1b4081275847537c882f08feeccf1af9e58c5d513"
+
+const File_deploy_internal_hpav2_service_adapter_yaml = `apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: metrics-adapter
+    app.kubernetes.io/name: prometheus-adapter
+    app.kubernetes.io/version: 0.10.0
+    app: prometheus-adapter
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: 'prometheus-adapter-serving-cert'
+    service.alpha.openshift.io/serving-cert-secret-name: 'prometheus-adapter-serving-cert'
+  name: custom-metrics-prometheus-adapter
+spec:
+  ports:
+  - name: https
+    port: 443
+    targetPort: 6443
+  selector:
+    app.kubernetes.io/component: metrics-adapter
+    app.kubernetes.io/name: prometheus-adapter
+`
+
+const Sha256_deploy_internal_hpav2_serving_certs_ca_bundle_yaml = "be21595af7052a8191a131fb62fdcf21fd4dfd4d2435823f7a15f01d3efee8f3"
+
+const File_deploy_internal_hpav2_serving_certs_ca_bundle_yaml = `kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: serving-certs-ca-bundle
+  labels:
+    app: prometheus-adapter
+  annotations:
+    service.beta.openshift.io/inject-cabundle: 'true'
+data: {}
 `
 
 const Sha256_deploy_internal_job_upgrade_db_yaml = "4ae1ae1f6009e578ea4cc937c305068dd8f21b93b0d7fd43350628e84725f337"
@@ -5558,6 +5842,41 @@ roleRef:
   name: noobaa
 `
 
+const Sha256_deploy_role_binding_auth_delegator_hpav2_yaml = "124f08dd9f953821b4318a33fda3ffbccd477d604dedefc918e2600e5fe51174"
+
+const File_deploy_role_binding_auth_delegator_hpav2_yaml = `apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: prometheus-adapter
+  name: prometheus-adapter-system-auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: custom-metrics-prometheus-adapter
+`
+
+const Sha256_deploy_role_binding_auth_reader_hpav2_yaml = "342faf51f7e0f2e718a1479ed4a74cca0775a4f8328215a552e0f5ecde31d092"
+
+const File_deploy_role_binding_auth_reader_hpav2_yaml = `apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app: prometheus-adapter
+  name: prometheus-adapter-auth-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+- kind: ServiceAccount
+  name: custom-metrics-prometheus-adapter
+`
+
 const Sha256_deploy_role_binding_db_yaml = "3a4872fcde50e692ae52bbd208a8e1d115c574431c25a9644a7c820ae13c7748"
 
 const File_deploy_role_binding_db_yaml = `apiVersion: rbac.authorization.k8s.io/v1
@@ -5586,6 +5905,40 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: noobaa-endpoint
+`
+
+const Sha256_deploy_role_binding_resource_reader_hpav2_yaml = "d49b425d57233840163f3b19551eb638bf45b4ae2a45e2674d8ad72d2d7766b6"
+
+const File_deploy_role_binding_resource_reader_hpav2_yaml = `apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: prometheus-adapter
+  name: prometheus-adapter-resource-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-adapter-resource-reader
+subjects:
+- kind: ServiceAccount
+  name: custom-metrics-prometheus-adapter
+`
+
+const Sha256_deploy_role_binding_server_resources_hpav2_yaml = "ca281230973b36e8eebcfa851e1522a4f229e44dfd253fadb170c049ea2885f5"
+
+const File_deploy_role_binding_server_resources_hpav2_yaml = `apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app: prometheus-adapter
+  name: prometheus-adapter-hpa-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus-adapter-server-resources
+subjects:
+- kind: ServiceAccount
+  name: custom-metrics-prometheus-adapter
 `
 
 const Sha256_deploy_role_db_yaml = "8a7b6895de2e9847ec4a9e6e298b63251253f446961eb97f4dee50ee156f6d12"
@@ -5654,6 +6007,49 @@ rules:
   - securitycontextconstraints 
   verbs: 
   - use
+`
+
+const Sha256_deploy_role_resource_reader_hpav2_yaml = "e5a0adb9c762cdf7ce08da61663e00d1f039013ecb3e921adb19331ecc78b57c"
+
+const File_deploy_role_resource_reader_hpav2_yaml = `apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: prometheus-adapter
+  name: prometheus-adapter-resource-reader
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  - pods
+  - services
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+`
+
+const Sha256_deploy_role_server_resources_hpav2_yaml = "580f0e861bf4571d81351fb00401b8c77aa9c4443edf662ecacd8329b0a9f4de"
+
+const File_deploy_role_server_resources_hpav2_yaml = `apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app: prometheus-adapter
+  name: prometheus-adapter-server-resources
+rules:
+- apiGroups:
+  - custom.metrics.k8s.io
+  resources: ["*"]
+  verbs: 
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - delete
 `
 
 const Sha256_deploy_role_ui_yaml = "49d210f2ec7facbd486e6ac96515c1d2886f26afe6f7155be3994b4f0b1d0311"
@@ -5773,5 +6169,15 @@ const File_deploy_service_account_ui_yaml = `apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: noobaa-odf-ui
+`
+
+const Sha256_deploy_service_acount_hpav2_yaml = "c7c9ec142994295c1fa4315ca6cd4340a195aa0b02fa2b4fc0b9f03ae4589c94"
+
+const File_deploy_service_acount_hpav2_yaml = `apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: prometheus-adapter
+  name: custom-metrics-prometheus-adapter
 `
 
