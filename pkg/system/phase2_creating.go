@@ -855,7 +855,9 @@ func (r *Reconciler) ReconcileRootSecret() error {
 
 func (r *Reconciler) reconcileRbac(scc, sa, role, binding string) error {
 	SCC := util.KubeObject(scc).(*secv1.SecurityContextConstraints)
-	util.KubeCreateOptional(SCC)
+	if ok := util.KubeApply(SCC); ok {
+		r.Logger.Infof("ReconcileRbac: SCC %q", SCC.Name)
+	}
 
 	SA := util.KubeObject(sa).(*corev1.ServiceAccount)
 	SA.Namespace = options.Namespace
