@@ -114,7 +114,11 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.UpgradeSplitDB(); err != nil {
 		return err
 	}
-
+	// Add AutoscalerType HPAV1 to Noobaa CR if AutoscalerType is empty
+	if r.NooBaa.Spec.Autoscaler.AutoscalerType == "" {
+		r.NooBaa.Spec.Autoscaler.AutoscalerType = nbv1.AutoscalerTypeHPAV1
+		util.KubeUpdate(r.NooBaa)
+	}
 	// create the mongo db only if mongo db url is not given.
 	if r.NooBaa.Spec.MongoDbURL == "" {
 		if err := r.UpgradeSplitDB(); err != nil {
