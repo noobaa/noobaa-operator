@@ -552,7 +552,7 @@ func (r *Reconciler) ReconcileHPAEndpoint() error {
 func (r *Reconciler) updateNoobaaEndpoint() error {
 
 	endpointsSpec := r.NooBaa.Spec.Endpoints
-	var max, min int32
+	var max, min int32 = 1, 2
 	if endpointsSpec != nil {
 		min = endpointsSpec.MinCount
 		max = endpointsSpec.MaxCount

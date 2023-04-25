@@ -2039,3 +2039,16 @@ func MapAlternateKeysValue(stringData map[string]string, key string) string {
 
 	return stringData[key]
 }
+
+// FilterSlice takes in a slice and a filter function which
+// must return false for the all the elements that need to be
+// renoved from the slice
+func FilterSlice[V any](slice []V, f func(V) bool) []V {
+	var r []V
+	for _, v := range slice {
+		if f(v) {
+			r = append(r, v)
+		}
+	}
+	return r
+}
