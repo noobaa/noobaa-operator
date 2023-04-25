@@ -66,7 +66,8 @@ func validateCIDR(cidr string) error {
 }
 
 func validateNoobaaAutoscalerConfig(nb nbv1.NooBaa) error {
-	if nb.Spec.Autoscaler.AutoscalerType != nbv1.AutoscalerTypeHPAV1 &&
+	if (nb.Spec.Autoscaler.AutoscalerType == nbv1.AutoscalerTypeKeda ||
+		nb.Spec.Autoscaler.AutoscalerType == nbv1.AutoscalerTypeHPAV2) &&
 		nb.Spec.Autoscaler.PrometheusNamespace == "" {
 		return util.ValidationError{
 			Msg: fmt.Sprintf("Autoscaler %s missing prometheusNamespace property", nb.Spec.Autoscaler.AutoscalerType),
