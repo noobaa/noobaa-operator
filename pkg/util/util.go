@@ -243,6 +243,7 @@ func KubeApply(obj client.Object) bool {
 	clone := obj.DeepCopyObject().(client.Object)
 	err := klient.Get(ctx, objKey, clone)
 	if err == nil {
+		obj.SetResourceVersion(clone.GetResourceVersion())
 		err = klient.Update(ctx, obj)
 		if err == nil {
 			log.Printf("✅ Updated: %s %q\n", gvk.Kind, objKey.Name)
