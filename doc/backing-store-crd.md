@@ -1,13 +1,19 @@
 [NooBaa Operator](../README.md) /
 # BackingStore CRD
 
-BackingStore CRD represents a storage target to be used as underlying storage for the data in NooBaa buckets.
-These storage targets are used to store deduped+compressed+encrypted chunks of data (encryption keys are stored separately).
-Backing-stores are referred to by name when defining [BucketClass](bucket-class-crd.md).
+The BackingStore CRD represents a storage target to be used as underlying storage for the data in NooBaa buckets.
+These storage targets are used to store deduplicated, compressed and encrypted chunks of data. The encryption keys are stored separately.
+BackingStores are referred to by name when defining [a BucketClass](bucket-class-crd.md).
 
-Multiple types of backing-stores are currently supported: aws-s3, s3-compatible, ibm-cos, google-cloud-storage, azure-blob, pv-pool.
+Supported BackingStore types: 
+- aws-s3
+- s3-compatible
+- ibm-cos
+- google-cloud-storage
+- azure-blob
+- pv-pool
 
-Adding support for a new type of backing-store is rather easy as it requires just GET/PUT key-value store, see [Backing-stores supported by NooBaa](https://github.com/noobaa/noobaa-core/tree/master/src/agent/block_store_services).
+It is also possible to add new backing store types by providing a GET/PUT key-value store, see [backing stores supported by NooBaa](https://github.com/noobaa/noobaa-core/tree/master/src/agent/block_store_services).
 
 
 # Definitions
@@ -16,13 +22,20 @@ Adding support for a new type of backing-store is rather easy as it requires jus
 - CR: [noobaa.io_v1alpha1_backingstore_cr.yaml](../deploy/crds/noobaa.io_v1alpha1_backingstore_cr.yaml)
 
 
-# Reconcile
+# Reconciliation
+It is possible to create backingstores by using the NooBaa CLI tool (from here on referred to in shell commands as `noobaa`), or by applying YAMLs.
 
-#### AWS-S3 type
+From here on out, fields that depend on the user's choice and input will be marked with `<>`. In cases where the value might not be inferrable from context, an additional explanation might be included.
+Note that the commands will apply to the namespace that's currently active (can be checked with `kubectl config current-context`). A command-specific namespace can be set by adding the `-n/--namespace <NAMESPACE>` flag.
+Also note that, if possible and applicable, omitting the `access-key` and `secret-key` flags is recommended in order to avoid leakage of secrets. When both flags are ommitted, the CLI will prompt the user to enter the keys interactively.
 
-Create a cloud resource within the NooBaa brain and use S3 API for storing encrypted chunks of data in the AWS cloud.
+If the user opts to use the CLI's `--secret-name` option, or to apply a YAML, please see [Store Secret Creation](store-connection-secrets.md).
+In case of YAML application, the value under `secret.namespace` needs to point to the secret's namespace.
+
+## AWS S3
+Uses the S3 API for storing encrypted chunks of data in AWS buckets
 ```shell
-noobaa -n noobaa backingstore create aws-s3 bs --access-key KEY --secret-key SECRET --target-bucket BUCKET
+noobaa backingstore create aws-s3 <BACKINGSTORE NAME> --access-key <> --secret-key <> --target-bucket <>
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -30,24 +43,27 @@ kind: BackingStore
 metadata:
   finalizers:
   - noobaa.io/finalizer
-  labels:
-    app: noobaa
-  name: bs
-  namespace: noobaa
+  name: <>
+  namespace: <>
 spec:
   awsS3:
     secret:
-      name: backing-store-aws-s3-bs
-      namespace: noobaa
-    targetBucket: BUCKET
+      name: <>
+      namespace: <>
+    targetBucket: <>
   type: aws-s3
 ```
 
-#### S3-COMPATIBLE type
+## AWS-S3 Security Token Service (STS)
+Simlarly to `AWS-S3` this backingstore uses the S3 API for storing encrypted chunks of data in AWS buckets.
+However, the difference between the two backingstore types lies in the authentication method. AWS S3 uses a pair of static, user-provided access keys, while AWS S3 STS uses an Amazon Resource Name (ARN) provided by the user to create credentials for every single interaction with AWS by utilizing [AssumeRuleWithWebIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html).
+This type of backingstore is useful in cases where the user wishes to limit access to their AWS cloud for a specific amount of time, and for easier management of the cloud's security.
 
-Create a cloud resource within the NooBaa brain and use S3 API for storing encrypted chunks of data in any S3 API compatible endpoint.
+Prior to using this backingstore, an OpenIDConnect provider needs to be set up, which is outside the scope of these docs.
+
+Please note that once the set session duration expires, the backingstore will no longer work, and writing and reading data will not be possible any longer, without editing the backingstore YAML and replacing the ARN manually.
 ```shell
-noobaa -n noobaa backingstore create s3-compatible bs --endpoint ENDPOINT --signature-version v4 --access-key KEY --secret-key SECRET --target-bucket BUCKET
+noobaa backingstore create aws-sts-s3 <BACKINGSTORE NAME> --target-bucket <> --aws-sts-arn <>
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -55,26 +71,47 @@ kind: BackingStore
 metadata:
   finalizers:
   - noobaa.io/finalizer
-  labels:
-    app: noobaa
-  name: bs
-  namespace: noobaa
+  name: <>
+  namespace: <>
+spec:
+  awsS3:
+    awsSTSRoleARN: <>
+    targetBucket: <>
+    secret:
+      name: <>
+      namespace: <>
+  type: aws-s3
+```
+
+
+## S3 Compatible
+Uses the S3 API for storing encrypted chunks of data in buckets that can be interacted with via an S3-compatible API
+```shell
+noobaa backingstore create s3-compatible <BACKINGSTORE NAME> --endpoint <> --signature-version <> --access-key <> --secret-key <> --target-bucket <>
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  name: <>
+  namespace: <>
 spec:
   s3Compatible:
-    endpoint: ENDPOINT
+    endpoint: <>
     secret:
-      name: backing-store-s3-compatible-bs
-      namespace: noobaa
-    signatureVersion: v4
-    targetBucket: BUCKET
+      name: <>
+      namespace: <>
+    signatureVersion: <>
+    targetBucket: <>
   type: s3-compatible
 ```
 
-#### IBM-COS type
-
-Create a cloud resource within the NooBaa brain and use IBM COS API for storing encrypted chunks of data in any IBM COS API compatible endpoint.
+## IBM COS
+Uses the IBM COS API for storing encrypted chunks of data in IBM COS buckets
 ```shell
-noobaa -n noobaa backingstore create ibm-cos bs --endpoint ENDPOINT --access-key KEY --secret-key SECRET --target-bucket BUCKET
+noobaa backingstore create ibm-cos bs --endpoint <> --access-key <> --secret-key <> --target-bucket <>
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -82,26 +119,23 @@ kind: BackingStore
 metadata:
   finalizers:
   - noobaa.io/finalizer
-  labels:
-    app: noobaa
-  name: bs
-  namespace: noobaa
+  name: <>
+  namespace: <>
 spec:
   s3Compatible:
-    endpoint: ENDPOINT
+    endpoint: <>
     secret:
-      name: backing-store-ibm-cos-bs
-      namespace: noobaa
-    signatureVersion: v2
-    targetBucket: BUCKET
+      name: <>
+      namespace: <>
+    signatureVersion: <>
+    targetBucket: <>
   type: ibm-cos
 ```
 
-#### GOOGLE-CLOUD-STORAGE type
-
-Create a cloud resource within the NooBaa brain and use Google Cloud Storage API for storing encrypted chunks of data in Google Cloud Storage.
+## Google Cloud Storage
+Uses the Google Cloud Storage API for storing encrypted chunks of data in Google Cloud buckets
 ```shell
-noobaa -n noobaa backingstore create google-cloud-storage bs --private-key-json-file key.json --target-bucket BUCKET
+noobaa backingstore create google-cloud-storage <BACKINGSTORE NAME> --private-key-json-file <PATH TO credentials.json> --target-bucket <>
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -109,24 +143,21 @@ kind: BackingStore
 metadata:
   finalizers:
   - noobaa.io/finalizer
-  labels:
-    app: noobaa
-  name: bs
-  namespace: noobaa
+  name: <>
+  namespace: <>
 spec:
   googleCloudStorage:
     secret:
-      name: backing-store-google-cloud-storage-bs
-      namespace: noobaa
-    targetBucket: BUCKET
+      name: <>
+      namespace: <>
+    targetBucket: <>
   type: google-cloud-storage
 ```
 
-#### AZURE-BLOB type
-
-Create a cloud resource within the NooBaa brain and use BLOB API for storing encrypted chunks of data in Azure cloud.
+## Azure Blob Storage
+Uses the Azure Blob API for storing encrypted chunks of data in an Azure container
 ```shell
-noobaa -n noobaa backingstore create azure-blob bs --account-key KEY --account-name NAME --target-blob-container CONTAINER
+noobaa backingstore create azure-blob <BACKINGSTORE NAME> --account-key <> --account-name <> --target-blob-container <>
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -134,24 +165,26 @@ kind: BackingStore
 metadata:
   finalizers:
   - noobaa.io/finalizer
-  labels:
-    app: noobaa
-  name: bs
-  namespace: noobaa
+  name: <>
+  namespace: <>
 spec:
   azureBlob:
     secret:
-      name: backing-store-azure-blob-bs
-      namespace: noobaa
-    targetBlobContainer: CONTAINER
+      name: <>
+      namespace: <>
+    targetBlobContainer: <>
   type: azure-blob
 ```
 
-#### PV-POOL type
+## Persistent Volume Pool
+A unique kind of backingstore that uses local storage resources instead of ones provided by cloud services.
+Creates a StatefulSet with a PVC mounted in each pod. Each resource will connect to the NooBaa core and provide the PV filesystem storage to be used for storing encrypted chunks of data. It is possible to configure the number of pods to be used and their PV size.
 
-Create NooBaa resources StatefulSet with PVC mounted in each pod. Each resource will connect to the NooBaa core and provide the PV filesystem storage to be used for storing encrypted chunks of data. It is possible to configure the number of pods to be used and their PV size.
+Each PV needs at least 17 Gibibytes to function properly. The bare minimum defined in the source code is 16 Gibibytes, but it is better to take some extra space.
+
+*In the YAML, the value of `storage` should adhere to the [K8s Memory Resource Units format](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-memory).
 ```shell
-noobaa -n noobaa backingstore create pv-pool bs --num-volumes 3 --pv-size-gb 32 --storage-class STORAGE-CLASS-NAME
+noobaa backingstore create pv-pool <BACKINGSTORE NAME> --num-volumes <> --pv-size-gb <INT >= 17> --storage-class <THE SC THAT WILL BE USED FOR PV PROVISIONING>
 ```
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -159,29 +192,95 @@ kind: BackingStore
 metadata:
   finalizers:
   - noobaa.io/finalizer
-  labels:
-    app: noobaa
-  name: bs
-  namespace: noobaa
+  name: <>
+  namespace: <>
+spec:
+  pvPool:
+    numVolumes: <>
+    resources:
+      requests:
+        storage: <SEE NOTE ABOVE*>
+    storageClass: STORAGE-CLASS-NAME
+  type: pv-pool
+```
+
+## Examples
+### AWS S3
+```shell
+noobaa backingstore create aws-s3 aws-backingstore --namespace app-namespace --access-key AKIAIOSFODNN7EXAMPLE --secret-key wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY --target-bucket personal-bucket
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  name: aws-backingstore
+  namespace: app-namespace
+spec:
+  awsS3:
+    secret:
+      name: user-created-aws-s3-secret
+      namespace: secret-namespace
+    targetBucket: personal-bucket
+  type: aws-s3
+```
+
+### AWS S3 STS
+```shell
+noobaa backingstore create aws-sts-s3 aws-sts-backingstore --target-bucket personal-bucket --aws-sts-arn arn:aws:iam::111111111111:role/noobaa_sts
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  name: aws-sts-backingstore
+  namespace: app-namespace
+spec:
+  awsS3:
+    awsSTSRoleARN: arn:aws:iam::111111111111:role/noobaa_sts
+    targetBucket: personal-bucket
+    secret: {}
+  type: aws-s3
+```
+
+### Persistent Volume Pool
+```shell
+noobaa backingstore create pv-pool pv-backingstore --num-volumes 3 --pv-size-gb 17 --storage-class local-path
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  name: pv-backingstore
+  namespace: app-namespace
 spec:
   pvPool:
     numVolumes: 3
     resources:
       requests:
-        storage: 32Gi
-    storageClass: STORAGE-CLASS-NAME
+        storage: 17Gi
+    storageClass: local-path
   type: pv-pool
 ```
 
 
-#### Credentials change
+## Modifying a Backing Store's Credentials
+If a user wishes to change a backing store's credentials, the appropriate secret should be updated by the user, and the operator will propagate the new credentials to the system server.
 
-In case the credentials of a backing-store need to be updated due to a periodic security policy or concern, the appropriate secret should be updated by the user, and the operator will be responsible for watching changes in those secrets and propagating the new credential update to the NooBaa system server.
+A backing store's secret can be found in the CR's YAML's `spec` field, under a key named `secret`.
 
+# Resource Status
+It is possible to check a resource's status in several ways, including:
+- `kubectl get backingstore <NAME> -o yaml`
+- `kubectl describe backingstore <NAME>`
+- `noobaa backingstore status <NAME>`
 
-# Read Status
-
-Here is an example of healthy status (see below an example of non-healthy status):
+Below is an example of a healthy backing store's status, as retrieved with the first command:
 
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -217,20 +316,20 @@ status:
     reason: BackingStorePhaseReady
     status: "True"
     type: Upgradeable
-  phase: Ready
+    mode:
+      modeCode: OPTIMAL
+      ...
+    phase: Ready
 ```
+An example for an unhealthy backing store can be seen at the bottom of the next section.
 
+# Deletion
+Backing stores are used for data persistency; therefore, a cleanup process must run before they may be deleted.
+The operator will use [the `finalizer` pattern](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#finalizers), and set a finalizer on every backing store to mark that external cleanup is needed before it can be deleted.
 
-# Delete
+After marking a backingstore for deletion, the operator will notify the NooBaa server of the deletion, which will enter a *decommissioning* state, in which NooBaa will attempt to rebuild the data to a new backing store location. Once the decommissioning process completes the operator will remove the finalizer and allow the CR to be deleted.
 
-Backing-stores are used for data persistency, therefore there is a cleanup process before they can be deleted.
-The operator will use the `finalizer` pattern as explained in the link below, and set a finalizer on every backing-store to mark that external cleanup is needed before it can be delete:
-
-https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#finalizers
-
-After marking a backing-store for deletion, the operator will notify the NooBaa server on the deletion which will enter a *decommissioning* state, in which NooBaa will attempt to rebuild the data to a new backing-store location. Once the decommissioning process completes the operator will remove the finalizer and allow the CR to be deleted.
-
-There are cases where the decommissioning cannot complete due to inability to read the data from the backing-store that is already not serving - for example, if the target bucket was already deleted or the credentials were invalidated or there is no network from the system to the backing-store service. In such cases the system status will be used to report these issues and suggest a manual resolution for example:
+There are cases where the decommissioning cannot be completed due to an inability to read the data from the backing store. For example, in cases where the target bucket was already deleted, the credentials were invalidated, or the system cannot connect to the target storage. In these cases the system status will be used to report the issue and suggest a manual resolution. For example:
 
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -269,5 +368,4 @@ status:
     status: Unknown
     type: Upgradeable
   phase: Rejected
-
 ```
