@@ -17,7 +17,7 @@ jobs:
 
       - name: Get Current Date
         id: date
-        run: echo "::set-output name=date::$(date +'%Y%m%d')"
+        run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
 
       - name: Prepare Tags
         id: prep
@@ -25,10 +25,10 @@ jobs:
           DOCKER_OPERATOR_IMAGE=noobaa/noobaa-operator
           VERSION="${{ steps.date.outputs.date }}"
           echo "::warning ${VERSION}"
-          echo ::set-output name=version::${VERSION}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
           OPERATOR_TAGS="${DOCKER_OPERATOR_IMAGE}:master-${VERSION}"          
           echo "::warning ${CORE_TAGS}"
-          echo ::set-output name=operatortags::${OPERATOR_TAGS}
+          echo "operatortags=${OPERATOR_TAGS}" >> $GITHUB_OUTPUT
 
       - name: Update Core Release
         id: update-release
