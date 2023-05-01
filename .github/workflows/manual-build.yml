@@ -25,12 +25,12 @@ jobs:
 
       - name: Get Current Date
         id: date
-        run: echo "::set-output name=date::$(date +'%Y%m%d')"
+        run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
 
       - name: Prepare Suffix
         id: suffix
         if: ${{ github.event.inputs.tag != '' }}
-        run: echo ::set-output name=suffix::"-${{ github.event.inputs.tag }}"
+        run: echo suffix="-${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
 
       - name: Prepare Tags
         id: prep
@@ -39,14 +39,14 @@ jobs:
           DOCKER_OPERATOR_BUNDLE_IMAGE=noobaa/noobaa-operator-bundle
           VERSION="${{ steps.date.outputs.date }}"
           echo "::warning ${VERSION}"
-          echo ::set-output name=version::${VERSION}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
           OPERATOR_TAGS="${DOCKER_OPERATOR_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}${{ steps.suffix.outputs.suffix }}"
           OPERATOR_BUNDLE_TAGS="${DOCKER_OPERATOR_BUNDLE_IMAGE}:${{ github.event.inputs.branch }}-${VERSION}${{ steps.suffix.outputs.suffix }}"
           OPERATOR_OCS_DEV_TAG="ocs-dev/noobaa-operator:${{ github.event.inputs.branch }}-latest"
           echo "::warning ${CORE_TAGS}"
-          echo ::set-output name=operatortags::${OPERATOR_TAGS}
-          echo ::set-output name=operatorbundletags::${OPERATOR_BUNDLE_TAGS}
-          echo ::set-output name=ocsdevlatest::${OPERATOR_OCS_DEV_TAG}
+          echo "operatortags=${OPERATOR_TAGS}" >> $GITHUB_OUTPUT
+          echo "operatorbundletags=${OPERATOR_BUNDLE_TAGS}" >> $GITHUB_OUTPUT
+          echo "ocsdevlatest=${OPERATOR_OCS_DEV_TAG}" >> $GITHUB_OUTPUT
 
       - name: Update Core Release
         id: update-release
