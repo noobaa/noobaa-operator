@@ -1213,6 +1213,7 @@ func (in *NooBaaStatus) DeepCopyInto(out *NooBaaStatus) {
 		*out = new(EndpointsStatus)
 		(*in).DeepCopyInto(*out)
 	}
+	in.LastKeyRotateTime.DeepCopyInto(&out.LastKeyRotateTime)
 	return
 }
 

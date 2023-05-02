@@ -1,0 +1,48 @@
+name: KMS Test - K8S Key Rotate
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  run-kms-key-rotate-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: "1.19"
+
+      - name: Set environment variables
+        run: |
+          echo PATH=$PATH:$HOME/go/bin                                          >> $GITHUB_ENV
+          echo OPERATOR_IMAGE=localhost:5000/noobaa/noobaa-operator:integration >> $GITHUB_ENV
+
+      - name: Deploy Dependencies
+        run: |
+          set -x
+          bash .travis/install-5nodes-kind-cluster.sh
+          go get -v github.com/onsi/ginkgo/ginkgo
+          go install -v github.com/onsi/ginkgo/ginkgo
+          ginkgo version
+
+      - name: Build NooBaa
+        run: |
+          make cli
+          make image
+          docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
+          docker push $OPERATOR_IMAGE
+
+      - name: Install NooBaa CRD and Operator
+        run: |
+          echo "💬 Install NooBaa CRD"
+          ./build/_output/bin/noobaa-operator-local crd create
+
+          echo "💬 Create NooBaa operator deployment"
+          ./build/_output/bin/noobaa-operator-local operator --operator-image=$OPERATOR_IMAGE install
+
+      - name: Run KMS K8S Key Rotate Test
+        run: |
+          make test-kms-key-rotate

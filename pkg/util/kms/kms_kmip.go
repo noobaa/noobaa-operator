@@ -105,6 +105,12 @@ func (k *KMIP) DeleteContext() map[string]string {
 	return nil
 }
 
+// Version returns the current driver KMS version
+// either single string or map, i.e. rotating key
+func (k *KMIP) Version(kms *KMS) Version {
+	return &VersionSingleSecret{kms, nil}
+}
+
 // Register KMIP driver with KMS layer
 func init() {
 	if err := RegisterDriver(KMIPSecretStorageName, NewKMIP); err != nil {

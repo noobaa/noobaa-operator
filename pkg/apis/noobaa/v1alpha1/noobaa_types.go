@@ -232,6 +232,10 @@ type SecuritySpec struct {
 
 // KeyManagementServiceSpec represent various details of the KMS server
 type KeyManagementServiceSpec struct {
+	// +optional
+	EnableKeyRotation bool `json:"enableKeyRotation,omitempty"`
+	// +optional
+	Schedule          string            `json:"schedule,omitempty"`
 	ConnectionDetails map[string]string `json:"connectionDetails,omitempty"`
 	TokenSecretName   string            `json:"tokenSecretName,omitempty"`
 }
@@ -305,6 +309,10 @@ type NooBaaStatus struct {
 	// Readme is a user readable string with explanations on the system
 	// +optional
 	Readme string `json:"readme,omitempty"`
+
+	// LastKeyRotateTime is the time system ran an encryption key rotate
+	// +optional
+	LastKeyRotateTime metav1.Time `json:"lastKeyRotateTime,omitempty"`
 }
 
 // SystemPhase is a string enum type for system phases
@@ -348,14 +356,23 @@ const (
 	// The root key was synchronized from external KMS
 	ConditionKMSSync corev1.ConditionStatus = "Sync"
 
+	// The root key was rotated
+	ConditionKMSKeyRotate corev1.ConditionStatus = "KeyRotate"
+
 	// Invalid external KMS definition
 	ConditionKMSInvalid corev1.ConditionStatus = "Invalid"
 
 	// Error reading secret from external KMS
 	ConditionKMSErrorRead corev1.ConditionStatus = "ErrorRead"
 
-	// Error writing initial root key to eternal KMS
+	// Error writing initial root key to external KMS
 	ConditionKMSErrorWrite corev1.ConditionStatus = "ErrorWrite"
+
+	// Error in data format, internal error
+	ConditionKMSErrorData corev1.ConditionStatus = "ErrorData"
+
+	// Error in data format, internal error
+	ConditionKMSErrorSecretReconcile corev1.ConditionStatus = "ErrorSecretReconcile"
 )
 
 // AccountsStatus is the status info of admin account

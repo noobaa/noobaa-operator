@@ -1,6 +1,7 @@
 package kmsibmkptest
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/google/uuid"
@@ -17,6 +18,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type TestSysReconMock struct {
+	data string
+}
+
+func (m *TestSysReconMock) ReconcileSecretString(val string) error {
+	m.data = val
+	return nil
+}
+func (m *TestSysReconMock) ReconcileSecretMap(val map[string]string) error {
+	return fmt.Errorf("not implemented")
+}
+
 func getMiniNooBaa() *nbv1.NooBaa {
 	options.MiniEnv = true
 	options.Namespace = corev1.NamespaceDefault
@@ -24,13 +37,12 @@ func getMiniNooBaa() *nbv1.NooBaa {
 	return nb
 }
 
-
 func ibmKpKmsSpec(token, instanceID string) nbv1.KeyManagementServiceSpec {
 	k := nbv1.KeyManagementServiceSpec{}
 	k.TokenSecretName = token
 	k.ConnectionDetails = map[string]string{
-		kms.Provider: kms.IbmKpSecretStorageName,
-		kms.IbmInstanceIDKey : instanceID,
+		kms.Provider:         kms.IbmKpSecretStorageName,
+		kms.IbmInstanceIDKey: instanceID,
 	}
 
 	return k
@@ -45,7 +57,7 @@ func checkExternalSecret(tokenSecretName string, instanceID string, noobaa *nbv1
 	// Generate backend configuration using backend driver instance
 	c, err := driver.Config(k.ConnectionDetails, k.TokenSecretName, noobaa.Namespace)
 	Expect(err).To(BeNil())
-	
+
 	// Construct new backend
 	s, err := secrets.New(kms.IbmKpSecretStorageName, c)
 	Expect(err).To(BeNil())
@@ -62,7 +74,6 @@ func verifyExternalSecretExists(tokenSecretName string, instanceID string, nooba
 func verifyExternalSecretDeleted(tokenSecretName string, instanceID string, noobaa *nbv1.NooBaa) {
 	checkExternalSecret(tokenSecretName, instanceID, noobaa, false)
 }
-
 
 var _ = Describe("KMS - IBM KP", func() {
 
@@ -126,7 +137,7 @@ var _ = Describe("KMS - IBM KP", func() {
 			logger.Printf("💬 Generated kmsSpec=%v", kmsSpec)
 		})
 		Specify("Verify uninitialized Get", func() {
-			_, err := k.Get()
+			err := k.Get()
 			logger.Printf("💬 Get err=%v", err)
 			Expect(err == secrets.ErrInvalidSecretId).To(BeTrue())
 		})
@@ -135,7 +146,12 @@ var _ = Describe("KMS - IBM KP", func() {
 			Expect(err).To(BeNil())
 		})
 		Specify("Verify read back", func() {
-			s, err := k.Get()
+			err := k.Get()
+			Expect(err).To(BeNil())
+			m := &TestSysReconMock{}
+			err = k.Reconcile(m)
+			Expect(err).To(BeNil())
+			s := m.data
 			logger.Printf("💬 Read back secret s=%v error=%v", s, err)
 			Expect(err).To(BeNil())
 			Expect(s == plainText).To(BeTrue())

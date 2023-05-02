@@ -16,6 +16,7 @@ import (
 	secv1 "github.com/openshift/api/security/v1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
+	"github.com/robfig/cron/v3"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -52,7 +53,6 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	if err := r.ReconcileCAInject(); err != nil {
 		return err
 	}
-
 	if err := r.ReconcileObject(r.ServiceAccount, r.SetDesiredServiceAccount); err != nil {
 		return err
 	}
@@ -444,7 +444,6 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 		case "NODE_EXTRA_CA_CERTS":
 			c.Env[j].Value = r.ApplyCAsToPods
 		}
-
 	}
 }
 
@@ -476,6 +475,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			// adding the missing Env variable from default container
 			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env)
 			r.setDesiredCoreEnv(c)
+			r.setDesiredRootMasterKeyMounts(podSpec, c)
 
 			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
 			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
@@ -801,6 +801,24 @@ func (r *Reconciler) setKMSConditionStatus(s corev1.ConditionStatus) {
 	r.Logger.Infof("setKMSConditionStatus %v", s)
 }
 
+func (r *Reconciler) reportKMSConditionStatus() {
+	conditions := &r.NooBaa.Status.Conditions
+	cond := conditionsv1.FindStatusCondition(*conditions, nbv1.ConditionTypeKMSStatus)
+	if cond == nil {
+		util.Logger().Printf("❌ Missing KMS status: %q\n", nbv1.ConditionTypeKMSStatus)
+		return
+	}
+
+	st := cond.Status
+	var kmsStatusBadge string
+	if kms.StatusValid(st) {
+		kmsStatusBadge = "✅"
+	} else {
+		kmsStatusBadge = "❌"
+	}
+	util.Logger().Printf("%v KMS status: %q\n", kmsStatusBadge, st)
+}
+
 func (r *Reconciler) setKMSConditionType(t string) {
 	conditions := &r.NooBaa.Status.Conditions
 	conditionsv1.SetStatusCondition(conditions, conditionsv1.Condition{
@@ -813,7 +831,6 @@ func (r *Reconciler) setKMSConditionType(t string) {
 
 // ReconcileRootSecret choose KMS for root secret key
 func (r *Reconciler) ReconcileRootSecret() error {
-
 	// External KMS Spec
 	connectionDetails := r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails
 	authTokenSecretName := r.NooBaa.Spec.Security.KeyManagementService.TokenSecretName
@@ -826,30 +843,157 @@ func (r *Reconciler) ReconcileRootSecret() error {
 	}
 	r.setKMSConditionType(k.Type)
 
-	v, err := k.Get()
-	if err != nil {
-		r.Logger.Errorf("ReconcileRootSecret, KMS Get error %v", err)
+	conditionStatus := nbv1.ConditionKMSSync // default condition status
+	if err := k.Get(); err != nil {
+		if err != secrets.ErrInvalidSecretId {
+			// Unknown get error
+			r.Logger.Errorf("ReconcileRootSecret, KMS Get error %v", err)
+			r.setKMSConditionStatus(nbv1.ConditionKMSErrorRead)
+			return err
+		}
+
 		// the KMS root key was empty
 		// Initialize external KMS with a randomly generated key
-		if err == secrets.ErrInvalidSecretId {
-			r.SecretRootMasterKey = util.RandomBase64(32)
-			err := k.Set(r.SecretRootMasterKey)
-			if err != nil {
-				r.Logger.Errorf("ReconcileRootSecret, KMS Set error %v", err)
-				r.setKMSConditionStatus(nbv1.ConditionKMSErrorWrite)
-				return err
-			}
-			r.setKMSConditionStatus(nbv1.ConditionKMSInit)
-			return nil
+		err = k.Set(util.RandomBase64(32))
+		if err != nil {
+			r.Logger.Errorf("ReconcileRootSecret, KMS Set error %v", err)
+			r.setKMSConditionStatus(nbv1.ConditionKMSErrorWrite)
+			return err
 		}
-		// Unknown get error
-		r.setKMSConditionStatus(nbv1.ConditionKMSErrorRead)
+		// The key was set the first time - status init
+		conditionStatus = nbv1.ConditionKMSInit
+	}
+
+	// Set the value from KMS
+	err = k.Reconcile(r)
+	if err != nil {
+		r.Logger.Errorf("ReconcileRootSecret, KMS reconcile error %v", err)
+		r.setKMSConditionStatus(nbv1.ConditionKMSErrorSecretReconcile)
 		return err
 	}
-	// Set the value from KMS
-	r.SecretRootMasterKey = v
-	r.setKMSConditionStatus(nbv1.ConditionKMSSync)
 
+	r.setKMSConditionStatus(conditionStatus)
+
+	if err := r.ReconcileKeyRotation(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ReconcileKeyRotation checks if key rotation is enabled
+// if so creates a cron job to run every time set
+func (r *Reconciler) ReconcileKeyRotation() error {
+	r.Logger.Infof("ReconcileKeyRotation, KMS Starting")
+
+	if len(r.SecretRootMasterKey) > 0 {
+		// key rotation not supported by the KMS backend
+		r.Logger.Infof("ReconcileKeyRotation, KMS skip reconcile, disabled by configuration")
+		return nil
+	}
+
+	enabledKeyRotation := r.NooBaa.Spec.Security.KeyManagementService.EnableKeyRotation
+	if !enabledKeyRotation {
+		r.Logger.Infof("ReconcileKeyRotation, KMS skip reconcile, single master root mode")
+		return nil
+	}
+	scheduleCronSpec := r.NooBaa.Spec.Security.KeyManagementService.Schedule
+	if len(scheduleCronSpec) == 0 {
+		r.Logger.Infof("ReconcileKeyRotation, KMS default monthly rotation schedule")
+		scheduleCronSpec = "0 0 1 * *" // “At 00:00 on day-of-month 1.”
+	}
+
+	schedule, err := cron.ParseStandard(scheduleCronSpec)
+	if err != nil {
+		r.Logger.Errorf("ReconcileKeyRotation, KMS rotation schedule parse error: %v", err)
+		return err
+	}
+	lastTime := r.NooBaa.Status.LastKeyRotateTime.Time
+	now := time.Now()
+	if lastTime.IsZero() {
+		r.Logger.Infof("ReconcileKeyRotation, KMS skip reconcile: initial set LastKeyRotateTime %v", now)
+		r.NooBaa.Status.LastKeyRotateTime = metav1.Time{Time: now}
+		return nil
+	}
+	nextSchedule := schedule.Next(lastTime)
+
+	r.Logger.Infof("ReconcileKeyRotation, KMS rotation nextSchedule: %v", nextSchedule)
+	if nextSchedule.After(now) {
+		r.Logger.Infof("ReconcileKeyRotation, KMS skip reconcile, now %v before nextSchedule %v", now, nextSchedule)
+		return nil
+	}
+	err = r.keyRotate()
+	if err != nil {
+		r.Logger.Errorf("ReconcileKeyRotation, KMS keyRotate error %v", err)
+		return err
+	}
+	r.Logger.Infof("ReconcileKeyRotation, KMS Updating Last Key Rotate time: %v", now)
+	r.NooBaa.Status.LastKeyRotateTime = metav1.Time{Time: now}
+
+	return nil
+}
+
+// keyRotate sets new master root key
+// and starts change propogation to the nooba pods
+func (r *Reconciler) keyRotate() error {
+	r.Logger.Infof("Key rotation started at %v", time.Now())
+	if len(r.SecretRootMasterKey) > 0 {
+		return fmt.Errorf("Master root key rotation is not supported by the KMS backend")
+	}
+
+	// KMS Spec
+	connectionDetails := r.NooBaa.Spec.Security.KeyManagementService.ConnectionDetails
+	authTokenSecretName := r.NooBaa.Spec.Security.KeyManagementService.TokenSecretName
+
+	k, err := kms.NewKMS(connectionDetails, authTokenSecretName, r.Request.Name, r.Request.Namespace, string(r.NooBaa.UID))
+	if err != nil {
+		r.Logger.Errorf("keyRotate, NewKMS error %v", err)
+		r.setKMSConditionStatus(nbv1.ConditionKMSInvalid)
+		return err
+	}
+
+	// Generate new random root key and set it in the KMS
+	// Key - rotate begins
+	err = k.Set(util.RandomBase64(32))
+	if err != nil {
+		r.Logger.Errorf("keyRotate, KMS Set error %v", err)
+		r.setKMSConditionStatus(nbv1.ConditionKMSErrorWrite)
+		return err
+	}
+
+	// Set the value from KMS
+	// Set new root key with system reconciler
+	// to propogate change to noobaa pods
+	err = k.Reconcile(r)
+	if err != nil {
+		r.Logger.Errorf("keyRotate, KMS reconcile error %v", err)
+		r.setKMSConditionStatus(nbv1.ConditionKMSErrorSecretReconcile)
+		return err
+	}
+
+	r.setKMSConditionStatus(nbv1.ConditionKMSKeyRotate)
+
+	return nil
+}
+
+// ReconcileSecretMap sets the root master key for rotating key / map
+func (r *Reconciler) ReconcileSecretMap(data map[string]string) error {
+	if data == nil {
+		return fmt.Errorf("System Reconciler ReconcileSecretMap data is nil")
+	}
+	r.SecretRootMasterMap.StringData = data
+	if err := r.ReconcileObject(r.SecretRootMasterMap, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ReconcileSecretString sets the root master key for single string secret
+func (r *Reconciler) ReconcileSecretString(data string) error {
+	if len(data) == 0 {
+		return fmt.Errorf("System Reconciler ReconcileSecreString data len is zero")
+	}
+	r.SecretRootMasterKey = data
 	return nil
 }
 

@@ -2,39 +2,54 @@ package kms
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/libopenstorage/secrets"
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
-////////////////////////////////////////////////////////////////////////////
-/////////// KMS provides uniform access to several backend types ///////////
-////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////
+// ///////// KMS provides uniform access to several backend types ///////////
+// //////////////////////////////////////////////////////////////////////////
 const (
-	Provider             = "KMS_PROVIDER" // backend type configuration key
+	Provider = "KMS_PROVIDER" // backend type configuration key
 )
 
-// SingleSecret represents a single secret
+// SecretStorage represents a key secret storage
 // several backend types are implemented, more types could be added
-type SingleSecret interface {
-	// Get secret value from KMS
-	Get() (string, error)
+type SecretStorage interface {
+	// Get the secret string/map from KMS
+	Get() error
 
-	// Set secret value in KMS
+	// Set active master root key secret value in KMS
 	Set(value string) error
 
-	// Delete secret value from KMS
+	// Delete the secret string/map from KMS
 	Delete() error
+
+	// Reconcile secret data with system reconciler
+	// expose secret data to NooBaa pods
+	Reconcile(r SecretReconciler) error
+}
+
+// SecretReconciler is interface exposed and implemented
+// by the System reconciler
+// The Version interface implementation is reponsible to call the appropriate
+// method: either string or map
+type SecretReconciler interface {
+	ReconcileSecretString(val string) error
+	ReconcileSecretMap(val map[string]string) error
 }
 
 // Driver is a backend type specific driver interface for libopenstorage/secrets framework
 type Driver interface {
-	Path()          string
-	Name()          string
-	Config(connectionDetails map[string]string, tokenSecretName, namespace string)  (map[string]interface{}, error)
-	GetContext()    map[string]string
-	SetContext()    map[string]string
+	Path() string
+	Name() string
+	Config(connectionDetails map[string]string, tokenSecretName, namespace string) (map[string]interface{}, error)
+	GetContext() map[string]string
+	SetContext() map[string]string
 	DeleteContext() map[string]string
+	Version(k *KMS) Version
 }
 
 // DriverCtor is a Driver constructor function type
@@ -42,7 +57,7 @@ type DriverCtor func(
 	name string,
 	namespace string,
 	uid string,
-) (Driver)
+) Driver
 
 // kmsDrivers is a map of all registered drivers
 var kmsDrivers = make(map[string]DriverCtor)
@@ -63,7 +78,7 @@ func NewDriver(
 	name string,
 	namespace string,
 	uid string,
-) (Driver) {
+) Driver {
 	if dCtor, exists := kmsDrivers[dType]; exists {
 		return dCtor(name, namespace, uid)
 	}
@@ -73,9 +88,10 @@ func NewDriver(
 // KMS implements SingleSecret interface using backend implementation of
 // secrets.Secrets interface and using backend type specific driver
 type KMS struct {
-	secrets.Secrets   // secrets interface
-	Type   string     // backend system type, k8s, vault & ibm are supported
-	driver Driver     // backend type specific driver
+	secrets.Secrets        // secrets interface
+	Version                // KMS backend version, single secret or rotating/map
+	Type            string // backend system type, k8s, vault & ibm are supported
+	driver          Driver // backend type specific driver
 }
 
 // NewKMS creates a new secret KMS client
@@ -101,35 +117,16 @@ func NewKMS(connectionDetails map[string]string, tokenSecretName, name, namespac
 		return nil, err
 	}
 
-	return &KMS{s, t, driver}, nil
-}
+	// Create the instance with the appropriate version
+	k := &KMS{s, nil, t, driver}
+	k.Version = driver.Version(k)
 
-// Get secret value from KMS
-func (k *KMS) Get() (string, error) {
-	s, err := k.GetSecret(k.driver.Path(), k.driver.GetContext())
-	if err != nil {
-		// handle k8s get from non-existent secret
-		if strings.Contains(err.Error(), "not found") {
-			return "", secrets.ErrInvalidSecretId
-		}
-		return "", err
+	// Upgrade backend storage
+	if err = k.Upgrade(); err != nil {
+		return nil, err
 	}
 
-	return s[k.driver.Name()].(string), nil
-}
-
-// Set secret value in KMS
-func (k *KMS) Set(v string) error {
-	data := map[string]interface{} {
-		k.driver.Name(): v,
-	}
-
-	return k.PutSecret(k.driver.Path(), data, k.driver.SetContext())
-}
-
-// Delete secret value from KMS
-func (k *KMS) Delete() error {
-	return k.DeleteSecret(k.driver.Path(), k.driver.DeleteContext())
+	return k, nil
 }
 
 // kmsType returns the secret backend type
@@ -142,4 +139,9 @@ func kmsType(connectionDetails map[string]string) string {
 
 	// by default use Kubernes secrets
 	return secrets.TypeK8s
+}
+
+// StatusValid returns true is the status is valid, false otherwise
+func StatusValid(st corev1.ConditionStatus) bool {
+	return st == nbv1.ConditionKMSSync || st == nbv1.ConditionKMSInit || st == nbv1.ConditionKMSKeyRotate
 }

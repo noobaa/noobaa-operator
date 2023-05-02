@@ -1484,6 +1484,10 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      enableKeyRotation:
+                        type: boolean
+                      schedule:
+                        type: string
                       tokenSecretName:
                         type: string
                     type: object
@@ -1605,6 +1609,11 @@ spec:
                 - readyCount
                 - virtualHosts
                 type: object
+              lastKeyRotateTime:
+                description: LastKeyRotateTime is the time system ran an encryption
+                  key rotate
+                format: date-time
+                type: string
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
                   for this noobaa system. It corresponds to the CR generation, which
