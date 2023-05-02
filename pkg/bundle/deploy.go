@@ -3623,7 +3623,7 @@ spec:
         claimName: noobaa-pv-claim
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "9fc9d30ce1f9ca180867255b363943b672689bb98139d6dcb12b63a95529ae0f"
+const Sha256_deploy_internal_prometheus_rules_yaml = "ecddaefe2a2ebcf0b4af80329eb15d393e52005c516878c25b40ba9d01dd425a"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -3760,6 +3760,30 @@ spec:
         storage_type: NooBaa
       expr: |
         NooBaa_bucket_size_quota{bucket_name=~".*"} >= 100
+      for: 5m
+      labels:
+        severity: warning
+    - alert: NooBaaBucketReachingQuantityQuotaState
+      annotations:
+        description: A NooBaa bucket {{ $labels.bucket_name }} is using its quantity of quota
+          - {{ printf "%0.0f" $value }}%
+        message: A NooBaa Bucket Is In Reaching Quantity Quota State
+        severity_level: warning
+        storage_type: NooBaa
+      expr: |
+        NooBaa_bucket_quantity_quota{bucket_name=~".*"} > 80
+      for: 5m
+      labels:
+        severity: warning
+    - alert: NooBaaBucketExceedingQuantityQuotaState
+      annotations:
+        description: A NooBaa bucket {{ $labels.bucket_name }} is exceeding its quantity of quota
+          - {{ printf "%0.0f" $value }}%
+        message: A NooBaa Bucket Is In Exceeding Quantity Quota State
+        severity_level: warning
+        storage_type: NooBaa
+      expr: |
+        NooBaa_bucket_quantity_quota{bucket_name=~".*"} >= 100
       for: 5m
       labels:
         severity: warning
