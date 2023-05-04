@@ -345,7 +345,7 @@ func (r *Reconciler) ReconcileDeletion(systemFound bool) error {
 	}
 
 	if systemFound {
-		if err := r.ReadSystemInfo(); err != nil {
+		if err := r.ReadSystemInfo(); err != nil && !util.IsPersistentError(err) {
 			return err
 		}
 
@@ -803,7 +803,7 @@ func (r *Reconciler) ReconcileNamespaceStore() error {
 	return nil
 }
 
-//getAuthMethod get auth method based on s3 signature
+// getAuthMethod get auth method based on s3 signature
 func getAuthMethod(signature nbv1.S3SignatureVersion, nsStoreName string) nb.CloudAuthMethod {
 
 	if signature == nbv1.S3SignatureVersionV4 {

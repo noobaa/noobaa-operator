@@ -436,7 +436,7 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 // Handles NooBaa core side of the store deletion
 func (r *Reconciler) finalizeCore() error {
 
-	if err := r.ReadSystemInfo(); err != nil {
+	if err := r.ReadSystemInfo(); err != nil && !util.IsPersistentError(err) {
 		return err
 	}
 
