@@ -257,6 +257,16 @@ type ReadPoolParams struct {
 	Name string `json:"name"`
 }
 
+// ListAccountsParams is the params to account_api.list_accounts()
+type ListAccountsParams struct {
+	Filter struct {
+		FsIdentity struct {
+			UID int `json:"uid"`
+			GID int `json:"gid"`
+		} `json:"fs_identity"`
+	} `json:"filter"`
+}
+
 // ReadNamespaceResourceParams is the params to pool_api.read_namespace_resource()
 type ReadNamespaceResourceParams struct {
 	Name string `json:"name"`
@@ -340,7 +350,7 @@ type QuotaConfig struct {
 	Quantity *QuantityQuotaConfig `json:"quantity,omitempty"`
 }
 
-//SizeQuotaConfig size quota configuration
+// SizeQuotaConfig size quota configuration
 type SizeQuotaConfig struct {
 	//limits the max total size value
 	Value float64 `json:"value,omitempty"`
@@ -348,7 +358,7 @@ type SizeQuotaConfig struct {
 	Unit string `json:"unit,omitempty"`
 }
 
-//QuantityQuotaConfig quantity quota configuration
+// QuantityQuotaConfig quantity quota configuration
 type QuantityQuotaConfig struct {
 	//limits the max total quantity value
 	Value int `json:"value,omitempty"`
