@@ -17,6 +17,7 @@ import (
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
+	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -91,6 +92,13 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 
 	if err := r.ReconcileObject(r.CoreAppConfig, r.SetDesiredCoreAppConfig); err != nil {
 		return err
+	}
+
+	if r.CoreAppConfig.Data["NOOBAA_LOG_LEVEL"] == "warn" {
+		r.Logger.Infof("Setting operator log level to Warn")
+		util.InitLogger(logrus.WarnLevel)
+	} else {
+		util.InitLogger(logrus.DebugLevel)
 	}
 
 	// A failure to discover OAuth endpoints should not fail the entire reconcile phase.

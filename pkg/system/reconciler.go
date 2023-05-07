@@ -376,12 +376,6 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		return res, nil
 	}
 
-	if r.CoreAppConfig.Data["NOOBAA_LOG_LEVEL"] == "warn" {
-		util.InitLogger(logrus.WarnLevel)
-	} else {
-		util.InitLogger(logrus.DebugLevel)
-	}
-
 	err = r.ReconcilePhases()
 
 	if err != nil {
