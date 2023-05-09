@@ -27,9 +27,19 @@ spec:
               audience: api
       - name: socket
         emptyDir: {}
+      - name: noobaa-ca-inject
+        configMap:
+          name: noobaa-ca-inject
+          items:
+          - key: ca-bundle.crt
+            path: tls-ca-bundle.pem
+          optional: true
       containers:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
+          volumeMounts:
+          - mountPath: /etc/pki/ca-trust/extracted/pem
+            name: noobaa-ca-inject
           resources:
             limits:
               cpu: "250m"

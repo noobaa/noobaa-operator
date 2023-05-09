@@ -129,25 +129,29 @@ var (
 
 // AddToRootCAs adds a local cert file to Our SecureHttpTransport
 func AddToRootCAs(localCertFile string) error {
-	rootCAs, _ := x509.SystemCertPool()
-	if rootCAs == nil {
-		rootCAs = x509.NewCertPool()
+	rootCAs := x509.NewCertPool()
+
+	var certFiles = []string{
+		"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+		localCertFile,
 	}
 
-	// Read in the cert file
-	certs, err := os.ReadFile(localCertFile)
-	if err != nil {
-		return err
-	}
+	for _, certFile := range certFiles {
+		// Read in the cert file
+		certs, err := os.ReadFile(certFile)
+		if err != nil {
+			return err
+		}
 
-	// Append our cert to the system pool
-	if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
-		log.Errorf("Failed to append %q to RootCAs", localCertFile)
-		return fmt.Errorf("Failed to append %q to RootCAs", localCertFile)
-	}
+		// Append our cert to the system pool
+		if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+			log.Errorf("Failed to append %q to RootCAs", certFile)
+			return fmt.Errorf("failed to append %q to RootCAs", certFile)
+		}
 
-	// Trust the augmented cert pool in our client
-	log.Infof("Successfuly appended %q to RootCAs", localCertFile)
+		// Trust the augmented cert pool in our client
+		log.Infof("Successfuly appended %q to RootCAs", certFile)
+	}
 	SecureHTTPTransport.TLSClientConfig.RootCAs = rootCAs
 	return nil
 }

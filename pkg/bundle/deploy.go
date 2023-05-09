@@ -5705,7 +5705,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "c1247e731010ceae30dbe32790fa64f99b03ed7902a84a1b3999c10f362e076f"
+const Sha256_deploy_operator_yaml = "439f5d9032805eeff3de6520c9baa1b178f1b044091c432f1196349ffb7f544e"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -5736,9 +5736,19 @@ spec:
               audience: api
       - name: socket
         emptyDir: {}
+      - name: noobaa-ca-inject
+        configMap:
+          name: noobaa-ca-inject
+          items:
+          - key: ca-bundle.crt
+            path: tls-ca-bundle.pem
+          optional: true
       containers:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
+          volumeMounts:
+          - mountPath: /etc/pki/ca-trust/extracted/pem
+            name: noobaa-ca-inject
           resources:
             limits:
               cpu: "250m"
