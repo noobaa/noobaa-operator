@@ -138,8 +138,7 @@ spec:
         severity: warning
     - alert: NooBaaBucketReachingQuantityQuotaState
       annotations:
-        description: A NooBaa bucket {{ $labels.bucket_name }} is using its quantity of quota
-          - {{ printf "%0.0f" $value }}%
+        description: A NooBaa bucket {{ $labels.bucket_name }} is using {{ printf \"%0.0f\" $value }}% of its quantity quota
         message: A NooBaa Bucket Is In Reaching Quantity Quota State
         severity_level: warning
         storage_type: NooBaa
@@ -150,8 +149,7 @@ spec:
         severity: warning
     - alert: NooBaaBucketExceedingQuantityQuotaState
       annotations:
-        description: A NooBaa bucket {{ $labels.bucket_name }} is exceeding its quantity of quota
-          - {{ printf "%0.0f" $value }}%
+        description: A NooBaa bucket {{ $labels.bucket_name }} is exceeding its quantity quota - {{ printf \"%0.0f\" $value }}% used
         message: A NooBaa Bucket Is In Exceeding Quantity Quota State
         severity_level: warning
         storage_type: NooBaa
