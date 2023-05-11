@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: noobaa-analyze-resource
+  labels:
+    app: noobaa
+spec:
+  completions: 1
+  parallelism: 1
+  backoffLimit: 0
+  activeDeadlineSeconds: 60
+  ttlSecondsAfterFinished: 10
+  template:
+    spec:
+      volumes:
+      - name: cloud-credentials
+        secret:
+          secretName: SECRET_NAME_PLACEHOLDER
+          optional: true
+      containers:
+      - name: noobaa-analyze-resource
+        image: NOOBAA_CORE_IMAGE_PLACEHOLDER
+        env:
+          - name: RESOURCE_TYPE
+          - name: RESOURCE_NAME
+          - name: BUCKET
+          - name: ENDPOINT
+          - name: S3_SIGNATURE_VERSION
+          - name: HTTP_PROXY
+          - name: HTTPS_PROXY
+          - name: NO_PROXY
+          - name: NODE_EXTRA_CA_CERTS
+        command: 
+            - /bin/bash
+            - -c
+            - "cd /root/node_modules/noobaa-core/; node ./src/tools/diagnostics/analyze_resource/analyze_resource.js"
+        volumeMounts:
+            - name: cloud-credentials
+              mountPath: "/etc/cloud-credentials"
+              readOnly: true
+      restartPolicy: Never

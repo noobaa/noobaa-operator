@@ -699,23 +699,9 @@ func RunDelete(cmd *cobra.Command, args []string) {
 func RunStatus(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 
-	if len(args) != 1 || args[0] == "" {
-		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
-	}
+	namespaceStore := GetNamespaceStoreFromArgs(cmd, args)
 
-	o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
-	secret := o.(*corev1.Secret)
-	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml)
-	namespaceStore := o.(*nbv1.NamespaceStore)
-	namespaceStore.Name = args[0]
-	namespaceStore.Namespace = options.Namespace
-	namespaceStore.Spec = nbv1.NamespaceStoreSpec{}
-
-	if !util.KubeCheck(namespaceStore) {
-		log.Fatalf(`❌ Could not get NamespaceStore %q in namespace %q`,
-			namespaceStore.Name, namespaceStore.Namespace)
-	}
-
+	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
 	secretRef, _ := util.GetNamespaceStoreSecret(namespaceStore)
 	if !util.IsSTSClusterNS(namespaceStore) {
 		if secretRef != nil {
@@ -744,6 +730,26 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		util.Panic(err)
 		fmt.Println()
 	}
+}
+
+// GetNamespaceStoreFromArgs returns the namesacestore from CLI arg
+func GetNamespaceStoreFromArgs(cmd *cobra.Command, args []string) *nbv1.NamespaceStore {
+	log := util.Logger()
+
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
+	}
+
+	namespaceStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore)
+	namespaceStore.Name = args[0]
+	namespaceStore.Namespace = options.Namespace
+	namespaceStore.Spec = nbv1.NamespaceStoreSpec{}
+
+	if !util.KubeCheck(namespaceStore) {
+		log.Fatalf(`❌ Could not get NamespaceStore %q in namespace %q`,
+			namespaceStore.Name, namespaceStore.Namespace)
+	}
+	return namespaceStore
 }
 
 // WaitReady waits until the system phase changes to ready by the operator

@@ -872,24 +872,8 @@ func isPodinNoobaa(pod *corev1.Pod, hostsInfo *[]nb.HostInfo) bool {
 // RunStatus runs a CLI command
 func RunStatus(cmd *cobra.Command, args []string) {
 	log := util.Logger()
-
-	if len(args) != 1 || args[0] == "" {
-		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
-	}
-
-	o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
-	secret := o.(*corev1.Secret)
-	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml)
-	backStore := o.(*nbv1.BackingStore)
-
-	backStore.Name = args[0]
-	backStore.Namespace = options.Namespace
-	backStore.Spec = nbv1.BackingStoreSpec{}
-
-	if !util.KubeCheck(backStore) {
-		log.Fatalf(`❌ Could not get BackingStore %q in namespace %q`,
-			backStore.Name, backStore.Namespace)
-	}
+	backStore := GetBackingStoreFromArgs(cmd, args)
+	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
 	secretRef, _ := util.GetBackingStoreSecret(backStore)
 	if !util.IsSTSClusterBS(backStore) {
 		if secretRef != nil {
@@ -918,6 +902,25 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		util.Panic(err)
 		fmt.Println()
 	}
+}
+
+// GetBackingStoreFromArgs returns the backingstore from CLI arg
+func GetBackingStoreFromArgs(cmd *cobra.Command, args []string) *nbv1.BackingStore {
+	log := util.Logger()
+
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
+	}
+
+	backStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+	backStore.Name = args[0]
+	backStore.Namespace = options.Namespace
+	backStore.Spec = nbv1.BackingStoreSpec{}
+	if !util.KubeCheck(backStore) {
+		log.Fatalf(`❌ Could not get BackingStore %q in namespace %q`,
+			backStore.Name, backStore.Namespace)
+	}
+	return backStore
 }
 
 // WaitReady waits until the system phase changes to ready by the operator

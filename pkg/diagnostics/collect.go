@@ -1,4 +1,4 @@
-package diagnose
+package diagnostics
 
 import (
 	"fmt"
@@ -7,11 +7,10 @@ import (
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
-	"github.com/noobaa/noobaa-operator/v5/pkg/dbdump"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+
 	secv1 "github.com/openshift/api/security/v1"
-	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -19,27 +18,6 @@ import (
 
 	"github.com/spf13/cobra"
 )
-
-// Collector configuration for diagnostics
-type Collector struct {
-	folderName  string
-	kubeconfig  string
-	kubeCommand string
-	log         *logrus.Entry
-}
-
-// Cmd returns a CLI command
-func Cmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "diagnose",
-		Short: "Collect diagnostics",
-		Run:   RunCollect,
-		Args:  cobra.NoArgs,
-	}
-	cmd.Flags().String("dir", "", "collect noobaa diagnose tar file into destination directory")
-	cmd.Flags().Bool("db-dump", false, "collect db dump in addition to diagnostics")
-	return cmd
-}
 
 // RunCollect runs a CLI command
 func RunCollect(cmd *cobra.Command, args []string) {
@@ -60,8 +38,7 @@ func RunCollect(cmd *cobra.Command, args []string) {
 		c.log.Fatalf(`❌ Could not create directory %s, reason: %s`, c.folderName, err)
 	}
 
-	c.kubeCommand = util.GetAvailabeKubeCli();
-
+	c.kubeCommand = util.GetAvailabeKubeCli()
 
 	// Define to select only noobaa pods within the namespace
 	podSelector, _ := labels.Parse("app=noobaa")
@@ -78,7 +55,7 @@ func RunCollect(cmd *cobra.Command, args []string) {
 	// Collects db dump in addition to diagnostics.
 	// A separate tarball is created for diagnostics and db dump
 	if collectDBDump {
-		dbdump.CollectDBDump(kubeconfig, destDir)
+		CollectDBDump(kubeconfig, destDir)
 	}
 }
 
@@ -157,7 +134,6 @@ func (c *Collector) CollectPodsLogs(listOptions client.ListOptions) {
 		c.log.Printf(`❌ failed to get noobaa pod list within namespace %s\n`, options.Namespace)
 		return
 	}
-
 	// Iterate the list of pods, collecting the logs of each
 	for i := range podList.Items {
 		pod := &podList.Items[i]
@@ -273,4 +249,5 @@ func (c *Collector) ExportDiagnostics(destDir string) {
 	if err != nil {
 		c.log.Fatalf(`❌ Could not delete diagnostics collecting folder %s, reason: %s`, c.folderName, err)
 	}
+	c.log.Printf("✅ Diagnostics logs were saved in %s\n", targetFile)
 }

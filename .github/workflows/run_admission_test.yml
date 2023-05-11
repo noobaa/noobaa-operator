@@ -80,7 +80,7 @@ jobs:
           set -x
           cd ./noobaa-operator
           kubectl get events --sort-by='.metadata.creationTimestamp' -A > logs_kubectl_events.txt
-          ./build/_output/bin/noobaa-operator diagnose --db-dump --dir=admission-tests-logs -n test
+          ./build/_output/bin/noobaa-operator diagnostics collect --db-dump --dir=admission-tests-logs -n test
           mv logs_kubectl_events.txt ./admission-tests-logs
 
       - name: Save logs
