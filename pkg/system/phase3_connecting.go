@@ -101,7 +101,7 @@ func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, route *routev1.Rout
 	if route.Spec.Host != "" {
 		status.ExternalDNS = append(
 			status.ExternalDNS,
-			fmt.Sprintf("%s://%s", proto, route.Spec.Host),
+			fmt.Sprintf("%s://%s:%d", proto, route.Spec.Host, servicePort.Port),
 		)
 	}
 
