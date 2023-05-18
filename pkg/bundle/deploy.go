@@ -2,7 +2,7 @@ package bundle
 
 const Version = "5.14.0"
 
-const Sha256_deploy_cluster_role_yaml = "5ed4a0b2ebfd74e0427d3fc1db8567df452311aa66432409c5da9013bef71a6e"
+const Sha256_deploy_cluster_role_yaml = "3f8118853db73926c4f9d14be84ac8f81833c3a7a94a52ecf1e9ebcf712eee93"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -176,8 +176,12 @@ rules:
     resources: 
       - buckets
       - bucketaccesses
+      - bucketclaims
+      - bucketaccessclasses
       - buckets/status
       - bucketaccesses/status
+      - bucketclaims/status
+      - bucketaccessclasses/status
     verbs: 
       - get
       - watch
@@ -203,55 +207,53 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_cosi_bucket_access_class_yaml = "fec1c7d8b1705cd42d77679bb17f29c29735d936029a86b35dbda7713964b862"
+const Sha256_deploy_cosi_bucket_access_claim_yaml = "d2cc909826860644165d6baf660f765f7deae6e16b2bbb5d60fc55af0c8ff43c"
+
+const File_deploy_cosi_bucket_access_claim_yaml = `apiVersion: objectstorage.k8s.io/v1alpha1
+kind: BucketAccess
+metadata:
+  name: my-cosi-bucket-access
+spec: 
+  bucketClaimName: my-cosi-bucket-claim
+  bucketAccessClassName: my-cosi-bucket-access-class
+  credentialsSecretName: my-cosi-bucket-creds
+
+`
+
+const Sha256_deploy_cosi_bucket_access_class_yaml = "b0fec82ffd0214bc551199f27e6fe8d4132e3e1d717fdb25d38d6b917edfb3f0"
 
 const File_deploy_cosi_bucket_access_class_yaml = `apiVersion: objectstorage.k8s.io/v1alpha1
 kind: BucketAccessClass
 metadata:
-  name: my-bac
-policyActionsConfigMap:
-  name: policy-cm
-  namespace: jacky
+  name: my-cosi-bucket-access-class
+driverName: noobaa.objectstorage.k8s.io
+authenticationType: KEY
 `
 
-const Sha256_deploy_cosi_bucket_access_request_yaml = "588f9798faac05f727d8c823edcba789826d89256f6ec802fa37c8db41eb9b27"
+const Sha256_deploy_cosi_bucket_claim_yaml = "3780873c20475baea80775346e9e9214ae514ce7f0d62036d40be573c7911415"
 
-const File_deploy_cosi_bucket_access_request_yaml = `apiVersion: objectstorage.k8s.io/v1alpha1
-kind: BucketAccessRequest
+const File_deploy_cosi_bucket_claim_yaml = `apiVersion: objectstorage.k8s.io/v1alpha1
+kind: BucketClaim
 metadata:
-  name: my-bar
+  name: my-cosi-bucket-claim
 spec:
-  bucketAccessClassName: my-bac
-  bucketRequestName: my-br
+  bucketClassName: my-cosi-bucket-class
+  protocols:
+    - "S3"
 `
 
-const Sha256_deploy_cosi_bucket_class_yaml = "d8a00ca74ddf9acf43871916beb5c33f69a512a5b6056173a2cc305ccb534531"
+const Sha256_deploy_cosi_bucket_class_yaml = "70fde174ec4079506903cafe587d5b541823ac626ac367364581ca7f1789b39e"
 
 const File_deploy_cosi_bucket_class_yaml = `apiVersion: objectstorage.k8s.io/v1alpha1
 kind: BucketClass
 metadata:
-  name: my-bc
-provisioner: noobaa.objectstorage.k8s.io
-isDefaultBucketClass: true
-allowedNamespaces:
-- default
-protocol:
-  s3:
-    region: us-east-1
-    signatureVersion: S3V4
+  name: my-cosi-bucket-class
+driverName: noobaa.objectstorage.k8s.io
+DeletionPolicy: delete
 parameters:
-  policy: "{\"placementPolicy\":{\"tiers\":[{\"backingStores\":[\"noobaa-default-backing-store\"]}]}}"
-`
+  placementPolicy: '{"tiers":[{"backingStores":["noobaa-default-backing-store"]}]}'
+  replicationPolicy: '"{\"rules\":[{\"rule_id\":\"rule-1\",\"destination_bucket\":\"first.bucket\",\"filter\":{\"prefix\":\"a\"}}]}"'
 
-const Sha256_deploy_cosi_bucket_request_yaml = "dad8cefa879b332c78acc8189d01700f6e404c49acaa8f82e205183267ad386a"
-
-const File_deploy_cosi_bucket_request_yaml = `apiVersion: objectstorage.k8s.io/v1alpha1
-kind: BucketRequest
-metadata:
-  name: my-br
-spec:
-  bucketPrefix: my-br
-  bucketClassName: my-bc
 `
 
 const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "4e5794deec0a962fe42352d9fb56182f3e052d94a404277e084fdc47fed9ffd2"
@@ -5712,7 +5714,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "7c4a0b3f43fcf06a10db4dfc4fa3a4f4e1a26be35cb890e64007405ec7129dec"
+const Sha256_deploy_operator_yaml = "c1247e731010ceae30dbe32790fa64f99b03ed7902a84a1b3999c10f362e076f"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -5733,7 +5735,6 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
-        runAsNonRoot: true
       volumes:
       - name: oidc-token
         projected:
@@ -5742,48 +5743,6 @@ spec:
               path: oidc-token
               expirationSeconds: 3600
               audience: api
-      containers:
-        - name: noobaa-operator
-          image: NOOBAA_OPERATOR_IMAGE
-          volumeMounts:
-          - mountPath: /var/run/secrets/openshift/serviceaccount
-            name: oidc-token
-          resources:
-            limits:
-              cpu: "250m"
-              memory: "512Mi"
-          env:
-            - name: OPERATOR_NAME
-              value: noobaa-operator
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: WATCH_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-`
-
-const Sha256_deploy_operator_cosi_yaml = "b473a5fa45a9b3980aa9e1ef29a7015ad833ad9f5e2ff35ab68f1bc5181ac40f"
-
-const File_deploy_operator_cosi_yaml = `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: noobaa-operator
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      noobaa-operator: deployment
-  template:
-    metadata:
-      labels:
-        app: noobaa
-        noobaa-operator: deployment
-    spec:
-      serviceAccountName: noobaa
-      volumes:
       - name: socket
         emptyDir: {}
       containers:
@@ -5805,13 +5764,17 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
           volumeMounts:
+          - mountPath: /var/run/secrets/openshift/serviceaccount
+            name: oidc-token
           - mountPath: /var/lib/cosi
             name: socket
         - name: objectstorage-provisioner-sidecar
           image: COSI_SIDECAR_IMAGE
+          args:
+          - "--v=5"
           resources:
             limits:
-              cpu: "250m"
+              cpu: "100m"
               memory: "512Mi"
           imagePullPolicy: Always
           env:

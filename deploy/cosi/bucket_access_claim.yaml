@@ -1,0 +1,9 @@
+apiVersion: objectstorage.k8s.io/v1alpha1
+kind: BucketAccess
+metadata:
+  name: my-cosi-bucket-access
+spec: 
+  bucketClaimName: my-cosi-bucket-claim
+  bucketAccessClassName: my-cosi-bucket-access-class
+  credentialsSecretName: my-cosi-bucket-creds
+

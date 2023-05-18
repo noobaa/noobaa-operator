@@ -107,7 +107,7 @@ function test_noobaa {
                         echo_time "❌  ${noobaa} ${options} failed, Exiting"
                         local pod_operator=$(kuberun get pod | grep noobaa-operator | awk '{print $1}')
                         echo_time "==============OPERATOR LOGS============"
-                        kuberun logs ${pod_operator}
+                        kuberun logs ${pod_operator} -c noobaa-operator
                         echo_time "==============CORE LOGS============"
                         kuberun logs noobaa-core-0
                         exit 1

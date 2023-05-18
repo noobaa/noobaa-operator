@@ -388,7 +388,7 @@ func (r *BucketRequest) CreateAndUpdateBucket(
 		replicationPolicy = r.OBC.Spec.AdditionalConfig["replicationPolicy"]
 	}
 	if replicationPolicy != "" {
-		if replicationParams, _, err = r.prepareReplicationParams(replicationPolicy, false); err != nil {
+		if replicationParams, _, err = PrepareReplicationParams(r.BucketName, replicationPolicy, false); err != nil {
 			return err
 		}
 	}
@@ -459,7 +459,7 @@ func (r *BucketRequest) UpdateBucket() error {
 		return r.LogAndGetError("Bucket %q doesn't exist", r.BucketName)
 	}
 
-	quotaConfig, err := r.getQuotaConfig()
+	quotaConfig, err := GetQuotaConfig(r.BucketName, &r.BucketClass.Spec, r.OB.Spec.Endpoint.AdditionalConfigData, log)
 	if err != nil {
 		return err
 	}
@@ -481,25 +481,24 @@ func (r *BucketRequest) UpdateBucket() error {
 	return nil
 }
 
-// Get minimum QuotaConfig based on OBC config and BucketClass
-func (r *BucketRequest) getQuotaConfig() (*nb.QuotaConfig, error) {
-
+// GetQuotaConfig Gets minimum QuotaConfig based on OBC config and BucketClass
+func GetQuotaConfig(bucketName string, BucketClassSpec *nbv1.BucketClassSpec, obAdditionalConfig map[string]string, log *logrus.Entry) (*nb.QuotaConfig, error) {
 	var obMaxSize, obMaxObjects, bcMaxSize, bcMaxObjects string
 	var minMaxSize, minMaxObjects int64
 
 	// get quota config from ob
-	if r.OB.Spec.Endpoint.AdditionalConfigData != nil {
-		obMaxSize = r.OB.Spec.Endpoint.AdditionalConfigData["maxSize"]
-		obMaxObjects = r.OB.Spec.Endpoint.AdditionalConfigData["maxObjects"]
+	if obAdditionalConfig != nil {
+		obMaxSize = obAdditionalConfig["maxSize"]
+		obMaxObjects = obAdditionalConfig["maxObjects"]
 	}
 	// get quota config from bucketclass
-	if r.BucketClass.Spec.Quota != nil {
-		bcMaxSize = r.BucketClass.Spec.Quota.MaxSize
-		bcMaxObjects = r.BucketClass.Spec.Quota.MaxObjects
+	if BucketClassSpec.Quota != nil {
+		bcMaxSize = BucketClassSpec.Quota.MaxSize
+		bcMaxObjects = BucketClassSpec.Quota.MaxObjects
 	}
 
-	r.Provisioner.Logger.Debugf("getQuotaConfig: bucket %q, obMaxSize %q, obMaxObjects %q, bcMaxSize %q, bcMaxObjects %q",
-		r.BucketName, obMaxSize, obMaxObjects, bcMaxSize, bcMaxObjects)
+	log.Debugf("getQuotaConfig: bucket %q, obMaxSize %q, obMaxObjects %q, bcMaxSize %q, bcMaxObjects %q",
+		bucketName, obMaxSize, obMaxObjects, bcMaxSize, bcMaxObjects)
 
 	quota := nb.QuotaConfig{}
 	// In order to remove the bucket quota, returns empty quota config if bucketclass and ob have no quota config
@@ -698,16 +697,16 @@ func (r *BucketRequest) putBucketTagging() error {
 	return nil
 }
 
-// prepareReplicationParams validates and prepare the replication params
-func (r *BucketRequest) prepareReplicationParams(replicationPolicy string, update bool) (*nb.BucketReplicationParams, *nb.DeleteBucketReplicationParams, error) {
+// PrepareReplicationParams validates and prepare the replication params
+func PrepareReplicationParams(bucketName string, replicationPolicy string, update bool) (*nb.BucketReplicationParams, *nb.DeleteBucketReplicationParams, error) {
 
 	var replicationRules nb.ReplicationPolicy
 	err := json.Unmarshal([]byte(replicationPolicy), &replicationRules)
 	if err != nil {
-		return nil, nil, fmt.Errorf("prepareReplicationParams: Failed to parse replication json %q: %v", replicationRules, err)
+		return nil, nil, fmt.Errorf("PrepareReplicationParams: Failed to parse replication json %q: %v", replicationRules, err)
 	}
 	deleteReplicationParams := &nb.DeleteBucketReplicationParams{
-		Name: r.BucketName,
+		Name: bucketName,
 	}
 
 	if replicationPolicy == "" && update {
@@ -715,7 +714,7 @@ func (r *BucketRequest) prepareReplicationParams(replicationPolicy string, updat
 	}
 
 	replicationParams := &nb.BucketReplicationParams{
-		Name:              r.BucketName,
+		Name:              bucketName,
 		ReplicationPolicy: replicationRules,
 	}
 
@@ -728,7 +727,7 @@ func (r *BucketRequest) updateReplicationPolicy(ob *nbv1.ObjectBucket) error {
 	newReplication := ob.Spec.Endpoint.AdditionalConfigData["replicationPolicy"]
 	log.Infof("updateReplicationPolicy: new Replication %q detected on ob: %v", newReplication, ob.Name)
 
-	updateReplicationParams, deleteReplicationParams, err := r.prepareReplicationParams(newReplication, true)
+	updateReplicationParams, deleteReplicationParams, err := PrepareReplicationParams(r.BucketName, newReplication, true)
 	if err != nil {
 		return err
 	}

@@ -170,8 +170,12 @@ rules:
     resources: 
       - buckets
       - bucketaccesses
+      - bucketclaims
+      - bucketaccessclasses
       - buckets/status
       - bucketaccesses/status
+      - bucketclaims/status
+      - bucketaccessclasses/status
     verbs: 
       - get
       - watch

@@ -1,8 +1,8 @@
-name: Admission Webhook Tests
+name: COSI integration Tests
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-  run-admission-test:
+  run-cosi-test:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     concurrency:
@@ -53,13 +53,18 @@ jobs:
         run: |
           cd ./noobaa-operator
           ./build/_output/bin/noobaa-operator crd create -n test
-          ./build/_output/bin/noobaa-operator operator install --operator-image=$OPERATOR_IMAGE --admission --test-env -n test
+          ./build/_output/bin/noobaa-operator operator install --operator-image=$OPERATOR_IMAGE -n test
           ./build/_output/bin/noobaa-operator system create \
-          --db-resources='{ "limits": {"cpu": "80m","memory": "1G"}, "requests": {"cpu": "80m","memory": "1G"}}' \
-          --core-resources='{ "limits": {"cpu": "80m","memory": "1G"}, "requests": {"cpu": "80m","memory": "1G"}}' \
-          --endpoint-resources='{ "limits": {"cpu": "80m","memory": "1G"}, "requests": {"cpu": "80m","memory": "1G"}}' \
+          --db-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
+          --core-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
+          --endpoint-resources='{ "limits": {"cpu": "100m","memory": "1G"}, "requests": {"cpu": "100m","memory": "1G"}}' \
           -n test
           ./build/_output/bin/noobaa-operator status -n test
+
+      - name: Create COSI CRDs and controller
+        run: |
+          kubectl create -k github.com/kubernetes-sigs/container-object-storage-interface-api -n test
+          kubectl create -k github.com/kubernetes-sigs/container-object-storage-interface-controller
 
       - name: Wait for phase Ready in the backingstore pod
         run: |
@@ -67,30 +72,24 @@ jobs:
           ./.travis/number_of_pods_in_system.sh --namespace test --pods 5
           kubectl wait --for=condition=available backingstore/noobaa-default-backing-store --timeout=5m -n test
 
-      - name: Run Admission test
+      - name: Run COSI test
         run: |
           set -x
           cd ./noobaa-operator
-          make test-admission
+          make test-cosi
 
-      - name: Collect logs
+      - name: Collect logs - COSI
         if: ${{ failure() }}
         run: |
           set -x
           cd ./noobaa-operator
           kubectl get events --sort-by='.metadata.creationTimestamp' -A > logs_kubectl_events.txt
-          ./build/_output/bin/noobaa-operator diagnostics collect --db-dump --dir=admission-tests-logs -n test
-          mv logs_kubectl_events.txt ./admission-tests-logs
+          ./build/_output/bin/noobaa-operator diagnostics collect --db-dump --dir=cosi-tests-logs -n test
+          mv logs_kubectl_events.txt ./cosi-tests-logs
 
-      - name: Save logs
+      - name: Save logs - COSI
         if: ${{ failure() }}
         uses: actions/upload-artifact@v3
         with:
-          name: admission-tests-logs
-          path: noobaa-operator/admission-tests-logs
-
-        # Uncomment this step in case where you want to connect to the VM of this workflow using SSH.
-        # Pay attention that this workflow was configured with a timeout, and you might change it for this step.
-        # - name: Setup tmate session
-        #   if: ${{ failure() }}
-        #   uses: mxschmitt/action-tmate@v3
+          name: cosi-tests-logs
+          path: noobaa-operator/cosi-tests-logs

@@ -64,7 +64,7 @@ var Namespace = "noobaa"
 var OperatorImage = "noobaa/noobaa-operator:" + version.Version
 
 // CosiSideCarImage is the container image url built from https://github.com/kubernetes-sigs/container-object-storage-interface-provisioner-sidecar
-var CosiSideCarImage = "quay.io/containerobjectstorage/objectstorage-sidecar:canary"
+var CosiSideCarImage = "gcr.io/k8s-staging-sig-storage/objectstorage-sidecar/objectstorage-sidecar:v20221117-v0.1.0-22-g0e67387"
 
 // NooBaaImage is the container image url built from https://github.com/noobaa/noobaa-core
 // it can be overridden for testing or different registry locations.
@@ -121,8 +121,14 @@ var DevEnv = false
 // DisableLoadBalancerService is used for setting the service type to ClusterIP instead of LoadBalancer
 var DisableLoadBalancerService = false
 
+// CosiDriverAddress is the cosi socket address
+var CosiDriverAddress = "unix:///var/lib/cosi/cosi.sock"
+
 // AdmissionWebhook is used for deploying the system with admission validation webhook
 var AdmissionWebhook = false
+
+// TestEnv is used for deploying the system with test env minimal resources
+var TestEnv = false
 
 // S3LoadBalancerSourceSubnets is used for setting the source subnets for the load balancer
 // created for noobaa S3 service
@@ -145,11 +151,6 @@ var AutoscalerType = ""
 // PrometheusNamespace is prometheus installed namespace
 // it can be overridden for testing or different namespace.
 var PrometheusNamespace = ""
-// EnableCosi is used to enable the operator with cosi and attaching the cosi sidecar to the operator
-var EnableCosi = false
-
-// CosiDriverAddress is the cosi socket address
-var CosiDriverAddress = "unix:///var/lib/cosi/cosi.sock"
 
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
@@ -161,6 +162,11 @@ func ObjectBucketProvisionerName() string {
 	return SubDomainNS() + "/obc"
 }
 
+// COSIDriverName returns the driver name to be used in for COSI
+func COSIDriverName() string {
+	return "noobaa.objectstorage.k8s.io"
+}
+
 // WatchNamespace returns the namespace which NooBaa operator will watch for changes
 func WatchNamespace() string {
 	ns, err := util.GetWatchNamespace()
@@ -169,9 +175,6 @@ func WatchNamespace() string {
 	}
 
 	return Namespace
-// COSIProvisionerName returns the provisioner name to be used in for COSI
-func COSIProvisionerName() string {
-	return "noobaa.objectstorage.k8s.io"
 }
 
 // FlagSet defines the
@@ -236,12 +239,18 @@ func init() {
 	FlagSet.BoolVar(
 		&DevEnv, "dev",
 		false, "Set sufficient resources for dev env",
-		&EnableCosi, "cosi",
-		false, "Enable cosi support in the operator",
+	)
+	FlagSet.BoolVar(
+		&TestEnv, "test-env",
+		false, "Install the system with test env minimal resources",
 	)
 	FlagSet.BoolVar(
 		&DisableLoadBalancerService, "disable-load-balancer",
 		false, "Set the service type to ClusterIP instead of LoadBalancer",
+	)
+	FlagSet.StringVar(
+		&CosiDriverAddress, "cosi-driver-addr",
+		CosiDriverAddress, "unix socket address for COSI",
 	)
 	FlagSet.BoolVar(
 		&AdmissionWebhook, "admission",
@@ -271,8 +280,5 @@ func init() {
 	FlagSet.StringVar(
 		&PrometheusNamespace, "prometheus-namespace",
 		PrometheusNamespace, "namespace with installed prometheus for autoscaler",
-	FlagSet.StringVar(
-		&CosiDriverAddress, "cosi-driver-addr",
-		CosiDriverAddress, "unix socket address for COSI",
 	)
 }

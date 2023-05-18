@@ -1,0 +1,8 @@
+apiVersion: objectstorage.k8s.io/v1alpha1
+kind: BucketClaim
+metadata:
+  name: my-cosi-bucket-claim
+spec:
+  bucketClassName: my-cosi-bucket-class
+  protocols:
+    - "S3"

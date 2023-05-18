@@ -5,7 +5,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-// Add starts running the noobaa cosi provisioner
+// Add starts running the noobaa cosi driver
 func Add(mgr manager.Manager) error {
 	return cosi.RunProvisioner(
 		mgr.GetClient(),
