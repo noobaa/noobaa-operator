@@ -18,7 +18,7 @@ type Client interface {
 	ReadNamespaceResourceOperatorInfoAPI(ReadNamespaceResourceParams) (NamespaceResourceOperatorInfo, error)
 	SetNamespaceStoreInfo(NamespaceStoreInfo) error
 
-	ListAccountsAPI() (ListAccountsReply, error)
+	ListAccountsAPI(ListAccountsParams) (ListAccountsReply, error)
 	ListBucketsAPI() (ListBucketsReply, error)
 	ListHostsAPI(ListHostsParams) (ListHostsReply, error)
 
@@ -132,8 +132,8 @@ func (c *RPCClient) ReadPoolAPI(params ReadPoolParams) (PoolInfo, error) {
 }
 
 // ListAccountsAPI calls account_api.list_accounts()
-func (c *RPCClient) ListAccountsAPI() (ListAccountsReply, error) {
-	req := &RPCMessage{API: "account_api", Method: "list_accounts"}
+func (c *RPCClient) ListAccountsAPI(params ListAccountsParams) (ListAccountsReply, error) {
+	req := &RPCMessage{API: "account_api", Method: "list_accounts", Params: params}
 	res := &struct {
 		RPCMessage `json:",inline"`
 		Reply      ListAccountsReply `json:"reply"`
