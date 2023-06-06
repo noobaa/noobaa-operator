@@ -25,7 +25,6 @@ import (
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
-	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -112,7 +111,6 @@ type Reconciler struct {
 	RouteSts                  *routev1.Route
 	DeploymentEndpoint        *appsv1.Deployment
 	DefaultDeploymentEndpoint *corev1.PodSpec
-	HPAEndpoint               *autoscalingv1.HorizontalPodAutoscaler
 	JoinSecret                *corev1.Secret
 	UpgradeJob                *batchv1.Job
 	CaBundleConf              *corev1.ConfigMap
@@ -173,7 +171,6 @@ func NewReconciler(
 		RouteS3:                   util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
 		RouteSts:                  util.KubeObject(bundle.File_deploy_internal_route_sts_yaml).(*routev1.Route),
 		DeploymentEndpoint:        util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
-		HPAEndpoint:               util.KubeObject(bundle.File_deploy_internal_hpa_endpoint_yaml).(*autoscalingv1.HorizontalPodAutoscaler),
 		UpgradeJob:                util.KubeObject(bundle.File_deploy_internal_job_upgrade_db_yaml).(*batchv1.Job),
 		CaBundleConf:              util.KubeObject(bundle.File_deploy_internal_configmap_ca_inject_yaml).(*corev1.ConfigMap),
 		KedaTriggerAuthentication: util.KubeObject(bundle.File_deploy_internal_hpa_keda_trigger_authentication_yaml).(*kedav1alpha1.TriggerAuthentication),
@@ -219,7 +216,6 @@ func NewReconciler(
 	r.RouteS3.Namespace = r.Request.Namespace
 	r.RouteSts.Namespace = r.Request.Namespace
 	r.DeploymentEndpoint.Namespace = r.Request.Namespace
-	r.HPAEndpoint.Namespace = r.Request.Namespace
 	r.UpgradeJob.Namespace = r.Request.Namespace
 	r.CaBundleConf.Namespace = r.Request.Namespace
 
@@ -260,7 +256,6 @@ func NewReconciler(
 	r.RouteS3.Name = r.ServiceS3.Name
 	r.RouteSts.Name = r.ServiceSts.Name
 	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
-	r.HPAEndpoint.Name = r.Request.Name + "-endpoint"
 	r.UpgradeJob.Name = r.Request.Name + "-upgrade-job"
 	r.CaBundleConf.Name = r.Request.Name + "-ca-inject"
 
@@ -268,9 +263,6 @@ func NewReconciler(
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name
 	r.RouteS3.Spec.To.Name = r.ServiceS3.Name
 	r.RouteSts.Spec.To.Name = r.ServiceSts.Name
-
-	// Set the target deployment for the horizontal auto scaler
-	r.HPAEndpoint.Spec.ScaleTargetRef.Name = r.DeploymentEndpoint.Name
 
 	// Since StorageClass is global we set the name and provisioner to have unique global name
 	r.OBCStorageClass.Name = options.SubDomainNS()
@@ -324,7 +316,6 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.OBCStorageClass)
 	util.KubeCheck(r.DefaultBucketClass)
 	util.KubeCheck(r.DeploymentEndpoint)
-	util.KubeCheck(r.HPAEndpoint)
 	util.KubeCheckOptional(r.DefaultBackingStore)
 	util.KubeCheckOptional(r.AWSCloudCreds)
 	util.KubeCheckOptional(r.AzureCloudCreds)

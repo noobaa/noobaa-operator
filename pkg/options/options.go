@@ -135,9 +135,9 @@ var ShowSecrets = false
 // ManualDefaultBackingStore is used for disabling and allow deletion of default backingstore
 var ManualDefaultBackingStore = false
 
-// DefaultAutoscalerType is the default noobaa-endpoint autoscaler type
-// it can be overridden for testing or different types. for now default is hpav1 it will replace with hpav2 in future
-var DefaultAutoscalerType = "hpav1"
+// AutoscalerType is the default noobaa-endpoint autoscaler type
+// it can be overridden for testing or different types. there is no default autoscaler for endpoint
+var AutoscalerType = ""
 
 // PrometheusNamespace is prometheus installed namespace
 // it can be overridden for testing or different namespace.
@@ -251,8 +251,8 @@ func init() {
 		false, "allow to delete the default backingstore",
 	)
 	FlagSet.StringVar(
-		&DefaultAutoscalerType, "autoscaler-type",
-		DefaultAutoscalerType, "The type of autoscaler (hpav1, hpav2, keda)",
+		&AutoscalerType, "autoscaler-type",
+		AutoscalerType, "The type of autoscaler (hpav2, keda)",
 	)
 
 	FlagSet.StringVar(

@@ -59,6 +59,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	apiregistration "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -163,6 +164,7 @@ func init() {
 	Panic(secv1.AddToScheme(scheme.Scheme))
 	Panic(autoscalingv1.AddToScheme(scheme.Scheme))
 	Panic(kedav1alpha1.AddToScheme(scheme.Scheme))
+	Panic(apiregistration.AddToScheme(scheme.Scheme))
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)

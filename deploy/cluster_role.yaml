@@ -34,8 +34,11 @@ rules:
     resources:
       - namespaces
       - services
+      - pods
     verbs:
       - get
+      - list
+      - watch
   - apiGroups:
       - storage.k8s.io
     resources:
@@ -94,6 +97,54 @@ rules:
       - watch
       - create
       - update
+      - delete
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - prometheuses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterrolebindings
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - delete
+  - apiGroups:
+      - apiregistration.k8s.io
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - delete
+    resources:
+      - 'apiservices'
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - rolebindings
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - delete
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterroles
+    verbs:
+      - create
+      - get
+      - list
+      - watch
       - delete
   - apiGroups:
     - monitoring.coreos.com

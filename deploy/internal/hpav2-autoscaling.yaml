@@ -1,0 +1,24 @@
+kind: HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
+metadata:
+  labels:
+    app: noobaa
+  name: hpav2-noobaa-endpoint
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: noobaa-endpoint
+  metrics:
+  - type: Object
+    object:
+      metric:
+        # this is dummy metrics, original metrics will replace this
+        name: container_cpu_usage_seconds_per_second
+      describedObject:
+        apiVersion: v1
+        kind: Pod
+        name: noobaa-core-0
+      target:
+        averageValue: 9M
+        type: AverageValue

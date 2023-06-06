@@ -149,8 +149,8 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 
 	LoadConfigMapFromFlags()
 
-	if options.DefaultAutoscalerType != "" {
-		sys.Spec.Autoscaler.AutoscalerType = nbv1.AutoscalerTypes(options.DefaultAutoscalerType)
+	if options.AutoscalerType != "" {
+		sys.Spec.Autoscaler.AutoscalerType = nbv1.AutoscalerTypes(options.AutoscalerType)
 	}
 	if options.PrometheusNamespace != "" {
 		sys.Spec.Autoscaler.PrometheusNamespace = options.PrometheusNamespace
@@ -443,8 +443,12 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		}
 		util.KubeDelete(obj, client.GracePeriodSeconds(0))
 	}
-
-	deleteKedaResources()
+	//delete keda resources
+	deleteKedaResources(options.Namespace)
+	//delete HPAV2 resources
+	if err := deleteHPAV2Resources(options.Namespace); err != nil {
+		log.Errorf("falied to delete HPAV2 Resources : %s", err)
+	}
 }
 
 // RunList runs a CLI command

@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: metrics-adapter
+    app.kubernetes.io/name: prometheus-adapter
+    app.kubernetes.io/version: 0.10.0
+    app: prometheus-adapter
+  name: prometheus-adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: metrics-adapter
+      app.kubernetes.io/name: prometheus-adapter
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: metrics-adapter
+        app.kubernetes.io/name: prometheus-adapter
+        app.kubernetes.io/version: 0.10.0
+    spec:
+      automountServiceAccountToken: true
+      containers:
+      - args:
+        - --v=6
+        - --config=/etc/adapter/config.yaml
+        - --logtostderr=true
+        - --metrics-relist-interval=1m
+        - --secure-port=6443
+        - --tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+        image: registry.k8s.io/prometheus-adapter/prometheus-adapter:v0.10.0
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /livez
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        name: prometheus-adapter
+        ports:
+        - containerPort: 6443
+          name: https
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /readyz
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: 102m
+            memory: 180Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmpfs
+          readOnly: true
+        - mountPath: /var/run/serving-cert
+          name: volume-serving-cert
+          readOnly: false
+        - mountPath: /etc/adapter
+          name: config
+          readOnly: true
+        - name: prometheus-adapter-prometheus-config
+          mountPath: /etc/prometheus-config
+        - name: serving-certs-ca-bundle
+          mountPath: /etc/ssl/certs
+          readOnly: true
+        - mountPath: /var/run/empty/serving-cert
+          name: volume-empty-serving-cert
+          readOnly: false
+      nodeSelector:
+        kubernetes.io/os: linux
+      securityContext: {}
+      serviceAccountName: custom-metrics-prometheus-adapter
+      volumes:
+      - emptyDir: {}
+        name: tmpfs
+      - name: volume-serving-cert
+        secret:
+          secretName: prometheus-adapter-serving-cert
+          defaultMode: 420
+          optional: true
+      - name: config
+        configMap:
+          name: adapter-config
+          optional: true
+      - name: prometheus-adapter-prometheus-config
+        configMap:
+          name: prometheus-adapter-prometheus-config
+          optional: true
+          defaultMode: 420
+      - name: serving-certs-ca-bundle
+        configMap:
+          name: serving-certs-ca-bundle
+          items:
+            - key: service-ca.crt
+              path: service-ca.crt
+          optional: true
+          defaultMode: 420
+      - name: volume-empty-serving-cert
+        emptyDir: {}
