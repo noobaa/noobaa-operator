@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go v1.44.191
 	github.com/blang/semver/v4 v4.0.0
 	github.com/coreos/go-semver v0.3.0
-	github.com/docker/distribution v2.8.1+incompatible
+	github.com/docker/distribution v2.8.2+incompatible
 	github.com/gemalto/kmip-go v0.0.8
 	github.com/google/uuid v1.3.0
 	github.com/kedacore/keda/v2 v2.7.0
