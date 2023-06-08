@@ -255,3 +255,8 @@ test-util: vendor
 	ginkgo -v pkg/util
 	@echo "✅ test-util"
 .PHONY: test-util
+
+test-validations: 
+	ginkgo -v pkg/validations
+	@echo "✅ test-validations"
+.PHONY: test-validations

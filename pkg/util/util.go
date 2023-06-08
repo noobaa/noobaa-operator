@@ -2122,3 +2122,13 @@ func FilterSlice[V any](slice []V, f func(V) bool) []V {
 	}
 	return r
 }
+
+// IsTestEnv checks for TEST_ENV env var existance and equality
+// to true and returns true or false accordingly
+func IsTestEnv() bool {
+	testEnv, ok := os.LookupEnv("TEST_ENV")
+	if ok && testEnv == "true" {
+		return true
+	}
+	return false
+}
