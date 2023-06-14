@@ -15,7 +15,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -210,52 +209,13 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			fmt.Sprintf("NooBaa system %q not found or deleted", r.NooBaa.Name))
 	}
 	if r.BucketClass.Spec.PlacementPolicy != nil {
-		for i := range r.BucketClass.Spec.PlacementPolicy.Tiers {
-			tier := &r.BucketClass.Spec.PlacementPolicy.Tiers[i]
-			for _, backingStoreName := range tier.BackingStores {
-				backStore := &nbv1.BackingStore{
-					TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      backingStoreName,
-						Namespace: r.NooBaa.Namespace,
-					},
-				}
-				if !util.KubeCheck(backStore) {
-					return util.NewPersistentError("MissingBackingStore",
-						fmt.Sprintf("NooBaa BackingStore %q not found or deleted", backingStoreName))
-				}
-				if backStore.Status.Phase == nbv1.BackingStorePhaseRejected {
-					return util.NewPersistentError("RejectedBackingStore",
-						fmt.Sprintf("NooBaa BackingStore %q is in rejected phase", backingStoreName))
-				}
-				if backStore.Status.Phase != nbv1.BackingStorePhaseReady {
-					return fmt.Errorf("NooBaa BackingStore %q is not yet ready", backingStoreName)
-				}
-			}
+		if err := validations.ValidatePlacementPolicy(r.BucketClass.Spec.PlacementPolicy, r.NooBaa.Namespace); err != nil {
+			return err
 		}
 	}
 	if r.BucketClass.Spec.NamespacePolicy != nil {
-		namespaceStoresArr := validations.GetBucketclassNamespaceStoreArray(r.BucketClass)
-		// check that namespace stores exists and their phase it ready
-		for _, name := range namespaceStoresArr {
-			nsStore := &nbv1.NamespaceStore{
-				TypeMeta: metav1.TypeMeta{Kind: "NamespaceStore"},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: r.NooBaa.Namespace,
-				},
-			}
-			if !util.KubeCheck(nsStore) {
-				return util.NewPersistentError("MissingNamespaceStore",
-					fmt.Sprintf("NooBaa NamespaceStore %q not found or deleted", name))
-			}
-			if nsStore.Status.Phase == nbv1.NamespaceStorePhaseRejected {
-				return util.NewPersistentError("RejectedNamespaceStore",
-					fmt.Sprintf("NooBaa NamespaceStore %q is in rejected phase", name))
-			}
-			if nsStore.Status.Phase != nbv1.NamespaceStorePhaseReady {
-				return fmt.Errorf("NooBaa NamespaceStore %q is not yet ready", name)
-			}
+		if err := validations.ValidateNamespacePolicy(r.BucketClass.Spec.NamespacePolicy, r.NooBaa.Namespace); err != nil {
+			return err
 		}
 	}
 
@@ -345,38 +305,8 @@ func (r *Reconciler) updateNamespaceBucketClass(bucketNames []string) error {
 	}
 
 	if r.BucketClass.Spec.NamespacePolicy != nil {
-		namespacePolicyType := r.BucketClass.Spec.NamespacePolicy.Type
-		var readResources []nb.NamespaceResourceFullConfig
 		createBucketParams := &nb.CreateBucketParams{}
-		createBucketParams.Namespace = &nb.NamespaceBucketInfo{}
-
-		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource}
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource})
-
-		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
-			if r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource != "" {
-				createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
-					Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource}
-			}
-
-			for i := range r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources {
-				rr := r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources[i]
-				readResources = append(readResources, nb.NamespaceResourceFullConfig{Resource: rr})
-			}
-
-			createBucketParams.Namespace.ReadResources = readResources
-
-		} else if namespacePolicyType == nbv1.NSBucketClassTypeCache {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource}
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource})
-			createBucketParams.Namespace.Caching = &nb.CacheSpec{TTLMs: r.BucketClass.Spec.NamespacePolicy.Cache.Caching.TTL}
-			//cachePrefix := r.BucketClass.Spec.NamespacePolicy.Cache.Prefix
-		}
+		createBucketParams.Namespace = CreateNamespaceBucketInfoStructure(*r.BucketClass.Spec.NamespacePolicy, "")
 
 		for i := range bucketNames {
 			createBucketParams.Name = bucketNames[i]

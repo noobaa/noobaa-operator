@@ -414,37 +414,7 @@ func (r *BucketRequest) CreateAndUpdateBucket(
 
 	// create NS bucket
 	if r.BucketClass.Spec.NamespacePolicy != nil {
-		namespacePolicyType := r.BucketClass.Spec.NamespacePolicy.Type
-		var readResources []nb.NamespaceResourceFullConfig
-		createBucketParams.Namespace = &nb.NamespaceBucketInfo{}
-
-		if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource,
-				Path:     r.OBC.Spec.AdditionalConfig["path"],
-			}
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Single.Resource})
-		} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
-			if r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource != "" {
-				createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
-					Resource: r.BucketClass.Spec.NamespacePolicy.Multi.WriteResource,
-					Path:     r.OBC.Spec.AdditionalConfig["path"],
-				}
-			}
-			for i := range r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources {
-				rr := r.BucketClass.Spec.NamespacePolicy.Multi.ReadResources[i]
-				readResources = append(readResources, nb.NamespaceResourceFullConfig{Resource: rr})
-			}
-			createBucketParams.Namespace.ReadResources = readResources
-		} else if namespacePolicyType == nbv1.NSBucketClassTypeCache {
-			createBucketParams.Namespace.WriteResource = nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource}
-			createBucketParams.Namespace.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
-				Resource: r.BucketClass.Spec.NamespacePolicy.Cache.HubResource})
-			createBucketParams.Namespace.Caching = &nb.CacheSpec{TTLMs: r.BucketClass.Spec.NamespacePolicy.Cache.Caching.TTL}
-			//cachePrefix := r.BucketClass.Spec.NamespacePolicy.Cache.Prefix
-		}
+		createBucketParams.Namespace = bucketclass.CreateNamespaceBucketInfoStructure(*r.BucketClass.Spec.NamespacePolicy, r.OBC.Spec.AdditionalConfig["path"])
 	}
 
 	err = r.SysClient.NBClient.CreateBucketAPI(*createBucketParams)
@@ -730,7 +700,12 @@ func (r *BucketRequest) putBucketTagging() error {
 
 // prepareReplicationParams validates and prepare the replication params
 func (r *BucketRequest) prepareReplicationParams(replicationPolicy string, update bool) (*nb.BucketReplicationParams, *nb.DeleteBucketReplicationParams, error) {
-	log := r.Provisioner.Logger
+
+	var replicationRules nb.ReplicationPolicy
+	err := json.Unmarshal([]byte(replicationPolicy), &replicationRules)
+	if err != nil {
+		return nil, nil, fmt.Errorf("prepareReplicationParams: Failed to parse replication json %q: %v", replicationRules, err)
+	}
 	deleteReplicationParams := &nb.DeleteBucketReplicationParams{
 		Name: r.BucketName,
 	}
@@ -739,40 +714,11 @@ func (r *BucketRequest) prepareReplicationParams(replicationPolicy string, updat
 		return nil, deleteReplicationParams, nil
 	}
 
-	var replicationRules nb.ReplicationPolicy
-	err := json.Unmarshal([]byte(replicationPolicy), &replicationRules)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to parse replication json %q: %v", replicationRules, err)
-	}
-	log.Infof("prepareReplicationParams: newReplication %+v", replicationRules)
-
-	if len(replicationRules.Rules) == 0 {
-		if update {
-			return nil, deleteReplicationParams, nil
-		}
-		return nil, nil, fmt.Errorf("replication rules array of bucket %q is empty %q", r.BucketName, replicationRules)
-	}
-
 	replicationParams := &nb.BucketReplicationParams{
 		Name:              r.BucketName,
 		ReplicationPolicy: replicationRules,
 	}
 
-	log.Infof("prepareReplicationParams: validating replication: replicationParams: %+v", replicationParams)
-	err = r.SysClient.NBClient.ValidateReplicationAPI(*replicationParams)
-	if err != nil {
-		rpcErr, isRPCErr := err.(*nb.RPCError)
-		if isRPCErr {
-			if rpcErr.RPCCode == "INVALID_REPLICATION_POLICY" {
-				return nil, nil, fmt.Errorf("Bucket replication configuration is invalid")
-			}
-			if rpcErr.RPCCode == "INVALID_LOG_REPLICATION_INFO" {
-				return nil, nil, fmt.Errorf("Bucket log replication info configuration is invalid")
-			}
-		}
-		return nil, nil, fmt.Errorf("Provisioner Failed to validate replication of bucket %q with error: %v", r.BucketName, err)
-	}
-	log.Infof("prepareReplicationParams: validated replication successfully")
 	return replicationParams, nil, nil
 }
 

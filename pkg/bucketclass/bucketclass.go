@@ -719,6 +719,45 @@ func CreateTieringStructure(BucketClass nbv1.BucketClass, BucketName string, nbC
 	return tierName, nil
 }
 
+// CreateNamespaceBucketInfoStructure creates a namespace bucket info for a bucket
+func CreateNamespaceBucketInfoStructure(namespacePolicy nbv1.NamespacePolicy, path string) *nb.NamespaceBucketInfo {
+	log := util.Logger()
+	log.Infof("creating namespace bucket info stucture %+v from namespace policy", namespacePolicy)
+
+	namespacePolicyType := namespacePolicy.Type
+	var readResources []nb.NamespaceResourceFullConfig
+	namespaceBucketInfo := &nb.NamespaceBucketInfo{}
+
+	if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
+
+		namespaceBucketInfo.WriteResource = nb.NamespaceResourceFullConfig{
+			Resource: namespacePolicy.Single.Resource,
+			Path:     path,
+		}
+		namespaceBucketInfo.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
+			Resource: namespacePolicy.Single.Resource})
+	} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
+		if namespacePolicy.Multi.WriteResource != "" {
+			namespaceBucketInfo.WriteResource = nb.NamespaceResourceFullConfig{
+				Resource: namespacePolicy.Multi.WriteResource,
+				Path:     path,
+			}
+		}
+		for i := range namespacePolicy.Multi.ReadResources {
+			rr := namespacePolicy.Multi.ReadResources[i]
+			readResources = append(readResources, nb.NamespaceResourceFullConfig{Resource: rr})
+		}
+		namespaceBucketInfo.ReadResources = readResources
+	} else if namespacePolicyType == nbv1.NSBucketClassTypeCache {
+		namespaceBucketInfo.WriteResource = nb.NamespaceResourceFullConfig{Resource: namespacePolicy.Cache.HubResource}
+		namespaceBucketInfo.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{Resource: namespacePolicy.Cache.HubResource})
+		namespaceBucketInfo.Caching = &nb.CacheSpec{TTLMs: namespacePolicy.Cache.Caching.TTL}
+		//cachePrefix := r.BucketClass.Spec.NamespacePolicy.Cache.Prefix
+	}
+	log.Infof("created namespace bucket info stucture successfully %+v ", namespaceBucketInfo)
+	return namespaceBucketInfo
+}
+
 // GetDefaultBucketClass will get the default bucket class
 func GetDefaultBucketClass(Namespace string) (*nbv1.BucketClass, error) {
 	bucketClassName := options.SystemName + "-default-bucket-class"
