@@ -35,7 +35,7 @@ var (
 
 // RunOperator is the main function of the operator but it is called from a cobra.Command
 func RunOperator(cmd *cobra.Command, args []string) {
-	if (options.DebugLevel == "warn") {
+	if options.DebugLevel == "warn" {
 		util.InitLogger(logrus.WarnLevel)
 	} else {
 		util.InitLogger(logrus.DebugLevel)

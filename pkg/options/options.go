@@ -63,6 +63,9 @@ var Namespace = "noobaa"
 // it can be overridden for testing or different registry locations.
 var OperatorImage = "noobaa/noobaa-operator:" + version.Version
 
+// CosiSideCarImage is the container image url built from https://github.com/kubernetes-sigs/container-object-storage-interface-provisioner-sidecar
+var CosiSideCarImage = "gcr.io/k8s-staging-sig-storage/objectstorage-sidecar/objectstorage-sidecar:v20221117-v0.1.0-22-g0e67387"
+
 // NooBaaImage is the container image url built from https://github.com/noobaa/noobaa-core
 // it can be overridden for testing or different registry locations.
 var NooBaaImage = ContainerImage
@@ -118,8 +121,14 @@ var DevEnv = false
 // DisableLoadBalancerService is used for setting the service type to ClusterIP instead of LoadBalancer
 var DisableLoadBalancerService = false
 
+// CosiDriverAddress is the cosi socket address
+var CosiDriverAddress = "unix:///var/lib/cosi/cosi.sock"
+
 // AdmissionWebhook is used for deploying the system with admission validation webhook
 var AdmissionWebhook = false
+
+// TestEnv is used for deploying the system with test env minimal resources
+var TestEnv = false
 
 // S3LoadBalancerSourceSubnets is used for setting the source subnets for the load balancer
 // created for noobaa S3 service
@@ -151,6 +160,11 @@ func SubDomainNS() string {
 // ObjectBucketProvisionerName returns the provisioner name to be used in storage classes for OB/OBC
 func ObjectBucketProvisionerName() string {
 	return SubDomainNS() + "/obc"
+}
+
+// COSIDriverName returns the driver name to be used in for COSI
+func COSIDriverName() string {
+	return "noobaa.objectstorage.k8s.io"
 }
 
 // WatchNamespace returns the namespace which NooBaa operator will watch for changes
@@ -227,8 +241,16 @@ func init() {
 		false, "Set sufficient resources for dev env",
 	)
 	FlagSet.BoolVar(
+		&TestEnv, "test-env",
+		false, "Install the system with test env minimal resources",
+	)
+	FlagSet.BoolVar(
 		&DisableLoadBalancerService, "disable-load-balancer",
 		false, "Set the service type to ClusterIP instead of LoadBalancer",
+	)
+	FlagSet.StringVar(
+		&CosiDriverAddress, "cosi-driver-addr",
+		CosiDriverAddress, "unix socket address for COSI",
 	)
 	FlagSet.BoolVar(
 		&AdmissionWebhook, "admission",

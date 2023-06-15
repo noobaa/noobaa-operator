@@ -113,6 +113,16 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	util.KubeCreateSkipExisting(c.ClusterRole)
 	util.KubeCreateSkipExisting(c.ClusterRoleBinding)
 
+	testEnv, _ := cmd.Flags().GetBool("test-env")
+	if testEnv {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "TEST_ENV",
+			Value: "true",
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
 	admission, _ := cmd.Flags().GetBool("admission")
 	if admission {
 		LoadAdmissionConf(c)
@@ -311,6 +321,7 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 		c.Deployment.Spec.Template.Spec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{{Name: options.ImagePullSecret}}
 	}
+	c.Deployment.Spec.Template.Spec.Containers[1].Image = options.CosiSideCarImage
 
 	return c
 }
@@ -465,16 +476,15 @@ func AdmissionWebhookSetup(c *Conf) {
 	c.WebhookSecret.Data["tls.key"] = serverPrivKeyPEM.Bytes()
 	c.WebhookConfiguration.Webhooks[0].ClientConfig.CABundle = caPEM.Bytes()
 
-	volumeMounts := make([]corev1.VolumeMount, 1)
-	volumeMounts[0] = corev1.VolumeMount{
+	volumeMount := corev1.VolumeMount{
 		Name:      "webhook-certs",
 		MountPath: "/etc/certs",
 		ReadOnly:  true,
 	}
-	c.Deployment.Spec.Template.Spec.Containers[0].VolumeMounts = volumeMounts
 
-	volumes := make([]corev1.Volume, 1)
-	volumes[0] = corev1.Volume{
+	c.Deployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(c.Deployment.Spec.Template.Spec.Containers[0].VolumeMounts, volumeMount)
+
+	volume := corev1.Volume{
 		Name: "webhook-certs",
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
@@ -482,7 +492,7 @@ func AdmissionWebhookSetup(c *Conf) {
 			},
 		},
 	}
-	c.Deployment.Spec.Template.Spec.Volumes = volumes
+	c.Deployment.Spec.Template.Spec.Volumes = append(c.Deployment.Spec.Template.Spec.Volumes, volume)
 }
 
 func configureClusterRole(cr *rbacv1.ClusterRole) {

@@ -236,6 +236,11 @@ test-admission: vendor
 	@echo "✅ test-admission"
 .PHONY: test-admission
 
+test-cosi: vendor
+	ginkgo -v pkg/cosi
+	@echo "✅ test-cosi"
+.PHONY: test-cosi
+
 test-bucketclass: vendor
 	ginkgo -v pkg/bucketclass pkg/controller/bucketclass
 	@echo "✅ test-bucketclass"

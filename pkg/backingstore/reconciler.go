@@ -1285,8 +1285,9 @@ func (r *Reconciler) updatePodTemplate() error {
 }
 
 func (r *Reconciler) updatePodResourcesTemplate(c *corev1.Container) error {
-	minimalCPU := resource.MustParse(minCPUString)
-	minimalMemory := resource.MustParse(minMemoryString)
+	minCPUStringByEnv, minMemoryStringByEnv := getMinimalResourcesByEnv()
+	minimalCPU := resource.MustParse(minCPUStringByEnv)
+	minimalMemory := resource.MustParse(minMemoryStringByEnv)
 	var src, dst *corev1.ResourceList
 	pvPool := r.BackingStore.Spec.PVPool
 
@@ -1402,4 +1403,16 @@ func (r *Reconciler) reconcileResources(src, dst *corev1.ResourceList, minCPU, m
 	(*dst)[corev1.ResourceCPU] = cpu
 	(*dst)[corev1.ResourceMemory] = mem
 	return nil
+}
+
+// getMinimalResourcesByEnv returns the minimal CPU / memory resources by env
+// of backingstore of type pv-pool
+func getMinimalResourcesByEnv() (string, string) {
+	minCPUStringByEnv := minCPUString
+	minMemoryStringByEnv := minMemoryString
+	if util.IsTestEnv() {
+		minCPUStringByEnv = testEnvMinCPUString
+		minMemoryStringByEnv = testEnvMinMemoryString
+	}
+	return minCPUStringByEnv, minMemoryStringByEnv
 }

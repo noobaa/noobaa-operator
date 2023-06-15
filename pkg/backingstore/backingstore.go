@@ -235,10 +235,15 @@ const (
 	minCPUString string = "100m"
 	// Memory, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
 	minMemoryString string = "400Mi"
+
+	// Test ENV minimal resources
+	testEnvMinCPUString    string = "50m"
+	testEnvMinMemoryString string = "200Mi"
 )
 
 // CmdCreatePVPool returns a CLI command
 func CmdCreatePVPool() *cobra.Command {
+	minCPUStringByEnv, minMemoryStringByEnv := getMinimalResourcesByEnv()
 	cmd := &cobra.Command{
 		Use:   "pv-pool <backing-store-name>",
 		Short: "Create pv-pool backing store",
@@ -253,19 +258,19 @@ func CmdCreatePVPool() *cobra.Command {
 		`PV size of each volume in the store`,
 	)
 	cmd.Flags().String(
-		"request-cpu", minCPUString,
+		"request-cpu", minCPUStringByEnv,
 		"Request cpu for an agent pod",
 	)
 	cmd.Flags().String(
-		"request-memory", minMemoryString,
+		"request-memory", minMemoryStringByEnv,
 		"Request memory for an agent pod",
 	)
 	cmd.Flags().String(
-		"limit-cpu", minCPUString,
+		"limit-cpu", minCPUStringByEnv,
 		"Limit cpu for an agent pod",
 	)
 	cmd.Flags().String(
-		"limit-memory", minMemoryString,
+		"limit-memory", minMemoryStringByEnv,
 		"Limit memory for an agent pod",
 	)
 	cmd.Flags().String(

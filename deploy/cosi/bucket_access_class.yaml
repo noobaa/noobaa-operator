@@ -1,0 +1,6 @@
+apiVersion: objectstorage.k8s.io/v1alpha1
+kind: BucketAccessClass
+metadata:
+  name: my-cosi-bucket-access-class
+driverName: noobaa.objectstorage.k8s.io
+authenticationType: KEY

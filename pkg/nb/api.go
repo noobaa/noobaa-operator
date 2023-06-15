@@ -58,6 +58,7 @@ type Client interface {
 	PublishToCluster(PublishToClusterParams) error
 
 	PutBucketReplicationAPI(BucketReplicationParams) error
+	GetBucketReplicationAPI(ReadBucketParams) (ReplicationPolicy, error)
 	ValidateReplicationAPI(BucketReplicationParams) error
 	DeleteBucketReplicationAPI(DeleteBucketReplicationParams) error
 
@@ -399,6 +400,17 @@ func (c *RPCClient) PublishToCluster(params PublishToClusterParams) error {
 func (c *RPCClient) PutBucketReplicationAPI(params BucketReplicationParams) error {
 	req := &RPCMessage{API: "bucket_api", Method: "put_bucket_replication", Params: params}
 	return c.Call(req, nil)
+}
+
+// GetBucketReplicationAPI calls bucket_api.get_bucket_replication()
+func (c *RPCClient) GetBucketReplicationAPI(params ReadBucketParams) (ReplicationPolicy, error) {
+	req := &RPCMessage{API: "bucket_api", Method: "get_bucket_replication", Params: params}
+	res := &struct {
+		RPCMessage `json:",inline"`
+		Reply      ReplicationPolicy `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
 }
 
 // ValidateReplicationAPI calls bucket_api.validate_replication()
