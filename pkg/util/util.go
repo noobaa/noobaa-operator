@@ -26,6 +26,7 @@ import (
 	"time"
 	"unicode"
 
+	semver "github.com/coreos/go-semver/semver"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/v5/pkg/apis"
@@ -53,6 +54,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
@@ -183,6 +185,22 @@ func KubeConfig() *rest.Config {
 		}
 	}
 	return lazyConfig
+}
+
+// GetKubeVersion will fetch the kubernates minor version
+func GetKubeVersion() (*semver.Version, error) {
+	var err error
+	var discClient *discovery.DiscoveryClient
+	var kubeVersionInfo *version.Info
+	if discClient, err = discovery.NewDiscoveryClientForConfig(KubeConfig()); err != nil {
+		return nil, err
+	}
+	if kubeVersionInfo, err = discClient.ServerVersion(); err != nil {
+		return nil, err
+	}
+	kubeVersion := fmt.Sprintf("%s.%s.0", kubeVersionInfo.Major, kubeVersionInfo.Minor)
+	version, err := semver.NewVersion(kubeVersion)
+	return version, err
 }
 
 // MapperProvider creates RESTMapper
