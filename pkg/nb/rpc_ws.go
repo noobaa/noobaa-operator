@@ -134,7 +134,6 @@ func (c *RPCConnWS) ConnectUnderLock() error {
 func (c *RPCConnWS) ping() error {
 	ctx, cancel := context.WithTimeout(context.Background(), pongTimeout)
 	defer cancel()
-	logrus.Infof("RPC: Ping (%p) %+v", c, c)
 	return c.WS.Ping(ctx)
 }
 
