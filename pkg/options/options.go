@@ -205,6 +205,10 @@ func init() {
 		DBImage, "The database container image",
 	)
 	FlagSet.StringVar(
+		&CosiSideCarImage, "cosi-sidecar-image",
+		CosiSideCarImage, "The cosi side car container image",
+	)
+	FlagSet.StringVar(
 		&DBType, "db-type",
 		DBType, "The type of database container image (mongodb, postgres)",
 	)
