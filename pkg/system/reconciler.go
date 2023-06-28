@@ -25,6 +25,7 @@ import (
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -116,6 +117,7 @@ type Reconciler struct {
 	CaBundleConf              *corev1.ConfigMap
 	KedaTriggerAuthentication *kedav1alpha1.TriggerAuthentication
 	KedaScaled                *kedav1alpha1.ScaledObject
+	AdapterHPA                *autoscalingv2.HorizontalPodAutoscaler
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -175,6 +177,7 @@ func NewReconciler(
 		CaBundleConf:              util.KubeObject(bundle.File_deploy_internal_configmap_ca_inject_yaml).(*corev1.ConfigMap),
 		KedaTriggerAuthentication: util.KubeObject(bundle.File_deploy_internal_hpa_keda_trigger_authentication_yaml).(*kedav1alpha1.TriggerAuthentication),
 		KedaScaled:                util.KubeObject(bundle.File_deploy_internal_hpa_keda_scaled_object_yaml).(*kedav1alpha1.ScaledObject),
+		AdapterHPA:                util.KubeObject(bundle.File_deploy_internal_hpav2_autoscaling_yaml).(*autoscalingv2.HorizontalPodAutoscaler),
 	}
 
 	// Set Namespace
@@ -218,6 +221,9 @@ func NewReconciler(
 	r.DeploymentEndpoint.Namespace = r.Request.Namespace
 	r.UpgradeJob.Namespace = r.Request.Namespace
 	r.CaBundleConf.Namespace = r.Request.Namespace
+	r.KedaTriggerAuthentication.Namespace = r.Request.Namespace
+	r.KedaScaled.Namespace = r.Request.Namespace
+	r.AdapterHPA.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -258,6 +264,8 @@ func NewReconciler(
 	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
 	r.UpgradeJob.Name = r.Request.Name + "-upgrade-job"
 	r.CaBundleConf.Name = r.Request.Name + "-ca-inject"
+	r.KedaScaled.Name = r.Request.Name
+	r.AdapterHPA.Name = r.Request.Name + "-hpav2"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name
@@ -282,8 +290,6 @@ func NewReconciler(
 	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.Containers[0].DeepCopy()
 	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.DeepCopy()
 
-	r.KedaTriggerAuthentication.Namespace = r.Request.Namespace
-	r.KedaScaled.Namespace = r.Request.Namespace
 	return r
 }
 
