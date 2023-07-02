@@ -10,6 +10,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucket"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
+	"github.com/noobaa/noobaa-operator/v5/pkg/cosi"
 	"github.com/noobaa/noobaa-operator/v5/pkg/crd"
 	"github.com/noobaa/noobaa-operator/v5/pkg/diagnostics"
 	"github.com/noobaa/noobaa-operator/v5/pkg/install"
@@ -122,6 +123,7 @@ Load noobaa completion to bash:
 			bucketclass.Cmd(),
 			noobaaaccount.Cmd(),
 			obc.Cmd(),
+			cosi.Cmd(),
 			diagnostics.CmdDiagnoseDeprecated(),
 			diagnostics.CmdDbDumpDeprecated(),
 			diagnostics.Cmd(),

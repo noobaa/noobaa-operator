@@ -747,8 +747,8 @@ github.com/go-openapi/spec v0.19.8/go.mod h1:Hm2Jr4jv8G1ciIAo+frC/Ft+rR2kQDh8JHK
 github.com/go-openapi/spec v0.19.15/go.mod h1:+81FIL1JwC5P3/Iuuozq3pPE9dXdIEGxFutcFKaVbmU=
 github.com/go-openapi/spec v0.20.0/go.mod h1:+81FIL1JwC5P3/Iuuozq3pPE9dXdIEGxFutcFKaVbmU=
 github.com/go-openapi/spec v0.20.1/go.mod h1:93x7oh+d+FQsmsieroS4cmR3u0p/ywH649a3qwC9OsQ=
-github.com/go-openapi/spec v0.20.3 h1:uH9RQ6vdyPSs2pSy9fL8QPspDF2AMIMPtmK5coSSjtQ=
 github.com/go-openapi/spec v0.20.3/go.mod h1:gG4F8wdEDN+YPBMVnzE85Rbhf+Th2DTvA9nFPQ5AYEg=
+github.com/go-openapi/spec v0.20.6 h1:ich1RQ3WDbfoeTqTAb+5EIxNmpKVJZWBNah9RAT0jIQ=
 github.com/go-openapi/strfmt v0.17.0/go.mod h1:P82hnJI0CXkErkXi8IKjPbNBM6lV6+5pLP5l494TcyU=
 github.com/go-openapi/strfmt v0.18.0/go.mod h1:P82hnJI0CXkErkXi8IKjPbNBM6lV6+5pLP5l494TcyU=
 github.com/go-openapi/strfmt v0.19.0/go.mod h1:+uW+93UVvGGq2qGaZxdDeJqSAqBqBdl+ZPMF/cC8nDY=
@@ -3034,6 +3034,8 @@ sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.7/go.mod h1:PHgbrJT
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.9/go.mod h1:dzAXnQbTRyDlZPJX2SUPEqvnB+j7AJjtlox7PEwigU0=
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.14/go.mod h1:LEScyzhFmoF5pso/YSeBstl57mOzx9xlU9n85RGrDQg=
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.15/go.mod h1:LEScyzhFmoF5pso/YSeBstl57mOzx9xlU9n85RGrDQg=
+sigs.k8s.io/container-object-storage-interface-api v0.1.0 h1:8tB6JFQhbQIC1hwGQ+q4+tmSSNfjKemb7bFI6C0CK/4=
+sigs.k8s.io/container-object-storage-interface-api v0.1.0/go.mod h1:YiB+i/UGkzqgODDhRG3u7jkbWkQcoUeLEJ7hwOT/2Qk=
 sigs.k8s.io/container-object-storage-interface-provisioner-sidecar v0.1.0 h1:S5Qh/VAd745a2vMyZfK6qLiWJxvGpbUOddBtEVX1nU4=
 sigs.k8s.io/container-object-storage-interface-provisioner-sidecar v0.1.0/go.mod h1:JhfV605PePyAvL4F8wTjJ9ZiSAaGkrMmpn0liMPftJ4=
 sigs.k8s.io/container-object-storage-interface-spec v0.1.0 h1:WHeei3OywFyebPwBkVUuuV1SuGjG6Qm4BBmnfFTVa1Y=

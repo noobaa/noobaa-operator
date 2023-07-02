@@ -1,0 +1,15 @@
+apiVersion:  objectstorage.k8s.io/v1alpha1
+kind:         Bucket
+metadata:
+  name: my-cosi-bucket-class-xxx
+spec:
+  protocols:
+      - S3
+  bucketClaim:
+    name:             my-cosi-bucket-claim
+    namespace:        my-app
+  bucketClassName:    my-cosi-bucket-class
+  deletionPolicy:     delete
+  driverName:         noobaa.objectstorage.k8s.io
+  parameters: {}
+

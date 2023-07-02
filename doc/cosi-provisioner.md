@@ -103,6 +103,10 @@ parameters:
   placementPolicy: '{"tiers":[{"backingStores":["noobaa-default-backing-store"]}]}'
 ```
 
+The equivalent noobaa cli command - 
+noobaa cosi bucketclass create placement-bucketclass my-cosi-bucket-class --backingstores noobaa-default-backing-store
+
+
 &nbsp;
 Example of namespace bucketclass:
 
@@ -116,6 +120,9 @@ DeletionPolicy: delete
 parameters:
   namespacePolicy: '{"type": "Single", "single": { "resource": "nsr-name"}}'
 ```
+
+The equivalent noobaa cli command - 
+noobaa cosi bucketclass create namespace-bucketclass single my-cosi-ns-bucket-class --resource nsr-name
 
 &nbsp;
 Example of namespace bucketclass with a replication policy:
@@ -131,6 +138,12 @@ parameters:
   placementPolicy: '{"tiers":[{"backingStores":["noobaa-default-backing-store"]}]}'
   replicationPolicy: '"{\"rules\":[{\"rule_id\":\"rule-1\",\"destination_bucket\":\"first.bucket\",\"filter\":{\"prefix\":\"a\"}}]}"'
 ```
+
+The equivalent noobaa cli command - 
+/path/to/json-file.json is the path to a JSON file which defines the replication policy
+```shell
+noobaa cosi bucketclass create placement-bucketclass my-cosi-ns-bucket-class --backingstores noobaa-default-backing-store
+--replication-policy=/path/to/json-file.json
 
 ## COSI Bucket Claim
 
@@ -153,6 +166,9 @@ spec:
   protocols:
     - "S3"
 ```
+
+The equivalent noobaa cli command - 
+noobaa cosi bucketclaim create my-cosi-bucket-claim --bucketclass my-cosi-bucket-class
 
 ## COSI BucketAccessClass
 

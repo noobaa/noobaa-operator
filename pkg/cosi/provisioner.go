@@ -2,7 +2,6 @@ package cosi
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -107,7 +106,7 @@ func (p *Provisioner) DriverCreateBucket(ctx context.Context,
 		return nil, err
 	}
 
-	err = ValidateCOSIBucketClaim(req.GetName(), r)
+	err = ValidateCOSIBucketClaim(req.GetName(), r.Provisioner.Namespace, *r.BucketClass)
 	log.Infof("DriverCreateBucket: ValidateCOSIBucketClaim err %q", err)
 
 	if err != nil {
@@ -255,51 +254,14 @@ func NewBucketRequest(
 
 	if bucketCreateReq != nil {
 		r.BucketName = bucketCreateReq.GetName()
-		r.BucketClass = &nbv1.BucketClassSpec{}
-		if bucketCreateReq.Parameters["placementPolicy"] != "" {
-			log.Infof("NewBucketRequest: placement policy - %+v %+v", bucketCreateReq.Parameters["placementPolicy"], &r.BucketClass.PlacementPolicy)
-			err = json.Unmarshal([]byte(bucketCreateReq.Parameters["placementPolicy"]), &r.BucketClass.PlacementPolicy)
-			if err != nil {
-				msg := fmt.Sprintf("failed to parse placement policy in COSI params %s",
-					bucketCreateReq.Parameters["placementPolicy"],
-				)
-				log.Error(msg)
-				return nil, status.Error(codes.Internal, msg)
-			}
+
+		spec, errMsg := CreateBucketClassSpecFromParameters(bucketCreateReq.Parameters)
+		if errMsg != "" {
+			log.Error(errMsg)
+			return nil, status.Error(codes.Internal, errMsg)
 		}
-		if bucketCreateReq.Parameters["namespacePolicy"] != "" {
-			log.Infof("NewBucketRequest: namespace policy - %+v", bucketCreateReq.Parameters["namespacePolicy"])
-			err = json.Unmarshal([]byte(bucketCreateReq.Parameters["namespacePolicy"]), &r.BucketClass.NamespacePolicy)
-			if err != nil {
-				msg := fmt.Sprintf("failed to parse namespace policy in COSI params %s",
-					bucketCreateReq.Parameters["namespacePolicy"],
-				)
-				log.Error(msg)
-				return nil, status.Error(codes.Internal, msg)
-			}
-		}
-		if bucketCreateReq.Parameters["replicationPolicy"] != "" {
-			log.Infof("NewBucketRequest: replication policy - %+v", bucketCreateReq.Parameters["replicationPolicy"])
-			err = json.Unmarshal([]byte(bucketCreateReq.Parameters["replicationPolicy"]), &r.BucketClass.ReplicationPolicy)
-			if err != nil {
-				msg := fmt.Sprintf("failed to parse replication policy in COSI params %s",
-					bucketCreateReq.Parameters["replicationPolicy"],
-				)
-				log.Error(msg)
-				return nil, status.Error(codes.Internal, msg)
-			}
-		}
-		if bucketCreateReq.Parameters["quota"] != "" {
-			log.Infof("NewBucketRequest: quota - %+v", bucketCreateReq.Parameters["quota"])
-			err = json.Unmarshal([]byte(bucketCreateReq.Parameters["quota"]), &r.BucketClass.Quota)
-			if err != nil {
-				msg := fmt.Sprintf("failed to parse quota policy in COSI params %s",
-					bucketCreateReq.Parameters["quota"],
-				)
-				log.Error(msg)
-				return nil, status.Error(codes.Internal, msg)
-			}
-		}
+		r.BucketClass = spec
+
 		if r.BucketClass.PlacementPolicy == nil && r.BucketClass.NamespacePolicy == nil {
 			msg := fmt.Sprintf("must provide at least one of placement policy or namespace policy %+v",
 				r.BucketClass,
