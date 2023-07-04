@@ -16,13 +16,17 @@ sudo apt-get update && sudo apt-get install socat && sudo apt-get install conntr
 
 MINIKUBE_DEBUG=""
 #MINIKUBE_DEBUG="--alsologtostderr --v=5"
-export MINIKUBE_VERSION=v1.18.1
-export KUBERNETES_VERSION=v1.20.2
-
+export MINIKUBE_VERSION=v1.30.1
+export KUBERNETES_VERSION=v1.27.3
+export CRICTL_VERSION=v1.27.0 # check latest version in /releases page
 
 sudo mount --make-rshared /
 sudo mount --make-rshared /proc
 sudo mount --make-rshared /sys
+
+curl -L https://github.com/kubernetes-sigs/cri-tools/releases/download/$CRICTL_VERSION/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz --output crictl-${CRICTL_VERSION}-linux-amd64.tar.gz && \
+    sudo tar zxvf crictl-$CRICTL_VERSION-linux-amd64.tar.gz -C /usr/local/bin && \
+    rm -f crictl-$CRICTL_VERSION-linux-amd64.tar.gz
 
 curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/${KUBERNETES_VERSION}/bin/linux/amd64/kubectl && \
     chmod +x kubectl &&  \
