@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 ENV OPERATOR=/usr/local/bin/noobaa-operator \
     USER_UID=1001 \
@@ -6,7 +6,7 @@ ENV OPERATOR=/usr/local/bin/noobaa-operator \
 ARG NOOBAA_BIN_PATH=build/_output/bin/noobaa-operator
 
 # tar is needed for kubectl cp
-RUN microdnf install tar
+RUN microdnf -y install tar
 
 # install operator binary
 COPY ${NOOBAA_BIN_PATH} ${OPERATOR}
