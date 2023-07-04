@@ -3708,12 +3708,11 @@ spec:
         runAsGroup: 0
 `
 
-const Sha256_deploy_internal_hpa_keda_scaled_object_yaml = "16cf6a7587f44acaad171e3541f044fe3af1568a0ea60e28e4e37b3eb81e0238"
+const Sha256_deploy_internal_hpa_keda_scaled_object_yaml = "35a812a748636c240124b6688bffd6cc4b3c9535a24574c97fd5a46d4bf9cf99"
 
 const File_deploy_internal_hpa_keda_scaled_object_yaml = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: noobaa-endpoint
   labels:
     deploymentName: noobaa-endpoint
     origin: keda
@@ -3724,6 +3723,8 @@ spec:
   pollingInterval: 30
   scaleTargetRef:
     name: noobaa-endpoint
+    apiVersion: apps/v1
+    kind: Deployment
   triggers:
     - authenticationRef: 
         name: keda-prom-creds
@@ -3777,14 +3778,13 @@ spec:
   versionPriority: 100
 `
 
-const Sha256_deploy_internal_hpav2_autoscaling_yaml = "a0b4c55d02b8314d8c6c7858ae18a6c43861d38bbaa2d8d0b7d641b1d9d45b8c"
+const Sha256_deploy_internal_hpav2_autoscaling_yaml = "f9b77a7b7e9175a2930ee95214033858440a3d2f97de3838c104b8ece78d6b47"
 
 const File_deploy_internal_hpav2_autoscaling_yaml = `kind: HorizontalPodAutoscaler
 apiVersion: autoscaling/v2
 metadata:
   labels:
     app: noobaa
-  name: hpav2-noobaa-endpoint
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

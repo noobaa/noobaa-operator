@@ -109,7 +109,7 @@ func (r *Reconciler) ensureHPAV1Cleanup(log *logrus.Entry) error {
 
 func (r *Reconciler) ensureKedaCleanup(log *logrus.Entry) error {
 	noobaaHpaSelector, _ := labels.Parse("app=noobaa")
-	noobaaKedaFieldSelector, _ := fields.ParseSelector("metadata.name=keda-hpa-noobaa-endpoint")
+	noobaaKedaFieldSelector, _ := fields.ParseSelector("metadata.name=keda-hpa-noobaa")
 	// List autoscalers based on the label and name for keda ,
 	// Added name beause autoscalingv2 KubeList will fetch autoscaler with version v1 and v2
 	autoscalersv2 := &autoscalingv2.HorizontalPodAutoscalerList{}
@@ -139,7 +139,7 @@ func (r *Reconciler) ensureKedaCleanup(log *logrus.Entry) error {
 func (r *Reconciler) ensureHPAV2Cleanup(log *logrus.Entry) error {
 
 	noobaaHpav2Selector, _ := labels.Parse("app=noobaa")
-	noobaaHPAV2FieldSelector, _ := fields.ParseSelector("metadata.name=hpav2-noobaa-endpoint")
+	noobaaHPAV2FieldSelector, _ := fields.ParseSelector("metadata.name=noobaa-hpav2")
 	// List autoscalers based on the label and name for HPAV2 ,
 	// Added name beause autoscalingv2 KubeList will fetch autoscaler with version v1 and v2
 	autoscalersv2 := &autoscalingv2.HorizontalPodAutoscalerList{}
@@ -273,20 +273,22 @@ func (r *Reconciler) autoscaleKeda(prometheus *monitoringv1.Prometheus) error {
 	r.KedaScaled.Spec.Triggers[0].Metadata["serverAddress"] = prometheusURL
 	query := strings.Replace(r.KedaScaled.Spec.Triggers[0].Metadata["query"], "placeholder", r.Request.Namespace, 1)
 	r.KedaScaled.Spec.Triggers[0].Metadata["query"] = query
+	if err := r.ReconcileObject(r.KedaScaled, r.reconcileKedaReplicaCount); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) reconcileKedaReplicaCount() error {
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	var minReplicas int32 = 1
 	var maxReplicas int32 = 2
 	if endpointsSpec != nil {
-		r.KedaScaled.Spec.MinReplicaCount = &endpointsSpec.MinCount
-		r.KedaScaled.Spec.MaxReplicaCount = &endpointsSpec.MaxCount
-	} else {
-		r.KedaScaled.Spec.MinReplicaCount = &minReplicas
-		r.KedaScaled.Spec.MaxReplicaCount = &maxReplicas
+		minReplicas = endpointsSpec.MinCount
+		maxReplicas = endpointsSpec.MaxCount
 	}
-	if !util.KubeCreateSkipExisting(r.KedaScaled) {
-		log.Errorf("❌ Failed to create KedaScaledObject")
-		return fmt.Errorf("Failed to create KedaScaledObject")
-	}
+	r.KedaScaled.Spec.MinReplicaCount = &minReplicas
+	r.KedaScaled.Spec.MaxReplicaCount = &maxReplicas
 	return nil
 }
 
@@ -433,7 +435,7 @@ func (r *Reconciler) autoscaleHPAV2(prometheus *monitoringv1.Prometheus) error {
 		return err
 	}
 	if err := r.reconcilePrometheusAdapterResources(prometheus); err != nil {
-		fmt.Println("❌ Failed create HPAV2 Adapter", err)
+		log.Println("❌ Failed create HPAV2 Adapter", err)
 		return err
 	}
 	return nil
@@ -493,22 +495,27 @@ func (r *Reconciler) reconcilePrometheusAdapterResources(prometheus *monitoringv
 	if !util.KubeCreateSkipExisting(adapterAPIService) {
 		return fmt.Errorf("Error while crateiing APIService prometheus-adapter")
 	}
-	adapterHPA := util.KubeObject(bundle.File_deploy_internal_hpav2_autoscaling_yaml).(*autoscalingv2.HorizontalPodAutoscaler)
+	if err := r.ReconcileObject(r.AdapterHPA, r.reconcileAdapterHPA); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) reconcileAdapterHPA() error {
+	// this method will update the noobaa endpoint HPA min and max replicas count with respect to
+	// noobaa CR endpoint min and max values
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	var minReplicas int32 = 1
 	var maxReplicas int32 = 2
 	if endpointsSpec != nil {
-		adapterHPA.Spec.MinReplicas = &endpointsSpec.MinCount
-		adapterHPA.Spec.MaxReplicas = endpointsSpec.MaxCount
-	} else {
-		adapterHPA.Spec.MinReplicas = &minReplicas
-		adapterHPA.Spec.MaxReplicas = maxReplicas
+		minReplicas = endpointsSpec.MinCount
+		maxReplicas = endpointsSpec.MaxCount
 	}
-	adapterHPA.Namespace = r.Request.Namespace
-	if err := r.ReconcileObject(adapterHPA, nil); err != nil {
-		return err
-	}
-
+	r.AdapterHPA.Spec.MinReplicas = &minReplicas
+	r.AdapterHPA.Spec.MaxReplicas = maxReplicas
+	// target value should be nil otherwise Kubernetes HPA reconciler tries to validate the value, 
+	// for type AverageValue this validation is not required.
+	r.AdapterHPA.Spec.Metrics[0].Object.Target.Value = nil
 	return nil
 }
 

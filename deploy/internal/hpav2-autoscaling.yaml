@@ -3,7 +3,6 @@ apiVersion: autoscaling/v2
 metadata:
   labels:
     app: noobaa
-  name: hpav2-noobaa-endpoint
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

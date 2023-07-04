@@ -1,7 +1,6 @@
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: noobaa-endpoint
   labels:
     deploymentName: noobaa-endpoint
     origin: keda
@@ -12,6 +11,8 @@ spec:
   pollingInterval: 30
   scaleTargetRef:
     name: noobaa-endpoint
+    apiVersion: apps/v1
+    kind: Deployment
   triggers:
     - authenticationRef: 
         name: keda-prom-creds
