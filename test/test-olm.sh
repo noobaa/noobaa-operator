@@ -17,13 +17,9 @@ fi
 CATALOG_IMAGE=$1
 VERSION=$(go run cmd/version/main.go)
 
-if [ -z "${OPERATOR_SDK}" ]; then
-    OPERATOR_SDK=operator-sdk
-fi
-
 function install_olm() {
     echo "----> Install OLM and Operator Marketplace ..."
-    ${OPERATOR_SDK} olm install --version 0.16.1 || true
+    ${NOOBAA_OPERATOR_LOCAL} olm install || true
     # kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.10.0/crds.yaml
     # kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.10.0/olm.yaml
     # kubectl apply -f https://github.com/operator-framework/operator-marketplace/raw/master/deploy/upstream/01_namespace.yaml
@@ -69,14 +65,14 @@ function wait_for_operator() {
 
 function test_operator() {
     MINI_RESOURCES='{"requests":{"cpu":"10m","memory":"128Mi"}}'
-    ${OPERATOR_SDK} run --local --operator-flags "system create --core-resources $MINI_RESOURCES --db-resources $MINI_RESOURCES --endpoint-resources ${MINI_RESOURCES}"
+    ${NOOBAA_OPERATOR_LOCAL} --mini install
     while [ "$(kubectl get noobaa/noobaa -o jsonpath={.status.phase})" != "Ready" ]
     do
         echo -n '.'
         sleep 3
-        ${OPERATOR_SDK} run --local --operator-flags "status"
+        ${NOOBAA_OPERATOR_LOCAL} status
     done
-    ${OPERATOR_SDK} run --local --operator-flags "status"
+    ${NOOBAA_OPERATOR_LOCAL} status
 }
 
 function main() {

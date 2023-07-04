@@ -275,11 +275,14 @@ spec:
 
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "8ffffa6e21cfd3c8d5ae8d64e90c733807057543856c02e3832992beb50db630"
+const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "978daccc0a9e208cfcc0c911d55d040b7b03753a38ef3baa02d6d41953b77667"
 
-const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
+const File_deploy_crds_noobaa_io_backingstores_yaml = `---
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.12.0
   name: backingstores.noobaa.io
 spec:
   group: noobaa.io
@@ -343,6 +346,7 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                    x-kubernetes-map-type: atomic
                   sslDisabled:
                     description: SSLDisabled allows to disable SSL and use plain http
                     type: boolean
@@ -369,6 +373,7 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                    x-kubernetes-map-type: atomic
                   targetBlobContainer:
                     description: TargetBlobContainer is the name of the target Azure
                       Blob container
@@ -395,6 +400,7 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                    x-kubernetes-map-type: atomic
                   targetBucket:
                     description: TargetBucket is the name of the target S3 bucket
                     type: string
@@ -421,6 +427,7 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                    x-kubernetes-map-type: atomic
                   signatureVersion:
                     description: SignatureVersion specifies the client signature version
                       to use when signing requests.
@@ -502,6 +509,7 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                    x-kubernetes-map-type: atomic
                   storageClass:
                     description: StorageClass is the name of the storage class to
                       use for the PV's
@@ -528,6 +536,7 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                    x-kubernetes-map-type: atomic
                   signatureVersion:
                     description: SignatureVersion specifies the client signature version
                       to use when signing requests.
@@ -598,27 +607,27 @@ spec:
                   description: "ObjectReference contains enough information to let
                     you inspect or modify the referred object. --- New uses of this
                     type are discouraged because of difficulty describing its usage
-                    when embedded in APIs.  1. Ignored fields.  It includes many fields
+                    when embedded in APIs. 1. Ignored fields.  It includes many fields
                     which are not generally honored.  For instance, ResourceVersion
-                    and FieldPath are both very rarely valid in actual usage.  2.
-                    Invalid usage help.  It is impossible to add specific help for
-                    individual usage.  In most embedded usages, there are particular
-                    \    restrictions like, \"must refer only to types A and B\" or
-                    \"UID not honored\" or \"name must be restricted\".     Those
-                    cannot be well described when embedded.  3. Inconsistent validation.
-                    \ Because the usages are different, the validation rules are different
-                    by usage, which makes it hard for users to predict what will happen.
-                    \ 4. The fields are both imprecise and overly precise.  Kind is
-                    not a precise mapping to a URL. This can produce ambiguity     during
-                    interpretation and require a REST mapping.  In most cases, the
-                    dependency is on the group,resource tuple     and the version
-                    of the actual struct is irrelevant.  5. We cannot easily change
-                    it.  Because this type is embedded in many locations, updates
-                    to this type     will affect numerous schemas.  Don't make new
-                    APIs embed an underspecified API type they do not control. \n
-                    Instead of using this type, create a locally provided and used
-                    type that is well-focused on your reference. For example, ServiceReferences
-                    for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    and FieldPath are both very rarely valid in actual usage. 2. Invalid
+                    usage help.  It is impossible to add specific help for individual
+                    usage.  In most embedded usages, there are particular restrictions
+                    like, \"must refer only to types A and B\" or \"UID not honored\"
+                    or \"name must be restricted\". Those cannot be well described
+                    when embedded. 3. Inconsistent validation.  Because the usages
+                    are different, the validation rules are different by usage, which
+                    makes it hard for users to predict what will happen. 4. The fields
+                    are both imprecise and overly precise.  Kind is not a precise
+                    mapping to a URL. This can produce ambiguity during interpretation
+                    and require a REST mapping.  In most cases, the dependency is
+                    on the group,resource tuple and the version of the actual struct
+                    is irrelevant. 5. We cannot easily change it.  Because this type
+                    is embedded in many locations, updates to this type will affect
+                    numerous schemas.  Don't make new APIs embed an underspecified
+                    API type they do not control. \n Instead of using this type, create
+                    a locally provided and used type that is well-focused on your
+                    reference. For example, ServiceReferences for admission registration:
+                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
                     ."
                   properties:
                     apiVersion:
@@ -654,6 +663,7 @@ spec:
                       description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
                       type: string
                   type: object
+                  x-kubernetes-map-type: atomic
                 type: array
             type: object
         type: object
@@ -663,11 +673,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_crd_yaml = "191c182d176270769416393926ca85198f43e94168f4bfa40e0a6aa2bfb04b79"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_yaml = "1b245bdf5682e78a9acd6e1f7693b58125bc161021e239b9781bcb73ef1e47dd"
 
-const File_deploy_crds_noobaa_io_bucketclasses_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
+const File_deploy_crds_noobaa_io_bucketclasses_yaml = `---
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.12.0
   name: bucketclasses.noobaa.io
 spec:
   group: noobaa.io
@@ -857,27 +870,27 @@ spec:
                   description: "ObjectReference contains enough information to let
                     you inspect or modify the referred object. --- New uses of this
                     type are discouraged because of difficulty describing its usage
-                    when embedded in APIs.  1. Ignored fields.  It includes many fields
+                    when embedded in APIs. 1. Ignored fields.  It includes many fields
                     which are not generally honored.  For instance, ResourceVersion
-                    and FieldPath are both very rarely valid in actual usage.  2.
-                    Invalid usage help.  It is impossible to add specific help for
-                    individual usage.  In most embedded usages, there are particular
-                    \    restrictions like, \"must refer only to types A and B\" or
-                    \"UID not honored\" or \"name must be restricted\".     Those
-                    cannot be well described when embedded.  3. Inconsistent validation.
-                    \ Because the usages are different, the validation rules are different
-                    by usage, which makes it hard for users to predict what will happen.
-                    \ 4. The fields are both imprecise and overly precise.  Kind is
-                    not a precise mapping to a URL. This can produce ambiguity     during
-                    interpretation and require a REST mapping.  In most cases, the
-                    dependency is on the group,resource tuple     and the version
-                    of the actual struct is irrelevant.  5. We cannot easily change
-                    it.  Because this type is embedded in many locations, updates
-                    to this type     will affect numerous schemas.  Don't make new
-                    APIs embed an underspecified API type they do not control. \n
-                    Instead of using this type, create a locally provided and used
-                    type that is well-focused on your reference. For example, ServiceReferences
-                    for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    and FieldPath are both very rarely valid in actual usage. 2. Invalid
+                    usage help.  It is impossible to add specific help for individual
+                    usage.  In most embedded usages, there are particular restrictions
+                    like, \"must refer only to types A and B\" or \"UID not honored\"
+                    or \"name must be restricted\". Those cannot be well described
+                    when embedded. 3. Inconsistent validation.  Because the usages
+                    are different, the validation rules are different by usage, which
+                    makes it hard for users to predict what will happen. 4. The fields
+                    are both imprecise and overly precise.  Kind is not a precise
+                    mapping to a URL. This can produce ambiguity during interpretation
+                    and require a REST mapping.  In most cases, the dependency is
+                    on the group,resource tuple and the version of the actual struct
+                    is irrelevant. 5. We cannot easily change it.  Because this type
+                    is embedded in many locations, updates to this type will affect
+                    numerous schemas.  Don't make new APIs embed an underspecified
+                    API type they do not control. \n Instead of using this type, create
+                    a locally provided and used type that is well-focused on your
+                    reference. For example, ServiceReferences for admission registration:
+                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
                     ."
                   properties:
                     apiVersion:
@@ -913,6 +926,7 @@ spec:
                       description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
                       type: string
                   type: object
+                  x-kubernetes-map-type: atomic
                 type: array
             type: object
         type: object
@@ -922,11 +936,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_crd_yaml = "091c20d3b5d3f245a83def2dccc11ae255a08ddd703b3915e9ecb890d01042ec"
+const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "3e3c72d1ec1448ab07b48ca5cae04da5cdbddc25a8de4c3c52469884fcb2035d"
 
-const File_deploy_crds_noobaa_io_namespacestores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
+const File_deploy_crds_noobaa_io_namespacestores_yaml = `---
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.12.0
   name: namespacestores.noobaa.io
 spec:
   group: noobaa.io
@@ -993,6 +1010,7 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                    x-kubernetes-map-type: atomic
                   sslDisabled:
                     description: SSLDisabled allows to disable SSL and use plain http
                     type: boolean
@@ -1019,6 +1037,7 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                    x-kubernetes-map-type: atomic
                   targetBlobContainer:
                     description: TargetBlobContainer is the name of the target Azure
                       Blob container
@@ -1045,6 +1064,7 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                    x-kubernetes-map-type: atomic
                   targetBucket:
                     description: TargetBucket is the name of the target S3 bucket
                     type: string
@@ -1071,6 +1091,7 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                    x-kubernetes-map-type: atomic
                   signatureVersion:
                     description: SignatureVersion specifies the client signature version
                       to use when signing requests.
@@ -1123,6 +1144,7 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                    x-kubernetes-map-type: atomic
                   signatureVersion:
                     description: SignatureVersion specifies the client signature version
                       to use when signing requests.
@@ -1193,27 +1215,27 @@ spec:
                   description: "ObjectReference contains enough information to let
                     you inspect or modify the referred object. --- New uses of this
                     type are discouraged because of difficulty describing its usage
-                    when embedded in APIs.  1. Ignored fields.  It includes many fields
+                    when embedded in APIs. 1. Ignored fields.  It includes many fields
                     which are not generally honored.  For instance, ResourceVersion
-                    and FieldPath are both very rarely valid in actual usage.  2.
-                    Invalid usage help.  It is impossible to add specific help for
-                    individual usage.  In most embedded usages, there are particular
-                    \    restrictions like, \"must refer only to types A and B\" or
-                    \"UID not honored\" or \"name must be restricted\".     Those
-                    cannot be well described when embedded.  3. Inconsistent validation.
-                    \ Because the usages are different, the validation rules are different
-                    by usage, which makes it hard for users to predict what will happen.
-                    \ 4. The fields are both imprecise and overly precise.  Kind is
-                    not a precise mapping to a URL. This can produce ambiguity     during
-                    interpretation and require a REST mapping.  In most cases, the
-                    dependency is on the group,resource tuple     and the version
-                    of the actual struct is irrelevant.  5. We cannot easily change
-                    it.  Because this type is embedded in many locations, updates
-                    to this type     will affect numerous schemas.  Don't make new
-                    APIs embed an underspecified API type they do not control. \n
-                    Instead of using this type, create a locally provided and used
-                    type that is well-focused on your reference. For example, ServiceReferences
-                    for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    and FieldPath are both very rarely valid in actual usage. 2. Invalid
+                    usage help.  It is impossible to add specific help for individual
+                    usage.  In most embedded usages, there are particular restrictions
+                    like, \"must refer only to types A and B\" or \"UID not honored\"
+                    or \"name must be restricted\". Those cannot be well described
+                    when embedded. 3. Inconsistent validation.  Because the usages
+                    are different, the validation rules are different by usage, which
+                    makes it hard for users to predict what will happen. 4. The fields
+                    are both imprecise and overly precise.  Kind is not a precise
+                    mapping to a URL. This can produce ambiguity during interpretation
+                    and require a REST mapping.  In most cases, the dependency is
+                    on the group,resource tuple and the version of the actual struct
+                    is irrelevant. 5. We cannot easily change it.  Because this type
+                    is embedded in many locations, updates to this type will affect
+                    numerous schemas.  Don't make new APIs embed an underspecified
+                    API type they do not control. \n Instead of using this type, create
+                    a locally provided and used type that is well-focused on your
+                    reference. For example, ServiceReferences for admission registration:
+                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
                     ."
                   properties:
                     apiVersion:
@@ -1249,6 +1271,7 @@ spec:
                       description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
                       type: string
                   type: object
+                  x-kubernetes-map-type: atomic
                 type: array
             type: object
         type: object
@@ -1258,11 +1281,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml = "5f3305547e62fc4d42e8ec78e66176a69e4747c01e25ce148570b7f3de3cc072"
+const Sha256_deploy_crds_noobaa_io_noobaaaccounts_yaml = "3149151150a7deefb0922e2dc20988c292935c9adbc2deda65b191cc44909a38"
 
-const File_deploy_crds_noobaa_io_noobaaaccounts_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
+const File_deploy_crds_noobaa_io_noobaaaccounts_yaml = `---
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.12.0
   name: noobaaaccounts.noobaa.io
 spec:
   group: noobaa.io
@@ -1372,27 +1398,27 @@ spec:
                   description: "ObjectReference contains enough information to let
                     you inspect or modify the referred object. --- New uses of this
                     type are discouraged because of difficulty describing its usage
-                    when embedded in APIs.  1. Ignored fields.  It includes many fields
+                    when embedded in APIs. 1. Ignored fields.  It includes many fields
                     which are not generally honored.  For instance, ResourceVersion
-                    and FieldPath are both very rarely valid in actual usage.  2.
-                    Invalid usage help.  It is impossible to add specific help for
-                    individual usage.  In most embedded usages, there are particular
-                    \    restrictions like, \"must refer only to types A and B\" or
-                    \"UID not honored\" or \"name must be restricted\".     Those
-                    cannot be well described when embedded.  3. Inconsistent validation.
-                    \ Because the usages are different, the validation rules are different
-                    by usage, which makes it hard for users to predict what will happen.
-                    \ 4. The fields are both imprecise and overly precise.  Kind is
-                    not a precise mapping to a URL. This can produce ambiguity     during
-                    interpretation and require a REST mapping.  In most cases, the
-                    dependency is on the group,resource tuple     and the version
-                    of the actual struct is irrelevant.  5. We cannot easily change
-                    it.  Because this type is embedded in many locations, updates
-                    to this type     will affect numerous schemas.  Don't make new
-                    APIs embed an underspecified API type they do not control. \n
-                    Instead of using this type, create a locally provided and used
-                    type that is well-focused on your reference. For example, ServiceReferences
-                    for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    and FieldPath are both very rarely valid in actual usage. 2. Invalid
+                    usage help.  It is impossible to add specific help for individual
+                    usage.  In most embedded usages, there are particular restrictions
+                    like, \"must refer only to types A and B\" or \"UID not honored\"
+                    or \"name must be restricted\". Those cannot be well described
+                    when embedded. 3. Inconsistent validation.  Because the usages
+                    are different, the validation rules are different by usage, which
+                    makes it hard for users to predict what will happen. 4. The fields
+                    are both imprecise and overly precise.  Kind is not a precise
+                    mapping to a URL. This can produce ambiguity during interpretation
+                    and require a REST mapping.  In most cases, the dependency is
+                    on the group,resource tuple and the version of the actual struct
+                    is irrelevant. 5. We cannot easily change it.  Because this type
+                    is embedded in many locations, updates to this type will affect
+                    numerous schemas.  Don't make new APIs embed an underspecified
+                    API type they do not control. \n Instead of using this type, create
+                    a locally provided and used type that is well-focused on your
+                    reference. For example, ServiceReferences for admission registration:
+                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
                     ."
                   properties:
                     apiVersion:
@@ -1428,6 +1454,7 @@ spec:
                       description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
                       type: string
                   type: object
+                  x-kubernetes-map-type: atomic
                 type: array
             type: object
         type: object
@@ -1437,11 +1464,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "5d42c4e8e815c9fed4705d6bf312848202aa4b8f7733d971151fb1cac8eea279"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "0fdbe8f1c6046182aa5b709b0451ec553f8e9385b27e3ff24aa0b88a118e6fd8"
 
-const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
+const File_deploy_crds_noobaa_io_noobaas_yaml = `---
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.12.0
   name: noobaas.noobaa.io
 spec:
   group: noobaa.io
@@ -1596,6 +1626,7 @@ spec:
                                     type: object
                                   type: array
                               type: object
+                              x-kubernetes-map-type: atomic
                             weight:
                               description: Weight associated with matching the corresponding
                                 nodeSelectorTerm, in the range 1-100.
@@ -1696,10 +1727,12 @@ spec:
                                     type: object
                                   type: array
                               type: object
+                              x-kubernetes-map-type: atomic
                             type: array
                         required:
                         - nodeSelectorTerms
                         type: object
+                        x-kubernetes-map-type: atomic
                     type: object
                   podAffinity:
                     description: Describes pod affinity scheduling rules (e.g. co-locate
@@ -1776,6 +1809,7 @@ spec:
                                         The requirements are ANDed.
                                       type: object
                                   type: object
+                                  x-kubernetes-map-type: atomic
                                 namespaceSelector:
                                   description: A label query over the set of namespaces
                                     that the term applies to. The term is applied
@@ -1832,6 +1866,7 @@ spec:
                                         The requirements are ANDed.
                                       type: object
                                   type: object
+                                  x-kubernetes-map-type: atomic
                                 namespaces:
                                   description: namespaces specifies a static list
                                     of namespace names that the term applies to. The
@@ -1930,6 +1965,7 @@ spec:
                                     requirements are ANDed.
                                   type: object
                               type: object
+                              x-kubernetes-map-type: atomic
                             namespaceSelector:
                               description: A label query over the set of namespaces
                                 that the term applies to. The term is applied to the
@@ -1981,6 +2017,7 @@ spec:
                                     requirements are ANDed.
                                   type: object
                               type: object
+                              x-kubernetes-map-type: atomic
                             namespaces:
                               description: namespaces specifies a static list of namespace
                                 names that the term applies to. The term is applied
@@ -2081,6 +2118,7 @@ spec:
                                         The requirements are ANDed.
                                       type: object
                                   type: object
+                                  x-kubernetes-map-type: atomic
                                 namespaceSelector:
                                   description: A label query over the set of namespaces
                                     that the term applies to. The term is applied
@@ -2137,6 +2175,7 @@ spec:
                                         The requirements are ANDed.
                                       type: object
                                   type: object
+                                  x-kubernetes-map-type: atomic
                                 namespaces:
                                   description: namespaces specifies a static list
                                     of namespace names that the term applies to. The
@@ -2235,6 +2274,7 @@ spec:
                                     requirements are ANDed.
                                   type: object
                               type: object
+                              x-kubernetes-map-type: atomic
                             namespaceSelector:
                               description: A label query over the set of namespaces
                                 that the term applies to. The term is applied to the
@@ -2286,6 +2326,7 @@ spec:
                                     requirements are ANDed.
                                   type: object
                               type: object
+                              x-kubernetes-map-type: atomic
                             namespaces:
                               description: namespaces specifies a static list of namespace
                                 names that the term applies to. The term is applied
@@ -2550,6 +2591,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       sslDisabled:
                         description: SSLDisabled allows to disable SSL and use plain
                           http
@@ -2577,6 +2619,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       targetBlobContainer:
                         description: TargetBlobContainer is the name of the target
                           Azure Blob container
@@ -2603,6 +2646,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       targetBucket:
                         description: TargetBucket is the name of the target S3 bucket
                         type: string
@@ -2630,6 +2674,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       signatureVersion:
                         description: SignatureVersion specifies the client signature
                           version to use when signing requests.
@@ -2713,6 +2758,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       storageClass:
                         description: StorageClass is the name of the storage class
                           to use for the PV's
@@ -2739,6 +2785,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       signatureVersion:
                         description: SignatureVersion specifies the client signature
                           version to use when signing requests.
@@ -2847,6 +2894,7 @@ spec:
                       TODO: Add other useful fields. apiVersion, kind, uid?'
                     type: string
                 type: object
+                x-kubernetes-map-type: atomic
               joinSecret:
                 description: JoinSecret (optional) instructs the operator to join
                   another cluster and point to a secret that holds the join information
@@ -2860,6 +2908,7 @@ spec:
                       name must be unique.
                     type: string
                 type: object
+                x-kubernetes-map-type: atomic
               labels:
                 additionalProperties:
                   additionalProperties:
@@ -2996,6 +3045,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                     required:
                     - secretRef
                     type: object
@@ -3075,27 +3125,27 @@ spec:
                   description: "ObjectReference contains enough information to let
                     you inspect or modify the referred object. --- New uses of this
                     type are discouraged because of difficulty describing its usage
-                    when embedded in APIs.  1. Ignored fields.  It includes many fields
+                    when embedded in APIs. 1. Ignored fields.  It includes many fields
                     which are not generally honored.  For instance, ResourceVersion
-                    and FieldPath are both very rarely valid in actual usage.  2.
-                    Invalid usage help.  It is impossible to add specific help for
-                    individual usage.  In most embedded usages, there are particular
-                    \    restrictions like, \"must refer only to types A and B\" or
-                    \"UID not honored\" or \"name must be restricted\".     Those
-                    cannot be well described when embedded.  3. Inconsistent validation.
-                    \ Because the usages are different, the validation rules are different
-                    by usage, which makes it hard for users to predict what will happen.
-                    \ 4. The fields are both imprecise and overly precise.  Kind is
-                    not a precise mapping to a URL. This can produce ambiguity     during
-                    interpretation and require a REST mapping.  In most cases, the
-                    dependency is on the group,resource tuple     and the version
-                    of the actual struct is irrelevant.  5. We cannot easily change
-                    it.  Because this type is embedded in many locations, updates
-                    to this type     will affect numerous schemas.  Don't make new
-                    APIs embed an underspecified API type they do not control. \n
-                    Instead of using this type, create a locally provided and used
-                    type that is well-focused on your reference. For example, ServiceReferences
-                    for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    and FieldPath are both very rarely valid in actual usage. 2. Invalid
+                    usage help.  It is impossible to add specific help for individual
+                    usage.  In most embedded usages, there are particular restrictions
+                    like, \"must refer only to types A and B\" or \"UID not honored\"
+                    or \"name must be restricted\". Those cannot be well described
+                    when embedded. 3. Inconsistent validation.  Because the usages
+                    are different, the validation rules are different by usage, which
+                    makes it hard for users to predict what will happen. 4. The fields
+                    are both imprecise and overly precise.  Kind is not a precise
+                    mapping to a URL. This can produce ambiguity during interpretation
+                    and require a REST mapping.  In most cases, the dependency is
+                    on the group,resource tuple and the version of the actual struct
+                    is irrelevant. 5. We cannot easily change it.  Because this type
+                    is embedded in many locations, updates to this type will affect
+                    numerous schemas.  Don't make new APIs embed an underspecified
+                    API type they do not control. \n Instead of using this type, create
+                    a locally provided and used type that is well-focused on your
+                    reference. For example, ServiceReferences for admission registration:
+                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
                     ."
                   properties:
                     apiVersion:
@@ -3131,6 +3181,7 @@ spec:
                       description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
                       type: string
                   type: object
+                  x-kubernetes-map-type: atomic
                 type: array
               services:
                 description: Services reports addresses for the services

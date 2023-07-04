@@ -1,6 +1,9 @@
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.12.0
   name: noobaas.noobaa.io
 spec:
   group: noobaa.io
@@ -155,6 +158,7 @@ spec:
                                     type: object
                                   type: array
                               type: object
+                              x-kubernetes-map-type: atomic
                             weight:
                               description: Weight associated with matching the corresponding
                                 nodeSelectorTerm, in the range 1-100.
@@ -255,10 +259,12 @@ spec:
                                     type: object
                                   type: array
                               type: object
+                              x-kubernetes-map-type: atomic
                             type: array
                         required:
                         - nodeSelectorTerms
                         type: object
+                        x-kubernetes-map-type: atomic
                     type: object
                   podAffinity:
                     description: Describes pod affinity scheduling rules (e.g. co-locate
@@ -335,6 +341,7 @@ spec:
                                         The requirements are ANDed.
                                       type: object
                                   type: object
+                                  x-kubernetes-map-type: atomic
                                 namespaceSelector:
                                   description: A label query over the set of namespaces
                                     that the term applies to. The term is applied
@@ -391,6 +398,7 @@ spec:
                                         The requirements are ANDed.
                                       type: object
                                   type: object
+                                  x-kubernetes-map-type: atomic
                                 namespaces:
                                   description: namespaces specifies a static list
                                     of namespace names that the term applies to. The
@@ -489,6 +497,7 @@ spec:
                                     requirements are ANDed.
                                   type: object
                               type: object
+                              x-kubernetes-map-type: atomic
                             namespaceSelector:
                               description: A label query over the set of namespaces
                                 that the term applies to. The term is applied to the
@@ -540,6 +549,7 @@ spec:
                                     requirements are ANDed.
                                   type: object
                               type: object
+                              x-kubernetes-map-type: atomic
                             namespaces:
                               description: namespaces specifies a static list of namespace
                                 names that the term applies to. The term is applied
@@ -640,6 +650,7 @@ spec:
                                         The requirements are ANDed.
                                       type: object
                                   type: object
+                                  x-kubernetes-map-type: atomic
                                 namespaceSelector:
                                   description: A label query over the set of namespaces
                                     that the term applies to. The term is applied
@@ -696,6 +707,7 @@ spec:
                                         The requirements are ANDed.
                                       type: object
                                   type: object
+                                  x-kubernetes-map-type: atomic
                                 namespaces:
                                   description: namespaces specifies a static list
                                     of namespace names that the term applies to. The
@@ -794,6 +806,7 @@ spec:
                                     requirements are ANDed.
                                   type: object
                               type: object
+                              x-kubernetes-map-type: atomic
                             namespaceSelector:
                               description: A label query over the set of namespaces
                                 that the term applies to. The term is applied to the
@@ -845,6 +858,7 @@ spec:
                                     requirements are ANDed.
                                   type: object
                               type: object
+                              x-kubernetes-map-type: atomic
                             namespaces:
                               description: namespaces specifies a static list of namespace
                                 names that the term applies to. The term is applied
@@ -1109,6 +1123,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       sslDisabled:
                         description: SSLDisabled allows to disable SSL and use plain
                           http
@@ -1136,6 +1151,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       targetBlobContainer:
                         description: TargetBlobContainer is the name of the target
                           Azure Blob container
@@ -1162,6 +1178,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       targetBucket:
                         description: TargetBucket is the name of the target S3 bucket
                         type: string
@@ -1189,6 +1206,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       signatureVersion:
                         description: SignatureVersion specifies the client signature
                           version to use when signing requests.
@@ -1272,6 +1290,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       storageClass:
                         description: StorageClass is the name of the storage class
                           to use for the PV's
@@ -1298,6 +1317,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                       signatureVersion:
                         description: SignatureVersion specifies the client signature
                           version to use when signing requests.
@@ -1406,6 +1426,7 @@ spec:
                       TODO: Add other useful fields. apiVersion, kind, uid?'
                     type: string
                 type: object
+                x-kubernetes-map-type: atomic
               joinSecret:
                 description: JoinSecret (optional) instructs the operator to join
                   another cluster and point to a secret that holds the join information
@@ -1419,6 +1440,7 @@ spec:
                       name must be unique.
                     type: string
                 type: object
+                x-kubernetes-map-type: atomic
               labels:
                 additionalProperties:
                   additionalProperties:
@@ -1555,6 +1577,7 @@ spec:
                               the secret name must be unique.
                             type: string
                         type: object
+                        x-kubernetes-map-type: atomic
                     required:
                     - secretRef
                     type: object
@@ -1634,27 +1657,27 @@ spec:
                   description: "ObjectReference contains enough information to let
                     you inspect or modify the referred object. --- New uses of this
                     type are discouraged because of difficulty describing its usage
-                    when embedded in APIs.  1. Ignored fields.  It includes many fields
+                    when embedded in APIs. 1. Ignored fields.  It includes many fields
                     which are not generally honored.  For instance, ResourceVersion
-                    and FieldPath are both very rarely valid in actual usage.  2.
-                    Invalid usage help.  It is impossible to add specific help for
-                    individual usage.  In most embedded usages, there are particular
-                    \    restrictions like, \"must refer only to types A and B\" or
-                    \"UID not honored\" or \"name must be restricted\".     Those
-                    cannot be well described when embedded.  3. Inconsistent validation.
-                    \ Because the usages are different, the validation rules are different
-                    by usage, which makes it hard for users to predict what will happen.
-                    \ 4. The fields are both imprecise and overly precise.  Kind is
-                    not a precise mapping to a URL. This can produce ambiguity     during
-                    interpretation and require a REST mapping.  In most cases, the
-                    dependency is on the group,resource tuple     and the version
-                    of the actual struct is irrelevant.  5. We cannot easily change
-                    it.  Because this type is embedded in many locations, updates
-                    to this type     will affect numerous schemas.  Don't make new
-                    APIs embed an underspecified API type they do not control. \n
-                    Instead of using this type, create a locally provided and used
-                    type that is well-focused on your reference. For example, ServiceReferences
-                    for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    and FieldPath are both very rarely valid in actual usage. 2. Invalid
+                    usage help.  It is impossible to add specific help for individual
+                    usage.  In most embedded usages, there are particular restrictions
+                    like, \"must refer only to types A and B\" or \"UID not honored\"
+                    or \"name must be restricted\". Those cannot be well described
+                    when embedded. 3. Inconsistent validation.  Because the usages
+                    are different, the validation rules are different by usage, which
+                    makes it hard for users to predict what will happen. 4. The fields
+                    are both imprecise and overly precise.  Kind is not a precise
+                    mapping to a URL. This can produce ambiguity during interpretation
+                    and require a REST mapping.  In most cases, the dependency is
+                    on the group,resource tuple and the version of the actual struct
+                    is irrelevant. 5. We cannot easily change it.  Because this type
+                    is embedded in many locations, updates to this type will affect
+                    numerous schemas.  Don't make new APIs embed an underspecified
+                    API type they do not control. \n Instead of using this type, create
+                    a locally provided and used type that is well-focused on your
+                    reference. For example, ServiceReferences for admission registration:
+                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
                     ."
                   properties:
                     apiVersion:
@@ -1690,6 +1713,7 @@ spec:
                       description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
                       type: string
                   type: object
+                  x-kubernetes-map-type: atomic
                 type: array
               services:
                 description: Services reports addresses for the services
