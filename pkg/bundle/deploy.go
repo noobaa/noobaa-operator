@@ -3708,7 +3708,7 @@ spec:
         runAsGroup: 0
 `
 
-const Sha256_deploy_internal_hpa_keda_scaled_object_yaml = "35a812a748636c240124b6688bffd6cc4b3c9535a24574c97fd5a46d4bf9cf99"
+const Sha256_deploy_internal_hpa_keda_scaled_object_yaml = "c8137738713103bb55d7867051b2d5cce27c2f37501d5f0c5e48ae97506ac2bb"
 
 const File_deploy_internal_hpa_keda_scaled_object_yaml = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -3726,13 +3726,10 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
   triggers:
-    - authenticationRef: 
-        name: keda-prom-creds
+    - type: cpu
+      metricType: Utilization
       metadata:
-        metricName: NooBaa_num_namespace_buckets
-        query: '(sum(irate(container_cpu_usage_seconds_total{pod=~"noobaa-endpoint-.*", namespace="placeholder"}[5m])) by (namespace))'
-        threshold: '9000000'
-      type: prometheus
+        value: "80"
 `
 
 const Sha256_deploy_internal_hpa_keda_secret_yaml = "bb193ad94aef5d5a4398c9d50f7fba4ae56a9db5da0080c1211d34f6fc88a682"
@@ -3778,7 +3775,7 @@ spec:
   versionPriority: 100
 `
 
-const Sha256_deploy_internal_hpav2_autoscaling_yaml = "f9b77a7b7e9175a2930ee95214033858440a3d2f97de3838c104b8ece78d6b47"
+const Sha256_deploy_internal_hpav2_autoscaling_yaml = "5af69e55a40026f5a01d102232fbecb1ecbc2c5482f60b1226baf5fe2afc07e6"
 
 const File_deploy_internal_hpav2_autoscaling_yaml = `kind: HorizontalPodAutoscaler
 apiVersion: autoscaling/v2
@@ -3791,18 +3788,12 @@ spec:
     kind: Deployment
     name: noobaa-endpoint
   metrics:
-  - type: Object
-    object:
-      metric:
-        # this is dummy metrics, original metrics will replace this
-        name: container_cpu_usage_seconds_per_second
-      describedObject:
-        apiVersion: v1
-        kind: Pod
-        name: noobaa-core-0
+  - type: Resource
+    resource:
+      name: cpu
       target:
-        averageValue: 9M
-        type: AverageValue
+        type: Utilization
+        averageUtilization: 80
 `
 
 const Sha256_deploy_internal_hpav2_configmap_adapter_yaml = "8f857756f46511c8763fbc03e9373cb3eec11c2251d7a844ae4990d55208336b"

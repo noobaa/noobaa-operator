@@ -249,30 +249,32 @@ func (r *Reconciler) autoscaleKeda(prometheus *monitoringv1.Prometheus) error {
 	log := r.Logger.WithField("func", "autoscaleKeda")
 	if !r.validateKeda() {
 		log.Errorf("❌  Keda deploymen not ready")
-		return errors.New("Keda deploymen not ready")
+		return errors.New("Keda deployment not ready")
 	}
 	log.Infof("✅  Keda found")
-	promethesNamespace := prometheus.Namespace
-	serviceAccountName := prometheus.Spec.ServiceAccountName
+	if r.KedaScaled.Spec.Triggers[0].AuthenticationRef != nil {
+		promethesNamespace := prometheus.Namespace
+		serviceAccountName := prometheus.Spec.ServiceAccountName
 
-	authSecretTargetRef := r.createAuthSecretTargetRef(serviceAccountName, promethesNamespace, log)
-	r.KedaTriggerAuthentication.Spec.SecretTargetRef = authSecretTargetRef
-	if !util.KubeCreateSkipExisting(r.KedaTriggerAuthentication) {
-		log.Errorf("❌ Failed to create KedaTriggerAuthetication")
-		return fmt.Errorf("Failed to create KedaTriggerAuthetication")
-	}
+		authSecretTargetRef := r.createAuthSecretTargetRef(serviceAccountName, promethesNamespace, log)
+		r.KedaTriggerAuthentication.Spec.SecretTargetRef = authSecretTargetRef
+		if !util.KubeCreateSkipExisting(r.KedaTriggerAuthentication) {
+			log.Errorf("❌ Failed to create KedaTriggerAuthetication")
+			return fmt.Errorf("Failed to create KedaTriggerAuthetication")
+		}
 
-	//create ScaledObject
-	r.KedaScaled.Spec.Triggers[0].AuthenticationRef = &kedav1alpha1.ScaledObjectAuthRef{
-		Name: r.KedaTriggerAuthentication.Name,
+		//create ScaledObject
+		r.KedaScaled.Spec.Triggers[0].AuthenticationRef = &kedav1alpha1.ScaledObjectAuthRef{
+			Name: r.KedaTriggerAuthentication.Name,
+		}
+		prometheusURL, err := getPrometheusURL(serviceAccountName, promethesNamespace)
+		if err != nil {
+			return err
+		}
+		r.KedaScaled.Spec.Triggers[0].Metadata["serverAddress"] = prometheusURL
+		query := strings.Replace(r.KedaScaled.Spec.Triggers[0].Metadata["query"], "placeholder", r.Request.Namespace, 1)
+		r.KedaScaled.Spec.Triggers[0].Metadata["query"] = query
 	}
-	prometheusURL, err := getPrometheusURL(serviceAccountName, promethesNamespace)
-	if err != nil {
-		return err
-	}
-	r.KedaScaled.Spec.Triggers[0].Metadata["serverAddress"] = prometheusURL
-	query := strings.Replace(r.KedaScaled.Spec.Triggers[0].Metadata["query"], "placeholder", r.Request.Namespace, 1)
-	r.KedaScaled.Spec.Triggers[0].Metadata["query"] = query
 	if err := r.ReconcileObject(r.KedaScaled, r.reconcileKedaReplicaCount); err != nil {
 		return err
 	}
@@ -513,9 +515,11 @@ func (r *Reconciler) reconcileAdapterHPA() error {
 	}
 	r.AdapterHPA.Spec.MinReplicas = &minReplicas
 	r.AdapterHPA.Spec.MaxReplicas = maxReplicas
-	// target value should be nil otherwise Kubernetes HPA reconciler tries to validate the value, 
+	// target value should be nil otherwise Kubernetes HPA reconciler tries to validate the value,
 	// for type AverageValue this validation is not required.
-	r.AdapterHPA.Spec.Metrics[0].Object.Target.Value = nil
+	if r.AdapterHPA.Spec.Metrics[0].Object != nil {
+		r.AdapterHPA.Spec.Metrics[0].Object.Target.Value = nil
+	}
 	return nil
 }
 
