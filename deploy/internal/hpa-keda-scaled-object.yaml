@@ -14,10 +14,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
   triggers:
-    - authenticationRef: 
-        name: keda-prom-creds
+    - type: cpu
+      metricType: Utilization
       metadata:
-        metricName: NooBaa_num_namespace_buckets
-        query: '(sum(irate(container_cpu_usage_seconds_total{pod=~"noobaa-endpoint-.*", namespace="placeholder"}[5m])) by (namespace))'
-        threshold: '9000000'
-      type: prometheus
+        value: "80"

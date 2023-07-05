@@ -9,15 +9,9 @@ spec:
     kind: Deployment
     name: noobaa-endpoint
   metrics:
-  - type: Object
-    object:
-      metric:
-        # this is dummy metrics, original metrics will replace this
-        name: container_cpu_usage_seconds_per_second
-      describedObject:
-        apiVersion: v1
-        kind: Pod
-        name: noobaa-core-0
+  - type: Resource
+    resource:
+      name: cpu
       target:
-        averageValue: 9M
-        type: AverageValue
+        type: Utilization
+        averageUtilization: 80
