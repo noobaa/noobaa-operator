@@ -242,17 +242,36 @@ spec:
     - "S3"
 `
 
-const Sha256_deploy_cosi_bucket_class_yaml = "70fde174ec4079506903cafe587d5b541823ac626ac367364581ca7f1789b39e"
+const Sha256_deploy_cosi_bucket_class_yaml = "df623fd1a41c71246a658ac4b7b13255578210dc4d2756aac60391bc69e489c9"
 
 const File_deploy_cosi_bucket_class_yaml = `apiVersion: objectstorage.k8s.io/v1alpha1
 kind: BucketClass
 metadata:
   name: my-cosi-bucket-class
 driverName: noobaa.objectstorage.k8s.io
-DeletionPolicy: delete
+deletionPolicy: delete
 parameters:
   placementPolicy: '{"tiers":[{"backingStores":["noobaa-default-backing-store"]}]}'
   replicationPolicy: '"{\"rules\":[{\"rule_id\":\"rule-1\",\"destination_bucket\":\"first.bucket\",\"filter\":{\"prefix\":\"a\"}}]}"'
+
+`
+
+const Sha256_deploy_cosi_cosi_bucket_yaml = "23af88f7164889958027390904c4b7d7a411593947e008dbf367f2c4be21f0ee"
+
+const File_deploy_cosi_cosi_bucket_yaml = `apiVersion:  objectstorage.k8s.io/v1alpha1
+kind:         Bucket
+metadata:
+  name: my-cosi-bucket-class-xxx
+spec:
+  protocols:
+      - S3
+  bucketClaim:
+    name:             my-cosi-bucket-claim
+    namespace:        my-app
+  bucketClassName:    my-cosi-bucket-class
+  deletionPolicy:     delete
+  driverName:         noobaa.objectstorage.k8s.io
+  parameters: {}
 
 `
 

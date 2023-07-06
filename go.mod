@@ -50,6 +50,7 @@ require (
 	k8s.io/kubectl v0.25.4
 	k8s.io/utils v0.0.0-20230202215443-34013725500c
 	nhooyr.io/websocket v1.8.7
+	sigs.k8s.io/container-object-storage-interface-api v0.1.0
 	sigs.k8s.io/container-object-storage-interface-provisioner-sidecar v0.1.0
 	sigs.k8s.io/container-object-storage-interface-spec v0.1.0
 	sigs.k8s.io/controller-runtime v0.14.4

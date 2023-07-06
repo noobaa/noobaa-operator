@@ -199,102 +199,26 @@ func CmdReconcile() *cobra.Command {
 
 // RunCreateSingleNamespaceBucketClass runs a CLI command
 func RunCreateSingleNamespaceBucketClass(cmd *cobra.Command, args []string) {
-	log := util.Logger()
-	createCommonBucketclass(cmd, args, nbv1.NSBucketClassTypeSingle, func(bucketClass *nbv1.BucketClass) ([]string, []string) {
-		resource, _ := cmd.Flags().GetString("resource")
-		if resource == "" {
-			log.Fatalf(`❌ Must provide one namespace store`)
-		}
-		bucketClass.Spec.NamespacePolicy.Single = &nbv1.SingleNamespacePolicy{
-			Resource: resource,
-		}
-		var namespaceStoresArr []string
-		return append(namespaceStoresArr, resource), []string{}
-	})
+	createCommonBucketclass(cmd, args, nbv1.NSBucketClassTypeSingle, PopulateSingleNamespaceBucketClass)
 }
 
 // RunCreateMultiNamespaceBucketClass runs a CLI command
 func RunCreateMultiNamespaceBucketClass(cmd *cobra.Command, args []string) {
-	log := util.Logger()
-	createCommonBucketclass(cmd, args, nbv1.NSBucketClassTypeMulti, func(bucketClass *nbv1.BucketClass) ([]string, []string) {
-		writeResource, _ := cmd.Flags().GetString("write-resource")
-		readResources, _ := cmd.Flags().GetStringSlice("read-resources")
-		if len(readResources) == 0 {
-			log.Fatalf(`❌ Must provide at least one read resource`)
-		}
-		bucketClass.Spec.NamespacePolicy.Multi = &nbv1.MultiNamespacePolicy{
-			WriteResource: writeResource,
-			ReadResources: readResources,
-		}
-		if writeResource == "" {
-			return readResources, []string{}
-		}
-		return append(readResources, writeResource), []string{}
-	})
+	createCommonBucketclass(cmd, args, nbv1.NSBucketClassTypeMulti, PopulateMultiNamespaceBucketClass)
 }
 
 // RunCreateCacheNamespaceBucketClass runs a CLI command
 func RunCreateCacheNamespaceBucketClass(cmd *cobra.Command, args []string) {
-	log := util.Logger()
-	createCommonBucketclass(cmd, args, nbv1.NSBucketClassTypeCache, func(bucketClass *nbv1.BucketClass) ([]string, []string) {
-		hubResource, _ := cmd.Flags().GetString("hub-resource")
-		cacheTTL, _ := cmd.Flags().GetUint32("ttl")
-		placement, _ := cmd.Flags().GetString("placement")
-		backingStores, _ := cmd.Flags().GetStringSlice("backingstores")
-		if hubResource == "" {
-			log.Fatalf(`❌ Must provide one namespace store as hub resource`)
-		}
-		if placement != "" && placement != "Spread" && placement != "Mirror" {
-			log.Fatalf(`❌ Must provide valid placement: Mirror | Spread | ""`)
-		}
-		if len(backingStores) == 0 {
-			log.Fatalf(`❌ Must provide at least one backing store`)
-		}
-		bucketClass.Spec.NamespacePolicy.Cache = &nbv1.CacheNamespacePolicy{
-			HubResource: hubResource,
-			Caching: &nbv1.CacheSpec{
-				TTL: int(cacheTTL),
-				// bucketClass.Spec.NamespacePolicy.Cache.Prefix = cachePrefix
-			},
-		}
-		bucketClass.Spec.PlacementPolicy.Tiers = append(bucketClass.Spec.PlacementPolicy.Tiers,
-			nbv1.Tier{Placement: nbv1.TierPlacement(placement), BackingStores: backingStores})
-
-		var namespaceStoresArr []string
-		return append(namespaceStoresArr, hubResource), backingStores
-	})
+	createCommonBucketclass(cmd, args, nbv1.NSBucketClassTypeCache, PopulateCacheNamespaceBucketClass)
 }
 
 // RunCreatePlacementBucketClass runs a CLI command
 func RunCreatePlacementBucketClass(cmd *cobra.Command, args []string) {
-	log := util.Logger()
-	createCommonBucketclass(cmd, args, "", func(bucketClass *nbv1.BucketClass) ([]string, []string) {
-		placement, _ := cmd.Flags().GetString("placement")
-		if placement != "" && placement != "Spread" && placement != "Mirror" {
-			log.Fatalf(`❌ Must provide valid placement: Mirror | Spread | ""`)
-		}
-		backingStores, _ := cmd.Flags().GetStringSlice("backingstores")
-		if len(backingStores) == 0 {
-			log.Fatalf(`❌ Must provide at least one backing store`)
-		}
-		bucketClass.Spec.PlacementPolicy.Tiers = append(bucketClass.Spec.PlacementPolicy.Tiers,
-			nbv1.Tier{Placement: nbv1.TierPlacement(placement), BackingStores: backingStores})
-
-		maxSize, _ := cmd.Flags().GetString("max-size")
-		maxObjects, _ := cmd.Flags().GetString("max-objects")
-		if maxSize != "" || maxObjects != "" {
-			bucketClass.Spec.Quota = &nbv1.Quota{
-				MaxSize:    maxSize,
-				MaxObjects: maxObjects,
-			}
-		}
-
-		return []string{}, backingStores
-	})
+	createCommonBucketclass(cmd, args, "", PopulatePlacementBucketClass)
 }
 
 // createCommonBucketclass runs a CLI command
-func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType nbv1.NSBucketClassType, populate func(bucketClass *nbv1.BucketClass) ([]string, []string)) {
+func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType nbv1.NSBucketClassType, populate func(cmd *cobra.Command, bucketClassSpec *nbv1.BucketClassSpec) ([]string, []string)) {
 
 	log := util.Logger()
 	if len(args) != 1 || args[0] == "" {
@@ -333,7 +257,7 @@ func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType 
 		log.Fatalf(`❌ BucketClass %q already exists in namespace %q`, bucketClass.Name, bucketClass.Namespace)
 	}
 
-	namespaceStoresArr, backingStoresArr := populate(bucketClass)
+	namespaceStoresArr, backingStoresArr := populate(cmd, &bucketClass.Spec)
 
 	err = validations.ValidateBucketClass(bucketClass)
 	if err != nil {
@@ -393,6 +317,94 @@ func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType 
 		log.Printf("")
 		RunStatus(cmd, args)
 	}
+}
+
+// PopulateSingleNamespaceBucketClass populates namespace single bucketclass spec
+func PopulateSingleNamespaceBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1.BucketClassSpec) ([]string, []string) {
+	log := util.Logger()
+	resource, _ := cmd.Flags().GetString("resource")
+	if resource == "" {
+		log.Fatalf(`❌ Must provide one namespace store`)
+	}
+	bucketClassSpec.NamespacePolicy.Single = &nbv1.SingleNamespacePolicy{
+		Resource: resource,
+	}
+	var namespaceStoresArr []string
+	return append(namespaceStoresArr, resource), []string{}
+}
+
+// PopulateMultiNamespaceBucketClass populates namespace multi bucketclass spec
+func PopulateMultiNamespaceBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1.BucketClassSpec) ([]string, []string) {
+	log := util.Logger()
+	writeResource, _ := cmd.Flags().GetString("write-resource")
+	readResources, _ := cmd.Flags().GetStringSlice("read-resources")
+	if len(readResources) == 0 {
+		log.Fatalf(`❌ Must provide at least one read resource`)
+	}
+	bucketClassSpec.NamespacePolicy.Multi = &nbv1.MultiNamespacePolicy{
+		WriteResource: writeResource,
+		ReadResources: readResources,
+	}
+	if writeResource == "" {
+		return readResources, []string{}
+	}
+	return append(readResources, writeResource), []string{}
+}
+
+// PopulateCacheNamespaceBucketClass populates namespace cache bucketclass spec
+func PopulateCacheNamespaceBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1.BucketClassSpec) ([]string, []string) {
+	log := util.Logger()
+	hubResource, _ := cmd.Flags().GetString("hub-resource")
+	cacheTTL, _ := cmd.Flags().GetUint32("ttl")
+	placement, _ := cmd.Flags().GetString("placement")
+	backingStores, _ := cmd.Flags().GetStringSlice("backingstores")
+	if hubResource == "" {
+		log.Fatalf(`❌ Must provide one namespace store as hub resource`)
+	}
+	if placement != "" && placement != "Spread" && placement != "Mirror" {
+		log.Fatalf(`❌ Must provide valid placement: Mirror | Spread | ""`)
+	}
+	if len(backingStores) == 0 {
+		log.Fatalf(`❌ Must provide at least one backing store`)
+	}
+	bucketClassSpec.NamespacePolicy.Cache = &nbv1.CacheNamespacePolicy{
+		HubResource: hubResource,
+		Caching: &nbv1.CacheSpec{
+			TTL: int(cacheTTL),
+			// bucketClass.Spec.NamespacePolicy.Cache.Prefix = cachePrefix
+		},
+	}
+	bucketClassSpec.PlacementPolicy.Tiers = append(bucketClassSpec.PlacementPolicy.Tiers,
+		nbv1.Tier{Placement: nbv1.TierPlacement(placement), BackingStores: backingStores})
+
+	var namespaceStoresArr []string
+	return append(namespaceStoresArr, hubResource), backingStores
+}
+
+// PopulatePlacementBucketClass populates namespace cache bucketclass spec
+func PopulatePlacementBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1.BucketClassSpec) ([]string, []string) {
+	log := util.Logger()
+	placement, _ := cmd.Flags().GetString("placement")
+	if placement != "" && placement != "Spread" && placement != "Mirror" {
+		log.Fatalf(`❌ Must provide valid placement: Mirror | Spread | ""`)
+	}
+	backingStores, _ := cmd.Flags().GetStringSlice("backingstores")
+	if len(backingStores) == 0 {
+		log.Fatalf(`❌ Must provide at least one backing store`)
+	}
+	bucketClassSpec.PlacementPolicy.Tiers = append(bucketClassSpec.PlacementPolicy.Tiers,
+		nbv1.Tier{Placement: nbv1.TierPlacement(placement), BackingStores: backingStores})
+
+	maxSize, _ := cmd.Flags().GetString("max-size")
+	maxObjects, _ := cmd.Flags().GetString("max-objects")
+	if maxSize != "" || maxObjects != "" {
+		bucketClassSpec.Quota = &nbv1.Quota{
+			MaxSize:    maxSize,
+			MaxObjects: maxObjects,
+		}
+	}
+
+	return []string{}, backingStores
 }
 
 // RunDelete runs a CLI command

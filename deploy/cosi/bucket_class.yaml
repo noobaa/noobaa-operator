@@ -3,7 +3,7 @@ kind: BucketClass
 metadata:
   name: my-cosi-bucket-class
 driverName: noobaa.objectstorage.k8s.io
-DeletionPolicy: delete
+deletionPolicy: delete
 parameters:
   placementPolicy: '{"tiers":[{"backingStores":["noobaa-default-backing-store"]}]}'
   replicationPolicy: '"{\"rules\":[{\"rule_id\":\"rule-1\",\"destination_bucket\":\"first.bucket\",\"filter\":{\"prefix\":\"a\"}}]}"'
