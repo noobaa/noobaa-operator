@@ -88,6 +88,7 @@ spec:
             - name: DB_TYPE
             - name: MONGODB_URL
             - name: POSTGRES_HOST
+            - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
               value: nbcore
             - name: POSTGRES_USER

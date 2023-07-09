@@ -117,6 +117,10 @@ type NooBaaSpec struct {
 	// +optional
 	MongoDbURL string `json:"mongoDbURL,omitempty"`
 
+	// ExternalPgSecret (optional) holds an optional secret with a url to an extrenal Postgres DB to be used
+	// +optional
+	ExternalPgSecret *corev1.SecretReference `json:"externalPgSecret,omitempty"`
+
 	// DebugLevel (optional) sets the debug level
 	// +optional
 	// +kubebuilder:validation:Enum=all;nsfs;warn;default_level

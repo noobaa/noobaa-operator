@@ -99,6 +99,7 @@ spec:
               value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
             - name: POSTGRES_HOST
               value: "noobaa-db-pg-0.noobaa-db-pg"
+            - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
               value: nbcore
             - name: POSTGRES_USER

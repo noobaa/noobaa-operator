@@ -3,6 +3,8 @@ package system
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	goruntime "runtime"
 	"strings"
@@ -56,18 +58,19 @@ var (
 
 // Reconciler is the context for loading or reconciling a noobaa system
 type Reconciler struct {
-	Request               types.NamespacedName
-	Client                client.Client
-	Scheme                *runtime.Scheme
-	Ctx                   context.Context
-	Logger                *logrus.Entry
-	Recorder              record.EventRecorder
-	NBClient              nb.Client
-	CoreVersion           string
-	OperatorVersion       string
-	OAuthEndpoints        *util.OAuth2Endpoints
-	MongoConnectionString string
-	ApplyCAsToPods        string
+	Request                  types.NamespacedName
+	Client                   client.Client
+	Scheme                   *runtime.Scheme
+	Ctx                      context.Context
+	Logger                   *logrus.Entry
+	Recorder                 record.EventRecorder
+	NBClient                 nb.Client
+	CoreVersion              string
+	OperatorVersion          string
+	OAuthEndpoints           *util.OAuth2Endpoints
+	MongoConnectionString    string
+	PostgresConnectionString string
+	ApplyCAsToPods           string
 
 	NooBaa                    *nbv1.NooBaa
 	ServiceAccount            *corev1.ServiceAccount
@@ -118,6 +121,8 @@ type Reconciler struct {
 	KedaTriggerAuthentication *kedav1alpha1.TriggerAuthentication
 	KedaScaled                *kedav1alpha1.ScaledObject
 	AdapterHPA                *autoscalingv2.HorizontalPodAutoscaler
+	PgExternalHost            string
+	PgExternalPort            string
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -281,6 +286,7 @@ func NewReconciler(
 
 	r.SecretDB.StringData["user"] = "noobaa"
 	r.SecretDB.StringData["password"] = util.RandomBase64(10)
+	r.SecretDB.StringData["db_name"] = "nbcore"
 
 	// Set STS default backing store session name
 	r.AWSSTSRoleSessionName = "noobaa-sts-default-backing-store-session"
@@ -306,10 +312,12 @@ func (r *Reconciler) CheckAll() {
 	if r.NooBaa.Spec.MongoDbURL == "" {
 		if r.NooBaa.Spec.DBType == "postgres" {
 			util.KubeCheck(r.SecretDB)
-			util.KubeCheck(r.PostgresDBConf)
-			util.KubeCheck(r.PostgresDBInitDb)
-			util.KubeCheck(r.NooBaaPostgresDB)
-			util.KubeCheck(r.ServiceDbPg)
+			if r.NooBaa.Spec.ExternalPgSecret == nil {
+				util.KubeCheck(r.PostgresDBConf)
+				util.KubeCheck(r.PostgresDBInitDb)
+				util.KubeCheck(r.NooBaaPostgresDB)
+				util.KubeCheck(r.ServiceDbPg)
+			}
 		} else {
 			util.KubeCheck(r.NooBaaMongoDB)
 			util.KubeCheck(r.ServiceDb)
@@ -384,6 +392,34 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		log.Errorf("❌ NooBaa %q failed to add root CAs to system default", r.NooBaa.Name)
 		res.RequeueAfter = 3 * time.Second
 		return res, nil
+	}
+
+	if r.NooBaa.Spec.ExternalPgSecret != nil {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.NooBaa.Spec.ExternalPgSecret.Namespace,
+				Name:      r.NooBaa.Spec.ExternalPgSecret.Name,
+			},
+		}
+		if !util.KubeCheck(secret) {
+			log.Errorf("❌ External DB secret %q was not found or deleted", r.NooBaa.Spec.ExternalPgSecret.Name)
+			return res, nil
+		}
+		u, err := url.Parse(secret.StringData["db_url"])
+		if err != nil {
+			log.Errorf("❌ Failed pasting external DB url in secret: %q", r.NooBaa.Spec.ExternalPgSecret.Name)
+			return res, nil
+		}
+		r.SecretDB.StringData["user"] = u.User.Username()
+		r.SecretDB.StringData["password"], _ = u.User.Password()
+		r.SecretDB.StringData["dbname"] = u.Path[1:]
+		r.PgExternalHost = u.Host
+		r.PgExternalPort = "5432"
+		host, port, err := net.SplitHostPort(u.Host)
+		if err == nil {
+			r.PgExternalHost = host
+			r.PgExternalPort = port
+		}
 	}
 
 	err = r.ReconcilePhases()

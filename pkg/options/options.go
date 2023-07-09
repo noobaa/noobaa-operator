@@ -97,6 +97,10 @@ var DBStorageClass = ""
 // it can be overridden for testing or different url.
 var MongoDbURL = ""
 
+// PostgresDbURL is used for providing postgres url
+// it can be overridden for testing or different url.
+var PostgresDbURL = ""
+
 // DebugLevel can be used to override the default debug level
 var DebugLevel = "default_level"
 
@@ -223,6 +227,10 @@ func init() {
 	FlagSet.StringVar(
 		&MongoDbURL, "mongodb-url",
 		MongoDbURL, "url for mongodb",
+	)
+	FlagSet.StringVar(
+		&PostgresDbURL, "postgres-url",
+		PostgresDbURL, "url for postgresql",
 	)
 	FlagSet.StringVar(
 		&DebugLevel, "debug-level",

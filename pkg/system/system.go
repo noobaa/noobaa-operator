@@ -297,6 +297,29 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ %s`, err)
 	}
 
+	if options.PostgresDbURL != "" {
+		if sys.Spec.DBType != "postgres" {
+			log.Fatalf("❌ expecting the DBType to be postgres when using external PostgresDbURL, got %s", sys.Spec.DBType)
+		}
+		err = CheckPostgresURL(options.PostgresDbURL)
+		if err != nil {
+			log.Fatalf(`❌ %s`, err)
+		}
+		o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+		secret := o.(*corev1.Secret)
+		secret.Namespace = options.Namespace
+		secret.Name = "noobaa-external-pg-db"
+		secret.StringData = map[string]string{
+			"db_url": options.PostgresDbURL,
+		}
+		secret.Data = nil
+		util.KubeCreateSkipExisting(secret)
+		sys.Spec.ExternalPgSecret = &corev1.SecretReference{
+			Name:      secret.Name,
+			Namespace: secret.Namespace,
+		}
+	}
+
 	// TODO check PVC if exist and the system does not exist -
 	// fail and suggest to delete them first with cli system delete.
 	util.KubeCreateSkipExisting(ns)
@@ -353,9 +376,21 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	isMongoDbURL := sys.Spec.MongoDbURL
 	util.KubeDelete(sys)
 
-	if isMongoDbURL == "" {
+	if sys.Spec.ExternalPgSecret != nil {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "noobaa-external-db",
+				Namespace: options.Namespace,
+			},
+		}
+
+		util.KubeDelete(secret)
+	} else if isMongoDbURL == "" {
 		// NoobaaDB
 		noobaaDB := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
+		if sys.Spec.DBType == "postgres" {
+			noobaaDB = util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
+		}
 		for i := range noobaaDB.Spec.VolumeClaimTemplates {
 			t := &noobaaDB.Spec.VolumeClaimTemplates[i]
 			pvc := &corev1.PersistentVolumeClaim{
@@ -600,7 +635,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		NooBaaDB = r.NooBaaMongoDB
 	}
 	// create the mongo db only if mongo db url is not given.
-	if r.NooBaa.Spec.MongoDbURL == "" {
+	if r.NooBaa.Spec.MongoDbURL == "" && r.NooBaa.Spec.ExternalPgSecret == nil {
 		// NoobaaDB
 		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
 			t := &NooBaaDB.Spec.VolumeClaimTemplates[i]
@@ -1055,12 +1090,21 @@ func CheckSystem(sys *nbv1.NooBaa) bool {
 func CheckMongoURL(sys *nbv1.NooBaa) error {
 	if sys.Spec.MongoDbURL != "" {
 		if sys.Spec.DBType != "mongodb" {
-			return fmt.Errorf("Expecting the DBType to be mongodb when using external MongoDbURL, got %s", sys.Spec.DBType)
+			return fmt.Errorf("expecting the DBType to be mongodb when using external MongoDbURL, got %s", sys.Spec.DBType)
 		}
 		if !strings.Contains(sys.Spec.MongoDbURL, "mongodb://") &&
 			!strings.Contains(sys.Spec.MongoDbURL, "mongodb+srv://") {
-			return fmt.Errorf("Invalid mongo db url %s, expecting the url to start with mongodb:// or mongodb+srv://", sys.Spec.MongoDbURL)
+			return fmt.Errorf("invalid mongo db url %s, expecting the url to start with mongodb:// or mongodb+srv://", sys.Spec.MongoDbURL)
 		}
+	}
+	return nil
+}
+
+// CheckPostgresURL checks if the postgresurl structure is valid and if we use postgres as db
+func CheckPostgresURL(postgresDbURL string) error {
+	if !strings.Contains(postgresDbURL, "postgres://") &&
+		!strings.Contains(postgresDbURL, "postgresql://") {
+		return fmt.Errorf("invalid postgres db url %s, expecting the url to start with postgres:// or postgresql://", postgresDbURL)
 	}
 	return nil
 }
