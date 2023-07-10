@@ -642,6 +642,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 				Name:     conn.Name,
 				Identity: conn.Identity,
 				Secret:   conn.Secret,
+				AzureLogAccessKeys: conn.AzureLogAccessKeys,
 			}
 		}
 	}
@@ -812,6 +813,19 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		conn.Endpoint = "https://blob.core.windows.net"
 		conn.Identity = r.Secret.StringData["AccountName"]
 		conn.Secret = r.Secret.StringData["AccountKey"]
+		tenantID := r.Secret.StringData["TenantID"]
+		appID := r.Secret.StringData["ApplicationID"]
+		appSecret := r.Secret.StringData["ApplicationSecret"]
+		logsAnalyticsWorkspaceID := r.Secret.StringData["LogsAnalyticsWorkspaceID"]
+
+		if tenantID != "" && appID != "" && appSecret != "" && logsAnalyticsWorkspaceID != "" {
+			conn.AzureLogAccessKeys = nb.AzureLogAccessKeysParams{
+				AzureTenantID: tenantID,
+				AzureClientID: appID,
+				AzureClientSecret: appSecret,
+				AzureLogsAnalyticsWorkspaceID: logsAnalyticsWorkspaceID,
+			}
+		}
 
 	case nbv1.StoreTypeGoogleCloudStorage:
 		conn.EndpointType = nb.EndpointTypeGoogle
@@ -876,6 +890,7 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 		Secret:       r.AddExternalConnectionParams.Secret,
 		AuthMethod:   r.AddExternalConnectionParams.AuthMethod,
 		AWSSTSARN:    r.AddExternalConnectionParams.AWSSTSARN,
+		AzureLogAccessKeys: r.AddExternalConnectionParams.AzureLogAccessKeys,
 	}
 
 	if r.UpdateExternalConnectionParams != nil {
