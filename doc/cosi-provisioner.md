@@ -104,8 +104,9 @@ parameters:
 ```
 
 The equivalent noobaa cli command - 
+```shell
 noobaa cosi bucketclass create placement-bucketclass my-cosi-bucket-class --backingstores noobaa-default-backing-store
-
+```
 
 &nbsp;
 Example of namespace bucketclass:
@@ -122,7 +123,10 @@ parameters:
 ```
 
 The equivalent noobaa cli command - 
+```shell
 noobaa cosi bucketclass create namespace-bucketclass single my-cosi-ns-bucket-class --resource nsr-name
+```
+
 
 &nbsp;
 Example of namespace bucketclass with a replication policy:
@@ -144,6 +148,8 @@ The equivalent noobaa cli command -
 ```shell
 noobaa cosi bucketclass create placement-bucketclass my-cosi-ns-bucket-class --backingstores noobaa-default-backing-store
 --replication-policy=/path/to/json-file.json
+```
+
 
 ## COSI Bucket Claim
 
@@ -168,7 +174,10 @@ spec:
 ```
 
 The equivalent noobaa cli command - 
+```shell
 noobaa cosi bucketclaim create my-cosi-bucket-claim --bucketclass my-cosi-bucket-class
+```
+
 
 ## COSI BucketAccessClass
 
@@ -185,6 +194,10 @@ driverName: noobaa.objectstorage.k8s.io
 authenticationType: KEY
 ```
 
+The equivalent noobaa cli command - 
+```shell
+noobaa cosi accessclass create my-cosi-bucket-access-class
+```
 # COSI BucketAccess claim
 
 An administrator of a noobaa deployment can create BucketAccess claim that refers to a BucketAccessClass in order to get credentials that will provide access to a COSI bucket claim. NooBaa will generate an account and will return credentials as the bucket access claim response, then a Secret (named by credentialsSecretName property) containing the bucket info will be created. The properties bucketClaimName, bucketAccessClassName and credentialsSecretName are all required values.
@@ -204,6 +217,10 @@ spec:
   credentialsSecretName: my-cosi-bucket-creds
 ```
 
+The equivalent noobaa cli command - 
+```shell
+noobaa cosi accessclaim create my-cosi-bucket-access --bucket-claim=my-cosi-bucket-claim --bucket-access-class=my-cosi-bucket-access-class --creds-secret-name=my-cosi-bucket-creds
+```
 # Using the COSI bucket claim
 
 Once the COSI bucket claim is provisioned by the operator, a bucket will be created in NooBaa, a Secret bucket info will be created. For the example above, the Secret will be named `my-cosi-bucket-creds`.
