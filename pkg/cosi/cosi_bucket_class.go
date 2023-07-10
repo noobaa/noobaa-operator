@@ -35,7 +35,7 @@ func CmdCOSIBucketClass() *cobra.Command {
 func CmdCreateBucketClass() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create an cosi bucket class",
+		Short: "Create a COSI bucket class",
 	}
 
 	cmd.AddCommand(
@@ -351,7 +351,6 @@ func createCommonCOSIBucketclass(cmd *cobra.Command, args []string, bucketClassT
 	}
 
 	log.Printf("")
-	util.PrintThisNoteWhenFinishedApplyingAndStartWaitLoop()
 	log.Printf("")
 	RunStatusBucketClass(cmd, args)
 }
