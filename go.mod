@@ -38,11 +38,11 @@ require (
 	golang.org/x/term v0.6.0
 	google.golang.org/api v0.114.0
 	google.golang.org/grpc v1.53.0
-	k8s.io/api v0.26.1
+	k8s.io/api v0.26.4
 	k8s.io/apiextensions-apiserver v0.26.1
-	k8s.io/apimachinery v0.26.1
+	k8s.io/apimachinery v0.26.4
 	k8s.io/cli-runtime v0.25.4
-	k8s.io/client-go v0.26.1
+	k8s.io/client-go v0.26.4
 	k8s.io/code-generator v0.26.1
 	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d
 	k8s.io/kube-aggregator v0.19.0
