@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go v1.44.191
 	github.com/blang/semver/v4 v4.0.0
 	github.com/coreos/go-semver v0.3.0
-	github.com/docker/distribution v2.8.1+incompatible
+	github.com/docker/distribution v2.8.2+incompatible
 	github.com/gemalto/kmip-go v0.0.8
 	github.com/google/uuid v1.3.0
 	github.com/kedacore/keda/v2 v2.7.0
@@ -31,29 +31,29 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.63.0
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rook/rook v1.11.3
+	github.com/rook/rook v1.11.7
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/term v0.6.0
 	google.golang.org/api v0.114.0
 	google.golang.org/grpc v1.53.0
-	k8s.io/api v0.26.1
-	k8s.io/apiextensions-apiserver v0.26.1
-	k8s.io/apimachinery v0.26.1
+	k8s.io/api v0.26.4
+	k8s.io/apiextensions-apiserver v0.26.4
+	k8s.io/apimachinery v0.26.4
 	k8s.io/cli-runtime v0.25.4
-	k8s.io/client-go v0.26.1
-	k8s.io/code-generator v0.26.1
+	k8s.io/client-go v0.26.4
+	k8s.io/code-generator v0.26.4
 	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d
 	k8s.io/kube-aggregator v0.19.0
-	k8s.io/kube-openapi v0.0.0-20221110221610-a28e98eb7c70
+	k8s.io/kube-openapi v0.0.0-20230202010329-39b3636cbaa3
 	k8s.io/kubectl v0.25.4
 	k8s.io/utils v0.0.0-20230202215443-34013725500c
 	nhooyr.io/websocket v1.8.7
 	sigs.k8s.io/container-object-storage-interface-api v0.1.0
 	sigs.k8s.io/container-object-storage-interface-provisioner-sidecar v0.1.0
 	sigs.k8s.io/container-object-storage-interface-spec v0.1.0
-	sigs.k8s.io/controller-runtime v0.14.4
+	sigs.k8s.io/controller-runtime v0.14.5
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -86,8 +86,8 @@ require (
 	github.com/gemalto/flume v0.13.0 // indirect
 	github.com/gin-gonic/gin v1.7.3 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
-	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.20.0 // indirect
+	github.com/go-openapi/jsonpointer v0.19.6 // indirect
+	github.com/go-openapi/jsonreference v0.20.1 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.2 // indirect
@@ -169,7 +169,7 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/component-base v0.26.1 // indirect
+	k8s.io/component-base v0.26.4 // indirect
 	k8s.io/klog/v2 v2.90.0 // indirect
 	knative.dev/pkg v0.0.0-20220502225657-4fced0164c9a // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
