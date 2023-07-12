@@ -26,6 +26,7 @@ BIN ?= $(OUTPUT)/bin
 OLM ?= $(OUTPUT)/olm
 MANIFESTS ?= $(OUTPUT)/manifests
 obc-crd ?= required
+cosi-sidecar-image ?= "gcr.io/k8s-staging-sig-storage/objectstorage-sidecar/objectstorage-sidecar:v20221117-v0.1.0-22-g0e67387"
 VENV ?= $(OUTPUT)/venv
 
 # OPERATOR_SDK_VERSION is for build perpuse only, the dependencies themself are 

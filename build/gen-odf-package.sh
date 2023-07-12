@@ -1,10 +1,12 @@
 #!/bin/bash
 
-if [ "${MANIFESTS}" == "" ] || [ "${CSV_NAME}" == "" ] || [ "${CORE_IMAGE}" == "" ] || [ "${DB_IMAGE}" == "" ] || [ "${OPERATOR_IMAGE}" == "" ]
+if [ "${MANIFESTS}" == "" ] || [ "${CSV_NAME}" == "" ] || [ "${CORE_IMAGE}" == "" ] || [ "${DB_IMAGE}" == "" ] || [ "${OPERATOR_IMAGE}" == "" ] || [ "${COSI_SIDECAR_IMAGE}" == "" ]
 then
   echo "gen-odf-package.sh: not all required envs were supplied"
   exit 1
 fi
+
+echo "--obc-crd=${OBC_CRD}"
 
 ./build/_output/bin/noobaa-operator-local olm catalog -n openshift-storage \
 --dir ${MANIFESTS} \
