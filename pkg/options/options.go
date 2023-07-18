@@ -121,8 +121,8 @@ var DevEnv = false
 // DisableLoadBalancerService is used for setting the service type to ClusterIP instead of LoadBalancer
 var DisableLoadBalancerService = false
 
-// CosiDriverAddress is the cosi socket address
-var CosiDriverAddress = "unix:///var/lib/cosi/cosi.sock"
+// CosiDriverPath is the cosi socket fs path
+var CosiDriverPath = "/var/lib/cosi/cosi.sock"
 
 // AdmissionWebhook is used for deploying the system with admission validation webhook
 var AdmissionWebhook = false
@@ -253,8 +253,8 @@ func init() {
 		false, "Set the service type to ClusterIP instead of LoadBalancer",
 	)
 	FlagSet.StringVar(
-		&CosiDriverAddress, "cosi-driver-addr",
-		CosiDriverAddress, "unix socket address for COSI",
+		&CosiDriverPath, "cosi-driver-path",
+		CosiDriverPath, "unix socket path for COSI",
 	)
 	FlagSet.BoolVar(
 		&AdmissionWebhook, "admission",
