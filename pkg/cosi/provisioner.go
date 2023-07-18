@@ -59,7 +59,7 @@ func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder recor
 	}
 	// Create and run the s3 provisioner controller.
 	// It implements the Provisioner interface expected by the cosi lib.
-	cosiProv, err := provisioner.NewDefaultCOSIProvisionerServer(options.CosiDriverAddress, identityServer, p)
+	cosiProv, err := provisioner.NewDefaultCOSIProvisionerServer(fmt.Sprintf("unix://%s", options.CosiDriverPath), identityServer, p)
 	if err != nil {
 		log.Error(err, "failed to create noobaa cosi provisioner/driver")
 		return err
@@ -68,6 +68,8 @@ func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder recor
 	log.Info("running noobaa cosi provisioner/driver", driverName)
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
+		// remove socket in case it is already bound
+		os.Remove(options.CosiDriverPath)
 		util.Panic(cosiProv.Run(ctx))
 	}()
 
