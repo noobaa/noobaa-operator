@@ -478,6 +478,9 @@ const (
 
 	// DeleteOBCConfirmation represents the validation to destry obc
 	DeleteOBCConfirmation CleanupConfirmationProperty = "yes-really-destroy-obc"
+
+	// SkipTopologyConstraints is Annotation name for disabling default topology Constraints
+	SkipTopologyConstraints = "noobaa.io/skip_topology_spread_constraints"
 )
 
 // DBTypes is a string enum type for specify the types of DB that are supported.
