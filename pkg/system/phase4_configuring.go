@@ -14,8 +14,7 @@ import (
 	"encoding/json"
 
 	"cloud.google.com/go/storage"
-	"google.golang.org/api/option"
-
+	semver "github.com/coreos/go-semver/semver"
 	"github.com/marstr/randname"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
@@ -25,6 +24,7 @@ import (
 	secv1 "github.com/openshift/api/security/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,9 +40,10 @@ import (
 )
 
 const (
-	ibmEndpoint = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
-	ibmLocation = "%s-standard"
-	ibmCOSCred  = "ibm-cloud-cos-creds"
+	ibmEndpoint                           = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
+	ibmLocation                           = "%s-standard"
+	ibmCOSCred                            = "ibm-cloud-cos-creds"
+	topologyConstraintsEnabledKubeVersion = "1.26.0"
 )
 
 type gcpAuthJSON struct {
@@ -270,6 +271,31 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 	podSpec.SecurityContext.RunAsGroup = &rootUIDGid
 	podSpec.ServiceAccountName = "noobaa-endpoint"
 
+	honor := corev1.NodeInclusionPolicyHonor
+	disableDefaultTopologyConstraints, found := r.NooBaa.ObjectMeta.Annotations[nbv1.SkipTopologyConstraints]
+	if podSpec.TopologySpreadConstraints != nil {
+		r.Logger.Debugf("deployment %s TopologySpreadConstraints already exists, leaving as is", r.DeploymentEndpoint.Name)
+	} else if !r.hasNodeInclusionPolicyInPodTopologySpread() {
+		r.Logger.Debugf("deployment %s TopologySpreadConstraints cannot be set because feature gate NodeInclusionPolicyInPodTopologySpread is not supported on this cluster version",
+			r.DeploymentEndpoint.Name)
+	} else if found && disableDefaultTopologyConstraints == "true" {
+		r.Logger.Debugf("deployment %s TopologySpreadConstraints will not be set because annotation %s was set on noobaa CR",
+			r.DeploymentEndpoint.Name, nbv1.SkipTopologyConstraints)
+	} else {
+		r.Logger.Debugf("default TopologySpreadConstraints is added to %s deployment", r.DeploymentEndpoint.Name)
+		topologySpreadConstraint := corev1.TopologySpreadConstraint{
+			MaxSkew:           1,
+			TopologyKey:       "kubernetes.io/hostname",
+			WhenUnsatisfiable: corev1.ScheduleAnyway,
+			NodeTaintsPolicy:  &honor,
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"noobaa-s3": r.Request.Name,
+				},
+			},
+		}
+		podSpec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{topologySpreadConstraint}
+	}
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
 		switch c.Name {
@@ -388,6 +414,23 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 		}
 	}
 	return nil
+}
+
+func (r *Reconciler) hasNodeInclusionPolicyInPodTopologySpread() bool {
+	kubeVersion, err := util.GetKubeVersion()
+	if err != nil {
+		r.Logger.Printf("❌ Failed to get kube version %s", err)
+		return false
+	}
+	enabledKubeVersion, err := semver.NewVersion(topologyConstraintsEnabledKubeVersion)
+	if err != nil {
+		util.Panic(err)
+		return false
+	}
+	if kubeVersion.LessThan(*enabledKubeVersion) {
+		return false
+	}
+	return true
 }
 
 func (r *Reconciler) setDesiredRootMasterKeyMounts(podSpec *corev1.PodSpec, container *corev1.Container) {
