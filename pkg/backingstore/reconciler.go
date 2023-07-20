@@ -819,7 +819,7 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		logsAnalyticsWorkspaceID := r.Secret.StringData["LogsAnalyticsWorkspaceID"]
 
 		if tenantID != "" && appID != "" && appSecret != "" && logsAnalyticsWorkspaceID != "" {
-			conn.AzureLogAccessKeys = nb.AzureLogAccessKeysParams{
+			conn.AzureLogAccessKeys = &nb.AzureLogAccessKeysParams{
 				AzureTenantID: tenantID,
 				AzureClientID: appID,
 				AzureClientSecret: appSecret,
