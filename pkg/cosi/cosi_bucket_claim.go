@@ -36,7 +36,7 @@ func CmdCOSIBucketClaim() *cobra.Command {
 func CmdCreateBucketClaim() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <bucket-claim-name>",
-		Short: "Create an cosi bucket claim",
+		Short: "Create a COSI bucket claim",
 		Run:   RunCreateBucketClaim,
 	}
 
