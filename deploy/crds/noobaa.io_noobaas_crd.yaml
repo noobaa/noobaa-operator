@@ -1393,6 +1393,19 @@ spec:
                         type: object
                     type: object
                 type: object
+              externalPgSecret:
+                description: ExternalPgSecret (optional) holds an optional secret
+                  with a url to an extrenal Postgres DB to be used
+                properties:
+                  name:
+                    description: name is unique within a namespace to reference a
+                      secret resource.
+                    type: string
+                  namespace:
+                    description: namespace defines the space within which the secret
+                      name must be unique.
+                    type: string
+                type: object
               image:
                 description: Image (optional) overrides the default image for the
                   server container

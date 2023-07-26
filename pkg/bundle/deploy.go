@@ -1437,7 +1437,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "5d42c4e8e815c9fed4705d6bf312848202aa4b8f7733d971151fb1cac8eea279"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "ada3ba6a3a6aecc2a957947d822baaad68c87f4d04eda5df31e883354dcbff71"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2834,6 +2834,19 @@ spec:
                         type: object
                     type: object
                 type: object
+              externalPgSecret:
+                description: ExternalPgSecret (optional) holds an optional secret
+                  with a url to an extrenal Postgres DB to be used
+                properties:
+                  name:
+                    description: name is unique within a namespace to reference a
+                      secret resource.
+                    type: string
+                  namespace:
+                    description: namespace defines the space within which the secret
+                      name must be unique.
+                    type: string
+                type: object
               image:
                 description: Image (optional) overrides the default image for the
                   server container
@@ -3585,7 +3598,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "591b74cab691e57295c490d0963131b4eefb345aef08c383ef01a9ed4e19ca2b"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "b87bb78e630d9e007b71b5aa7745f5d6b6f1771cdd949735652ddc6ebb6ff9d5"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3677,6 +3690,7 @@ spec:
             - name: DB_TYPE
             - name: MONGODB_URL
             - name: POSTGRES_HOST
+            - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
               value: nbcore
             - name: POSTGRES_USER
@@ -4600,7 +4614,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "acb0b7199dfc55c7e4ceaff49d2ab754c527ad6bc9be7af539153e10b07294d3"
+const Sha256_deploy_internal_statefulset_core_yaml = "71a1afa6000a2ad334ec234951f0cd245d44ceea36fe57c444869accce9c75b7"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4703,6 +4717,7 @@ spec:
               value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
             - name: POSTGRES_HOST
               value: "noobaa-db-pg-0.noobaa-db-pg"
+            - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
               value: nbcore
             - name: POSTGRES_USER

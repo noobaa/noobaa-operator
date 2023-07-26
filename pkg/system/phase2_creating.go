@@ -122,8 +122,8 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.UpgradeSplitDB(); err != nil {
 		return err
 	}
-	// create the mongo db only if mongo db url is not given.
-	if r.NooBaa.Spec.MongoDbURL == "" {
+	// create the db only if mongo db url is not given, and postgres secret as well
+	if r.NooBaa.Spec.MongoDbURL == "" && r.NooBaa.Spec.ExternalPgSecret == nil {
 		if err := r.UpgradeSplitDB(); err != nil {
 			return err
 		}
@@ -398,7 +398,33 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			}
 
 		case "POSTGRES_HOST":
-			c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
+			if r.PgExternalHost != "" {
+				c.Env[j].Value = r.PgExternalHost
+			} else {
+				c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
+			}
+
+		case "POSTGRES_PORT":
+			if r.PgExternalPort != "" {
+				c.Env[j].Value = r.PgExternalPort
+			} else {
+				c.Env[j].Value = "5432"
+			}
+
+		case "POSTGRES_DBNAME":
+			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSecret != nil {
+				if c.Env[j].Value != "" {
+					c.Env[j].Value = ""
+				}
+				c.Env[j].ValueFrom = &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: r.SecretDB.Name,
+						},
+						Key: "dbname",
+					},
+				}
+			}
 
 		case "DB_TYPE":
 			if r.NooBaa.Spec.DBType == "postgres" {
@@ -1037,6 +1063,10 @@ func (r *Reconciler) reconcileDBRBAC() error {
 // ReconcileDB choose between different types of DB
 func (r *Reconciler) ReconcileDB() error {
 	var err error
+
+	if r.NooBaa.Spec.ExternalPgSecret != nil {
+		return nil
+	}
 
 	if err = r.reconcileDBRBAC(); err != nil {
 		return err
