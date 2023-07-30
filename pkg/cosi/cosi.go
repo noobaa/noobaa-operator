@@ -11,8 +11,10 @@ func Cmd() *cobra.Command {
 		Short: "Manage cosi resources",
 	}
 	cmd.AddCommand(
-		CmdCOSIBucketClaim(),
 		CmdCOSIBucketClass(),
+		CmdCOSIBucketClaim(),
+		CmdCOSIBucketAccessClass(),
+		CmdCOSIBucketAccessClaim(),
 	)
 	return cmd
 }
