@@ -42,6 +42,9 @@ VENV ?= $(OUTPUT)/venv
 CMD_MANAGER ?= cmd/manager/main.go
 
 export NOOBAA_OPERATOR_LOCAL ?= $(BIN)/noobaa-operator-local
+# OPERATOR_SDK is to install olm only.
+export OPERATOR_SDK_VERSION ?= v0.17.2
+export OPERATOR_SDK ?= build/_tools/operator-sdk-$(OPERATOR_SDK_VERSION)
 
 #------------#
 #- Building -#
@@ -90,6 +93,10 @@ clean:
 	rm -rf vendor/
 	@echo "✅ clean"
 .PHONY: clean
+
+$(OPERATOR_SDK):
+	bash build/install-operator-sdk.sh
+	@echo "✅ $(OPERATOR_SDK)"
 
 release-docker:
 	docker push $(IMAGE)
@@ -198,7 +205,7 @@ test-core-config-map-flow:
 .PHONY: test-core-config-map-flow
 
 # test-olm runs tests for the OLM package
-test-olm: gen-olm
+test-olm: $(OPERATOR_SDK) gen-olm
 	$(TIME) ./test/test-olm.sh $(CATALOG_IMAGE)
 	@echo "✅ test-olm"
 .PHONY: test-olm
