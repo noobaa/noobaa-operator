@@ -17,9 +17,13 @@ fi
 CATALOG_IMAGE=$1
 VERSION=$(go run cmd/version/main.go)
 
+if [ -z "${OPERATOR_SDK}" ]; then
+    OPERATOR_SDK=operator-sdk
+fi
+
 function install_olm() {
     echo "----> Install OLM and Operator Marketplace ..."
-    ${NOOBAA_OPERATOR_LOCAL} olm install || true
+    ${OPERATOR_SDK} olm install --version 0.16.1 || true
     # kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.10.0/crds.yaml
     # kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.10.0/olm.yaml
     # kubectl apply -f https://github.com/operator-framework/operator-marketplace/raw/master/deploy/upstream/01_namespace.yaml
