@@ -66,10 +66,10 @@ func Cmd() *cobra.Command {
 
 	util.InitLogger(logrus.DebugLevel)
 
-	rand.Seed(time.Now().UTC().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
 
 	logo := ASCIILogo1
-	if rand.Intn(2) == 0 { // 50% chance
+	if r.Intn(2) == 0 { // 50% chance
 		logo = ASCIILogo2
 	}
 
