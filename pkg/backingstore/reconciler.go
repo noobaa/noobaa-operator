@@ -639,10 +639,11 @@ func (r *Reconciler) ReadSystemInfo() error {
 			pool.CloudInfo.Identity != conn.Identity {
 			r.Logger.Warnf("using existing pool but connection mismatch %+v pool %+v %+v", conn, pool, pool.CloudInfo)
 			r.UpdateExternalConnectionParams = &nb.UpdateExternalConnectionParams{
-				Name:     conn.Name,
-				Identity: conn.Identity,
-				Secret:   conn.Secret,
+				Name:               conn.Name,
+				Identity:           conn.Identity,
+				Secret:             conn.Secret,
 				AzureLogAccessKeys: conn.AzureLogAccessKeys,
+				Region:             conn.Region,
 			}
 		}
 	}
@@ -820,9 +821,9 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 
 		if tenantID != "" && appID != "" && appSecret != "" && logsAnalyticsWorkspaceID != "" {
 			conn.AzureLogAccessKeys = &nb.AzureLogAccessKeysParams{
-				AzureTenantID: tenantID,
-				AzureClientID: appID,
-				AzureClientSecret: appSecret,
+				AzureTenantID:                 tenantID,
+				AzureClientID:                 appID,
+				AzureClientSecret:             appSecret,
 				AzureLogsAnalyticsWorkspaceID: logsAnalyticsWorkspaceID,
 			}
 		}
@@ -883,13 +884,14 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	}
 
 	checkConnectionParams := &nb.CheckExternalConnectionParams{
-		Name:         r.AddExternalConnectionParams.Name,
-		EndpointType: r.AddExternalConnectionParams.EndpointType,
-		Endpoint:     r.AddExternalConnectionParams.Endpoint,
-		Identity:     r.AddExternalConnectionParams.Identity,
-		Secret:       r.AddExternalConnectionParams.Secret,
-		AuthMethod:   r.AddExternalConnectionParams.AuthMethod,
-		AWSSTSARN:    r.AddExternalConnectionParams.AWSSTSARN,
+		Name:               r.AddExternalConnectionParams.Name,
+		EndpointType:       r.AddExternalConnectionParams.EndpointType,
+		Endpoint:           r.AddExternalConnectionParams.Endpoint,
+		Region:             r.AddExternalConnectionParams.Region,
+		Identity:           r.AddExternalConnectionParams.Identity,
+		Secret:             r.AddExternalConnectionParams.Secret,
+		AuthMethod:         r.AddExternalConnectionParams.AuthMethod,
+		AWSSTSARN:          r.AddExternalConnectionParams.AWSSTSARN,
 		AzureLogAccessKeys: r.AddExternalConnectionParams.AzureLogAccessKeys,
 	}
 
