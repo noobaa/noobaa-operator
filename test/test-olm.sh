@@ -69,14 +69,14 @@ function wait_for_operator() {
 
 function test_operator() {
     MINI_RESOURCES='{"requests":{"cpu":"10m","memory":"128Mi"}}'
-    ${OPERATOR_SDK} run --local --operator-flags "system create --core-resources $MINI_RESOURCES --db-resources $MINI_RESOURCES --endpoint-resources ${MINI_RESOURCES}"
+    ${NOOBAA_OPERATOR_LOCAL} --mini install
     while [ "$(kubectl get noobaa/noobaa -o jsonpath={.status.phase})" != "Ready" ]
     do
         echo -n '.'
         sleep 3
-        ${OPERATOR_SDK} run --local --operator-flags "status"
+        ${NOOBAA_OPERATOR_LOCAL} status
     done
-    ${OPERATOR_SDK} run --local --operator-flags "status"
+    ${NOOBAA_OPERATOR_LOCAL} status
 }
 
 function main() {

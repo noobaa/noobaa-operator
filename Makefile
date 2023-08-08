@@ -3,7 +3,7 @@
 #   - git
 #   - python3
 #   - minikube
-#   - operator-sdk
+#   - docker
 
 export GO111MODULE=on
 export GOPROXY:=https://proxy.golang.org
@@ -17,10 +17,21 @@ DEV_IMAGE ?= noobaa/noobaa-operator-dev:$(VERSION)
 REPO ?= github.com/noobaa/noobaa-operator
 CATALOG_IMAGE ?= noobaa/noobaa-operator-catalog:$(VERSION)
 BUNDLE_IMAGE ?= noobaa/noobaa-operator-bundle:$(VERSION)
+# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
+ifeq (,$(shell go env GOBIN))
+GOBIN=$(shell go env GOPATH)/bin
+else
+GOBIN=$(shell go env GOBIN)
+endif
+
+CONTROLLER_GEN_VERSION=v0.12.0
+DEEPCOPY_GEN_VERSION=v0.27.0
 
 GO_LINUX ?= GOOS=linux GOARCH=amd64
 GOHOSTOS ?= $(shell go env GOHOSTOS)
 
+MK_PATH:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+MK_PARENT:=$(realpath $(MK_PATH)../)
 OUTPUT ?= build/_output
 BIN ?= $(OUTPUT)/bin
 OLM ?= $(OUTPUT)/olm
@@ -28,13 +39,12 @@ MANIFESTS ?= $(OUTPUT)/manifests
 obc-crd ?= required
 cosi-sidecar-image ?= "gcr.io/k8s-staging-sig-storage/objectstorage-sidecar/objectstorage-sidecar:v20221117-v0.1.0-22-g0e67387"
 VENV ?= $(OUTPUT)/venv
+CMD_MANAGER ?= cmd/manager/main.go
 
-# OPERATOR_SDK_VERSION is for build perpuse only, the dependencies themself are 
-# updated to a new version as stated in the go.mod file
+export NOOBAA_OPERATOR_LOCAL ?= $(BIN)/noobaa-operator-local
+# OPERATOR_SDK is to install olm only.
 export OPERATOR_SDK_VERSION ?= v0.17.2
 export OPERATOR_SDK ?= build/_tools/operator-sdk-$(OPERATOR_SDK_VERSION)
-
-KUBECONFIG ?= build/empty-kubeconfig
 
 #------------#
 #- Building -#
@@ -48,18 +58,21 @@ build: cli image gen-olm
 	@echo "✅ build"
 .PHONY: build
 
-cli: $(OPERATOR_SDK) gen
-	$(OPERATOR_SDK) run --kubeconfig="$(KUBECONFIG)" --local --operator-flags "version"
+cli: gen
+	go build -o $(NOOBAA_OPERATOR_LOCAL) -mod=vendor $(CMD_MANAGER)
+	$(BIN)/noobaa-operator-local version
 	@echo "✅ cli"
 .PHONY: cli
 
-image: $(OPERATOR_SDK) gen
-	$(OPERATOR_SDK) build $(IMAGE)
+image: $(docker) gen
+	go build -o $(BIN)/noobaa-operator -gcflags all=-trimpath="$(MK_PARENT)" -asmflags all=-trimpath="$(MK_PARENT)" -mod=vendor $(CMD_MANAGER)
+	docker build -f build/Dockerfile -t $(IMAGE) .
 	@echo "✅ image"
 .PHONY: image
 
-dev-image: $(OPERATOR_SDK) gen
-	$(OPERATOR_SDK) build --go-build-args "-gcflags all=-N -gcflags all=-l" $(IMAGE)
+dev-image: $(docker) gen
+	go build -o $(BIN)/noobaa-operator -trimpath -mod=vendor -gcflags all=-N -gcflags all=-l $(CMD_MANAGER)
+	docker build -f build/Dockerfile -t $(IMAGE) .
 	docker build -f build/DockerfileDev --build-arg base_image=$(IMAGE) -t $(DEV_IMAGE) .
 	@echo "✅ dev image"
 .PHONY: dev-image
@@ -70,15 +83,20 @@ vendor:
 	@echo "✅ vendor"
 .PHONY: vendor
 
-run: $(OPERATOR_SDK) gen
-	$(OPERATOR_SDK) run --local --operator-flags "operator run"
-.PHONY: run
+run: gen
+	go build -o $(NOOBAA_OPERATOR_LOCAL) -mod=vendor $(CMD_MANAGER)
+	$(BIN)/noobaa-operator-local operator run
+	.PHONY: run
 
 clean:
 	rm -rf $(OUTPUT)
 	rm -rf vendor/
 	@echo "✅ clean"
 .PHONY: clean
+
+$(OPERATOR_SDK):
+	bash build/install-operator-sdk.sh
+	@echo "✅ $(OPERATOR_SDK)"
 
 release-docker:
 	docker push $(IMAGE)
@@ -97,11 +115,6 @@ release-cli:
 release: release-docker release-cli
 .PHONY: release
 
-$(OPERATOR_SDK):
-	bash build/install-operator-sdk.sh
-	@echo "✅ $(OPERATOR_SDK)"
-
-
 #------------#
 #- Generate -#
 #------------#
@@ -114,9 +127,9 @@ pkg/bundle/deploy.go: pkg/bundler/bundler.go version/version.go $(shell find dep
 	mkdir -p pkg/bundle
 	go run pkg/bundler/bundler.go deploy/ pkg/bundle/deploy.go
 
-gen-api: $(OPERATOR_SDK) gen
-	$(TIME) $(OPERATOR_SDK) generate k8s
-	$(TIME) $(OPERATOR_SDK) generate crds --crd-version v1
+gen-api: controller-gen deepcopy-gen gen
+	$(TIME) $(DEEPCOPY_GEN) --go-header-file="build/hack/boilerplate.go.txt" --input-dirs="./pkg/apis/noobaa/v1alpha1/..." --output-file-base="zz_generated.deepcopy"
+	$(TIME) $(CONTROLLER_GEN) paths=./... crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=deploy/crds/
 	@echo "✅ gen-api"
 .PHONY: gen-api
 
@@ -128,9 +141,10 @@ gen-api-fail-if-dirty: gen-api
 	)
 .PHONY: gen-api-fail-if-dirty
 
-gen-olm: $(OPERATOR_SDK) gen
+gen-olm: gen
 	rm -rf $(OLM)
-	$(OPERATOR_SDK) run --kubeconfig="$(KUBECONFIG)" --local --operator-flags "olm catalog -n my-noobaa-operator --dir $(OLM)"
+	go build -o $(NOOBAA_OPERATOR_LOCAL) -mod=vendor $(CMD_MANAGER)
+	$(NOOBAA_OPERATOR_LOCAL) olm catalog -n my-noobaa-operator --dir $(OUTPUT)/olm
 	python3 -m venv $(VENV) && \
 		. $(VENV)/bin/activate && \
 		pip3 install --upgrade pip && \
@@ -139,7 +153,6 @@ gen-olm: $(OPERATOR_SDK) gen
 	docker build -t $(CATALOG_IMAGE) -f build/catalog-source.Dockerfile .
 	@echo "✅ gen-olm"
 .PHONY: gen-olm
-
 
 gen-odf-package: cli
 	rm -rf $(MANIFESTS)
@@ -266,3 +279,30 @@ test-validations:
 	ginkgo -v pkg/validations
 	@echo "✅ test-validations"
 .PHONY: test-validations
+
+# find or download controller-gen if necessary
+controller-gen:
+ifneq ($(CONTROLLER_GEN_VERSION), $(shell controller-gen --version | awk -F ":" '{print $2}'))
+	@{ \
+	echo "Installing controller-gen@$(CONTROLLER_GEN_VERSION)" ;\
+	set -e ;\
+	go install -mod=readonly sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) ;\
+	echo "Installed controller-gen@$(CONTROLLER_GEN_VERSION)" ;\
+	}
+CONTROLLER_GEN=$(GOBIN)/controller-gen
+else
+CONTROLLER_GEN=$(shell which controller-gen)
+endif
+
+deepcopy-gen:
+ifneq ($(DEEPCOPY_GEN_VERSION), $(shell deepcopy-gen --version | awk -F ":" '{print $2}'))
+	@{ \
+	echo "Installing deepcopy-gen@$(DEEPCOPY_GEN_VERSION)" ;\
+	set -e ;\
+	go install -mod=readonly k8s.io/code-generator/cmd/deepcopy-gen@$(DEEPCOPY_GEN_VERSION) ;\
+	echo "Installed deepcopy-gen@$(DEEPCOPY_GEN_VERSION)" ;\
+	}
+DEEPCOPY_GEN=$(GOBIN)/deepcopy-gen
+else
+DEEPCOPY_GEN=$(shell which deepcopy-gen)
+endif
