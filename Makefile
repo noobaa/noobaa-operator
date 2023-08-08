@@ -86,7 +86,7 @@ vendor:
 run: gen
 	go build -o $(NOOBAA_OPERATOR_LOCAL) -mod=vendor $(CMD_MANAGER)
 	$(BIN)/noobaa-operator-local operator run
-	.PHONY: run
+.PHONY: run
 
 clean:
 	rm -rf $(OUTPUT)
