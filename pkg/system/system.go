@@ -17,6 +17,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/version"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -246,7 +247,74 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 			Resources: &corev1.ResourceRequirements{
 				Requests: endpointResourceList,
 				Limits:   endpointResourceList,
-			}}
+			},
+		}
+	}
+	for _, componentName := range []string{"core", "db", "endpoints"} {
+		if viper.IsSet(fmt.Sprintf("resources.%s", componentName)) {
+			var component *corev1.ResourceRequirements
+
+			if componentName == "core" {
+				if sys.Spec.CoreResources == nil {
+					sys.Spec.CoreResources = &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{},
+						Limits:   corev1.ResourceList{},
+					}
+				}
+				component = sys.Spec.CoreResources
+			} else if componentName == "db" {
+				if sys.Spec.DBResources == nil {
+					sys.Spec.DBResources = &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{},
+						Limits:   corev1.ResourceList{},
+					}
+				}
+				component = sys.Spec.DBResources
+			} else if componentName == "endpoints" {
+				if sys.Spec.Endpoints == nil {
+					sys.Spec.Endpoints = &nbv1.EndpointsSpec{
+						MinCount: viper.GetInt32("resources.endpoints.minCount"),
+						MaxCount: viper.GetInt32("resources.endpoints.maxCount"),
+						Resources: &corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{},
+							Limits:   corev1.ResourceList{},
+						},
+					}
+				} else {
+					if viper.IsSet("resources.endpoints.minCount") {
+						sys.Spec.Endpoints.MinCount = viper.GetInt32("resources.endpoints.minCount")
+					}
+
+					if viper.IsSet("resources.endpoints.maxCount") {
+						sys.Spec.Endpoints.MaxCount = viper.GetInt32("resources.endpoints.maxCount")
+					}
+				}
+
+				component = sys.Spec.Endpoints.Resources
+			}
+
+			if viper.IsSet(fmt.Sprintf("resources.%s.cpuMilli", componentName)) {
+				component.Requests[corev1.ResourceCPU] = *resource.NewScaledQuantity(
+					int64(viper.GetInt(fmt.Sprintf("resources.%s.cpuMilli", componentName))),
+					resource.Milli,
+				)
+
+				component.Limits[corev1.ResourceCPU] = *resource.NewScaledQuantity(
+					int64(viper.GetInt(fmt.Sprintf("resources.%s.cpuMilli", componentName))),
+					resource.Milli,
+				)
+			}
+			if viper.IsSet(fmt.Sprintf("resources.%s.memoryMB", componentName)) {
+				component.Requests[corev1.ResourceMemory] = *resource.NewScaledQuantity(
+					int64(viper.GetInt(fmt.Sprintf("resources.%s.memoryMB", componentName))),
+					resource.Mega,
+				)
+				component.Limits[corev1.ResourceMemory] = *resource.NewScaledQuantity(
+					int64(viper.GetInt(fmt.Sprintf("resources.%s.memoryMB", componentName))),
+					resource.Mega,
+				)
+			}
+		}
 	}
 
 	return sys
