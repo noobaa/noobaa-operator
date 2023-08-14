@@ -703,6 +703,7 @@ type CheckExternalConnectionParams struct {
 	AWSSTSARN              string                    `json:"aws_sts_arn,omitempty"`
 	IgnoreNameAlreadyExist bool                      `json:"ignore_name_already_exist,omitempty"`
 	AzureLogAccessKeys     *AzureLogAccessKeysParams `json:"azure_log_access_keys,omitempty"`
+	Region                 string                    `json:"region,omitempty"`
 }
 
 // CheckExternalConnectionReply is the reply of account_api.check_external_connection()
@@ -720,6 +721,7 @@ type UpdateExternalConnectionParams struct {
 	Identity           string                    `json:"identity"`
 	Secret             string                    `json:"secret"`
 	AzureLogAccessKeys *AzureLogAccessKeysParams `json:"azure_log_access_keys,omitempty"`
+	Region             string                    `json:"region,omitempty"`
 }
 
 // DeleteExternalConnectionParams is the params of account_api.delete_external_connection()
