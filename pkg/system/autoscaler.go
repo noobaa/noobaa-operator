@@ -59,6 +59,13 @@ func (r *Reconciler) reconcileAutoscaler() error {
 			return err
 		}
 	case nbv1.AutoscalerTypeHPAV2:
+		if r.AdapterHPA.Spec.Metrics[0].Type == autoscalingv2.ResourceMetricSourceType {
+			r.Logger.Debugf("HPAV2 autoscaler type is %s, skipping HPAV2 resource creation", autoscalingv2.ResourceMetricSourceType)
+			if err := r.ReconcileObject(r.AdapterHPA, r.reconcileAdapterHPA); err != nil {
+				return err
+			}
+			return nil
+		}
 		prometheus, err := getPrometheus(log, prometheusNamespace)
 		if err != nil {
 			return err
