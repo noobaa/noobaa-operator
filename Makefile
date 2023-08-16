@@ -65,7 +65,7 @@ cli: gen
 .PHONY: cli
 
 image: $(docker) gen
-	go build -o $(BIN)/noobaa-operator -gcflags all=-trimpath="$(MK_PARENT)" -asmflags all=-trimpath="$(MK_PARENT)" -mod=vendor $(CMD_MANAGER)
+	GOOS=linux CGO_ENABLED=$(or ${CGO_ENABLED},0) go build -o $(BIN)/noobaa-operator -gcflags all=-trimpath="$(MK_PARENT)" -asmflags all=-trimpath="$(MK_PARENT)" -mod=vendor $(CMD_MANAGER)
 	docker build -f build/Dockerfile -t $(IMAGE) .
 	@echo "✅ image"
 .PHONY: image
