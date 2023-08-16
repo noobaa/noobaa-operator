@@ -108,7 +108,7 @@ func (p *Provisioner) DriverCreateBucket(ctx context.Context,
 		return nil, err
 	}
 
-	err = ValidateCOSIBucketClaim(req.GetName(), r.Provisioner.Namespace, *r.BucketClass)
+	err = ValidateCOSIBucketClaim(req.GetName(), r.Provisioner.Namespace, *r.BucketClass, false)
 	log.Infof("DriverCreateBucket: ValidateCOSIBucketClaim err %q", err)
 
 	if err != nil {

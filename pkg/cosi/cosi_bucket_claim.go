@@ -120,7 +120,7 @@ func RunCreateBucketClaim(cmd *cobra.Command, args []string) {
 	if errMsg != "" {
 		log.Fatalf(`❌ Could not create BucketClass spec out of bucketclass parameters %q %q`, bucketClass.Name, bucketClass.Parameters)
 	}
-	err := ValidateCOSIBucketClaim(cosiBucketClaim.Name, options.Namespace, *bucketClassSpec)
+	err := ValidateCOSIBucketClaim(cosiBucketClaim.Name, options.Namespace, *bucketClassSpec, true)
 	if err != nil {
 		log.Fatalf(`❌ Could not validate COSI bucket claim %q in namespace %q validation failed %q`, cosiBucketClaim.Name, cosiBucketClaim.Namespace, err)
 	}
