@@ -98,7 +98,7 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 	log := p.Logger
 	log.Infof("Provision: got request to provision bucket %q", bucketOptions.BucketName)
 
-	err := ValidateOBC(bucketOptions.ObjectBucketClaim)
+	err := ValidateOBC(bucketOptions.ObjectBucketClaim, false)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func (p *Provisioner) Update(ob *nbv1.ObjectBucket) error {
 	log := p.Logger
 	log.Infof("Update: got request to Update bucket %q", ob.Name)
 
-	err := ValidateOB(ob)
+	err := ValidateOB(ob, false)
 	if err != nil {
 		return err
 	}
