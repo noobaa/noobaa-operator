@@ -199,9 +199,6 @@ func FindPortByName(srv *corev1.Service, portName string) *corev1.ServicePort {
 
 // GetAPIPortName maps every noobaa api name to the service port name that serves it.
 func GetAPIPortName(api string) string {
-	if api == "object_api" || api == "func_api" {
-		return "md-https"
-	}
 	if api == "scrubber_api" {
 		return "bg-https"
 	}
