@@ -17,7 +17,7 @@ jobs:
           # Freeze the version of core
           # to avoid a failed run due to code changes in the core repo.
           # Need to update the commit once in a while
-          ref: 293fefb9e755fa0d6bf1cc8b31f74259a0001730
+          ref: 3b2eecf53c08a26a6ecf2040eb386a4487e994f2
 
       - name: Checkout noobaa-operator
         uses: actions/checkout@v3
