@@ -12,4 +12,7 @@ build-releases/
 # visual studio code intellisense configuration
 .vscode/
 
+# NooBaa config file
+noobaa.cfg.yaml
+
 *.IGNORE
