@@ -270,6 +270,16 @@ func setBackingStoreDetailsInJob(backingStore *nbv1.BackingStore, cmd *cobra.Com
 			backingStore.Kind, backingStore.Name, backingStore.Namespace)
 	}
 
+	// in case it is aws endpoint, we would pass the region
+	if backingStore.Spec.Type == nbv1.StoreTypeAWSS3 {
+		region := util.GetEnvVariable(&analyzeResourceJob.Spec.Template.Spec.Containers[0].Env, "REGION")
+		if region == nil {
+			log.Fatalf("❌ Could not get region in %s %q in Namespace %q",
+				analyzeResourceJob.Kind, analyzeResourceJob.Name, analyzeResourceJob.Namespace)
+		}
+		region.Value = backingStore.Spec.AWSS3.Region
+	}
+
 	// signature version
 	signatureVersion := util.GetEnvVariable(&analyzeResourceJob.Spec.Template.Spec.Containers[0].Env, "S3_SIGNATURE_VERSION")
 	if signatureVersion == nil {
@@ -336,6 +346,16 @@ func setNamespacetoreDetailsInJob(namespaceStore *nbv1.NamespaceStore, cmd *cobr
 	if err != nil {
 		log.Fatalf("❌ Could not get endpoint  in %s %q in Namespace %q",
 			namespaceStore.Kind, namespaceStore.Name, namespaceStore.Namespace)
+	}
+
+	// in case it is aws endpoint, we would pass the region
+	if namespaceStore.Spec.Type == nbv1.NSStoreTypeAWSS3 {
+		region := util.GetEnvVariable(&analyzeResourceJob.Spec.Template.Spec.Containers[0].Env, "REGION")
+		if region == nil {
+			log.Fatalf("❌ Could not get region in %s %q in Namespace %q",
+				analyzeResourceJob.Kind, analyzeResourceJob.Name, analyzeResourceJob.Namespace)
+		}
+		region.Value = namespaceStore.Spec.AWSS3.Region
 	}
 
 	// signature version

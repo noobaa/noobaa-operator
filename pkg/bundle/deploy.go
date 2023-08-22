@@ -5051,7 +5051,7 @@ const File_deploy_internal_text_system_status_readme_rejected_tmpl = `
 	NooBaa Operator Version: {{.OperatorVersion}}
 `
 
-const Sha256_deploy_job_analyze_resource_yml = "a171cf51d8c8561de04d921fbccb43b87f25daadd86211900765a4cf1ae080a5"
+const Sha256_deploy_job_analyze_resource_yml = "c80810baeda94fd9dd97a6c62241be5c582e08009bdbb1f2a13992c99d90ea33"
 
 const File_deploy_job_analyze_resource_yml = `apiVersion: batch/v1
 kind: Job
@@ -5080,6 +5080,7 @@ spec:
           - name: RESOURCE_NAME
           - name: BUCKET
           - name: ENDPOINT
+          - name: REGION
           - name: S3_SIGNATURE_VERSION
           - name: HTTP_PROXY
           - name: HTTPS_PROXY
