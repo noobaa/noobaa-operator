@@ -1,6 +1,7 @@
 package obc
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -18,6 +19,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
+
+var ctx = context.TODO()
 
 // Cmd returns a CLI command
 func Cmd() *cobra.Command {
@@ -473,9 +476,9 @@ func WaitReady(obc *nbv1.ObjectBucketClaim) bool {
 	log := util.Logger()
 	klient := util.KubeClient()
 
-	intervalSec := time.Duration(3)
+	interval := time.Duration(3)
 
-	err := wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
+	err := wait.PollUntilContextCancel(ctx,interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		err := klient.Get(util.Context(), util.ObjectKey(obc), obc)
 		if err != nil {
 			log.Printf("⏳ Failed to get OBC: %s", err)

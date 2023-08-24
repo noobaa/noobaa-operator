@@ -53,33 +53,33 @@ func Add(mgr manager.Manager) error {
 	)
 
 	// Watch for changes on resources to trigger reconcile
-	err = c.Watch(&source.Kind{Type: &nbv1.BucketClass{}}, &handler.EnqueueRequestForObject{},
+	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.BucketClass{}), &handler.EnqueueRequestForObject{},
 		ignoreUnmatchedProvisioner(options.Namespace), bucketClassPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
 
-	backingStoreHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+	backingStoreHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 		return bucketclass.MapBackingstoreToBucketclasses(types.NamespacedName{
 			Name:      obj.GetName(),
 			Namespace: obj.GetNamespace(),
 		})
 	},
 	)
-	err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, backingStoreHandler,
+	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.BackingStore{}), backingStoreHandler,
 		util.IgnoreIfNotInNamespace(options.Namespace), logEventsPredicate)
 	if err != nil {
 		return err
 	}
 
-	namespaceStoreHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+	namespaceStoreHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 		return bucketclass.MapNamespacestoreToBucketclasses(types.NamespacedName{
 			Name:      obj.GetName(),
 			Namespace: obj.GetNamespace(),
 		})
 	},
 	)
-	err = c.Watch(&source.Kind{Type: &nbv1.NamespaceStore{}}, namespaceStoreHandler,
+	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.NamespaceStore{}), namespaceStoreHandler,
 		util.IgnoreIfNotInNamespace(options.Namespace), logEventsPredicate)
 	if err != nil {
 		return err

@@ -60,17 +60,22 @@ func Add(mgr manager.Manager) error {
 	)
 
 	// Watch for changes on resources to trigger reconcile
-	ownerHandler := &handler.EnqueueRequestForOwner{IsController: true, OwnerType: &nbv1.BackingStore{}}
+	ownerHandler := handler.EnqueueRequestForOwner(
+		mgr.GetScheme(),
+		mgr.GetRESTMapper(),
+		&nbv1.BackingStore{},
+		handler.OnlyControllerOwner(),
+	)
 
-	err = c.Watch(&source.Kind{Type: &nbv1.BackingStore{}}, &handler.EnqueueRequestForObject{}, backingStorePredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.BackingStore{}), &handler.EnqueueRequestForObject{}, backingStorePredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Pod{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.PersistentVolumeClaim{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.PersistentVolumeClaim{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
@@ -78,26 +83,26 @@ func Add(mgr manager.Manager) error {
 	// setting another handler to watch events on secrets that not necessarily owned by the Backingstore.
 	// only one OwnerReference can be a controller see:
 	// https://github.com/kubernetes-sigs/controller-runtime/blob/master/pkg/controller/controllerutil/controllerutil.go#L54
-	secretsHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+	secretsHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 		return backingstore.MapSecretToBackingStores(types.NamespacedName{
 			Name:      obj.GetName(),
 			Namespace: obj.GetNamespace(),
 		})
 	})
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, secretsHandler, logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), secretsHandler, logEventsPredicate)
 	if err != nil {
 		return err
 	}
 
 	// Setting another handler to watch events on noobaa system that are not necessarily owned by the backingstore.
 	// For example: modify toleration in Noobaa CR should pass to the backingstores.
-	noobaaHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+	noobaaHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 		return backingstore.MapNoobaaToBackingStores(types.NamespacedName{
 			Name:      obj.GetName(),
 			Namespace: obj.GetNamespace(),
 		})
 	})
-	err = c.Watch(&source.Kind{Type: &nbv1.NooBaa{}}, noobaaHandler, logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.NooBaa{}), noobaaHandler, logEventsPredicate)
 	if err != nil {
 		return err
 	}
