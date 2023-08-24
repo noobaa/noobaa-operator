@@ -1,6 +1,7 @@
 package cosi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -18,6 +19,8 @@ import (
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
+
+var ctx = context.TODO()
 
 // CmdCOSIBucketAccessClaim returns a CLI command
 func CmdCOSIBucketAccessClaim() *cobra.Command {
@@ -305,10 +308,10 @@ func WaitBucketAccessClaimReady(cosiBucketAccessClaim *nbv1.COSIBucketAccessClai
 	log := util.Logger()
 	klient := util.KubeClient()
 
-	intervalSec := time.Duration(3)
+	interval := time.Duration(3)
 	maxRetries := 60
 	retries := 0
-	err := wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
+	err := wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		if retries == maxRetries {
 			return false, fmt.Errorf("COSI bucket claim is not ready after max retries - %q", maxRetries)
 		}

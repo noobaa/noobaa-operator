@@ -1,6 +1,7 @@
 package cosi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -289,10 +290,10 @@ func WaitReady(cosiBucketClaim *nbv1.COSIBucketClaim) bool {
 	log := util.Logger()
 	klient := util.KubeClient()
 
-	intervalSec := time.Duration(3)
+	interval := time.Duration(3)
 	maxRetries := 60
 	retries := 0
-	err := wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
+	err := wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		if retries == maxRetries {
 			return false, fmt.Errorf("COSI bucket claim is not ready after max retries - %q", maxRetries)
 		}

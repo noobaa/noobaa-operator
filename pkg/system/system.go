@@ -1,6 +1,7 @@
 package system
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -50,6 +51,8 @@ func Cmd() *cobra.Command {
 	)
 	return cmd
 }
+
+var ctx = context.TODO()
 
 // CmdCreate returns a CLI command
 func CmdCreate() *cobra.Command {
@@ -815,8 +818,8 @@ func RunSetDebugLevel(cmd *cobra.Command, args []string) {
 func RunReconcile(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 	klient := util.KubeClient()
-	intervalSec := time.Duration(3)
-	util.Panic(wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
+	interval := time.Duration(3)
+	util.Panic(wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		req := reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Namespace: options.Namespace,
@@ -828,7 +831,7 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 			return false, err
 		}
 		if res.Requeue || res.RequeueAfter != 0 {
-			log.Printf("\nRetrying in %d seconds\n", intervalSec)
+			log.Printf("\nRetrying in %d seconds\n", interval)
 			return false, nil
 		}
 		return true, nil
@@ -841,9 +844,9 @@ func WaitReady() bool {
 	klient := util.KubeClient()
 
 	sysKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
-	intervalSec := time.Duration(3)
+	interval := time.Duration(3)
 
-	err := wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
+	err := wait.PollUntilContextCancel(ctx,interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		sys := &nbv1.NooBaa{}
 		err := klient.Get(util.Context(), sysKey, sys)
 		if err != nil {

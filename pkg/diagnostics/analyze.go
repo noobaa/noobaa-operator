@@ -2,6 +2,7 @@ package diagnostics
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,6 +26,8 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
+var ctx = context.TODO()
 
 // RunAnalyzeBackingStore runs a CLI command
 func RunAnalyzeBackingStore(cmd *cobra.Command, args []string) {
@@ -415,8 +418,8 @@ func setJobAnalyzeResource(cmd *cobra.Command, analyzeResourceJob *batchv1.Job, 
 func waitFinish(job *batchv1.Job) bool {
 	klient := util.KubeClient()
 	interval := time.Duration(3)
-
-	err := wait.PollImmediateInfinite(interval*time.Second, func() (bool, error) {
+	
+	err := wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		err := klient.Get(util.Context(), util.ObjectKey(job), job)
 		if err != nil {
 			util.Logger().Printf("⏳ Failed to get Job: %s", err)
