@@ -62,7 +62,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	apiregistration "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	cosiv1 "sigs.k8s.io/container-object-storage-interface-api/apis/objectstorage/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -204,7 +204,7 @@ func GetKubeVersion() (*semver.Version, error) {
 }
 
 // MapperProvider creates RESTMapper
-func MapperProvider(config *rest.Config) (meta.RESTMapper, error) {
+func MapperProvider(config *rest.Config, httpClient *http.Client) (meta.RESTMapper, error) {
 	return meta.NewLazyRESTMapperLoader(func() (meta.RESTMapper, error) {
 		dc, err := discovery.NewDiscoveryClientForConfig(config)
 		if err != nil {
@@ -238,7 +238,7 @@ func MapperProvider(config *rest.Config) (meta.RESTMapper, error) {
 func KubeClient() client.Client {
 	if lazyClient == nil {
 		config := KubeConfig()
-		mapper, _ := MapperProvider(config)
+		mapper, _ := MapperProvider(config, nil)
 		var err error
 		lazyClient, err = client.New(config, client.Options{Mapper: mapper, Scheme: scheme.Scheme})
 		if err != nil {
@@ -434,8 +434,8 @@ func KubeDelete(obj client.Object, opts ...client.DeleteOption) bool {
 	}
 
 	time.Sleep(10 * time.Millisecond)
-
-	err = wait.PollImmediateInfinite(time.Second, func() (bool, error) {
+	
+	err = wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
 		err := klient.Delete(ctx, obj, opts...)
 		if err == nil {
 			if !deleted {
@@ -2034,7 +2034,7 @@ func SetOwnerReference(owner, dependent metav1.Object, scheme *runtime.Scheme) e
 		Kind:               gvk.Kind,
 		Name:               owner.GetName(),
 		UID:                owner.GetUID(),
-		BlockOwnerDeletion: pointer.Bool(true),
+		BlockOwnerDeletion: ptr.To[bool](true),
 	}
 
 	owners := dependent.GetOwnerReferences()

@@ -1,6 +1,7 @@
 package system
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -575,10 +576,10 @@ func waitForCertificateReady(configMap *corev1.ConfigMap) bool {
 	log := util.Logger()
 	klient := util.KubeClient()
 
-	intervalSec := time.Duration(3)
-	timeoutSec := time.Duration(15)
+	interval := time.Duration(3)
+	timeout := time.Duration(15)
 
-	err := wait.PollImmediate(intervalSec*time.Second, timeoutSec*time.Second, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(ctx, interval*time.Second, timeout*time.Second, true, func(ctx context.Context) (bool, error) {
 		if err := klient.Get(util.Context(), util.ObjectKey(configMap), configMap); err != nil {
 			log.Printf("⏳ Failed to get service ca certificate: %s", err)
 			return false, nil

@@ -52,19 +52,19 @@ func Add(mgr manager.Manager) error {
 		util.FinalizersChangedPredicate{},
 		namespaceStoreModeChangedPredicate{},
 	)
-	err = c.Watch(&source.Kind{Type: &nbv1.NamespaceStore{}}, &handler.EnqueueRequestForObject{},
+	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.NamespaceStore{}), &handler.EnqueueRequestForObject{},
 		namespaceStorePredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
 
-	secretsHandler := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+	secretsHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 		return namespacestore.MapSecretToNamespaceStores(types.NamespacedName{
 			Name:      obj.GetName(),
 			Namespace: obj.GetNamespace(),
 		})
 	})
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, secretsHandler, logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), secretsHandler, logEventsPredicate)
 	if err != nil {
 		return err
 	}

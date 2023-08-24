@@ -43,7 +43,7 @@ func Add(mgr manager.Manager) error {
 	logEventsPredicate := util.LogEventsPredicate{}
 
 	// Watch for cephcluster resource changes
-	err = c.Watch(&source.Kind{Type: &cephv1.CephCluster{}}, &handler.EnqueueRequestForObject{},
+	err = c.Watch(source.Kind(mgr.GetCache(), &cephv1.CephCluster{}), &handler.EnqueueRequestForObject{},
 		&CephCapacityChangedPredicate{}, &logEventsPredicate)
 	if err != nil {
 		return err
