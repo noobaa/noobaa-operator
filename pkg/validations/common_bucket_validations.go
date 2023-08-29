@@ -10,7 +10,7 @@ import (
 )
 
 // ValidateReplicationPolicy validates and replication params and returns the replication policy object
-func ValidateReplicationPolicy(bucketName string, replicationPolicy string, update bool) error {
+func ValidateReplicationPolicy(bucketName string, replicationPolicy string, update bool, isCLI bool) error {
 	log := util.Logger()
 	if replicationPolicy == "" {
 		return nil
@@ -37,7 +37,7 @@ func ValidateReplicationPolicy(bucketName string, replicationPolicy string, upda
 
 	log.Infof("ValidateReplicationPolicy: validating replication: replicationParams: %+v", replicationParams)
 	IsExternalRPCConnection := false
-	if util.IsTestEnv() {
+	if util.IsTestEnv() || isCLI {
 		IsExternalRPCConnection = true
 	}
 	sysClient, err := system.Connect(IsExternalRPCConnection)

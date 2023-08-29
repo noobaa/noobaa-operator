@@ -7,23 +7,23 @@ import (
 )
 
 // ValidateOBC validate object bucket claim
-func ValidateOBC(obc *nbv1.ObjectBucketClaim) error {
+func ValidateOBC(obc *nbv1.ObjectBucketClaim, isCLI bool) error {
 	if obc == nil {
 		return nil
 	}
-	return validateAdditionalConfig(obc.Name, obc.Spec.AdditionalConfig, false)
+	return validateAdditionalConfig(obc.Name, obc.Spec.AdditionalConfig, false, isCLI)
 }
 
 // ValidateOB validate object bucket
-func ValidateOB(ob *nbv1.ObjectBucket) error {
+func ValidateOB(ob *nbv1.ObjectBucket, isCLI bool) error {
 	if ob == nil {
 		return nil
 	}
-	return validateAdditionalConfig(ob.Name, ob.Spec.Endpoint.AdditionalConfigData, true)
+	return validateAdditionalConfig(ob.Name, ob.Spec.Endpoint.AdditionalConfigData, true, isCLI)
 }
 
 // Validate additional config
-func validateAdditionalConfig(objectName string, additionalConfig map[string]string, update bool) error {
+func validateAdditionalConfig(objectName string, additionalConfig map[string]string, update bool, isCLI bool) error {
 	if additionalConfig == nil {
 		return nil
 	}
@@ -36,7 +36,7 @@ func validateAdditionalConfig(objectName string, additionalConfig map[string]str
 		return err
 	}
 
-	if err := validations.ValidateReplicationPolicy(objectName, replicationPolicy, update); err != nil {
+	if err := validations.ValidateReplicationPolicy(objectName, replicationPolicy, update, isCLI); err != nil {
 		return err
 	}
 

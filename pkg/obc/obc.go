@@ -188,7 +188,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		obc.Spec.AdditionalConfig["maxObjects"] = maxObjects
 	}
 
-	err := ValidateOBC(obc)
+	err := ValidateOBC(obc, true)
 	if err != nil {
 		log.Fatalf(`❌ Could not create OBC %q in namespace %q validation failed %q`, obc.Name, obc.Namespace, err)
 	}
