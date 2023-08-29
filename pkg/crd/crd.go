@@ -1,6 +1,7 @@
 package crd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -15,6 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/printers"
 )
+
+var ctx = context.TODO()
 
 // CRD is just an alias for a long name
 type CRD = apiextv1.CustomResourceDefinition
@@ -193,8 +196,9 @@ func WaitAllReady() {
 	log := util.Logger()
 	klient := util.KubeClient()
 	crds := LoadCrds()
-	intervalSec := time.Duration(3)
-	util.Panic(wait.PollImmediateInfinite(intervalSec*time.Second, func() (bool, error) {
+	interval := time.Duration(3)
+
+	util.Panic(wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		allReady := true
 		for _, crd := range crds.All {
 			err := klient.Get(util.Context(), client.ObjectKey{Name: crd.Name}, crd)

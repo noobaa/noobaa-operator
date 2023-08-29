@@ -49,7 +49,7 @@ func Add(mgr manager.Manager) error {
 	)
 
 	// Watch for changes on resources to trigger reconcile
-	err = c.Watch(&source.Kind{Type: &nbv1.NooBaaAccount{}}, &handler.EnqueueRequestForObject{},
+	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.NooBaaAccount{}), &handler.EnqueueRequestForObject{},
 		noobaaAccountPredicate, &logEventsPredicate)
 	if err != nil {
 		return err

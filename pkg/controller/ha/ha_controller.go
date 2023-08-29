@@ -89,7 +89,7 @@ func Add(mgr manager.Manager) error {
 	}
 
 	// start watching node state transitions
-	if err := c.Watch(&source.Kind{Type: &corev1.Node{}}, &handler.EnqueueRequestForObject{}, nodeNotReadyPredicate()); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Node{}), &handler.EnqueueRequestForObject{}, nodeNotReadyPredicate()); err != nil {
 		return err
 	}
 

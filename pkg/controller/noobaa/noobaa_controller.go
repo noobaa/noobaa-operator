@@ -75,35 +75,40 @@ func Add(mgr manager.Manager) error {
 	)
 
 	// Watch for changes on resources to trigger reconcile
-	ownerHandler := &handler.EnqueueRequestForOwner{IsController: true, OwnerType: &nbv1.NooBaa{}}
+	ownerHandler := handler.EnqueueRequestForOwner(
+		mgr.GetScheme(),
+		mgr.GetRESTMapper(),
+		&nbv1.NooBaa{},
+		handler.OnlyControllerOwner(),
+	)
 
-	err = c.Watch(&source.Kind{Type: &nbv1.NooBaa{}}, &handler.EnqueueRequestForObject{},
+	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.NooBaa{}), &handler.EnqueueRequestForObject{},
 		noobaaPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &appsv1.StatefulSet{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Pod{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
 	if err != nil {
 		return err
 	}
 
-	storageClassHandler := handler.EnqueueRequestsFromMapFunc(func(mo client.Object) []reconcile.Request {
+	storageClassHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, mo client.Object) []reconcile.Request {
 		sc, ok := mo.(*storagev1.StorageClass)
 		if !ok || sc.Provisioner != options.ObjectBucketProvisionerName() {
 			return nil
@@ -118,7 +123,7 @@ func Add(mgr manager.Manager) error {
 	)
 
 	// Watch for StorageClass changes to trigger reconcile and recreate it when deleted
-	err = c.Watch(&source.Kind{Type: &storagev1.StorageClass{}}, storageClassHandler, &logEventsPredicate)
+	err = c.Watch(source.Kind(mgr.GetCache(), &storagev1.StorageClass{}), storageClassHandler, &logEventsPredicate)
 	if err != nil {
 		return err
 	}

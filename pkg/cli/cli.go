@@ -27,6 +27,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
@@ -81,6 +83,8 @@ func Cmd() *cobra.Command {
 
 	rootCmd.PersistentFlags().AddFlagSet(options.FlagSet)
 	rootCmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
+
+	viperSetup(options.FlagSet)
 
 	optionsCmd := options.Cmd()
 
@@ -153,4 +157,42 @@ Load noobaa completion to bash:
 	templates.UseOptionsTemplates(optionsCmd)
 
 	return rootCmd
+}
+
+func viperSetup(flagsets ...*pflag.FlagSet) {
+	viper.SetConfigName("noobaa.cfg")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("/etc/noobaa/")
+	viper.AddConfigPath("$HOME/.noobaa")
+	viper.AddConfigPath(".")
+
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			logrus.Warn("failed to read config:", err)
+		}
+	} else {
+		logrus.Info("Using config file:", viper.ConfigFileUsed())
+	}
+
+	for _, flagset := range flagsets {
+		if err := viper.BindPFlags(flagset); err != nil {
+			logrus.Warn("failed to bind flags:", err)
+			continue
+		}
+
+		flagset.VisitAll(func(flag *pflag.Flag) {
+			// Instead of using viper.Get interfaces throughout the codebases
+			// we set the value of the flag to the value from viper, so we can use the flag.Value
+			// everywhere.
+			//
+			// # Safety
+			// viper.GetString will not panic even if the flag value is not a string because the internal
+			// casting is type aware.
+			if viper.IsSet(flag.Name) {
+				if err := flag.Value.Set(viper.GetString(flag.Name)); err != nil {
+					logrus.Warn("failed to set flag value:", err)
+				}
+			}
+		})
+	}
 }
