@@ -104,6 +104,7 @@ spec:
               value: nbcore
             - name: POSTGRES_USER
             - name: POSTGRES_PASSWORD
+            - name: POSTGRES_CONNECTION_STRING
             - name: DB_TYPE
               value: mongodb
             - name: CONTAINER_PLATFORM

@@ -3,8 +3,6 @@ package system
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/url"
 	"os"
 	goruntime "runtime"
 	"strings"
@@ -121,8 +119,6 @@ type Reconciler struct {
 	KedaTriggerAuthentication *kedav1alpha1.TriggerAuthentication
 	KedaScaled                *kedav1alpha1.ScaledObject
 	AdapterHPA                *autoscalingv2.HorizontalPodAutoscaler
-	PgExternalHost            string
-	PgExternalPort            string
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -284,9 +280,10 @@ func NewReconciler(
 	r.SecretServer.StringData["jwt"] = util.RandomBase64(16)
 	r.SecretServer.StringData["server_secret"] = util.RandomHex(4)
 
-	r.SecretDB.StringData["user"] = "noobaa"
-	r.SecretDB.StringData["password"] = util.RandomBase64(10)
-	r.SecretDB.StringData["db_name"] = "nbcore"
+	if r.NooBaa.Spec.ExternalPgSecret == nil {
+		r.SecretDB.StringData["user"] = "noobaa"
+		r.SecretDB.StringData["password"] = util.RandomBase64(10)
+	}
 
 	// Set STS default backing store session name
 	r.AWSSTSRoleSessionName = "noobaa-sts-default-backing-store-session"
@@ -309,7 +306,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
 	util.KubeCheck(r.ServiceSts)
-	if r.NooBaa.Spec.MongoDbURL == "" {
+	if r.NooBaa.Spec.MongoDbURL == "" && r.NooBaa.Spec.ExternalPgSecret == nil {
 		if r.NooBaa.Spec.DBType == "postgres" {
 			util.KubeCheck(r.SecretDB)
 			if r.NooBaa.Spec.ExternalPgSecret == nil {
@@ -405,20 +402,10 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			log.Errorf("❌ External DB secret %q was not found or deleted", r.NooBaa.Spec.ExternalPgSecret.Name)
 			return res, nil
 		}
-		u, err := url.Parse(secret.StringData["db_url"])
+		err = CheckPostgresURL(secret.StringData["db_url"])
 		if err != nil {
-			log.Errorf("❌ Failed pasting external DB url in secret: %q", r.NooBaa.Spec.ExternalPgSecret.Name)
+			log.Errorf(`❌ %s`, err)
 			return res, nil
-		}
-		r.SecretDB.StringData["user"] = u.User.Username()
-		r.SecretDB.StringData["password"], _ = u.User.Password()
-		r.SecretDB.StringData["dbname"] = u.Path[1:]
-		r.PgExternalHost = u.Host
-		r.PgExternalPort = "5432"
-		host, port, err := net.SplitHostPort(u.Host)
-		if err == nil {
-			r.PgExternalHost = host
-			r.PgExternalPort = port
 		}
 	}
 

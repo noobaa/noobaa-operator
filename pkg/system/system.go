@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -190,6 +191,13 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 		mongoDbURL := options.MongoDbURL
 		sys.Spec.MongoDbURL = mongoDbURL
 	}
+	if options.PostgresDbURL != "" {
+		sys.Spec.ExternalPgSecret = &corev1.SecretReference{
+			Name:      "noobaa-external-pg-db",
+			Namespace: sys.Namespace,
+		}
+	}
+
 	if options.PVPoolDefaultStorageClass != "" {
 		sc := options.PVPoolDefaultStorageClass
 		sys.Spec.PVPoolDefaultStorageClass = &sc
@@ -369,6 +377,9 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 
 	if options.PostgresDbURL != "" {
+		if sys.Spec.MongoDbURL != "" {
+			log.Fatalf("❌ Can't used both options: postgres-url and mongodb-url, please use only one")
+		}
 		if sys.Spec.DBType != "postgres" {
 			log.Fatalf("❌ expecting the DBType to be postgres when using external PostgresDbURL, got %s", sys.Spec.DBType)
 		}
@@ -378,17 +389,13 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		}
 		o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
 		secret := o.(*corev1.Secret)
-		secret.Namespace = options.Namespace
-		secret.Name = "noobaa-external-pg-db"
+		secret.Namespace = sys.Spec.ExternalPgSecret.Namespace
+		secret.Name = sys.Spec.ExternalPgSecret.Name
 		secret.StringData = map[string]string{
 			"db_url": options.PostgresDbURL,
 		}
 		secret.Data = nil
 		util.KubeCreateSkipExisting(secret)
-		sys.Spec.ExternalPgSecret = &corev1.SecretReference{
-			Name:      secret.Name,
-			Namespace: secret.Namespace,
-		}
 	}
 
 	// TODO check PVC if exist and the system does not exist -
@@ -450,11 +457,10 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	if sys.Spec.ExternalPgSecret != nil {
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "noobaa-external-db",
-				Namespace: options.Namespace,
+				Name:      sys.Spec.ExternalPgSecret.Name,
+				Namespace: sys.Spec.ExternalPgSecret.Namespace,
 			},
 		}
-
 		util.KubeDelete(secret)
 	} else if isMongoDbURL == "" {
 		// NoobaaDB
@@ -673,7 +679,9 @@ func RunSystemVersionsStatus(cmd *cobra.Command, args []string) {
 
 	if isSystemExists {
 		noobaaImage = CheckNooBaaImages(cmd, sys, args)
-		noobaaDbImage = CheckNooBaaDBImages(cmd, sys, args)
+		if sys.Spec.ExternalPgSecret == nil {
+			noobaaDbImage = CheckNooBaaDBImages(cmd, sys, args)
+		}
 		noobaaOperatorImage = CheckOperatorImage(cmd, args)
 	} else {
 		noobaaImage = options.NooBaaImage
@@ -688,7 +696,9 @@ func RunSystemVersionsStatus(cmd *cobra.Command, args []string) {
 	log.Printf("CLI version: %s\n", version.Version)
 	log.Printf("noobaa-image: %s\n", noobaaImage)
 	log.Printf("operator-image: %s\n", noobaaOperatorImage)
-	log.Printf("noobaa-db-image: %s\n", noobaaDbImage)
+	if options.PostgresDbURL == "" && sys.Spec.ExternalPgSecret == nil {
+		log.Printf("noobaa-db-image: %s\n", noobaaDbImage)
+	}
 }
 
 // RunStatus runs a CLI command
@@ -846,7 +856,7 @@ func WaitReady() bool {
 	sysKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
 	interval := time.Duration(3)
 
-	err := wait.PollUntilContextCancel(ctx,interval*time.Second, true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		sys := &nbv1.NooBaa{}
 		err := klient.Get(util.Context(), sysKey, sys)
 		if err != nil {
@@ -1173,6 +1183,15 @@ func CheckMongoURL(sys *nbv1.NooBaa) error {
 
 // CheckPostgresURL checks if the postgresurl structure is valid and if we use postgres as db
 func CheckPostgresURL(postgresDbURL string) error {
+	// This is temporary checks - In next PRs we will change to psql client checks instead
+	u, err := url.Parse(postgresDbURL)
+	if err != nil {
+		return fmt.Errorf("failed parsing external DB url: %q", postgresDbURL)
+	}
+	_, _, err = net.SplitHostPort(u.Host)
+	if err != nil {
+		return fmt.Errorf("failed splitting host and port from external DB url: %q", postgresDbURL)
+	}
 	if !strings.Contains(postgresDbURL, "postgres://") &&
 		!strings.Contains(postgresDbURL, "postgresql://") {
 		return fmt.Errorf("invalid postgres db url %s, expecting the url to start with postgres:// or postgresql://", postgresDbURL)
