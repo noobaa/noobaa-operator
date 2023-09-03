@@ -187,6 +187,29 @@ function install {
     done
 }
 
+function run_external_postgres {
+    kubectl run postgres-external --image=postgres:15 --env POSTGRES_PASSWORD=password --port 5432 --expose
+}
+
+function delete_external_postgres {
+    kubectl delete pod postgres-external
+    kubectl delete service postgres-external
+}
+
+function install_external {    
+    local postgres_url="postgresql://postgres:password@postgres-external.${NAMESPACE}.svc:5432/postgres"
+    echo_time "Installing NooBaa in external postgres mode postgres-url=${postgres_url}"
+    test_noobaa install --mini --postgres-url=${postgres_url}"
+
+    local status=$(kuberun silence get noobaa noobaa -o 'jsonpath={.status.phase}')
+    while [ "${status}" != "Ready" ]
+    do
+        echo_time "💬  Waiting for status Ready, Status is ${status}"
+        sleep 10
+        status=$(kuberun silence get noobaa noobaa -o 'jsonpath={.status.phase}')
+    done
+}
+
 function noobaa_install {
     #noobaa timeout install # Maybe when creating server we can use local PV
     install
@@ -194,6 +217,15 @@ function noobaa_install {
     kuberun get noobaa
     kuberun describe noobaa
     test_admission_deployment
+}
+
+function noobaa_install_external {
+    #noobaa timeout install # Maybe when creating server we can use local PV
+    run_external_postgres
+    install_external
+    test_noobaa status
+    kuberun get noobaa
+    kuberun describe noobaa
 }
 
 function test_admission_deployment {

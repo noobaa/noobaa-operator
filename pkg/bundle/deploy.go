@@ -3655,7 +3655,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "b87bb78e630d9e007b71b5aa7745f5d6b6f1771cdd949735652ddc6ebb6ff9d5"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "bdbc90cf86e4b67acccc7e7413522d46dacf1c2d04d1d5d5e823a2b45e5c9b97"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3752,6 +3752,7 @@ spec:
               value: nbcore
             - name: POSTGRES_USER
             - name: POSTGRES_PASSWORD
+            - name: POSTGRES_CONNECTION_STRING
             - name: VIRTUAL_HOSTS
             - name: REGION
             - name: ENDPOINT_GROUP_ID
@@ -4671,7 +4672,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "71a1afa6000a2ad334ec234951f0cd245d44ceea36fe57c444869accce9c75b7"
+const Sha256_deploy_internal_statefulset_core_yaml = "7020d2a21cd88a51c9e1056c2aac33163f47168b4c1fb326497d22554e31392e"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4779,6 +4780,7 @@ spec:
               value: nbcore
             - name: POSTGRES_USER
             - name: POSTGRES_PASSWORD
+            - name: POSTGRES_CONNECTION_STRING
             - name: DB_TYPE
               value: mongodb
             - name: CONTAINER_PLATFORM

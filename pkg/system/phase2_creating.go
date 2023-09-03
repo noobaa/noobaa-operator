@@ -111,7 +111,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
 		return err
 	}
-	if r.NooBaa.Spec.DBType == "postgres" {
+	if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSecret == nil {
 		if err := r.ReconcileObject(r.SecretDB, nil); err != nil {
 			return err
 		}
@@ -398,32 +398,8 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			}
 
 		case "POSTGRES_HOST":
-			if r.PgExternalHost != "" {
-				c.Env[j].Value = r.PgExternalHost
-			} else {
+			if r.NooBaa.Spec.ExternalPgSecret == nil {
 				c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
-			}
-
-		case "POSTGRES_PORT":
-			if r.PgExternalPort != "" {
-				c.Env[j].Value = r.PgExternalPort
-			} else {
-				c.Env[j].Value = "5432"
-			}
-
-		case "POSTGRES_DBNAME":
-			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSecret != nil {
-				if c.Env[j].Value != "" {
-					c.Env[j].Value = ""
-				}
-				c.Env[j].ValueFrom = &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: r.SecretDB.Name,
-						},
-						Key: "dbname",
-					},
-				}
 			}
 
 		case "DB_TYPE":
@@ -441,7 +417,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
 			}
 		case "POSTGRES_USER":
-			if r.NooBaa.Spec.DBType == "postgres" {
+			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSecret == nil {
 				if c.Env[j].Value != "" {
 					c.Env[j].Value = ""
 				}
@@ -455,7 +431,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				}
 			}
 		case "POSTGRES_PASSWORD":
-			if r.NooBaa.Spec.DBType == "postgres" {
+			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSecret == nil {
 				if c.Env[j].Value != "" {
 					c.Env[j].Value = ""
 				}
@@ -465,6 +441,20 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 							Name: r.SecretDB.Name,
 						},
 						Key: "password",
+					},
+				}
+			}
+		case "POSTGRES_CONNECTION_STRING":
+			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSecret != nil {
+				if c.Env[j].Value != "" {
+					c.Env[j].Value = ""
+				}
+				c.Env[j].ValueFrom = &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: r.NooBaa.Spec.ExternalPgSecret.Name,
+						},
+						Key: "db_url",
 					},
 				}
 			}

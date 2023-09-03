@@ -31,14 +31,23 @@ function post_install_tests {
 }
 
 function main {
-    noobaa_install
+    local install_external=$((RANDOM%2))
+    if [ ${install_external} -eq 0 ]
+    then
+        noobaa_install_external
+    else
+        noobaa_install
+    fi
     if [ "${CM}" == "true" ]
     then
         check_core_config_map
     else
         post_install_tests
     fi
-    noobaa_uninstall
+    if [ ${install_external} -eq 0 ]
+    then
+        delete_external_postgres
+    fi
  }
 
 function usage {
