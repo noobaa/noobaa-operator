@@ -101,6 +101,20 @@ var MongoDbURL = ""
 // it can be overridden for testing or different url.
 var PostgresDbURL = ""
 
+// PostgresSSLRequired is used to force noobaa to work with SSL with external pgsql
+// when using an external postgres DB.
+var PostgresSSLRequired = false
+
+// PostgresSSLSelfSigned is used to allow noobaa to work with self-signed SSL with external pgsql
+// when using an external postgres DB.
+var PostgresSSLSelfSigned = false
+
+// PostgresSSLKey is used for providing the path to the client SSL key file when working with external pgsql
+var PostgresSSLKey = ""
+
+// PostgresSSLCert is used for providing the path to the client SSL cert file when working with external pgsql
+var PostgresSSLCert = ""
+
 // DebugLevel can be used to override the default debug level
 var DebugLevel = "default_level"
 
@@ -231,6 +245,22 @@ func init() {
 	FlagSet.StringVar(
 		&PostgresDbURL, "postgres-url",
 		PostgresDbURL, "url for postgresql",
+	)
+	FlagSet.BoolVar(
+		&PostgresSSLRequired, "pg-ssl-required",
+		false, "Force noobaa to work with ssl (external postgres - server-side) [if server cert is self-signed, needs to add --ssl-unauthorized]",
+	)
+	FlagSet.BoolVar(
+		&PostgresSSLSelfSigned, "pg-ssl-unauthorized",
+		false, "Allow the client to work with self-signed ssl (external postgres - server-side)",
+	)
+	FlagSet.StringVar(
+		&PostgresSSLKey, "pg-ssl-key",
+		PostgresSSLKey, "ssl key for postgres (client-side cert - need to be signed by external pg accepted CA)",
+	)
+	FlagSet.StringVar(
+		&PostgresSSLCert, "pg-ssl-cert",
+		PostgresSSLCert, "ssl cert for postgres (client-side cert - need to be signed by external pg accepted CA)",
 	)
 	FlagSet.StringVar(
 		&DebugLevel, "debug-level",

@@ -1100,6 +1100,11 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 		*out = new(corev1.SecretReference)
 		**out = **in
 	}
+	if in.ExternalPgSSLSecret != nil {
+		in, out := &in.ExternalPgSSLSecret, &out.ExternalPgSSLSecret
+		*out = new(corev1.SecretReference)
+		**out = **in
+	}
 	if in.PVPoolDefaultStorageClass != nil {
 		in, out := &in.PVPoolDefaultStorageClass, &out.PVPoolDefaultStorageClass
 		*out = new(string)

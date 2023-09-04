@@ -1417,6 +1417,29 @@ spec:
                         type: object
                     type: object
                 type: object
+              externalPgSSLRequired:
+                description: ExternalPgSSLRequired (optional) holds an optional boolean
+                  to force ssl connections to the external Postgres DB
+                type: boolean
+              externalPgSSLSecret:
+                description: ExternalPgSSLSecret (optional) holds an optional secret
+                  with client key and cert used for connecting to external Postgres
+                  DB
+                properties:
+                  name:
+                    description: name is unique within a namespace to reference a
+                      secret resource.
+                    type: string
+                  namespace:
+                    description: namespace defines the space within which the secret
+                      name must be unique.
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              externalPgSSLUnauthorized:
+                description: ExternalPgSSLUnauthorized (optional) holds an optional
+                  boolean to allow unauthorized connections to external Postgres DB
+                type: boolean
               externalPgSecret:
                 description: ExternalPgSecret (optional) holds an optional secret
                   with a url to an extrenal Postgres DB to be used

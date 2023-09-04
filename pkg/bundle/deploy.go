@@ -1465,7 +1465,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "a4f5cbe942a050321ada72a0c77e61898d65000b6074e72d784cf1c0ef1816a3"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "ff8f0cf9e0a1429984e9518f0a143634644cfd0b1a955449d36917550ea060ce"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2886,6 +2886,29 @@ spec:
                         type: object
                     type: object
                 type: object
+              externalPgSSLRequired:
+                description: ExternalPgSSLRequired (optional) holds an optional boolean
+                  to force ssl connections to the external Postgres DB
+                type: boolean
+              externalPgSSLSecret:
+                description: ExternalPgSSLSecret (optional) holds an optional secret
+                  with client key and cert used for connecting to external Postgres
+                  DB
+                properties:
+                  name:
+                    description: name is unique within a namespace to reference a
+                      secret resource.
+                    type: string
+                  namespace:
+                    description: namespace defines the space within which the secret
+                      name must be unique.
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              externalPgSSLUnauthorized:
+                description: ExternalPgSSLUnauthorized (optional) holds an optional
+                  boolean to allow unauthorized connections to external Postgres DB
+                type: boolean
               externalPgSecret:
                 description: ExternalPgSecret (optional) holds an optional secret
                   with a url to an extrenal Postgres DB to be used
@@ -3655,7 +3678,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "bdbc90cf86e4b67acccc7e7413522d46dacf1c2d04d1d5d5e823a2b45e5c9b97"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "c6b23dc4cd61b35fcdd53df59074a95df46526823ebd42862289886c8b11ae0f"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3691,6 +3714,10 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
+        - name: external-db-ssl-secret
+          secret:
+            secretName: noobaa-external-db-cert
+            optional: true 
         - name: oidc-token
           projected:
             sources:
@@ -3753,6 +3780,8 @@ spec:
             - name: POSTGRES_USER
             - name: POSTGRES_PASSWORD
             - name: POSTGRES_CONNECTION_STRING
+            - name: POSTGRES_SSL_REQUIRED
+            - name: POSTGRES_SSL_UNAUTHORIZED
             - name: VIRTUAL_HOSTS
             - name: REGION
             - name: ENDPOINT_GROUP_ID
@@ -3784,6 +3813,9 @@ spec:
               readOnly: true
             - name: s3-secret
               mountPath: /etc/s3-secret
+              readOnly: true
+            - name: external-db-ssl-secret
+              mountPath: /etc/external-db-secret
               readOnly: true
             - name: noobaa-auth-token
               mountPath: /etc/noobaa-auth-token
@@ -4672,7 +4704,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "7020d2a21cd88a51c9e1056c2aac33163f47168b4c1fb326497d22554e31392e"
+const Sha256_deploy_internal_statefulset_core_yaml = "d794c900f09e09b0e2be94869f5537271cbc2ab6d806d5182fb7fe2ff950b8ae"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4709,6 +4741,10 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
+        - name: external-db-ssl-secret
+          secret:
+            secretName: noobaa-external-db-cert
+            optional: true 
         - name: noobaa-server
           secret:
             secretName: noobaa-server
@@ -4734,6 +4770,9 @@ spec:
               readOnly: true
             - name: s3-secret
               mountPath: /etc/s3-secret
+              readOnly: true
+            - name: external-db-ssl-secret
+              mountPath: /etc/external-db-secret
               readOnly: true
             - name: noobaa-server
               mountPath: /etc/noobaa-server
@@ -4781,6 +4820,8 @@ spec:
             - name: POSTGRES_USER
             - name: POSTGRES_PASSWORD
             - name: POSTGRES_CONNECTION_STRING
+            - name: POSTGRES_SSL_REQUIRED
+            - name: POSTGRES_SSL_UNAUTHORIZED
             - name: DB_TYPE
               value: mongodb
             - name: CONTAINER_PLATFORM
