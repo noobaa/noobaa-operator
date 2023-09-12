@@ -20,6 +20,7 @@ func Cmd() *cobra.Command {
 	}
 	cmd.AddCommand(
 		CmdCreate(),
+		CmdUpdate(),
 		CmdDelete(),
 		CmdStatus(),
 		CmdList(),
@@ -34,6 +35,18 @@ func CmdCreate() *cobra.Command {
 		Short: "Create a NooBaa bucket",
 		Run:   RunCreate,
 	}
+	cmd.Flags().Bool("force_md5_etag", false, "This flag enables md5 etag calculation for bucket")
+	return cmd
+}
+
+// CmdUpdate returns a CLI command
+func CmdUpdate() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update <bucket-name>",
+		Short: "Update a NooBaa bucket",
+		Run:   RunUpdate,
+	}
+	cmd.Flags().Bool("force_md5_etag", false, "This flag enables md5 etag calculation for bucket")
 	return cmd
 }
 
@@ -82,12 +95,31 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatal(fmt.Errorf("Failed to get default bucketclass with error: %v", err))
 	}
 
-	tierName, err := bucketclass.CreateTieringStructure(*bucketClass.Spec.PlacementPolicy, bucketName, nbClient);
+	tierName, err := bucketclass.CreateTieringStructure(*bucketClass.Spec.PlacementPolicy, bucketName, nbClient)
 	if err != nil {
 		log.Fatal(fmt.Errorf("CreateTieringStructure for PlacementPolicy failed to create policy %q with error: %v", tierName, err))
 	}
 
-	err = nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName, Tiering: tierName})
+	forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
+
+	err = nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName, Tiering: tierName, ForceMd5Etag: forceMd5Etag})
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+// RunUpdate runs a CLI command
+func RunUpdate(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`Missing expected arguments: <bucket-name> %s`, cmd.UsageString())
+	}
+	bucketName := args[0]
+	nbClient := system.GetNBClient()
+
+	forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
+
+	err := nbClient.UpdateBucketAPI(nb.CreateBucketParams{Name: bucketName, ForceMd5Etag: forceMd5Etag})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -129,6 +161,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	}
 	fmt.Printf("  %-22s : %s\n", "Type", b.BucketType)
 	fmt.Printf("  %-22s : %s\n", "Mode", b.Mode)
+	fmt.Printf("  %-22s : %t\n", "Force Md5 Etag", b.ForceMd5Etag)
 	if b.PolicyModes != nil {
 		fmt.Printf("  %-22s : %s\n", "ResiliencyStatus", b.PolicyModes.ResiliencyStatus)
 		fmt.Printf("  %-22s : %s\n", "QuotaStatus", b.PolicyModes.QuotaStatus)

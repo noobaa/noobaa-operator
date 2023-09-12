@@ -56,6 +56,7 @@ func CmdCreate() *cobra.Command {
 		"Should this account be allowed to create new buckets")
 	cmd.Flags().String("default_resource", "", "Set the default resource, on which new buckets will be created")
 	cmd.Flags().Bool("nsfs_account_config", false, "This flag is for creating nsfs account")
+	cmd.Flags().Bool("force_md5_etag", false, "This flag enables md5 etag calculation for account")
 	cmd.Flags().Int("uid", -1, "Set the nsfs uid")
 	cmd.Flags().Int("gid", -1, "Set the nsfs gid")
 	cmd.Flags().String("new_buckets_path", "/", "Change the path where new buckets will be created")
@@ -161,6 +162,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	defaultResource, _ := cmd.Flags().GetString("default_resource")
 
 	nsfsAccountConfig, _ := cmd.Flags().GetBool("nsfs_account_config")
+	forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
 
 	newBucketsPath, _ := cmd.Flags().GetString("new_buckets_path")
 	nsfsOnly, _ := cmd.Flags().GetBool("nsfs_only")
@@ -176,6 +178,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	noobaaAccount.Name = name
 	noobaaAccount.Namespace = options.Namespace
 	noobaaAccount.Spec.AllowBucketCreate = allowBucketCreate
+	noobaaAccount.Spec.ForceMd5Etag = forceMd5Etag
 
 	if nsfsAccountConfig {
 		nsfsUID := util.GetFlagIntOrPrompt(cmd, "uid")
@@ -249,6 +252,7 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	name := args[0]
 
 	newDefaultResource := util.GetFlagStringOrPrompt(cmd, "new_default_resource")
+	forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
 
 	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
 	noobaaAccount := o.(*nbv1.NooBaaAccount)
@@ -276,6 +280,7 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 		}
 
 		noobaaAccount.Spec.DefaultResource = newDefaultResource
+		noobaaAccount.Spec.ForceMd5Etag = forceMd5Etag
 
 		if !util.KubeUpdate(noobaaAccount) {
 			log.Fatalf(`❌ Unable to update account`)
@@ -306,6 +311,7 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 		updateAccountS3AccessParams := nb.UpdateAccountS3AccessParams{
 			Email:           name,
 			DefaultResource: &newDefaultResource,
+			ForceMd5Etag:    forceMd5Etag,
 			S3Access:        accountInfo.HasS3Access,
 		}
 
@@ -579,7 +585,7 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 	noobaaAccountName := args[0]
 	klient := util.KubeClient()
 	interval := time.Duration(3)
-	util.Panic(wait.PollUntilContextCancel(ctx,interval*time.Second, true, func(ctx context.Context) (bool, error) {
+	util.Panic(wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		req := reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Namespace: options.Namespace,

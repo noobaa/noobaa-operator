@@ -50,6 +50,10 @@ spec:
                 description: DefaultResource specifies which backingstore this account
                   will use to create new buckets
                 type: string
+              force_md5_etag:
+                description: ForceMd5Etag specifies whether MD5 Etags should be calculated
+                  for the account or not
+                type: boolean
               nsfs_account_config:
                 description: NsfsAccountConfig specifies the configurations on Namespace
                   FS

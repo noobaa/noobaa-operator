@@ -66,6 +66,10 @@ type NooBaaAccountSpec struct {
 	// DefaultResource specifies which backingstore this account will use to create new buckets
 	// +optional
 	DefaultResource string `json:"default_resource,omitempty"`
+
+	// ForceMd5Etag specifies whether MD5 Etags should be calculated for the account or not
+	// +optional
+	ForceMd5Etag bool `json:"force_md5_etag,omitempty"`
 }
 
 // AccountNsfsConfig is the configuration of NSFS of CreateAccountParams

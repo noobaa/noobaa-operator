@@ -1282,7 +1282,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaaaccounts_yaml = "3149151150a7deefb0922e2dc20988c292935c9adbc2deda65b191cc44909a38"
+const Sha256_deploy_crds_noobaa_io_noobaaaccounts_yaml = "27b83df8c18c92d9ad5d1d759234dba67011ec003c02323464ebd8569a7d548d"
 
 const File_deploy_crds_noobaa_io_noobaaaccounts_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -1336,6 +1336,10 @@ spec:
                 description: DefaultResource specifies which backingstore this account
                   will use to create new buckets
                 type: string
+              force_md5_etag:
+                description: ForceMd5Etag specifies whether MD5 Etags should be calculated
+                  for the account or not
+                type: boolean
               nsfs_account_config:
                 description: NsfsAccountConfig specifies the configurations on Namespace
                   FS
