@@ -242,6 +242,10 @@ const (
 	// Test ENV minimal resources
 	testEnvMinCPUString    string = "50m"
 	testEnvMinMemoryString string = "200Mi"
+
+	// Dev ENV minimal resources
+	devEnvMinCPUString    string = "500m"
+	devEnvMinMemoryString string = "500Mi"
 )
 
 // CmdCreatePVPool returns a CLI command

@@ -434,7 +434,7 @@ func KubeDelete(obj client.Object, opts ...client.DeleteOption) bool {
 	}
 
 	time.Sleep(10 * time.Millisecond)
-	
+
 	err = wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
 		err := klient.Delete(ctx, obj, opts...)
 		if err == nil {
@@ -2153,6 +2153,16 @@ func FilterSlice[V any](slice []V, f func(V) bool) []V {
 func IsTestEnv() bool {
 	testEnv, ok := os.LookupEnv("TEST_ENV")
 	if ok && testEnv == "true" {
+		return true
+	}
+	return false
+}
+
+// IsDevEnv checks for DEV_ENV env var existance and equality
+// to true and returns true or false accordingly
+func IsDevEnv() bool {
+	devEnv, ok := os.LookupEnv("DEV_ENV")
+	if ok && devEnv == "true" {
 		return true
 	}
 	return false

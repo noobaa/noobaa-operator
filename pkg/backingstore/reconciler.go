@@ -1397,6 +1397,7 @@ func (r *Reconciler) upgradeBackingStore(sts *appsv1.StatefulSet) error {
 }
 
 func (r *Reconciler) reconcileResources(src, dst *corev1.ResourceList, minCPU, minMem resource.Quantity) error {
+	log := r.Logger
 	cpu := minCPU
 	mem := minMem
 
@@ -1416,6 +1417,7 @@ func (r *Reconciler) reconcileResources(src, dst *corev1.ResourceList, minCPU, m
 			mem = qty
 		}
 	}
+	log.Infof("BackingStore %q was created with resurce cpu:%v mem:%v.", r.BackingStore.Name, cpu, mem)
 
 	(*dst)[corev1.ResourceCPU] = cpu
 	(*dst)[corev1.ResourceMemory] = mem
@@ -1430,6 +1432,10 @@ func getMinimalResourcesByEnv() (string, string) {
 	if util.IsTestEnv() {
 		minCPUStringByEnv = testEnvMinCPUString
 		minMemoryStringByEnv = testEnvMinMemoryString
+	}
+	if util.IsDevEnv() {
+		minCPUStringByEnv = devEnvMinCPUString
+		minMemoryStringByEnv = devEnvMinMemoryString
 	}
 	return minCPUStringByEnv, minMemoryStringByEnv
 }
