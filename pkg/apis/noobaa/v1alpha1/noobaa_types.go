@@ -311,6 +311,10 @@ type NooBaaStatus struct {
 	// +optional
 	UpgradePhase UpgradePhase `json:"upgradePhase,omitempty"`
 
+	// Upgrade reports the status of the ongoing postgres upgrade process
+	// +optional
+	PostgresUpdatePhase UpgradePhase `json:"postgresUpdatePhase,omitempty"`
+
 	// Readme is a user readable string with explanations on the system
 	// +optional
 	Readme string `json:"readme,omitempty"`
@@ -318,6 +322,10 @@ type NooBaaStatus struct {
 	// LastKeyRotateTime is the time system ran an encryption key rotate
 	// +optional
 	LastKeyRotateTime metav1.Time `json:"lastKeyRotateTime,omitempty"`
+
+	// LastKeyRotateTime is the time system ran an encryption key rotate
+	// +optional
+	BeforeUpgradeDbImage *string `json:"beforeUpgradeDbImage,omitempty"`
 }
 
 // SystemPhase is a string enum type for system phases
@@ -460,6 +468,10 @@ const (
 	UpgradePhaseClean UpgradePhase = "Cleanning"
 
 	UpgradePhaseFinished UpgradePhase = "DoneUpgrade"
+
+	UpgradePhaseFailed UpgradePhase = "Reverting"
+
+	UpgradePhaseUpgrade UpgradePhase = "Upgrading"
 )
 
 // CleanupPolicySpec specifies the cleanup policy

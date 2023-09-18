@@ -127,6 +127,11 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		if err := r.UpgradeSplitDB(); err != nil {
 			return err
 		}
+
+		if err := r.UpgradePostgresDB(); err != nil {
+			return err
+		}
+
 		if err := r.ReconcileDB(); err != nil {
 			return err
 		}
@@ -163,7 +168,6 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 			return err
 		}
 	}
-
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}
@@ -298,7 +302,6 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
 		if c.Name == "db" {
-
 			c.Image = GetDesiredDBImage(r.NooBaa)
 			if r.NooBaa.Spec.DBResources != nil {
 				c.Resources = *r.NooBaa.Spec.DBResources
@@ -1063,6 +1066,7 @@ func (r *Reconciler) ReconcileDB() error {
 	}
 
 	if r.NooBaa.Spec.DBType == "postgres" {
+
 		// those are config maps required by the NooBaaPostgresDB StatefulSet,
 		// if the configMap was not created at this step, NooBaaPostgresDB
 		// would fail to start.
@@ -1075,6 +1079,13 @@ func (r *Reconciler) ReconcileDB() error {
 		isDBConfUpdated, reconcileDbError := r.ReconcileDBConfigMap(r.PostgresDBConf, r.SetDesiredPostgresDBConf)
 		if reconcileDbError != nil {
 			return reconcileDbError
+		}
+
+		phase := r.NooBaa.Status.PostgresUpdatePhase
+		// during postgres upgrade, don't reconcile DB
+		if phase != nbv1.UpgradePhaseFinished && phase != nbv1.UpgradePhaseNone {
+			r.Logger.Infof("during postgres db upgrade")
+			return nil
 		}
 
 		result, reconcilePostgresError := r.reconcileObjectAndGetResult(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB, false)
@@ -1128,7 +1139,7 @@ func (r *Reconciler) SetDesiredPostgresDBConf() error {
 // SetDesiredPostgresDBInitDb fill desired postgres db init config map
 func (r *Reconciler) SetDesiredPostgresDBInitDb() error {
 	postgresDBInitDbYaml := util.KubeObject(bundle.File_deploy_internal_configmap_postgres_initdb_yaml).(*corev1.ConfigMap)
-	r.PostgresDBConf.Data = postgresDBInitDbYaml.Data
+	r.PostgresDBInitDb.Data = postgresDBInitDbYaml.Data
 	return nil
 }
 
@@ -1421,6 +1432,183 @@ func (r *Reconciler) UpgradeMigrateDB() error {
 		return err
 	}
 	return nil
+}
+
+func (r *Reconciler) ReconcileSetDbImageAndInitCode(targetImage string, initScript string) error {
+	if err := r.ReconcileObject(r.NooBaaPostgresDB, func() error {
+		podSpec := &r.NooBaaPostgresDB.Spec.Template.Spec
+		podSpec.ServiceAccountName = "noobaa"
+		for i := range podSpec.InitContainers {
+			c := &podSpec.InitContainers[i]
+			if c.Name == "upgrade-db" {
+				c.Command = []string{"sh", "-x", initScript}
+				c.Image = targetImage
+			}
+		}
+		for i := range podSpec.Containers {
+			c := &podSpec.Containers[i]
+			if c.Name == "db" {
+				c.Image = targetImage
+			}
+		}
+		return nil
+	}); err != nil {
+		r.Logger.Errorf("got error on postgres STS reconcile %v", err)
+		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) HasUpgradeDbContainerFailed(dbPod *corev1.Pod) bool {
+	//when init container restart policy is Always, pod state will not be set to failed on container error.
+	//check for persistent error in container
+	for i := range dbPod.Status.InitContainerStatuses {
+		if dbPod.Status.InitContainerStatuses[i].Name == "upgrade-db" {
+			if dbPod.Status.InitContainerStatuses[i].State.Waiting != nil && dbPod.Status.InitContainerStatuses[i].State.Waiting.Reason == "CrashLoopBackOff" {
+				return true
+			}
+			break
+		}
+	}
+	return false
+}
+
+func (r *Reconciler) RevertPostgresUpgrade() error {
+	r.Logger.Infof("RevertPostgresUpgrade reverting postgres upgrade to original database image")
+	if err := r.ReconcileSetDbImageAndInitCode(*r.NooBaa.Status.BeforeUpgradeDbImage, "/init/revertdb.sh"); err != nil {
+		r.Logger.Errorf("got error on postgres STS reconcile %v", err)
+		return err
+	}
+	//override DB image with older image
+	if err := r.ReconcileObject(r.NooBaa, func() error {
+		r.NooBaa.Spec.DBImage = r.NooBaa.Status.BeforeUpgradeDbImage
+		return nil
+	}); err != nil {
+		return err
+	}
+	//since DB pod is in failed state need to restart it
+	restartError := r.RestartDbPods()
+	if restartError != nil {
+		r.Logger.Warn("Unable to restart db pods")
+	}
+	return nil
+}
+
+func (r *Reconciler) UpgradePostgresDB() error {
+	phase := r.NooBaa.Status.PostgresUpdatePhase
+	if phase == nbv1.UpgradePhaseFinished || phase == nbv1.UpgradePhaseNone {
+		return nil
+	}
+
+	var err error = nil
+	hasInitContainerFailed := false
+	switch phase {
+
+	case "":
+		sts := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
+		if r.NooBaa.Spec.DBType == "postgres" {
+			sts.Name = "noobaa-db-pg"
+		}
+		sts.Namespace = options.Namespace
+		//postgres database doesn't exists, no need to upgrade.
+		if !util.KubeCheckQuiet(sts) {
+			phase = nbv1.UpgradePhaseNone
+			break
+		}
+
+		oldImage := sts.Spec.Template.Spec.Containers[0].Image
+		if oldImage == GetDesiredDBImage(r.NooBaa) {
+			phase = nbv1.UpgradePhaseNone
+		} else {
+			r.Logger.Infof("UpgradePostgresDB: setting phase to %s", nbv1.UpgradePhasePrepare)
+			phase = nbv1.UpgradePhasePrepare
+			r.NooBaa.Status.BeforeUpgradeDbImage = &oldImage
+		}
+
+	case nbv1.UpgradePhasePrepare:
+
+		r.Logger.Infof("UpgradePostgresDB phase nbv1.UpgradePhasePrepare")
+		if err = r.ReconcileObject(r.NooBaaPostgresDB, func() error {
+			podSpec := &r.NooBaaPostgresDB.Spec.Template.Spec
+			upgradeContainer := podSpec.InitContainers[0]
+			upgradeContainer.Name = "upgrade-db"
+			upgradeContainer.Command = []string{"sh", "-x", "/init/dumpdb.sh"}
+			podSpec.InitContainers = append(podSpec.InitContainers, upgradeContainer)
+			return nil
+		}); err != nil {
+			r.Logger.Errorf("got error on postgres STS reconcile %v", err)
+			break
+		}
+		phase = nbv1.UpgradePhaseUpgrade
+
+	case nbv1.UpgradePhaseUpgrade:
+		r.Logger.Infof("UpgradePostgresDB phase nbv1.UpgradePhaseUpgrade")
+		dbPod := &corev1.Pod{}
+		dbPod.Name = "noobaa-db-pg-0"
+		dbPod.Namespace = r.NooBaaPostgresDB.Namespace
+		if !util.KubeCheckQuiet(dbPod) {
+			return nil
+		}
+		if r.HasUpgradeDbContainerFailed(dbPod) {
+			r.Logger.Errorf("upgrade-db container failed. set to revert the image")
+			hasInitContainerFailed = true
+			break
+		}
+		// make sure previous step has finished
+		if dbPod.Status.Phase != "Running" || dbPod.ObjectMeta.DeletionTimestamp != nil {
+			return nil
+		}
+		if err = r.ReconcileSetDbImageAndInitCode(GetDesiredDBImage(r.NooBaa), "/init/upgradedb.sh"); err != nil {
+			r.Logger.Errorf("got error on postgres STS reconcile %v", err)
+			break
+		}
+		phase = nbv1.UpgradePhaseClean
+
+	case nbv1.UpgradePhaseClean:
+		r.Logger.Infof("UpgradePostgresDB phase nbv1.UpgradePhaseClean")
+		dbPod := &corev1.Pod{}
+		dbPod.Name = "noobaa-db-pg-0"
+		dbPod.Namespace = r.NooBaaPostgresDB.Namespace
+		if !util.KubeCheckQuiet(dbPod) {
+			return nil
+		}
+		if r.HasUpgradeDbContainerFailed(dbPod) {
+			r.Logger.Errorf("upgrade-db container failed. setting phase to nbv1.UpgradePhaseFailed")
+			hasInitContainerFailed = true
+			break
+		}
+		if dbPod.Status.Phase != "Running" && dbPod.ObjectMeta.DeletionTimestamp == nil {
+			return nil
+		}
+		//remove upgrade-db container
+		if err = r.ReconcileObject(r.NooBaaPostgresDB, func() error {
+			podSpec := &r.NooBaaPostgresDB.Spec.Template.Spec
+			podSpec.ServiceAccountName = "noobaa"
+			for i := range podSpec.InitContainers {
+				c := &podSpec.InitContainers[i]
+				if c.Name == "upgrade-db" {
+					podSpec.InitContainers = append(podSpec.InitContainers[:i], podSpec.InitContainers[i+1:]...)
+				}
+			}
+			return nil
+		}); err != nil {
+			r.Logger.Errorf("got error on postgres STS reconcile %v", err)
+			break
+		}
+		phase = nbv1.UpgradePhaseFinished
+	}
+
+	if (err != nil && util.IsPersistentError(err)) || hasInitContainerFailed {
+		err = r.RevertPostgresUpgrade()
+		if err == nil {
+			phase = nbv1.UpgradePhaseClean
+		}
+	}
+
+	r.NooBaa.Status.PostgresUpdatePhase = phase
+	err = r.UpdateStatus()
+
+	return err
 }
 
 // CleanupMigrationJob deletes the migration job and all its pods

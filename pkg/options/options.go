@@ -67,7 +67,7 @@ var OperatorImage = "noobaa/noobaa-operator:" + version.Version
 var CosiSideCarImage = "gcr.io/k8s-staging-sig-storage/objectstorage-sidecar/objectstorage-sidecar:v20221117-v0.1.0-22-g0e67387"
 
 // NooBaaImage is the container image url built from https://github.com/noobaa/noobaa-core
-// it can be overridden for testing or different registry locations.
+// it can be overridden for testing or dgraifferent registry locations.
 var NooBaaImage = ContainerImage
 
 // DBImage is the default db image url
@@ -76,7 +76,7 @@ var DBImage = "centos/mongodb-36-centos7"
 
 // DBPostgresImage is the default postgres db image url
 // currently it can not be overridden.
-var DBPostgresImage = "centos/postgresql-12-centos7"
+var DBPostgresImage = "quay.io/sclorg/postgresql-15-c8s"
 
 // DBMongoImage is the default mongo db image url
 // this is used during migration to solve issues where mongo STS referencing to postgres image
