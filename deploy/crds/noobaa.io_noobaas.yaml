@@ -1630,6 +1630,10 @@ spec:
                 description: ActualImage is set to report which image the operator
                   is using
                 type: string
+              beforeUpgradeDbImage:
+                description: BeforeUpgradeDbImage is the db image used before last
+                  db upgrade
+                type: string
               conditions:
                 description: Conditions is a list of conditions related to operator
                   reconciliation
@@ -1688,6 +1692,10 @@ spec:
               phase:
                 description: Phase is a simple, high-level summary of where the System
                   is in its lifecycle
+                type: string
+              postgresUpdatePhase:
+                description: Upgrade reports the status of the ongoing postgres upgrade
+                  process
                 type: string
               readme:
                 description: Readme is a user readable string with explanations on
