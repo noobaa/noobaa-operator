@@ -199,6 +199,11 @@ test-cli-flow:
 	@echo "✅ test-cli-flow"
 .PHONY: test-cli-flow
 
+test-cli-flow-dev:
+	$(TIME) ./test/cli/test_cli_flow.sh --dev
+	@echo "✅ test-cli-flow-dev"
+.PHONY: test-cli-flow-dev
+
 test-core-config-map-flow:
 	$(TIME) ./test/cli/test_cli_flow.sh --check_core_config_map
 	@echo "✅ test-core-config-map-flow"

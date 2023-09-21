@@ -122,6 +122,15 @@ func RunInstall(cmd *cobra.Command, args []string) {
 		})
 		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
 	}
+	devEnv, _ := cmd.Flags().GetBool("dev")
+	if devEnv {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "DEV_ENV",
+			Value: "true",
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
 
 	admission, _ := cmd.Flags().GetBool("admission")
 	if admission {
