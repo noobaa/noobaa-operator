@@ -1229,6 +1229,11 @@ func (in *NooBaaStatus) DeepCopyInto(out *NooBaaStatus) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.LastKeyRotateTime.DeepCopyInto(&out.LastKeyRotateTime)
+	if in.BeforeUpgradeDbImage != nil {
+		in, out := &in.BeforeUpgradeDbImage, &out.BeforeUpgradeDbImage
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

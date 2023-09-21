@@ -76,7 +76,7 @@ var DBImage = "centos/mongodb-36-centos7"
 
 // DBPostgresImage is the default postgres db image url
 // currently it can not be overridden.
-var DBPostgresImage = "centos/postgresql-12-centos7"
+var DBPostgresImage = "quay.io/sclorg/postgresql-15-c9s"
 
 // DBMongoImage is the default mongo db image url
 // this is used during migration to solve issues where mongo STS referencing to postgres image
