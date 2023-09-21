@@ -1465,7 +1465,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "ff8f0cf9e0a1429984e9518f0a143634644cfd0b1a955449d36917550ea060ce"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "a7ca2ae03afb7867c79c21afa2d527e8beaf5d6796d99f18cc012cb9b71ca687"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3098,6 +3098,10 @@ spec:
                 description: ActualImage is set to report which image the operator
                   is using
                 type: string
+              beforeUpgradeDbImage:
+                description: LastKeyRotateTime is the time system ran an encryption
+                  key rotate
+                type: string
               conditions:
                 description: Conditions is a list of conditions related to operator
                   reconciliation
@@ -3156,6 +3160,10 @@ spec:
               phase:
                 description: Phase is a simple, high-level summary of where the System
                   is in its lifecycle
+                type: string
+              postgresUpdatePhase:
+                description: Upgrade reports the status of the ongoing postgres upgrade
+                  process
                 type: string
               readme:
                 description: Readme is a user readable string with explanations on
@@ -3635,7 +3643,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "016881f9a5e0561dbf10e7034dead0ee636556c162439d4d54c974a65253357c"
+const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "0fb7b894ad36558db863698237cfb55b7908c40ee6286db110f6c97c9f362717"
 
 const File_deploy_internal_configmap_postgres_initdb_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3676,6 +3684,37 @@ data:
                  -e 's/^pg_ctl\sstart.*/pg_ctl start || true/'                                   \
                     /usr/bin/run-postgresql
           su postgres -c "bash -x /usr/bin/run-postgresql"
+
+            
+  dumpdb.sh: |
+          set -e
+          sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
+          su postgres -c "bash -x /usr/bin/run-postgresql" &
+          until pg_isready; do sleep 1; done;
+            pg_dumpall -U postgres > /$HOME/data/dump.sql
+          exit 0
+
+  upgradedb.sh: |
+          set -e
+          PGDATA=$HOME/data/userdata
+          PGDATA_new=$HOME/data/userdata-new
+          mv $PGDATA $PGDATA_new
+          sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
+          su postgres -c "bash -x /usr/bin/run-postgresql" &
+          until pg_isready; do sleep 1; done;
+          psql -U postgres < /$HOME/data/dump.sql
+          rm /$HOME/data/dump.sql
+          rm -rf $PGDATA_new
+          exit 0
+
+  revertdb.sh: |
+          PGDATA=$HOME/data/userdata
+          PGDATA_new=$HOME/data/userdata-new
+          if [ -d $PGDATA_new ]; then
+            rm -rf $PGDATA
+            mv $PGDATA_new $PGDATA
+          fi
+          exit 0
 `
 
 const Sha256_deploy_internal_deployment_endpoint_yaml = "bd3efd480e3a73ebdc64acfbde114f938283604a7a8291d94a280b535a5c81cd"

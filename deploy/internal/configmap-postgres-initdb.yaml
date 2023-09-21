@@ -37,3 +37,34 @@ data:
                  -e 's/^pg_ctl\sstart.*/pg_ctl start || true/'                                   \
                     /usr/bin/run-postgresql
           su postgres -c "bash -x /usr/bin/run-postgresql"
+
+            
+  dumpdb.sh: |
+          set -e
+          sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
+          su postgres -c "bash -x /usr/bin/run-postgresql" &
+          until pg_isready; do sleep 1; done;
+            pg_dumpall -U postgres > /$HOME/data/dump.sql
+          exit 0
+
+  upgradedb.sh: |
+          set -e
+          PGDATA=$HOME/data/userdata
+          PGDATA_new=$HOME/data/userdata-new
+          mv $PGDATA $PGDATA_new
+          sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
+          su postgres -c "bash -x /usr/bin/run-postgresql" &
+          until pg_isready; do sleep 1; done;
+          psql -U postgres < /$HOME/data/dump.sql
+          rm /$HOME/data/dump.sql
+          rm -rf $PGDATA_new
+          exit 0
+
+  revertdb.sh: |
+          PGDATA=$HOME/data/userdata
+          PGDATA_new=$HOME/data/userdata-new
+          if [ -d $PGDATA_new ]; then
+            rm -rf $PGDATA
+            mv $PGDATA_new $PGDATA
+          fi
+          exit 0
