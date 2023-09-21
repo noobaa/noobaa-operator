@@ -119,6 +119,8 @@ type Reconciler struct {
 	KedaTriggerAuthentication *kedav1alpha1.TriggerAuthentication
 	KedaScaled                *kedav1alpha1.ScaledObject
 	AdapterHPA                *autoscalingv2.HorizontalPodAutoscaler
+	ExternalPgSecret          *corev1.Secret
+	ExternalPgSSLSecret       *corev1.Secret
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -392,19 +394,27 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	if r.NooBaa.Spec.ExternalPgSecret != nil {
-		secret := &corev1.Secret{
+		r.ExternalPgSecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: r.NooBaa.Spec.ExternalPgSecret.Namespace,
 				Name:      r.NooBaa.Spec.ExternalPgSecret.Name,
 			},
 		}
-		if !util.KubeCheck(secret) {
+		if !util.KubeCheck(r.ExternalPgSecret) {
 			log.Errorf("❌ External DB secret %q was not found or deleted", r.NooBaa.Spec.ExternalPgSecret.Name)
 			return res, nil
 		}
-		err = CheckPostgresURL(secret.StringData["db_url"])
-		if err != nil {
-			log.Errorf(`❌ %s`, err)
+	}
+
+	if r.NooBaa.Spec.ExternalPgSSLSecret != nil {
+		r.ExternalPgSSLSecret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.NooBaa.Spec.ExternalPgSSLSecret.Namespace,
+				Name:      r.NooBaa.Spec.ExternalPgSSLSecret.Name,
+			},
+		}
+		if !util.KubeCheck(r.ExternalPgSSLSecret) {
+			log.Errorf("❌ External DB secret %q was not found or deleted", r.NooBaa.Spec.ExternalPgSecret.Name)
 			return res, nil
 		}
 	}

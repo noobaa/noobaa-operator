@@ -519,6 +519,14 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
 			}
+			if r.ExternalPgSSLSecret != nil && util.KubeCheckQuiet(r.ExternalPgSSLSecret) {
+				secretVolumeMounts := []corev1.VolumeMount{{
+					Name:      r.ExternalPgSSLSecret.Name,
+					MountPath: "/etc/external-db-secret",
+					ReadOnly:  true,
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &secretVolumeMounts)
+			}
 		}
 	}
 	if r.NooBaa.Spec.ImagePullSecret == nil {
@@ -577,6 +585,17 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			},
 		}}
 		util.MergeVolumeList(&podSpec.Volumes, &configMapVolumes)
+	}
+	if r.ExternalPgSSLSecret != nil && util.KubeCheckQuiet(r.ExternalPgSSLSecret) {
+		secretVolumes := []corev1.Volume{{
+			Name: r.ExternalPgSSLSecret.Name,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: r.ExternalPgSSLSecret.Name,
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &secretVolumes)
 	}
 	return nil
 }

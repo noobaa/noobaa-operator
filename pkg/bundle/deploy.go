@@ -3678,7 +3678,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "c6b23dc4cd61b35fcdd53df59074a95df46526823ebd42862289886c8b11ae0f"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "bd3efd480e3a73ebdc64acfbde114f938283604a7a8291d94a280b535a5c81cd"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3714,10 +3714,6 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
-        - name: external-db-ssl-secret
-          secret:
-            secretName: noobaa-external-db-cert
-            optional: true 
         - name: oidc-token
           projected:
             sources:
@@ -3813,9 +3809,6 @@ spec:
               readOnly: true
             - name: s3-secret
               mountPath: /etc/s3-secret
-              readOnly: true
-            - name: external-db-ssl-secret
-              mountPath: /etc/external-db-secret
               readOnly: true
             - name: noobaa-auth-token
               mountPath: /etc/noobaa-auth-token
@@ -4704,7 +4697,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "d794c900f09e09b0e2be94869f5537271cbc2ab6d806d5182fb7fe2ff950b8ae"
+const Sha256_deploy_internal_statefulset_core_yaml = "0489de0ea1cd3904274a8f58a5bca789592eab4991e911ce7703d238a223a168"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4741,10 +4734,6 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
-        - name: external-db-ssl-secret
-          secret:
-            secretName: noobaa-external-db-cert
-            optional: true 
         - name: noobaa-server
           secret:
             secretName: noobaa-server
@@ -4770,9 +4759,6 @@ spec:
               readOnly: true
             - name: s3-secret
               mountPath: /etc/s3-secret
-              readOnly: true
-            - name: external-db-ssl-secret
-              mountPath: /etc/external-db-secret
               readOnly: true
             - name: noobaa-server
               mountPath: /etc/noobaa-server

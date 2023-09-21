@@ -32,10 +32,6 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
-        - name: external-db-ssl-secret
-          secret:
-            secretName: noobaa-external-db-cert
-            optional: true 
         - name: oidc-token
           projected:
             sources:
@@ -131,9 +127,6 @@ spec:
               readOnly: true
             - name: s3-secret
               mountPath: /etc/s3-secret
-              readOnly: true
-            - name: external-db-ssl-secret
-              mountPath: /etc/external-db-secret
               readOnly: true
             - name: noobaa-auth-token
               mountPath: /etc/noobaa-auth-token

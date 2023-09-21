@@ -493,6 +493,24 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 		util.MergeVolumeMountList(&container.VolumeMounts, &configMapVolumeMounts)
 	}
 
+	if r.ExternalPgSSLSecret != nil && util.KubeCheckQuiet(r.ExternalPgSSLSecret) {
+		secretVolumes := []corev1.Volume{{
+			Name: r.ExternalPgSSLSecret.Name,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: r.ExternalPgSSLSecret.Name,
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &secretVolumes)
+		secretVolumeMounts := []corev1.VolumeMount{{
+			Name:      r.ExternalPgSSLSecret.Name,
+			MountPath: "/etc/external-db-secret",
+			ReadOnly:  true,
+		}}
+		util.MergeVolumeMountList(&container.VolumeMounts, &secretVolumeMounts)
+	}
+
 	r.setDesiredRootMasterKeyMounts(podSpec, container)
 
 	for _, nsStore := range namespaceStoreList.Items {

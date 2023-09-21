@@ -33,10 +33,6 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
-        - name: external-db-ssl-secret
-          secret:
-            secretName: noobaa-external-db-cert
-            optional: true 
         - name: noobaa-server
           secret:
             secretName: noobaa-server
@@ -62,9 +58,6 @@ spec:
               readOnly: true
             - name: s3-secret
               mountPath: /etc/s3-secret
-              readOnly: true
-            - name: external-db-ssl-secret
-              mountPath: /etc/external-db-secret
               readOnly: true
             - name: noobaa-server
               mountPath: /etc/noobaa-server

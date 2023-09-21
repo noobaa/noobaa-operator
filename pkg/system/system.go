@@ -1219,7 +1219,7 @@ func CheckPostgresURL(postgresDbURL string) error {
 	// This is temporary checks - In next PRs we will change to psql client checks instead
 	u, err := url.Parse(postgresDbURL)
 	if err != nil {
-		return fmt.Errorf("failed parsing external DB url: %q", postgresDbURL)
+		return fmt.Errorf("failed parsing external DB url: %q, error: %s", postgresDbURL, err)
 	}
 	_, _, err = net.SplitHostPort(u.Host)
 	if err != nil {

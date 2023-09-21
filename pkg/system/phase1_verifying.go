@@ -1,8 +1,12 @@
 package system
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
+
+	// this is the driver we are using for psql
+	_ "github.com/lib/pq"
 
 	"github.com/asaskevich/govalidator"
 	semver "github.com/coreos/go-semver/semver"
@@ -27,6 +31,34 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 
 	if r.JoinSecret != nil {
 		if err := r.CheckJoinSecret(); err != nil {
+			return err
+		}
+	}
+
+	if r.ExternalPgSecret != nil {
+		if r.ExternalPgSecret.StringData["db_url"] == "" {
+			return util.NewPersistentError("InvalidExternalPgSecert",
+				"ExternalPgSecret is missing db_url")
+		}
+		if r.ExternalPgSSLSecret != nil {
+			if r.ExternalPgSSLSecret.StringData["tls.key"] == "" ||
+				r.ExternalPgSSLSecret.StringData["tls.crt"] == "" {
+				return util.NewPersistentError("InvalidExternalPgCert",
+					fmt.Sprintf("%q is missing private key (must be tls.key)"+
+						" or missing cert key (must be tls.cert)", r.ExternalPgSSLSecret.Name))
+			}
+			err := os.WriteFile("/tmp/tls.key", []byte(r.ExternalPgSSLSecret.StringData["tls.key"]), 0600)
+			if err != nil {
+				return fmt.Errorf("failed to write k8s secret tls.key content to a file %v", err)
+			}
+			err = os.WriteFile("/tmp/tls.crt", []byte(r.ExternalPgSSLSecret.StringData["tls.crt"]), 0644)
+			if err != nil {
+				return fmt.Errorf("failed to write k8s secret tls.key content to a file %v", err)
+			}
+			os.Setenv("PGSSLKEY", "/tmp/tls.key")
+			os.Setenv("PGSSLCERT", "/tmp/tls.crt")
+		}
+		if err := r.checkExternalPg(r.ExternalPgSecret.StringData["db_url"]); err != nil {
 			return err
 		}
 	}
@@ -168,6 +200,59 @@ func (r *Reconciler) CheckJoinSecret() error {
 	if r.JoinSecret.StringData["auth_token"] == "" {
 		return util.NewPersistentError("InvalidJoinSecert",
 			"JoinSecret is missing auth_token")
+	}
+	return nil
+}
+
+func (r *Reconciler) checkExternalPg(postgresDbURL string) error {
+	dbURL := r.ExternalPgSecret.StringData["db_url"]
+	if r.NooBaa.Spec.ExternalPgSSLRequired {
+		if !r.NooBaa.Spec.ExternalPgSSLUnauthorized {
+			dbURL += "?sslmode=verify-full" // won't allow self-signed certs
+		} // when we want to allow self-signed we will use the default sslmode=require
+	} else {
+		dbURL += "?sslmode=disable" // don't use ssl - the default is to use it
+	}
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		return util.NewPersistentError("InvalidExternalPgUrl",
+			fmt.Sprintf("failed openning a connection to external DB url: %q, error: %s",
+				dbURL, err))
+	}
+	defer db.Close()
+	err = db.Ping()
+	if err != nil {
+		return util.NewPersistentError("InvalidExternalPgUrl",
+			fmt.Sprintf("failed pinging external DB url: %q, error: %s",
+				dbURL, err))
+	}
+	// Query the PostgreSQL version
+	var version string
+	err = db.QueryRow("SELECT current_setting('server_version_num')::integer / 10000").Scan(&version)
+	if err != nil {
+		return util.NewPersistentError("InvalidExternalPgVersion",
+			fmt.Sprintf("failed getting version of external DB url: %q, error: %s",
+				dbURL, err))
+	}
+	// Check if the version is 15
+	if version != "15" {
+		return util.NewPersistentError("InvalidExternalPgVersion",
+			fmt.Sprintf("version of external DB %q, is not supported: %s",
+				dbURL, version))
+	}
+	// Query the database's collation
+	var collation string
+	err = db.QueryRow("SELECT datcollate FROM pg_database WHERE datname = current_database()").Scan(&collation)
+	if err != nil {
+		return util.NewPersistentError("InvalidExternalPgCollation",
+			fmt.Sprintf("failed getting database collation of external DB url: %q, error: %s",
+				dbURL, err))
+	}
+	// Check if the collation is "C"
+	if collation != "C" {
+		return util.NewPersistentError("InvalidExternalPgCollation",
+			fmt.Sprintf("collation of external DB url: %q, is not supported: %s",
+				dbURL, err))
 	}
 	return nil
 }
