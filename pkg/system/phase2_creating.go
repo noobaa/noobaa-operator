@@ -458,6 +458,14 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 					},
 				}
 			}
+		case "POSTGRES_SSL_REQUIRED":
+			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSSLRequired {
+				c.Env[j].Value = "true"
+			}
+		case "POSTGRES_SSL_UNAUTHORIZED":
+			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSSLUnauthorized {
+				c.Env[j].Value = "true"
+			}
 		case "NOOBAA_ROOT_SECRET":
 			c.Env[j].Value = r.SecretRootMasterKey
 		case "NODE_EXTRA_CA_CERTS":

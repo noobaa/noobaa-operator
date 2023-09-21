@@ -176,31 +176,52 @@ function install {
     local use_obc_cleanup_policy
     
     [ $((RANDOM%2)) -gt 0 ] && use_obc_cleanup_policy="--use-obc-cleanup-policy"
-    test_noobaa install --mini --admission ${use_obc_cleanup_policy}
+    test_noobaa install --${RESOURCE} --admission ${use_obc_cleanup_policy}
 
-    local status=$(kuberun silence get noobaa noobaa -o 'jsonpath={.status.phase}')
-    while [ "${status}" != "Ready" ]
-    do
-        echo_time "💬  Waiting for status Ready, Status is ${status}"
-        sleep 10
-        status=$(kuberun silence get noobaa noobaa -o 'jsonpath={.status.phase}')
-    done
+    wait_for_noobaa_ready
+    wait_for_backingstore_ready noobaa-default-backing-store
 }
 
 function run_external_postgres {
-    kubectl run postgres-external --image=postgres:15 --env POSTGRES_PASSWORD=password --port 5432 --expose
+    # kubectl run postgres-external --image=postgres:15 --env POSTGRES_PASSWORD=password --port 5432 --expose
+    echo_time "Creating an external postgres DB for test (NO SSL)"
+    kuberun create -f $(dirname ${0})/resources/external-db.yaml
+}
+
+function run_external_postgres_ssl {
+    echo_time "Creating an external postgres DB for test (SSL)"
+    kuberun create secret generic postgres-ssl --from-file=certs/server.crt --from-file=certs/server.key --from-file=certs/ca.crt
+    kuberun create -f $(dirname ${0})/resources/external-db-ssl.yaml
 }
 
 function delete_external_postgres {
-    kubectl delete pod postgres-external
-    kubectl delete service postgres-external
+    kuberun delete -f $(dirname ${0})/resources/external-db.yaml
+}
+
+function delete_external_postgres_ssl {
+    kuberun delete -f $(dirname ${0})/resources/external-db-ssl.yaml
+    kuberun delete secret postgres-ssl
 }
 
 function install_external {    
     local postgres_url="postgresql://postgres:password@postgres-external.${NAMESPACE}.svc:5432/postgres"
     echo_time "Installing NooBaa in external postgres mode postgres-url=${postgres_url}"
-    test_noobaa install --mini --postgres-url=${postgres_url}"
+    test_noobaa install --${RESOURCE} --postgres-url=${postgres_url}
 
+    wait_for_noobaa_ready
+    wait_for_backingstore_ready noobaa-default-backing-store
+}
+
+function install_external_ssl {    
+    local postgres_url="postgresql://postgres:password@postgres-external.${NAMESPACE}.svc:5432/postgres"
+    echo_time "Installing NooBaa in external postgres mode postgres-url=${postgres_url} with SSL"
+    test_noobaa install --${RESOURCE} --postgres-url=${postgres_url} --pg-ssl-required --pg-ssl-unauthorized --pg-ssl-key certs/client.key --pg-ssl-cert certs/client.crt
+
+    wait_for_noobaa_ready
+    wait_for_backingstore_ready noobaa-default-backing-store
+}
+
+function wait_for_noobaa_ready {
     local status=$(kuberun silence get noobaa noobaa -o 'jsonpath={.status.phase}')
     while [ "${status}" != "Ready" ]
     do
@@ -210,8 +231,26 @@ function install_external {
     done
 }
 
+function wait_for_backingstore_ready {
+    local status=$(kuberun silence get backingstore noobaa-default-backing-store -o 'jsonpath={.status.phase}')
+    local status=$(kuberun silence get backingstore ${1} -o 'jsonpath={.status.phase}')
+    while [ "${status}" != "Ready" ]
+    do
+        echo_time "💬  Waiting for status Ready, Status is ${status}"
+        sleep 10
+        status=$(kuberun silence get noobaa noobaa -o 'jsonpath={.status.phase}')
+    done
+}
+
+function clean_leftovers {
+    test_noobaa --timeout uninstall
+    kuberun delete deploy,sts,service,job,po,pv,pvc,cm,secret --all
+    ${kubectl} delete sc nsfs-local
+}
+
 function noobaa_install {
     #noobaa timeout install # Maybe when creating server we can use local PV
+    clean_leftovers
     install
     test_noobaa status
     kuberun get noobaa
@@ -221,8 +260,28 @@ function noobaa_install {
 
 function noobaa_install_external {
     #noobaa timeout install # Maybe when creating server we can use local PV
+    clean_leftovers
     run_external_postgres
     install_external
+    test_noobaa status
+    kuberun get noobaa
+    kuberun describe noobaa
+}
+
+function noobaa_install_external_ssl {
+    #noobaa timeout install # Maybe when creating server we can use local PV
+    mkdir -p -m 755 certs
+	openssl ecparam -name prime256v1 -genkey -noout -out certs/ca.key
+	openssl req -new -x509 -sha256 -key certs/ca.key -out certs/ca.crt -subj "/CN=ca.noobaa.com"
+    openssl genrsa -out certs/server.key 2048
+    openssl req -new -sha256 -key certs/server.key -out certs/server.csr -subj "/CN=postgres-external.${NAMESPACE}.svc"
+    openssl x509 -req -in certs/server.csr -CA certs/ca.crt -CAkey certs/ca.key -CAcreateserial -out certs/server.crt -days 365 -sha256
+    openssl ecparam -name prime256v1 -genkey -noout -out certs/client.key
+	openssl req -new -sha256 -key certs/client.key -out certs/client.csr -subj "/CN=postgres"
+	openssl x509 -req -in certs/client.csr -CA certs/ca.crt -CAkey certs/ca.key -CAcreateserial -out certs/client.crt -days 365 -sha256
+    clean_leftovers
+    run_external_postgres_ssl
+    install_external_ssl
     test_noobaa status
     kuberun get noobaa
     kuberun describe noobaa
@@ -429,13 +488,20 @@ function check_pv_pool_resources {
             --request-cpu 300m \
             --limit-cpu 200m
 
+    local mem=400
+    local cpu=100
+    if [ "$RESOURCE" == "dev" ]
+    then
+        mem=500
+        cpu=500
+    fi
     test_noobaa backingstore create pv-pool minimum-request-limit \
             --num-volumes 1 \
             --pv-size-gb 16 \
-            --request-cpu 100m \
-            --request-memory 400Mi \
-            --limit-cpu 100m \
-            --limit-memory 400Mi
+            --request-cpu $(cpu)m \
+            --request-memory $(mem)Mi \
+            --limit-cpu $(cpu)m \
+            --limit-memory $(mem)Mi
     #TOD see why it fails, currently disabling as it takes 10 mins.
     # time="2022-04-11T14:18:17Z" level=error msg="❌ BackingStore \"large-request-limit\" Phase is \"Rejected\": Failed connecting all pods in backingstore for more than 10 minutes Current failing: 1 from requested: 1"
     # NAME                           TYPE      TARGET-BUCKET   PHASE      AGE      
@@ -476,7 +542,7 @@ function check_S3_compatible {
             --target-bucket ${buckets[cycle]} \
             --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
             --secret-name ${SECRET_NAME}
-        test_noobaa backingstore status ${backingstore[cycle]}
+        wait_for_backingstore_ready ${backingstore[cycle]}
     done
     test_noobaa backingstore list
     test_noobaa status

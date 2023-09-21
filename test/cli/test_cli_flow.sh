@@ -7,6 +7,7 @@ export PS4='\e[36m+ ${FUNCNAME:-main}\e[0m@\e[32m${BASH_SOURCE}:\e[35m${LINENO} 
 
 NAMESPACE='test'
 CM=false
+RESOURCE='mini'
 
 function post_install_tests {
     aws_credentials
@@ -31,12 +32,18 @@ function post_install_tests {
 }
 
 function main {
-    local install_external=$((RANDOM%2))
+    local install_external=$((RANDOM%3))
+    install_external=2
     if [ ${install_external} -eq 0 ]
     then
         noobaa_install_external
     else
-        noobaa_install
+        if [ ${install_external} -eq 1 ]
+        then
+            noobaa_install_external_ssl
+        else
+            noobaa_install
+        fi
     fi
     if [ "${CM}" == "true" ]
     then
@@ -47,7 +54,12 @@ function main {
     if [ ${install_external} -eq 0 ]
     then
         delete_external_postgres
-    fi
+    else
+        if [ ${install_external} -eq 1 ]
+        then
+            delete_external_postgres_ssl
+        fi
+    fi 
  }
 
 function usage {
@@ -95,7 +107,11 @@ do
         -n|--namespace)          NAMESPACE=${2}
                                  shift 2;;
         --check_core_config_map) CM=true
-                                 shift;;       
+                                 shift;;
+        --dev)                   RESOURCE='dev'
+                                 shift;;
+        --mini)                  RESOURCE='mini'
+                                 shift;;      
         -h|--help)               usage;;
         *)                       usage;;
     esac

@@ -196,6 +196,16 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 			Name:      "noobaa-external-pg-db",
 			Namespace: sys.Namespace,
 		}
+
+		sys.Spec.ExternalPgSSLRequired = options.PostgresSSLRequired
+		sys.Spec.ExternalPgSSLUnauthorized = options.PostgresSSLSelfSigned
+
+		if options.PostgresSSLCert != "" && options.PostgresSSLKey != "" {
+			sys.Spec.ExternalPgSSLSecret = &corev1.SecretReference{
+				Name:      "noobaa-external-db-cert",
+				Namespace: sys.Namespace,
+			}
+		}
 	}
 
 	if options.PVPoolDefaultStorageClass != "" {
@@ -378,10 +388,14 @@ func RunCreate(cmd *cobra.Command, args []string) {
 
 	if options.PostgresDbURL != "" {
 		if sys.Spec.MongoDbURL != "" {
-			log.Fatalf("❌ Can't used both options: postgres-url and mongodb-url, please use only one")
+			log.Fatalf("❌ Can't use both options: postgres-url and mongodb-url, please use only one")
 		}
 		if sys.Spec.DBType != "postgres" {
 			log.Fatalf("❌ expecting the DBType to be postgres when using external PostgresDbURL, got %s", sys.Spec.DBType)
+		}
+		if (options.PostgresSSLCert != "" && options.PostgresSSLKey == "") ||
+			(options.PostgresSSLCert == "" && options.PostgresSSLKey != "") {
+			log.Fatalf("❌ Can't provide only ssl-cert or only ssl-key - please provide both!")
 		}
 		err = CheckPostgresURL(options.PostgresDbURL)
 		if err != nil {
@@ -396,6 +410,25 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		}
 		secret.Data = nil
 		util.KubeCreateSkipExisting(secret)
+		if sys.Spec.ExternalPgSSLSecret != nil {
+			secretData := make(map[string][]byte)
+			data, err := os.ReadFile(options.PostgresSSLKey)
+			if err != nil {
+				log.Fatalf("❌ Can't open key file %q please try again, error: %s", options.PostgresSSLKey, err)
+			}
+			secretData["tls.key"] = data
+			data, err = os.ReadFile(options.PostgresSSLCert)
+			if err != nil {
+				log.Fatalf("❌ Can't open cert file %q please try again, error: %s", options.PostgresSSLKey, err)
+			}
+			secretData["tls.crt"] = data
+			o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+			secret := o.(*corev1.Secret)
+			secret.Namespace = sys.Spec.ExternalPgSSLSecret.Namespace
+			secret.Name = sys.Spec.ExternalPgSSLSecret.Name
+			secret.Data = secretData
+			util.KubeCreateSkipExisting(secret)
+		}
 	}
 
 	// TODO check PVC if exist and the system does not exist -
