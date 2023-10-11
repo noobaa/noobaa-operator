@@ -10,7 +10,7 @@ require (
 	github.com/Azure/go-autorest/autorest/adal v0.9.20
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/IBM/keyprotect-go-client v0.10.0
-	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/aws/aws-sdk-go v1.44.328
 	github.com/blang/semver/v4 v4.0.0
 	github.com/coreos/go-semver v0.3.1
@@ -24,7 +24,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.7
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
-	github.com/openshift/cloud-credential-operator v0.0.0-20210716145643-0ee1808fb8ed
+	github.com/openshift/cloud-credential-operator v0.0.0-20231004191224-abdf0627a0cf
 	github.com/openshift/custom-resource-status v1.1.2
 	github.com/operator-framework/api v0.17.3
 	github.com/operator-framework/operator-lib v0.11.0
@@ -46,7 +46,7 @@ require (
 	k8s.io/client-go v0.28.0
 	k8s.io/code-generator v0.28.0
 	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d
-	k8s.io/kube-aggregator v0.19.0
+	k8s.io/kube-aggregator v0.27.1
 	k8s.io/kube-openapi v0.0.0-20230816210353-14e408962443
 	k8s.io/kubectl v0.25.4
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b

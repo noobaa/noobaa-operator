@@ -643,11 +643,7 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 	err = r.Client.Get(r.Ctx, util.ObjectKey(r.AWSCloudCreds), r.AWSCloudCreds)
 	if err == nil {
 		// credential request already exist. get the bucket name
-		codec, err := cloudcredsv1.NewCodec()
-		if err != nil {
-			r.Logger.Error("error creating codec for cloud credentials providerSpec")
-			return err
-		}
+		codec := cloudcredsv1.Codec
 		awsProviderSpec := &cloudcredsv1.AWSProviderSpec{}
 		err = codec.DecodeProviderSpec(r.AWSCloudCreds.Spec.ProviderSpec, awsProviderSpec)
 		if err != nil {
@@ -669,11 +665,7 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 		// credential request does not exist. create one
 		r.Logger.Info("Creating CredentialsRequest resource")
 		bucketName = r.generateBackingStoreTargetName()
-		codec, err := cloudcredsv1.NewCodec()
-		if err != nil {
-			r.Logger.Error("error creating codec for cloud credentials providerSpec")
-			return err
-		}
+		codec := cloudcredsv1.Codec
 		awsProviderSpec := &cloudcredsv1.AWSProviderSpec{}
 		err = codec.DecodeProviderSpec(r.AWSCloudCreds.Spec.ProviderSpec, awsProviderSpec)
 		if err != nil {
