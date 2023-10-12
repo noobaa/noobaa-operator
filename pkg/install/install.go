@@ -2,6 +2,7 @@ package install
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
@@ -57,6 +58,17 @@ func RunYaml(cmd *cobra.Command, args []string) {
 	log.Println("✅ Done dumping installation yaml")
 }
 
+// CmdUpgrade returns a CLI command
+func CmdUpgrade() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "upgrade",
+		Short: "Upgrade the system, its components and CRDS",
+		Run:   RunUpgrade,
+		Args:  cobra.NoArgs,
+	}
+	return cmd
+}
+
 // CmdUninstall returns a CLI command
 func CmdUninstall() *cobra.Command {
 	cmd := &cobra.Command{
@@ -102,6 +114,29 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	if system.WaitReady() {
 		log.Printf("")
 		log.Printf("")
+		RunStatus(cmd, args)
+	}
+}
+
+// RunUpgrade runs a CLI command
+func RunUpgrade(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	log.Printf("System versions prior to upgrade:\n")
+	system.RunSystemVersionsStatus(cmd, args)
+	log.Printf("Namespace: %s\n", options.Namespace)
+	log.Printf("CRD upgrade:")
+	crd.RunUpgrade(cmd, args)
+	log.Printf("\nOperator upgrade:")
+	operator.RunUpgrade(cmd, args)
+	log.Printf("\nSystem apply:")
+	system.RunUpgrade(cmd, args)
+	log.Printf("")
+	util.PrintThisNoteWhenFinishedApplyingAndStartWaitLoop()
+	log.Printf("\nWaiting for the system to be ready...")
+	// Sleep to let the system get out of its old Ready state
+	time.Sleep(3 * time.Second)
+	if system.WaitReady() {
+		log.Printf("\n\n")
 		RunStatus(cmd, args)
 	}
 }

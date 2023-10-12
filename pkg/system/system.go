@@ -437,6 +437,18 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	util.KubeCreateSkipExisting(sys)
 }
 
+// RunUpgrade runs a CLI command
+func RunUpgrade(cmd *cobra.Command, args []string) {
+	// Template the a system CR with an upgraded core image.
+	// We currently opt to not upgrade the DB image as part of this process to prevent complications.
+	sys := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa)
+	if options.NooBaaImage != "" {
+		image := options.NooBaaImage
+		sys.Spec.Image = &image
+	}
+	util.KubeApply(sys)
+}
+
 // RunDelete runs a CLI command
 func RunDelete(cmd *cobra.Command, args []string) {
 	log := util.Logger()

@@ -100,6 +100,59 @@ func CmdRun() *cobra.Command {
 	return cmd
 }
 
+// RunUpgrade runs a CLI command
+func RunUpgrade(cmd *cobra.Command, args []string) {
+	c := LoadOperatorConf(cmd)
+	util.KubeApply(c.NS)
+	util.KubeApply(c.SA)
+	util.KubeApply(c.SAEndpoint)
+	util.KubeApply(c.Role)
+	util.KubeApply(c.RoleEndpoint)
+	util.KubeApply(c.RoleBinding)
+	util.KubeApply(c.RoleBindingEndpoint)
+	util.KubeApply(c.ClusterRole)
+	util.KubeApply(c.ClusterRoleBinding)
+
+	testEnv, _ := cmd.Flags().GetBool("test-env")
+	if testEnv {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "TEST_ENV",
+			Value: "true",
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	admission, _ := cmd.Flags().GetBool("admission")
+	if admission {
+		LoadAdmissionConf(c)
+		AdmissionWebhookSetup(c)
+		util.KubeApply(c.WebhookConfiguration)
+		util.KubeApply(c.WebhookSecret)
+		util.KubeApply(c.WebhookService)
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "ENABLE_NOOBAA_ADMISSION",
+			Value: "true",
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
+	if !noDeploy {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(
+			operatorContainer.Env,
+			corev1.EnvVar{
+				Name:  "NOOBAA_CLI_DEPLOYMENT",
+				Value: "true",
+			},
+		)
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+		util.KubeApply(c.Deployment)
+	}
+}
+
 // RunInstall runs a CLI command
 func RunInstall(cmd *cobra.Command, args []string) {
 	c := LoadOperatorConf(cmd)

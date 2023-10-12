@@ -116,6 +116,7 @@ Load noobaa completion to bash:
 		Message: "Install:",
 		Commands: []*cobra.Command{
 			install.CmdInstall(),
+			install.CmdUpgrade(),
 			install.CmdUninstall(),
 			install.CmdStatus(),
 		},
