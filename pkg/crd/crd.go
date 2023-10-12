@@ -110,6 +110,11 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	ForEachCRD(CreateCRD)
 }
 
+// RunUpgrade runs a CLI command
+func RunUpgrade(cmd *cobra.Command, args []string) {
+	ForEachCRD(UpgradeCRD)
+}
+
 // RunDelete runs a CLI command
 func RunDelete(cmd *cobra.Command, args []string) {
 	ForEachCRD(DeleteCRD)
@@ -173,6 +178,11 @@ func ForEachCRD(fn func(*CRD)) {
 // CreateCRD creates a CRD
 func CreateCRD(crd *CRD) {
 	util.KubeCreateSkipExisting(crd)
+}
+
+// UpgradeCRD Kubernetesically applies a CRD (create if doesn't exist, update otherwise)
+func UpgradeCRD(crd *CRD) {
+	util.KubeApply(crd)
 }
 
 // DeleteCRD deletes a CRD
