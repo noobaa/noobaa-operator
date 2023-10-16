@@ -44,6 +44,7 @@ const (
 	ibmLocation                           = "%s-standard"
 	ibmCOSCred                            = "ibm-cloud-cos-creds"
 	topologyConstraintsEnabledKubeVersion = "1.26.0"
+	minutesToWaitForDefaultBSCreation     = 10
 )
 
 type gcpAuthJSON struct {
@@ -745,11 +746,30 @@ func (r *Reconciler) preparePVPoolBackingStore() error {
 	return nil
 }
 
+func (r *Reconciler) defaultBSCreationTimedout(timestampCreation time.Time) bool {
+	minutesSinceCreation := time.Since(timestampCreation).Minutes()
+	return minutesSinceCreation > float64(minutesToWaitForDefaultBSCreation)
+}
+
+func (r *Reconciler) fallbackToPVPoolWithEvent(backingStoreType nbv1.StoreType, secretName string) error {
+	message := fmt.Sprintf("Failed to create default backingstore with type %s by %d minutes, "+
+		"fallback to create PV Pool backingstore",
+		backingStoreType, minutesToWaitForDefaultBSCreation)
+	additionalInfoForLogs := fmt.Sprintf(" (could not get Secret %s).", secretName)
+	r.Logger.Info(message + additionalInfoForLogs)
+	r.Recorder.Event(r.NooBaa, corev1.EventTypeWarning, "DefaultBackingStoreFailure", message)
+	if err := r.preparePVPoolBackingStore(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *Reconciler) prepareAWSBackingStore() error {
 	// after we have cloud credential request, wait for credentials secret
+	secretName := r.AWSCloudCreds.Spec.SecretRef.Name
 	cloudCredsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      r.AWSCloudCreds.Spec.SecretRef.Name,
+			Name:      secretName,
 			Namespace: r.AWSCloudCreds.Spec.SecretRef.Namespace,
 		},
 	}
@@ -758,10 +778,15 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 	if cloudCredsSecret.UID == "" {
 		// TODO: we need to figure out why secret is not created, and react accordingly
 		// e.g. maybe we are running on azure but our CredentialsRequest is for AWS
-		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.AWSCloudCreds.Spec.SecretRef.Name)
-		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.AWSCloudCreds.Spec.SecretRef.Name)
+		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", secretName)
+
+		// in case we have a cred request but we do not get a secret
+		if r.defaultBSCreationTimedout(r.AWSCloudCreds.CreationTimestamp.Time) {
+			return r.fallbackToPVPoolWithEvent(nbv1.StoreTypeAWSS3, secretName)
+		}
+		return fmt.Errorf("cloud credentials secret %q is not ready yet", secretName)
 	}
-	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", r.AWSCloudCreds.Spec.SecretRef.Name)
+	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", secretName)
 
 	// create the actual S3 bucket
 	region, err := util.GetAWSRegion()
@@ -795,9 +820,10 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 
 func (r *Reconciler) prepareAzureBackingStore() error {
 	// after we have cloud credential request, wait for credentials secret
+	secretName := r.AzureCloudCreds.Spec.SecretRef.Name
 	cloudCredsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      r.AzureCloudCreds.Spec.SecretRef.Name,
+			Name:      secretName,
 			Namespace: r.AzureCloudCreds.Spec.SecretRef.Namespace,
 		},
 	}
@@ -806,10 +832,15 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 	if cloudCredsSecret.UID == "" {
 		// TODO: we need to figure out why secret is not created, and react accordingly
 		// e.g. maybe we are running on AWS but our CredentialsRequest is for Azure
-		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.AzureCloudCreds.Spec.SecretRef.Name)
-		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.AzureCloudCreds.Spec.SecretRef.Name)
+		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", secretName)
+
+		// in case we have a cred request but we do not get a secret
+		if r.defaultBSCreationTimedout(r.AzureCloudCreds.CreationTimestamp.Time) {
+			return r.fallbackToPVPoolWithEvent(nbv1.StoreTypeAzureBlob, secretName)
+		}
+		return fmt.Errorf("cloud credentials secret %q is not ready yet", secretName)
 	}
-	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", r.AzureCloudCreds.Spec.SecretRef.Name)
+	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", secretName)
 
 	util.KubeCheck(r.AzureContainerCreds)
 	if r.AzureContainerCreds.UID == "" {
@@ -869,10 +900,10 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 }
 
 func (r *Reconciler) prepareGCPBackingStore() error {
-
+	secretName := r.GCPCloudCreds.Spec.SecretRef.Name
 	cloudCredsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      r.GCPCloudCreds.Spec.SecretRef.Name,
+			Name:      secretName,
 			Namespace: r.GCPCloudCreds.Spec.SecretRef.Namespace,
 		},
 	}
@@ -881,10 +912,16 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 	if cloudCredsSecret.UID == "" {
 		// TODO: we need to figure out why secret is not created, and react accordingly
 		// e.g. maybe we are running on AWS but our CredentialsRequest is for GCP
-		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", r.GCPCloudCreds.Spec.SecretRef.Name)
-		return fmt.Errorf("cloud credentials secret %q is not ready yet", r.GCPCloudCreds.Spec.SecretRef.Name)
+		r.Logger.Infof("Secret %q was not created yet by cloud-credentials operator. retry on next reconcile..", secretName)
+
+		// in case we have a cred request but we do not get a secret
+		if r.defaultBSCreationTimedout(r.GCPCloudCreds.CreationTimestamp.Time) {
+			return r.fallbackToPVPoolWithEvent(nbv1.StoreTypeGoogleCloudStorage, secretName)
+
+		}
+		return fmt.Errorf("cloud credentials secret %q is not ready yet", secretName)
 	}
-	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", r.GCPCloudCreds.Spec.SecretRef.Name)
+	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", secretName)
 
 	util.KubeCheck(r.GCPBucketCreds)
 	if r.GCPBucketCreds.UID == "" {
@@ -932,6 +969,7 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 
 func (r *Reconciler) prepareIBMBackingStore() error {
 	r.Logger.Info("Preparing backing store in IBM Cloud")
+	secretName := r.IBMCloudCOSCreds.Name
 
 	var (
 		endpoint string
@@ -940,8 +978,13 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 
 	util.KubeCheck(r.IBMCloudCOSCreds)
 	if r.IBMCloudCOSCreds.UID == "" {
-		r.Logger.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
-		return fmt.Errorf("Cloud credentials secret %q is not ready yet", r.IBMCloudCOSCreds.Name)
+		r.Logger.Errorf("Cloud credentials secret %q is not ready yet", secretName)
+
+		// in case we have a cred request but we do not get a secret
+		if r.defaultBSCreationTimedout(r.IBMCloudCOSCreds.CreationTimestamp.Time) {
+			return r.fallbackToPVPoolWithEvent(nbv1.StoreTypeIBMCos, secretName)
+		}
+		return fmt.Errorf("Cloud credentials secret %q is not ready yet", secretName)
 	}
 
 	if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_Endpoint"]; ok {
@@ -1012,7 +1055,7 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 	r.DefaultBackingStore.Spec.IBMCos = &nbv1.IBMCosSpec{
 		TargetBucket: bucketName,
 		Secret: corev1.SecretReference{
-			Name:      r.IBMCloudCOSCreds.Name,
+			Name:      secretName,
 			Namespace: r.IBMCloudCOSCreds.Namespace,
 		},
 		Endpoint:         endpoint,
@@ -1035,10 +1078,16 @@ func (r *Reconciler) createGCPBucketForBackingStore(client *storage.Client, proj
 }
 
 func (r *Reconciler) prepareCephBackingStore() error {
+	objectStoreUserName := r.CephObjectStoreUser.Name
 	util.KubeCheck(r.CephObjectStoreUser)
 	if r.CephObjectStoreUser.UID == "" || r.CephObjectStoreUser.Status.Phase != "Ready" {
-		r.Logger.Infof("Ceph objectstore user %q is not ready. retry on next reconcile..", r.CephObjectStoreUser.Name)
-		return fmt.Errorf("Ceph objectstore user %q is not ready", r.CephObjectStoreUser.Name)
+		r.Logger.Infof("Ceph objectstore user %q is not ready. retry on next reconcile..", objectStoreUserName)
+
+		// in case it takes too long to have CephObjectStoreUser
+		if r.defaultBSCreationTimedout(r.CephObjectStoreUser.CreationTimestamp.Time) {
+			return r.fallbackToPVPoolWithEvent(nbv1.StoreTypeS3Compatible, objectStoreUserName)
+		}
+		return fmt.Errorf("Ceph objectstore user %q is not ready", objectStoreUserName)
 	}
 
 	secretName := r.CephObjectStoreUser.Status.Info["secretName"]
@@ -1057,6 +1106,11 @@ func (r *Reconciler) prepareCephBackingStore() error {
 	util.KubeCheck(cephObjectStoreUserSecret)
 	if cephObjectStoreUserSecret.UID == "" {
 		r.Logger.Infof("Ceph objectstore user secret %q was not created yet. retry on next reconcile..", secretName)
+
+		// in case it takes too long to have cephObjectStoreUserSecret
+		if r.defaultBSCreationTimedout(cephObjectStoreUserSecret.CreationTimestamp.Time) {
+			return r.fallbackToPVPoolWithEvent(nbv1.StoreTypeS3Compatible, secretName)
+		}
 		return fmt.Errorf("Ceph objectstore user secret %q is not ready yet", secretName)
 	}
 
