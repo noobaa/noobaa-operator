@@ -46,12 +46,56 @@ spec:
   # ...
   externalPgSecret:
     name: my-secret
-    namespace: my-namespace
 #...
 ```
+## SSL support
+
+Some external PG deployments for K8s require the clients to work with an encrypted SSL connection.
+
+In order to allow working with an SSL connection do the following:
+
+Server Side
+
+If you want to force noobaa-core to communicate with the external server using an encrypted SSL connection, first make sure you have an external DB that can be connected using SSL, and then add the following options to the noobaa spec:
+* externalPgSSLRequired -  will force the connection to be encrypted and validate the server certificate using the system-supported CAs. The default is false - no SSL.
+* externalPgSSLUnauthorized - adding this option to the first one will force SSL, but will allow the server to use a self-signed certificate. The default is false - no self-signed certs allowed.
+```yaml
+spec:
+  # ...
+  externalPgSSLRequired: true
+  externalPgSSLUnauthorized: false
+```
+
+Client Side
+
+If as part of using SSL to communicate with the server, the server also demands that the user will use client-side certificate in order to authenticate itself, do the following:
+
+create a new secret in the noobaa's namespace with the files provided to you, for example like this:
+
+```bash
+kubectl create secret generic secret_name --from-file=tls.crt --from-file=tls.key
+```
+make sure that the secret has two files in it:
+1. tls.key - that will hold the client private key
+2. tls.crt - that will hold the client public key
+
+(please note the the file names must be tls.key and tls.crt)
+
+Add a secret reference to this secret to the noobaa CR:
+```yaml
+spec:
+  # ...
+  externalPgSSLSecret:
+    name: secret_name
+```
+NooBaa CLI also supports the following options to be used during install:
+```bash
+noob install --postgres-url="postgresql://postgres:noobaa@postgres-external.test.svc.cluster.local:5432/postgres"          --pg-ssl-required --pg-ssl-unauthorized --pg-ssl-key /certs/client.key --pg-ssl-cert /certs/client.crt
+```
+This will set SSL enabled with support of self-signed certs and with client certificate provided under local directory /certs/
 
 Gaps:
-1. We currently support only MD5 encryption in order to connect to the DB. So no Support for SSL/TLS.
-2. We currently support only URL format for the connection details, we found it to be faster and easier. If demand will rise we will think of adding support for splitting the secret db_url key to host, port, db-name, user, and password keys.
+We currently support only URL format for the connection details, we found it to be faster and easier. If demand rises, we will think of adding support for splitting the secret db_url key to host, port, db-name, user, and password keys.
+
 
 
