@@ -69,6 +69,8 @@ func CmdRegenerate() *cobra.Command {
 		Short: "Regenerate OBC S3 Credentials",
 		Run:   RunRegenerate,
 	}
+	cmd.Flags().String("app-namespace", "",
+		"Set the namespace of the application where the OBC should be regenerated")
 	return cmd
 }
 
@@ -80,7 +82,7 @@ func CmdDelete() *cobra.Command {
 		Run:   RunDelete,
 	}
 	cmd.Flags().String("app-namespace", "",
-		"Set the namespace of the application where the OBC should be created")
+		"Set the namespace of the application where the OBC should be deleted")
 	return cmd
 }
 
@@ -250,7 +252,7 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 	if obc.Spec.ObjectBucketName != "" {
 		ob.Name = obc.Spec.ObjectBucketName
 	} else {
-		ob.Name = fmt.Sprintf("obc-%s-%s", appNamespace, name)
+		ob.Name = fmt.Sprintf("ob-%s-%s", appNamespace, name)
 	}
 
 	if !util.KubeCheck(ob) {
@@ -478,7 +480,7 @@ func WaitReady(obc *nbv1.ObjectBucketClaim) bool {
 
 	interval := time.Duration(3)
 
-	err := wait.PollUntilContextCancel(ctx,interval*time.Second, true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		err := klient.Get(util.Context(), util.ObjectKey(obc), obc)
 		if err != nil {
 			log.Printf("⏳ Failed to get OBC: %s", err)
@@ -567,6 +569,6 @@ func GenerateAccountKeys(name string, accountName string) error {
 		log.Fatalf(`❌  Failed to update the secret %s with the new accessKeys`, secret.Name)
 	}
 
-	log.Printf("✅ Successfully reganerate s3 credentials for the OBC %q", name)
+	log.Printf("✅ Successfully regenerate s3 credentials for the OBC %q", name)
 	return nil
 }
