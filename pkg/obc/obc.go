@@ -261,7 +261,7 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 
 	accountName := ob.Spec.AdditionalState["account"]
 
-	err := GenerateAccountKeys(name, accountName)
+	err := GenerateAccountKeys(name, accountName, appNamespace)
 	if err != nil {
 		log.Fatalf(`❌ Could not regenerate credentials for %q: %v`, name, err)
 	}
@@ -518,7 +518,7 @@ func CheckPhase(obc *nbv1.ObjectBucketClaim) {
 }
 
 // GenerateAccountKeys regenerate noobaa OBC account S3 keys
-func GenerateAccountKeys(name string, accountName string) error {
+func GenerateAccountKeys(name, accountName, appNamespace string) error {
 	log := util.Logger()
 
 	if accountName == "" {
@@ -534,7 +534,7 @@ func GenerateAccountKeys(name string, accountName string) error {
 
 	// Checking that we can find the secret before we are calling the RPC to change the credentials.
 	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
-	secret.Namespace = options.Namespace
+	secret.Namespace = appNamespace
 	secret.Name = name
 	if !util.KubeCheckQuiet(secret) {
 		log.Fatalf(`❌  Could not find secret: %s, will not regenerate keys.`, secret.Name)
