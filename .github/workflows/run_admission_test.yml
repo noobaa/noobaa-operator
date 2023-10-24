@@ -65,7 +65,7 @@ jobs:
         run: |
           cd ./noobaa-operator
           ./.travis/number_of_pods_in_system.sh --namespace test --pods 5
-          kubectl wait --for=condition=available backingstore/noobaa-default-backing-store --timeout=5m -n test
+          kubectl wait --for=condition=available backingstore/noobaa-default-backing-store --timeout=10m -n test
 
       - name: Run Admission test
         run: |
