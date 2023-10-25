@@ -159,6 +159,7 @@ type AWSS3Spec struct {
 	// +optional
 	SSLDisabled bool `json:"sslDisabled,omitempty"`
 
+	// AWSSTSRoleARN allows to Assume Role and use AssumeRoleWithWebIdentity
 	// +optional
 	AWSSTSRoleARN *string `json:"awsSTSRoleARN,omitempty"`
 }

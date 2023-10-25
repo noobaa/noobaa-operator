@@ -275,7 +275,7 @@ spec:
 
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "d92994d0619470c8787780028098eafe53c696c4f55c40be055db48f491014bd"
+const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "75e58f314ed8c77725491c3e8c922c00b9e84c0df7f5062dc61f31cc2557b41c"
 
 const File_deploy_crds_noobaa_io_backingstores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -329,6 +329,7 @@ spec:
                 description: AWSS3Spec specifies a backing store of type aws-s3
                 properties:
                   awsSTSRoleARN:
+                    description: AWSSTSRoleARN allows to Assume Role and use AssumeRoleWithWebIdentity
                     type: string
                   region:
                     description: Region is the AWS region
@@ -937,7 +938,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "3e3c72d1ec1448ab07b48ca5cae04da5cdbddc25a8de4c3c52469884fcb2035d"
+const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "2114c643ec1ba3dd804d1eb12849da90185eba26e2df8dfb9876148394e129be"
 
 const File_deploy_crds_noobaa_io_namespacestores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -994,6 +995,7 @@ spec:
                 description: AWSS3Spec specifies a namespace store of type aws-s3
                 properties:
                   awsSTSRoleARN:
+                    description: AWSSTSRoleARN allows to Assume Role and use AssumeRoleWithWebIdentity
                     type: string
                   region:
                     description: Region is the AWS region
@@ -1469,7 +1471,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "ff8f0cf9e0a1429984e9518f0a143634644cfd0b1a955449d36917550ea060ce"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "8f111f5299fc274593af4efb9565b34f36d36bd49f3666b19279504411ed0df0"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2582,6 +2584,7 @@ spec:
                     description: AWSS3Spec specifies a backing store of type aws-s3
                     properties:
                       awsSTSRoleARN:
+                        description: AWSSTSRoleARN allows to Assume Role and use AssumeRoleWithWebIdentity
                         type: string
                       region:
                         description: Region is the AWS region
@@ -3682,7 +3685,7 @@ data:
           su postgres -c "bash -x /usr/bin/run-postgresql"
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "bd3efd480e3a73ebdc64acfbde114f938283604a7a8291d94a280b535a5c81cd"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "b3dab0839de6aa382833772ab278feb245067b27591dee988b29184de90961b6"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3718,13 +3721,15 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
-        - name: oidc-token
+      # This service account token can be used to provide identity outside the cluster.
+      # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+        - name: bound-sa-token
           projected:
             sources:
             - serviceAccountToken:
-                path: oidc-token
-                expirationSeconds: 3600
-                audience: api
+                path: token
+                # For testing purposes change the audience to api
+                audience: openshift
         - name: noobaa-auth-token
           secret:
             secretName: noobaa-endpoints
@@ -3821,7 +3826,7 @@ spec:
               mountPath: /etc/noobaa-server
               readOnly: true
             # used for aws sts endpoint type
-            - name: oidc-token
+            - name: bound-sa-token
               mountPath: /var/run/secrets/openshift/serviceaccount
               readOnly: true
           readinessProbe: # must be configured to support rolling updates
@@ -4701,7 +4706,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "0489de0ea1cd3904274a8f58a5bca789592eab4991e911ce7703d238a223a168"
+const Sha256_deploy_internal_statefulset_core_yaml = "39dbe4e822b69f1998cea34437e97cc58db4f577e9143eb6db087f2da083f73e"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4741,14 +4746,16 @@ spec:
         - name: noobaa-server
           secret:
             secretName: noobaa-server
-            optional: true    
-        - name: oidc-token
+            optional: true
+      # This service account token can be used to provide identity outside the cluster.
+      # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+        - name: bound-sa-token
           projected:
             sources:
             - serviceAccountToken:
-                path: oidc-token
-                expirationSeconds: 3600
-                audience: api
+                path: token
+                # For testing purposes change the audience to api
+                audience: openshift
       containers:
         #----------------#
         # CORE CONTAINER #
@@ -4767,8 +4774,8 @@ spec:
             - name: noobaa-server
               mountPath: /etc/noobaa-server
               readOnly: true
-            - mountPath: /var/run/secrets/openshift/serviceaccount
-              name: oidc-token
+            - name: bound-sa-token
+              mountPath: /var/run/secrets/openshift/serviceaccount
               readOnly: true
           resources:
             requests:
@@ -5835,7 +5842,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "439f5d9032805eeff3de6520c9baa1b178f1b044091c432f1196349ffb7f544e"
+const Sha256_deploy_operator_yaml = "8f48fc9ae60e1ef5f25d6b1a7a6cd0a6e76f055eb0fc3f4dd5068d304ed111be"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -5857,13 +5864,15 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       volumes:
-      - name: oidc-token
+      # This service account token can be used to provide identity outside the cluster.
+      # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+      - name: bound-sa-token
         projected:
           sources:
           - serviceAccountToken:
-              path: oidc-token
-              expirationSeconds: 3600
-              audience: api
+              path: token
+              # For testing purposes change the audience to api
+              audience: openshift
       - name: socket
         emptyDir: {}
       - name: noobaa-ca-inject
@@ -5877,8 +5886,13 @@ spec:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
           volumeMounts:
-          - mountPath: /etc/pki/ca-trust/extracted/pem
-            name: noobaa-ca-inject
+          - name: bound-sa-token
+            mountPath: /var/run/secrets/openshift/serviceaccount
+            readOnly: true
+          - name: noobaa-ca-inject
+            mountPath: /etc/pki/ca-trust/extracted/pem
+          - name: socket
+            mountPath: /var/lib/cosi
           resources:
             limits:
               cpu: "250m"
@@ -5894,11 +5908,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-          volumeMounts:
-          - mountPath: /var/run/secrets/openshift/serviceaccount
-            name: oidc-token
-          - mountPath: /var/lib/cosi
-            name: socket
         - name: objectstorage-provisioner-sidecar
           image: COSI_SIDECAR_IMAGE
           args:

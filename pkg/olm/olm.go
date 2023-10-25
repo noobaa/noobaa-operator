@@ -243,6 +243,8 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 	// csv.Annotations["createdAt"] = ???
 	csv.Annotations["alm-examples"] = string(almExamples)
 	csv.Annotations["operators.openshift.io/infrastructure-features"] = "ֿ'[\"disconnected\"]'"
+	// annotation for OpenShift AWS STS cluster
+	csv.Annotations["features.operators.openshift.io/token-auth-aws"] = "true"
 	csv.Spec.Version.Version = semver.MustParse(version.Version)
 	csv.Spec.Description = bundle.File_deploy_olm_description_md
 	csv.Spec.Icon[0].Data = bundle.File_deploy_olm_noobaa_icon_base64
@@ -277,7 +279,7 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 
 	if csvParams != nil {
 		if csvParams.IsForODF {
-			// add anotation to hide the operator in OCP console
+			// add annotations to hide the operator in OCP console
 			csv.Annotations["operators.operatorframework.io/operator-type"] = "non-standalone"
 
 			// add env vars for noobaa-core and noobaa-db images

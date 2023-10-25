@@ -3,10 +3,12 @@ package system
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/libopenstorage/secrets"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
@@ -33,7 +35,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const upgradeJobBackoffLimit = int32(4)
+const (
+	upgradeJobBackoffLimit        = int32(4)
+	webIdentityTokenPath   string = "/var/run/secrets/openshift/serviceaccount/token"
+	roleARNEnvVar          string = "ROLEARN"
+)
 
 // ReconcilePhaseCreating runs the reconcile phase
 func (r *Reconciler) ReconcilePhaseCreating() error {
@@ -677,6 +683,19 @@ func (r *Reconciler) ReconcileRGWCredentials() error {
 
 // ReconcileAWSCredentials creates a CredentialsRequest resource if cloud credentials operator is available
 func (r *Reconciler) ReconcileAWSCredentials() error {
+	// check if we have the env var ROLEARN that indicates that this is an OpenShift AWS STS cluster
+	// cluster admin set this env (either in the UI in ARN details or via Subscription yaml) and set the mode to manual
+	// olm will then copy the env from the subscription to the operator deployment (which is where your operator can pick it up from)
+	roleARN := os.Getenv(roleARNEnvVar)
+	r.Logger.Infof("Getting role ARN: %s = %s", roleARNEnvVar, roleARN)
+	if roleARN != "" {
+		if !arn.IsARN(roleARN) {
+			r.Logger.Errorf("error with cloud credentials request, provided role ARN is invalid: %q", roleARN)
+			return fmt.Errorf("provided role ARN is invalid: %q", roleARN)
+		}
+		r.IsAWSSTSCluster = true
+	}
+
 	arnPrefix := "arn:aws:s3:::"
 	awsRegion, err := util.GetAWSRegion()
 	if err != nil {
@@ -697,9 +716,17 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 			return err
 		}
 		bucketName = strings.TrimPrefix(awsProviderSpec.StatementEntries[0].Resource, arnPrefix)
-		r.Logger.Infof("found existing credential request for bucket %s", bucketName)
-		r.DefaultBackingStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
-			TargetBucket: bucketName,
+		r.Logger.Infof("found existing credential request for bucket %s, role ARN: %s", bucketName, roleARN)
+		// since AWSSTSRoleARN is *string we will add the adderss of the variable roleARN only if it is not empty
+		if r.IsAWSSTSCluster {
+			r.DefaultBackingStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
+				TargetBucket:  bucketName,
+				AWSSTSRoleARN: &roleARN,
+			}
+		} else {
+			r.DefaultBackingStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
+				TargetBucket: bucketName,
+			}
 		}
 		return nil
 	}
@@ -721,16 +748,26 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 		// fix creds request according to bucket name
 		awsProviderSpec.StatementEntries[0].Resource = arnPrefix + bucketName
 		awsProviderSpec.StatementEntries[1].Resource = arnPrefix + bucketName + "/*"
+		// add fields related to STS to creds request (role ARN)
+		if r.IsAWSSTSCluster {
+			awsProviderSpec.STSIAMRoleARN = roleARN
+		}
+
 		updatedProviderSpec, err := codec.EncodeProviderSpec(awsProviderSpec)
 		if err != nil {
 			r.Logger.Error("error encoding providerSpec for cloud credentials request")
 			return err
 		}
 		r.AWSCloudCreds.Spec.ProviderSpec = updatedProviderSpec
+		// add fields related to STS to creds request (path)
+		if r.IsAWSSTSCluster {
+			r.AWSCloudCreds.Spec.CloudTokenPath = webIdentityTokenPath
+		}
 		r.Own(r.AWSCloudCreds)
 		err = r.Client.Create(r.Ctx, r.AWSCloudCreds)
 		if err != nil {
-			r.Logger.Errorf("got error when trying to create credentials request for bucket %s. %v", bucketName, err)
+			r.Logger.Errorf("got error when trying to create credentials request for bucket %s (STSIAMRoleARN %s). %v",
+				bucketName, roleARN, err)
 			return err
 		}
 		r.DefaultBackingStore.Spec.AWSS3 = &nbv1.AWSS3Spec{

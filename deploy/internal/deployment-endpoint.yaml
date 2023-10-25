@@ -32,13 +32,15 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
-        - name: oidc-token
+      # This service account token can be used to provide identity outside the cluster.
+      # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+        - name: bound-sa-token
           projected:
             sources:
             - serviceAccountToken:
-                path: oidc-token
-                expirationSeconds: 3600
-                audience: api
+                path: token
+                # For testing purposes change the audience to api
+                audience: openshift
         - name: noobaa-auth-token
           secret:
             secretName: noobaa-endpoints
@@ -135,7 +137,7 @@ spec:
               mountPath: /etc/noobaa-server
               readOnly: true
             # used for aws sts endpoint type
-            - name: oidc-token
+            - name: bound-sa-token
               mountPath: /var/run/secrets/openshift/serviceaccount
               readOnly: true
           readinessProbe: # must be configured to support rolling updates

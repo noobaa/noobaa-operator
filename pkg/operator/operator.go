@@ -138,6 +138,16 @@ func RunUpgrade(cmd *cobra.Command, args []string) {
 		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
 	}
 
+	AWSSTSARNEnv, _ := cmd.Flags().GetString("aws-sts-arn")
+	if AWSSTSARNEnv != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "ROLEARN",
+			Value: AWSSTSARNEnv,
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
@@ -196,6 +206,16 @@ func RunInstall(cmd *cobra.Command, args []string) {
 		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
 			Name:  "ENABLE_NOOBAA_ADMISSION",
 			Value: "true",
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	AWSSTSARNEnv, _ := cmd.Flags().GetString("aws-sts-arn")
+	if AWSSTSARNEnv != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "ROLEARN",
+			Value: AWSSTSARNEnv,
 		})
 		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
 	}

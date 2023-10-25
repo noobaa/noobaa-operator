@@ -1109,6 +1109,7 @@ spec:
                     description: AWSS3Spec specifies a backing store of type aws-s3
                     properties:
                       awsSTSRoleARN:
+                        description: AWSSTSRoleARN allows to Assume Role and use AssumeRoleWithWebIdentity
                         type: string
                       region:
                         description: Region is the AWS region
