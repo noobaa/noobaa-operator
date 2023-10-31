@@ -351,7 +351,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 		}
 
 		// when already exists we check that there is no update requested to the volumes
-		// otherwise we report that volume updarte is unsupported
+		// otherwise we report that volume update is unsupported
 		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
 			pvc := &NooBaaDB.Spec.VolumeClaimTemplates[i]
 			switch pvc.Name {
