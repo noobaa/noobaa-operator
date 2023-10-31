@@ -364,6 +364,8 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 				if r.NooBaa.Spec.DBStorageClass != nil {
 					desiredClass = *r.NooBaa.Spec.DBStorageClass
 					if desiredClass != currentClass {
+						r.Logger.Infof("No match between desired DB storage class in noobaa %s and current class in pvc %s",
+							desiredClass, currentClass)
 						r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBStorageClassIsImmutable",
 							"spec.dbStorageClass is immutable and cannot be updated for volume %q in existing %s %q"+
 								" since it requires volume recreate and migrate which is unsupported by the operator",
