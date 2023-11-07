@@ -374,6 +374,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 				}
 				if r.NooBaa.Spec.DBVolumeResources != nil &&
 					!reflect.DeepEqual(pvc.Spec.Resources, *r.NooBaa.Spec.DBVolumeResources) {
+					r.Logger.Infof("No match between DB volume resources")
 					r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBVolumeResourcesIsImmutable",
 						"spec.dbVolumeResources is immutable and cannot be updated for volume %q in existing %s %q"+
 							" since it requires volume recreate and migrate which is unsupported by the operator",
