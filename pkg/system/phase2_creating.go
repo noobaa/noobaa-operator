@@ -351,7 +351,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 		}
 
 		// when already exists we check that there is no update requested to the volumes
-		// otherwise we report that volume updarte is unsupported
+		// otherwise we report that volume update is unsupported
 		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
 			pvc := &NooBaaDB.Spec.VolumeClaimTemplates[i]
 			switch pvc.Name {
@@ -364,6 +364,8 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 				if r.NooBaa.Spec.DBStorageClass != nil {
 					desiredClass = *r.NooBaa.Spec.DBStorageClass
 					if desiredClass != currentClass {
+						r.Logger.Infof("No match between desired DB storage class in noobaa %s and current class in pvc %s",
+							desiredClass, currentClass)
 						r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBStorageClassIsImmutable",
 							"spec.dbStorageClass is immutable and cannot be updated for volume %q in existing %s %q"+
 								" since it requires volume recreate and migrate which is unsupported by the operator",
@@ -372,6 +374,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 				}
 				if r.NooBaa.Spec.DBVolumeResources != nil &&
 					!reflect.DeepEqual(pvc.Spec.Resources, *r.NooBaa.Spec.DBVolumeResources) {
+					r.Logger.Infof("No match between DB volume resources")
 					r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBVolumeResourcesIsImmutable",
 						"spec.dbVolumeResources is immutable and cannot be updated for volume %q in existing %s %q"+
 							" since it requires volume recreate and migrate which is unsupported by the operator",
