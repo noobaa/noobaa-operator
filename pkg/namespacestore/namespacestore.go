@@ -16,6 +16,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,7 +70,7 @@ func CmdCreate() *cobra.Command {
 func CmdCreateAWSS3() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "aws-s3 <namespace-store-name>",
-		Short: "Create aws-s3 namespace store",
+		Short: "Create aws-s3 namespace store (using long-lived credentials)",
 		Run:   RunCreateAWSS3,
 	}
 	cmd.Flags().String(
@@ -103,7 +104,7 @@ func CmdCreateAWSS3() *cobra.Command {
 func CmdCreateAWSSTSS3() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "aws-sts-s3 <namespace-store-name>",
-		Short: "Create aws-sts-s3 namespace store",
+		Short: "Create aws-s3 namespace store (using STS, short-lived credentials)",
 		Run:   RunCreateAWSSTSS3,
 	}
 	cmd.Flags().String(
@@ -491,6 +492,9 @@ func RunCreateAWSSTSS3(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ NamespaceStore %q already exists in namespace %q`, namespaceStore.Name, namespaceStore.Namespace)
 	}
 	awsSTSARN := util.GetFlagStringOrPrompt(cmd, "aws-sts-arn")
+	if !arn.IsARN(awsSTSARN) {
+		log.Fatalf(`❌ aws-sts-arn %q is invalid`, awsSTSARN)
+	}
 	targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 	region, _ := cmd.Flags().GetString("region")
 	namespaceStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
