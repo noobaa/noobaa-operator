@@ -571,6 +571,24 @@ type DeleteNamespaceResourceParams struct {
 	Name string `json:"name"`
 }
 
+// UpdateAccountParams is the params of account_api.update_account_s3_access()
+type UpdateAccountParams struct {
+	Name                *string                  `json:"username,omitempty"`
+	Email               string                   `json:"email"`
+	MustChangePassword  *bool                    `json:"must_change_password,omitempty"`
+	NewEmail            *string                  `json:"new_email,omitempty"`
+	ForceMd5Etag        *bool                    `json:"force_md5_etag,omitempty"`
+	AllowedIPs          []struct {
+		Start   string `json:"start"`
+		End     string `json:"end"`
+	} `json:"ips,omitempty"`
+	Preferences         *struct{
+	    UITheme string `json:"ui_theme"`
+	} `json:"preferences,omitempty"`
+	RoleConfig          interface{}              `json:"role_config,omitempty"`
+	RemoveRoleConfig    bool                     `json:"remove_role_config,omitempty"`
+}
+
 // UpdateAccountS3AccessParams is the params of account_api.update_account_s3_access()
 type UpdateAccountS3AccessParams struct {
 	Email               string                  `json:"email"`

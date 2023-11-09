@@ -21,6 +21,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/operator"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/pvstore"
+	"github.com/noobaa/noobaa-operator/v5/pkg/sts"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/pkg/version"
@@ -132,6 +133,7 @@ Load noobaa completion to bash:
 			diagnostics.CmdDiagnoseDeprecated(),
 			diagnostics.CmdDbDumpDeprecated(),
 			diagnostics.Cmd(),
+			sts.Cmd(),
 		},
 	}, {
 		Message: "Advanced:",
