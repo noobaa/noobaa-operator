@@ -72,6 +72,7 @@ func CmdUpdate() *cobra.Command {
 		Run:   RunUpdate,
 	}
 	cmd.Flags().String("new_default_resource", "", "(must be provided) update the default resource on which new buckets will be created")
+	cmd.Flags().Bool("force_md5_etag", false, "This flag enables md5 etag calculation for account")
 	return cmd
 }
 
@@ -178,7 +179,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	noobaaAccount.Name = name
 	noobaaAccount.Namespace = options.Namespace
 	noobaaAccount.Spec.AllowBucketCreate = allowBucketCreate
-	noobaaAccount.Spec.ForceMd5Etag = forceMd5Etag
+	noobaaAccount.Spec.ForceMd5Etag = &forceMd5Etag
 
 	if nsfsAccountConfig {
 		nsfsUID := util.GetFlagIntOrPrompt(cmd, "uid")
@@ -252,7 +253,11 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	name := args[0]
 
 	newDefaultResource := util.GetFlagStringOrPrompt(cmd, "new_default_resource")
-	forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
+	var forceMd5EtagPtr *bool = nil
+	if cmd.Flags().Changed("force_md5_etag") {
+		forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
+		forceMd5EtagPtr = &forceMd5Etag
+	}
 
 	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
 	noobaaAccount := o.(*nbv1.NooBaaAccount)
@@ -280,7 +285,9 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 		}
 
 		noobaaAccount.Spec.DefaultResource = newDefaultResource
-		noobaaAccount.Spec.ForceMd5Etag = forceMd5Etag
+		if forceMd5EtagPtr != nil {
+			noobaaAccount.Spec.ForceMd5Etag = forceMd5EtagPtr
+		}
 
 		if !util.KubeUpdate(noobaaAccount) {
 			log.Fatalf(`❌ Unable to update account`)
@@ -311,7 +318,7 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 		updateAccountS3AccessParams := nb.UpdateAccountS3AccessParams{
 			Email:           name,
 			DefaultResource: &newDefaultResource,
-			ForceMd5Etag:    forceMd5Etag,
+			ForceMd5Etag:    forceMd5EtagPtr,
 			S3Access:        accountInfo.HasS3Access,
 		}
 

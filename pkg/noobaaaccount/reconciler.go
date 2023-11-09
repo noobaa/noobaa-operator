@@ -333,6 +333,7 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 		DefaultResource:   r.NooBaaAccount.Spec.DefaultResource,
 		HasLogin:          false,
 		S3Access:          true,
+		ForceMd5Etag:      *r.NooBaaAccount.Spec.ForceMd5Etag,
 		AllowBucketCreate: r.NooBaaAccount.Spec.AllowBucketCreate,
 	}
 
@@ -391,6 +392,7 @@ func (r *Reconciler) UpdateNooBaaAccount() error {
 			Email:               r.NooBaaAccount.Name,
 			DefaultResource:     &r.NooBaaAccount.Spec.DefaultResource,
 			S3Access:            true,
+			ForceMd5Etag:        r.NooBaaAccount.Spec.ForceMd5Etag,
 			AllowBucketCreation: &r.NooBaaAccount.Spec.AllowBucketCreate,
 		}
 

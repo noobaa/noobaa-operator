@@ -983,6 +983,11 @@ func (in *NooBaaAccountSpec) DeepCopyInto(out *NooBaaAccountSpec) {
 		*out = new(AccountNsfsConfig)
 		**out = **in
 	}
+	if in.ForceMd5Etag != nil {
+		in, out := &in.ForceMd5Etag, &out.ForceMd5Etag
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
