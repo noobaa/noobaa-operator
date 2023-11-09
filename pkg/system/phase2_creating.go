@@ -85,6 +85,9 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		r.Logger.Errorf("failed to create CredentialsRequest. will retry in phase 4. error: %v", err)
 		return err
 	}
+	if err := r.ReconcileObjectOptional(r.ServiceSyslog, r.SetDesiredServiceSyslog); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -201,6 +204,13 @@ func (r *Reconciler) SetDesiredServiceAccount() error {
 func (r *Reconciler) SetDesiredServiceMgmt() error {
 	r.ServiceMgmt.Spec.Selector["noobaa-mgmt"] = r.Request.Name
 	r.ServiceMgmt.Labels["noobaa-mgmt-svc"] = "true"
+	return nil
+}
+
+// SetDesiredServiceSyslog updates the ServiceSyslog as desired for reconciling
+func (r *Reconciler) SetDesiredServiceSyslog() error {
+	r.ServiceSyslog.Spec.Selector["noobaa-mgmt"] = r.Request.Name
+	r.ServiceSyslog.Labels["noobaa-syslog-svc"] = "true"
 	return nil
 }
 

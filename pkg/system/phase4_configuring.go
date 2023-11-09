@@ -310,10 +310,12 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			}
 			mgmtBaseAddr := ""
 			s3BaseAddr := ""
+			syslogBaseAddr := ""
 			util.MergeEnvArrays(&c.Env, &r.DefaultDeploymentEndpoint.Containers[0].Env)
 			if r.JoinSecret == nil {
 				mgmtBaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceMgmt.Name, r.Request.Namespace)
 				s3BaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceS3.Name, r.Request.Namespace)
+				syslogBaseAddr = fmt.Sprintf(`udp://%s.%s.svc`, r.ServiceSyslog.Name, r.Request.Namespace)
 				r.setDesiredCoreEnv(c)
 			}
 
@@ -325,6 +327,13 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 						c.Env[j].Value = fmt.Sprintf(`%s:%d`, mgmtBaseAddr, port.Port)
 					} else {
 						c.Env[j].Value = r.JoinSecret.StringData["mgmt_addr"]
+					}
+				case "SYSLOG_ADDR":
+					if r.JoinSecret == nil {
+						port := nb.FindPortByName(r.ServiceSyslog, "syslog")
+						c.Env[j].Value = fmt.Sprintf(`%s:%d`, syslogBaseAddr, port.Port)
+					} else {
+						c.Env[j].Value = r.JoinSecret.StringData["syslog"]
 					}
 				case "BG_ADDR":
 					if r.JoinSecret == nil {

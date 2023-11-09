@@ -33,6 +33,7 @@ type AnnotationsSpec map[string]Annotations
 // +kubebuilder:resource:shortName=nb
 // +kubebuilder:printcolumn:name="S3-Endpoints",type="string",JSONPath=".status.services.serviceS3.nodePorts",description="S3 Endpoints"
 // +kubebuilder:printcolumn:name="Sts-Endpoints",type="string",JSONPath=".status.services.serviceSts.nodePorts",description="STS Endpoints"
+// +kubebuilder:printcolumn:name="Syslog-Endpoints",type="string",JSONPath=".status.services.serviceSyslog.nodePorts",description="Syslog Endpoints"
 // +kubebuilder:printcolumn:name="Image",type="string",JSONPath=".status.actualImage",description="Actual Image"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
@@ -407,10 +408,11 @@ type AccountsStatus struct {
 
 // ServicesStatus is the status info of the system's services
 type ServicesStatus struct {
-	ServiceMgmt ServiceStatus `json:"serviceMgmt"`
-	ServiceS3   ServiceStatus `json:"serviceS3"`
+	ServiceMgmt   ServiceStatus `json:"serviceMgmt"`
+	ServiceS3     ServiceStatus `json:"serviceS3"`
 	// +optional
-	ServiceSts ServiceStatus `json:"serviceSts,omitempty"`
+	ServiceSts    ServiceStatus `json:"serviceSts,omitempty"`
+	ServiceSyslog ServiceStatus `json:"serviceSyslog,omitempty"`
 }
 
 // UserStatus is the status info of a user secret

@@ -25,6 +25,10 @@ spec:
       jsonPath: .status.services.serviceSts.nodePorts
       name: Sts-Endpoints
       type: string
+    - description: Syslog Endpoints
+      jsonPath: .status.services.serviceSyslog.nodePorts
+      name: Syslog-Endpoints
+      type: string
     - description: Actual Image
       jsonPath: .status.actualImage
       name: Image
@@ -1875,6 +1879,59 @@ spec:
                         type: array
                     type: object
                   serviceSts:
+                    description: ServiceStatus is the status info and network addresses
+                      of a service
+                    properties:
+                      externalDNS:
+                        description: ExternalDNS are external public addresses for
+                          the service
+                        items:
+                          type: string
+                        type: array
+                      externalIP:
+                        description: ExternalIP are external public addresses for
+                          the service LoadBalancerPorts such as AWS ELB provide public
+                          address and load balancing for the service IngressPorts
+                          are manually created public addresses for the service https://kubernetes.io/docs/concepts/services-networking/service/#external-ips
+                          https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer
+                          https://kubernetes.io/docs/concepts/services-networking/ingress/
+                        items:
+                          type: string
+                        type: array
+                      internalDNS:
+                        description: InternalDNS are internal addresses of the service
+                          inside the cluster
+                        items:
+                          type: string
+                        type: array
+                      internalIP:
+                        description: InternalIP are internal addresses of the service
+                          inside the cluster https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+                        items:
+                          type: string
+                        type: array
+                      nodePorts:
+                        description: NodePorts are the most basic network available.
+                          NodePorts use the networks available on the hosts of kubernetes
+                          nodes. This generally works from within a pod, and from
+                          the internal network of the nodes, but may fail from public
+                          network. https://kubernetes.io/docs/concepts/services-networking/service/#nodeport
+                        items:
+                          type: string
+                        type: array
+                      podPorts:
+                        description: 'PodPorts are the second most basic network address.
+                          Every pod has an IP in the cluster and the pods network
+                          is a mesh so the operator running inside a pod in the cluster
+                          can use this address. Note: pod IPs are not guaranteed to
+                          persist over restarts, so should be rediscovered. Note2:
+                          when running the operator outside of the cluster, pod IP
+                          is not accessible.'
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  serviceSyslog:
                     description: ServiceStatus is the status info and network addresses
                       of a service
                     properties:

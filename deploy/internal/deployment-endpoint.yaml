@@ -84,6 +84,7 @@ spec:
                   name: noobaa-config
                   key: NOOBAA_LOG_LEVEL
             - name: MGMT_ADDR
+            - name: SYSLOG_ADDR
             - name: BG_ADDR
             - name: MD_ADDR
             - name: HOSTED_AGENTS_ADDR
