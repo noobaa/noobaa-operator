@@ -82,14 +82,11 @@ func RunAssign(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatalf("❌ Failed to parse role config - %s", err)
 	}
-	readAccountParams := nb.ReadAccountParams{Email: email}
-	accountInfo, err := NBClient.ReadAccountAPI(readAccountParams)
 	if err != nil {
 		log.Fatalf(`❌ Failed to read account - %s`, err)
 	}
 	UpdateAccountParams := nb.UpdateAccountParams{
 		Email:      email,
-		AllowedIPs: accountInfo.AllowedIPs,
 		RoleConfig: roleConfigObject,
 	}
 
@@ -109,12 +106,8 @@ func RunRemove(cmd *cobra.Command, args []string) {
 	}
 	NBClient := sysClient.NBClient
 
-	readAccountParams := nb.ReadAccountParams{Email: email}
-	accountInfo, _ := NBClient.ReadAccountAPI(readAccountParams)
-
 	UpdateAccountParams := nb.UpdateAccountParams{
 		Email:            email,
-		AllowedIPs:       accountInfo.AllowedIPs,
 		RemoveRoleConfig: true,
 	}
 

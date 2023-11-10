@@ -578,7 +578,7 @@ type UpdateAccountParams struct {
 	MustChangePassword  *bool                    `json:"must_change_password,omitempty"`
 	NewEmail            *string                  `json:"new_email,omitempty"`
 	ForceMd5Etag        *bool                    `json:"force_md5_etag,omitempty"`
-	AllowedIPs          []struct {
+	AllowedIPs          *[]struct {
 		Start   string `json:"start"`
 		End     string `json:"end"`
 	} `json:"ips,omitempty"`
