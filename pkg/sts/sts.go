@@ -20,39 +20,18 @@ func Cmd() *cobra.Command {
 			"The role config object must contain the keys 'role_name' and 'assume_role_policy', with their respective values.",
 	}
 	cmd.AddCommand(
-		CmdCreate(),
-		CmdUpdate(),
+		CmdAssign(),
 		CmdRemove(),
 	)
 	return cmd
 }
 
-// CmdCreate returns a CLI command
-func CmdCreate() *cobra.Command {
+// CmdAssign returns a CLI command
+func CmdAssign() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "assign-role <noobaa-account-name> <role-config>",
-		Short: "Assign a role config to a NooBaa account",
-		Run:   RunUpdate,
-	}
-	cmd.Flags().String("email", "", "The email of the account that will be updated")
-	err := cmd.MarkFlagRequired("email")
-	if err != nil {
-		log.Fatalf(`❌ Failed to mark email flag as required - %s`, err)
-	}
-	cmd.Flags().String("role_config", "", "The new value that the account's role_config should be set to")
-	err = cmd.MarkFlagRequired("role_config")
-	if err != nil {
-		log.Fatalf(`❌ Failed to mark role_config flag as required - %s`, err)
-	}
-	return cmd
-}
-
-// CmdUpdate returns a CLI command
-func CmdUpdate() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "update-role <noobaa-accout-email> <role-config>",
-		Short: "Update a NooBaa account's role config",
-		Run:   RunUpdate,
+		Short: "Assign a role config to a NooBaa account - note that this will override the existing role config",
+		Run:   RunAssign,
 	}
 	cmd.Flags().String("email", "", "The email of the account that will be updated")
 	err := cmd.MarkFlagRequired("email")
@@ -82,8 +61,8 @@ func CmdRemove() *cobra.Command {
 	return cmd
 }
 
-// RunUpdate runs a CLI command
-func RunUpdate(cmd *cobra.Command, args []string) {
+// RunAssign runs a CLI command
+func RunAssign(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 	email, _ := cmd.Flags().GetString("email")
 	roleConfig, _ := cmd.Flags().GetString("role_config")
