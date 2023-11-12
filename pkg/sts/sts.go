@@ -15,8 +15,8 @@ import (
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sts",
-		Short: "Manage the NooBaa Scurity Token Service",
-		Long: "Manage the NooBaa Scurity Token Service by assigning, updating or removing a NooBaa account's role config.\n" +
+		Short: "Manage the NooBaa Security Token Service",
+		Long: "Manage the NooBaa Security Token Service by assigning, updating or removing a NooBaa account's role config.\n" +
 			"The role config object must contain the keys 'role_name' and 'assume_role_policy', with their respective values.",
 	}
 	cmd.AddCommand(
