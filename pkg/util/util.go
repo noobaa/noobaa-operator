@@ -1078,7 +1078,7 @@ func IsIBMPlatform() bool {
 	}
 	isIBM := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "ibm")
 	if isIBM {
-		// Incase of Satellite cluster is deployed in user provided infrastructure
+		// In case of Satellite cluster is deployed in user provided infrastructure
 		if strings.Contains(nodesList.Items[0].Spec.ProviderID, "/sat-") {
 			isIBM = false
 		}

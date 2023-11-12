@@ -42,7 +42,7 @@ import (
 const (
 	ibmEndpoint                           = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
 	ibmLocation                           = "%s-standard"
-	ibmCOSCred                            = "ibm-cloud-cos-creds"
+	ibmCosBucketCred                      = "ibm-cloud-cos-creds"
 	topologyConstraintsEnabledKubeVersion = "1.26.0"
 	minutesToWaitForDefaultBSCreation     = 10
 )
@@ -716,8 +716,8 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		if err := r.prepareGCPBackingStore(); err != nil {
 			return err
 		}
-	} else if r.IBMCloudCOSCreds.UID != "" {
-		log.Infof("IBM objectstore credentials %q created. Creating default backing store on IBM objectstore", r.IBMCloudCOSCreds.Name)
+	} else if r.IBMCosBucketCreds.UID != "" {
+		log.Infof("IBM objectstore credentials %q created. Creating default backing store on IBM objectstore", r.IBMCosBucketCreds.Name)
 		if err := r.prepareIBMBackingStore(); err != nil {
 			return err
 		}
@@ -771,8 +771,8 @@ func (r *Reconciler) defaultBSCreationTimedout(timestampCreation time.Time) bool
 
 func (r *Reconciler) fallbackToPVPoolWithEvent(backingStoreType nbv1.StoreType, secretName string) error {
 	message := fmt.Sprintf("Failed to create default backingstore with type %s by %d minutes, "+
-		"fallback to create PV Pool backingstore",
-		backingStoreType, minutesToWaitForDefaultBSCreation)
+		"fallback to create %s backingstore",
+		backingStoreType, minutesToWaitForDefaultBSCreation, nbv1.StoreTypePVPool)
 	additionalInfoForLogs := fmt.Sprintf(" (could not get Secret %s).", secretName)
 	r.Logger.Info(message + additionalInfoForLogs)
 	r.Recorder.Event(r.NooBaa, corev1.EventTypeWarning, "DefaultBackingStoreFailure", message)
@@ -987,29 +987,29 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 
 func (r *Reconciler) prepareIBMBackingStore() error {
 	r.Logger.Info("Preparing backing store in IBM Cloud")
-	secretName := r.IBMCloudCOSCreds.Name
+	secretName := r.IBMCosBucketCreds.Name
 
 	var (
 		endpoint string
 		location string
 	)
 
-	util.KubeCheck(r.IBMCloudCOSCreds)
-	if r.IBMCloudCOSCreds.UID == "" {
+	util.KubeCheck(r.IBMCosBucketCreds)
+	if r.IBMCosBucketCreds.UID == "" {
 		r.Logger.Errorf("Cloud credentials secret %q is not ready yet", secretName)
 
-		// in case we have a cred request but we do not get a secret
-		if r.defaultBSCreationTimedout(r.IBMCloudCOSCreds.CreationTimestamp.Time) {
+		// in case it takes too long to have the secret
+		if r.defaultBSCreationTimedout(r.IBMCosBucketCreds.CreationTimestamp.Time) {
 			return r.fallbackToPVPoolWithEvent(nbv1.StoreTypeIBMCos, secretName)
 		}
 		return fmt.Errorf("Cloud credentials secret %q is not ready yet", secretName)
 	}
 
-	if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_Endpoint"]; ok {
+	if val, ok := r.IBMCosBucketCreds.StringData["IBM_COS_Endpoint"]; ok {
 		// Use the endpoint provided in the secret
 		endpoint = val
 		r.Logger.Infof("Endpoint provided in secret: %q", endpoint)
-		if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_Location"]; ok {
+		if val, ok := r.IBMCosBucketCreds.StringData["IBM_COS_Location"]; ok {
 			location = val
 			r.Logger.Infof("Location provided in secret: %q", location)
 		}
@@ -1035,7 +1035,7 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 	r.Logger.Infof("IBM COS Endpoint: %s   LocationConstraint: %s", endpoint, location)
 
 	var accessKeyID string
-	if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_ACCESS_KEY_ID"]; ok {
+	if val, ok := r.IBMCosBucketCreds.StringData["IBM_COS_ACCESS_KEY_ID"]; ok {
 		accessKeyID = val
 	} else {
 		r.Logger.Errorf("Missing IBM_COS_ACCESS_KEY_ID in the secret")
@@ -1043,7 +1043,7 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 	}
 
 	var secretAccessKey string
-	if val, ok := r.IBMCloudCOSCreds.StringData["IBM_COS_SECRET_ACCESS_KEY"]; ok {
+	if val, ok := r.IBMCosBucketCreds.StringData["IBM_COS_SECRET_ACCESS_KEY"]; ok {
 		secretAccessKey = val
 	} else {
 		r.Logger.Errorf("Missing IBM_COS_SECRET_ACCESS_KEY in the secret")
@@ -1074,7 +1074,7 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 		TargetBucket: bucketName,
 		Secret: corev1.SecretReference{
 			Name:      secretName,
-			Namespace: r.IBMCloudCOSCreds.Namespace,
+			Namespace: r.IBMCosBucketCreds.Namespace,
 		},
 		Endpoint:         endpoint,
 		SignatureVersion: nbv1.S3SignatureVersionV2,
