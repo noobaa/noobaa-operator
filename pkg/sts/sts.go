@@ -20,14 +20,14 @@ func Cmd() *cobra.Command {
 			"The role config object must contain the keys 'role_name' and 'assume_role_policy', with their respective values.",
 	}
 	cmd.AddCommand(
-		CmdAssign(),
-		CmdRemove(),
+		CmdAssignRole(),
+		CmdRemoveRole(),
 	)
 	return cmd
 }
 
-// CmdAssign returns a CLI command
-func CmdAssign() *cobra.Command {
+// CmdAssignRole returns a CLI command
+func CmdAssignRole() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "assign-role <noobaa-account-name> <role-config>",
 		Short: "Assign a role config to a NooBaa account - note that this will override the existing role config",
@@ -46,8 +46,8 @@ func CmdAssign() *cobra.Command {
 	return cmd
 }
 
-// CmdRemove returns a CLI command
-func CmdRemove() *cobra.Command {
+// CmdRemoveRole returns a CLI command
+func CmdRemoveRole() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "remove-role <noobaa-account-name>",
 		Short: "Remove a NooBaa account's role config",
