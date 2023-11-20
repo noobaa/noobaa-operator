@@ -69,6 +69,8 @@ func CmdRegenerate() *cobra.Command {
 		Short: "Regenerate OBC S3 Credentials",
 		Run:   RunRegenerate,
 	}
+	cmd.Flags().String("app-namespace", "",
+		"Set the namespace of the application where the OBC should be regenerated")
 	return cmd
 }
 
@@ -80,7 +82,7 @@ func CmdDelete() *cobra.Command {
 		Run:   RunDelete,
 	}
 	cmd.Flags().String("app-namespace", "",
-		"Set the namespace of the application where the OBC should be created")
+		"Set the namespace of the application where the OBC should be deleted")
 	return cmd
 }
 
@@ -250,7 +252,7 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 	if obc.Spec.ObjectBucketName != "" {
 		ob.Name = obc.Spec.ObjectBucketName
 	} else {
-		ob.Name = fmt.Sprintf("obc-%s-%s", appNamespace, name)
+		ob.Name = fmt.Sprintf("ob-%s-%s", appNamespace, name)
 	}
 
 	if !util.KubeCheck(ob) {
@@ -259,7 +261,7 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 
 	accountName := ob.Spec.AdditionalState["account"]
 
-	err := GenerateAccountKeys(name, accountName)
+	err := GenerateAccountKeys(name, accountName, appNamespace)
 	if err != nil {
 		log.Fatalf(`❌ Could not regenerate credentials for %q: %v`, name, err)
 	}
@@ -478,7 +480,7 @@ func WaitReady(obc *nbv1.ObjectBucketClaim) bool {
 
 	interval := time.Duration(3)
 
-	err := wait.PollUntilContextCancel(ctx,interval*time.Second, true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		err := klient.Get(util.Context(), util.ObjectKey(obc), obc)
 		if err != nil {
 			log.Printf("⏳ Failed to get OBC: %s", err)
@@ -516,7 +518,7 @@ func CheckPhase(obc *nbv1.ObjectBucketClaim) {
 }
 
 // GenerateAccountKeys regenerate noobaa OBC account S3 keys
-func GenerateAccountKeys(name string, accountName string) error {
+func GenerateAccountKeys(name, accountName, appNamespace string) error {
 	log := util.Logger()
 
 	if accountName == "" {
@@ -532,7 +534,7 @@ func GenerateAccountKeys(name string, accountName string) error {
 
 	// Checking that we can find the secret before we are calling the RPC to change the credentials.
 	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
-	secret.Namespace = options.Namespace
+	secret.Namespace = appNamespace
 	secret.Name = name
 	if !util.KubeCheckQuiet(secret) {
 		log.Fatalf(`❌  Could not find secret: %s, will not regenerate keys.`, secret.Name)
@@ -567,6 +569,6 @@ func GenerateAccountKeys(name string, accountName string) error {
 		log.Fatalf(`❌  Failed to update the secret %s with the new accessKeys`, secret.Name)
 	}
 
-	log.Printf("✅ Successfully reganerate s3 credentials for the OBC %q", name)
+	log.Printf("✅ Successfully regenerate s3 credentials for the OBC %q", name)
 	return nil
 }
