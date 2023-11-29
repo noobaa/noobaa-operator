@@ -571,6 +571,19 @@ type DeleteNamespaceResourceParams struct {
 	Name string `json:"name"`
 }
 
+// UpdateAccountParams is the params of account_api.update_account_s3_access()
+type UpdateAccountParams struct {
+	Name                *string                  `json:"username,omitempty"`
+	Email               string                   `json:"email"`
+	NewEmail            *string                  `json:"new_email,omitempty"`
+	AllowedIPs          *[]struct {
+		Start   string `json:"start"`
+		End     string `json:"end"`
+	} `json:"ips,omitempty"`
+	RoleConfig          interface{}              `json:"role_config,omitempty"`
+	RemoveRoleConfig    bool                     `json:"remove_role_config,omitempty"`
+}
+
 // UpdateAccountS3AccessParams is the params of account_api.update_account_s3_access()
 type UpdateAccountS3AccessParams struct {
 	Email               string                  `json:"email"`

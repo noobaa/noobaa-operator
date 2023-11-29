@@ -43,6 +43,7 @@ type Client interface {
 	DeletePoolAPI(DeletePoolParams) error
 	DeleteNamespaceResourceAPI(DeleteNamespaceResourceParams) error
 
+	UpdateAccount(UpdateAccountParams) error
 	UpdateAccountS3Access(UpdateAccountS3AccessParams) error
 	UpdateAllBucketsDefaultPool(UpdateDefaultResourceParams) error
 	UpdateBucketClass(UpdateBucketClassParams) (BucketClassInfo, error)
@@ -323,6 +324,12 @@ func (c *RPCClient) DeleteAccountAPI(params DeleteAccountParams) error {
 // DeletePoolAPI calls pool_api.delete_pool()
 func (c *RPCClient) DeletePoolAPI(params DeletePoolParams) error {
 	req := &RPCMessage{API: "pool_api", Method: "delete_pool", Params: params}
+	return c.Call(req, nil)
+}
+
+// UpdateAccount calls account_api.update_account()
+func (c *RPCClient) UpdateAccount(params UpdateAccountParams) error {
+	req := &RPCMessage{API: "account_api", Method: "update_account", Params: params}
 	return c.Call(req, nil)
 }
 
