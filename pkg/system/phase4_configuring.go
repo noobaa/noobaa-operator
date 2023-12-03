@@ -1007,6 +1007,10 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 		return err
 	}
 	projectID := authJSON.ProjectID
+	if r.GCPBucketCreds.StringData == nil {
+		r.Logger.Infof("Secret %q does not contain a map of StringData yet. retry on next reconcile...", secretName)
+		return fmt.Errorf("cloud credentials secret %q is not ready yet (does not contain a map of StringData yet)", secretName)
+	}
 	r.GCPBucketCreds.StringData["GoogleServiceAccountPrivateKeyJson"] = cloudCredsSecret.StringData["service_account.json"]
 	ctx := context.Background()
 	gcpclient, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(cloudCredsSecret.StringData["service_account.json"])))
