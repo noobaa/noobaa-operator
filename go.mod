@@ -25,18 +25,18 @@ require (
 	github.com/openshift/cloud-credential-operator v0.0.0-20210716145643-0ee1808fb8ed
 	github.com/openshift/custom-resource-status v1.1.2
 	github.com/operator-framework/api v0.17.3
-	github.com/operator-framework/operator-lib v0.11.0
+	github.com/operator-framework/operator-lib v0.11.1-0.20230126194151-7fc7204a9445
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.63.0
-	github.com/rook/rook v1.11.3
+	github.com/rook/rook v1.11.4
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/term v0.5.0
 	google.golang.org/api v0.109.0
-	k8s.io/api v0.26.1
+	k8s.io/api v0.26.4
 	k8s.io/apiextensions-apiserver v0.26.1
-	k8s.io/apimachinery v0.26.1
+	k8s.io/apimachinery v0.26.4
 	k8s.io/cli-runtime v0.25.4
 	k8s.io/client-go v0.26.1
 	k8s.io/code-generator v0.26.1
