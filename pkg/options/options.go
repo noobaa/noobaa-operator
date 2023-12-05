@@ -170,6 +170,10 @@ var AutoscalerType = ""
 // it can be overridden for testing or different namespace.
 var PrometheusNamespace = ""
 
+// AWSSTSARN is used in an AWS STS cluster to assume role ARN
+// it can be overridden for testing.
+var AWSSTSARN = ""
+
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
 	return Namespace + ".noobaa.io"
@@ -318,9 +322,12 @@ func init() {
 		&AutoscalerType, "autoscaler-type",
 		AutoscalerType, "The type of autoscaler (hpav2, keda)",
 	)
-
 	FlagSet.StringVar(
 		&PrometheusNamespace, "prometheus-namespace",
 		PrometheusNamespace, "namespace with installed prometheus for autoscaler",
+	)
+	FlagSet.StringVar(
+		&AWSSTSARN, "aws-sts-arn",
+		AWSSTSARN, "The AWS STS Role ARN which will assume role",
 	)
 }

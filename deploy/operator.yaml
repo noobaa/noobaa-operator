@@ -18,13 +18,15 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       volumes:
-      - name: oidc-token
+      # This service account token can be used to provide identity outside the cluster.
+      # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+      - name: bound-sa-token
         projected:
           sources:
           - serviceAccountToken:
-              path: oidc-token
-              expirationSeconds: 3600
-              audience: api
+              path: token
+              # For testing purposes change the audience to api
+              audience: openshift
       - name: socket
         emptyDir: {}
       - name: noobaa-ca-inject
@@ -38,8 +40,13 @@ spec:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
           volumeMounts:
-          - mountPath: /etc/pki/ca-trust/extracted/pem
-            name: noobaa-ca-inject
+          - name: bound-sa-token
+            mountPath: /var/run/secrets/openshift/serviceaccount
+            readOnly: true
+          - name: noobaa-ca-inject
+            mountPath: /etc/pki/ca-trust/extracted/pem
+          - name: socket
+            mountPath: /var/lib/cosi
           resources:
             limits:
               cpu: "250m"
@@ -55,11 +62,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-          volumeMounts:
-          - mountPath: /var/run/secrets/openshift/serviceaccount
-            name: oidc-token
-          - mountPath: /var/lib/cosi
-            name: socket
         - name: objectstorage-provisioner-sidecar
           image: COSI_SIDECAR_IMAGE
           args:

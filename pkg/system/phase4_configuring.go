@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -37,6 +38,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/sts"
 )
 
 const (
@@ -45,6 +47,7 @@ const (
 	ibmCosBucketCred                      = "ibm-cloud-cos-creds"
 	topologyConstraintsEnabledKubeVersion = "1.26.0"
 	minutesToWaitForDefaultBSCreation     = 10
+	credentialsKey                        = "credentials"
 )
 
 type gcpAuthJSON struct {
@@ -814,13 +817,61 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 		region = "us-east-1"
 	}
 	r.Logger.Infof("identified aws region %s", region)
-	s3Config := &aws.Config{
-		Credentials: credentials.NewStaticCredentials(
-			cloudCredsSecret.StringData["aws_access_key_id"],
-			cloudCredsSecret.StringData["aws_secret_access_key"],
-			"",
-		),
-		Region: &region,
+	var s3Config *aws.Config
+	if r.IsAWSSTSCluster { // handle STS case first
+		// get credentials
+		if len(cloudCredsSecret.StringData[credentialsKey]) == 0 {
+			return fmt.Errorf("invalid secret for aws sts credentials (should contain %s under data)",
+				credentialsKey)
+		}
+		data := cloudCredsSecret.StringData[credentialsKey]
+		info, err := r.getInfoFromAwsStsSecret(data)
+		if err != nil {
+			return fmt.Errorf("could not get the credentials from the aws sts secret %v", err)
+		}
+		roleARNInput := info["role_arn"]
+		webIdentityTokenPathInput := info["web_identity_token_file"]
+		r.Logger.Info("Initiating a Session with AWS")
+		sess, err := session.NewSession()
+		if err != nil {
+			return fmt.Errorf("could not create AWS Session %v", err)
+		}
+		stsClient := sts.New(sess)
+		r.Logger.Infof("AssumeRoleWithWebIdentityInput, roleARN = %s webIdentityTokenPath = %s, ",
+			roleARNInput, webIdentityTokenPathInput)
+		webIdentityTokenPathOutput, err := os.ReadFile(webIdentityTokenPathInput)
+		if err != nil {
+			return fmt.Errorf("could not read WebIdentityToken from path %s, %v",
+				webIdentityTokenPathInput, err)
+		}
+		WebIdentityToken := string(webIdentityTokenPathOutput)
+		input := &sts.AssumeRoleWithWebIdentityInput{
+			RoleArn:          aws.String(roleARNInput),
+			RoleSessionName:  aws.String(r.AWSSTSRoleSessionName),
+			WebIdentityToken: aws.String(WebIdentityToken),
+		}
+		result, err := stsClient.AssumeRoleWithWebIdentity(input)
+		if err != nil {
+			return fmt.Errorf("could not use AWS AssumeRoleWithWebIdentity with role name %s and web identity token file %s, %v",
+				roleARNInput, webIdentityTokenPathInput, err)
+		}
+		s3Config = &aws.Config{
+			Credentials: credentials.NewStaticCredentials(
+				*result.Credentials.AccessKeyId,
+				*result.Credentials.SecretAccessKey,
+				*result.Credentials.SessionToken,
+			),
+			Region: &region,
+		}
+	} else { // handle AWS long-lived credentials (not STS)
+		s3Config = &aws.Config{
+			Credentials: credentials.NewStaticCredentials(
+				cloudCredsSecret.StringData["aws_access_key_id"],
+				cloudCredsSecret.StringData["aws_secret_access_key"],
+				"",
+			),
+			Region: &region,
+		}
 	}
 
 	bucketName := r.DefaultBackingStore.Spec.AWSS3.TargetBucket
@@ -1257,6 +1308,29 @@ func (r *Reconciler) ReconcileOBCStorageClass() error {
 	}
 
 	return nil
+}
+
+// getInfoFromAwsStsSecret would return map with keys of role_arn and web_identity_token_file and their values
+// After decoding this field should see structure:
+// [default]
+// sts_regional_endpoints = regional
+// role_arn = arn:aws:iam::>account-id>:role/<role-name>
+// web_identity_token_file = /var/run/secrets/openshift/serviceaccount/token
+func (r *Reconciler) getInfoFromAwsStsSecret(data string) (map[string]string, error) {
+	lines := strings.Split(data, "\n")
+
+	result := make(map[string]string)
+	lines = lines[2:]
+	for _, pair := range lines {
+		kv := strings.Split(pair, " =")
+		if len(kv) != 2 {
+			r.Logger.Errorf("invalid key-value pair: %s", pair)
+		}
+		key := strings.TrimSpace(kv[0])
+		value := strings.TrimSpace(kv[1])
+		result[key] = value
+	}
+	return result, nil
 }
 
 func (r *Reconciler) createS3BucketForBackingStore(s3Config *aws.Config, bucketName string) error {
