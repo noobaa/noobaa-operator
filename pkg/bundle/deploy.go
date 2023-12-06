@@ -104,7 +104,7 @@ roleRef:
   name: noobaa.noobaa.io
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "4e5794deec0a962fe42352d9fb56182f3e052d94a404277e084fdc47fed9ffd2"
+const Sha256_deploy_crds_noobaa_io_backingstores_crd_yaml = "8ffffa6e21cfd3c8d5ae8d64e90c733807057543856c02e3832992beb50db630"
 
 const File_deploy_crds_noobaa_io_backingstores_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -276,7 +276,8 @@ spec:
                         description: "Claims lists the names of resources, defined
                           in spec.resourceClaims, that are used by this container.
                           \n This is an alpha field and requires enabling the DynamicResourceAllocation
-                          feature gate. \n This field is immutable."
+                          feature gate. \n This field is immutable. It can only be
+                          set for containers."
                         items:
                           description: ResourceClaim references one entry in PodSpec.ResourceClaims.
                           properties:
@@ -1265,7 +1266,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "813b6af0d38eddc034a7bec55c1fff5255d8d7e3707da939abb060803c55c6b8"
+const Sha256_deploy_crds_noobaa_io_noobaas_crd_yaml = "7c5af817f04354a9f15d0baaea074115faff24b6ddb18e76c33931cf24da04c6"
 
 const File_deploy_crds_noobaa_io_noobaas_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2169,7 +2170,8 @@ spec:
                     description: "Claims lists the names of resources, defined in
                       spec.resourceClaims, that are used by this container. \n This
                       is an alpha field and requires enabling the DynamicResourceAllocation
-                      feature gate. \n This field is immutable."
+                      feature gate. \n This field is immutable. It can only be set
+                      for containers."
                     items:
                       description: ResourceClaim references one entry in PodSpec.ResourceClaims.
                       properties:
@@ -2224,7 +2226,8 @@ spec:
                     description: "Claims lists the names of resources, defined in
                       spec.resourceClaims, that are used by this container. \n This
                       is an alpha field and requires enabling the DynamicResourceAllocation
-                      feature gate. \n This field is immutable."
+                      feature gate. \n This field is immutable. It can only be set
+                      for containers."
                     items:
                       description: ResourceClaim references one entry in PodSpec.ResourceClaims.
                       properties:
@@ -2289,7 +2292,8 @@ spec:
                     description: "Claims lists the names of resources, defined in
                       spec.resourceClaims, that are used by this container. \n This
                       is an alpha field and requires enabling the DynamicResourceAllocation
-                      feature gate. \n This field is immutable."
+                      feature gate. \n This field is immutable. It can only be set
+                      for containers."
                     items:
                       description: ResourceClaim references one entry in PodSpec.ResourceClaims.
                       properties:
@@ -2469,7 +2473,7 @@ spec:
                               in spec.resourceClaims, that are used by this container.
                               \n This is an alpha field and requires enabling the
                               DynamicResourceAllocation feature gate. \n This field
-                              is immutable."
+                              is immutable. It can only be set for containers."
                             items:
                               description: ResourceClaim references one entry in PodSpec.ResourceClaims.
                               properties:
@@ -2603,7 +2607,8 @@ spec:
                         description: "Claims lists the names of resources, defined
                           in spec.resourceClaims, that are used by this container.
                           \n This is an alpha field and requires enabling the DynamicResourceAllocation
-                          feature gate. \n This field is immutable."
+                          feature gate. \n This field is immutable. It can only be
+                          set for containers."
                         items:
                           description: ResourceClaim references one entry in PodSpec.ResourceClaims.
                           properties:
