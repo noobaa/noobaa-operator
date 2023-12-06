@@ -6290,10 +6290,10 @@ rules:
     - delete
 `
 
-const Sha256_deploy_role_ui_yaml = "49d210f2ec7facbd486e6ac96515c1d2886f26afe6f7155be3994b4f0b1d0311"
+const Sha256_deploy_role_ui_yaml = "d1929d57d9d9bf021e83be275ea45ec17f83a700d9a74936742ba50c41d2c0bb"
 
 const File_deploy_role_ui_yaml = `apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   name: noobaa-odf-ui
 rules:
