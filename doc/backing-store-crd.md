@@ -55,13 +55,15 @@ spec:
 ```
 
 ## AWS-S3 Security Token Service (STS)
-Simlarly to `AWS-S3` this backingstore uses the S3 API for storing encrypted chunks of data in AWS buckets.
-However, the difference between the two backingstore types lies in the authentication method. AWS S3 uses a pair of static, user-provided access keys, while AWS S3 STS uses an Amazon Resource Name (ARN) provided by the user to create credentials for every single interaction with AWS by utilizing [AssumeRuleWithWebIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html).
+Similarly to `AWS-S3` this backingstore uses the S3 API for storing encrypted chunks of data in AWS buckets.
+However, the difference between the two backingstore types lies in the authentication method:
+- AWS S3 uses long-lived credentials - a pair of static, user-provided access keys.
+- AWS S3 STS uses short-lived credentials - the user provides an Amazon Resource Name (ARN) of a role. Under the hood, for every single interaction with AWS, we use [AssumeRuleWithWebIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html), which requests temporary security credentials. The role ARN structure is `arn:aws:iam::<aws-account-id>:role/<name>`.
+
 This type of backingstore is useful in cases where the user wishes to limit access to their AWS cloud for a specific amount of time, and for easier management of the cloud's security.
 
 Prior to using this backingstore, an OpenIDConnect provider needs to be set up, which is outside the scope of these docs.
 
-Please note that once the set session duration expires, the backingstore will no longer work, and writing and reading data will not be possible any longer, without editing the backingstore YAML and replacing the ARN manually.
 ```shell
 noobaa backingstore create aws-sts-s3 <BACKINGSTORE NAME> --target-bucket <> --aws-sts-arn <>
 ```
