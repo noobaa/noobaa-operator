@@ -309,6 +309,15 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 			if r.NooBaa.Spec.DBResources != nil {
 				c.Resources = *r.NooBaa.Spec.DBResources
 			}
+
+			c.Lifecycle = &corev1.Lifecycle{
+				PreStop: &corev1.LifecycleHandler{
+					Exec: &corev1.ExecAction{
+						Command: []string{"/bin/sh", "-c", "pg_ctl -D /var/lib/pgsql/data/userdata/ -w -t 60 -m fast stop"},
+					},
+				},
+			}
+
 		}
 	}
 
