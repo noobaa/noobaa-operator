@@ -156,7 +156,7 @@ gen-olm: gen
 
 gen-odf-package: cli
 	rm -rf $(MANIFESTS)
-	MANIFESTS="$(MANIFESTS)" CSV_NAME="$(csv-name)" SKIP_RANGE="$(skip-range)" REPLACES="$(replaces)" CORE_IMAGE="$(core-image)" DB_IMAGE="$(db-image)" OPERATOR_IMAGE="$(operator-image)" COSI_SIDECAR_IMAGE="$(cosi-sidecar-image)" OBC_CRD="$(obc-crd)" build/gen-odf-package.sh
+	MANIFESTS="$(MANIFESTS)" CSV_NAME="$(csv-name)" SKIP_RANGE="$(skip-range)" REPLACES="$(replaces)" CORE_IMAGE="$(core-image)" DB_IMAGE="$(db-image)" OPERATOR_IMAGE="$(operator-image)" COSI_SIDECAR_IMAGE="$(cosi-sidecar-image)" OBC_CRD="$(obc-crd)" PSQL_12_IMAGE="$(psql-12-image)" build/gen-odf-package.sh
 	@echo "✅ gen-odf-package"
 .PHONY: gen-odf-package
 

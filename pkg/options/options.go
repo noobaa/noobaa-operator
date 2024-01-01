@@ -78,6 +78,10 @@ var DBImage = "centos/mongodb-36-centos7"
 // currently it can not be overridden.
 var DBPostgresImage = "quay.io/sclorg/postgresql-15-c9s"
 
+// Psql12Image is the default postgres12 db image url
+// currently it can not be overridden.
+var Psql12Image = "centos/postgresql-12-centos7"
+
 // DBMongoImage is the default mongo db image url
 // this is used during migration to solve issues where mongo STS referencing to postgres image
 var DBMongoImage = "centos/mongodb-36-centos7"
@@ -225,6 +229,10 @@ func init() {
 	FlagSet.StringVar(
 		&DBImage, "db-image",
 		DBImage, "The database container image",
+	)
+	FlagSet.StringVar(
+		&Psql12Image, "psql-12-image",
+		Psql12Image, "The database old container image",
 	)
 	FlagSet.StringVar(
 		&CosiSideCarImage, "cosi-sidecar-image",
