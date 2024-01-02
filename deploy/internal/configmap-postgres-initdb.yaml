@@ -37,3 +37,51 @@ data:
                  -e 's/^pg_ctl\sstart.*/pg_ctl start || true/'                                   \
                     /usr/bin/run-postgresql
           su postgres -c "bash -x /usr/bin/run-postgresql"
+
+            
+  dumpdb.sh: |
+          set -e
+          sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
+          su postgres -c "bash -x /usr/bin/run-postgresql" &
+          THRESHOLD=33
+          USE=$(df -h --output=pcent "/$HOME/data" | tail -n 1 | tr -d '[:space:]%')
+          # Check if the used space is more than the threshold
+          if [ "$USE" -gt "$THRESHOLD" ]; then
+            echo "Warning: Free space $USE% is above $THRESHOLD% threshold. Can't start upgrade!"
+            exit 1
+          fi
+          echo "Info: Free space $USE% is below $THRESHOLD% threshold. Starting upgrade!"
+          until pg_isready; do sleep 1; done;
+            pg_dumpall -U postgres > /$HOME/data/dump.sql
+          exit 0
+
+  upgradedb.sh: |
+          set -e
+          PGDATA=$HOME/data/userdata
+          PGDATA_12=$HOME/data/userdata-12
+          THRESHOLD=33
+          USE=$(df -h --output=pcent "/$HOME/data" | tail -n 1 | tr -d '[:space:]%')
+          # Check if the used space is more than the threshold
+          if [ "$USE" -gt "$THRESHOLD" ]; then
+            echo "Warning: Free space $USE% is above $THRESHOLD% threshold. Can't start upgrade!"
+            exit 1
+          fi
+          echo "Info: Free space $USE% is below $THRESHOLD% threshold. Starting upgrade!"
+          if [ ! -d $PGDATA_12 ]; then
+            mv $PGDATA $PGDATA_12
+          fi
+          sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
+          su postgres -c "bash -x /usr/bin/run-postgresql" &
+          until pg_isready; do sleep 1; done;
+          psql -U postgres < /$HOME/data/dump.sql
+          rm /$HOME/data/dump.sql
+          exit 0
+
+  revertdb.sh: |
+          PGDATA=$HOME/data/userdata
+          PGDATA_12=$HOME/data/userdata-12
+          if [ -d $PGDATA_12 ]; then
+            rm -rf $PGDATA
+            mv $PGDATA_12 $PGDATA
+          fi
+          exit 0
