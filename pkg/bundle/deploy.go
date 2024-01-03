@@ -1471,7 +1471,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "8f111f5299fc274593af4efb9565b34f36d36bd49f3666b19279504411ed0df0"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "87997842fc69b23f31b716777b6c3df7b12db2ae12758f890f63ce8d910a89f2"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3105,6 +3105,10 @@ spec:
                 description: ActualImage is set to report which image the operator
                   is using
                 type: string
+              beforeUpgradeDbImage:
+                description: BeforeUpgradeDbImage is the db image used before last
+                  db upgrade
+                type: string
               conditions:
                 description: Conditions is a list of conditions related to operator
                   reconciliation
@@ -3163,6 +3167,10 @@ spec:
               phase:
                 description: Phase is a simple, high-level summary of where the System
                   is in its lifecycle
+                type: string
+              postgresUpdatePhase:
+                description: Upgrade reports the status of the ongoing postgres upgrade
+                  process
                 type: string
               readme:
                 description: Readme is a user readable string with explanations on
@@ -3642,7 +3650,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "016881f9a5e0561dbf10e7034dead0ee636556c162439d4d54c974a65253357c"
+const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "9ce7163b6de6bf58c2804ca6be2efc69fef7c90951fa549d17fa08a3a2684fc8"
 
 const File_deploy_internal_configmap_postgres_initdb_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3683,6 +3691,54 @@ data:
                  -e 's/^pg_ctl\sstart.*/pg_ctl start || true/'                                   \
                     /usr/bin/run-postgresql
           su postgres -c "bash -x /usr/bin/run-postgresql"
+
+            
+  dumpdb.sh: |
+          set -e
+          sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
+          su postgres -c "bash -x /usr/bin/run-postgresql" &
+          THRESHOLD=33
+          USE=$(df -h --output=pcent "/$HOME/data" | tail -n 1 | tr -d '[:space:]%')
+          # Check if the used space is more than the threshold
+          if [ "$USE" -gt "$THRESHOLD" ]; then
+            echo "Warning: Free space $USE% is above $THRESHOLD% threshold. Can't start upgrade!"
+            exit 1
+          fi
+          echo "Info: Free space $USE% is below $THRESHOLD% threshold. Starting upgrade!"
+          until pg_isready; do sleep 1; done;
+            pg_dumpall -U postgres > /$HOME/data/dump.sql
+          exit 0
+
+  upgradedb.sh: |
+          set -e
+          PGDATA=$HOME/data/userdata
+          PGDATA_12=$HOME/data/userdata-12
+          THRESHOLD=33
+          USE=$(df -h --output=pcent "/$HOME/data" | tail -n 1 | tr -d '[:space:]%')
+          # Check if the used space is more than the threshold
+          if [ "$USE" -gt "$THRESHOLD" ]; then
+            echo "Warning: Free space $USE% is above $THRESHOLD% threshold. Can't start upgrade!"
+            exit 1
+          fi
+          echo "Info: Free space $USE% is below $THRESHOLD% threshold. Starting upgrade!"
+          if [ ! -d $PGDATA_12 ]; then
+            mv $PGDATA $PGDATA_12
+          fi
+          sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
+          su postgres -c "bash -x /usr/bin/run-postgresql" &
+          until pg_isready; do sleep 1; done;
+          psql -U postgres < /$HOME/data/dump.sql
+          rm /$HOME/data/dump.sql
+          exit 0
+
+  revertdb.sh: |
+          PGDATA=$HOME/data/userdata
+          PGDATA_12=$HOME/data/userdata-12
+          if [ -d $PGDATA_12 ]; then
+            rm -rf $PGDATA
+            mv $PGDATA_12 $PGDATA
+          fi
+          exit 0
 `
 
 const Sha256_deploy_internal_deployment_endpoint_yaml = "b3dab0839de6aa382833772ab278feb245067b27591dee988b29184de90961b6"
