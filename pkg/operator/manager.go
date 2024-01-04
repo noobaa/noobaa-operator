@@ -16,14 +16,17 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/apis"
 	"github.com/noobaa/noobaa-operator/v5/pkg/controller"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 
 	"github.com/operator-framework/operator-lib/leader"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	metricsServer "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -53,9 +56,16 @@ func RunOperator(cmd *cobra.Command, args []string) {
 	// Create a new Cmd to provide shared dependencies and start components
 	// mgr => namespace scoped manager
 	mgr, err := manager.New(config, manager.Options{
-		Namespace:          options.Namespace,
-		MapperProvider:     util.MapperProvider, // restmapper.NewDynamicRESTMapper,
-		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
+			opts.DefaultNamespaces = map[string]cache.Config{
+				options.Namespace: {},
+			}
+			return cache.New(config, opts)
+		},
+		MapperProvider: util.MapperProvider, // restmapper.NewDynamicRESTMapper,
+		Metrics: metricsServer.Options{
+			BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		},
 	})
 	if err != nil {
 		log.Fatalf("Failed to create manager: %s", err)
@@ -63,8 +73,10 @@ func RunOperator(cmd *cobra.Command, args []string) {
 
 	// cmgr => cluster scoped manager
 	cmgr, err := manager.New(config, manager.Options{
-		MapperProvider:     util.MapperProvider, // restmapper.NewDynamicRESTMapper,
-		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort+1),
+		MapperProvider: util.MapperProvider, // restmapper.NewDynamicRESTMapper,
+		Metrics: metricsServer.Options{
+			BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort+1),
+		},
 	})
 	if err != nil {
 		log.Fatalf("Failed to create cluster scoped manager: %s", err)
