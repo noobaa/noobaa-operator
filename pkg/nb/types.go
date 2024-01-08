@@ -589,7 +589,7 @@ type UpdateAccountS3AccessParams struct {
 	Email               string                  `json:"email"`
 	S3Access            bool                    `json:"s3_access"`
 	DefaultResource     *string                 `json:"default_resource,omitempty"`
-	ForceMd5Etag        bool                    `json:"force_md5_etag,omitempty"`
+	ForceMd5Etag        *bool                   `json:"force_md5_etag,omitempty"`
 	AllowBucketCreation *bool                   `json:"allow_bucket_creation,omitempty"`
 	NsfsAccountConfig   *nbv1.AccountNsfsConfig `json:"nsfs_account_config,omitempty"`
 }
