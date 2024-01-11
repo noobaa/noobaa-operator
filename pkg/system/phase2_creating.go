@@ -134,8 +134,10 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 			return err
 		}
 
-		if err := r.UpgradePostgresDB(); err != nil {
-			return err
+		if r.NooBaa.Spec.DBType == "postgres" {
+			if err := r.UpgradePostgresDB(); err != nil {
+				return err
+			}
 		}
 
 		if err := r.ReconcileDB(); err != nil {
