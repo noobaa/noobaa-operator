@@ -61,8 +61,10 @@ func RunYaml(cmd *cobra.Command, args []string) {
 // CmdUpgrade returns a CLI command
 func CmdUpgrade() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "upgrade",
+		Use:   "upgrade --noobaa-image <noobaa-image-path-and-tag> --operator-image <operator-image-path-and-tag>",
 		Short: "Upgrade the system, its components and CRDS",
+		Long:  "The command should be used in conjunction with the global flags --noobaa-image and " + 
+		"--operator-image to upgrade the system and its components to the desired versions.",
 		Run:   RunUpgrade,
 		Args:  cobra.NoArgs,
 	}
