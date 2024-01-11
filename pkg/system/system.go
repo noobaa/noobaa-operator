@@ -445,6 +445,7 @@ func RunUpgrade(cmd *cobra.Command, args []string) {
 	if options.NooBaaImage != "" {
 		image := options.NooBaaImage
 		sys.Spec.Image = &image
+		sys.Namespace = options.Namespace
 	}
 	util.KubeApply(sys)
 }
