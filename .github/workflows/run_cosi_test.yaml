@@ -1,5 +1,7 @@
 name: COSI integration Tests
-on: [push, pull_request, workflow_dispatch]
+# SHOULD BE RETURNED ONCE COSI IS BACK
+# on: [push, pull_request, workflow_dispatch]
+on: []
 
 jobs:
   run-cosi-test:

@@ -5898,7 +5898,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "8f48fc9ae60e1ef5f25d6b1a7a6cd0a6e76f055eb0fc3f4dd5068d304ed111be"
+const Sha256_deploy_operator_yaml = "1a2c110adc6763047d158e9021ea716e8d16ce734c0302c569b02e114189dff8"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -5929,8 +5929,9 @@ spec:
               path: token
               # For testing purposes change the audience to api
               audience: openshift
-      - name: socket
-        emptyDir: {}
+      # SHOULD BE RETURNED ONCE COSI IS BACK
+      # - name: socket
+      #   emptyDir: {}
       - name: noobaa-ca-inject
         configMap:
           name: noobaa-ca-inject
@@ -5947,8 +5948,9 @@ spec:
             readOnly: true
           - name: noobaa-ca-inject
             mountPath: /etc/pki/ca-trust/extracted/pem
-          - name: socket
-            mountPath: /var/lib/cosi
+          # SHOULD BE RETURNED ONCE COSI IS BACK
+          # - name: socket
+          #   mountPath: /var/lib/cosi
           resources:
             limits:
               cpu: "250m"
@@ -5964,23 +5966,24 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-        - name: objectstorage-provisioner-sidecar
-          image: COSI_SIDECAR_IMAGE
-          args:
-          - "--v=5"
-          resources:
-            limits:
-              cpu: "100m"
-              memory: "512Mi"
-          imagePullPolicy: Always
-          env:
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          volumeMounts:
-          - mountPath: /var/lib/cosi
-            name: socket
+        # SHOULD BE RETURNED ONCE COSI IS BACK
+        # - name: objectstorage-provisioner-sidecar
+        #   image: COSI_SIDECAR_IMAGE
+        #   args:
+        #   - "--v=5"
+        #   resources:
+        #     limits:
+        #       cpu: "100m"
+        #       memory: "512Mi"
+        #   imagePullPolicy: Always
+        #   env:
+        #   - name: POD_NAMESPACE
+        #     valueFrom:
+        #       fieldRef:
+        #         fieldPath: metadata.namespace
+        #   volumeMounts:
+        #   - mountPath: /var/lib/cosi
+        #     name: socket
 `
 
 const Sha256_deploy_role_yaml = "ce3cbcb74a9309158d7cf71ef38e747fe76c1bc0fb0f15d3e5404a746ce988e1"
