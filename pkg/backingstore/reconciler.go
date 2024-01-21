@@ -21,7 +21,6 @@ import (
 
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -173,16 +172,6 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	if util.EnsureCommonMetaFields(r.BackingStore, nbv1.Finalizer) {
 		if !util.KubeUpdate(r.BackingStore) {
 			err := fmt.Errorf("❌ BackingStore %q failed to add mandatory meta fields", r.BackingStore.Name)
-			return r.completeReconcile(err)
-		}
-	}
-
-	oldStatefulSet := &appsv1.StatefulSet{}
-	oldStatefulSet.Name = fmt.Sprintf("%s-%s-noobaa", r.BackingStore.Name, options.SystemName)
-	oldStatefulSet.Namespace = r.Request.Namespace
-
-	if util.KubeCheck(oldStatefulSet) {
-		if err := r.upgradeBackingStore(oldStatefulSet); err != nil {
 			return r.completeReconcile(err)
 		}
 	}
@@ -1346,51 +1335,6 @@ func (r *Reconciler) deletePvPool() error {
 	util.KubeList(podsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
 	util.KubeDeleteAllOf(&corev1.Pod{}, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
 	util.KubeDeleteAllOf(&corev1.PersistentVolumeClaim{}, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
-	return nil
-}
-
-func (r *Reconciler) upgradeBackingStore(sts *appsv1.StatefulSet) error {
-	r.Logger.Infof("Deleting old statefulset: %s", sts.Name)
-	envVar := util.GetEnvVariable(&sts.Spec.Template.Spec.Containers[0].Env, "AGENT_CONFIG")
-	if envVar == nil {
-		return util.NewPersistentError("NoAgentConfig", "Old BackingStore stateful set not having agent config")
-	}
-	agentConfig := envVar.Value
-	replicas := sts.Spec.Replicas
-	stsName := sts.Name
-	util.KubeDelete(sts, client.PropagationPolicy("Orphan")) // delete STS leave pods behind
-	o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
-	secret := o.(*corev1.Secret)
-	secret.Name = fmt.Sprintf("backing-store-%s-%s", nbv1.StoreTypePVPool, r.BackingStore.Name)
-	secret.Namespace = options.Namespace
-	util.KubeCheck(secret)
-	secret.StringData["AGENT_CONFIG"] = agentConfig // update secret for future pods
-	util.KubeUpdate(secret)
-	for i := 0; i < int(*replicas); i++ {
-		pod := &corev1.Pod{}
-		pod.Name = fmt.Sprintf("%s-%d", stsName, i)
-		pod.Namespace = r.BackingStore.Namespace
-		if util.KubeCheck(pod) {
-			pod.Spec.Containers[0].Image = r.NooBaa.Status.ActualImage
-			if r.NooBaa.Spec.ImagePullSecret == nil {
-				pod.Spec.ImagePullSecrets =
-					[]corev1.LocalObjectReference{}
-			} else {
-				pod.Spec.ImagePullSecrets =
-					[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
-			}
-			pod.Labels = map[string]string{"pool": r.BackingStore.Name}
-			r.Own(pod)
-			util.KubeUpdate(pod)
-			pvc := &corev1.PersistentVolumeClaim{}
-			pvc.Name = fmt.Sprintf("noobaastorage-%s", pod.Name)
-			pvc.Namespace = pod.Namespace
-			util.KubeCheck(pvc)
-			pvc.Labels = map[string]string{"pool": r.BackingStore.Name}
-			r.Own(pvc)
-			util.KubeUpdate(pvc)
-		}
-	}
 	return nil
 }
 
