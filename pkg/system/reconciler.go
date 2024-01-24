@@ -84,6 +84,7 @@ type Reconciler struct {
 	ServiceSts                *corev1.Service
 	ServiceDb                 *corev1.Service
 	ServiceDbPg               *corev1.Service
+	ServiceSyslog             *corev1.Service
 	SecretServer              *corev1.Secret
 	SecretDB                  *corev1.Secret
 	SecretOp                  *corev1.Secret
@@ -153,6 +154,7 @@ func NewReconciler(
 		ServiceMgmt:               util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service),
 		ServiceS3:                 util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service),
 		ServiceSts:                util.KubeObject(bundle.File_deploy_internal_service_sts_yaml).(*corev1.Service),
+		ServiceSyslog:             util.KubeObject(bundle.File_deploy_internal_service_syslog_yaml).(*corev1.Service),
 		SecretServer:              util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretDB:                  util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretOp:                  util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
@@ -197,6 +199,7 @@ func NewReconciler(
 	r.ServiceSts.Namespace = r.Request.Namespace
 	r.ServiceDb.Namespace = r.Request.Namespace
 	r.ServiceDbPg.Namespace = r.Request.Namespace
+	r.ServiceSyslog.Namespace = r.Request.Namespace
 	r.SecretServer.Namespace = r.Request.Namespace
 	r.SecretDB.Namespace = r.Request.Namespace
 	r.SecretOp.Namespace = r.Request.Namespace
@@ -236,6 +239,7 @@ func NewReconciler(
 	r.NooBaaMongoDB.Name = r.Request.Name + "-db"
 	r.NooBaaPostgresDB.Name = r.Request.Name + "-db-pg"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
+	r.ServiceSyslog.Name = "noobaa-syslog"
 	r.ServiceS3.Name = "s3"
 	r.ServiceSts.Name = "sts"
 	r.ServiceDb.Name = r.Request.Name + "-db"
@@ -308,6 +312,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
 	util.KubeCheck(r.ServiceSts)
+	util.KubeCheck(r.ServiceSyslog)
 	if r.NooBaa.Spec.MongoDbURL == "" && r.NooBaa.Spec.ExternalPgSecret == nil {
 		if r.NooBaa.Spec.DBType == "postgres" {
 			util.KubeCheck(r.SecretDB)

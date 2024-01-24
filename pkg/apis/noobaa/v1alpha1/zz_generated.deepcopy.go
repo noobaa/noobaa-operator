@@ -1399,6 +1399,7 @@ func (in *ServicesStatus) DeepCopyInto(out *ServicesStatus) {
 	in.ServiceMgmt.DeepCopyInto(&out.ServiceMgmt)
 	in.ServiceS3.DeepCopyInto(&out.ServiceS3)
 	in.ServiceSts.DeepCopyInto(&out.ServiceSts)
+	in.ServiceSyslog.DeepCopyInto(&out.ServiceSyslog)
 	return
 }
 

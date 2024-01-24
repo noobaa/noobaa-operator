@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: SYSNAME-syslog
+  labels:
+    app: noobaa
+    noobaa-syslog-svc: "true"
+spec:
+  type: ClusterIP
+  selector:
+    noobaa-mgmt: SYSNAME
+  ports:
+    - protocol: UDP
+      port: 514
+      name: syslog
+      targetPort: 514

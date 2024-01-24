@@ -1471,7 +1471,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "87997842fc69b23f31b716777b6c3df7b12db2ae12758f890f63ce8d910a89f2"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "343bbc46804fc8442eb4473f8ee3dcd0cd3d05b95ce670f9aad035770e2ba9d3"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -1499,6 +1499,10 @@ spec:
     - description: STS Endpoints
       jsonPath: .status.services.serviceSts.nodePorts
       name: Sts-Endpoints
+      type: string
+    - description: Syslog Endpoints
+      jsonPath: .status.services.serviceSyslog.nodePorts
+      name: Syslog-Endpoints
       type: string
     - description: Actual Image
       jsonPath: .status.actualImage
@@ -3402,6 +3406,59 @@ spec:
                           type: string
                         type: array
                     type: object
+                  serviceSyslog:
+                    description: ServiceStatus is the status info and network addresses
+                      of a service
+                    properties:
+                      externalDNS:
+                        description: ExternalDNS are external public addresses for
+                          the service
+                        items:
+                          type: string
+                        type: array
+                      externalIP:
+                        description: ExternalIP are external public addresses for
+                          the service LoadBalancerPorts such as AWS ELB provide public
+                          address and load balancing for the service IngressPorts
+                          are manually created public addresses for the service https://kubernetes.io/docs/concepts/services-networking/service/#external-ips
+                          https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer
+                          https://kubernetes.io/docs/concepts/services-networking/ingress/
+                        items:
+                          type: string
+                        type: array
+                      internalDNS:
+                        description: InternalDNS are internal addresses of the service
+                          inside the cluster
+                        items:
+                          type: string
+                        type: array
+                      internalIP:
+                        description: InternalIP are internal addresses of the service
+                          inside the cluster https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+                        items:
+                          type: string
+                        type: array
+                      nodePorts:
+                        description: NodePorts are the most basic network available.
+                          NodePorts use the networks available on the hosts of kubernetes
+                          nodes. This generally works from within a pod, and from
+                          the internal network of the nodes, but may fail from public
+                          network. https://kubernetes.io/docs/concepts/services-networking/service/#nodeport
+                        items:
+                          type: string
+                        type: array
+                      podPorts:
+                        description: 'PodPorts are the second most basic network address.
+                          Every pod has an IP in the cluster and the pods network
+                          is a mesh so the operator running inside a pod in the cluster
+                          can use this address. Note: pod IPs are not guaranteed to
+                          persist over restarts, so should be rediscovered. Note2:
+                          when running the operator outside of the cluster, pod IP
+                          is not accessible.'
+                        items:
+                          type: string
+                        type: array
+                    type: object
                 required:
                 - serviceMgmt
                 - serviceS3
@@ -3741,7 +3798,7 @@ data:
           exit 0
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "b3dab0839de6aa382833772ab278feb245067b27591dee988b29184de90961b6"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "ffcf95c206c68b6d6b783d847d219e45a61e79d374cad4f36e6a7ec4f7fb4d0a"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3829,6 +3886,7 @@ spec:
                   name: noobaa-config
                   key: NOOBAA_LOG_LEVEL
             - name: MGMT_ADDR
+            - name: SYSLOG_ADDR
             - name: BG_ADDR
             - name: MD_ADDR
             - name: HOSTED_AGENTS_ADDR
@@ -4705,6 +4763,26 @@ spec:
       targetPort: 7443
       name: sts-https
 
+`
+
+const Sha256_deploy_internal_service_syslog_yaml = "68e2f27b91e8859055f18ca18d5d1cebdaac13a386b507a015c5e81d1f882241"
+
+const File_deploy_internal_service_syslog_yaml = `apiVersion: v1
+kind: Service
+metadata:
+  name: SYSNAME-syslog
+  labels:
+    app: noobaa
+    noobaa-syslog-svc: "true"
+spec:
+  type: ClusterIP
+  selector:
+    noobaa-mgmt: SYSNAME
+  ports:
+    - protocol: UDP
+      port: 514
+      name: syslog
+      targetPort: 514
 `
 
 const Sha256_deploy_internal_service_admission_webhook_yaml = "810a70b263d44621713864aa6e6e72e6079bbdc02f6e2b9143ba9ebf4ab52102"
