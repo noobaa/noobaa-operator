@@ -12,13 +12,13 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout noobaa-operator
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: "noobaa/noobaa-operator"
           path: "noobaa-operator"
 
       - name: Setup Go on runner
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: "1.20"
 
