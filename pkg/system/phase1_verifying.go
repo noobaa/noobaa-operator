@@ -252,7 +252,7 @@ func (r *Reconciler) checkExternalPg(postgresDbURL string) error {
 	if collation != "C" {
 		return util.NewPersistentError("InvalidExternalPgCollation",
 			fmt.Sprintf("collation of external DB url: %q, is not supported: %s",
-				dbURL, err))
+				dbURL, collation))
 	}
 	return nil
 }
