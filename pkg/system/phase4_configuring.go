@@ -870,6 +870,10 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 				*result.Credentials.SecretAccessKey,
 				*result.Credentials.SessionToken,
 			),
+			HTTPClient: &http.Client{
+				Transport: util.SecureHTTPTransport,
+				Timeout:   10 * time.Second,
+			},
 			Region: &region,
 		}
 	} else { // handle AWS long-lived credentials (not STS)
@@ -879,6 +883,10 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 				cloudCredsSecret.StringData["aws_secret_access_key"],
 				"",
 			),
+			HTTPClient: &http.Client{
+				Transport: util.SecureHTTPTransport,
+				Timeout:   10 * time.Second,
+			},
 			Region: &region,
 		}
 	}
@@ -1125,6 +1133,10 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 			secretAccessKey,
 			"",
 		),
+		HTTPClient: &http.Client{
+			Transport: util.SecureHTTPTransport,
+			Timeout:   10 * time.Second,
+		},
 		Region: &location,
 	}
 	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
