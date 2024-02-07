@@ -141,3 +141,36 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
+        - name: noobaa-log-processor
+          image: NOOBAA_CORE_IMAGE
+          command: ["/root/node_modules/noobaa-core/src/deploy/NVA_build/noobaa_logs.sh"]
+          volumeMounts:
+            - name: logs
+              mountPath: /log
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "500Mi"
+            limits:
+              cpu: "200m"
+              memory: "500Mi"
+          ports:
+            - containerPort: 5140
+            - containerPort: 6514
+          env:
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory

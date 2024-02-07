@@ -1510,7 +1510,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "5061e9ef86027c69902c4a451ed9ac79c9c8cd162cace075f58641cb426c0b3b"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "47a277036f04f662bb8c3e9d5314177b0d804fb8714167cbe7ae2c14bc4ff4b0"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3014,6 +3014,62 @@ spec:
                     items:
                       type: string
                     type: array
+                type: object
+              logResources:
+                description: LogResources (optional) overrides the default resource
+                  requirements for the noobaa-log-processor container
+                properties:
+                  claims:
+                    description: |-
+                      Claims lists the names of resources, defined in spec.resourceClaims,
+                      that are used by this container.
+
+
+                      This is an alpha field and requires enabling the
+                      DynamicResourceAllocation feature gate.
+
+
+                      This field is immutable. It can only be set for containers.
+                    items:
+                      description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                      properties:
+                        name:
+                          description: |-
+                            Name must match the name of one entry in pod.spec.resourceClaims of
+                            the Pod where this field is used. It makes that resource available
+                            inside a container.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: |-
+                      Limits describes the maximum amount of compute resources allowed.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: |-
+                      Requests describes the minimum amount of compute resources required.
+                      If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                      otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    type: object
                 type: object
               manualDefaultBackingStore:
                 description: |-
@@ -4797,7 +4853,7 @@ spec:
 
 `
 
-const Sha256_deploy_internal_service_syslog_yaml = "68e2f27b91e8859055f18ca18d5d1cebdaac13a386b507a015c5e81d1f882241"
+const Sha256_deploy_internal_service_syslog_yaml = "f9f17c0ed02a78b01ff78d80b3881fbb9defbe7b7f22c4a88467566574738cf2"
 
 const File_deploy_internal_service_syslog_yaml = `apiVersion: v1
 kind: Service
@@ -4814,7 +4870,7 @@ spec:
     - protocol: UDP
       port: 514
       name: syslog
-      targetPort: 514
+      targetPort: 5140
 `
 
 const Sha256_deploy_internal_service_admission_webhook_yaml = "810a70b263d44621713864aa6e6e72e6079bbdc02f6e2b9143ba9ebf4ab52102"
@@ -4872,7 +4928,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "39dbe4e822b69f1998cea34437e97cc58db4f577e9143eb6db087f2da083f73e"
+const Sha256_deploy_internal_statefulset_core_yaml = "93ae460c2a8080a03c87320eb0ea5f585bb20aeebd7fae562837e89b5fd0cdcf"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5017,7 +5073,39 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
-`
+        - name: noobaa-log-processor
+          image: NOOBAA_CORE_IMAGE
+          command: ["/root/node_modules/noobaa-core/src/deploy/NVA_build/noobaa_logs.sh"]
+          volumeMounts:
+            - name: logs
+              mountPath: /log
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "500Mi"
+            limits:
+              cpu: "200m"
+              memory: "500Mi"
+          ports:
+            - containerPort: 5140
+            - containerPort: 6514
+          env:
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory`
 
 const Sha256_deploy_internal_statefulset_db_yaml = "25924f84967caebdeb5d61c2181f0ba04da92306fed7e44834dbcc7480b8d48a"
 

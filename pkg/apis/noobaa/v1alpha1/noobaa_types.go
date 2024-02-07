@@ -94,6 +94,10 @@ type NooBaaSpec struct {
 	// +optional
 	CoreResources *corev1.ResourceRequirements `json:"coreResources,omitempty"`
 
+	// LogResources (optional) overrides the default resource requirements for the noobaa-log-processor container
+	// +optional
+	LogResources *corev1.ResourceRequirements `json:"logResources,omitempty"`
+
 	// DBResources (optional) overrides the default resource requirements for the db container
 	// +optional
 	DBResources *corev1.ResourceRequirements `json:"dbResources,omitempty"`

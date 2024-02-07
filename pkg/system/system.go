@@ -217,6 +217,10 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(100), resource.Milli),
 			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(1), resource.Giga),
 		}
+		logResourceList := corev1.ResourceList{
+			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(50), resource.Milli),
+			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(200), resource.Mega),
+		}
 		dbResourceList := corev1.ResourceList{
 			corev1.ResourceCPU:    *resource.NewScaledQuantity(int64(100), resource.Milli),
 			corev1.ResourceMemory: *resource.NewScaledQuantity(int64(500), resource.Mega),
@@ -228,6 +232,10 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 		sys.Spec.CoreResources = &corev1.ResourceRequirements{
 			Requests: coreResourceList,
 			Limits:   coreResourceList,
+		}
+		sys.Spec.LogResources = &corev1.ResourceRequirements{
+			Requests: logResourceList,
+			Limits:   logResourceList,
 		}
 		sys.Spec.DBResources = &corev1.ResourceRequirements{
 			Requests: dbResourceList,
