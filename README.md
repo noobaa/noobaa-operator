@@ -126,7 +126,7 @@ Other Commands:
 
 Use "noobaa <command> --help" for more information about a given command.
 ```
-(taken from branch 5.15)
+(taken from branch 5.16)
 
 **2) Option menu**
 In case you would like to add flags that are not specific for a certain command.
@@ -157,8 +157,8 @@ The following options can be passed to any command:
     --mini=false: Signal the operator that it is running in a low resource environment
     --mongodb-url='': url for mongodb
     -n, --namespace='default': Target namespace
-    --noobaa-image='noobaa/noobaa-core:5.15.0': NooBaa image
-    --operator-image='noobaa/noobaa-operator:5.15.0': Operator image
+    --noobaa-image='noobaa/noobaa-core:5.16.0': NooBaa image
+    --operator-image='noobaa/noobaa-operator:5.16.0': Operator image
     --pg-ssl-cert='': ssl cert for postgres (client-side cert - need to be signed by external pg accepted CA)
     --pg-ssl-key='': ssl key for postgres (client-side cert - need to be signed by external pg accepted CA)
     --pg-ssl-required=false: Force noobaa to work with ssl (external postgres - server-side) [if server cert is self-signed, needs to add --ssl-unauthorized]
@@ -171,7 +171,7 @@ The following options can be passed to any command:
     --sts-load-balancer-source-subnets=[]: The source subnets for the STS service load balancer
     --test-env=false: Install the system with test env minimal resource
 ```
-(taken from branch 5.15)
+(taken from branch 5.16)
 
 **3) Current version**\
 When you want to print the current CLI version and images:
@@ -180,9 +180,9 @@ $ noobaa version
 ```
 
 ```
-INFO[0000] CLI version: 5.15.0
-INFO[0000] noobaa-image: noobaa/noobaa-core:5.15.0
-INFO[0000] operator-image: noobaa/noobaa-operator:5.15.0
+INFO[0000] CLI version: 5.16.0
+INFO[0000] noobaa-image: noobaa/noobaa-core:5.16.0
+INFO[0000] operator-image: noobaa/noobaa-operator:5.16.0
 ```
 
 ## Troubleshooting
