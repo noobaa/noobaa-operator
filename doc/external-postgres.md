@@ -6,7 +6,7 @@ As part of a growing demand on supporting external Postgresql DB, we are now sup
 1. Validate you have a working Postgres that can be accessed from external pods.
 2. Create a new DB that will be used by noobaa to save its metadata. Using the following SQL command:
 ```sql
-CREATE DATABASE nbcore WITH LC_COLLATE = ‘C’ TEMPLATE template0;
+CREATE DATABASE nbcore WITH LC_COLLATE = 'C' TEMPLATE template0;
 ```
 3. Validate that you have the correct user and password in order to create new tables in this DB. Save the needed credentials and connection details in a URL format:
 ```
