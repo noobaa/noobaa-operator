@@ -127,3 +127,21 @@ kubectl delete secret noobaa-aws-cloud-creds-secret -n <your-namespace>
 ```bash
 kubectl logs $(kubectl get pod -n openshift-cloud-credential-operator | grep cloud-credential-operator | awk '{ print $1}') -c cloud-credential-operator -n openshift-cloud-credential-operator --tail 50 -f
 ```
+
+#### 4) Other:
+
+```
+time="2023-12-20T09:46:59Z" level=info msg="AssumeRoleWithWebIdentityInput, roleARN = arn:aws:iam::<role-ARN>:role/<role-name> webIdentityTokenPath = /var/run/secrets/openshift/serviceaccount/token, " sys=openshift-storage/noobaa
+time="2023-12-20T09:46:59Z" level=info msg="SetPhase: temporary error during phase \"Configuring\"" sys=openshift-storage/noobaa
+time="2023-12-20T09:46:59Z" level=warning msg="⏳ Temporary Error: could not use AWS AssumeRoleWithWebIdentity with role name arn:aws:iam::<role-ARN>:role/<role-name> and web identity token file /var/run/secrets/openshift/serviceaccount/token, RequestError: send request failed\ncaused by: Post \"https://sts.amazonaws.com/\": tls: failed to verify certificate: x509: certificate signed by unknown authority" sys=openshift-storage/noobaa
+```
+
+In case you see this message and you checked that:
+1. The token is projected (see part 1).
+2. The AWS STS was successful in the test it with `assume-role-with-web-identity` (see part 1).
+3. The credential request has role ARN (see part 4)
+4. The secret has role ARN (see part 4).
+
+Try to restart the noobaa pods: `kubectl delete pod <noobaa-pod>`.
+
+Note: The above error message can be also if the role is not matched.
