@@ -112,8 +112,8 @@ var (
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
-	// SecureHTTPTransport is a global secure http transport
-	SecureHTTPTransport = &http.Transport{
+	// GlobalCARefreshingTransport is a global secure http transport
+	GlobalCARefreshingTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
 	}
 
@@ -130,7 +130,7 @@ var (
 	}
 )
 
-// AddToRootCAs adds a local cert file to Our SecureHttpTransport
+// AddToRootCAs adds a local cert file to Our GlobalCARefreshingTransport
 func AddToRootCAs(localCertFile string) error {
 	rootCAs := x509.NewCertPool()
 
@@ -155,7 +155,7 @@ func AddToRootCAs(localCertFile string) error {
 		// Trust the augmented cert pool in our client
 		log.Infof("Successfuly appended %q to RootCAs", certFile)
 	}
-	SecureHTTPTransport.TLSClientConfig.RootCAs = rootCAs
+	GlobalCARefreshingTransport.TLSClientConfig.RootCAs = rootCAs
 	return nil
 }
 
