@@ -138,7 +138,6 @@ $ noobaa options
 ```
 The following options can be passed to any command:
 
-
     --admission=false: Install the system with admission validation webhook
     --autoscaler-type='': The type of autoscaler (hpav2, keda)
     --aws-sts-arn='': The AWS STS Role ARN which will assume role
@@ -165,11 +164,12 @@ The following options can be passed to any command:
     --pg-ssl-unauthorized=false: Allow the client to work with self-signed ssl (external postgres - server-side)
     --postgres-url='': url for postgresql
     --prometheus-namespace='': namespace with installed prometheus for autoscaler
+    --psql-12-image='centos/postgresql-12-centos7': The database old container image
     --pv-pool-default-storage-class='': The default storage class name for BackingStores of type pv-pool
     --s3-load-balancer-source-subnets=[]: The source subnets for the S3 service load balancer
     --show-secrets=false: Show the secrets in the status output
     --sts-load-balancer-source-subnets=[]: The source subnets for the STS service load balancer
-    --test-env=false: Install the system with test env minimal resource
+    --test-env=false: Install the system with test env minimal resources
 ```
 (taken from branch 5.16)
 
