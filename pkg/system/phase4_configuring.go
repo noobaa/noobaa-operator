@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -871,7 +872,7 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 				*result.Credentials.SessionToken,
 			),
 			HTTPClient: &http.Client{
-				Transport: util.SecureHTTPTransport,
+				Transport: util.GlobalCARefreshingTransport,
 				Timeout:   10 * time.Second,
 			},
 			Region: &region,
@@ -884,7 +885,7 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 				"",
 			),
 			HTTPClient: &http.Client{
-				Transport: util.SecureHTTPTransport,
+				Transport: util.GlobalCARefreshingTransport,
 				Timeout:   10 * time.Second,
 			},
 			Region: &region,
@@ -1030,7 +1031,30 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 	}
 	r.GCPBucketCreds.StringData["GoogleServiceAccountPrivateKeyJson"] = cloudCredsSecret.StringData["service_account.json"]
 	ctx := context.Background()
-	gcpclient, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(cloudCredsSecret.StringData["service_account.json"])))
+	// Inject the global refreshing CA pool into the one used by the Google client
+	parsedGoogleCredsOption := option.WithCredentialsJSON([]byte(cloudCredsSecret.StringData["service_account.json"]))
+	tempgcpclient, err := storage.NewClient(ctx, parsedGoogleCredsOption)
+	if err != nil {
+		r.Logger.Info(err)
+		return err
+	}
+	// Read gcpclient's internal HTTPClient via reflection since it is private
+	tempclientInternalHTTPClient := reflect.ValueOf(tempgcpclient).Elem().FieldByName("hc")
+	castTempclientInternalHTTPClient, ok := tempclientInternalHTTPClient.Interface().(*http.Client)
+	if !ok {
+		r.Logger.Errorf("failed to cast castTempclientInternalHTTPClient to *http.Client")
+		return fmt.Errorf("failed to cast castTempclientInternalHTTPClient to *http.Client")
+	}
+	tempClient := &http.Client{
+		Transport: castTempclientInternalHTTPClient.Transport,
+	}
+	tempTransport, ok := tempClient.Transport.(*http.Transport)
+	if !ok {
+		r.Logger.Errorf("failed to cast tempTransport to *http.Transport")
+		return fmt.Errorf("failed to cast tempTransport to *http.Transport")
+	}
+	tempTransport.TLSClientConfig.RootCAs = util.GlobalCARefreshingTransport.TLSClientConfig.RootCAs
+	gcpclient, err := storage.NewClient(ctx, option.WithHTTPClient(tempClient), parsedGoogleCredsOption)
 	if err != nil {
 		r.Logger.Info(err)
 		return err
@@ -1134,7 +1158,7 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 			"",
 		),
 		HTTPClient: &http.Client{
-			Transport: util.SecureHTTPTransport,
+			Transport: util.GlobalCARefreshingTransport,
 			Timeout:   10 * time.Second,
 		},
 		Region: &location,
@@ -1218,7 +1242,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		Timeout:   10 * time.Second,
 	}
 	if r.ApplyCAsToPods != "" {
-		client.Transport = util.SecureHTTPTransport
+		client.Transport = util.GlobalCARefreshingTransport
 	}
 
 	s3Config := &aws.Config{
