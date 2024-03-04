@@ -63,7 +63,7 @@ func checkExternalSecret(tokenSecretName string, instanceID string, noobaa *nbv1
 	Expect(err).To(BeNil())
 
 	// Fetch the key
-	_, err = s.GetSecret(driver.Path(), driver.GetContext())
+	_, _, err = s.GetSecret(driver.Path(), driver.GetContext())
 	Expect((err == nil) == expectExists).To(BeTrue())
 }
 

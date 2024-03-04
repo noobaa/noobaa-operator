@@ -30,7 +30,7 @@ const (
 // using IBM KP secret storage - standard keys interface using
 // latest "github.com/IBM/keyprotect-go-client" version 0.7.0
 type ibmKpSecretStorage struct {
-	kp  *ibm.API
+	kp *ibm.API
 }
 
 func getIbmParam(secretConfig map[string]interface{}, name string) string {
@@ -94,8 +94,8 @@ func (i *ibmKpSecretStorage) getKeyByName(
 	secretID string,
 ) (*ibm.Key, error) {
 
-	const limit = 2000 // same page size value
-	                   // as used by the IBM KP client lib
+	// same page size value as used by the IBM KP client lib
+	const limit = 2000
 
 	for pageNo := 0; ; pageNo++ {
 		// Get current page keys
@@ -108,7 +108,7 @@ func (i *ibmKpSecretStorage) getKeyByName(
 		// No more keys, key is not found
 		// out of here
 		if len(keys.Keys) == 0 {
-			return nil, secrets.ErrInvalidSecretId 
+			return nil, secrets.ErrInvalidSecretId
 		}
 
 		// Find key by name
@@ -125,23 +125,23 @@ func (i *ibmKpSecretStorage) getKeyByName(
 func (i *ibmKpSecretStorage) GetSecret(
 	secretID string,
 	keyContext map[string]string,
-) (map[string]interface{}, error) {
+) (map[string]interface{}, secrets.Version, error) {
 	// Find the key ID
 	key, err := i.getKeyByName(secretID)
 	if err != nil {
-		return nil, err
+		return nil, secrets.NoVersion, err
 	}
 
 	// Fetch the key payload ( key value ) by ID
 	keyPayload, err := i.kp.GetKey(context.TODO(), key.ID)
-	if (err != nil) {
-		return nil, err
+	if err != nil {
+		return nil, secrets.NoVersion, err
 	}
 
 	// Return the fetched key value
 	r := map[string]interface{}{secretID: keyPayload.Payload}
 
-	return r, nil
+	return r, secrets.NoVersion, nil
 }
 
 // PutSecret will associate an secretId to its secret data
@@ -150,16 +150,16 @@ func (i *ibmKpSecretStorage) PutSecret(
 	secretID string,
 	plainText map[string]interface{},
 	keyContext map[string]string,
-) error {
+) (secrets.Version, error) {
 	// Import the key value into IBM KP storage
 	value := plainText[secretID].(string)
 	_, err := i.kp.CreateImportedStandardKey(context.TODO(), secretID, nil, value)
 
 	if err != nil {
-		return err
+		return secrets.NoVersion, err
 	}
 
-	return nil
+	return secrets.NoVersion, nil
 }
 
 // DeleteSecret deletes the secret data associated with the
