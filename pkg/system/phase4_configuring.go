@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 
 	"encoding/json"
 
@@ -1031,7 +1032,8 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 	}
 	r.GCPBucketCreds.StringData["GoogleServiceAccountPrivateKeyJson"] = cloudCredsSecret.StringData["service_account.json"]
 	ctx := context.Background()
-	// Inject the global refreshing CA pool into the one used by the Google client
+
+	// The following lines deal with injecting the global refreshing CA pool into the one used by the Google client
 	parsedGoogleCredsOption := option.WithCredentialsJSON([]byte(cloudCredsSecret.StringData["service_account.json"]))
 	tempgcpclient, err := storage.NewClient(ctx, parsedGoogleCredsOption)
 	if err != nil {
@@ -1040,7 +1042,11 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 	}
 	// Read gcpclient's internal HTTPClient via reflection since it is private
 	tempclientInternalHTTPClient := reflect.ValueOf(tempgcpclient).Elem().FieldByName("hc")
-	castTempclientInternalHTTPClient, ok := tempclientInternalHTTPClient.Interface().(*http.Client)
+	// Desperately resort to reflection to access the private HTTPClient field that the GCP client crafts
+	// We don't want to override it since it contains some values that the Google client initializes and would be better to keep
+	castTempclientInternalHTTPClient, ok := reflect.NewAt(tempclientInternalHTTPClient.Type(),
+		unsafe.Pointer(tempclientInternalHTTPClient.UnsafeAddr())).Elem().Interface().(*http.Client)
+
 	if !ok {
 		r.Logger.Errorf("failed to cast castTempclientInternalHTTPClient to *http.Client")
 		return fmt.Errorf("failed to cast castTempclientInternalHTTPClient to *http.Client")
@@ -1053,13 +1059,16 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 		r.Logger.Errorf("failed to cast tempTransport to *http.Transport")
 		return fmt.Errorf("failed to cast tempTransport to *http.Transport")
 	}
+	// Actual CA injection happens here
 	tempTransport.TLSClientConfig.RootCAs = util.GlobalCARefreshingTransport.TLSClientConfig.RootCAs
+	/* We create a new client instead of replacing the existing one via the pointer
+	since one bad practice doesn't justify more bad practices */
 	gcpclient, err := storage.NewClient(ctx, option.WithHTTPClient(tempClient), parsedGoogleCredsOption)
 	if err != nil {
 		r.Logger.Info(err)
 		return err
 	}
-
+	// CA injection ends here
 	var bucketName = strings.ToLower(randname.GenerateWithPrefix("noobaabucket", 5))
 	if err := r.createGCPBucketForBackingStore(gcpclient, projectID, bucketName); err != nil {
 		r.Logger.Info(err)
