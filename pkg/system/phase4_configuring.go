@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -1031,30 +1030,7 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 	}
 	r.GCPBucketCreds.StringData["GoogleServiceAccountPrivateKeyJson"] = cloudCredsSecret.StringData["service_account.json"]
 	ctx := context.Background()
-	// Inject the global refreshing CA pool into the one used by the Google client
-	parsedGoogleCredsOption := option.WithCredentialsJSON([]byte(cloudCredsSecret.StringData["service_account.json"]))
-	tempgcpclient, err := storage.NewClient(ctx, parsedGoogleCredsOption)
-	if err != nil {
-		r.Logger.Info(err)
-		return err
-	}
-	// Read gcpclient's internal HTTPClient via reflection since it is private
-	tempclientInternalHTTPClient := reflect.ValueOf(tempgcpclient).Elem().FieldByName("hc")
-	castTempclientInternalHTTPClient, ok := tempclientInternalHTTPClient.Interface().(*http.Client)
-	if !ok {
-		r.Logger.Errorf("failed to cast castTempclientInternalHTTPClient to *http.Client")
-		return fmt.Errorf("failed to cast castTempclientInternalHTTPClient to *http.Client")
-	}
-	tempClient := &http.Client{
-		Transport: castTempclientInternalHTTPClient.Transport,
-	}
-	tempTransport, ok := tempClient.Transport.(*http.Transport)
-	if !ok {
-		r.Logger.Errorf("failed to cast tempTransport to *http.Transport")
-		return fmt.Errorf("failed to cast tempTransport to *http.Transport")
-	}
-	tempTransport.TLSClientConfig.RootCAs = util.GlobalCARefreshingTransport.TLSClientConfig.RootCAs
-	gcpclient, err := storage.NewClient(ctx, option.WithHTTPClient(tempClient), parsedGoogleCredsOption)
+	gcpclient, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(cloudCredsSecret.StringData["service_account.json"])))
 	if err != nil {
 		r.Logger.Info(err)
 		return err
