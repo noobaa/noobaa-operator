@@ -218,6 +218,10 @@ type NooBaaSpec struct {
 	// Configuration related to autoscaling
 	// +optional
 	Autoscaler AutoscalerSpec `json:"autoscaler,omitempty"`
+
+	// DenyHTTP (optional) if given will deny access to the NooBaa S3 service using HTTP (only HTTPS)
+	// +optional
+	DenyHTTP bool `json:"denyHTTP,omitempty"`
 }
 
 // AutoscalerSpec defines different actoscaling spec such as autoscaler type and prometheus namespace
@@ -408,8 +412,8 @@ type AccountsStatus struct {
 
 // ServicesStatus is the status info of the system's services
 type ServicesStatus struct {
-	ServiceMgmt   ServiceStatus `json:"serviceMgmt"`
-	ServiceS3     ServiceStatus `json:"serviceS3"`
+	ServiceMgmt ServiceStatus `json:"serviceMgmt"`
+	ServiceS3   ServiceStatus `json:"serviceS3"`
 	// +optional
 	ServiceSts    ServiceStatus `json:"serviceSts,omitempty"`
 	ServiceSyslog ServiceStatus `json:"serviceSyslog,omitempty"`

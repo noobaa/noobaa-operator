@@ -69,7 +69,7 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	if err := r.ReconcileObject(r.ServiceS3, r.SetDesiredServiceS3); err != nil {
 		return err
 	}
-	if err := r.ReconcileObjectOptional(r.RouteS3, nil); err != nil {
+	if err := r.ReconcileObjectOptional(r.RouteS3, r.SetDesiredRouteS3); err != nil {
 		return err
 	}
 	if err := r.ReconcileObject(r.ServiceSts, r.SetDesiredServiceSts); err != nil {
@@ -226,6 +226,15 @@ func (r *Reconciler) SetDesiredServiceS3() error {
 	}
 	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
 	r.ServiceS3.Labels["noobaa-s3-svc"] = "true"
+	return nil
+}
+
+// SetDesiredRouteS3 updates the RouteS3 as desired for reconciling
+func (r *Reconciler) SetDesiredRouteS3() error {
+	r.RouteS3.Spec.TLS.InsecureEdgeTerminationPolicy = "Allow"
+	if r.NooBaa.Spec.DenyHTTP {
+		r.RouteS3.Spec.TLS.InsecureEdgeTerminationPolicy = "None"
+	}
 	return nil
 }
 
