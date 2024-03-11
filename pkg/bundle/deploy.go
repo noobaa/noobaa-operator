@@ -1471,7 +1471,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "343bbc46804fc8442eb4473f8ee3dcd0cd3d05b95ce670f9aad035770e2ba9d3"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "4200a7b49710d910c6bb6ac21b2d1675997001e6a0e2305c2a7a76913856d3b8"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2819,6 +2819,10 @@ spec:
                 required:
                 - type
                 type: object
+              denyHTTP:
+                description: DenyHTTP (optional) if given will deny access to the
+                  NooBaa S3 service using HTTP (only HTTPS)
+                type: boolean
               disableLoadBalancerService:
                 description: DisableLoadBalancerService (optional) sets the service
                   type to ClusterIP instead of LoadBalancer
