@@ -1557,7 +1557,9 @@ func (r *Reconciler) HasUpgradeDbContainerFailed(dbPod *corev1.Pod) string {
 			if dbPod.Status.InitContainerStatuses[i].State.Waiting != nil {
 				return dbPod.Status.InitContainerStatuses[i].State.Waiting.Reason
 			}
-			return dbPod.Status.InitContainerStatuses[i].State.String()
+			if dbPod.Status.InitContainerStatuses[i].State.Running != nil {
+				return "Running"
+			}
 		}
 	}
 	return "NotFound"
@@ -1626,6 +1628,8 @@ func (r *Reconciler) UpgradePostgresDB() error {
 				*r.NooBaa.Spec.DBImage, os.Getenv("NOOBAA_DB_IMAGE"))
 			return nil
 		}
+		r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal, "DbUpgrade",
+			"Configuring DB pod to run dbdump of PostgreSQL data")
 		r.Logger.Infof("UpgradePostgresDB: setting phase to %s", nbv1.UpgradePhasePrepare)
 		phase = nbv1.UpgradePhasePrepare
 		r.NooBaa.Status.BeforeUpgradeDbImage = &oldImage
@@ -1642,8 +1646,11 @@ func (r *Reconciler) UpgradePostgresDB() error {
 		r.Logger.Infof("UpgradePostgresDB: restarting DB pods after updating pod's init contatiner for db-dump")
 		restartError := r.RestartDbPods() // make sure new pods will start
 		if restartError != nil {
-			r.Logger.Warn("UpgradePostgresDB: Unable to restart db pods")
+			r.Logger.Warnf("UpgradePostgresDB: Unable to restart db pods %v", restartError)
+			return restartError
 		}
+		r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal, "DbUpgrade",
+			"Starting dump. Start running DB dump in version 12 format")
 		phase = nbv1.UpgradePhaseUpgrade
 
 	case nbv1.UpgradePhaseUpgrade:
@@ -1669,7 +1676,7 @@ func (r *Reconciler) UpgradePostgresDB() error {
 			hasInitContainerFailed = true
 			break
 		}
-		r.Logger.Infof("UpgradePostgresDB: upgrade-db container didn't fail and finished dumping the old data")
+		r.Logger.Infof("UpgradePostgresDB: upgrade-db container didn't fail and finished dumping the old data [status=%s]", status)
 		if err = r.ReconcileSetDbImageAndInitCode(GetDesiredDBImage(r.NooBaa), "/init/upgradedb.sh", false); err != nil {
 			r.Logger.Errorf("UpgradePostgresDB: got error on postgres STS reconcile %v", err)
 			break
@@ -1679,6 +1686,8 @@ func (r *Reconciler) UpgradePostgresDB() error {
 		if restartError != nil {
 			r.Logger.Warn("UpgradePostgresDB: Unable to restart db pods")
 		}
+		r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal, "DbUpgrade",
+			"Finished dump. Start running upgrade of DB data from version 12 format to version 15")
 		phase = nbv1.UpgradePhaseClean
 
 	case nbv1.UpgradePhaseClean:
@@ -1705,7 +1714,7 @@ func (r *Reconciler) UpgradePostgresDB() error {
 			hasInitContainerFailed = true
 			break
 		}
-		r.Logger.Infof("UpgradePostgresDB: upgrade-db container didn't fail and finished moving data to new version")
+		r.Logger.Infof("UpgradePostgresDB: upgrade-db container didn't fail and finished moving data to new version [status=%s]", status)
 		if dbPod.Status.Phase != "Running" && dbPod.ObjectMeta.DeletionTimestamp == nil {
 			r.Logger.Infof("UpgradePostgresDB: upgrade-db is not yet running, phase is: %s and deletion time stamp is %v",
 				dbPod.Status.Phase, dbPod.ObjectMeta.DeletionTimestamp)
@@ -1721,6 +1730,8 @@ func (r *Reconciler) UpgradePostgresDB() error {
 			r.Logger.Errorf("UpgradePostgresDB::got error on endpoints deployment reconcile %v", err)
 			return err
 		}
+		r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal, "DbUpgrade",
+			"Finished data upgrade after upgrade of data to PostgreSQL 15 format")
 		phase = nbv1.UpgradePhaseFinished
 
 	case nbv1.UpgradePhaseReverting:
@@ -1747,6 +1758,7 @@ func (r *Reconciler) UpgradePostgresDB() error {
 			hasInitContainerFailed = true
 			break
 		}
+		r.Logger.Infof("UpgradePostgresDB: upgrade-db container didn't fail and finished reverting data to old version [status=%s]", status)
 		if err = r.ReconcileObject(r.NooBaaPostgresDB, r.removeUpgradeContainer); err != nil {
 			r.Logger.Errorf("UpgradePostgresDB: got error on postgres STS reconcile %v", err)
 			return err
