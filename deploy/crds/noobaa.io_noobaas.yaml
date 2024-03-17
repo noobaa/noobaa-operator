@@ -991,10 +991,10 @@ spec:
                   buckets, objects meta-data and mapping file parts to storage locations.
                 type: string
               dbType:
-                description: DBType (optional) overrides the default type image for
-                  the db container
+                description: |-
+                  DBType (optional) overrides the default type image for the db container.
+                  The only possible value is postgres
                 enum:
-                - mongodb
                 - postgres
                 type: string
               dbVolumeResources:
@@ -1565,10 +1565,6 @@ spec:
                   account with new BackingStore in order to delete the DefaultBackingStore
                 nullable: true
                 type: boolean
-              mongoDbURL:
-                description: MongoDbURL (optional) overrides the default mongo db
-                  remote url
-                type: string
               pvPoolDefaultStorageClass:
                 description: |-
                   PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes.

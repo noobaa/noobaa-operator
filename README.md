@@ -143,9 +143,8 @@ The following options can be passed to any command:
     --aws-sts-arn='': The AWS STS Role ARN which will assume role
     --cosi-driver-path='/var/lib/cosi/cosi.sock': unix socket path for COSI
     --cosi-sidecar-image='gcr.io/k8s-staging-sig-storage/objectstorage-sidecar/objectstorage-sidecar:v20221117-v0.1.0-22-g0e67387': The cosi side car container image
-    --db-image='centos/mongodb-36-centos7': The database container image
+    --db-image='quay.io/sclorg/postgresql-15-c9s': The database container image
     --db-storage-class='': The database volume storage class name
-    --db-type='postgres': The type of database container image (mongodb, postgres)
     --db-volume-size-gb=0: The database volume size in GB
     --debug-level='default_level': The type of debug sets that the system prints (all, nsfs, warn, default_level)
     --dev=false: Set sufficient resources for dev env
@@ -154,7 +153,6 @@ The following options can be passed to any command:
     --kubeconfig='': Paths to a kubeconfig. Only required if out-of-cluster.
     --manual-default-backingstore=false: allow to delete the default backingstore
     --mini=false: Signal the operator that it is running in a low resource environment
-    --mongodb-url='': url for mongodb
     -n, --namespace='default': Target namespace
     --noobaa-image='noobaa/noobaa-core:5.16.0': NooBaa image
     --operator-image='noobaa/noobaa-operator:5.16.0': Operator image

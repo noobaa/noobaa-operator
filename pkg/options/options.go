@@ -72,19 +72,11 @@ var NooBaaImage = ContainerImage
 
 // DBImage is the default db image url
 // it can be overridden for testing or different registry locations.
-var DBImage = "centos/mongodb-36-centos7"
-
-// DBPostgresImage is the default postgres db image url
-// currently it can not be overridden.
-var DBPostgresImage = "quay.io/sclorg/postgresql-15-c9s"
+var DBImage = "quay.io/sclorg/postgresql-15-c9s"
 
 // Psql12Image is the default postgres12 db image url
 // currently it can not be overridden.
 var Psql12Image = "centos/postgresql-12-centos7"
-
-// DBMongoImage is the default mongo db image url
-// this is used during migration to solve issues where mongo STS referencing to postgres image
-var DBMongoImage = "centos/mongodb-36-centos7"
 
 // DBType is the default db image type
 // it can be overridden for testing or different types.
@@ -96,10 +88,6 @@ var DBVolumeSizeGB = 0
 // DBStorageClass is used for PVC's allocation for the noobaa server data
 // it can be overridden for testing or different PV providers.
 var DBStorageClass = ""
-
-// MongoDbURL is used for providing mongodb url
-// it can be overridden for testing or different url.
-var MongoDbURL = ""
 
 // PostgresDbURL is used for providing postgres url
 // it can be overridden for testing or different url.
@@ -238,10 +226,6 @@ func init() {
 		&CosiSideCarImage, "cosi-sidecar-image",
 		CosiSideCarImage, "The cosi side car container image",
 	)
-	FlagSet.StringVar(
-		&DBType, "db-type",
-		DBType, "The type of database container image (mongodb, postgres)",
-	)
 	FlagSet.IntVar(
 		&DBVolumeSizeGB, "db-volume-size-gb",
 		DBVolumeSizeGB, "The database volume size in GB",
@@ -249,10 +233,6 @@ func init() {
 	FlagSet.StringVar(
 		&DBStorageClass, "db-storage-class",
 		DBStorageClass, "The database volume storage class name",
-	)
-	FlagSet.StringVar(
-		&MongoDbURL, "mongodb-url",
-		MongoDbURL, "url for mongodb",
 	)
 	FlagSet.StringVar(
 		&PostgresDbURL, "postgres-url",

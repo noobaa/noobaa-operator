@@ -31,15 +31,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	upgradeJobBackoffLimit        = int32(4)
-	webIdentityTokenPath   string = "/var/run/secrets/openshift/serviceaccount/token"
-	roleARNEnvVar          string = "ROLEARN"
+	webIdentityTokenPath string = "/var/run/secrets/openshift/serviceaccount/token"
+	roleARNEnvVar        string = "ROLEARN"
 )
 
 // ReconcilePhaseCreating runs the reconcile phase
@@ -50,13 +48,6 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		"SystemPhaseCreating",
 		"noobaa operator started phase 2/4 - \"Creating\"",
 	)
-
-	if r.NooBaa.Spec.MongoDbURL != "" {
-		r.MongoConnectionString = r.NooBaa.Spec.MongoDbURL
-	} else {
-		r.MongoConnectionString = fmt.Sprintf(`mongodb://%s-0.%s/nbcore`,
-			r.NooBaaMongoDB.Name, r.NooBaaMongoDB.Spec.ServiceName)
-	}
 
 	if err := r.ReconcileCAInject(); err != nil {
 		return err
@@ -121,7 +112,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
 		return err
 	}
-	if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSecret == nil {
+	if r.NooBaa.Spec.ExternalPgSecret == nil {
 		if err := r.ReconcileObject(r.SecretDB, nil); err != nil {
 			return err
 		}
@@ -129,57 +120,25 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.ReconcileRootSecret(); err != nil {
 		return err
 	}
-	if err := r.UpgradeSplitDB(); err != nil {
-		return err
-	}
-	// create the db only if mongo db url is not given, and postgres secret as well
-	if r.NooBaa.Spec.MongoDbURL == "" && r.NooBaa.Spec.ExternalPgSecret == nil {
-		if err := r.UpgradeSplitDB(); err != nil {
-			return err
-		}
 
-		if r.NooBaa.Spec.DBType == "postgres" {
-			if err := r.UpgradePostgresDB(); err != nil {
-				return err
-			}
+	// create the db only if postgres secret is not given
+	if r.NooBaa.Spec.ExternalPgSecret == nil {
+		if err := r.UpgradePostgresDB(); err != nil {
+			return err
 		}
 
 		if err := r.ReconcileDB(); err != nil {
 			return err
 		}
 
-		if r.NooBaa.Spec.DBType == "postgres" {
-			if err := r.ReconcileObject(r.ServiceDbPg, r.SetDesiredServiceDBForPostgres); err != nil {
-				return err
-			}
-			// fix for https://bugzilla.redhat.com/show_bug.cgi?id=1955328
-			// if DBType=postgres was passed in version 5.6 (OCS 4.6) the operator reconciled
-			// the mongo service with postgres values. see here:
-			// https://github.com/noobaa/noobaa-operator/blob/112c510650612b1a6b88582cf41c53b30068161c/pkg/system/phase2_creating.go#L121-L126
-			// to fix that, reconcile mongo service as well if it exists
-			if util.KubeCheckQuiet(r.ServiceDb) {
-				r.Logger.Infof("found existing mongo db service [%q] will reconcile", r.ServiceDb.Name)
-				if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDBForMongo); err != nil {
-					r.Logger.Errorf("got error when trying to reconcile mongo service. %v", err)
-					return err
-				}
-			}
-
-		} else {
-			if err := r.ReconcileObject(r.ServiceDb, r.SetDesiredServiceDBForMongo); err != nil {
-				return err
-			}
+		if err := r.ReconcileObject(r.ServiceDbPg, r.SetDesiredServiceDBForPostgres); err != nil {
+			return err
 		}
 	}
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
 		return err
 	}
 
-	if r.NooBaa.Spec.DBType == "postgres" {
-		if err := r.UpgradeMigrateDB(); err != nil {
-			return err
-		}
-	}
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}
@@ -253,15 +212,6 @@ func (r *Reconciler) SetDesiredServiceSts() error {
 	return nil
 }
 
-// SetDesiredServiceDBForMongo updates the mongodb service
-func (r *Reconciler) SetDesiredServiceDBForMongo() error {
-	r.ServiceDb.Spec.Selector["noobaa-db"] = r.Request.Name
-	r.ServiceDb.Spec.Ports[0].Name = "mongodb"
-	r.ServiceDb.Spec.Ports[0].Port = 27017
-	r.ServiceDb.Spec.Ports[0].TargetPort = intstr.FromInt(27017)
-	return nil
-}
-
 // SetDesiredServiceDBForPostgres updates the postgres service
 func (r *Reconciler) SetDesiredServiceDBForPostgres() error {
 	r.ServiceDbPg.Spec.Selector["noobaa-db"] = "postgres"
@@ -273,34 +223,19 @@ func (r *Reconciler) SetDesiredServiceDBForPostgres() error {
 
 // SetDesiredNooBaaDB updates the NooBaaDB as desired for reconciling
 func (r *Reconciler) SetDesiredNooBaaDB() error {
-	var NooBaaDB *appsv1.StatefulSet = nil
 	var NooBaaDBTemplate *appsv1.StatefulSet = nil
 
-	if r.NooBaa.Spec.DBType == "postgres" {
-		NooBaaDB = r.NooBaaPostgresDB
-		if dbLabels, ok := r.NooBaa.Spec.Labels["db"]; ok {
-			NooBaaDB.Spec.Template.Labels = dbLabels
-		}
-		if dbAnnotations, ok := r.NooBaa.Spec.Annotations["db"]; ok {
-			NooBaaDB.Spec.Template.Annotations = dbAnnotations
-		}
-		NooBaaDB.Spec.Template.Labels["noobaa-db"] = "postgres"
-		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
-		NooBaaDB.Spec.ServiceName = r.ServiceDbPg.Name
-		NooBaaDBTemplate = util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
-	} else {
-		NooBaaDB = r.NooBaaMongoDB
-		if dbLabels, ok := r.NooBaa.Spec.Labels["db"]; ok {
-			NooBaaDB.Spec.Template.Labels = dbLabels
-		}
-		if dbAnnotations, ok := r.NooBaa.Spec.Annotations["db"]; ok {
-			NooBaaDB.Spec.Template.Annotations = dbAnnotations
-		}
-		NooBaaDB.Spec.Template.Labels["noobaa-db"] = r.Request.Name
-		NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = r.Request.Name
-		NooBaaDB.Spec.ServiceName = r.ServiceDb.Name
-		NooBaaDBTemplate = util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
+	var NooBaaDB = r.NooBaaPostgresDB
+	if dbLabels, ok := r.NooBaa.Spec.Labels["db"]; ok {
+		NooBaaDB.Spec.Template.Labels = dbLabels
 	}
+	if dbAnnotations, ok := r.NooBaa.Spec.Annotations["db"]; ok {
+		NooBaaDB.Spec.Template.Annotations = dbAnnotations
+	}
+	NooBaaDB.Spec.Template.Labels["noobaa-db"] = "postgres"
+	NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
+	NooBaaDB.Spec.ServiceName = r.ServiceDbPg.Name
+	NooBaaDBTemplate = util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
 
 	podSpec := &NooBaaDB.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa-db"
@@ -433,22 +368,13 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 		case "AGENT_PROFILE":
 			c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
 
-		case "MONGODB_URL":
-			if r.NooBaa.Spec.MongoDbURL != "" {
-				c.Env[j].Value = r.NooBaa.Spec.MongoDbURL
-			} else {
-				c.Env[j].Value = "mongodb://" + r.NooBaaMongoDB.Name + "-0." + r.NooBaaMongoDB.Spec.ServiceName + "/nbcore"
-			}
-
 		case "POSTGRES_HOST":
 			if r.NooBaa.Spec.ExternalPgSecret == nil {
 				c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
 			}
 
 		case "DB_TYPE":
-			if r.NooBaa.Spec.DBType == "postgres" {
-				c.Env[j].Value = "postgres"
-			}
+			c.Env[j].Value = "postgres"
 
 		case "OAUTH_AUTHORIZATION_ENDPOINT":
 			if r.OAuthEndpoints != nil {
@@ -460,7 +386,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
 			}
 		case "POSTGRES_USER":
-			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSecret == nil {
+			if r.NooBaa.Spec.ExternalPgSecret == nil {
 				if c.Env[j].Value != "" {
 					c.Env[j].Value = ""
 				}
@@ -474,7 +400,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				}
 			}
 		case "POSTGRES_PASSWORD":
-			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSecret == nil {
+			if r.NooBaa.Spec.ExternalPgSecret == nil {
 				if c.Env[j].Value != "" {
 					c.Env[j].Value = ""
 				}
@@ -488,7 +414,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				}
 			}
 		case "POSTGRES_CONNECTION_STRING":
-			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSecret != nil {
+			if r.NooBaa.Spec.ExternalPgSecret != nil {
 				if c.Env[j].Value != "" {
 					c.Env[j].Value = ""
 				}
@@ -502,11 +428,11 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				}
 			}
 		case "POSTGRES_SSL_REQUIRED":
-			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSSLRequired {
+			if r.NooBaa.Spec.ExternalPgSSLRequired {
 				c.Env[j].Value = "true"
 			}
 		case "POSTGRES_SSL_UNAUTHORIZED":
-			if r.NooBaa.Spec.DBType == "postgres" && r.NooBaa.Spec.ExternalPgSSLUnauthorized {
+			if r.NooBaa.Spec.ExternalPgSSLUnauthorized {
 				c.Env[j].Value = "true"
 			}
 		case "NOOBAA_ROOT_SECRET":
@@ -1182,59 +1108,49 @@ func (r *Reconciler) reconcileDBRBAC() error {
 
 // ReconcileDB choose between different types of DB
 func (r *Reconciler) ReconcileDB() error {
-	var err error
 
 	if r.NooBaa.Spec.ExternalPgSecret != nil {
 		return nil
 	}
 
-	if err = r.reconcileDBRBAC(); err != nil {
+	if err := r.reconcileDBRBAC(); err != nil {
 		return err
 	}
 
-	if r.NooBaa.Spec.DBType == "postgres" {
+	// those are config maps required by the NooBaaPostgresDB StatefulSet,
+	// if the configMap was not created at this step, NooBaaPostgresDB
+	// would fail to start.
 
-		// those are config maps required by the NooBaaPostgresDB StatefulSet,
-		// if the configMap was not created at this step, NooBaaPostgresDB
-		// would fail to start.
-
-		isDBInitUpdated, reconcileDbError := r.ReconcileDBConfigMap(r.PostgresDBInitDb, r.SetDesiredPostgresDBInitDb)
-		if reconcileDbError != nil {
-			return reconcileDbError
-		}
-
-		isDBConfUpdated, reconcileDbError := r.ReconcileDBConfigMap(r.PostgresDBConf, r.SetDesiredPostgresDBConf)
-		if reconcileDbError != nil {
-			return reconcileDbError
-		}
-
-		phase := r.NooBaa.Status.PostgresUpdatePhase
-		// during postgres upgrade, don't reconcile DB
-		if phase != nbv1.UpgradePhaseFinished && phase != nbv1.UpgradePhaseNone {
-			r.Logger.Infof("during postgres db upgrade")
-			return nil
-		}
-
-		result, reconcilePostgresError := r.reconcileObjectAndGetResult(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB, false)
-		if reconcilePostgresError != nil {
-			return reconcilePostgresError
-		}
-		if !r.isObjectUpdated(result) && (isDBInitUpdated || isDBConfUpdated) {
-			r.Logger.Warn("One of the db configMap was updated but not postgres db")
-			restartError := r.RestartDbPods()
-			if restartError != nil {
-				r.Logger.Warn("Unable to restart db pods")
-			}
-
-		}
-
-		// Making sure that previous CRs without the value will deploy MongoDB
-	} else if r.NooBaa.Spec.DBType == "" || r.NooBaa.Spec.DBType == "mongodb" {
-		err = r.ReconcileObject(r.NooBaaMongoDB, r.SetDesiredNooBaaDB)
-	} else {
-		err = util.NewPersistentError("UnknownDBType", "Unknown dbType is specified in NooBaa spec")
+	isDBInitUpdated, reconcileDbError := r.ReconcileDBConfigMap(r.PostgresDBInitDb, r.SetDesiredPostgresDBInitDb)
+	if reconcileDbError != nil {
+		return reconcileDbError
 	}
-	return err
+
+	isDBConfUpdated, reconcileDbError := r.ReconcileDBConfigMap(r.PostgresDBConf, r.SetDesiredPostgresDBConf)
+	if reconcileDbError != nil {
+		return reconcileDbError
+	}
+
+	phase := r.NooBaa.Status.PostgresUpdatePhase
+	// during postgres upgrade, don't reconcile DB
+	if phase != nbv1.UpgradePhaseFinished && phase != nbv1.UpgradePhaseNone {
+		r.Logger.Infof("during postgres db upgrade")
+		return nil
+	}
+
+	result, reconcilePostgresError := r.reconcileObjectAndGetResult(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB, false)
+	if reconcilePostgresError != nil {
+		return reconcilePostgresError
+	}
+	if !r.isObjectUpdated(result) && (isDBInitUpdated || isDBConfUpdated) {
+		r.Logger.Warn("One of the db configMap was updated but not postgres db")
+		restartError := r.RestartDbPods()
+		if restartError != nil {
+			r.Logger.Warn("Unable to restart db pods")
+		}
+
+	}
+	return nil
 }
 
 // ReconcileDBConfigMap reconcile provided postgres db config map
@@ -1283,280 +1199,6 @@ func (r *Reconciler) RestartDbPods() error {
 		if pod.DeletionTimestamp == nil {
 			util.KubeDeleteNoPolling(&pod)
 		}
-	}
-	return nil
-}
-
-// UpgradeSplitDB removes the old pvc and create a  new one with the same PV
-func (r *Reconciler) UpgradeSplitDB() error {
-	oldPvc := &corev1.PersistentVolumeClaim{
-		TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "db-noobaa-core-0",
-			Namespace: options.Namespace,
-		},
-	}
-	if util.KubeCheckQuiet(oldPvc) {
-		r.Logger.Infof("UpgradeSplitDB: Old OVC found, upgrading...")
-		if err := r.UpgradeSplitDBSetReclaimPolicy(oldPvc, corev1.PersistentVolumeReclaimRetain); err != nil {
-			return err
-		}
-		if err := r.UpgradeSplitDBCreateNewPVC(oldPvc); err != nil {
-			return err
-		}
-		if err := r.UpgradeSplitDBSetReclaimPolicy(oldPvc, corev1.PersistentVolumeReclaimDelete); err != nil {
-			return err
-		}
-		if err := r.UpgradeSplitDBDeleteOldSTS(); err != nil {
-			return err
-		}
-		if err := r.UpgradeSplitDBDeleteOldPVC(oldPvc); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// UpgradeSplitDBSetReclaimPolicy sets the reclaim policy to reclaim parameter and checks it
-func (r *Reconciler) UpgradeSplitDBSetReclaimPolicy(oldPvc *corev1.PersistentVolumeClaim, reclaim corev1.PersistentVolumeReclaimPolicy) error {
-	pv := &corev1.PersistentVolume{
-		TypeMeta:   metav1.TypeMeta{Kind: "PersistentVolume"},
-		ObjectMeta: metav1.ObjectMeta{Name: oldPvc.Spec.VolumeName},
-	}
-	if !util.KubeCheck(pv) {
-		return fmt.Errorf("UpgradeSplitDBSetReclaimPolicy(%s): PV not found", reclaim)
-	}
-	if pv.Spec.PersistentVolumeReclaimPolicy != reclaim {
-		pv.Spec.PersistentVolumeReclaimPolicy = reclaim
-		if pv.Spec.ClaimRef != nil &&
-			pv.Spec.ClaimRef.Name == oldPvc.Name &&
-			pv.Spec.ClaimRef.Namespace == oldPvc.Namespace {
-			pv.Spec.ClaimRef = nil
-		}
-		util.KubeUpdate(pv)
-		if !util.KubeCheck(pv) {
-			return fmt.Errorf("UpgradeSplitDBSetReclaimPolicy(%s): PV not found after update", reclaim)
-		}
-		if pv.Spec.PersistentVolumeReclaimPolicy != reclaim {
-			return fmt.Errorf("UpgradeSplitDBSetReclaimPolicy(%s): PV reclaim policy could not be updated", reclaim)
-		}
-	}
-	return nil
-}
-
-// UpgradeSplitDBCreateNewPVC creates new pvc and checks it
-func (r *Reconciler) UpgradeSplitDBCreateNewPVC(oldPvc *corev1.PersistentVolumeClaim) error {
-	newPvc := &corev1.PersistentVolumeClaim{
-		TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "db-" + r.NooBaaMongoDB.Name + "-0",
-			Namespace: options.Namespace,
-		},
-		Spec: oldPvc.Spec,
-	}
-	util.KubeCreateSkipExisting(newPvc)
-	time.Sleep(2 * time.Second)
-	if !util.KubeCheck(newPvc) {
-		return fmt.Errorf("UpgradeSplitDBCreateNewPVC: New PVC not found")
-	}
-	if newPvc.Status.Phase != corev1.ClaimBound {
-		return fmt.Errorf("UpgradeSplitDBCreateNewPVC: New PVC not bound yet")
-	}
-	if newPvc.Spec.VolumeName != oldPvc.Spec.VolumeName {
-		// TODO how to recover?? since this is not expected maybe just return persistent error and wait for manual fix
-		return fmt.Errorf("UpgradeSplitDBCreateNewPVC: New PVC bound to another PV")
-	}
-	return nil
-}
-
-// UpgradeSplitDBDeleteOldSTS deletes old STS named noobaa-core and checks it
-func (r *Reconciler) UpgradeSplitDBDeleteOldSTS() error {
-	oldSts := &appsv1.StatefulSet{
-		TypeMeta: metav1.TypeMeta{Kind: "StatefulSet"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "noobaa-core",
-			Namespace: options.Namespace,
-		},
-	}
-	util.KubeDelete(oldSts)
-	if util.KubeCheck(oldSts) {
-		return fmt.Errorf("UpgradeSplitDBDeleteOldSTS: Old STS still exists")
-	}
-	return nil
-}
-
-// UpgradeSplitDBDeleteOldPVC deletes the parameter oldPvc and checks it
-func (r *Reconciler) UpgradeSplitDBDeleteOldPVC(oldPVC *corev1.PersistentVolumeClaim) error {
-	util.KubeDelete(oldPVC)
-	if util.KubeCheck(oldPVC) {
-		return fmt.Errorf("UpgradeSplitDBDeleteOldPVC: Old PVC still exists")
-	}
-	return nil
-}
-
-// UpgradeMigrateDB performs a db upgrade between mongodb to postgres
-func (r *Reconciler) UpgradeMigrateDB() error {
-	phase := r.NooBaa.Status.UpgradePhase
-	if phase == nbv1.UpgradePhaseFinished || phase == nbv1.UpgradePhaseNone {
-		return nil
-	}
-
-	r.Logger.Infof("UpgradeMigrateDB: upgrade phase - %s", phase)
-	mongoSts := &appsv1.StatefulSet{
-		TypeMeta: metav1.TypeMeta{Kind: "StatefulSet"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "noobaa-db",
-			Namespace: options.Namespace,
-		},
-	}
-
-	mongoExists := util.KubeCheck(mongoSts)
-
-	switch phase {
-
-	case "":
-		if mongoExists {
-			r.Logger.Infof("UpgradeMigrateDB: setting phase to %s", nbv1.UpgradePhasePrepare)
-			phase = nbv1.UpgradePhasePrepare
-		} else {
-			// no mongo STS. skip migration
-			r.Logger.Info("Old (mongo) STS was not found. skipping migration")
-			phase = nbv1.UpgradePhaseNone
-		}
-
-	case nbv1.UpgradePhasePrepare:
-		r.Logger.Infof("UpgradeMigrateDB:: prepare phase")
-
-		// update mongo sts with the new noobaa-core image as the init container image
-		r.Logger.Infof("UpgradeMigrateDB:: updating mongo STS init container")
-		if err := r.ReconcileObject(mongoSts, func() error { // remove old sts pods when finish migrating
-			podSpec := &mongoSts.Spec.Template.Spec
-			podSpec.ServiceAccountName = "noobaa"
-			for i := range podSpec.Containers {
-				c := &podSpec.Containers[i]
-				if c.Name == "db" {
-					r.Logger.Infof("UpgradeMigrateDB:: setting mongo image to %v", options.DBMongoImage)
-					c.Image = options.DBMongoImage
-				}
-			}
-
-			defaultUID := int64(10001)
-			defaulfGID := int64(0)
-			podSpec.SecurityContext.RunAsUser = &defaultUID
-			podSpec.SecurityContext.RunAsGroup = &defaulfGID
-
-			return nil
-		}); err != nil {
-			r.Logger.Errorf("got error on mongo STS reconcile %v", err)
-			return err
-		}
-
-		// when starting - restart the db pod. This is a fix for https://bugzilla.redhat.com/show_bug.cgi?id=1922113
-		r.Logger.Info("getting noobaa-db-0 pod and restarting it if needed")
-		dbPod := &corev1.Pod{}
-		err := r.Client.Get(r.Ctx, types.NamespacedName{Namespace: options.Namespace, Name: "noobaa-db-0"}, dbPod)
-		if err != nil {
-			r.Logger.Errorf("got error when trying to get noobaa-db-0 pod - %v", err)
-			return err
-		}
-		if dbPod.Spec.Containers[0].Image != options.DBMongoImage {
-			r.Logger.Info("identified incorrect DB image - deleting noobaa-db-0 pod ")
-			err = r.Client.Delete(r.Ctx, dbPod)
-			if err != nil {
-				r.Logger.Errorf("got error on deletion of noobaa-db-0 pod")
-				return err
-			}
-		}
-
-		// remove endpoints pods. set replicas to 0
-		// setting the deployment's replica count to 0 should disable the HPA
-		// https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#implicit-maintenance-mode-deactivation
-		if err := r.SetEndpointsDeploymentReplicas(0); err != nil {
-			r.Logger.Errorf("UpgradeMigrateDB::got error on endpoints deployment reconcile %v", err)
-			return err
-		}
-
-		// wait for endpoints and core pods to stop
-		corePodList := &corev1.PodList{}
-		corePodSelector, _ := labels.Parse("noobaa-core=" + r.Request.Name)
-		epPodList := &corev1.PodList{}
-		epPodSelector, _ := labels.Parse("noobaa-s3=" + r.Request.Name)
-		if util.KubeList(epPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: epPodSelector}) &&
-			util.KubeList(corePodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: corePodSelector}) &&
-			(len(corePodList.Items) == 0 && len(epPodList.Items) == 0) &&
-			(mongoSts.Status.ReadyReplicas == 1 && r.NooBaaPostgresDB.Status.ReadyReplicas == 1) {
-			r.Logger.Infof("UpgradeMigrateDB:: system is ready for migration. setting phase to %s", nbv1.UpgradePhaseMigrate)
-			phase = nbv1.UpgradePhaseMigrate
-		} else {
-			r.Logger.Infof("UpgradeMigrateDB:: system not fully ready for migrate")
-			return fmt.Errorf("system not fully ready for migrate")
-		}
-
-	case nbv1.UpgradePhaseMigrate:
-		r.Logger.Infof("UpgradeMigrateDB:: data migration phase")
-
-		r.Logger.Infof("UpgradeMigrateDB:: reconciling migration job")
-		if err := r.ReconcileObject(r.UpgradeJob, r.SetDesiredJobUpgradeDB); err != nil {
-			return err
-		}
-		if r.UpgradeJob.Status.Succeeded > 0 {
-			r.Logger.Infof("UpgradeMigrateDB:: migration completed successfuly. setting phase to %s", nbv1.UpgradePhaseClean)
-			phase = nbv1.UpgradePhaseClean
-		} else if r.UpgradeJob.Status.Failed > upgradeJobBackoffLimit {
-			r.Logger.Errorf("migration failed. upgrade job exceeded the backoff limit of %d. manually delete the job %q to retry",
-				upgradeJobBackoffLimit, r.UpgradeJob.Name)
-		} else {
-			r.Logger.Infof("UpgradeMigrateDB:: migration not finished yet")
-			return fmt.Errorf("job didn't finish yet")
-		}
-
-	case nbv1.UpgradePhaseClean:
-		r.Logger.Infof("UpgradeMigrateDB:: cleanup phase")
-
-		r.Logger.Infof("UpgradeMigrateDB:: deleting mongodb STS")
-		if err := r.Client.Delete(r.Ctx, mongoSts); err != nil && !errors.IsNotFound(err) {
-			r.Logger.Errorf("got error on mongo sts deletion: %v", err)
-			return err
-		}
-
-		oldDbPodList := &corev1.PodList{}
-		oldDbPodSelector, _ := labels.Parse("noobaa-db=" + r.Request.Name)
-		if !util.KubeList(oldDbPodList, &client.ListOptions{Namespace: options.Namespace, LabelSelector: oldDbPodSelector}) {
-			return nil
-		}
-		if len(oldDbPodList.Items) == 0 {
-			r.Logger.Infof("UpgradeMigrateDB:: mongo pod terminated")
-		} else {
-			r.Logger.Infof("UpgradeMigrateDB:: mongo pod is still running. waiting for termination")
-			return fmt.Errorf("mongo is still alive")
-		}
-
-		if util.KubeCheckQuiet(r.ServiceDb) {
-			r.Logger.Infof("UpgradeMigrateDB:: deleting mongodb service")
-
-			if err := r.Client.Delete(r.Ctx, r.ServiceDb); err != nil && !errors.IsNotFound(err) {
-				r.Logger.Errorf("got error on mongo service deletion: %v", err)
-				return err
-			}
-		}
-		// set endpoints replica count to 1. this should enable HPA back again
-		if err := r.SetEndpointsDeploymentReplicas(1); err != nil {
-			r.Logger.Errorf("UpgradeMigrateDB::got error on endpoints deployment reconcile %v", err)
-			return err
-		}
-
-		if err := r.CleanupMigrationJob(); err != nil {
-			return err
-		}
-
-		r.Logger.Infof("UpgradeMigrateDB:: Completed migration to postgres. setting upgrade phase to DoneUpgrade")
-		phase = nbv1.UpgradePhaseFinished
-
-	}
-
-	r.NooBaa.Status.UpgradePhase = phase
-	if err := r.UpdateStatus(); err != nil {
-		return err
 	}
 	return nil
 }
@@ -1657,10 +1299,8 @@ func (r *Reconciler) UpgradePostgresDB() error {
 		r.Logger.Infof("UpgradePostgresDB: annotation for retrying the upgrade was set, restarting upgrade")
 		fallthrough
 	case "":
-		sts := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
-		if r.NooBaa.Spec.DBType == "postgres" {
-			sts.Name = "noobaa-db-pg"
-		}
+		sts := util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
+		sts.Name = "noobaa-db-pg"
 		sts.Namespace = options.Namespace
 		//postgres database doesn't exists, no need to upgrade.
 		if !util.KubeCheckQuiet(sts) {
@@ -1851,53 +1491,6 @@ func (r *Reconciler) removeUpgradeContainer() error {
 			podSpec.InitContainers = append(podSpec.InitContainers[:i], podSpec.InitContainers[i+1:]...)
 		}
 	}
-	return nil
-}
-
-// CleanupMigrationJob deletes the migration job and all its pods
-func (r *Reconciler) CleanupMigrationJob() error {
-
-	// delete the migration job
-	r.Logger.Infof("UpgradeMigrateDB:: deleting migration job")
-	if err := r.Client.Delete(r.Ctx, r.UpgradeJob); err != nil {
-		r.Logger.Errorf("UpgradeMigrateDB:: got error on migration job deletion: %v", err)
-		return err
-	}
-
-	// it seems that completed pods are not delete after job deletion. delete all job pods explicitly
-	r.Logger.Infof("UpgradeMigrateDB:: deleting migration job pods")
-	jobPods := &corev1.PodList{}
-	jobPodsSelector, _ := labels.Parse("job-name=" + r.UpgradeJob.Name)
-	if !util.KubeList(jobPods, &client.ListOptions{Namespace: options.Namespace, LabelSelector: jobPodsSelector}) {
-		return nil
-	}
-
-	hadErrors := false
-	for _, pod := range jobPods.Items {
-		if err := r.Client.Delete(r.Ctx, &pod); err != nil && !errors.IsNotFound(err) {
-			r.Logger.Errorf("got error on pod %v deletion. %v", pod.Name, err)
-			hadErrors = true
-		}
-	}
-	if hadErrors {
-		return fmt.Errorf("had errors in migration job pods deletion")
-	}
-
-	return nil
-
-}
-
-// SetDesiredJobUpgradeDB updates the UpgradeJob as desired for reconciling
-func (r *Reconciler) SetDesiredJobUpgradeDB() error {
-	backoffLimit := upgradeJobBackoffLimit
-	r.UpgradeJob.Spec.Template.Spec.Containers[0].Image = r.NooBaa.Status.ActualImage
-	r.UpgradeJob.Spec.Template.Spec.Containers[0].Command = []string{"/noobaa_init_files/noobaa_init.sh", "db_migrate"}
-	r.setDesiredCoreEnv(&r.UpgradeJob.Spec.Template.Spec.Containers[0])
-
-	// setting the restart policy to never to keep the pods around after failed migrations
-	// also reducing the backoff limit to avoid to many pods staying around in case of an issue
-	r.UpgradeJob.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
-	r.UpgradeJob.Spec.BackoffLimit = &backoffLimit
 	return nil
 }
 
