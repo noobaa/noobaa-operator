@@ -165,7 +165,7 @@ metadata:
   namespace: noobaa
 spec:
   image: noobaa/noobaa-core:v9999.9.9
-  dbImage: centos/mongodb-36-centos7
+  dbImage: "quay.io/sclorg/postgresql-15-c9s"
   imagePullSecret:
     name: <SECRET-NAME>
 ```

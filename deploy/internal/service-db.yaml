@@ -5,13 +5,13 @@ metadata:
   labels:
     app: noobaa
   annotations:
-    service.beta.openshift.io/serving-cert-secret-name: 'noobaa-db-serving-cert'
-    service.alpha.openshift.io/serving-cert-secret-name: 'noobaa-db-serving-cert'
+    service.beta.openshift.io/serving-cert-secret-name: "noobaa-db-serving-cert"
+    service.alpha.openshift.io/serving-cert-secret-name: "noobaa-db-serving-cert"
 spec:
   type: ClusterIP
   selector:
     noobaa-db: SYSNAME
   ports:
-    - port: 27017
-      targetPort: 27017
-      name: mongodb
+    - port: 5432
+      targetPort: 5432
+      name: postgres
