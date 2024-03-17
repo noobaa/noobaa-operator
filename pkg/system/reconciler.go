@@ -74,7 +74,6 @@ type Reconciler struct {
 	CoreAppConfig             *corev1.ConfigMap
 	DefaultCoreApp            *corev1.Container
 	PostgresDBConf            *corev1.ConfigMap
-	PostgresDBInitDb          *corev1.ConfigMap
 	NooBaaPostgresDB          *appsv1.StatefulSet
 	ServiceMgmt               *corev1.Service
 	ServiceS3                 *corev1.Service
@@ -142,7 +141,6 @@ func NewReconciler(
 		CoreApp:                   util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
 		CoreAppConfig:             util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap),
 		PostgresDBConf:            util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap),
-		PostgresDBInitDb:          util.KubeObject(bundle.File_deploy_internal_configmap_postgres_initdb_yaml).(*corev1.ConfigMap),
 		NooBaaPostgresDB:          util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet),
 		ServiceDb:                 util.KubeObject(bundle.File_deploy_internal_service_db_yaml).(*corev1.Service),
 		ServiceDbPg:               util.KubeObject(bundle.File_deploy_internal_service_db_yaml).(*corev1.Service),
@@ -185,7 +183,6 @@ func NewReconciler(
 	r.CoreApp.Namespace = r.Request.Namespace
 	r.CoreAppConfig.Namespace = r.Request.Namespace
 	r.PostgresDBConf.Namespace = r.Request.Namespace
-	r.PostgresDBInitDb.Namespace = r.Request.Namespace
 	r.NooBaaPostgresDB.Namespace = r.Request.Namespace
 	r.ServiceMgmt.Namespace = r.Request.Namespace
 	r.ServiceS3.Namespace = r.Request.Namespace
@@ -307,7 +304,6 @@ func (r *Reconciler) CheckAll() {
 		util.KubeCheck(r.SecretDB)
 		if r.NooBaa.Spec.ExternalPgSecret == nil {
 			util.KubeCheck(r.PostgresDBConf)
-			util.KubeCheck(r.PostgresDBInitDb)
 			util.KubeCheck(r.NooBaaPostgresDB)
 			util.KubeCheck(r.ServiceDbPg)
 		}

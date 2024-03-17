@@ -3,11 +3,11 @@ kind: Role
 metadata:
   name: noobaa-db
 rules:
-- apiGroups:
-  - security.openshift.io
-  resourceNames:
-  - noobaa-db
-  resources:
-  - securitycontextconstraints
-  verbs:
-  - use
+  - apiGroups:
+      - security.openshift.io
+    resourceNames:
+      - noobaa-db
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - use

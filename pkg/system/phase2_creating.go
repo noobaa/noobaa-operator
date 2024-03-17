@@ -244,20 +244,9 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	podSpec.SecurityContext.RunAsGroup = &defaulfGID
 	podSpec.SecurityContext.FSGroup = &defaultFSGroup
 	podSpec.SecurityContext.FSGroupChangePolicy = &defaultFSGroupChangePolicy
-	podSpec.InitContainers = util.FilterSlice(
-		podSpec.InitContainers,
-		func(c corev1.Container) bool {
-			// remove the init container that is not needed
-			return c.Name != "init"
-		},
-	)
+	// remove the init conatainer. It was used to workaround a hugepages issue, which was resolved in Postgres
+	podSpec.InitContainers = nil
 
-	for i := range podSpec.InitContainers {
-		c := &podSpec.InitContainers[i]
-		if c.Name == "initialize-database" {
-			c.Image = GetDesiredDBImage(r.NooBaa)
-		}
-	}
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
 		if c.Name == "db" {
@@ -1106,11 +1095,6 @@ func (r *Reconciler) ReconcileDB() error {
 	// if the configMap was not created at this step, NooBaaPostgresDB
 	// would fail to start.
 
-	isDBInitUpdated, reconcileDbError := r.ReconcileDBConfigMap(r.PostgresDBInitDb, r.SetDesiredPostgresDBInitDb)
-	if reconcileDbError != nil {
-		return reconcileDbError
-	}
-
 	isDBConfUpdated, reconcileDbError := r.ReconcileDBConfigMap(r.PostgresDBConf, r.SetDesiredPostgresDBConf)
 	if reconcileDbError != nil {
 		return reconcileDbError
@@ -1120,7 +1104,7 @@ func (r *Reconciler) ReconcileDB() error {
 	if reconcilePostgresError != nil {
 		return reconcilePostgresError
 	}
-	if !r.isObjectUpdated(result) && (isDBInitUpdated || isDBConfUpdated) {
+	if !r.isObjectUpdated(result) && (isDBConfUpdated) {
 		r.Logger.Warn("One of the db configMap was updated but not postgres db")
 		restartError := r.RestartDbPods()
 		if restartError != nil {
@@ -1154,13 +1138,6 @@ func (r *Reconciler) SetDesiredPostgresDBConf() error {
 		r.PostgresDBConf.Data[overrideField] = dbConfigYaml.Data[overrideField] + "\n" + *operator.Spec.DBConf
 	}
 
-	return nil
-}
-
-// SetDesiredPostgresDBInitDb fill desired postgres db init config map
-func (r *Reconciler) SetDesiredPostgresDBInitDb() error {
-	postgresDBInitDbYaml := util.KubeObject(bundle.File_deploy_internal_configmap_postgres_initdb_yaml).(*corev1.ConfigMap)
-	r.PostgresDBInitDb.Data = postgresDBInitDbYaml.Data
 	return nil
 }
 
