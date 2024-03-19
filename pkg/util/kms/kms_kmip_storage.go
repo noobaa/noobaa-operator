@@ -257,7 +257,7 @@ func (k *KMIPSecretStorage) discover(conn *tls.Conn) error {
 func (k *KMIPSecretStorage) GetSecret(
 	secretID string,
 	keyContext map[string]string,
-) (map[string]interface{}, error) {
+) (map[string]interface{}, secrets.Version, error) {
 
 	log := util.Logger()
 
@@ -265,13 +265,13 @@ func (k *KMIPSecretStorage) GetSecret(
 	uniqueIdentifier, exists := k.secret.StringData[KMIPUniqueID]
 	if !exists {
 		log.Errorf("KMIPSecretStorage.GetSecret() uniqueIdentifier %v does not exist in secret %v", KMIPUniqueID, k.secret)
-		return nil, secrets.ErrInvalidSecretId
+		return nil, secrets.NoVersion, secrets.ErrInvalidSecretId
 	}
 
 	conn, err := k.connect()
 	if err != nil {
 		log.Errorf("KMIPSecretStorage.GetSecret() failed to connect %v", err)
-		return nil, err
+		return nil, secrets.NoVersion, err
 	}
 	defer conn.Close()
 
@@ -280,36 +280,36 @@ func (k *KMIPSecretStorage) GetSecret(
 	})
 	if err != nil {
 		log.Errorf("KMIPSecretStorage.GetSecret() failed to send %v", err)
-		return nil, err
+		return nil, secrets.NoVersion, err
 	}
 	bi, err := k.response(respMsg, kmip14.OperationGet, uniqueBatchItemID)
 	if err != nil {
 		log.Errorf("KMIPSecretStorage.GetSecret() failed to verify response %v", err)
-		return nil, err
+		return nil, secrets.NoVersion, err
 	}
 	var getRespPayload kmip.GetResponsePayload
 	err = decoder.DecodeValue(&getRespPayload, bi.ResponsePayload.(ttlv.TTLV))
 	if err != nil {
 		log.Errorf("KMIPSecretStorage.GetSecret() failed to decode response payload %v", err)
-		return nil, err
+		return nil, secrets.NoVersion, err
 	}
 	if getRespPayload.UniqueIdentifier != uniqueIdentifier {
-		return nil, fmt.Errorf("Unexpected get response uniqueIdentifier actual %v, expected %v", getRespPayload.UniqueIdentifier, uniqueIdentifier)
+		return nil, secrets.NoVersion, fmt.Errorf("Unexpected get response uniqueIdentifier actual %v, expected %v", getRespPayload.UniqueIdentifier, uniqueIdentifier)
 	}
 	if getRespPayload.ObjectType != kmip14.ObjectTypeSymmetricKey {
-		return nil, fmt.Errorf("Unexpected  get response object type actual %v, expected %v", getRespPayload.ObjectType, kmip14.ObjectTypeSymmetricKey)
+		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  get response object type actual %v, expected %v", getRespPayload.ObjectType, kmip14.ObjectTypeSymmetricKey)
 	}
 	if getRespPayload.SymmetricKey == nil {
-		return nil, fmt.Errorf("Unexpected  get response SymmetricKey can not be nil")
+		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  get response SymmetricKey can not be nil")
 	}
 	if getRespPayload.SymmetricKey.KeyBlock.KeyFormatType != kmip14.KeyFormatTypeRaw {
-		return nil, fmt.Errorf("Unexpected  KeyBlock format type actual %v, expected KeyFormatTypeRaw %v", getRespPayload.SymmetricKey.KeyBlock.KeyFormatType, kmip14.KeyFormatTypeRaw)
+		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  KeyBlock format type actual %v, expected KeyFormatTypeRaw %v", getRespPayload.SymmetricKey.KeyBlock.KeyFormatType, kmip14.KeyFormatTypeRaw)
 	}
 	if getRespPayload.SymmetricKey.KeyBlock.CryptographicLength != cryptographicLength {
-		return nil, fmt.Errorf("Unexpected  KeyBlock crypto len actual %v, expected %v", getRespPayload.SymmetricKey.KeyBlock.CryptographicLength, cryptographicLength)
+		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  KeyBlock crypto len actual %v, expected %v", getRespPayload.SymmetricKey.KeyBlock.CryptographicLength, cryptographicLength)
 	}
 	if getRespPayload.SymmetricKey.KeyBlock.CryptographicAlgorithm != kmip14.CryptographicAlgorithmAES {
-		return nil, fmt.Errorf("Unexpected  KeyBlock crypto algo actual %v, expected CryptographicAlgorithmAES %v", getRespPayload.SymmetricKey.KeyBlock.CryptographicAlgorithm, kmip14.CryptographicAlgorithmAES)
+		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  KeyBlock crypto algo actual %v, expected CryptographicAlgorithmAES %v", getRespPayload.SymmetricKey.KeyBlock.CryptographicAlgorithm, kmip14.CryptographicAlgorithmAES)
 	}
 
 	secretBytes := getRespPayload.SymmetricKey.KeyBlock.KeyValue.KeyMaterial.([]byte)
@@ -318,7 +318,7 @@ func (k *KMIPSecretStorage) GetSecret(
 	// Return the fetched key value
 	r := map[string]interface{}{secretID: secretBase64}
 
-	return r, nil
+	return r, secrets.NoVersion, nil
 }
 
 // PutSecret will associate an secretId to its secret data
@@ -327,24 +327,24 @@ func (k *KMIPSecretStorage) PutSecret(
 	secretID string,
 	plainText map[string]interface{},
 	keyContext map[string]string,
-) error {
+) (secrets.Version, error) {
 	log := util.Logger()
 	if _, exists := k.secret.StringData[KMIPUniqueID]; exists {
 		log.Errorf("KMIPSecretStorage.PutSecret() Key UniqueIdentifier %v was not found in the secret", KMIPUniqueID)
-		return secrets.ErrSecretExists
+		return secrets.NoVersion, secrets.ErrSecretExists
 	}
 
 	// Register the key value the KMIP endpoint
 	value := plainText[secretID].(string)
 	valueBytes, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
-		return err
+		return secrets.NoVersion, err
 	}
 
 	conn, err := k.connect()
 	if err != nil {
 		log.Errorf("KMIPSecretStorage.PutSecret() can not connect %v", err)
-		return err
+		return secrets.NoVersion, err
 	}
 	defer conn.Close()
 
@@ -365,27 +365,27 @@ func (k *KMIPSecretStorage) PutSecret(
 	respMsg, decoder, uniqueBatchItemID, err := k.send(conn, kmip14.OperationRegister, registerPayload)
 	if err != nil {
 		log.Errorf("KMIPSecretStorage.PutSecret() can send %v", err)
-		return err
+		return secrets.NoVersion, err
 	}
 	bi, err := k.response(respMsg, kmip14.OperationRegister, uniqueBatchItemID)
 	if err != nil {
 		log.Errorf("KMIPSecretStorage.PutSecret() can verify response %v", err)
-		return err
+		return secrets.NoVersion, err
 	}
 
 	var registerRespPayload kmip.RegisterResponsePayload
 	err = decoder.DecodeValue(&registerRespPayload, bi.ResponsePayload.(ttlv.TTLV))
 	if err != nil {
 		log.Errorf("KMIPSecretStorage.PutSecret() can decode response payload %v", err)
-		return err
+		return secrets.NoVersion, err
 	}
 
 	k.secret.StringData[KMIPUniqueID] = registerRespPayload.UniqueIdentifier
 	if !util.KubeUpdate(k.secret) {
 		log.Errorf("Failed to update KMS secret %v in ns %v", k.secret.Name, k.secret.Namespace)
-		return fmt.Errorf("Failed to update KMS secret %v in ns %v", k.secret.Name, k.secret.Namespace)
+		return secrets.NoVersion, fmt.Errorf("Failed to update KMS secret %v in ns %v", k.secret.Name, k.secret.Namespace)
 	}
-	return nil
+	return secrets.NoVersion, nil
 }
 
 // DeleteSecret deletes the secret data associated with the

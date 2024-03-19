@@ -39,7 +39,7 @@ func (v *VersionSingleSecret) Reconcile(r SecretReconciler) error {
 
 // Get implements SecretStorage interface for single string secret
 func (v *VersionSingleSecret) Get() error {
-	s, err := v.k.GetSecret(v.k.driver.Path(), v.k.driver.GetContext())
+	s, _, err := v.k.GetSecret(v.k.driver.Path(), v.k.driver.GetContext())
 	if err != nil {
 		// handle k8s get from non-existent secret
 		if strings.Contains(err.Error(), "not found") {
@@ -66,7 +66,8 @@ func (v *VersionSingleSecret) Set(val string) error {
 	}
 
 	v.data = val
-	return v.k.PutSecret(v.k.driver.Path(), data, v.k.driver.SetContext())
+	_, err := v.k.PutSecret(v.k.driver.Path(), data, v.k.driver.SetContext())
+	return err
 }
 
 // Delete implements SecretStorage interface for single string secret
@@ -101,7 +102,7 @@ func (v *VersionRotatingSecret) Reconcile(r SecretReconciler) error {
 
 // Get implements SecretStorage interface for the secret map, i.e. rotating master root key
 func (v *VersionRotatingSecret) Get() error {
-	s, err := v.k.GetSecret(v.backendSecretName(), v.k.driver.GetContext())
+	s, _, err := v.k.GetSecret(v.backendSecretName(), v.k.driver.GetContext())
 	if err != nil {
 		// handle k8s get from non-existent secret
 		if strings.Contains(err.Error(), "not found") {
@@ -136,7 +137,8 @@ func (v *VersionRotatingSecret) Set(val string) error {
 	s[ActiveRootKey] = key
 	s[key] = val
 	v.data = s
-	return v.k.PutSecret(v.backendSecretName(), toInterfaceMap(s), v.k.driver.SetContext())
+	_, err := v.k.PutSecret(v.backendSecretName(), toInterfaceMap(s), v.k.driver.SetContext())
+	return err
 }
 
 // deleteSingleStringSecret removes old format secret during upgrade

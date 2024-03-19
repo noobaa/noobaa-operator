@@ -240,6 +240,11 @@ test-kms-tls-token: vendor
 	@echo "✅ test-kms-tls-token"
 .PHONY: test-kms-tls-token
 
+test-kms-azure-vault: vendor
+	ginkgo -v pkg/util/kms/test/azure-vault
+	@echo "✅ test-kms-azure-vault"
+.PHONY: test-kms-azure-vault
+
 test-kms-ibm-kp: vendor
 	ginkgo -v pkg/util/kms/test/ibm-kp
 	@echo "✅ test-kms-ibm-kp"
