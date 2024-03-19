@@ -27,6 +27,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -568,6 +569,39 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 					ReadOnly:  true,
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &secretVolumeMounts)
+			}
+		case "noobaa-log-processor":
+			if c.Image != r.NooBaa.Status.ActualImage {
+				coreImageChanged = true
+				c.Image = r.NooBaa.Status.ActualImage
+			}
+			// adding the missing Env variable from default container
+			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env)
+			r.setDesiredCoreEnv(c)
+
+			if r.NooBaa.Spec.LogResources != nil {
+				c.Resources = *r.NooBaa.Spec.LogResources
+			} else {
+				var reqCPU, reqMem resource.Quantity
+				reqCPU, _ = resource.ParseQuantity("200m")
+				reqMem, _ = resource.ParseQuantity("500Mi")
+
+				logResourceList := corev1.ResourceList{
+					corev1.ResourceCPU:    reqCPU,
+					corev1.ResourceMemory: reqMem,
+				}
+				c.Resources = corev1.ResourceRequirements{
+					Requests: logResourceList,
+					Limits:   logResourceList,
+				}
+			}
+			if util.KubeCheckQuiet(r.CaBundleConf) {
+				configMapVolumeMounts := []corev1.VolumeMount{{
+					Name:      r.CaBundleConf.Name,
+					MountPath: "/etc/pki/ca-trust/extracted/pem",
+					ReadOnly:  true,
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
 			}
 		}
 	}
