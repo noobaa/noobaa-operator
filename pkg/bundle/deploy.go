@@ -3795,7 +3795,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "9ce7163b6de6bf58c2804ca6be2efc69fef7c90951fa549d17fa08a3a2684fc8"
+const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "212dc53123cf36f7a502f042b0fa11a15b8165ebc01d475a8d91e6039465dd59"
 
 const File_deploy_internal_configmap_postgres_initdb_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3804,40 +3804,6 @@ metadata:
   labels:
     app: noobaa
 data:
-  initdb.sh: |
-          # If the config file is present, the DB is initiazed
-          # and we're out of here
-          export PGDATA=$HOME/data/userdata
-          if [ -f $PGDATA/postgresql.conf ]; then
-            echo postgresql.conf file is found
-            exit 0
-          fi
-
-          # Wrap the postgres binary, force huge_pages=off for initdb
-          # see https://bugzilla.redhat.com/show_bug.cgi?id=1946792
-          p=/opt/rh/rh-postgresql12/root/usr/bin/postgres
-
-          # Latest RH images moved the postgres binary
-          # from /opt/rh/rh-postgresql12/root/usr/bin/postgres to /usr/bin/postgres
-          # see https://bugzilla.redhat.com/show_bug.cgi?id=2051249
-          if [ ! -x $p ]; then
-            p=/usr/bin/postgres
-          fi
-
-          mv $p $p.orig
-          echo exec $p.orig \"\$@\" -c huge_pages=off > $p
-          chmod 755 $p
-
-          # The NooBaa DB runs with UID 10001 GID 0
-          sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
-
-          # Init the DB and exit once the DB is ready to run
-          sed -i -e 's/^exec.*$/exit 0/' \
-                 -e 's/^pg_ctl\sstart.*/pg_ctl start || true/'                                   \
-                    /usr/bin/run-postgresql
-          su postgres -c "bash -x /usr/bin/run-postgresql"
-
-            
   dumpdb.sh: |
           set -e
           sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
@@ -5107,7 +5073,7 @@ spec:
                 resourceFieldRef:
                   resource: limits.memory`
 
-const Sha256_deploy_internal_statefulset_db_yaml = "25924f84967caebdeb5d61c2181f0ba04da92306fed7e44834dbcc7480b8d48a"
+const Sha256_deploy_internal_statefulset_db_yaml = "5a1f949efd069279b0cfbece08fe0c887b3ec5e248e2aead9394b8d1b4085f30"
 
 const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5132,42 +5098,42 @@ spec:
       serviceAccountName: noobaa-db
       terminationGracePeriodSeconds: 60
       containers:
-      #--------------------#
-      # DATABASE CONTAINER #
-      #--------------------#
-      - name: db
-        image: NOOBAA_DB_IMAGE
-        command:
-        - bash
-        - -c
-        - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
-        resources:
-          requests:
-            cpu: "2"
-            memory: "4Gi"
-          limits:
-            cpu: "2"
-            memory: "4Gi"
-        volumeMounts:
+        #--------------------#
+        # DATABASE CONTAINER #
+        #--------------------#
         - name: db
-          mountPath: /data
-      securityContext: 
+          image: NOOBAA_DB_IMAGE
+          command:
+            - bash
+            - -c
+            - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
+          resources:
+            requests:
+              cpu: "2"
+              memory: "4Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          volumeMounts:
+            - name: db
+              mountPath: /data
+      securityContext:
         runAsUser: 10001
         runAsGroup: 0
   volumeClaimTemplates:
-  - metadata:
-      name: db
-      labels:
-        app: noobaa
-    spec:
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 50Gi
+    - metadata:
+        name: db
+        labels:
+          app: noobaa
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "0accc047982dbd1b8c207c81ef2bb1ae8c61c312915d3c2d196799ca6f146816"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "947307ea1e93ce5b7789bd16352eb7848e1483cd36e7fc489d9ee156e4e7d8bd"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5190,92 +5156,47 @@ spec:
         noobaa-db: postgres
     spec:
       serviceAccountName: noobaa-db
-      initContainers:
-      #-----------------#
-      # INIT CONTAINERS #
-      #-----------------#
-      - name: initialize-database
-        image: NOOBAA_DB_IMAGE
-        env:
-          - name: POSTGRESQL_DATABASE
-            value: nbcore
-          - name: LC_COLLATE
-            value: C
-          - name: POSTGRESQL_USER
-            valueFrom:
-              secretKeyRef:
-                key: user
-                name: noobaa-db
-          - name: POSTGRESQL_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                key: password
-                name: noobaa-db
-        command:
-        - sh
-        - -x
-        - /init/initdb.sh
-        securityContext:
-          runAsUser: 0
-          runAsGroup: 0
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "500Mi"
-          limits:
-            cpu: "500m"
-            memory: "500Mi"
-        volumeMounts:
-        - name: db
-          mountPath: /var/lib/pgsql
-        - name: noobaa-postgres-initdb-sh-volume
-          mountPath: /init
       containers:
-      #--------------------#
-      # Postgres CONTAINER #
-      #--------------------#
-      - name: db
-        image: NOOBAA_DB_IMAGE
-        env:
-          - name: POSTGRESQL_DATABASE
-            value: nbcore
-          - name: LC_COLLATE
-            value: C
-          - name: POSTGRESQL_USER
-            valueFrom:
-              secretKeyRef:
-                key: user
-                name: noobaa-db
-          - name: POSTGRESQL_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                key: password
-                name: noobaa-db
-        imagePullPolicy: "IfNotPresent"
-        ports:
-          - containerPort: 5432
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "4Gi"
-          limits:
-            cpu: "500m"
-            memory: "4Gi"
-        volumeMounts:
-          - name: db
-            mountPath: /var/lib/pgsql
-          - name: noobaa-postgres-config-volume
-            mountPath: /opt/app-root/src/postgresql-cfg
-          - name: noobaa-postgres-initdb-sh-volume
-            mountPath: /init
+        #--------------------#
+        # Postgres CONTAINER #
+        #--------------------#
+        - name: db
+          image: NOOBAA_DB_IMAGE
+          env:
+            - name: POSTGRESQL_DATABASE
+              value: nbcore
+            - name: LC_COLLATE
+              value: C
+            - name: POSTGRESQL_USER
+              valueFrom:
+                secretKeyRef:
+                  key: user
+                  name: noobaa-db
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: noobaa-db
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "4Gi"
+            limits:
+              cpu: "500m"
+              memory: "4Gi"
+          volumeMounts:
+            - name: db
+              mountPath: /var/lib/pgsql
+            - name: noobaa-postgres-config-volume
+              mountPath: /opt/app-root/src/postgresql-cfg
       volumes:
-      - name: noobaa-postgres-config-volume
-        configMap:
-          name: noobaa-postgres-config
-      - name: noobaa-postgres-initdb-sh-volume
-        configMap:
-          name: noobaa-postgres-initdb-sh
-      securityContext: 
+        - name: noobaa-postgres-config-volume
+          configMap:
+            name: noobaa-postgres-config
+      securityContext:
         runAsUser: 10001
         runAsGroup: 0
         fsGroup: 0
@@ -6436,21 +6357,21 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_db_yaml = "8a7b6895de2e9847ec4a9e6e298b63251253f446961eb97f4dee50ee156f6d12"
+const Sha256_deploy_role_db_yaml = "bc7eeca1125dfcdb491ab8eb69e3dcbce9f004a467b88489f85678b3c6872cce"
 
 const File_deploy_role_db_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: noobaa-db
 rules:
-- apiGroups:
-  - security.openshift.io
-  resourceNames:
-  - noobaa-db
-  resources:
-  - securitycontextconstraints
-  verbs:
-  - use
+  - apiGroups:
+      - security.openshift.io
+    resourceNames:
+      - noobaa-db
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - use
 `
 
 const Sha256_deploy_role_endpoint_yaml = "27ace6cdcae4d87add5ae79265c4eee9d247e5910fc8a74368139d31add6dac2"
@@ -6565,13 +6486,13 @@ rules:
       - bucketclasses
 `
 
-const Sha256_deploy_scc_db_yaml = "d91c727214d8879843da81ee8778bf6ad6d06af6bdea0a36ac494b5ccc706d7a"
+const Sha256_deploy_scc_db_yaml = "747ebcab94f3f3d42037016f30fa82df085ee5a0a405cbee61e8fdfdfcfc37b0"
 
 const File_deploy_scc_db_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
 metadata:
   name: noobaa-db
-allowPrivilegeEscalation: true
+allowPrivilegeEscalation: false
 allowHostDirVolumePlugin: false
 allowHostIPC: false
 allowHostNetwork: false
@@ -6579,9 +6500,6 @@ allowHostPID: false
 allowHostPorts: false
 allowPrivilegedContainer: false
 readOnlyRootFilesystem: false
-allowedCapabilities:
-- SETUID
-- SETGID
 fsGroup:
   type: RunAsAny
 runAsUser:

@@ -21,36 +21,36 @@ spec:
       serviceAccountName: noobaa-db
       terminationGracePeriodSeconds: 60
       containers:
-      #--------------------#
-      # DATABASE CONTAINER #
-      #--------------------#
-      - name: db
-        image: NOOBAA_DB_IMAGE
-        command:
-        - bash
-        - -c
-        - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
-        resources:
-          requests:
-            cpu: "2"
-            memory: "4Gi"
-          limits:
-            cpu: "2"
-            memory: "4Gi"
-        volumeMounts:
+        #--------------------#
+        # DATABASE CONTAINER #
+        #--------------------#
         - name: db
-          mountPath: /data
-      securityContext: 
+          image: NOOBAA_DB_IMAGE
+          command:
+            - bash
+            - -c
+            - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
+          resources:
+            requests:
+              cpu: "2"
+              memory: "4Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          volumeMounts:
+            - name: db
+              mountPath: /data
+      securityContext:
         runAsUser: 10001
         runAsGroup: 0
   volumeClaimTemplates:
-  - metadata:
-      name: db
-      labels:
-        app: noobaa
-    spec:
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 50Gi
+    - metadata:
+        name: db
+        labels:
+          app: noobaa
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
