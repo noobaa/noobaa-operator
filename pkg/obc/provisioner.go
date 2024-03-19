@@ -701,16 +701,17 @@ func (r *BucketRequest) putBucketTagging() error {
 func PrepareReplicationParams(bucketName string, replicationPolicy string, update bool) (*nb.BucketReplicationParams, *nb.DeleteBucketReplicationParams, error) {
 
 	var replicationRules nb.ReplicationPolicy
+
+	if replicationPolicy == "" && update {
+		deleteReplicationParams := &nb.DeleteBucketReplicationParams{
+			Name: bucketName,
+		}
+		return nil, deleteReplicationParams, nil
+	}
+
 	err := json.Unmarshal([]byte(replicationPolicy), &replicationRules)
 	if err != nil {
 		return nil, nil, fmt.Errorf("PrepareReplicationParams: Failed to parse replication json %q: %v", replicationRules, err)
-	}
-	deleteReplicationParams := &nb.DeleteBucketReplicationParams{
-		Name: bucketName,
-	}
-
-	if replicationPolicy == "" && update {
-		return nil, deleteReplicationParams, nil
 	}
 
 	replicationParams := &nb.BucketReplicationParams{
