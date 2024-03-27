@@ -6136,7 +6136,6 @@ spec:
           items:
           - key: ca-bundle.crt
             path: tls-ca-bundle.pem
-          optional: true
       containers:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
@@ -6675,4 +6674,3 @@ metadata:
     app: prometheus-adapter
   name: custom-metrics-prometheus-adapter
 `
-
