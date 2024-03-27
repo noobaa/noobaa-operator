@@ -208,6 +208,10 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 		util.Panic(os.WriteFile(dir+"noobaa-operator.package.yaml", pkgBytes, 0644))
 	}
 	util.Panic(util.WriteYamlFile(csvFileName, GenerateCSV(opConf, csvParams)))
+	// The CA configmap is needed prior to the operator startup to prevent a certificate injection race condition
+	util.Panic(util.WriteYamlFile(
+		versionDir+"noobaa-operator.ca-bundle-configmap.yaml",
+		util.KubeObject(bundle.File_deploy_internal_configmap_ca_inject_yaml)))
 	crd.ForEachCRD(func(c *crd.CRD) {
 		if c.Spec.Group == nbv1.SchemeGroupVersion.Group || (csvParams.OBCMode == OBCOwned && c.Spec.Group == obAPI.Domain) {
 			util.Panic(util.WriteYamlFile(versionDir+c.Name+".crd.yaml", c))
