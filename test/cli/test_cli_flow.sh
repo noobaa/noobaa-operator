@@ -66,7 +66,6 @@ function usage {
     set +x
     echo -e "\nUsage: ${0} [options]"
     echo "--namespace             -   Change the namespace (default: ${NAMESPACE})"
-    echo "--mongo-image           -   Change the mongo image"
     echo "--noobaa-image          -   Change the noobaa image"
     echo "--operator-image        -   Change the operator image"
     echo "--check_core_config_map -   Check Only core config map"
@@ -75,11 +74,6 @@ function usage {
 }
 
 function set_nonstandard_options {
-    if [ ! -z ${MONGO_IMAGE} ]
-    then
-        noobaa+=" --mongo-image ${MONGO_IMAGE}"
-    fi
-
     if [ ! -z ${NOOBAA_IMAGE} ]
     then
         noobaa+=" --noobaa-image ${NOOBAA_IMAGE}"
@@ -98,8 +92,6 @@ do
     fi
 
     case ${1} in
-        --mongo-image)           MONGO_IMAGE=${2}
-                                 shift 2;;
         --noobaa-image)          NOOBAA_IMAGE=${2}
                                  shift 2;;
         --operator-image)        OPERATOR_IMAGE=${2}
