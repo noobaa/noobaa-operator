@@ -26,7 +26,6 @@ import (
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -66,7 +65,6 @@ type Reconciler struct {
 	CoreVersion              string
 	OperatorVersion          string
 	OAuthEndpoints           *util.OAuth2Endpoints
-	MongoConnectionString    string
 	PostgresConnectionString string
 	ApplyCAsToPods           string
 
@@ -75,7 +73,6 @@ type Reconciler struct {
 	CoreApp                   *appsv1.StatefulSet
 	CoreAppConfig             *corev1.ConfigMap
 	DefaultCoreApp            *corev1.Container
-	NooBaaMongoDB             *appsv1.StatefulSet
 	PostgresDBConf            *corev1.ConfigMap
 	PostgresDBInitDb          *corev1.ConfigMap
 	NooBaaPostgresDB          *appsv1.StatefulSet
@@ -115,7 +112,6 @@ type Reconciler struct {
 	DeploymentEndpoint        *appsv1.Deployment
 	DefaultDeploymentEndpoint *corev1.PodSpec
 	JoinSecret                *corev1.Secret
-	UpgradeJob                *batchv1.Job
 	CaBundleConf              *corev1.ConfigMap
 	KedaTriggerAuthentication *kedav1alpha1.TriggerAuthentication
 	KedaScaled                *kedav1alpha1.ScaledObject
@@ -145,7 +141,6 @@ func NewReconciler(
 		ServiceAccount:            util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
 		CoreApp:                   util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
 		CoreAppConfig:             util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap),
-		NooBaaMongoDB:             util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet),
 		PostgresDBConf:            util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap),
 		PostgresDBInitDb:          util.KubeObject(bundle.File_deploy_internal_configmap_postgres_initdb_yaml).(*corev1.ConfigMap),
 		NooBaaPostgresDB:          util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet),
@@ -178,7 +173,6 @@ func NewReconciler(
 		RouteS3:                   util.KubeObject(bundle.File_deploy_internal_route_s3_yaml).(*routev1.Route),
 		RouteSts:                  util.KubeObject(bundle.File_deploy_internal_route_sts_yaml).(*routev1.Route),
 		DeploymentEndpoint:        util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
-		UpgradeJob:                util.KubeObject(bundle.File_deploy_internal_job_upgrade_db_yaml).(*batchv1.Job),
 		CaBundleConf:              util.KubeObject(bundle.File_deploy_internal_configmap_ca_inject_yaml).(*corev1.ConfigMap),
 		KedaTriggerAuthentication: util.KubeObject(bundle.File_deploy_internal_hpa_keda_trigger_authentication_yaml).(*kedav1alpha1.TriggerAuthentication),
 		KedaScaled:                util.KubeObject(bundle.File_deploy_internal_hpa_keda_scaled_object_yaml).(*kedav1alpha1.ScaledObject),
@@ -190,7 +184,6 @@ func NewReconciler(
 	r.ServiceAccount.Namespace = r.Request.Namespace
 	r.CoreApp.Namespace = r.Request.Namespace
 	r.CoreAppConfig.Namespace = r.Request.Namespace
-	r.NooBaaMongoDB.Namespace = r.Request.Namespace
 	r.PostgresDBConf.Namespace = r.Request.Namespace
 	r.PostgresDBInitDb.Namespace = r.Request.Namespace
 	r.NooBaaPostgresDB.Namespace = r.Request.Namespace
@@ -225,7 +218,6 @@ func NewReconciler(
 	r.RouteS3.Namespace = r.Request.Namespace
 	r.RouteSts.Namespace = r.Request.Namespace
 	r.DeploymentEndpoint.Namespace = r.Request.Namespace
-	r.UpgradeJob.Namespace = r.Request.Namespace
 	r.CaBundleConf.Namespace = r.Request.Namespace
 	r.KedaTriggerAuthentication.Namespace = r.Request.Namespace
 	r.KedaScaled.Namespace = r.Request.Namespace
@@ -236,7 +228,6 @@ func NewReconciler(
 	r.ServiceAccount.Name = r.Request.Name
 	r.CoreApp.Name = r.Request.Name + "-core"
 	r.CoreAppConfig.Name = "noobaa-config"
-	r.NooBaaMongoDB.Name = r.Request.Name + "-db"
 	r.NooBaaPostgresDB.Name = r.Request.Name + "-db-pg"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
 	r.ServiceSyslog.Name = "noobaa-syslog"
@@ -269,7 +260,6 @@ func NewReconciler(
 	r.RouteS3.Name = r.ServiceS3.Name
 	r.RouteSts.Name = r.ServiceSts.Name
 	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
-	r.UpgradeJob.Name = r.Request.Name + "-upgrade-job"
 	r.CaBundleConf.Name = r.Request.Name + "-ca-inject"
 	r.KedaScaled.Name = r.Request.Name
 	r.AdapterHPA.Name = r.Request.Name + "-hpav2"
@@ -313,18 +303,13 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.ServiceS3)
 	util.KubeCheck(r.ServiceSts)
 	util.KubeCheck(r.ServiceSyslog)
-	if r.NooBaa.Spec.MongoDbURL == "" && r.NooBaa.Spec.ExternalPgSecret == nil {
-		if r.NooBaa.Spec.DBType == "postgres" {
-			util.KubeCheck(r.SecretDB)
-			if r.NooBaa.Spec.ExternalPgSecret == nil {
-				util.KubeCheck(r.PostgresDBConf)
-				util.KubeCheck(r.PostgresDBInitDb)
-				util.KubeCheck(r.NooBaaPostgresDB)
-				util.KubeCheck(r.ServiceDbPg)
-			}
-		} else {
-			util.KubeCheck(r.NooBaaMongoDB)
-			util.KubeCheck(r.ServiceDb)
+	if r.NooBaa.Spec.ExternalPgSecret == nil {
+		util.KubeCheck(r.SecretDB)
+		if r.NooBaa.Spec.ExternalPgSecret == nil {
+			util.KubeCheck(r.PostgresDBConf)
+			util.KubeCheck(r.PostgresDBInitDb)
+			util.KubeCheck(r.NooBaaPostgresDB)
+			util.KubeCheck(r.ServiceDbPg)
 		}
 	}
 	util.KubeCheck(r.SecretServer)

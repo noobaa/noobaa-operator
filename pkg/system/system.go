@@ -171,11 +171,6 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 		dbImage := options.DBImage
 		sys.Spec.DBImage = &dbImage
 	}
-	//  naively changing the db postgres image to the hardcoded one if the db type is postgres
-	if options.DBType == "postgres" {
-		dbPostgresImage := options.DBPostgresImage
-		sys.Spec.DBImage = &dbPostgresImage
-	}
 	if options.DBVolumeSizeGB != 0 {
 		sys.Spec.DBVolumeResources = &corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
@@ -186,10 +181,6 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	if options.DBStorageClass != "" {
 		sc := options.DBStorageClass
 		sys.Spec.DBStorageClass = &sc
-	}
-	if options.MongoDbURL != "" {
-		mongoDbURL := options.MongoDbURL
-		sys.Spec.MongoDbURL = mongoDbURL
 	}
 	if options.PostgresDbURL != "" {
 		sys.Spec.ExternalPgSecret = &corev1.SecretReference{
@@ -389,23 +380,12 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		util.Panic(json.Unmarshal([]byte(endpointResourcesJSON), &sys.Spec.Endpoints.Resources))
 	}
 
-	err := CheckMongoURL(sys)
-	if err != nil {
-		log.Fatalf(`❌ %s`, err)
-	}
-
 	if options.PostgresDbURL != "" {
-		if sys.Spec.MongoDbURL != "" {
-			log.Fatalf("❌ Can't use both options: postgres-url and mongodb-url, please use only one")
-		}
-		if sys.Spec.DBType != "postgres" {
-			log.Fatalf("❌ expecting the DBType to be postgres when using external PostgresDbURL, got %s", sys.Spec.DBType)
-		}
 		if (options.PostgresSSLCert != "" && options.PostgresSSLKey == "") ||
 			(options.PostgresSSLCert == "" && options.PostgresSSLKey != "") {
 			log.Fatalf("❌ Can't provide only ssl-cert or only ssl-key - please provide both!")
 		}
-		err = CheckPostgresURL(options.PostgresDbURL)
+		err := CheckPostgresURL(options.PostgresDbURL)
 		if err != nil {
 			log.Fatalf(`❌ %s`, err)
 		}
@@ -505,7 +485,6 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	isMongoDbURL := sys.Spec.MongoDbURL
 	util.KubeDelete(sys)
 
 	if sys.Spec.ExternalPgSecret != nil {
@@ -516,23 +495,6 @@ func RunDelete(cmd *cobra.Command, args []string) {
 			},
 		}
 		util.KubeDelete(secret)
-	} else if isMongoDbURL == "" {
-		// NoobaaDB
-		noobaaDB := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
-		if sys.Spec.DBType == "postgres" {
-			noobaaDB = util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
-		}
-		for i := range noobaaDB.Spec.VolumeClaimTemplates {
-			t := &noobaaDB.Spec.VolumeClaimTemplates[i]
-			pvc := &corev1.PersistentVolumeClaim{
-				TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim"},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      t.Name + "-" + noobaaDB.Name + "-0",
-					Namespace: options.Namespace,
-				},
-			}
-			util.KubeDelete(pvc)
-		}
 	}
 	backingStores := &nbv1.BackingStoreList{}
 	util.KubeList(backingStores, &client.ListOptions{Namespace: options.Namespace})
@@ -692,10 +654,8 @@ func CheckNooBaaDBImages(cmd *cobra.Command, sys *nbv1.NooBaa, args []string) st
 	if sys.Spec.DBImage != nil {
 		desiredImage = *sys.Spec.DBImage
 	}
-	sts := util.KubeObject(bundle.File_deploy_internal_statefulset_db_yaml).(*appsv1.StatefulSet)
-	if sys.Spec.DBType == "postgres" {
-		sts.Name = "noobaa-db-pg"
-	}
+	sts := util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
+	sts.Name = "noobaa-db-pg"
 	sts.Namespace = options.Namespace
 	if util.KubeCheckQuiet(sts) {
 		runningImage = sts.Spec.Template.Spec.Containers[0].Image
@@ -739,11 +699,7 @@ func RunSystemVersionsStatus(cmd *cobra.Command, args []string) {
 		noobaaOperatorImage = CheckOperatorImage(cmd, args)
 	} else {
 		noobaaImage = options.NooBaaImage
-		if options.DBType == "postgres" {
-			noobaaDbImage = options.DBPostgresImage
-		} else {
-			noobaaDbImage = options.DBImage
-		}
+		noobaaDbImage = options.DBImage
 		noobaaOperatorImage = options.OperatorImage
 	}
 
@@ -763,14 +719,9 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	sysKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
 	r := NewReconciler(sysKey, klient, scheme.Scheme, nil)
 	r.CheckAll()
-	var NooBaaDB *appsv1.StatefulSet = nil
-	if r.NooBaa.Spec.DBType == "postgres" {
-		NooBaaDB = r.NooBaaPostgresDB
-	} else {
-		NooBaaDB = r.NooBaaMongoDB
-	}
-	// create the mongo db only if mongo db url is not given.
-	if r.NooBaa.Spec.MongoDbURL == "" && r.NooBaa.Spec.ExternalPgSecret == nil {
+	var NooBaaDB *appsv1.StatefulSet = r.NooBaaPostgresDB
+
+	if r.NooBaa.Spec.ExternalPgSecret == nil {
 		// NoobaaDB
 		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
 			t := &NooBaaDB.Spec.VolumeClaimTemplates[i]
@@ -1201,38 +1152,7 @@ func CheckSystem(sys *nbv1.NooBaa) bool {
 		sys.Status.Services = &nbv1.ServicesStatus{}
 	}
 
-	// a hack to better set the DBType in cases where DBType is not set.
-	// if dbtype is not set, try to infer it from the db image. this only update dbtype in memory
-	if sys.Spec.DBType == "" {
-		dbImage := GetDesiredDBImage(sys)
-		if strings.Contains(dbImage, "postgres") {
-			log.Infof("dbType was not supplied. according to image (%s) setting dbType to postgres", dbImage)
-			sys.Spec.DBType = "postgres"
-		} else {
-			if strings.Contains(dbImage, "mongo") {
-				log.Infof("dbType was not supplied. according to image (%s) setting dbType to mongodb", dbImage)
-			} else {
-				log.Warnf("dbType was not supplied and it cannot be guessed from from the dbImage (%s). setting dbType to mongodb", dbImage)
-			}
-			sys.Spec.DBType = "mongodb"
-		}
-	}
-
 	return found && sys.UID != ""
-}
-
-// CheckMongoURL checks if the mongourl structure is valid and if we use mongo as db
-func CheckMongoURL(sys *nbv1.NooBaa) error {
-	if sys.Spec.MongoDbURL != "" {
-		if sys.Spec.DBType != "mongodb" {
-			return fmt.Errorf("expecting the DBType to be mongodb when using external MongoDbURL, got %s", sys.Spec.DBType)
-		}
-		if !strings.Contains(sys.Spec.MongoDbURL, "mongodb://") &&
-			!strings.Contains(sys.Spec.MongoDbURL, "mongodb+srv://") {
-			return fmt.Errorf("invalid mongo db url %s, expecting the url to start with mongodb:// or mongodb+srv://", sys.Spec.MongoDbURL)
-		}
-	}
-	return nil
 }
 
 // CheckPostgresURL checks if the postgresurl structure is valid and if we use postgres as db

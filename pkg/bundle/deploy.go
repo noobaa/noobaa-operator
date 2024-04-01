@@ -1510,7 +1510,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "47a277036f04f662bb8c3e9d5314177b0d804fb8714167cbe7ae2c14bc4ff4b0"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "c4b94816d2f833de237fb6b815e4b1d2639e86633826a9e170fc7938481de0ac"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2505,10 +2505,10 @@ spec:
                   buckets, objects meta-data and mapping file parts to storage locations.
                 type: string
               dbType:
-                description: DBType (optional) overrides the default type image for
-                  the db container
+                description: |-
+                  DBType (optional) overrides the default type image for the db container.
+                  The only possible value is postgres
                 enum:
-                - mongodb
                 - postgres
                 type: string
               dbVolumeResources:
@@ -3079,10 +3079,6 @@ spec:
                   account with new BackingStore in order to delete the DefaultBackingStore
                 nullable: true
                 type: boolean
-              mongoDbURL:
-                description: MongoDbURL (optional) overrides the default mongo db
-                  remote url
-                type: string
               pvPoolDefaultStorageClass:
                 description: |-
                   PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes.
@@ -3886,7 +3882,7 @@ data:
           exit 0
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "ffcf95c206c68b6d6b783d847d219e45a61e79d374cad4f36e6a7ec4f7fb4d0a"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "bcce4839c69c3353ba36fd94aea2c8d7cf46e570a0106467f8bd7430acea18b7"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3922,15 +3918,15 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
-      # This service account token can be used to provide identity outside the cluster.
-      # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+        # This service account token can be used to provide identity outside the cluster.
+        # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
         - name: bound-sa-token
           projected:
             sources:
-            - serviceAccountToken:
-                path: token
-                # For testing purposes change the audience to api
-                audience: openshift
+              - serviceAccountToken:
+                  path: token
+                  # For testing purposes change the audience to api
+                  audience: openshift
         - name: noobaa-auth-token
           secret:
             secretName: noobaa-endpoints
@@ -3938,7 +3934,7 @@ spec:
         - name: noobaa-server
           secret:
             secretName: noobaa-server
-            optional: true   
+            optional: true
       containers:
         - name: endpoint
           image: NOOBAA_CORE_IMAGE
@@ -3979,7 +3975,6 @@ spec:
             - name: MD_ADDR
             - name: HOSTED_AGENTS_ADDR
             - name: DB_TYPE
-            - name: MONGODB_URL
             - name: POSTGRES_HOST
             - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
@@ -4035,7 +4030,7 @@ spec:
             tcpSocket:
               port: 6001 # ready when s3 port is open
             timeoutSeconds: 5
-      securityContext: 
+      securityContext:
         runAsUser: 0
         runAsGroup: 0
 `
@@ -4338,34 +4333,6 @@ metadata:
     service.beta.openshift.io/inject-cabundle: 'true'
 data: {}
 `
-
-const Sha256_deploy_internal_job_upgrade_db_yaml = "4ae1ae1f6009e578ea4cc937c305068dd8f21b93b0d7fd43350628e84725f337"
-
-const File_deploy_internal_job_upgrade_db_yaml = `apiVersion: batch/v1
-kind: Job
-metadata:
-  name: db-migrate
-  labels:
-    app: noobaa
-spec:
-  template:
-    spec:
-      containers:
-      - name: migrate-job
-        image: NOOBAA_CORE_IMAGE
-        command: ["/noobaa_init_files/noobaa_init.sh", "db_migrate"]
-        env:
-          - name: MONGODB_URL
-            value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
-          - name: POSTGRES_HOST
-            value: "noobaa-db-pg-0.noobaa-db-pg"
-          - name: POSTGRES_DBNAME
-            value: nbcore
-          - name: POSTGRES_USER
-          - name: POSTGRES_PASSWORD
-          - name: CONTAINER_PLATFORM
-            value: KUBERNETES
-      restartPolicy: OnFailure`
 
 const Sha256_deploy_internal_pod_agent_yaml = "204e11eea569564b507010d13c43a2d3ad5feae9e86666a08904508eab231830"
 
@@ -4751,7 +4718,7 @@ type: Opaque
 data: {}
 `
 
-const Sha256_deploy_internal_service_db_yaml = "64559363daddd9caf781f104b876b33fb63e4f2551570e73bdb2bfae736f33ee"
+const Sha256_deploy_internal_service_db_yaml = "7bf9f8bd18c07c5d768392f2bdfcac7f3398c1137eecb0f48983f468234a5a96"
 
 const File_deploy_internal_service_db_yaml = `apiVersion: v1
 kind: Service
@@ -4760,16 +4727,16 @@ metadata:
   labels:
     app: noobaa
   annotations:
-    service.beta.openshift.io/serving-cert-secret-name: 'noobaa-db-serving-cert'
-    service.alpha.openshift.io/serving-cert-secret-name: 'noobaa-db-serving-cert'
+    service.beta.openshift.io/serving-cert-secret-name: "noobaa-db-serving-cert"
+    service.alpha.openshift.io/serving-cert-secret-name: "noobaa-db-serving-cert"
 spec:
   type: ClusterIP
   selector:
     noobaa-db: SYSNAME
   ports:
-    - port: 27017
-      targetPort: 27017
-      name: mongodb
+    - port: 5432
+      targetPort: 5432
+      name: postgres
 `
 
 const Sha256_deploy_internal_service_mgmt_yaml = "fa5f052fb360e6893fc446a318413a6f494a8610706ae7e36ff985b3b3a5c070"
@@ -4928,7 +4895,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "93ae460c2a8080a03c87320eb0ea5f585bb20aeebd7fae562837e89b5fd0cdcf"
+const Sha256_deploy_internal_statefulset_core_yaml = "56bc0da847d71be17138025a208dbf8dc0b02e6f4817bbbac4ce828429d86c26"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4969,15 +4936,15 @@ spec:
           secret:
             secretName: noobaa-server
             optional: true
-      # This service account token can be used to provide identity outside the cluster.
-      # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+        # This service account token can be used to provide identity outside the cluster.
+        # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
         - name: bound-sa-token
           projected:
             sources:
-            - serviceAccountToken:
-                path: token
-                # For testing purposes change the audience to api
-                audience: openshift
+              - serviceAccountToken:
+                  path: token
+                  # For testing purposes change the audience to api
+                  audience: openshift
       containers:
         #----------------#
         # CORE CONTAINER #
@@ -5029,8 +4996,6 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_LEVEL
-            - name: MONGODB_URL
-              value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
             - name: POSTGRES_HOST
               value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_PORT
@@ -5042,7 +5007,7 @@ spec:
             - name: POSTGRES_SSL_REQUIRED
             - name: POSTGRES_SSL_UNAUTHORIZED
             - name: DB_TYPE
-              value: mongodb
+              value: postgres
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
             - name: NOOBAA_ROOT_SECRET
@@ -5075,7 +5040,10 @@ spec:
                   resource: limits.memory
         - name: noobaa-log-processor
           image: NOOBAA_CORE_IMAGE
-          command: ["/root/node_modules/noobaa-core/src/deploy/NVA_build/noobaa_logs.sh"]
+          command:
+            [
+              "/root/node_modules/noobaa-core/src/deploy/NVA_build/noobaa_logs.sh",
+            ]
           volumeMounts:
             - name: logs
               mountPath: /log
@@ -5105,66 +5073,7 @@ spec:
             - name: CONTAINER_MEM_LIMIT
               valueFrom:
                 resourceFieldRef:
-                  resource: limits.memory`
-
-const Sha256_deploy_internal_statefulset_db_yaml = "25924f84967caebdeb5d61c2181f0ba04da92306fed7e44834dbcc7480b8d48a"
-
-const File_deploy_internal_statefulset_db_yaml = `apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: noobaa-db
-  labels:
-    app: noobaa
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      noobaa-db: noobaa
-  serviceName: noobaa-db
-  updateStrategy:
-    type: RollingUpdate
-  template:
-    metadata:
-      labels:
-        app: noobaa
-        noobaa-db: noobaa
-    spec:
-      serviceAccountName: noobaa-db
-      terminationGracePeriodSeconds: 60
-      containers:
-      #--------------------#
-      # DATABASE CONTAINER #
-      #--------------------#
-      - name: db
-        image: NOOBAA_DB_IMAGE
-        command:
-        - bash
-        - -c
-        - /opt/rh/rh-mongodb36/root/usr/bin/mongod --port 27017 --bind_ip_all --dbpath /data/mongo/cluster/shard1
-        resources:
-          requests:
-            cpu: "2"
-            memory: "4Gi"
-          limits:
-            cpu: "2"
-            memory: "4Gi"
-        volumeMounts:
-        - name: db
-          mountPath: /data
-      securityContext: 
-        runAsUser: 10001
-        runAsGroup: 0
-  volumeClaimTemplates:
-  - metadata:
-      name: db
-      labels:
-        app: noobaa
-    spec:
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 50Gi
+                  resource: limits.memory
 `
 
 const Sha256_deploy_internal_statefulset_postgres_db_yaml = "0accc047982dbd1b8c207c81ef2bb1ae8c61c312915d3c2d196799ca6f146816"

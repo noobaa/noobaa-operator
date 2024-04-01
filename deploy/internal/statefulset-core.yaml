@@ -37,15 +37,15 @@ spec:
           secret:
             secretName: noobaa-server
             optional: true
-      # This service account token can be used to provide identity outside the cluster.
-      # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+        # This service account token can be used to provide identity outside the cluster.
+        # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
         - name: bound-sa-token
           projected:
             sources:
-            - serviceAccountToken:
-                path: token
-                # For testing purposes change the audience to api
-                audience: openshift
+              - serviceAccountToken:
+                  path: token
+                  # For testing purposes change the audience to api
+                  audience: openshift
       containers:
         #----------------#
         # CORE CONTAINER #
@@ -97,8 +97,6 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_LEVEL
-            - name: MONGODB_URL
-              value: "mongodb://noobaa-db-0.noobaa-db/nbcore"
             - name: POSTGRES_HOST
               value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_PORT
@@ -110,7 +108,7 @@ spec:
             - name: POSTGRES_SSL_REQUIRED
             - name: POSTGRES_SSL_UNAUTHORIZED
             - name: DB_TYPE
-              value: mongodb
+              value: postgres
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
             - name: NOOBAA_ROOT_SECRET
@@ -143,7 +141,10 @@ spec:
                   resource: limits.memory
         - name: noobaa-log-processor
           image: NOOBAA_CORE_IMAGE
-          command: ["/root/node_modules/noobaa-core/src/deploy/NVA_build/noobaa_logs.sh"]
+          command:
+            [
+              "/root/node_modules/noobaa-core/src/deploy/NVA_build/noobaa_logs.sh",
+            ]
           volumeMounts:
             - name: logs
               mountPath: /log

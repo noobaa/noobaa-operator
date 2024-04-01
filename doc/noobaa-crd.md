@@ -165,7 +165,7 @@ metadata:
   namespace: noobaa
 spec:
   image: noobaa/noobaa-core:v9999.9.9
-  dbImage: centos/mongodb-36-centos7
+  dbImage: "quay.io/sclorg/postgresql-15-c9s"
   imagePullSecret:
     name: <SECRET-NAME>
 ```
@@ -236,7 +236,6 @@ metadata:
 spec:
   image: noobaa/noobaa-core:5.9.0
   dbImage: centos/postgresql-12-centos7
-  dbType: postgres
   dbConf: |+
     max_connections = 1000
 ```
@@ -258,6 +257,5 @@ topologySpreadConstraints:
 Users can make changes to `topologySpreadConstraints` configuration after the operator creates it and the changes will not override it. But once user remove the custome `topologySpreadConstraints` default value is resotored. 
 
 ## Notes
-1. `dbConf` field will have no effect if `dbType` is not "postgres".
-2. `dbConf` configuration is not validated.
-3. NooBaa uses `ConfigMap` to pass database configuration to the databases. Althought the ConfigMap is editable, it should not and cannot be used to pass custom database overrides. The reason being that NooBaa operator, as part of its reconcile process will overwrite the ConfigMap to the default values.
+1. `dbConf` configuration is not validated.
+2. NooBaa uses `ConfigMap` to pass database configuration to the databases. Althought the ConfigMap is editable, it should not and cannot be used to pass custom database overrides. The reason being that NooBaa operator, as part of its reconcile process will overwrite the ConfigMap to the default values.

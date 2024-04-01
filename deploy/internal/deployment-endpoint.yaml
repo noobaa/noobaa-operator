@@ -32,15 +32,15 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
-      # This service account token can be used to provide identity outside the cluster.
-      # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+        # This service account token can be used to provide identity outside the cluster.
+        # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
         - name: bound-sa-token
           projected:
             sources:
-            - serviceAccountToken:
-                path: token
-                # For testing purposes change the audience to api
-                audience: openshift
+              - serviceAccountToken:
+                  path: token
+                  # For testing purposes change the audience to api
+                  audience: openshift
         - name: noobaa-auth-token
           secret:
             secretName: noobaa-endpoints
@@ -48,7 +48,7 @@ spec:
         - name: noobaa-server
           secret:
             secretName: noobaa-server
-            optional: true   
+            optional: true
       containers:
         - name: endpoint
           image: NOOBAA_CORE_IMAGE
@@ -89,7 +89,6 @@ spec:
             - name: MD_ADDR
             - name: HOSTED_AGENTS_ADDR
             - name: DB_TYPE
-            - name: MONGODB_URL
             - name: POSTGRES_HOST
             - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
@@ -145,6 +144,6 @@ spec:
             tcpSocket:
               port: 6001 # ready when s3 port is open
             timeoutSeconds: 5
-      securityContext: 
+      securityContext:
         runAsUser: 0
         runAsGroup: 0
