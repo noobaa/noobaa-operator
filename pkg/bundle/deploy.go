@@ -5871,7 +5871,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "a15f459bcb91b03052ebc5f4ed062619c27f6adc245038a4317b05a69b280516"
+const Sha256_deploy_operator_yaml = "f1d3f744af5e55b5476c085c10425f93837cf0bdf39d206f3857d3c5e9bc6c78"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -5910,7 +5910,7 @@ spec:
           name: ocp-injected-ca-bundle
           items:
           - key: ca-bundle.crt
-            path: tls-ca-bundle.pem
+            path: ca-bundle.crt
           optional: true
       containers:
         - name: noobaa-operator
@@ -5920,8 +5920,7 @@ spec:
             mountPath: /var/run/secrets/openshift/serviceaccount
             readOnly: true
           - name: ocp-injected-ca-bundle
-            mountPath: /etc/ocp-injected-ca-bundle.crt
-            subPath: ocp-injected-ca-bundle.crt
+            mountPath: /etc/ocp-injected-ca-bundle
           # SHOULD BE RETURNED ONCE COSI IS BACK
           # - name: socket
           #   mountPath: /var/lib/cosi

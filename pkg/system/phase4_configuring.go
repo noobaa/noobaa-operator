@@ -488,7 +488,7 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "ca-bundle.crt",
-						Path: "tls-ca-bundle.pem",
+						Path: "ca-bundle.crt",
 					}},
 				},
 			},
