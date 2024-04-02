@@ -132,10 +132,13 @@ var (
 
 // AddToRootCAs adds a local cert file to Our GlobalCARefreshingTransport
 func AddToRootCAs(localCertFile string) error {
-	rootCAs := x509.NewCertPool()
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
 
 	var certFiles = []string{
-		"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+		"/etc/ocp-injected-ca-bundle.crt",
 		localCertFile,
 	}
 

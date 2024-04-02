@@ -3747,7 +3747,7 @@ kind: ConfigMap
 metadata:
   labels:
     config.openshift.io/inject-trusted-cabundle: "true"
-  name: noobaa-ca-inject
+  name: ocp-injected-ca-bundle
 data: {}
 `
 
@@ -5905,12 +5905,13 @@ spec:
       # SHOULD BE RETURNED ONCE COSI IS BACK
       # - name: socket
       #   emptyDir: {}
-      - name: noobaa-ca-inject
+      - name: ocp-injected-ca-bundle
         configMap:
-          name: noobaa-ca-inject
+          name: ocp-injected-ca-bundle
           items:
           - key: ca-bundle.crt
             path: tls-ca-bundle.pem
+            optional: true
       containers:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
@@ -5918,8 +5919,9 @@ spec:
           - name: bound-sa-token
             mountPath: /var/run/secrets/openshift/serviceaccount
             readOnly: true
-          - name: noobaa-ca-inject
-            mountPath: /etc/pki/ca-trust/extracted/pem
+          - name: ocp-injected-ca-bundle
+            mountPath: /etc/ocp-injected-ca-bundle.crt
+            subPath: ocp-injected-ca-bundle.crt
           # SHOULD BE RETURNED ONCE COSI IS BACK
           # - name: socket
           #   mountPath: /var/lib/cosi

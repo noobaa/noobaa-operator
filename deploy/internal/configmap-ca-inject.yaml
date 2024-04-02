@@ -3,5 +3,5 @@ kind: ConfigMap
 metadata:
   labels:
     config.openshift.io/inject-trusted-cabundle: "true"
-  name: noobaa-ca-inject
+  name: ocp-injected-ca-bundle
 data: {}
