@@ -17,7 +17,6 @@ func (r *Reconciler) getStorageAccountsClient() storage.AccountsClient {
 	storageAccountsClient := storage.NewAccountsClient(r.AzureContainerCreds.StringData["azure_subscription_id"])
 	auth, _ := r.GetResourceManagementAuthorizer()
 	storageAccountsClient.Authorizer = auth
-
 	err := storageAccountsClient.AddToUserAgent("Go-http-client/1.1")
 	if err != nil {
 		log.Fatalf("got error on storageAccountsClient.AddToUserAgent %v", err)
