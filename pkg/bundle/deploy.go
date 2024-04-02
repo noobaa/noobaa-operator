@@ -3740,7 +3740,7 @@ spec:
     skipServiceCheck: true
 `
 
-const Sha256_deploy_internal_configmap_ca_inject_yaml = "75f8ab503a683bcebd2ed6a2c9f8da0a4c174a62b4e6ca7e97ebc3da847ca866"
+const Sha256_deploy_internal_configmap_ca_inject_yaml = "fac2305a04146c6b553398b1cb69b3ee2f32c5735359f5102590d43d33ccecba"
 
 const File_deploy_internal_configmap_ca_inject_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -5871,7 +5871,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "1a2c110adc6763047d158e9021ea716e8d16ce734c0302c569b02e114189dff8"
+const Sha256_deploy_operator_yaml = "a15f459bcb91b03052ebc5f4ed062619c27f6adc245038a4317b05a69b280516"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -6448,3 +6448,4 @@ metadata:
     app: prometheus-adapter
   name: custom-metrics-prometheus-adapter
 `
+

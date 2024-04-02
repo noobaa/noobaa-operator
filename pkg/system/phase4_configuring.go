@@ -496,7 +496,7 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 		util.MergeVolumeList(&podSpec.Volumes, &configMapVolumes)
 		configMapVolumeMounts := []corev1.VolumeMount{{
 			Name:      r.CaBundleConf.Name,
-			MountPath: "/etc/pki/ca-trust/extracted/pem",
+			MountPath: "/etc/ocp-injected-ca-bundle.crt",
 			ReadOnly:  true,
 		}}
 		util.MergeVolumeMountList(&container.VolumeMounts, &configMapVolumeMounts)
