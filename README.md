@@ -162,7 +162,6 @@ The following options can be passed to any command:
     --pg-ssl-unauthorized=false: Allow the client to work with self-signed ssl (external postgres - server-side)
     --postgres-url='': url for postgresql
     --prometheus-namespace='': namespace with installed prometheus for autoscaler
-    --psql-12-image='centos/postgresql-12-centos7': The database old container image
     --pv-pool-default-storage-class='': The default storage class name for BackingStores of type pv-pool
     --s3-load-balancer-source-subnets=[]: The source subnets for the S3 service load balancer
     --show-secrets=false: Show the secrets in the status output
