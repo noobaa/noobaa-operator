@@ -1028,10 +1028,12 @@ func (r *Reconciler) keyRotate() error {
 // ReconcileSecretMap sets the root master key for rotating key / map
 func (r *Reconciler) ReconcileSecretMap(data map[string]string) error {
 	if data == nil {
-		return fmt.Errorf("System Reconciler ReconcileSecretMap data is nil")
+		return fmt.Errorf("system Reconciler ReconcileSecretMap data is nil")
 	}
-	r.SecretRootMasterMap.StringData = data
-	if err := r.ReconcileObject(r.SecretRootMasterMap, nil); err != nil {
+	if err := r.ReconcileObject(r.SecretRootMasterMap, func() error {
+		r.SecretRootMasterMap.StringData = data
+		return nil
+	}); err != nil {
 		return err
 	}
 	return nil
@@ -1040,7 +1042,7 @@ func (r *Reconciler) ReconcileSecretMap(data map[string]string) error {
 // ReconcileSecretString sets the root master key for single string secret
 func (r *Reconciler) ReconcileSecretString(data string) error {
 	if len(data) == 0 {
-		return fmt.Errorf("System Reconciler ReconcileSecreString data len is zero")
+		return fmt.Errorf("system Reconciler ReconcileSecretString data len is zero")
 	}
 	r.SecretRootMasterKey = data
 	return nil
