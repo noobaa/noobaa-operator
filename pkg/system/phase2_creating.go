@@ -49,9 +49,6 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		"noobaa operator started phase 2/4 - \"Creating\"",
 	)
 
-	if err := r.ReconcileCAInject(); err != nil {
-		return err
-	}
 	if err := r.ReconcileObject(r.ServiceAccount, r.SetDesiredServiceAccount); err != nil {
 		return err
 	}
@@ -468,7 +465,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			if util.KubeCheckQuiet(r.CaBundleConf) {
 				configMapVolumeMounts := []corev1.VolumeMount{{
 					Name:      r.CaBundleConf.Name,
-					MountPath: "/etc/pki/ca-trust/extracted/pem",
+					MountPath: "/etc/ocp-injected-ca-bundle.crt",
 					ReadOnly:  true,
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
@@ -509,7 +506,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			if util.KubeCheckQuiet(r.CaBundleConf) {
 				configMapVolumeMounts := []corev1.VolumeMount{{
 					Name:      r.CaBundleConf.Name,
-					MountPath: "/etc/pki/ca-trust/extracted/pem",
+					MountPath: "/etc/ocp-injected-ca-bundle.crt",
 					ReadOnly:  true,
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
@@ -559,7 +556,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "ca-bundle.crt",
-						Path: "tls-ca-bundle.pem",
+						Path: "ca-bundle.crt",
 					}},
 				},
 			},
@@ -804,23 +801,6 @@ func (r *Reconciler) ReconcileIBMCredentials() error {
 	return nil
 }
 
-// ReconcileCAInject checks if a namespace called openshift-config exist (OCP)
-// if so creates a cofig map for OCP to inject supported CAs to
-func (r *Reconciler) ReconcileCAInject() error {
-	ocpConfigNamespace := &corev1.Namespace{
-		TypeMeta: metav1.TypeMeta{Kind: "Namespace"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "openshift-config",
-		},
-	}
-	if util.KubeCheckQuiet(ocpConfigNamespace) {
-		r.Logger.Infof("Found openshift-config ns - will reconcile CA inject configmap: %q", r.CaBundleConf.Name)
-		if err := r.ReconcileObject(r.CaBundleConf, nil); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 // SetDesiredAgentProfile updates the value of the AGENT_PROFILE env
 func (r *Reconciler) SetDesiredAgentProfile(profileString string) string {

@@ -3,9 +3,7 @@ package system
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -13,30 +11,12 @@ import (
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
-
-	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 )
 
 func (r *Reconciler) getStorageAccountsClient() storage.AccountsClient {
 	storageAccountsClient := storage.NewAccountsClient(r.AzureContainerCreds.StringData["azure_subscription_id"])
 	auth, _ := r.GetResourceManagementAuthorizer()
 	storageAccountsClient.Authorizer = auth
-	// Inject the global refreshing CA pool into the one used by the Azure client
-	var httpClient = &http.Client{
-		Transport: util.GlobalCARefreshingTransport,
-		Timeout:   10 * time.Second,
-	}
-	underlyingHTTPClient, ok := storageAccountsClient.Sender.(*http.Client)
-	if !ok {
-		log.Fatalf("failed to cast underlyingHTTPClient to *http.Client")
-	}
-	underlyingHTTPClient.Transport = httpClient.Transport
-	underlyingTransport, ok := underlyingHTTPClient.Transport.(*http.Transport)
-	if !ok {
-		log.Fatalf("failed to cast underlyingTransport to *http.Transport")
-	}
-	underlyingTransport.TLSClientConfig.RootCAs = util.GlobalCARefreshingTransport.TLSClientConfig.RootCAs
-
 	err := storageAccountsClient.AddToUserAgent("Go-http-client/1.1")
 	if err != nil {
 		log.Fatalf("got error on storageAccountsClient.AddToUserAgent %v", err)

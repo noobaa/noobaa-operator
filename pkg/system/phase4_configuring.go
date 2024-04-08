@@ -488,7 +488,7 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "ca-bundle.crt",
-						Path: "tls-ca-bundle.pem",
+						Path: "ca-bundle.crt",
 					}},
 				},
 			},
@@ -496,7 +496,7 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 		util.MergeVolumeList(&podSpec.Volumes, &configMapVolumes)
 		configMapVolumeMounts := []corev1.VolumeMount{{
 			Name:      r.CaBundleConf.Name,
-			MountPath: "/etc/pki/ca-trust/extracted/pem",
+			MountPath: "/etc/ocp-injected-ca-bundle.crt",
 			ReadOnly:  true,
 		}}
 		util.MergeVolumeMountList(&container.VolumeMounts, &configMapVolumeMounts)
@@ -866,10 +866,6 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 				*result.Credentials.SecretAccessKey,
 				*result.Credentials.SessionToken,
 			),
-			HTTPClient: &http.Client{
-				Transport: util.GlobalCARefreshingTransport,
-				Timeout:   10 * time.Second,
-			},
 			Region: &region,
 		}
 	} else { // handle AWS long-lived credentials (not STS)
@@ -879,10 +875,6 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 				cloudCredsSecret.StringData["aws_secret_access_key"],
 				"",
 			),
-			HTTPClient: &http.Client{
-				Transport: util.GlobalCARefreshingTransport,
-				Timeout:   10 * time.Second,
-			},
 			Region: &region,
 		}
 	}
