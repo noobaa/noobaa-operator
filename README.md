@@ -118,9 +118,9 @@ out-of-cluster.
 ```shell
 $ noobaa version
 
-INFO[0000] CLI version: 5.15.1
-INFO[0000] noobaa-image: noobaa/noobaa-core:5.15.1
-INFO[0000] operator-image: noobaa/noobaa-operator:5.15.1
+INFO[0000] CLI version: 5.15.2
+INFO[0000] noobaa-image: noobaa/noobaa-core:5.15.2
+INFO[0000] operator-image: noobaa/noobaa-operator:5.15.2
 
 ```
 
