@@ -12,11 +12,11 @@ spec:
       resources:
         # https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
         requests:
-          cpu: "100m"
-          memory: "400Mi"
+          cpu: "999m"
+          memory: "1Gi"
         limits:
-          cpu: "100m"
-          memory: "400Mi"
+          cpu: "999m"
+          memory: "1Gi"
       env:
         # Insert the relevant config for the current agent
         - name: CONTAINER_PLATFORM

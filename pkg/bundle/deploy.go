@@ -4243,7 +4243,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "204e11eea569564b507010d13c43a2d3ad5feae9e86666a08904508eab231830"
+const Sha256_deploy_internal_pod_agent_yaml = "66b9cf14b2e55a8ec6243b00e13e1f8b0cd2ed72e2cbde3931398f7782c24f84"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -4259,11 +4259,11 @@ spec:
       resources:
         # https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
         requests:
-          cpu: "100m"
-          memory: "400Mi"
+          cpu: "999m"
+          memory: "1Gi"
         limits:
-          cpu: "100m"
-          memory: "400Mi"
+          cpu: "999m"
+          memory: "1Gi"
       env:
         # Insert the relevant config for the current agent
         - name: CONTAINER_PLATFORM
