@@ -4286,7 +4286,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "66b9cf14b2e55a8ec6243b00e13e1f8b0cd2ed72e2cbde3931398f7782c24f84"
+const Sha256_deploy_internal_pod_agent_yaml = "471be013b7cb20d0e00d6715edea3bf439e7a348f07661716326ca3356e648ee"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -4322,6 +4322,9 @@ spec:
           mountPath: /noobaa_storage
         - name: tmp-logs-vol
           mountPath: /usr/local/noobaa/logs
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
   volumes:
     - name: tmp-logs-vol
       emptyDir: {}
@@ -4849,7 +4852,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "56bc0da847d71be17138025a208dbf8dc0b02e6f4817bbbac4ce828429d86c26"
+const Sha256_deploy_internal_statefulset_core_yaml = "9e5d53eeabce0afc9f3059802f579dc1b69e07c9b1954a8e9bdb9008ac3534d0"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4992,6 +4995,9 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
         - name: noobaa-log-processor
           image: NOOBAA_CORE_IMAGE
           command:
@@ -5030,7 +5036,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "947307ea1e93ce5b7789bd16352eb7848e1483cd36e7fc489d9ee156e4e7d8bd"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "efd4562dd6ce535624a56426dc921c584c5a761c8c2540d4823f9e410fcd0347"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5098,6 +5104,7 @@ spec:
         runAsGroup: 0
         fsGroup: 0
         fsGroupChangePolicy: "OnRootMismatch"
+        allowPrivilegeEscalation: false
   volumeClaimTemplates:
     - metadata:
         name: db
@@ -6002,13 +6009,21 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "ce3cbcb74a9309158d7cf71ef38e747fe76c1bc0fb0f15d3e5404a746ce988e1"
+const Sha256_deploy_role_yaml = "e145ce24b4267e2e0e63ab56442295bcc605bdc4f6ef723ad6cc15fd38973101"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: noobaa
 rules:
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - noobaa
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
 - apiGroups:
   - noobaa.io
   resources:
@@ -6383,7 +6398,24 @@ rules:
       - bucketclasses
 `
 
-const Sha256_deploy_scc_db_yaml = "747ebcab94f3f3d42037016f30fa82df085ee5a0a405cbee61e8fdfdfcfc37b0"
+const Sha256_deploy_scc_yaml = "baa4d3a3def2d63a5d9e53bc4fc1ac961f9b4fe5172db7118d1529caa14e2191"
+
+const File_deploy_scc_yaml = `apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: noobaa
+requiredDropCapabilities:
+  - ALL
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+supplementalGroups:
+  type: RunAsAny
+readOnlyRootFilesystem: true
+`
+
+const Sha256_deploy_scc_db_yaml = "cea49b11eead99f2704b3f36349473fe2961be6312dbcf5ea56a13ebe3075ee2"
 
 const File_deploy_scc_db_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -6397,6 +6429,8 @@ allowHostPID: false
 allowHostPorts: false
 allowPrivilegedContainer: false
 readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
 fsGroup:
   type: RunAsAny
 runAsUser:
@@ -6407,7 +6441,7 @@ supplementalGroups:
   type: RunAsAny
 `
 
-const Sha256_deploy_scc_endpoint_yaml = "f097a29eb11230a7612ab5f86894da523a743093e21eb2217a39332c5a31b10c"
+const Sha256_deploy_scc_endpoint_yaml = "f9407c9f1fd1876eabbaad4cf910a05e57db33a2d590b2e2efad22bd1e3f8876"
 
 const File_deploy_scc_endpoint_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -6430,8 +6464,7 @@ groups: []
 priority: null
 readOnlyRootFilesystem: false
 requiredDropCapabilities:
-- KILL
-- MKNOD
+  - ALL
 runAsUser:
   type: RunAsAny
 seLinuxContext:

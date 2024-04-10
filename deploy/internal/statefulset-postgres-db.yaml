@@ -64,6 +64,7 @@ spec:
         runAsGroup: 0
         fsGroup: 0
         fsGroupChangePolicy: "OnRootMismatch"
+        allowPrivilegeEscalation: false
   volumeClaimTemplates:
     - metadata:
         name: db

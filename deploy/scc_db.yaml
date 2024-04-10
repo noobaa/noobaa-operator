@@ -10,6 +10,8 @@ allowHostPID: false
 allowHostPorts: false
 allowPrivilegedContainer: false
 readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
 fsGroup:
   type: RunAsAny
 runAsUser:

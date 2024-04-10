@@ -139,6 +139,9 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
         - name: noobaa-log-processor
           image: NOOBAA_CORE_IMAGE
           command:
