@@ -10,9 +10,8 @@ allowHostPID: false
 allowHostPorts: false
 allowPrivilegedContainer: false
 readOnlyRootFilesystem: false
-allowedCapabilities:
-- SETUID
-- SETGID
+requiredDropCapabilities:
+  - ALL
 fsGroup:
   type: RunAsAny
 runAsUser:
