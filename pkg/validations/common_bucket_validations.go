@@ -10,8 +10,8 @@ import (
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 )
 
-// ValidateNSFSConfig validates that the provided NSFS config is valid
-func ValidateAccountNSFSConfig(NSFSConfig string) error {
+// ValidateNSFSAccountConfig validates that the provided NSFS config is valid
+func ValidateNSFSAccountConfig(NSFSConfig string) error {
 	log := util.Logger()
 
 	if NSFSConfig == "" {

@@ -41,7 +41,7 @@ func validateAdditionalConfig(objectName string, additionalConfig map[string]str
 		return err
 	}
 
-	if err := validations.ValidateAccountNSFSConfig(NSFSAccountConfig); err != nil {
+	if err := validations.ValidateNSFSAccountConfig(NSFSAccountConfig); err != nil {
 		return err
 	}
 

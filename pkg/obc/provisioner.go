@@ -568,8 +568,12 @@ func (r *BucketRequest) CreateAccount() error {
 
 	var nsfsAccountConfig nbv1.AccountNsfsConfig
 	// Validation is already performed as part of ValidateOBC before CreateAccount is ever called
+	// ...but we revalidate to satisfy the linter.
 	if r.OBC.Spec.AdditionalConfig["NSFSAccountConfig"] != "" {
-		json.Unmarshal([]byte(r.OBC.Spec.AdditionalConfig["NSFSAccountConfig"]), &nsfsAccountConfig)
+		err := json.Unmarshal([]byte(r.OBC.Spec.AdditionalConfig["NSFSAccountConfig"]), &nsfsAccountConfig)
+		if err != nil {
+			return fmt.Errorf("failed to parse NSFS config %q: %v", r.OBC.Spec.AdditionalConfig["NSFSAccountConfig"], err)
+		}
 	}
 	
 	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{
