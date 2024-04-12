@@ -565,6 +565,13 @@ func (r *BucketRequest) CreateAccount() error {
 	if r.BucketClass.Spec.PlacementPolicy != nil {
 		defaultResource = r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores[0]
 	}
+
+	var nsfsAccountConfig nbv1.AccountNsfsConfig
+	// Validation is already performed as part of ValidateOBC before CreateAccount is ever called
+	if r.OBC.Spec.AdditionalConfig["NSFSAccountConfig"] != "" {
+		json.Unmarshal([]byte(r.OBC.Spec.AdditionalConfig["NSFSAccountConfig"]), &nsfsAccountConfig)
+	}
+	
 	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{
 		Name:              r.AccountName,
 		Email:             r.AccountName,
@@ -573,6 +580,7 @@ func (r *BucketRequest) CreateAccount() error {
 		S3Access:          true,
 		AllowBucketCreate: false,
 		BucketClaimOwner:  r.BucketName,
+		NsfsAccountConfig: &nsfsAccountConfig,
 	})
 	if err != nil {
 		return err

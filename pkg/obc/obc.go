@@ -122,6 +122,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	bucketClassName, _ := cmd.Flags().GetString("bucketclass")
 	path, _ := cmd.Flags().GetString("path")
 	replicationPolicy, _ := cmd.Flags().GetString("replication-policy")
+	nsfsConfig, _ := cmd.Flags().GetString("nsfs-config")
 	appNamespace, _ := cmd.Flags().GetString("app-namespace")
 	if appNamespace == "" {
 		appNamespace = options.Namespace
@@ -176,11 +177,19 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 
 	if replicationPolicy != "" {
-		replication, err := util.LoadBucketReplicationJSON(replicationPolicy)
+		replication, err := util.LoadConfigurationJSON(replicationPolicy)
 		if err != nil {
 			log.Fatalf(`❌ %q`, err)
 		}
 		obc.Spec.AdditionalConfig["replicationPolicy"] = replication
+	}
+
+	if nsfsConfig != "" {
+		nsfsCfg, err := util.LoadConfigurationJSON(nsfsConfig)
+		if err != nil {
+			log.Fatalf(`❌ %q`, err)
+		}
+		obc.Spec.AdditionalConfig["NSFSAccountConfig"] = nsfsCfg
 	}
 
 	if maxSize != "" {

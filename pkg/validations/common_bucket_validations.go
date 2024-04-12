@@ -7,7 +7,37 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 )
+
+// ValidateNSFSConfig validates that the provided NSFS config is valid
+func ValidateAccountNSFSConfig(NSFSConfig string) error {
+	log := util.Logger()
+
+	if NSFSConfig == "" {
+		return nil
+	}
+
+	var configObj nbv1.AccountNsfsConfig
+
+	err := json.Unmarshal([]byte(NSFSConfig), &configObj)
+	if err != nil {
+		return fmt.Errorf("failed to parse NSFS config %q: %v", NSFSConfig, err)
+	}
+
+	log.Infof("Validating NSFS config: %+v", NSFSConfig)
+	// UID validation
+	if configObj.UID < 0 {
+		return fmt.Errorf("UID must be a whole positive number")
+	}
+
+	// GID validation
+	if configObj.GID < 0 {
+		return fmt.Errorf("GID must be a whole positive number")
+	}
+
+	return nil
+}
 
 // ValidateReplicationPolicy validates and replication params and returns the replication policy object
 func ValidateReplicationPolicy(bucketName string, replicationPolicy string, update bool, isCLI bool) error {
