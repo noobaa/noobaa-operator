@@ -36,6 +36,7 @@ func Cmd() *cobra.Command {
 		CmdCreate(),
 		CmdUpdate(),
 		CmdRegenerate(),
+		CmdCredentials(),
 		CmdPasswd(),
 		CmdDelete(),
 		CmdStatus(),
@@ -83,6 +84,24 @@ func CmdRegenerate() *cobra.Command {
 		Short: "Regenerate S3 Credentials",
 		Run:   RunRegenerate,
 	}
+	return cmd
+}
+
+// CmdCredentials returns a CLI command
+func CmdCredentials() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "credentials <noobaa-account-name>",
+		Short: "Update S3 Credentials (access-key and secret-key)",
+		Run:   RunCredentials,
+	}
+	cmd.Flags().String(
+		"access-key", "",
+		`Access key for authentication - The best practice is to **omit this flag**. In that case, the CLI will prompt to securely read it from the terminal, avoiding the risk of leaking secrets in the shell history.`,
+	)
+	cmd.Flags().String(
+		"secret-key", "",
+		`Secret key for authentication - The best practice is to **omit this flag**. In that case, the CLI will prompt to securely read it from the terminal, avoiding the risk of leaking secrets in the shell history.`,
+	)
 	return cmd
 }
 
@@ -372,6 +391,45 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 		RunStatus(cmd, args)
 	}
 
+}
+
+// RunCredentials runs a CLI command
+func RunCredentials(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <noobaa-account-name> %s`, cmd.UsageString())
+	}
+
+	var accessKeys nb.S3AccessKeys
+	accessKeys.AccessKey = nb.MaskedString(util.GetFlagStringOrPromptPassword(cmd, "access-key"))
+	accessKeys.SecretKey = nb.MaskedString(util.GetFlagStringOrPromptPassword(cmd, "secret-key"))
+
+	if accessKeys.AccessKey == "" || accessKeys.SecretKey == "" {
+		log.Fatalf(`❌ access_key and secret_key flags must be provided`)
+	}
+	// validating access_keys
+	ValidateAccessKeys(accessKeys)
+
+	name := args[0]
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
+	noobaaAccount := o.(*nbv1.NooBaaAccount)
+	noobaaAccount.Name = name
+	noobaaAccount.Namespace = options.Namespace
+
+	if !util.KubeCheck(noobaaAccount) && (name != "admin@noobaa.io") {
+		err := UpdateNonCrdAccountKeys(name, accessKeys)
+		if err != nil {
+			log.Fatalf(`❌ Could not update credentials for %q: %v`, name, err)
+		}
+	} else {
+		err := UpdateAccountKeys(name, accessKeys)
+		if err != nil {
+			log.Fatalf(`❌ Could not update credentials for %q: %v`, name, err)
+		}
+
+		RunStatus(cmd, args)
+	}
 }
 
 // RunPasswd runs a CLI command
@@ -705,6 +763,114 @@ func GenerateNonCrdAccountKeys(name string) error {
 	fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n\n", accessKeys.SecretKey)
 
 	return nil
+}
+
+// UpdateAccountKeys update noobaa account (CRD based) S3 keys
+func UpdateAccountKeys(name string, accessKeys nb.S3AccessKeys) error {
+	log := util.Logger()
+
+	sysClient, err := system.Connect(true)
+	if err != nil {
+		return err
+	}
+
+	// Checking that we can find the secret before we are calling the RPC to update the credentials.
+	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret.Namespace = options.Namespace
+	// Handling a special case when the account is "admin@noobaa.io" we don't have CRD but have a secret
+	if name == "admin@noobaa.io" {
+		secret.Name = "noobaa-admin"
+	} else {
+		secret.Name = fmt.Sprintf("noobaa-account-%s", name)
+	}
+	if !util.KubeCheckQuiet(secret) {
+		log.Fatalf(`❌  Could not find secret: %s, will not update keys.`, secret.Name)
+	}
+
+	err = sysClient.NBClient.UpdateAccountKeysAPI(nb.UpdateAccountKeysParams{
+		Email:      name,
+		AccessKeys: accessKeys,
+	})
+	if err != nil {
+		return err
+	}
+
+	// UpdateAccountKeysAPI have no reply so we need to read the account in order to get the new credentials
+	accountInfo, err := sysClient.NBClient.ReadAccountAPI(nb.ReadAccountParams{
+		Email: name,
+	})
+	if err != nil {
+		return err
+	}
+
+	accessKeys = accountInfo.AccessKeys[0]
+
+	secret.StringData = map[string]string{}
+	secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
+	secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
+
+	// If we will not be able to update the secret we will print the credentials as they already been changed by the RPC
+	if !util.KubeUpdate(secret) {
+		log.Printf(`❌  Please verify the updated credentials for account %s:`, name)
+		fmt.Printf("\nAWS_ACCESS_KEY_ID     : %s\n", string(accessKeys.AccessKey))
+		fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n\n", string(accessKeys.SecretKey))
+		log.Fatalf(`❌  Failed to update the secret %s with the new accessKeys`, secret.Name)
+	}
+
+	log.Printf("✅ Successfully updated s3 credentials for the account %q", name)
+	return nil
+}
+
+// UpdateNonCrdAccountKeys update noobaa account (none CRD based) S3 keys
+func UpdateNonCrdAccountKeys(name string, accessKeys nb.S3AccessKeys) error {
+	log := util.Logger()
+
+	sysClient, err := system.Connect(true)
+	if err != nil {
+		return err
+	}
+
+	err = sysClient.NBClient.UpdateAccountKeysAPI(nb.UpdateAccountKeysParams{
+		Email:      name,
+		AccessKeys: accessKeys,
+	})
+	if err != nil {
+		if nbErr, ok := err.(*nb.RPCError); ok && nbErr.RPCCode == "NO_SUCH_ACCOUNT" {
+			log.Fatalf(`❌  Could not find the account: %s, will not update keys.`, name)
+		}
+		return err
+	}
+
+	// UpdateAccountKeysAPI have no reply so we need to read the account in order to get the updated credentials
+	accountInfo, err := sysClient.NBClient.ReadAccountAPI(nb.ReadAccountParams{
+		Email: name,
+	})
+	if err != nil {
+		log.Fatalf(`❌  Could not read account: %s, keys were allready updated, please read the account to get the keys`, name)
+	}
+
+	accessKeys = accountInfo.AccessKeys[0]
+
+	log.Printf("✅ Successfully update s3 credentials for the account %q", name)
+	fmt.Printf("\nAWS_ACCESS_KEY_ID     : %s\n", string(accessKeys.AccessKey))
+	fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n\n", string(accessKeys.SecretKey))
+
+	return nil
+}
+
+// ValidateAccessKeys checks validity of credentials (access_key and secret_key)
+func ValidateAccessKeys(accessKeys nb.S3AccessKeys) {
+	log := util.Logger()
+
+	// validations for access_key
+	if !util.AccessKeyRegexp.MatchString(string(accessKeys.AccessKey)) {
+		log.Fatalf(`❌ Account access key length must be 20, and must contain only alpha-numeric chars`)
+	}
+
+	// validations for secret_key
+	if !util.SecretKeyRegexp.MatchString(string(accessKeys.SecretKey)) {
+		log.Fatalf(`❌ Account secret length must be 40, and must contain only alpha-numeric chars, "+", "/"`)
+	}
 }
 
 // ResetPassword reset noobaa account password

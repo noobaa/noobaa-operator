@@ -427,6 +427,12 @@ type GenerateAccountKeysParams struct {
 	Email string `json:"email"`
 }
 
+// UpdateAccountKeysParams is the params of account_api.update_account_keys()
+type UpdateAccountKeysParams struct {
+	Email      string       `json:"email"`
+	AccessKeys S3AccessKeys `json:"access_keys"`
+}
+
 // ResetPasswordParams is the params of account_api.reset_password()
 type ResetPasswordParams struct {
 	Email                string       `json:"email"`
