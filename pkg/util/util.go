@@ -1089,8 +1089,11 @@ func IsIBMPlatform() bool {
 // GetIBMRegion returns the cluster's region in IBM Cloud
 func GetIBMRegion() (string, error) {
 	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
-		return "", fmt.Errorf("failed to list kubernetes nodes")
+	if ok := KubeList(nodesList, client.HasLabels{ibmRegion}); !ok {
+		return "", fmt.Errorf("failed to list Kubernetes nodes with the IBM region label")
+	}
+	if len(nodesList.Items) == 0 {
+		return "", fmt.Errorf("no Kubernetes nodes with the IBM region label found")
 	}
 	labels := nodesList.Items[0].GetLabels()
 	region := labels[ibmRegion]
