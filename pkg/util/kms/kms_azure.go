@@ -12,11 +12,10 @@ import (
 
 // Azure authentication config options
 const (
-	AzureVaultURL       = "AZURE_VAULT_URL"
-	AzureVaultClientID  = "AZURE_CLIENT_ID"
-	AzureVaultTenantID  = "AZURE_TENANT_ID"
-	ServiceName         = "KMS_SERVICE_NAME"
-	AzureClientCertPath = "AZURE_CERT_SECRET_NAME"
+	AzureVaultURL             = "AZURE_VAULT_URL"
+	AzureVaultClientID        = "AZURE_CLIENT_ID"
+	AzureVaultTenantID        = "AZURE_TENANT_ID"
+	AzureClientCertSecretName = "AZURE_CERT_SECRET_NAME"
 )
 
 // AzureVault is a azure kms driver
@@ -59,9 +58,9 @@ func (v *AzureVault) Name() string {
 	return "rootkeyb64-" + v.UID
 }
 
-// Path return vault's kv secret id
+// Path returns azure vault's kv secret id
 func (v *AzureVault) Path() string {
-	return RootSecretPath + "/rootkeyb64-" + v.UID
+	return "/rootkeyb64-" + v.UID
 }
 
 // GetContext returns context used for secret get operation
@@ -91,16 +90,16 @@ func createCertTempFile(config map[string]interface{}, namespace string) error {
 	secret := &corev1.Secret{}
 	secret.Namespace = namespace
 
-	if clientCertSecretName, ok := config[AzureClientCertPath]; ok {
+	if clientCertSecretName, ok := config[AzureClientCertSecretName]; ok {
 		secret.Name = clientCertSecretName.(string)
 		if !util.KubeCheckOptional(secret) {
 			return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
 		}
-		clientCertFileAddr, err := writeCrtsToFile(secret.Name, namespace, secret.Data["cert"], AzureClientCertPath)
+		clientCertFileAddr, err := writeCrtsToFile(secret.Name, namespace, secret.Data["CLIENT_CERT"], AzureClientCertSecretName)
 		if err != nil {
-			return fmt.Errorf("can not write crt %v to file %v", AzureClientCertPath, err)
+			return fmt.Errorf("can not write crt %v to file %v", AzureClientCertSecretName, err)
 		}
-		config[AzureClientCertPath] = clientCertFileAddr
+		config[azure.AzureClientCertPath] = clientCertFileAddr
 	}
 
 	return nil

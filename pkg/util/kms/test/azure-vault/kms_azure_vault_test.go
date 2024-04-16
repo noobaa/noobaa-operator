@@ -26,12 +26,11 @@ func getMiniNooBaa() *nbv1.NooBaa {
 func azureKMSSpec(azureVaultURL string) nbv1.KeyManagementServiceSpec {
 	k := nbv1.KeyManagementServiceSpec{}
 	k.ConnectionDetails = map[string]string{
-		kms.AzureVaultURL:       azureVaultURL,
-		kms.Provider:            azure.Name,
-		kms.AzureVaultClientID:  "e08b2886-f826-4746-8673-47044661d1a1",
-		kms.AzureClientCertPath: "azure-ocs-ffwc9o1j",
-		kms.AzureVaultTenantID:  "9cf78105-e3e9-4321-b88d-b001b66c762b",
-		kms.ServiceName:         "kms-conn-azure1",
+		kms.AzureVaultURL:             azureVaultURL,
+		kms.Provider:                  azure.Name,
+		kms.AzureVaultClientID:        "e08b2886-f826-4746-8673-47044661d1a1",
+		kms.AzureClientCertSecretName: "azure-ocs-ffwc9o1j",
+		kms.AzureVaultTenantID:        "9cf78105-e3e9-4321-b88d-b001b66c762b",
 	}
 
 	return k
