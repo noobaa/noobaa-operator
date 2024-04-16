@@ -1040,16 +1040,15 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 	}))
 }
 
-// MapSecretToBackingStores returns a list of backingstores that uses the secret in their secretRefernce
-// used by backingstore_contorller to watch secrets changes
+// MapSecretToBackingStores returns a list of backingstores that uses the secret in their secretReference
+// used by backingstore_controller to watch secrets changes
 func MapSecretToBackingStores(secret types.NamespacedName) []reconcile.Request {
 	log := util.Logger()
-	log.Infof("checking which backingstore to reconcile. mapping secret %v to backingstores", secret)
 	bsList := &nbv1.BackingStoreList{
 		TypeMeta: metav1.TypeMeta{Kind: "BackingStoreList"},
 	}
 	if !util.KubeList(bsList, &client.ListOptions{Namespace: secret.Namespace}) {
-		log.Infof("Cloud not found backingStores in namespace %q, while trying to find Backingstore that uses %s secrte", secret.Namespace, secret.Name)
+		log.Infof("Could not found backingStores in namespace %q, while trying to find Backingstore that uses %s secret", secret.Namespace, secret.Name)
 		return nil
 	}
 
@@ -1069,21 +1068,19 @@ func MapSecretToBackingStores(secret types.NamespacedName) []reconcile.Request {
 			})
 		}
 	}
-	log.Infof("will reconcile these backingstores: %v", reqs)
 
 	return reqs
 }
 
 // MapNoobaaToBackingStores returns a list of backingstores that are inside Noobaa system
-// used by backingstore_contorller to watch Noobaa CR changes
+// used by backingstore_controller to watch Noobaa CR changes
 func MapNoobaaToBackingStores(noobaa types.NamespacedName) []reconcile.Request {
 	log := util.Logger()
-	log.Infof("checking which backingstore to reconcile. mapping Noobaa %v to backingstores", noobaa)
 	bsList := &nbv1.BackingStoreList{
 		TypeMeta: metav1.TypeMeta{Kind: "BackingStoreList"},
 	}
 	if !util.KubeList(bsList, &client.ListOptions{Namespace: noobaa.Namespace}) {
-		log.Infof("Cloud not found backingStores in namespace %q, while trying to find Backingstore that inside %s Noobaa system", noobaa.Namespace, noobaa.Name)
+		log.Infof("Could not found backingStores in namespace %q, while trying to find Backingstore that inside %s Noobaa system", noobaa.Namespace, noobaa.Name)
 		return nil
 	}
 
@@ -1097,7 +1094,6 @@ func MapNoobaaToBackingStores(noobaa types.NamespacedName) []reconcile.Request {
 			},
 		})
 	}
-	log.Infof("will reconcile all backingstores: %v", reqs)
 
 	return reqs
 }
