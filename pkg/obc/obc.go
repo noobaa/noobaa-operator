@@ -209,7 +209,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		nsfsAccountConfig.NewBucketsPath = path
 		nsfsAccountConfig.NsfsOnly = true
 		marshalledCfg, _ := json.Marshal(nsfsAccountConfig)
-		obc.Spec.AdditionalConfig["NSFSAccountConfig"] = string(marshalledCfg)
+		obc.Spec.AdditionalConfig["nsfsAccountConfig"] = string(marshalledCfg)
 	}
 
 	if distinguishedName != "" {
@@ -218,7 +218,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		nsfsAccountConfig.NewBucketsPath = path
 		nsfsAccountConfig.NsfsOnly = true
 		marshalledCfg, _ := json.Marshal(nsfsAccountConfig)
-		obc.Spec.AdditionalConfig["NSFSAccountConfig"] = string(marshalledCfg)
+		obc.Spec.AdditionalConfig["nsfsAccountConfig"] = string(marshalledCfg)
 	}
 
 	if maxSize != "" {

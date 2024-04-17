@@ -101,7 +101,39 @@ spec:
   generateBucketName: my-bucket
   storageClassName: noobaa.noobaa.io
   additionalConfig:
-    replication-policy: [{ "rule_id": "rule-2", "destination_bucket": "first.bucket", "filter": {"prefix": "bc"}}]
+    replicationPolicy: [{ "rule_id": "rule-2", "destination_bucket": "first.bucket", "filter": {"prefix": "bc"}}]
+```
+
+# OBC with an NSFS account config
+
+It is possible to create an OBC on top of NSFS. In order to do this, the user has to provide relevant data in `nsfsAccountConfig` under the `spec.additionalConfig` key.
+
+The config needs to contain the following fields so that NooBaa can access the filesystem:
+gid - the group ID of the account that should be mimicked within the filesystem
+uid - the user ID of the account that should be mimicked within the filesystem
+OR
+distinguished_name - the distinguished name of the account that should be mimicked within the filesystem
+
+These optional parameters can be provided by the user to further configure the NSFS account:
+new_buckets_path - the filesystem path that should be 'mounted' as the bucket's root (`path` parameter in the CLI)
+
+Examples:
+
+```bash
+noobaa obc create my-bucket-claim -n my-app --app-namespace my-app --uid 42 --gid 505 --path '/mnt/nsfs'
+```
+
+```yaml
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: my-bucket-claim
+  namespace: my-app
+spec:
+  generateBucketName: my-bucket
+  storageClassName: noobaa.noobaa.io
+  additionalConfig:
+    nsfsAccountConfig: { "distinguished_name": "current_user", "new_buckets_path": "/mnt/nsfs" }
 ```
 
 # Using the OBC
