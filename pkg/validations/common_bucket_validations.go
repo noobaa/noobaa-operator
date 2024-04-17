@@ -3,11 +3,12 @@ package validations
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
-	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 )
 
 // ValidateNSFSAccountConfig validates that the provided NSFS config is valid
@@ -25,6 +26,15 @@ func ValidateNSFSAccountConfig(NSFSConfig string) error {
 		return fmt.Errorf("failed to parse NSFS config %q: %v", NSFSConfig, err)
 	}
 
+	if (configObj.GID > -1 && configObj.UID == -1) || (configObj.GID == -1 && configObj.UID > -1) {
+		log.Fatalf(`NSFS account config must include both UID and GID as positive integrals`)
+	}
+
+	if len(configObj.DistinguishedName) > 0 && (configObj.GID > -1 || configObj.UID > -1) {
+		log.Fatalf(`NSFS account config cannot include both distinguished name and UID/GID`)
+
+	}
+
 	log.Infof("Validating NSFS config: %+v", NSFSConfig)
 	// UID validation
 	if configObj.UID < 0 {
@@ -34,6 +44,13 @@ func ValidateNSFSAccountConfig(NSFSConfig string) error {
 	// GID validation
 	if configObj.GID < 0 {
 		return fmt.Errorf("GID must be a whole positive number")
+	}
+
+	if configObj.DistinguishedName != "" {
+		regex := regexp.MustCompile(`^[^-:\s][^\s:]{0,30}[^-:\s]$`)
+		if !regex.MatchString(configObj.DistinguishedName) {
+			return fmt.Errorf("DistinguishedName must be a valid string")
+		}
 	}
 
 	return nil
