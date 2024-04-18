@@ -199,7 +199,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 						PVPool: &nbv1.PVPoolSpec{
-							VolumeResources: &corev1.ResourceRequirements{
+							VolumeResources: &corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: *resource.NewScaledQuantity(int64(5), resource.Giga),
 								},
@@ -216,7 +216,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 					bs.Spec = nbv1.BackingStoreSpec{
 						Type: nbv1.StoreTypePVPool,
 						PVPool: &nbv1.PVPoolSpec{
-							VolumeResources: &corev1.ResourceRequirements{
+							VolumeResources: &corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: *resource.NewScaledQuantity(int64(20), resource.Giga),
 								},

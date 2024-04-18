@@ -109,7 +109,7 @@ type NooBaaSpec struct {
 	// and only if the storage class specifies `allowVolumeExpansion: true`,
 	// +immutable
 	// +optional
-	DBVolumeResources *corev1.ResourceRequirements `json:"dbVolumeResources,omitempty"`
+	DBVolumeResources *corev1.VolumeResourceRequirements `json:"dbVolumeResources,omitempty"`
 
 	// DBStorageClass (optional) overrides the default cluster StorageClass for the database volume.
 	// For the time being this field is immutable and can only be set on system creation.

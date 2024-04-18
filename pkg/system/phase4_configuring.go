@@ -754,7 +754,7 @@ func (r *Reconciler) preparePVPoolBackingStore() error {
 	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypePVPool
 	r.DefaultBackingStore.Spec.PVPool = &nbv1.PVPoolSpec{}
 	r.DefaultBackingStore.Spec.PVPool.NumVolumes = 1
-	r.DefaultBackingStore.Spec.PVPool.VolumeResources = &corev1.ResourceRequirements{
+	r.DefaultBackingStore.Spec.PVPool.VolumeResources = &corev1.VolumeResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceStorage: *resource.NewQuantity(defaultPVSize, resource.BinarySI),
 		},

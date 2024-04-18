@@ -761,7 +761,7 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 		backStore.Spec.PVPool = &nbv1.PVPoolSpec{
 			StorageClass: storageClass,
 			NumVolumes:   int(numVolumes),
-			VolumeResources: &corev1.ResourceRequirements{
+			VolumeResources: &corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: *resource.NewQuantity(int64(pvSizeGB)*1024*1024*1024, resource.BinarySI),
 					corev1.ResourceCPU:     requestCPUQuantity,

@@ -163,7 +163,7 @@ var _ = Describe("Admission server integration tests", func() {
 					Type: nbv1.StoreTypePVPool,
 					PVPool: &nbv1.PVPoolSpec{
 						NumVolumes: 2,
-						VolumeResources: &corev1.ResourceRequirements{
+						VolumeResources: &corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceStorage: *resource.NewScaledQuantity(int64(20), resource.Giga),
 							},

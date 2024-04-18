@@ -1097,7 +1097,7 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 	}
 	if in.DBVolumeResources != nil {
 		in, out := &in.DBVolumeResources, &out.DBVolumeResources
-		*out = new(corev1.ResourceRequirements)
+		*out = new(corev1.VolumeResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.DBStorageClass != nil {
@@ -1262,7 +1262,7 @@ func (in *PVPoolSpec) DeepCopyInto(out *PVPoolSpec) {
 	*out = *in
 	if in.VolumeResources != nil {
 		in, out := &in.VolumeResources, &out.VolumeResources
-		*out = new(corev1.ResourceRequirements)
+		*out = new(corev1.VolumeResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
 	out.Secret = in.Secret
