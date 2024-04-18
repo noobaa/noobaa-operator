@@ -172,7 +172,7 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 		sys.Spec.DBImage = &dbImage
 	}
 	if options.DBVolumeSizeGB != 0 {
-		sys.Spec.DBVolumeResources = &corev1.ResourceRequirements{
+		sys.Spec.DBVolumeResources = &corev1.VolumeResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceStorage: *resource.NewScaledQuantity(int64(options.DBVolumeSizeGB), resource.Giga),
 			},
