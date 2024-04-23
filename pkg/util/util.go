@@ -1031,6 +1031,16 @@ func IsAWSPlatform() bool {
 	return isAWS
 }
 
+// IsFusionHCIWithScale checks if the noobaa is deployed on HCI platform and
+// using Spectrum Scale storage.
+func IsFusionHCIWithScale() bool {
+	sc := &storagev1.StorageClass{
+		TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
+		ObjectMeta: metav1.ObjectMeta{Name: "ibm-spectrum-scale-csi-storageclass-version2"},
+	}
+	return KubeCheck(sc)
+}
+
 // IsSTSClusterBS returns true if it is running on an STS cluster
 func IsSTSClusterBS(bs *nbv1.BackingStore) bool {
 	if bs.Spec.Type == nbv1.StoreTypeAWSS3 {

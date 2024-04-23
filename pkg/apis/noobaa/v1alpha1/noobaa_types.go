@@ -202,10 +202,10 @@ type NooBaaSpec struct {
 	// +optional
 	DefaultBackingStoreSpec *BackingStoreSpec `json:"defaultBackingStoreSpec,omitempty"`
 
-	// ManualDefaultBackingStore (optional - default value is false) if true the default backingstore will
-	// not be reconciled by the operator and it should be manually handled by the user. It will allow the
-	// user to  delete DefaultBackingStore, user needs to delete associated buckets and update the admin
-	// account with new BackingStore in order to delete the DefaultBackingStore
+	// ManualDefaultBackingStore (optional - default value is false) if true the default backingstore/namespacestore
+	// will not be reconciled by the operator and it should be manually handled by the user. It will allow the
+	// user to  delete DefaultBackingStore/DefaultNamespaceStore, user needs to delete associated buckets and
+	// update the admin account with new BackingStore/NamespaceStore in order to delete the DefaultBackingStore/DefaultNamespaceStore
 	// +nullable
 	// +optional
 	ManualDefaultBackingStore bool `json:"manualDefaultBackingStore,omitempty"`

@@ -98,6 +98,8 @@ type Reconciler struct {
 	IBMCosBucketCreds         *corev1.Secret
 	DefaultBackingStore       *nbv1.BackingStore
 	DefaultBucketClass        *nbv1.BucketClass
+	DefaultNamespaceStore     *nbv1.NamespaceStore
+	DefaultNsfsPvc            *corev1.PersistentVolumeClaim
 	OBCStorageClass           *storagev1.StorageClass
 	PrometheusRule            *monitoringv1.PrometheusRule
 	ServiceMonitorMgmt        *monitoringv1.ServiceMonitor
@@ -162,6 +164,8 @@ func NewReconciler(
 		IBMCosBucketCreds:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		DefaultBackingStore:       util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
 		DefaultBucketClass:        util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass),
+		DefaultNamespaceStore:     util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore),
+		DefaultNsfsPvc:            util.KubeObject(bundle.File_deploy_internal_nsfs_pvc_cr_yaml).(*corev1.PersistentVolumeClaim),
 		OBCStorageClass:           util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
 		PrometheusRule:            util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		ServiceMonitorMgmt:        util.KubeObject(bundle.File_deploy_internal_servicemonitor_mgmt_yaml).(*monitoringv1.ServiceMonitor),
@@ -207,6 +211,8 @@ func NewReconciler(
 	r.IBMCosBucketCreds.Namespace = r.Request.Namespace
 	r.DefaultBackingStore.Namespace = r.Request.Namespace
 	r.DefaultBucketClass.Namespace = r.Request.Namespace
+	r.DefaultNamespaceStore.Namespace = r.Request.Namespace
+	r.DefaultNsfsPvc.Namespace = r.Request.Namespace
 	r.PrometheusRule.Namespace = r.Request.Namespace
 	r.ServiceMonitorMgmt.Namespace = r.Request.Namespace
 	r.ServiceMonitorS3.Namespace = r.Request.Namespace
@@ -250,6 +256,8 @@ func NewReconciler(
 	r.IBMCosBucketCreds.Name = ibmCosBucketCred
 	r.DefaultBackingStore.Name = r.Request.Name + "-default-backing-store"
 	r.DefaultBucketClass.Name = r.Request.Name + "-default-bucket-class"
+	r.DefaultNamespaceStore.Name = r.Request.Name + "-default-namespace-store"
+	r.DefaultNsfsPvc.Name = r.Request.Name + "-default-nsfs-pvc"
 	r.PrometheusRule.Name = r.Request.Name + "-prometheus-rules"
 	r.ServiceMonitorMgmt.Name = r.ServiceMgmt.Name + "-service-monitor"
 	r.ServiceMonitorS3.Name = r.ServiceS3.Name + "-service-monitor"
@@ -316,6 +324,8 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.DefaultBucketClass)
 	util.KubeCheck(r.DeploymentEndpoint)
 	util.KubeCheckOptional(r.DefaultBackingStore)
+	util.KubeCheckOptional(r.DefaultNamespaceStore)
+	util.KubeCheckOptional(r.DefaultNsfsPvc)
 	util.KubeCheckOptional(r.AWSCloudCreds)
 	util.KubeCheckOptional(r.AzureCloudCreds)
 	util.KubeCheckOptional(r.AzureContainerCreds)

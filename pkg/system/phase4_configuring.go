@@ -79,6 +79,12 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileDefaultBackingStore(); err != nil {
 		return err
 	}
+	if err := r.ReconcileDefaultNsfsPvc(); err != nil {
+		return err
+	}
+	if err := r.ReconcileDefaultNamespaceStore(); err != nil {
+		return err
+	}
 	if err := r.ReconcileDefaultBucketClass(); err != nil {
 		return err
 	}
@@ -682,6 +688,87 @@ func (r *Reconciler) RegisterToCluster() error {
 	return r.NBClient.RegisterToCluster()
 }
 
+// ReconcileDefaultNamespaceStore checks if the default NSFS pvc exists or not
+// and attempts to create default NSFS namespacestore using NSFS pvc which in turn uses
+// spectrum scale storage class.
+func (r *Reconciler) ReconcileDefaultNamespaceStore() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
+
+	log := r.Logger.WithField("func", "ReconcileDefaultNamespaceStore")
+
+	if r.DefaultNsfsPvc.UID == "" {
+		log.Infof("PVC %s does not  exist. skipping Reconcile %s", r.DefaultNsfsPvc.Name, r.DefaultNamespaceStore.Name)
+		return nil
+	}
+
+	util.KubeCheck(r.DefaultNamespaceStore)
+
+	if r.DefaultNamespaceStore.UID != "" {
+		log.Infof("NamespaceStore %s already exists. skipping Reconcile", r.DefaultNamespaceStore.Name)
+		return nil
+	}
+
+	r.DefaultNamespaceStore.Spec.Type = nbv1.NSStoreTypeNSFS
+	r.DefaultNamespaceStore.Spec.NSFS = &nbv1.NSFSSpec{}
+	r.DefaultNamespaceStore.Spec.NSFS.PvcName = r.DefaultNsfsPvc.Name
+	r.DefaultNamespaceStore.Spec.NSFS.SubPath = ""
+
+	r.Own(r.DefaultNamespaceStore)
+
+	if err := r.Client.Create(r.Ctx, r.DefaultNamespaceStore); err != nil {
+		log.Errorf("got error on DefaultNamespaceStore creation. error: %v", err)
+		return err
+	}
+	return nil
+}
+
+// ReconcileDefaultNsfsPvc checks if the noobaa is running on Fusion HCI with
+// spectrum scale and attempts to create default PVC for nsfs using spectrum scale
+// storage class.
+func (r *Reconciler) ReconcileDefaultNsfsPvc() error {
+	// Skip if joining another NooBaa
+	if r.JoinSecret != nil {
+		return nil
+	}
+
+	// Check if ODF is installed on Fusion HCI cluster with spectrum scale.
+	if !util.IsFusionHCIWithScale() {
+		return nil
+	}
+	r.Logger.Info("IBM Fusion HCI with Spectrum Scale detected.")
+	log := r.Logger.WithField("func", "ReconcileDefaultNsfsPvc")
+
+	util.KubeCheck(r.DefaultNsfsPvc)
+
+	if r.DefaultNsfsPvc.UID != "" {
+		log.Infof("DefaultNsfsPvc %s already exists. skipping Reconcile", r.DefaultNsfsPvc.Name)
+		return nil
+	}
+
+	if r.NooBaa.Spec.ManualDefaultBackingStore {
+		r.Logger.Info("ManualDefaultBackingStore is true, Skip Reconciling default nsfs pvc")
+		return nil
+	}
+
+	var sc = "ibm-spectrum-scale-csi-storageclass-version2"
+	defaultPVCSize := int64(30) * 1024 * 1024 * 1024 // 30GB
+	r.DefaultNsfsPvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}
+	r.DefaultNsfsPvc.Spec.Resources.Requests.Storage()
+	r.DefaultNsfsPvc.Spec.Resources.Requests[corev1.ResourceStorage] = *resource.NewQuantity(defaultPVCSize, resource.BinarySI)
+	r.DefaultNsfsPvc.Spec.StorageClassName = &sc
+
+	r.Own(r.DefaultNsfsPvc)
+
+	if err := r.Client.Create(r.Ctx, r.DefaultNsfsPvc); err != nil {
+		log.Errorf("got error on DefaultNsfsPvc creation. error: %v", err)
+		return err
+	}
+	return nil
+}
+
 // ReconcileDefaultBackingStore attempts to get credentials to cloud storage using the cloud-credentials operator
 // and use it for the default backing store
 func (r *Reconciler) ReconcileDefaultBackingStore() error {
@@ -691,6 +778,12 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 	}
 
 	log := r.Logger.WithField("func", "ReconcileDefaultBackingStore")
+
+	// Check if ODF is installed on Fusion HCI cluster with spectrum scale.
+	if util.IsFusionHCIWithScale() {
+		r.Logger.Info("IBM Fusion HCI with Spectrum Scale detected. Not creating Default Backing Store.")
+		return nil
+	}
 
 	util.KubeCheck(r.DefaultBackingStore)
 	// backing store already exists - we can skip
@@ -1281,12 +1374,21 @@ func (r *Reconciler) ReconcileDefaultBucketClass() error {
 		return nil
 	}
 
-	r.DefaultBucketClass.Spec.PlacementPolicy = &nbv1.PlacementPolicy{
-		Tiers: []nbv1.Tier{{
-			BackingStores: []nbv1.BackingStoreName{
-				r.DefaultBackingStore.Name,
+	if util.KubeCheck(r.DefaultNamespaceStore) {
+		r.DefaultBucketClass.Spec.NamespacePolicy = &nbv1.NamespacePolicy{
+			Type: nbv1.NSBucketClassTypeSingle,
+			Single: &nbv1.SingleNamespacePolicy{
+				Resource: r.DefaultNamespaceStore.Name,
 			},
-		}},
+		}
+	} else {
+		r.DefaultBucketClass.Spec.PlacementPolicy = &nbv1.PlacementPolicy{
+			Tiers: []nbv1.Tier{{
+				BackingStores: []nbv1.BackingStoreName{
+					r.DefaultBackingStore.Name,
+				},
+			}},
+		}
 	}
 
 	r.Own(r.DefaultBucketClass)
