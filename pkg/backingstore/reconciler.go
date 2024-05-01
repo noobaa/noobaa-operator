@@ -625,7 +625,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 		if pool.CloudInfo == nil ||
 			pool.CloudInfo.EndpointType != conn.EndpointType ||
 			pool.CloudInfo.Endpoint != conn.Endpoint ||
-			pool.CloudInfo.Identity != conn.Identity {
+			pool.CloudInfo.Identity != string(conn.Identity) {
 			r.Logger.Warnf("using existing pool but connection mismatch %+v pool %+v %+v", conn, pool, pool.CloudInfo)
 			r.UpdateExternalConnectionParams = &nb.UpdateExternalConnectionParams{
 				Name:               conn.Name,
@@ -644,7 +644,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 			c := &account.ExternalConnections.Connections[j]
 			if c.EndpointType == conn.EndpointType &&
 				c.Endpoint == conn.Endpoint &&
-				c.Identity == conn.Identity {
+				c.Identity == string(conn.Identity) {
 				r.ExternalConnectionInfo = c
 				conn.Name = c.Name
 			}
@@ -689,8 +689,8 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 			conn.AWSSTSARN = *r.BackingStore.Spec.AWSS3.AWSSTSRoleARN
 		} else {
 			conn.EndpointType = nb.EndpointTypeAws
-			conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
-			conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+			conn.Identity = nb.MaskedString(r.Secret.StringData["AWS_ACCESS_KEY_ID"])
+			conn.Secret = nb.MaskedString(r.Secret.StringData["AWS_SECRET_ACCESS_KEY"])
 		}
 		awsS3 := r.BackingStore.Spec.AWSS3
 		u := url.URL{
@@ -708,8 +708,8 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 
 	case nbv1.StoreTypeS3Compatible:
 		conn.EndpointType = nb.EndpointTypeS3Compat
-		conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
-		conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+		conn.Identity = nb.MaskedString(r.Secret.StringData["AWS_ACCESS_KEY_ID"])
+		conn.Secret = nb.MaskedString(r.Secret.StringData["AWS_SECRET_ACCESS_KEY"])
 		s3Compatible := r.BackingStore.Spec.S3Compatible
 		if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV4 {
 			conn.AuthMethod = "AWS_V4"
@@ -754,8 +754,8 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 
 	case nbv1.StoreTypeIBMCos:
 		conn.EndpointType = nb.EndpointTypeIBMCos
-		conn.Identity = r.Secret.StringData["IBM_COS_ACCESS_KEY_ID"]
-		conn.Secret = r.Secret.StringData["IBM_COS_SECRET_ACCESS_KEY"]
+		conn.Identity = nb.MaskedString(r.Secret.StringData["IBM_COS_ACCESS_KEY_ID"])
+		conn.Secret = nb.MaskedString(r.Secret.StringData["IBM_COS_SECRET_ACCESS_KEY"])
 		IBMCos := r.BackingStore.Spec.IBMCos
 		if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV4 {
 			conn.AuthMethod = "AWS_V4"
@@ -801,8 +801,8 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 	case nbv1.StoreTypeAzureBlob:
 		conn.EndpointType = nb.EndpointTypeAzure
 		conn.Endpoint = "https://blob.core.windows.net"
-		conn.Identity = r.Secret.StringData["AccountName"]
-		conn.Secret = r.Secret.StringData["AccountKey"]
+		conn.Identity = nb.MaskedString(r.Secret.StringData["AccountName"])
+		conn.Secret = nb.MaskedString(r.Secret.StringData["AccountKey"])
 		tenantID := r.Secret.StringData["TenantID"]
 		appID := r.Secret.StringData["ApplicationID"]
 		appSecret := r.Secret.StringData["ApplicationSecret"]
@@ -831,8 +831,8 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 				r.Secret.Name,
 			))
 		}
-		conn.Identity = privateKey.ID
-		conn.Secret = privateKeyJSON
+		conn.Identity = nb.MaskedString(privateKey.ID)
+		conn.Secret = nb.MaskedString(privateKeyJSON)
 
 	case nbv1.StoreTypePVPool:
 		return nil, util.NewPersistentError("InvalidType",
@@ -843,7 +843,7 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 			fmt.Sprintf("Invalid backing store type %q", r.BackingStore.Spec.Type))
 	}
 	if !util.IsSTSClusterBS(r.BackingStore) {
-		if !util.IsStringGraphicOrSpacesCharsOnly(conn.Identity) || !util.IsStringGraphicOrSpacesCharsOnly(conn.Secret) {
+		if !util.IsStringGraphicOrSpacesCharsOnly(string(conn.Identity)) || !util.IsStringGraphicOrSpacesCharsOnly(string(conn.Secret)) {
 			return nil, util.NewPersistentError("InvalidSecret",
 				fmt.Sprintf("Invalid secret containing non graphic characters (perhaps not base64 encoded?) %q", r.Secret.Name))
 		}
