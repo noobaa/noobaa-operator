@@ -476,7 +476,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 	if nsr != nil {
 		if nsr.EndpointType != conn.EndpointType ||
 			nsr.Endpoint != conn.Endpoint ||
-			nsr.Identity != conn.Identity {
+			nsr.Identity != string(conn.Identity) {
 			r.Logger.Warnf("using existing namespace resource but connection mismatch %+v namespace store %+v", conn, nsr)
 			r.UpdateExternalConnectionParams = &nb.UpdateExternalConnectionParams{
 				Name:               conn.Name,
@@ -495,7 +495,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 			c := &account.ExternalConnections.Connections[j]
 			if c.EndpointType == conn.EndpointType &&
 				c.Endpoint == conn.Endpoint &&
-				c.Identity == conn.Identity {
+				c.Identity == string(conn.Identity) {
 				r.ExternalConnectionInfo = c
 				conn.Name = c.Name
 			}
@@ -579,7 +579,7 @@ func (r *Reconciler) LoadNamespaceStoreSecret() error {
 }
 
 // MakeExternalConnectionParams translates the namespace store spec and secret,
-// to noobaa api structures to be used for creating/updating external connetion and namespace store
+// to noobaa api structures to be used for creating/updating external connection and namespace store
 func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionParams, error) {
 
 	conn := &nb.AddExternalConnectionParams{
@@ -596,8 +596,8 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 			conn.AWSSTSARN = *r.NamespaceStore.Spec.AWSS3.AWSSTSRoleARN
 		} else {
 			conn.EndpointType = nb.EndpointTypeAws
-			conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
-			conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+			conn.Identity = nb.MaskedString(r.Secret.StringData["AWS_ACCESS_KEY_ID"])
+			conn.Secret = nb.MaskedString(r.Secret.StringData["AWS_SECRET_ACCESS_KEY"])
 		}
 		awsS3 := r.NamespaceStore.Spec.AWSS3
 		u := url.URL{
@@ -615,8 +615,8 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 
 	case nbv1.NSStoreTypeS3Compatible:
 		conn.EndpointType = nb.EndpointTypeS3Compat
-		conn.Identity = r.Secret.StringData["AWS_ACCESS_KEY_ID"]
-		conn.Secret = r.Secret.StringData["AWS_SECRET_ACCESS_KEY"]
+		conn.Identity = nb.MaskedString(r.Secret.StringData["AWS_ACCESS_KEY_ID"])
+		conn.Secret = nb.MaskedString(r.Secret.StringData["AWS_SECRET_ACCESS_KEY"])
 		s3Compatible := r.NamespaceStore.Spec.S3Compatible
 
 		//Configure auth method
@@ -627,8 +627,8 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 
 	case nbv1.NSStoreTypeIBMCos:
 		conn.EndpointType = nb.EndpointTypeIBMCos
-		conn.Identity = r.Secret.StringData["IBM_COS_ACCESS_KEY_ID"]
-		conn.Secret = r.Secret.StringData["IBM_COS_SECRET_ACCESS_KEY"]
+		conn.Identity = nb.MaskedString(r.Secret.StringData["IBM_COS_ACCESS_KEY_ID"])
+		conn.Secret = nb.MaskedString(r.Secret.StringData["IBM_COS_SECRET_ACCESS_KEY"])
 		IBMCos := r.NamespaceStore.Spec.IBMCos
 
 		//Configure auth method
@@ -640,8 +640,8 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 	case nbv1.NSStoreTypeAzureBlob:
 		conn.EndpointType = nb.EndpointTypeAzure
 		conn.Endpoint = "https://blob.core.windows.net"
-		conn.Identity = r.Secret.StringData["AccountName"]
-		conn.Secret = r.Secret.StringData["AccountKey"]
+		conn.Identity = nb.MaskedString(r.Secret.StringData["AccountName"])
+		conn.Secret = nb.MaskedString(r.Secret.StringData["AccountKey"])
 		tenantID := r.Secret.StringData["TenantID"]
 		appID := r.Secret.StringData["ApplicationID"]
 		appSecret := r.Secret.StringData["ApplicationSecret"]
@@ -670,15 +670,15 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 				r.Secret.Name,
 			))
 		}
-		conn.Identity = privateKey.ID
-		conn.Secret = privateKeyJSON
+		conn.Identity = nb.MaskedString(privateKey.ID)
+		conn.Secret = nb.MaskedString(privateKeyJSON)
 
 	default:
 		return nil, util.NewPersistentError("InvalidType",
 			fmt.Sprintf("Invalid namespace store type %q", r.NamespaceStore.Spec.Type))
 	}
 	if util.IsSTSClusterNS(r.NamespaceStore) {
-		if !util.IsStringGraphicOrSpacesCharsOnly(conn.Identity) || !util.IsStringGraphicOrSpacesCharsOnly(conn.Secret) {
+		if !util.IsStringGraphicOrSpacesCharsOnly(string(conn.Identity)) || !util.IsStringGraphicOrSpacesCharsOnly(string(conn.Secret)) {
 			return nil, util.NewPersistentError("InvalidSecret",
 				fmt.Sprintf("Invalid secret containing non graphic characters (perhaps not base64 encoded?) %q", r.Secret.Name))
 		}
