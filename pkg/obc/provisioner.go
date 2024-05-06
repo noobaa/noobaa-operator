@@ -566,13 +566,14 @@ func (r *BucketRequest) CreateAccount() error {
 		defaultResource = r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores[0]
 	}
 
-	var nsfsAccountConfig nbv1.AccountNsfsConfig
+	var nsfsAccountConfig *nbv1.AccountNsfsConfig
 	// Validation is already performed as part of ValidateOBC before CreateAccount is ever called
 	// ...but we revalidate to satisfy the linter.
 	if r.OBC.Spec.AdditionalConfig["nsfsAccountConfig"] != "" {
-		err := json.Unmarshal([]byte(r.OBC.Spec.AdditionalConfig["nsfsAccountConfig"]), &nsfsAccountConfig)
+		nsfsAccountConfig = &nbv1.AccountNsfsConfig{}
+		err := json.Unmarshal([]byte(r.OBC.Spec.AdditionalConfig["nsfsAccountConfig"]), nsfsAccountConfig)
 		if err != nil {
-			return fmt.Errorf("failed to parse NSFS config %q: %v", r.OBC.Spec.AdditionalConfig["nsfsAccountConfig"], err)
+			return fmt.Errorf("failed to parse NSFS config %q: %w", r.OBC.Spec.AdditionalConfig["nsfsAccountConfig"], err)
 		}
 	}
 	
@@ -584,7 +585,7 @@ func (r *BucketRequest) CreateAccount() error {
 		S3Access:          true,
 		AllowBucketCreate: false,
 		BucketClaimOwner:  r.BucketName,
-		NsfsAccountConfig: &nsfsAccountConfig,
+		NsfsAccountConfig: nsfsAccountConfig,
 	})
 	if err != nil {
 		return err
