@@ -401,7 +401,7 @@ func (r *Reconciler) UpdateNooBaaAccount() error {
 				UID:            r.NooBaaAccount.Spec.NsfsAccountConfig.UID,
 				GID:            r.NooBaaAccount.Spec.NsfsAccountConfig.GID,
 				NewBucketsPath: r.NooBaaAccount.Spec.NsfsAccountConfig.NewBucketsPath,
-				NsfsOnly:       true,
+				NsfsOnly:       r.NooBaaAccount.Spec.NsfsAccountConfig.NsfsOnly,
 			}
 		}
 

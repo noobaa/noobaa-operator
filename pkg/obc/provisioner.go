@@ -575,6 +575,9 @@ func (r *BucketRequest) CreateAccount() error {
 		if err != nil {
 			return fmt.Errorf("failed to parse NSFS config %q: %w", r.OBC.Spec.AdditionalConfig["nsfsAccountConfig"], err)
 		}
+		// We prefer to make sure this account is only used for its appropriate NSFS operations
+		nsfsAccountConfig.NewBucketsPath = "";
+		nsfsAccountConfig.NsfsOnly = true;
 	}
 	
 	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{

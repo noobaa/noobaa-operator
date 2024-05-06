@@ -114,8 +114,8 @@ uid - the user ID of the account that should be mimicked within the filesystem
 OR
 distinguished_name - the distinguished name of the account that should be mimicked within the filesystem
 
-These optional parameters can be provided by the user to further configure the NSFS account:
-new_buckets_path - the filesystem path that should be 'mounted' as the bucket's root (`path` parameter in the CLI)
+These optional additionalConfig keys can be provided by the user to further configure NSFS OBC properties:
+path - the filesystem path that should be 'mounted' as the bucket's root. Please make sure that the path was created with the appropriate ownership and permissions ahead of time.
 
 Examples:
 
@@ -133,7 +133,8 @@ spec:
   generateBucketName: my-bucket
   storageClassName: noobaa.noobaa.io
   additionalConfig:
-    nsfsAccountConfig: { "distinguished_name": "current_user", "new_buckets_path": "/mnt/nsfs" }
+    nsfsAccountConfig: { "distinguished_name": "current_user" }
+    path: "/mnt/nsfs"
 ```
 
 # Using the OBC

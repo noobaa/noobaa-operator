@@ -59,7 +59,7 @@ func CmdCreate() *cobra.Command {
 	cmd.Flags().String("distinguished-name", "",
 		"Set the distinguished name for the NSFS account config")
 	cmd.Flags().String("path", "",
-		"Set path to specify inner directory in namespace store target path - can be used only while specifing a namespace bucketclass")
+		"Set path to specify inner directory in namespace store target path, or in the case of NSFS - filesystem mount point (can be used only when specifying a namespace bucketclass)")
 	cmd.Flags().String("replication-policy", "",
 		"Set the json file path that contains replication rules")
 	cmd.Flags().String("max-objects", "",
@@ -206,7 +206,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		var nsfsAccountConfig nbv1.AccountNsfsConfig
 		nsfsAccountConfig.GID = gid
 		nsfsAccountConfig.UID = uid
-		nsfsAccountConfig.NewBucketsPath = path
+		nsfsAccountConfig.NewBucketsPath = ""
 		nsfsAccountConfig.NsfsOnly = true
 		marshalledCfg, _ := json.Marshal(nsfsAccountConfig)
 		obc.Spec.AdditionalConfig["nsfsAccountConfig"] = string(marshalledCfg)
@@ -215,7 +215,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if distinguishedName != "" {
 		var nsfsAccountConfig nbv1.AccountNsfsConfig
 		nsfsAccountConfig.DistinguishedName = distinguishedName
-		nsfsAccountConfig.NewBucketsPath = path
+		nsfsAccountConfig.NewBucketsPath = ""
 		nsfsAccountConfig.NsfsOnly = true
 		marshalledCfg, _ := json.Marshal(nsfsAccountConfig)
 		obc.Spec.AdditionalConfig["nsfsAccountConfig"] = string(marshalledCfg)
