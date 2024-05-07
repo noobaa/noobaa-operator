@@ -81,6 +81,9 @@ spec:
                 key: password
                 name: noobaa-db
         imagePullPolicy: "IfNotPresent"
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
         ports:
           - containerPort: 5432
         resources:
@@ -109,7 +112,6 @@ spec:
         runAsGroup: 0
         fsGroup: 0
         fsGroupChangePolicy: "OnRootMismatch"
-        allowPrivilegeEscalation: false
   volumeClaimTemplates:
     - metadata:
         name: db

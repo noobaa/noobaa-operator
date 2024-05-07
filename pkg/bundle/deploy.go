@@ -4115,7 +4115,7 @@ spec:
             value: KUBERNETES
       restartPolicy: OnFailure`
 
-const Sha256_deploy_internal_pod_agent_yaml = "0f58d0ef2d3ffce46680db6c44878cfdcdcf0942867d27768cb0636891157e2e"
+const Sha256_deploy_internal_pod_agent_yaml = "de840ba1da0fc16cab8e1ddf8af35f886be35dbefa449e73dcf75b5659001aa1"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -4154,6 +4154,11 @@ spec:
       securityContext:
         runAsNonRoot: true
         allowPrivilegeEscalation: false
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 0
+    fsGroup: 0
+    fsGroupChangePolicy: "OnRootMismatch"
   volumes:
     - name: tmp-logs-vol
       emptyDir: {}
@@ -4860,7 +4865,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "3a83f8f0cea0d0b909834afb3de3009ed9e1e7347d82c31fc65cc8e5016b247b"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "612a1936d01fc7847cb583aaa1a011e76fae84387441d3eb48f20f5d4ea0dd69"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4945,6 +4950,9 @@ spec:
                 key: password
                 name: noobaa-db
         imagePullPolicy: "IfNotPresent"
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
         ports:
           - containerPort: 5432
         resources:
@@ -4973,7 +4981,6 @@ spec:
         runAsGroup: 0
         fsGroup: 0
         fsGroupChangePolicy: "OnRootMismatch"
-        allowPrivilegeEscalation: false
   volumeClaimTemplates:
     - metadata:
         name: db
@@ -4984,8 +4991,7 @@ spec:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 50Gi
-`
+            storage: 50Gi`
 
 const Sha256_deploy_internal_text_system_status_readme_progress_tmpl = "d26aa1028e4a235018cc46e00392d3209d3e09e8320f3692be6346a9cfdf289a"
 
