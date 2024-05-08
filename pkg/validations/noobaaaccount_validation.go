@@ -24,14 +24,14 @@ func ValidateNSFSConfig(na nbv1.NooBaaAccount) error {
 	}
 
 	//UID validation
-	if nsfsConf.UID < 0 {
+	if *nsfsConf.UID < 0 {
 		return util.ValidationError{
 			Msg: "UID must be a whole positive number",
 		}
 	}
 
 	//GID validation
-	if nsfsConf.GID < 0 {
+	if *nsfsConf.GID < 0 {
 		return util.ValidationError{
 			Msg: "GID must be a whole positive number",
 		}

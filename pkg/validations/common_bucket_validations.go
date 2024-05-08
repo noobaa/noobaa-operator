@@ -26,27 +26,20 @@ func ValidateNSFSAccountConfig(NSFSConfig string) error {
 		return fmt.Errorf("failed to parse NSFS account config %q: %v", NSFSConfig, err)
 	}
 
-	if (configObj.GID > -1 && configObj.UID == -1) || (configObj.GID == -1 && configObj.UID > -1) {
-		return fmt.Errorf(`NSFS account config must include both UID and GID as positive integrals`)
-	}
-
-	if len(configObj.DistinguishedName) > 0 && (configObj.GID > -1 || configObj.UID > -1) {
-		return fmt.Errorf(`NSFS account config cannot include both distinguished name and UID/GID`)
-
-	}
-
 	log.Infof("Validating NSFS config: %+v", NSFSConfig)
-	// UID validation
-	if configObj.UID < 0 {
-		return fmt.Errorf("UID must be a whole positive number")
-	}
-
-	// GID validation
-	if configObj.GID < 0 {
-		return fmt.Errorf("GID must be a whole positive number")
-	}
-
-	if configObj.DistinguishedName != "" {
+	// Check UID/GID cases only in case they're defined
+	if configObj.UID != nil || configObj.GID != nil {
+		// debug print
+		log.Infof("Validating NSFS config: UID: %d, GID: %d, DistinguishedName: %s", *configObj.UID, *configObj.GID, configObj.DistinguishedName)
+		// Check whether only UID or only GID were provided
+		if *configObj.UID < 0 || *configObj.GID < 0 {
+			return fmt.Errorf("UID and GID must be positive integers")
+		// Check whether a distinguished name was provided alongside UID or GID
+		} else if configObj.DistinguishedName != "" && (*configObj.GID > -1 || *configObj.UID > -1) {
+			return fmt.Errorf(`NSFS account config cannot include both distinguished name and UID/GID`)
+		}
+	// Otherwise, validate the distinguished name
+	} else if configObj.DistinguishedName != "" {
 		regex := regexp.MustCompile(`^[^-:\s][^\s:]{0,30}[^-:\s]$`)
 		if !regex.MatchString(configObj.DistinguishedName) {
 			return fmt.Errorf("DistinguishedName must be a valid string")

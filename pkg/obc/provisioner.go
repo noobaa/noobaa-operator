@@ -578,6 +578,13 @@ func (r *BucketRequest) CreateAccount() error {
 		// We prefer to make sure this account is only used for its appropriate NSFS operations
 		nsfsAccountConfig.NewBucketsPath = "";
 		nsfsAccountConfig.NsfsOnly = true;
+		// -1 is the default CLI value which we use to indicate that the UID/GID should not be set
+		// 0 cannot be used since it is a valid GID/UID value
+		var IdNullifier = -1
+		if nsfsAccountConfig.UID == &IdNullifier {
+			nsfsAccountConfig.UID = nil
+			nsfsAccountConfig.GID = nil
+		}
 	}
 	
 	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{

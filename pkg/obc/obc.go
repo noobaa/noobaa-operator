@@ -139,13 +139,12 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	uid, _ := cmd.Flags().GetInt("uid")
 	distinguishedName, _ := cmd.Flags().GetString("distinguished-name")
 
-	if (gid > -1 && uid == -1) || (gid == -1 && uid > -1) {
-		log.Fatalf(`❌ NSFS account config must include both UID and GID as positive integrals`)
-	}
-
 	if len(distinguishedName) > 0 && (gid > -1 || uid > -1) {
 		log.Fatalf(`❌ NSFS account config cannot include both distinguished name and UID/GID`)
-	
+	}
+
+	if (gid > -1 && uid == -1) || (gid == -1 && uid > -1) {
+		log.Fatalf(`❌ NSFS account config must include both UID and GID as positive integers`)
 	}
 
 	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml)
@@ -204,9 +203,8 @@ func RunCreate(cmd *cobra.Command, args []string) {
 
 	if gid > -1 {
 		var nsfsAccountConfig nbv1.AccountNsfsConfig
-		nsfsAccountConfig.GID = gid
-		nsfsAccountConfig.UID = uid
-		nsfsAccountConfig.NewBucketsPath = ""
+		nsfsAccountConfig.GID = &gid
+		nsfsAccountConfig.UID = &uid
 		nsfsAccountConfig.NsfsOnly = true
 		marshalledCfg, _ := json.Marshal(nsfsAccountConfig)
 		obc.Spec.AdditionalConfig["nsfsAccountConfig"] = string(marshalledCfg)
@@ -215,7 +213,8 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if distinguishedName != "" {
 		var nsfsAccountConfig nbv1.AccountNsfsConfig
 		nsfsAccountConfig.DistinguishedName = distinguishedName
-		nsfsAccountConfig.NewBucketsPath = ""
+		nsfsAccountConfig.GID = nil
+		nsfsAccountConfig.UID = nil
 		nsfsAccountConfig.NsfsOnly = true
 		marshalledCfg, _ := json.Marshal(nsfsAccountConfig)
 		obc.Spec.AdditionalConfig["nsfsAccountConfig"] = string(marshalledCfg)

@@ -1403,3 +1403,39 @@ EOF
 
     echo_time "✅  [${FUNCNAME[0]}]: Noobaa multinamespace bucketclass test passed"
 }
+
+function obc_nsfs_negative_tests {
+    # Should fail due to:
+        # No GID
+    yes n | test_noobaa should_fail obc create testobc --uid 42
+        # No UID
+    yes n | test_noobaa should_fail obc create testobc --gid 505
+        # Distingusihed name provided in conjunction with UID
+    yes n | test_noobaa should_fail obc create testobc --distinguished-name 'test' --uid 42
+}
+
+function test_create_obc_with_nsfs_acc_cfg_uid_gid {
+    local uid=42
+    local gid=505
+    local obc_name="giduidtestobc"
+    test_noobaa obc create ${obc_name} --uid 42 --gid 505
+    local obc_account_nsfs_account=$(test_noobaa api account list_accounts {} -ojson | jq '.accounts[] | select(.bucket_claim_owner | test("'${obc_name}'"))?' | jq '.nsfs_account_config')
+    local account_gid=$(echo $obc_account_nsfs_account | jq '.gid')
+    local account_uid=$(echo $obc_account_nsfs_account | jq '.uid')
+    if [[ $account_gid != $gid || $account_uid != $uid ]]; then
+        echo_time "❌  [${FUNCNAME[0]}]: Noobaa obc nsfs account creation test failed. Expected: uid=$uid, gid=$gid, Got: uid=$account_uid, gid=$account_gid"
+        exit 1
+    fi
+}
+
+function test_create_obc_with_nsfs_acc_distinguished_name {
+    local distinguished_name="someuser"
+    local obc_name="distinguishednameobc"
+    test_noobaa obc create ${obc_name} --distinguished-name $distinguished_name
+    local obc_account_nsfs_account=$(test_noobaa api account list_accounts {} -ojson | jq '.accounts[] | select(.bucket_claim_owner | test("'${obc_name}'"))?' | jq '.nsfs_account_config')
+    local account_distinguished_name=$(echo $obc_account_nsfs_account | jq -r '.distinguished_name')
+    if [[ $account_distinguished_name != $distinguished_name ]]; then
+        echo_time "❌  [${FUNCNAME[0]}]: Noobaa obc nsfs account creation test failed. Expected: distinguished_name=$distinguished_name, Got: distinguished_name=$account_distinguished_name"
+        exit 1
+    fi
+}
