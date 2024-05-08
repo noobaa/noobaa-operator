@@ -37,7 +37,7 @@ var _ = Describe("Replication Validation tests", func() {
 	})
 
 	It("validate empty replication policy valid", func() {
-		emptyReplicationPolicy := getEmptyReplicationPolicy()
+		emptyReplicationPolicy := getEmptyString()
 		err := ValidateReplicationPolicy(firstBucket, emptyReplicationPolicy, false, isCLI)
 		Expect(err).To(BeNil())
 	})
@@ -54,6 +54,35 @@ var _ = Describe("Replication Validation tests", func() {
 		err := ValidateReplicationPolicy(firstBucket, emptyRulesArrReplicationPolicy, true, isCLI)
 		Expect(err).To(BeNil())
 
+	})
+})
+
+var _ = Describe("NSFS account config validation tests", func() {
+
+	It("validate valid nsfs account config", func() {
+		validNsfsAccountConfig := getValidNsfsAccountConfig()
+		err := ValidateNSFSAccountConfig(validNsfsAccountConfig)
+		Expect(err).To(BeNil())
+	})
+
+	It("validate invalid nsfs account config - should fail", func() {
+		invalidNSFSAccountConfig := getInvalidNSFSAccountConfig()
+		err := ValidateNSFSAccountConfig(invalidNSFSAccountConfig)
+		expectedErrMsg := "NSFS account config must include both"
+		Expect(err.Error()).To(ContainSubstring(expectedErrMsg))
+	})
+
+	It("validate invalid nsfs account config json - should fail", func() {
+		invalidNSFSAccountConfigJSON := getInvalidNSFSAccountConfigJSON()
+		err := ValidateNSFSAccountConfig(invalidNSFSAccountConfigJSON)
+		expectedErrMsg := "failed to parse NSFS account config"
+		Expect(err.Error()).To(ContainSubstring(expectedErrMsg))
+	})
+
+	It("validate empty nsfs account config", func() {
+		emptyNSFSAccountConfig := getEmptyString()
+		err := ValidateNSFSAccountConfig(emptyNSFSAccountConfig)
+		Expect(err).To(BeNil())
 	})
 })
 
@@ -74,6 +103,20 @@ func getEmptyRulesArrReplicationPolicy() string {
 	return `{"rules":[]}`
 }
 
-func getEmptyReplicationPolicy() string {
+func getEmptyString() string {
 	return ``
+}
+
+func getValidNsfsAccountConfig() string {
+	return `{"uid": 42, "gid": 505, "path": "/path/to/nsfs"}`
+}
+
+func getInvalidNSFSAccountConfigJSON() string {
+	// curly bracket replaced with regular one
+	return `{"distinguished_name": "someuser")`
+}
+
+func getInvalidNSFSAccountConfig() string {
+	// Invalid because it contains both distinguished_name as well as uid+gid
+	return `{"distinguished_name": "someuser", "uid": 123, "gid": 123}`
 }

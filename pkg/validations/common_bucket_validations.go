@@ -23,15 +23,15 @@ func ValidateNSFSAccountConfig(NSFSConfig string) error {
 
 	err := json.Unmarshal([]byte(NSFSConfig), &configObj)
 	if err != nil {
-		return fmt.Errorf("failed to parse NSFS config %q: %v", NSFSConfig, err)
+		return fmt.Errorf("failed to parse NSFS account config %q: %v", NSFSConfig, err)
 	}
 
 	if (configObj.GID > -1 && configObj.UID == -1) || (configObj.GID == -1 && configObj.UID > -1) {
-		log.Fatalf(`NSFS account config must include both UID and GID as positive integrals`)
+		return fmt.Errorf(`NSFS account config must include both UID and GID as positive integrals`)
 	}
 
 	if len(configObj.DistinguishedName) > 0 && (configObj.GID > -1 || configObj.UID > -1) {
-		log.Fatalf(`NSFS account config cannot include both distinguished name and UID/GID`)
+		return fmt.Errorf(`NSFS account config cannot include both distinguished name and UID/GID`)
 
 	}
 
