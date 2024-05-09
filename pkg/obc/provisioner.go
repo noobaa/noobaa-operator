@@ -594,8 +594,8 @@ func (r *BucketRequest) CreateAccount() error {
 
 	r.OB.Spec.Authentication = &nbv1.ObjectBucketAuthentication{
 		AccessKeys: &nbv1.ObjectBucketAccessKeys{
-			AccessKeyID:     accessKeys.AccessKey,
-			SecretAccessKey: accessKeys.SecretKey,
+			AccessKeyID:     string(accessKeys.AccessKey),
+			SecretAccessKey: string(accessKeys.SecretKey),
 		},
 	}
 

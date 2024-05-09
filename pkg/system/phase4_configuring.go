@@ -226,8 +226,8 @@ func (r *Reconciler) SetDesiredSecretAdminAccountInfo() error {
 		return fmt.Errorf("admin account has no access keys yet")
 	}
 
-	r.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"] = account.AccessKeys[0].AccessKey
-	r.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"] = account.AccessKeys[0].SecretKey
+	r.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"] = string(account.AccessKeys[0].AccessKey)
+	r.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"] = string(account.AccessKeys[0].SecretKey)
 	return nil
 }
 
