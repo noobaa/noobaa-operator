@@ -32,6 +32,14 @@ spec:
           mountPath: /noobaa_storage
         - name: tmp-logs-vol
           mountPath: /usr/local/noobaa/logs
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 0
+    fsGroup: 0
+    fsGroupChangePolicy: "OnRootMismatch"
   volumes:
     - name: tmp-logs-vol
       emptyDir: {}

@@ -4221,7 +4221,7 @@ spec:
             value: KUBERNETES
       restartPolicy: OnFailure`
 
-const Sha256_deploy_internal_pod_agent_yaml = "204e11eea569564b507010d13c43a2d3ad5feae9e86666a08904508eab231830"
+const Sha256_deploy_internal_pod_agent_yaml = "de840ba1da0fc16cab8e1ddf8af35f886be35dbefa449e73dcf75b5659001aa1"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -4257,6 +4257,14 @@ spec:
           mountPath: /noobaa_storage
         - name: tmp-logs-vol
           mountPath: /usr/local/noobaa/logs
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 0
+    fsGroup: 0
+    fsGroupChangePolicy: "OnRootMismatch"
   volumes:
     - name: tmp-logs-vol
       emptyDir: {}
@@ -4969,7 +4977,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "0accc047982dbd1b8c207c81ef2bb1ae8c61c312915d3c2d196799ca6f146816"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "ea7ea63d019cb84327e89fbfa6a34788e0f43726ae8b2446eb1801e2a50240e1"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5054,6 +5062,9 @@ spec:
                 key: password
                 name: noobaa-db
         imagePullPolicy: "IfNotPresent"
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
         ports:
           - containerPort: 5432
         resources:
@@ -5986,13 +5997,21 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "ce3cbcb74a9309158d7cf71ef38e747fe76c1bc0fb0f15d3e5404a746ce988e1"
+const Sha256_deploy_role_yaml = "e145ce24b4267e2e0e63ab56442295bcc605bdc4f6ef723ad6cc15fd38973101"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: noobaa
 rules:
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - noobaa
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
 - apiGroups:
   - noobaa.io
   resources:
@@ -6367,7 +6386,24 @@ rules:
       - bucketclasses
 `
 
-const Sha256_deploy_scc_db_yaml = "d91c727214d8879843da81ee8778bf6ad6d06af6bdea0a36ac494b5ccc706d7a"
+const Sha256_deploy_scc_yaml = "baa4d3a3def2d63a5d9e53bc4fc1ac961f9b4fe5172db7118d1529caa14e2191"
+
+const File_deploy_scc_yaml = `apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: noobaa
+requiredDropCapabilities:
+  - ALL
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+supplementalGroups:
+  type: RunAsAny
+readOnlyRootFilesystem: true
+`
+
+const Sha256_deploy_scc_db_yaml = "de2274e71f8c6e83c0288623941a75d4dabc8c13a9fb9d0c2648b8fda3968b70"
 
 const File_deploy_scc_db_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -6381,9 +6417,8 @@ allowHostPID: false
 allowHostPorts: false
 allowPrivilegedContainer: false
 readOnlyRootFilesystem: false
-allowedCapabilities:
-- SETUID
-- SETGID
+requiredDropCapabilities:
+  - ALL
 fsGroup:
   type: RunAsAny
 runAsUser:
@@ -6394,7 +6429,7 @@ supplementalGroups:
   type: RunAsAny
 `
 
-const Sha256_deploy_scc_endpoint_yaml = "f097a29eb11230a7612ab5f86894da523a743093e21eb2217a39332c5a31b10c"
+const Sha256_deploy_scc_endpoint_yaml = "f9407c9f1fd1876eabbaad4cf910a05e57db33a2d590b2e2efad22bd1e3f8876"
 
 const File_deploy_scc_endpoint_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -6417,8 +6452,7 @@ groups: []
 priority: null
 readOnlyRootFilesystem: false
 requiredDropCapabilities:
-- KILL
-- MKNOD
+  - ALL
 runAsUser:
   type: RunAsAny
 seLinuxContext:
