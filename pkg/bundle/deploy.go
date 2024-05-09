@@ -6284,7 +6284,7 @@ supplementalGroups:
 readOnlyRootFilesystem: true
 `
 
-const Sha256_deploy_scc_db_yaml = "de2274e71f8c6e83c0288623941a75d4dabc8c13a9fb9d0c2648b8fda3968b70"
+const Sha256_deploy_scc_db_yaml = "8a54368eed78778d1e3f0af542979cfd4de16249a18ab50ca9fc07f54ac17fc7"
 
 const File_deploy_scc_db_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -6298,8 +6298,6 @@ allowHostPID: false
 allowHostPorts: false
 allowPrivilegedContainer: false
 readOnlyRootFilesystem: false
-requiredDropCapabilities:
-  - ALL
 fsGroup:
   type: RunAsAny
 runAsUser:
