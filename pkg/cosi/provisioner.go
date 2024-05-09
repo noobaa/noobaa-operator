@@ -476,8 +476,8 @@ func (r *APIRequest) DeleteBucket() error {
 
 func fetchUserCredentials(accessKeys nb.S3AccessKeys) map[string]*cosi.CredentialDetails {
 	s3Keys := make(map[string]string)
-	s3Keys["accessKeyID"] = accessKeys.AccessKey
-	s3Keys["accessSecretKey"] = accessKeys.SecretKey
+	s3Keys["accessKeyID"] = string(accessKeys.AccessKey)
+	s3Keys["accessSecretKey"] = string(accessKeys.SecretKey)
 	creds := &cosi.CredentialDetails{
 		Secrets: s3Keys,
 	}

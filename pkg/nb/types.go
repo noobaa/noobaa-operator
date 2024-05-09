@@ -223,8 +223,8 @@ type PoolHostsInfo struct {
 
 // S3AccessKeys is a struct holding S3 access and secret keys
 type S3AccessKeys struct {
-	AccessKey string `json:"access_key"`
-	SecretKey string `json:"secret_key"`
+	AccessKey MaskedString `json:"access_key"`
+	SecretKey MaskedString `json:"secret_key"`
 }
 
 // ReadAuthReply is the reply of auth_api.read_auth()

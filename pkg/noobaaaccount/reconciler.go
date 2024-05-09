@@ -365,8 +365,8 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 		accessKeys = accountInfo.AccessKeys[0]
 	}
 	r.Secret.StringData = map[string]string{}
-	r.Secret.StringData["AWS_ACCESS_KEY_ID"] = accessKeys.AccessKey
-	r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = accessKeys.SecretKey
+	r.Secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
+	r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
 	r.Own(r.Secret)
 	err = r.Client.Create(r.Ctx, r.Secret)
 	if err != nil {

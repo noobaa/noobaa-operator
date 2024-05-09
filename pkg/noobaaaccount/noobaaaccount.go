@@ -653,14 +653,14 @@ func GenerateAccountKeys(name string) error {
 	accessKeys = accountInfo.AccessKeys[0]
 
 	secret.StringData = map[string]string{}
-	secret.StringData["AWS_ACCESS_KEY_ID"] = accessKeys.AccessKey
-	secret.StringData["AWS_SECRET_ACCESS_KEY"] = accessKeys.SecretKey
+	secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
+	secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
 
 	// If we will not be able to update the secret we will print the credentials as they already been changed by the RPC
 	if !util.KubeUpdate(secret) {
 		log.Printf(`❌  Please write the new credentials for account %s:`, name)
-		fmt.Printf("\nAWS_ACCESS_KEY_ID     : %s\n", accessKeys.AccessKey)
-		fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n\n", accessKeys.SecretKey)
+		fmt.Printf("\nAWS_ACCESS_KEY_ID     : %s\n", string(accessKeys.AccessKey))
+		fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n\n", string(accessKeys.SecretKey))
 		log.Fatalf(`❌  Failed to update the secret %s with the new accessKeys`, secret.Name)
 	}
 
