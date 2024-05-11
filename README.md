@@ -206,7 +206,7 @@ Once a custom resource is installed, users can create, update and access its obj
   - [OBC Provisioner](doc/obc-provisioner.md) - OBC (Object Bucket Claim) is currently the main CR to provision buckets, however it is being deprecated in favor of COSI.
   - [COSI Provisioner](doc/cosi-provisioner.md) - COSI (Container Object Storage Interface) is a new kubernetes storage standard (like CSI, Container Storage Interface) to provision object storage buckets.
 - DB:
-  - THe default DB is postgres, internal in the cluster.
+  - The default DB is postgres, internal in the cluster.
   - [External Postgresql DB support](doc/external-postgres.md)
 - Other:
   - [HA controller](doc/high-availability-controller.md) - High Availability controller improves NooBaa pods recovery in the case of a node failure.
