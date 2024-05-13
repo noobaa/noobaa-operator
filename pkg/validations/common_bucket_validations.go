@@ -44,7 +44,7 @@ func ValidateNSFSAccountConfig(NSFSConfig string) error {
 		}
 	// Otherwise, validate the distinguished name
 	} else if configObj.DistinguishedName != "" {
-		if !linux_username_regex.MatchString(configObj.DistinguishedName) {
+		if !linuxUsernameRegex.MatchString(configObj.DistinguishedName) {
 			return fmt.Errorf("DistinguishedName must be a valid username by Linux standards")
 		}
 	}
