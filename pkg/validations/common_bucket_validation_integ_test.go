@@ -60,28 +60,30 @@ var _ = Describe("Replication Validation tests", func() {
 var _ = Describe("NSFS account config validation tests", func() {
 
 	It("validate valid nsfs account config", func() {
-		validNsfsAccountConfig := getValidNsfsAccountConfig()
-		err := ValidateNSFSAccountConfig(validNsfsAccountConfig)
+		err := ValidateNSFSAccountConfig(getValidNsfsAccountConfig(), getValidBucketclassName())
 		Expect(err).To(BeNil())
 	})
 
+	It("validate valid nsfs account config with empty bucketclass name - should fail", func() {
+		err := ValidateNSFSAccountConfig(getValidNsfsAccountConfig(), getEmptyString())
+		expectedErrMsg := "a bucketclass backed by an NSFS namespacestore is required"
+		Expect(err.Error()).To(ContainSubstring(expectedErrMsg))
+	})
+
 	It("validate invalid nsfs account config - should fail", func() {
-		invalidNSFSAccountConfig := getInvalidNSFSAccountConfig()
-		err := ValidateNSFSAccountConfig(invalidNSFSAccountConfig)
+		err := ValidateNSFSAccountConfig(getInvalidNSFSAccountConfig(), getValidBucketclassName())
 		expectedErrMsg := "NSFS account config must include both"
 		Expect(err.Error()).To(ContainSubstring(expectedErrMsg))
 	})
 
 	It("validate invalid nsfs account config json - should fail", func() {
-		invalidNSFSAccountConfigJSON := getInvalidNSFSAccountConfigJSON()
-		err := ValidateNSFSAccountConfig(invalidNSFSAccountConfigJSON)
+		err := ValidateNSFSAccountConfig(getInvalidNSFSAccountConfigJSON(), getValidBucketclassName())
 		expectedErrMsg := "failed to parse NSFS account config"
 		Expect(err.Error()).To(ContainSubstring(expectedErrMsg))
 	})
 
 	It("validate empty nsfs account config", func() {
-		emptyNSFSAccountConfig := getEmptyString()
-		err := ValidateNSFSAccountConfig(emptyNSFSAccountConfig)
+		err := ValidateNSFSAccountConfig(getEmptyString(), getValidBucketclassName())
 		Expect(err).To(BeNil())
 	})
 })
@@ -119,4 +121,8 @@ func getInvalidNSFSAccountConfigJSON() string {
 func getInvalidNSFSAccountConfig() string {
 	// Invalid because it contains both distinguished_name as well as uid+gid
 	return `{"distinguished_name": "someuser", "uid": 123, "gid": 123}`
+}
+
+func getValidBucketclassName() string {
+	return "bucketclass-1"
 }
