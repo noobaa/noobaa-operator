@@ -32,6 +32,7 @@ func validateAdditionalConfig(objectName string, additionalConfig map[string]str
 	obcMaxObjects := additionalConfig["maxObjects"]
 	replicationPolicy := additionalConfig["replicationPolicy"]
 	NSFSAccountConfig := additionalConfig["nsfsAccountConfig"]
+	bucketclass := additionalConfig["bucketclass"]
 
 	if err := util.ValidateQuotaConfig(objectName, obcMaxSize, obcMaxObjects); err != nil {
 		return err
@@ -41,7 +42,7 @@ func validateAdditionalConfig(objectName string, additionalConfig map[string]str
 		return err
 	}
 
-	if err := validations.ValidateNSFSAccountConfig(NSFSAccountConfig); err != nil {
+	if err := validations.ValidateNSFSAccountConfig(NSFSAccountConfig, bucketclass); err != nil {
 		return err
 	}
 

@@ -147,6 +147,10 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ NSFS account config must include both UID and GID as positive integers`)
 	}
 
+	if bucketClassName == "" && ( gid > -1 || uid > -1 || distinguishedName != "" ) {
+		log.Fatalf(`❌ NSFS account config cannot be set without an NSFS bucketclass`)
+	}
+
 	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml)
 	obc := o.(*nbv1.ObjectBucketClaim)
 	obc.Name = name

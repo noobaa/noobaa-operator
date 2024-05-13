@@ -14,7 +14,7 @@ import (
 var linuxUsernameRegex = regexp.MustCompile(`^[^-:\s][^\s:]{0,30}[^-:\s]$`)
 
 // ValidateNSFSAccountConfig validates that the provided NSFS config is valid
-func ValidateNSFSAccountConfig(NSFSConfig string) error {
+func ValidateNSFSAccountConfig(NSFSConfig string, bucketclass string) error {
 	log := util.Logger()
 
 	if NSFSConfig == "" {
@@ -29,6 +29,9 @@ func ValidateNSFSAccountConfig(NSFSConfig string) error {
 	}
 
 	log.Infof("Validating NSFS config: %+v", NSFSConfig)
+	if bucketclass == "" {
+		return fmt.Errorf("a bucketclass backed by an NSFS namespacestore is required for NSFS account config usage")
+	}
 	// Check if no UID, GID or distinguished name were provided
 	if configObj.UID == nil && configObj.GID == nil && configObj.DistinguishedName == "" {
 		return fmt.Errorf("UID and GID, or DistinguishedName must be provided")

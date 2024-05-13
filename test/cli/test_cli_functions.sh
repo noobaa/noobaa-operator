@@ -1414,11 +1414,11 @@ function obc_nsfs_negative_tests {
     yes n | test_noobaa should_fail obc create testobc --distinguished-name 'test' --uid 42
 }
 
-function test_create_obc_with_nsfs_acc_cfg_uid_gid {
-    local uid=42
-    local gid=505
+function test_create_obc_with_nsfs_acc_cfg_uid_gid_logic {
+    local uid=$1
+    local gid=$2
     local obc_name="giduidtestobc"
-    test_noobaa obc create ${obc_name} --uid 42 --gid 505
+    test_noobaa obc create ${obc_name} --uid ${uid} --gid ${gid}
     local obc_account_nsfs_account=$(test_noobaa api account list_accounts {} -ojson | jq '.accounts[] | select(.bucket_claim_owner | test("'${obc_name}'"))?' | jq '.nsfs_account_config')
     local account_gid=$(echo $obc_account_nsfs_account | jq '.gid')
     local account_uid=$(echo $obc_account_nsfs_account | jq '.uid')
@@ -1427,6 +1427,15 @@ function test_create_obc_with_nsfs_acc_cfg_uid_gid {
         echo_time "❌  [${FUNCNAME[0]}]: Noobaa obc nsfs account creation test failed. Expected: uid=$uid, gid=$gid, Got: uid=$account_uid, gid=$account_gid"
         exit 1
     fi
+}
+
+# test_create_obc_with_nsfs_acc_cfg_uid_gid but it iterates over several pairs of UID and GID - [0,0], [42, 505]
+function test_create_obc_with_nsfs_acc_cfg_uid_gid {
+    for uid in 0 42; do
+        for gid in 0 505; do
+            test_create_obc_with_nsfs_acc_cfg_uid_gid_logic $uid $gid
+        done
+    done
 }
 
 function test_create_obc_with_nsfs_acc_distinguished_name {
