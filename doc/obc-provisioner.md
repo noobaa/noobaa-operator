@@ -106,9 +106,14 @@ spec:
 
 # OBC with an NSFS account config
 
-It is possible to create an OBC on top of NSFS. In order to do this, the user has to provide relevant data in `nsfsAccountConfig` under the `spec.additionalConfig` key.
+It is possible to create an OBC on top of NSFS.
+In order to do this, two prerequisites need to be provided:
+- The name of a bucketclass that was created on top of an NSFS namespacestore
+- Filesystem access mapping (either `uid` and `gid`, or a `distinguished_name`)
 
-The config needs to contain the following fields so that NooBaa can access the filesystem:
+In the case of applying a YAML, the user has to provide the data as a JSON object in `nsfsAccountConfig` under the OBC's `spec.additionalConfig` key (see example below)
+
+Both CLI and YAML options utilize the same parameter names:
 gid - the group ID of the account that should be mimicked within the filesystem
 uid - the user ID of the account that should be mimicked within the filesystem
 OR
@@ -120,7 +125,7 @@ path - the filesystem path that should be 'mounted' as the bucket's root. Please
 Examples:
 
 ```bash
-noobaa obc create my-bucket-claim -n my-app --app-namespace my-app --uid 42 --gid 505 --path '/mnt/nsfs'
+noobaa obc create my-bucket-claim -n my-app --app-namespace my-app --bucketclass nsfs-bucket-class --uid 42 --gid 505 --path '/mnt/nsfs'
 ```
 
 ```yaml
@@ -133,6 +138,7 @@ spec:
   generateBucketName: my-bucket
   storageClassName: noobaa.noobaa.io
   additionalConfig:
+    bucketclass: nsfs-bucket-class
     nsfsAccountConfig: { "distinguished_name": "current_user" }
     path: "/mnt/nsfs"
 ```

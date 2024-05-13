@@ -11,6 +11,8 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 )
 
+var linux_username_regex = regexp.MustCompile(`^[^-:\s][^\s:]{0,30}[^-:\s]$`)
+
 // ValidateNSFSAccountConfig validates that the provided NSFS config is valid
 func ValidateNSFSAccountConfig(NSFSConfig string) error {
 	log := util.Logger()
@@ -27,10 +29,12 @@ func ValidateNSFSAccountConfig(NSFSConfig string) error {
 	}
 
 	log.Infof("Validating NSFS config: %+v", NSFSConfig)
+	// Check if no UID, GID or distinguished name were provided
+	if configObj.UID == nil && configObj.GID == nil && configObj.DistinguishedName == "" {
+		return fmt.Errorf("UID and GID, or DistinguishedName must be provided")
+	}
 	// Check UID/GID cases only in case they're defined
 	if configObj.UID != nil || configObj.GID != nil {
-		// debug print
-		log.Infof("Validating NSFS config: UID: %d, GID: %d, DistinguishedName: %s", *configObj.UID, *configObj.GID, configObj.DistinguishedName)
 		// Check whether only UID or only GID were provided
 		if *configObj.UID < 0 || *configObj.GID < 0 {
 			return fmt.Errorf("UID and GID must be positive integers")
@@ -40,9 +44,8 @@ func ValidateNSFSAccountConfig(NSFSConfig string) error {
 		}
 	// Otherwise, validate the distinguished name
 	} else if configObj.DistinguishedName != "" {
-		regex := regexp.MustCompile(`^[^-:\s][^\s:]{0,30}[^-:\s]$`)
-		if !regex.MatchString(configObj.DistinguishedName) {
-			return fmt.Errorf("DistinguishedName must be a valid string")
+		if !linux_username_regex.MatchString(configObj.DistinguishedName) {
+			return fmt.Errorf("DistinguishedName must be a valid username by Linux standards")
 		}
 	}
 

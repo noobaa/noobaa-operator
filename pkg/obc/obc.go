@@ -139,7 +139,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	uid, _ := cmd.Flags().GetInt("uid")
 	distinguishedName, _ := cmd.Flags().GetString("distinguished-name")
 
-	if len(distinguishedName) > 0 && (gid > -1 || uid > -1) {
+	if distinguishedName != "" && (gid > -1 || uid > -1) {
 		log.Fatalf(`❌ NSFS account config cannot include both distinguished name and UID/GID`)
 	}
 

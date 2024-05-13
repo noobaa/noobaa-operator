@@ -590,9 +590,11 @@ func (r *BucketRequest) CreateAccount() error {
 	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{
 		Name:              r.AccountName,
 		Email:             r.AccountName,
+		// defaultResource is left as-is only because AllowBucketCreate is false 
 		DefaultResource:   defaultResource,
 		HasLogin:          false,
 		S3Access:          true,
+		// If this field is to be changed, DefaultResource above will need to be modified as well
 		AllowBucketCreate: false,
 		BucketClaimOwner:  r.BucketName,
 		NsfsAccountConfig: nsfsAccountConfig,
