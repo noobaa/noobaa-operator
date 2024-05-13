@@ -11,7 +11,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 )
 
-var linux_username_regex = regexp.MustCompile(`^[^-:\s][^\s:]{0,30}[^-:\s]$`)
+var linuxUsernameRegex = regexp.MustCompile(`^[^-:\s][^\s:]{0,30}[^-:\s]$`)
 
 // ValidateNSFSAccountConfig validates that the provided NSFS config is valid
 func ValidateNSFSAccountConfig(NSFSConfig string) error {
