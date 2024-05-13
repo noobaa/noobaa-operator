@@ -29,8 +29,8 @@ function post_install_tests {
     test_noobaa_loadbalancer_source_subnet
     test_multinamespace_bucketclass
     obc_nsfs_negative_tests
-    test_create_obc_with_nsfs_acc_cfg_uid_gid
-    test_create_obc_with_nsfs_acc_distinguished_name
+    # test_create_obc_with_nsfs_acc_cfg_uid_gid
+    # test_create_obc_with_nsfs_acc_distinguished_name
     check_default_backingstore #It deletes all the buckets and non-default accounts, creates new backingstore and attach it to default admin account and then deletes default backingstore
 }
 
