@@ -1422,6 +1422,7 @@ function test_create_obc_with_nsfs_acc_cfg_uid_gid {
     local obc_account_nsfs_account=$(test_noobaa api account list_accounts {} -ojson | jq '.accounts[] | select(.bucket_claim_owner | test("'${obc_name}'"))?' | jq '.nsfs_account_config')
     local account_gid=$(echo $obc_account_nsfs_account | jq '.gid')
     local account_uid=$(echo $obc_account_nsfs_account | jq '.uid')
+    test_noobaa obc delete ${obc_name}
     if [[ $account_gid != $gid || $account_uid != $uid ]]; then
         echo_time "❌  [${FUNCNAME[0]}]: Noobaa obc nsfs account creation test failed. Expected: uid=$uid, gid=$gid, Got: uid=$account_uid, gid=$account_gid"
         exit 1
@@ -1434,6 +1435,7 @@ function test_create_obc_with_nsfs_acc_distinguished_name {
     test_noobaa obc create ${obc_name} --distinguished-name $distinguished_name
     local obc_account_nsfs_account=$(test_noobaa api account list_accounts {} -ojson | jq '.accounts[] | select(.bucket_claim_owner | test("'${obc_name}'"))?' | jq '.nsfs_account_config')
     local account_distinguished_name=$(echo $obc_account_nsfs_account | jq -r '.distinguished_name')
+    test_noobaa obc delete ${obc_name}
     if [[ $account_distinguished_name != $distinguished_name ]]; then
         echo_time "❌  [${FUNCNAME[0]}]: Noobaa obc nsfs account creation test failed. Expected: distinguished_name=$distinguished_name, Got: distinguished_name=$account_distinguished_name"
         exit 1
