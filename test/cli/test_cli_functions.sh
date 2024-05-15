@@ -1420,7 +1420,7 @@ function test_create_obc_with_nsfs_acc_cfg_uid_gid_logic {
     local uid=$1
     local gid=$2
     local obc_name="giduidtestobc"
-    test_noobaa obc create ${obc_name} --uid ${uid} --gid ${gid} --bucketclass noobaa-default-backing-store
+    test_noobaa obc create ${obc_name} --uid ${uid} --gid ${gid} --bucketclass noobaa-default-bucket-class
     local obc_account_nsfs_account=$(test_noobaa api account list_accounts {} -ojson | jq '.accounts[] | select(.bucket_claim_owner | test("'${obc_name}'"))?' | jq '.nsfs_account_config')
     local account_gid=$(echo $obc_account_nsfs_account | jq '.gid')
     local account_uid=$(echo $obc_account_nsfs_account | jq '.uid')
@@ -1443,7 +1443,7 @@ function test_create_obc_with_nsfs_acc_cfg_uid_gid {
 function test_create_obc_with_nsfs_acc_distinguished_name {
     local distinguished_name="someuser"
     local obc_name="distinguishednameobc"
-    test_noobaa obc create ${obc_name} --distinguished-name $distinguished_name --bucketclass noobaa-default-backing-store
+    test_noobaa obc create ${obc_name} --distinguished-name $distinguished_name --bucketclass noobaa-default-bucket-class
     local obc_account_nsfs_account=$(test_noobaa api account list_accounts {} -ojson | jq '.accounts[] | select(.bucket_claim_owner | test("'${obc_name}'"))?' | jq '.nsfs_account_config')
     local account_distinguished_name=$(echo $obc_account_nsfs_account | jq -r '.distinguished_name')
     test_noobaa obc delete ${obc_name}
