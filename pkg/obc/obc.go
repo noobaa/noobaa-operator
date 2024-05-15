@@ -2,6 +2,7 @@ package obc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -51,8 +52,14 @@ func CmdCreate() *cobra.Command {
 		"Set bucket class to specify the bucket policy")
 	cmd.Flags().String("app-namespace", "",
 		"Set the namespace of the application where the OBC should be created")
+	cmd.Flags().Int("gid", -1,
+		"Set the GID for the NSFS account config")
+	cmd.Flags().Int("uid", -1,
+		"Set the UID for the NSFS account config")
+	cmd.Flags().String("distinguished-name", "",
+		"Set the distinguished name for the NSFS account config")
 	cmd.Flags().String("path", "",
-		"Set path to specify inner directory in namespace store target path - can be used only while specifing a namespace bucketclass")
+		"Set path to specify inner directory in namespace store target path, or in the case of NSFS - filesystem mount point (can be used only when specifying a namespace bucketclass)")
 	cmd.Flags().String("replication-policy", "",
 		"Set the json file path that contains replication rules")
 	cmd.Flags().String("max-objects", "",
@@ -128,6 +135,21 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 	maxSize, _ := cmd.Flags().GetString("max-size")
 	maxObjects, _ := cmd.Flags().GetString("max-objects")
+	gid, _ := cmd.Flags().GetInt("gid")
+	uid, _ := cmd.Flags().GetInt("uid")
+	distinguishedName, _ := cmd.Flags().GetString("distinguished-name")
+
+	if distinguishedName != "" && (gid > -1 || uid > -1) {
+		log.Fatalf(`❌ NSFS account config cannot include both distinguished name and UID/GID`)
+	}
+
+	if (gid > -1 && uid == -1) || (gid == -1 && uid > -1) {
+		log.Fatalf(`❌ NSFS account config must include both UID and GID as positive integers`)
+	}
+
+	if bucketClassName == "" && ( gid > -1 || uid > -1 || distinguishedName != "" ) {
+		log.Fatalf(`❌ NSFS account config cannot be set without an NSFS bucketclass`)
+	}
 
 	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml)
 	obc := o.(*nbv1.ObjectBucketClaim)
@@ -176,11 +198,30 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 
 	if replicationPolicy != "" {
-		replication, err := util.LoadBucketReplicationJSON(replicationPolicy)
+		replication, err := util.LoadConfigurationJSON(replicationPolicy)
 		if err != nil {
 			log.Fatalf(`❌ %q`, err)
 		}
 		obc.Spec.AdditionalConfig["replicationPolicy"] = replication
+	}
+
+	if gid > -1 {
+		var nsfsAccountConfig nbv1.AccountNsfsConfig
+		nsfsAccountConfig.GID = &gid
+		nsfsAccountConfig.UID = &uid
+		nsfsAccountConfig.NsfsOnly = true
+		marshalledCfg, _ := json.Marshal(nsfsAccountConfig)
+		obc.Spec.AdditionalConfig["nsfsAccountConfig"] = string(marshalledCfg)
+	}
+
+	if distinguishedName != "" {
+		var nsfsAccountConfig nbv1.AccountNsfsConfig
+		nsfsAccountConfig.DistinguishedName = distinguishedName
+		nsfsAccountConfig.GID = nil
+		nsfsAccountConfig.UID = nil
+		nsfsAccountConfig.NsfsOnly = true
+		marshalledCfg, _ := json.Marshal(nsfsAccountConfig)
+		obc.Spec.AdditionalConfig["nsfsAccountConfig"] = string(marshalledCfg)
 	}
 
 	if maxSize != "" {

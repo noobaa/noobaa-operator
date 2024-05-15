@@ -1585,21 +1585,21 @@ func DeleteStorageClass(sc *storagev1.StorageClass) error {
 	return nil
 }
 
-// LoadBucketReplicationJSON loads the bucket replication from a json file
-func LoadBucketReplicationJSON(replicationJSONFilePath string) (string, error) {
+// LoadConfigurationJSON loads the bucket replication from a json file
+func LoadConfigurationJSON(configurationJSONPath string) (string, error) {
 
-	logrus.Infof("loading bucket replication %v", replicationJSONFilePath)
-	bytes, err := os.ReadFile(replicationJSONFilePath)
+	logrus.Infof("loading JSON configuration file %v", configurationJSONPath)
+	bytes, err := os.ReadFile(configurationJSONPath)
 	if err != nil {
-		return "", fmt.Errorf("Failed to read file %q: %v", replicationJSONFilePath, err)
+		return "", fmt.Errorf("failed to read file %q: %v", configurationJSONPath, err)
 	}
-	var replicationJSON interface{}
-	err = json.Unmarshal(bytes, &replicationJSON)
+	var configurationJSON interface{}
+	err = json.Unmarshal(bytes, &configurationJSON)
 	if err != nil {
-		return "", fmt.Errorf("Failed to parse json file %q: %v", replicationJSONFilePath, err)
+		return "", fmt.Errorf("failed to parse JSON file %q: %v", configurationJSONPath, err)
 	}
 
-	logrus.Infof("✅ Successfully loaded bucket replication %v", string(bytes))
+	logrus.Infof("✅ Successfully loaded JSON configuration %v", string(bytes))
 
 	return string(bytes), nil
 }

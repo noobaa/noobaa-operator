@@ -64,6 +64,8 @@ spec:
                   FS
                 nullable: true
                 properties:
+                  distinguished_name:
+                    type: string
                   gid:
                     type: integer
                   new_buckets_path:
@@ -73,10 +75,8 @@ spec:
                   uid:
                     type: integer
                 required:
-                - gid
                 - new_buckets_path
                 - nsfs_only
-                - uid
                 type: object
             required:
             - allow_bucket_creation
