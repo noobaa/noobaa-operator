@@ -1284,7 +1284,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaaaccounts_yaml = "27b83df8c18c92d9ad5d1d759234dba67011ec003c02323464ebd8569a7d548d"
+const Sha256_deploy_crds_noobaa_io_noobaaaccounts_yaml = "f0cb0ed11f34aa671862b662b05a7000cced16011a6338ef97c6e4093d5d48dc"
 
 const File_deploy_crds_noobaa_io_noobaaaccounts_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -1347,6 +1347,8 @@ spec:
                   FS
                 nullable: true
                 properties:
+                  distinguished_name:
+                    type: string
                   gid:
                     type: integer
                   new_buckets_path:
@@ -1356,10 +1358,8 @@ spec:
                   uid:
                     type: integer
                 required:
-                - gid
                 - new_buckets_path
                 - nsfs_only
-                - uid
                 type: object
             required:
             - allow_bucket_creation

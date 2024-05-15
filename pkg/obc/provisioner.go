@@ -565,14 +565,39 @@ func (r *BucketRequest) CreateAccount() error {
 	if r.BucketClass.Spec.PlacementPolicy != nil {
 		defaultResource = r.BucketClass.Spec.PlacementPolicy.Tiers[0].BackingStores[0]
 	}
+
+	var nsfsAccountConfig *nbv1.AccountNsfsConfig
+	// Validation is already performed as part of ValidateOBC before CreateAccount is ever called
+	// ...but we revalidate to satisfy the linter.
+	if r.OBC.Spec.AdditionalConfig["nsfsAccountConfig"] != "" {
+		nsfsAccountConfig = &nbv1.AccountNsfsConfig{}
+		err := json.Unmarshal([]byte(r.OBC.Spec.AdditionalConfig["nsfsAccountConfig"]), nsfsAccountConfig)
+		if err != nil {
+			return fmt.Errorf("failed to parse NSFS config %q: %w", r.OBC.Spec.AdditionalConfig["nsfsAccountConfig"], err)
+		}
+		// We prefer to make sure this account is only used for its appropriate NSFS operations
+		nsfsAccountConfig.NewBucketsPath = "";
+		nsfsAccountConfig.NsfsOnly = true;
+		// -1 is the default CLI value which we use to indicate that the UID/GID should not be set
+		// 0 cannot be used since it is a valid GID/UID value
+		var IDNullifier = -1
+		if nsfsAccountConfig.UID == &IDNullifier {
+			nsfsAccountConfig.UID = nil
+			nsfsAccountConfig.GID = nil
+		}
+	}
+	
 	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{
 		Name:              r.AccountName,
 		Email:             r.AccountName,
+		// defaultResource is left as-is only because AllowBucketCreate is false 
 		DefaultResource:   defaultResource,
 		HasLogin:          false,
 		S3Access:          true,
+		// If this field is to be changed, DefaultResource above will need to be modified as well
 		AllowBucketCreate: false,
 		BucketClaimOwner:  r.BucketName,
+		NsfsAccountConfig: nsfsAccountConfig,
 	})
 	if err != nil {
 		return err

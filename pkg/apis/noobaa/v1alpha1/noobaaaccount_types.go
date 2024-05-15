@@ -74,10 +74,11 @@ type NooBaaAccountSpec struct {
 
 // AccountNsfsConfig is the configuration of NSFS of CreateAccountParams
 type AccountNsfsConfig struct {
-	UID            int    `json:"uid"`
-	GID            int    `json:"gid"`
-	NewBucketsPath string `json:"new_buckets_path"`
-	NsfsOnly       bool   `json:"nsfs_only"`
+	UID               *int   `json:"uid,omitempty"`
+	GID               *int   `json:"gid,omitempty"`
+	NewBucketsPath    string `json:"new_buckets_path"`
+	NsfsOnly          bool   `json:"nsfs_only"`
+	DistinguishedName string `json:"distinguished_name,omitempty"`
 }
 
 // NooBaaAccountStatus defines the observed state of NooBaaAccount
