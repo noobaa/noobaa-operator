@@ -20,6 +20,9 @@ function post_install_tests {
     obc_cycle
     replication_cycle
     check_backingstore
+    obc_nsfs_negative_tests
+    test_create_obc_with_nsfs_acc_cfg_uid_gid
+    test_create_obc_with_nsfs_acc_distinguished_name
     # check_dbdump
     account_cycle
     check_deletes
@@ -28,9 +31,6 @@ function post_install_tests {
     test_noobaa_cr_deletion
     test_noobaa_loadbalancer_source_subnet
     test_multinamespace_bucketclass
-    obc_nsfs_negative_tests
-    test_create_obc_with_nsfs_acc_cfg_uid_gid
-    test_create_obc_with_nsfs_acc_distinguished_name
     check_default_backingstore #It deletes all the buckets and non-default accounts, creates new backingstore and attach it to default admin account and then deletes default backingstore
 }
 
