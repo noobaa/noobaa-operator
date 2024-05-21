@@ -976,6 +976,22 @@ spec:
                     description: Prometheus namespace that scrap metrics from noobaa
                     type: string
                 type: object
+              bucketLogging:
+                description: BucketLogging sets the configuration for bucket logging
+                properties:
+                  bucketLoggingStorageClass:
+                    description: |-
+                      BucketLoggingStorageClass (optional) specifies the type of storage class that will be used to create a
+                      PVC(Persistent Volume Claim) for guaranteed logging, if enabled.
+                    type: string
+                  loggingType:
+                    description: |-
+                      LoggingType specifies the type of logging for the bucket
+                      There are two types available: best-effort and guaranteed logging
+                      - best-effort(default) - less immune to failures but with better performance
+                      - guaranteed - much more reliable but need to provide a storage class that supports RWX PVs
+                    type: string
+                type: object
               cleanupPolicy:
                 description: CleanupPolicy (optional) Indicates user's policy for
                   deletion
