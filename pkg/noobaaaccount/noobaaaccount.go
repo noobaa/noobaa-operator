@@ -759,8 +759,8 @@ func GenerateNonCrdAccountKeys(name string) error {
 
 	log.Printf("✅ Successfully reganerate s3 credentials for the account %q", name)
 	log.Printf(`✅  Please write the new credentials for account %s:`, name)
-	fmt.Printf("\nAWS_ACCESS_KEY_ID     : %s\n", accessKeys.AccessKey)
-	fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n\n", accessKeys.SecretKey)
+	fmt.Printf("\nAWS_ACCESS_KEY_ID     : %s\n", string(accessKeys.AccessKey))
+	fmt.Printf("AWS_SECRET_ACCESS_KEY : %s\n\n", string(accessKeys.SecretKey))
 
 	return nil
 }
