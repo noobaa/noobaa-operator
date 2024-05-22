@@ -719,6 +719,7 @@ function obc_cycle {
 }
 
 function account_cycle {
+    echo_time "💬  Starting the account cycle"
     local buckets=($(test_noobaa silence bucket list  | grep -v "BUCKET-NAME" | awk '{print $1}'))
     local backingstores=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
     test_noobaa account create account1  #default_resource should be the system default
@@ -726,8 +727,10 @@ function account_cycle {
 
     #admin account that have a secret but no CRD 
     account_regenerate_keys "admin@noobaa.io"
+    account_update_keys "admin@noobaa.io" "Aa123456789123456789" "Aa+/123456789123456789123456789123456789"
     #admin account that don't have a secret and don't have CRD 
     account_regenerate_keys "operator@noobaa.io"
+    account_update_keys "operator@noobaa.io" "Ab987654321987654321" "Ab+/987654321987654321987654321987654321"
     # testing account reset password
     account_reset_password "admin@noobaa.io"
     # testing nsfs accounts
@@ -826,6 +829,53 @@ function account_regenerate_keys {
     if [ "${AWS_SECRET_ACCESS_KEY}" == "${SECRET_ACCESS_KEY_before}" ]
     then
         echo_time "❌ Looks like the SECRET_ACCESS were not regenerated, Exiting"
+        exit 1
+    fi
+}
+
+function account_update_keys {
+    local account=${1}
+    local access_key=${2}
+    local secret_key=${3}
+
+    local AWS_ACCESS_KEY_ID
+    local AWS_SECRET_ACCESS_KEY
+    if [ "${account}" != "operator@noobaa.io" ]
+    then
+        while read line
+        do
+            if [[ ${line} =~ (AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY) ]]
+            then
+                eval $(echo ${line//\"/} | sed -e 's/ //g' -e 's/:/=/g')
+            fi
+        done < <(test_noobaa account status ${account} --show-secrets)
+    fi
+
+    # should fail if account access key not matching the criteria
+    test_noobaa should_fail account credentials ${account} --access-key="Afjlkdsfnla" --secret-key="Aa+/123456789123456789123456789123456789"
+    # should fail if account secret key is not matching the criteria
+    test_noobaa should_fail account credentials ${account} --access-key="Aa123456789123456789" --secret-key="Aandlfknslkdnf"
+
+    local ACCESS_KEY_ID_before=${AWS_ACCESS_KEY_ID}
+    local SECRET_ACCESS_KEY_before=${AWS_SECRET_ACCESS_KEY}
+    while read line
+    do
+        if [[ ${line} =~ (AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY) ]]
+        then
+            eval $(echo ${line//\"/} | sed -e 's/ //g' -e 's/:/=/g')
+        fi
+    done < <(yes | test_noobaa account credentials ${account} \
+        --access-key=${access_key} --secret-key=${secret_key} --show-secrets)
+
+    if [ "${AWS_ACCESS_KEY_ID}" == "${ACCESS_KEY_ID_before}" ]
+    then
+        echo_time "❌ Looks like the ACCESS_KEY were not updated, Exiting"
+        exit 1
+    fi
+
+    if [ "${AWS_SECRET_ACCESS_KEY}" == "${SECRET_ACCESS_KEY_before}" ]
+    then
+        echo_time "❌ Looks like the SECRET_ACCESS were not updated, Exiting"
         exit 1
     fi
 }

@@ -90,6 +90,12 @@ type ValidationError struct {
 	Msg string
 }
 
+// AccessKeyRegexp validates access keys, which are 20 characters long and may include alphanumeric characters
+var AccessKeyRegexp, _ = regexp.Compile(`^[a-zA-Z0-9]{20}$`)
+
+// SecretKeyRegexp validates secret keys, which are 40 characters long and may include alphanumeric characters '+' and '/'
+var SecretKeyRegexp, _ = regexp.Compile(`^[a-zA-Z0-9+/]{40}$`)
+
 // IsValidationError check if err is of type ValidationError
 func IsValidationError(err error) bool {
 	_, ok := err.(ValidationError)
