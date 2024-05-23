@@ -301,6 +301,10 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 		},
 	)
 
+	if podSpec.InitContainers == nil {
+		podSpec.InitContainers = NooBaaDBTemplate.Spec.Template.Spec.InitContainers
+	}
+
 	for i := range podSpec.InitContainers {
 		c := &podSpec.InitContainers[i]
 		if c.Name == "initialize-database" {
