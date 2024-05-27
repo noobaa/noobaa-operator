@@ -223,6 +223,10 @@ type NooBaaSpec struct {
 	// DenyHTTP (optional) if given will deny access to the NooBaa S3 service using HTTP (only HTTPS)
 	// +optional
 	DenyHTTP bool `json:"denyHTTP,omitempty"`
+
+	// BucketLogging sets the configuration for bucket logging
+	// +optional
+	BucketLogging BucketLoggingSpec `json:"bucketLogging,omitempty"`
 }
 
 // AutoscalerSpec defines different actoscaling spec such as autoscaler type and prometheus namespace
@@ -235,6 +239,21 @@ type AutoscalerSpec struct {
 	// Prometheus namespace that scrap metrics from noobaa
 	// +optional
 	PrometheusNamespace string `json:"prometheusNamespace,omitempty"`
+}
+
+// BucketLoggingSpec defines the bucket logging configuration
+type BucketLoggingSpec struct {
+	// LoggingType specifies the type of logging for the bucket
+	// There are two types available: best-effort and guaranteed logging
+	// - best-effort(default) - less immune to failures but with better performance
+	// - guaranteed - much more reliable but need to provide a storage class that supports RWX PVs
+	// +optional
+	LoggingType BucketLoggingTypes `json:"loggingType,omitempty"`
+
+	// BucketLoggingStorageClass (optional) specifies the type of storage class that will be used to create a
+	// PVC(Persistent Volume Claim) for guaranteed logging, if enabled.
+	// +optional
+	BucketLoggingStorageClass *string `json:"bucketLoggingStorageClass,omitempty"`
 }
 
 // LoadBalancerSourceSubnetSpec defines the subnets that will be allowed to access the NooBaa services
@@ -538,4 +557,16 @@ const (
 	AutoscalerTypeKeda AutoscalerTypes = "keda"
 	// AutoscalerTypeHPAV2 is hpav2
 	AutoscalerTypeHPAV2 AutoscalerTypes = "hpav2"
+)
+
+// BucketLoggingTypes is a string enum type for specifying the types of bucketlogging supported.
+type BucketLoggingTypes string
+
+// These are the valid BucketLoggingTypes types:
+const (
+	// BucketLoggingTypeBestEffort is best-effort
+	BucketLoggingTypeBestEffort BucketLoggingTypes = "best-effort"
+
+	// BucketLoggingTypeGuaranteed is guaranteed
+	BucketLoggingTypeGuaranteed BucketLoggingTypes = "guaranteed"
 )

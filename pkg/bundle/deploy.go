@@ -1483,7 +1483,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "0c697107c4b9d4781dfff92f8e29a95ed22d26c43b8208f39daea0a6674672df"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "9fc4f547417125d6ad6246a27690a88fbbb054ffb7e318ed7cf9e21ca2c707ef"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2461,6 +2461,22 @@ spec:
                     type: string
                   prometheusNamespace:
                     description: Prometheus namespace that scrap metrics from noobaa
+                    type: string
+                type: object
+              bucketLogging:
+                description: BucketLogging sets the configuration for bucket logging
+                properties:
+                  bucketLoggingStorageClass:
+                    description: |-
+                      BucketLoggingStorageClass (optional) specifies the type of storage class that will be used to create a
+                      PVC(Persistent Volume Claim) for guaranteed logging, if enabled.
+                    type: string
+                  loggingType:
+                    description: |-
+                      LoggingType specifies the type of logging for the bucket
+                      There are two types available: best-effort and guaranteed logging
+                      - best-effort(default) - less immune to failures but with better performance
+                      - guaranteed - much more reliable but need to provide a storage class that supports RWX PVs
                     type: string
                 type: object
               cleanupPolicy:
