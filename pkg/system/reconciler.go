@@ -101,6 +101,7 @@ type Reconciler struct {
 	DefaultNamespaceStore     *nbv1.NamespaceStore
 	DefaultNsfsPvc            *corev1.PersistentVolumeClaim
 	OBCStorageClass           *storagev1.StorageClass
+	BucketLoggingPVC          *corev1.PersistentVolumeClaim
 	PrometheusRule            *monitoringv1.PrometheusRule
 	ServiceMonitorMgmt        *monitoringv1.ServiceMonitor
 	ServiceMonitorS3          *monitoringv1.ServiceMonitor
@@ -167,6 +168,7 @@ func NewReconciler(
 		DefaultNamespaceStore:     util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore),
 		DefaultNsfsPvc:            util.KubeObject(bundle.File_deploy_internal_nsfs_pvc_cr_yaml).(*corev1.PersistentVolumeClaim),
 		OBCStorageClass:           util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
+		BucketLoggingPVC:          util.KubeObject(bundle.File_deploy_internal_pvc_agent_yaml).(*corev1.PersistentVolumeClaim),
 		PrometheusRule:            util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		ServiceMonitorMgmt:        util.KubeObject(bundle.File_deploy_internal_servicemonitor_mgmt_yaml).(*monitoringv1.ServiceMonitor),
 		ServiceMonitorS3:          util.KubeObject(bundle.File_deploy_internal_servicemonitor_s3_yaml).(*monitoringv1.ServiceMonitor),
@@ -225,6 +227,7 @@ func NewReconciler(
 	r.KedaTriggerAuthentication.Namespace = r.Request.Namespace
 	r.KedaScaled.Namespace = r.Request.Namespace
 	r.AdapterHPA.Namespace = r.Request.Namespace
+	r.BucketLoggingPVC.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -268,6 +271,7 @@ func NewReconciler(
 	r.CaBundleConf.Name = r.Request.Name + "-ca-inject"
 	r.KedaScaled.Name = r.Request.Name
 	r.AdapterHPA.Name = r.Request.Name + "-hpav2"
+	r.BucketLoggingPVC.Name = r.Request.Name + "-bucket-logging-pvc"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name
