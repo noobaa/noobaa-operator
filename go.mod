@@ -37,7 +37,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.72.0
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rook/rook/pkg/apis v0.0.0-20240513003450-39f88521f0fd
+	github.com/rook/rook/pkg/apis v0.0.0-20240607162148-886c94854899
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
@@ -45,11 +45,11 @@ require (
 	golang.org/x/term v0.20.0
 	google.golang.org/api v0.155.0
 	google.golang.org/grpc v1.62.1
-	k8s.io/api v0.29.3
+	k8s.io/api v0.29.5
 	k8s.io/apiextensions-apiserver v0.29.2
-	k8s.io/apimachinery v0.29.3
+	k8s.io/apimachinery v0.29.5
 	k8s.io/cli-runtime v0.28.4
-	k8s.io/client-go v0.29.3
+	k8s.io/client-go v0.29.5
 	k8s.io/code-generator v0.29.2
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01
 	k8s.io/kube-aggregator v0.27.1
@@ -138,15 +138,14 @@ require (
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-hclog v1.5.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.5 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.6 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.8 // indirect
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.6 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-5 // indirect
-	github.com/hashicorp/vault/api v1.13.0 // indirect
+	github.com/hashicorp/vault/api v1.14.0 // indirect
 	github.com/hashicorp/vault/api/auth/approle v0.6.0 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -192,7 +191,7 @@ require (
 	golang.org/x/arch v0.4.0 // indirect
 	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/net v0.23.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/oauth2 v0.18.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
