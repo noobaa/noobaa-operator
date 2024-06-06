@@ -1483,7 +1483,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "9fc4f547417125d6ad6246a27690a88fbbb054ffb7e318ed7cf9e21ca2c707ef"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "713f70e6340bd50db5bba1f4e552d2a7096625a8767fd708d092c91f0087f7d0"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3132,10 +3132,10 @@ spec:
                 type: object
               manualDefaultBackingStore:
                 description: |-
-                  ManualDefaultBackingStore (optional - default value is false) if true the default backingstore will
-                  not be reconciled by the operator and it should be manually handled by the user. It will allow the
-                  user to  delete DefaultBackingStore, user needs to delete associated buckets and update the admin
-                  account with new BackingStore in order to delete the DefaultBackingStore
+                  ManualDefaultBackingStore (optional - default value is false) if true the default backingstore/namespacestore
+                  will not be reconciled by the operator and it should be manually handled by the user. It will allow the
+                  user to  delete DefaultBackingStore/DefaultNamespaceStore, user needs to delete associated buckets and
+                  update the admin account with new BackingStore/NamespaceStore in order to delete the DefaultBackingStore/DefaultNamespaceStore
                 nullable: true
                 type: boolean
               pvPoolDefaultStorageClass:
@@ -4300,6 +4300,20 @@ metadata:
   annotations:
     service.beta.openshift.io/inject-cabundle: 'true'
 data: {}
+`
+
+const Sha256_deploy_internal_nsfs_pvc_cr_yaml = "545eb71b68dc5bcdf86da7c1ce5d7303c750e223cb32c7e3fc1f22d57617926f"
+
+const File_deploy_internal_nsfs_pvc_cr_yaml = `apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: noobaa-default-nsfs-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 30Gi
 `
 
 const Sha256_deploy_internal_pod_agent_yaml = "a02ebca336c7db9e4b84a13459e30664fd8fd2a8ea238e188685caea52a281fd"

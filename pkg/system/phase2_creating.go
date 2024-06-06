@@ -801,7 +801,6 @@ func (r *Reconciler) ReconcileIBMCredentials() error {
 	return nil
 }
 
-
 // SetDesiredAgentProfile updates the value of the AGENT_PROFILE env
 func (r *Reconciler) SetDesiredAgentProfile(profileString string) string {
 	agentProfile := map[string]interface{}{}
