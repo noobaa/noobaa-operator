@@ -3852,7 +3852,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "bcce4839c69c3353ba36fd94aea2c8d7cf46e570a0106467f8bd7430acea18b7"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "92e43b6069c5c28ee7c9efe9fc64d641d35f9e12e53773630ebfedd4685aeb88"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3887,6 +3887,10 @@ spec:
         - name: s3-secret
           secret:
             secretName: noobaa-s3-serving-cert
+            optional: true
+        - name: sts-secret
+          secret:
+            secretName: noobaa-sts-serving-cert
             optional: true
         # This service account token can be used to provide identity outside the cluster.
         # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
@@ -3991,6 +3995,9 @@ spec:
               readOnly: true
             - name: noobaa-server
               mountPath: /etc/noobaa-server
+              readOnly: true
+            - name: sts-secret
+              mountPath: /etc/sts-secret
               readOnly: true
             # used for aws sts endpoint type
             - name: bound-sa-token
@@ -4795,7 +4802,7 @@ spec:
 
 `
 
-const Sha256_deploy_internal_service_sts_yaml = "51e73a53da81ceaad02fb6380658dee5375b824183aba1a27c83251ce62bccb6"
+const Sha256_deploy_internal_service_sts_yaml = "79224e49aed0b4466014599fad98dce701cff56f819c9fe5accf71144fffb404"
 
 const File_deploy_internal_service_sts_yaml = `apiVersion: v1
 kind: Service
@@ -4803,6 +4810,9 @@ metadata:
   name: sts
   labels:
     app: noobaa
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: 'noobaa-sts-serving-cert'
+    service.alpha.openshift.io/serving-cert-secret-name: 'noobaa-sts-serving-cert'
 spec:
   type: LoadBalancer
   selector:
