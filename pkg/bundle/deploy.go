@@ -4899,7 +4899,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "9e5d53eeabce0afc9f3059802f579dc1b69e07c9b1954a8e9bdb9008ac3534d0"
+const Sha256_deploy_internal_statefulset_core_yaml = "7b00c7a0e22fe28cb0827a696381b78c2bd79812a7dacbaa51cfe243e91f4f99"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4932,10 +4932,6 @@ spec:
           secret:
             secretName: noobaa-mgmt-serving-cert
             optional: true
-        - name: s3-secret
-          secret:
-            secretName: noobaa-s3-serving-cert
-            optional: true
         - name: noobaa-server
           secret:
             secretName: noobaa-server
@@ -4960,9 +4956,6 @@ spec:
               mountPath: /log
             - name: mgmt-secret
               mountPath: /etc/mgmt-secret
-              readOnly: true
-            - name: s3-secret
-              mountPath: /etc/s3-secret
               readOnly: true
             - name: noobaa-server
               mountPath: /etc/noobaa-server
