@@ -3852,7 +3852,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "92e43b6069c5c28ee7c9efe9fc64d641d35f9e12e53773630ebfedd4685aeb88"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "846a11f2ff8035ee4beb2dff72339f4cd946b05827c76489a44e921be2c34f48"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3965,6 +3965,7 @@ spec:
             - name: LOCAL_N2N_AGENT
             - name: NOOBAA_ROOT_SECRET
             - name: NODE_EXTRA_CA_CERTS
+            - name: GUARANTEED_LOGS_PATH
             - name: CONTAINER_CPU_REQUEST
               valueFrom:
                 resourceFieldRef:
@@ -4899,7 +4900,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "7b00c7a0e22fe28cb0827a696381b78c2bd79812a7dacbaa51cfe243e91f4f99"
+const Sha256_deploy_internal_statefulset_core_yaml = "0e7e90edc6c96f93cbdbdcc6aa6b64f05a98a88b181d94780d9a97fb2fcecd07"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5003,6 +5004,7 @@ spec:
             - name: POSTGRES_CONNECTION_STRING
             - name: POSTGRES_SSL_REQUIRED
             - name: POSTGRES_SSL_UNAUTHORIZED
+            - name: GUARANTEED_LOGS_PATH
             - name: DB_TYPE
               value: postgres
             - name: CONTAINER_PLATFORM

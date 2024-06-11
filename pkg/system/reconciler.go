@@ -102,6 +102,8 @@ type Reconciler struct {
 	DefaultNsfsPvc            *corev1.PersistentVolumeClaim
 	OBCStorageClass           *storagev1.StorageClass
 	BucketLoggingPVC          *corev1.PersistentVolumeClaim
+	BucketLoggingVolume       string
+	BucketLoggingVolumeMount  string
 	PrometheusRule            *monitoringv1.PrometheusRule
 	ServiceMonitorMgmt        *monitoringv1.ServiceMonitor
 	ServiceMonitorS3          *monitoringv1.ServiceMonitor
@@ -294,6 +296,10 @@ func NewReconciler(
 	r.AWSSTSRoleSessionName = "noobaa-sts-default-backing-store-session"
 	// Setting default AWS STS cluster as false
 	r.IsAWSSTSCluster = false
+
+	// Set bucket logging volume mount name and path
+	r.BucketLoggingVolume = r.Request.Name + "-bucket-logging-volume"
+	r.BucketLoggingVolumeMount = "etc/logs/bucket-logs"
 
 	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.Containers[0].DeepCopy()
 	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.DeepCopy()
