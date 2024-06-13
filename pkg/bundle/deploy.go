@@ -1483,7 +1483,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "713f70e6340bd50db5bba1f4e552d2a7096625a8767fd708d092c91f0087f7d0"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "38de8fc346b263dea9de452132ebe8fa48339d21b68c9685cb3c6a916fac1429"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2466,10 +2466,12 @@ spec:
               bucketLogging:
                 description: BucketLogging sets the configuration for bucket logging
                 properties:
-                  bucketLoggingStorageClass:
+                  bucketLoggingPVC:
                     description: |-
-                      BucketLoggingStorageClass (optional) specifies the type of storage class that will be used to create a
-                      PVC(Persistent Volume Claim) for guaranteed logging, if enabled.
+                      BucketLoggingPVC (optional) specifies the name of the Persistent Volume Claim (PVC) to be used
+                      for guaranteed logging when the logging type is set to 'guaranteed'. The PVC must support
+                      ReadWriteMany (RWX) access mode to ensure reliable logging.
+                      For ODF: If not provided, the default CephFS storage class will be used to create the PVC.
                     type: string
                   loggingType:
                     description: |-
