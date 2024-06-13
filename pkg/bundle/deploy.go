@@ -3650,7 +3650,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "9ce7163b6de6bf58c2804ca6be2efc69fef7c90951fa549d17fa08a3a2684fc8"
+const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "0b93bb19686b10042ebe098631783c785ee2caa9d08680ab2fbe064f139cc2ef"
 
 const File_deploy_internal_configmap_postgres_initdb_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3694,6 +3694,8 @@ data:
 
             
   dumpdb.sh: |
+          exec 1>>/var/lib/pgsql/dumpdb.log 2>&1
+          date
           set -e
           sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
           su postgres -c "bash -x /usr/bin/run-postgresql" &
@@ -3710,6 +3712,8 @@ data:
           exit 0
 
   upgradedb.sh: |
+          exec 1>>/var/lib/pgsql/upgradedb.log 2>&1
+          date
           set -e
           PGDATA=$HOME/data/userdata
           PGDATA_12=$HOME/data/userdata-12
@@ -3726,12 +3730,14 @@ data:
           fi
           sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
           su postgres -c "bash -x /usr/bin/run-postgresql" &
-          until pg_isready; do sleep 1; done;
+          until pg_isready; do sleep 1;echo "sleeping.."; done;
           psql -U postgres < /$HOME/data/dump.sql
           rm /$HOME/data/dump.sql
           exit 0
 
   revertdb.sh: |
+          exec 1>>/var/lib/pgsql/revertdb.log 2>&1
+          date
           PGDATA=$HOME/data/userdata
           PGDATA_12=$HOME/data/userdata-12
           if [ -d $PGDATA_12 ]; then
