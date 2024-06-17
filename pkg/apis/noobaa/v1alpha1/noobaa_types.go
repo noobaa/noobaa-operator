@@ -250,10 +250,12 @@ type BucketLoggingSpec struct {
 	// +optional
 	LoggingType BucketLoggingTypes `json:"loggingType,omitempty"`
 
-	// BucketLoggingStorageClass (optional) specifies the type of storage class that will be used to create a
-	// PVC(Persistent Volume Claim) for guaranteed logging, if enabled.
+	// BucketLoggingPVC (optional) specifies the name of the Persistent Volume Claim (PVC) to be used
+	// for guaranteed logging when the logging type is set to 'guaranteed'. The PVC must support
+	// ReadWriteMany (RWX) access mode to ensure reliable logging.
+	// For ODF: If not provided, the default CephFS storage class will be used to create the PVC.
 	// +optional
-	BucketLoggingStorageClass *string `json:"bucketLoggingStorageClass,omitempty"`
+	BucketLoggingPVC *string `json:"bucketLoggingPVC,omitempty"`
 }
 
 // LoadBalancerSourceSubnetSpec defines the subnets that will be allowed to access the NooBaa services
