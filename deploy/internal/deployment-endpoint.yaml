@@ -32,6 +32,10 @@ spec:
           secret:
             secretName: noobaa-s3-serving-cert
             optional: true
+        - name: sts-secret
+          secret:
+            secretName: noobaa-sts-serving-cert
+            optional: true
         # This service account token can be used to provide identity outside the cluster.
         # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
         - name: bound-sa-token
@@ -135,6 +139,9 @@ spec:
               readOnly: true
             - name: noobaa-server
               mountPath: /etc/noobaa-server
+              readOnly: true
+            - name: sts-secret
+              mountPath: /etc/sts-secret
               readOnly: true
             # used for aws sts endpoint type
             - name: bound-sa-token

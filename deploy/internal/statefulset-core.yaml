@@ -29,10 +29,6 @@ spec:
           secret:
             secretName: noobaa-mgmt-serving-cert
             optional: true
-        - name: s3-secret
-          secret:
-            secretName: noobaa-s3-serving-cert
-            optional: true
         - name: noobaa-server
           secret:
             secretName: noobaa-server
@@ -57,9 +53,6 @@ spec:
               mountPath: /log
             - name: mgmt-secret
               mountPath: /etc/mgmt-secret
-              readOnly: true
-            - name: s3-secret
-              mountPath: /etc/s3-secret
               readOnly: true
             - name: noobaa-server
               mountPath: /etc/noobaa-server
