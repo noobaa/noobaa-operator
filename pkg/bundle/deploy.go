@@ -4311,7 +4311,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_nsfs_pvc_cr_yaml = "545eb71b68dc5bcdf86da7c1ce5d7303c750e223cb32c7e3fc1f22d57617926f"
+const Sha256_deploy_internal_nsfs_pvc_cr_yaml = "6dd65ca7d324991b813f209ec6a8a6bcf6c2c9a9f45c519ad3fba51e25042f07"
 
 const File_deploy_internal_nsfs_pvc_cr_yaml = `apiVersion: v1
 kind: PersistentVolumeClaim
@@ -4319,7 +4319,7 @@ metadata:
   name: noobaa-default-nsfs-pvc
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 30Gi
