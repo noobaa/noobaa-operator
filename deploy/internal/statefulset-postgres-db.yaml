@@ -81,6 +81,9 @@ spec:
                 key: password
                 name: noobaa-db
         imagePullPolicy: "IfNotPresent"
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
         ports:
           - containerPort: 5432
         resources:

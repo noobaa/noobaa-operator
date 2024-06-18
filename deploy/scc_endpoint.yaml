@@ -19,8 +19,7 @@ groups: []
 priority: null
 readOnlyRootFilesystem: false
 requiredDropCapabilities:
-- KILL
-- MKNOD
+  - ALL
 runAsUser:
   type: RunAsAny
 seLinuxContext:

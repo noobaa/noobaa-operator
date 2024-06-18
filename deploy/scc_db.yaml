@@ -10,9 +10,6 @@ allowHostPID: false
 allowHostPorts: false
 allowPrivilegedContainer: false
 readOnlyRootFilesystem: false
-allowedCapabilities:
-- SETUID
-- SETGID
 fsGroup:
   type: RunAsAny
 runAsUser:
