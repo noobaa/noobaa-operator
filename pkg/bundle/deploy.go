@@ -3650,7 +3650,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "0b93bb19686b10042ebe098631783c785ee2caa9d08680ab2fbe064f139cc2ef"
+const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "5012249f1b3c697e875df4df4cde80d74ff9954dd6b2ae93a1f37e91194c697f"
 
 const File_deploy_internal_configmap_postgres_initdb_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3708,7 +3708,24 @@ data:
           fi
           echo "Info: Free space $USE% is below $THRESHOLD% threshold. Starting upgrade!"
           until pg_isready; do sleep 1; done;
+          # after pg_isready, sleep for 30 seconds, since /usr/bin/run-postgresql script will restart the postgres service
+          sleep 30
+          # make sure again that postgres is running and ready
+          until pg_isready; do sleep 1; done;
+          set +e
+          # dump the db. retry 3 times in case of failure
+          for i in {1..3}; do
             pg_dumpall -U postgres > /$HOME/data/dump.sql
+            if [ $? -eq 0 ]; then
+              break
+            elif [ $i -eq 3 ]; then
+              echo "Failed to dump the db"
+              exit 1
+            fi
+            sleep 10
+          done
+          until pg_isready; do sleep 1; done;
+          pg_dumpall -U postgres > /$HOME/data/dump.sql
           exit 0
 
   upgradedb.sh: |
@@ -3731,7 +3748,22 @@ data:
           sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
           su postgres -c "bash -x /usr/bin/run-postgresql" &
           until pg_isready; do sleep 1;echo "sleeping.."; done;
-          psql -U postgres < /$HOME/data/dump.sql
+          # after pg_isready, sleep for 30 seconds, since /usr/bin/run-postgresql script will restart the postgres service
+          sleep 30
+          # make sure again that postgres is running and ready
+          until pg_isready; do sleep 1;echo "sleeping.."; done;
+          # restore the dump. retry 3 times in case of failure
+          set +e
+          for i in {1..3}; do
+            psql -U postgres < /$HOME/data/dump.sql
+            if [ $? -eq 0 ]; then
+              break
+            elif [ $i -eq 3 ]; then
+              echo "Failed to restore the dump"
+              exit 1
+            fi
+            sleep 10
+          done
           rm /$HOME/data/dump.sql
           exit 0
 
