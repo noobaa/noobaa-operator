@@ -7,6 +7,9 @@ import (
 
 	// this is the driver we are using for psql
 	_ "github.com/lib/pq"
+	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/asaskevich/govalidator"
 	semver "github.com/coreos/go-semver/semver"
@@ -59,6 +62,12 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			os.Setenv("PGSSLCERT", "/tmp/tls.crt")
 		}
 		if err := r.checkExternalPg(r.ExternalPgSecret.StringData["db_url"]); err != nil {
+			return err
+		}
+	}
+
+	if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
+		if err := r.checkBucketLoggingPVC(); err != nil {
 			return err
 		}
 	}
@@ -251,4 +260,40 @@ func (r *Reconciler) checkExternalPg(postgresDbURL string) error {
 				dbURL, collation))
 	}
 	return nil
+}
+
+// checkBucketLoggingPVC validates the configuration of bucket logging pvc
+func (r *Reconciler) checkBucketLoggingPVC() error {
+	// Rejecting if 'BucketLoggingPVC' is not provided for 'guaranteed' logging and
+	// also the operator is not running in the ODF environment.
+	sc := &storagev1.StorageClass{
+		TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
+		ObjectMeta: metav1.ObjectMeta{Name: "ocs-storagecluster-cephfs"},
+	}
+	if r.NooBaa.Spec.BucketLogging.BucketLoggingPVC == nil && !util.KubeCheck(sc) {
+		return util.NewPersistentError("InvalidBucketLoggingConfiguration",
+			"'Guaranteed' BucketLogging requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'BucketLoggingPVC' to ensure guaranteed logging")
+	}
+
+	// Check if pvc exists in the cluster
+	BucketLoggingPVC := &corev1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{Kind: "PersistenVolumeClaim"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      *r.NooBaa.Spec.BucketLogging.BucketLoggingPVC,
+			Namespace: r.Request.Namespace,
+		},
+	}
+	if !util.KubeCheck(BucketLoggingPVC) {
+		return util.NewPersistentError("InvalidBucketLoggingConfiguration",
+			"The specified 'BucketLoggingPVC' was not found")
+	}
+
+	// Check if pvc supports RWX access mode
+	for _, accessMode := range BucketLoggingPVC.Spec.AccessModes {
+		if accessMode == corev1.ReadWriteMany {
+			return nil
+		}
+	}
+	return util.NewPersistentError("InvalidBucketLoggingConfiguration",
+		"The specified 'BucketLoggingPVC' does not support RWX access mode")
 }

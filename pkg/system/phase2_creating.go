@@ -128,6 +128,12 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 			return err
 		}
 	}
+	// create bucket logging pvc if not provided by user for 'Guaranteed' logging in ODF env
+	if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
+		if err := r.ReconcileODFBucketLoggingPVC(); err != nil {
+			return err
+		}
+	}
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
 		return err
 	}
@@ -1104,6 +1110,58 @@ func (r *Reconciler) ReconcileDBConfigMap(cm *corev1.ConfigMap, desiredFunc func
 		return false, fmt.Errorf("could not update Postgres DB configMap %q in Namespace %q", cm.Name, cm.Namespace)
 	}
 	return r.isObjectUpdated(result), nil
+}
+
+// ReconcileODFBucketLoggingPVC ensures the bucket logging PVC is properly configured for 'guaranteed' logging
+func (r *Reconciler) ReconcileODFBucketLoggingPVC() error {
+	log := r.Logger.WithField("func", "ReconcileBucketLoggingPVC")
+
+	// Return if bucket logging PVC already exist
+	if r.NooBaa.Spec.BucketLogging.BucketLoggingPVC != nil {
+		r.BucketLoggingPVC.Name = *r.NooBaa.Spec.BucketLogging.BucketLoggingPVC
+		log.Infof("BucketLoggingPVC %s already exists and supports RWX access mode. Skipping ReconcileODFBucketLoggingPVC.", r.BucketLoggingPVC.Name)
+		return nil
+	}
+
+	util.KubeCheck(r.BucketLoggingPVC)
+	if r.BucketLoggingPVC.UID != "" {
+		log.Infof("BucketLoggingPVC %s already exists. Skipping creation.", r.BucketLoggingPVC.Name)
+		return nil
+	}
+
+	if err := r.prepareODFBucketLoggingPVC(); err != nil {
+		return err
+	}
+	r.Own(r.BucketLoggingPVC)
+
+	log.Infof("BucketLoggingPVC %s does not exist. Creating...", r.BucketLoggingPVC.Name)
+	err := r.Client.Create(r.Ctx, r.BucketLoggingPVC)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// prepareODFBucketLoggingPVC configures the bucket logging pvc
+func (r *Reconciler) prepareODFBucketLoggingPVC() error {
+	r.BucketLoggingPVC.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}
+
+	sc := &storagev1.StorageClass{
+		TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
+		ObjectMeta: metav1.ObjectMeta{Name: "ocs-storagecluster-cephfs"},
+	}
+
+	// fallback to cephfs storageclass to create bucket logging pvc if running on ODF
+	if util.KubeCheck(sc) {
+		r.Logger.Infof("BucketLoggingPVC not provided, defaulting to 'cephfs' storage class %s to create bucket logging pvc", sc.Name)
+		r.BucketLoggingPVC.Spec.StorageClassName = &sc.Name
+	} else {
+		return util.NewPersistentError("InvalidBucketLoggingConfiguration",
+			"'Guaranteed' BucketLogging requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'BucketLoggingPVC' to ensure guaranteed logging")
+	}
+
+	return nil
 }
 
 // SetDesiredPostgresDBConf fill desired postgres db config map
