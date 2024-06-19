@@ -3650,7 +3650,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "5012249f1b3c697e875df4df4cde80d74ff9954dd6b2ae93a1f37e91194c697f"
+const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "5ef599d78f148d91023d38ef516f73a0d903dfb060eb382fb741b65291955fbe"
 
 const File_deploy_internal_configmap_postgres_initdb_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3724,8 +3724,6 @@ data:
             fi
             sleep 10
           done
-          until pg_isready; do sleep 1; done;
-          pg_dumpall -U postgres > /$HOME/data/dump.sql
           exit 0
 
   upgradedb.sh: |

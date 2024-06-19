@@ -70,8 +70,6 @@ data:
             fi
             sleep 10
           done
-          until pg_isready; do sleep 1; done;
-          pg_dumpall -U postgres > /$HOME/data/dump.sql
           exit 0
 
   upgradedb.sh: |
