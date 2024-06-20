@@ -403,9 +403,12 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					} else {
 						c.Env[j].Value = ""
 					}
-
 				case "NODE_EXTRA_CA_CERTS":
 					c.Env[j].Value = r.ApplyCAsToPods
+				case "GUARANTEED_LOGS_PATH":
+					if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
+						c.Env[j].Value = r.BucketLoggingVolumeMount
+					}
 				}
 			}
 
@@ -524,6 +527,24 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 			ReadOnly:  true,
 		}}
 		util.MergeVolumeMountList(&container.VolumeMounts, &secretVolumeMounts)
+	}
+
+	if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
+		bucketLogVolumes := []corev1.Volume{{
+			Name: r.BucketLoggingVolume,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: r.BucketLoggingPVC.Name,
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &bucketLogVolumes)
+
+		bucketLogVolumeMounts := []corev1.VolumeMount{{
+			Name:      r.BucketLoggingVolume,
+			MountPath: r.BucketLoggingVolumeMount,
+		}}
+		util.MergeVolumeMountList(&container.VolumeMounts, &bucketLogVolumeMounts)
 	}
 
 	r.setDesiredRootMasterKeyMounts(podSpec, container)

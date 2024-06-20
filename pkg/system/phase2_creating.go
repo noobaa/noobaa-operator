@@ -427,6 +427,10 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			c.Env[j].Value = r.SecretRootMasterKey
 		case "NODE_EXTRA_CA_CERTS":
 			c.Env[j].Value = r.ApplyCAsToPods
+		case "GUARANTEED_LOGS_PATH":
+			if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
+				c.Env[j].Value = r.BucketLoggingVolumeMount
+			}
 		}
 	}
 }
@@ -483,6 +487,13 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 					ReadOnly:  true,
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &secretVolumeMounts)
+			}
+			if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
+				bucketLogVolumeMounts := []corev1.VolumeMount{{
+					Name:      r.BucketLoggingVolume,
+					MountPath: r.BucketLoggingVolumeMount,
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &bucketLogVolumeMounts)
 			}
 		case "noobaa-log-processor":
 			if c.Image != r.NooBaa.Status.ActualImage {
@@ -579,6 +590,18 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			},
 		}}
 		util.MergeVolumeList(&podSpec.Volumes, &secretVolumes)
+	}
+
+	if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
+		bucketLogVolumes := []corev1.Volume{{
+			Name: r.BucketLoggingVolume,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: r.BucketLoggingPVC.Name,
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &bucketLogVolumes)
 	}
 	return nil
 }
