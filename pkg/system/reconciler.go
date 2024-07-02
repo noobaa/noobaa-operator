@@ -299,7 +299,7 @@ func NewReconciler(
 
 	// Set bucket logging volume mount name and path
 	r.BucketLoggingVolume = r.Request.Name + "-bucket-logging-volume"
-	r.BucketLoggingVolumeMount = "etc/logs/bucket-logs"
+	r.BucketLoggingVolumeMount = "/etc/logs/bucket-logs"
 
 	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.Containers[0].DeepCopy()
 	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.DeepCopy()
