@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -372,6 +374,30 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 	if err != nil {
 		r.Logger.Errorf("got error on NooBaaAccount creation. error: %v", err)
 		return err
+	}
+	// create join secret conatining auth token for remote noobaa account
+	annotationValue, exists := util.GetAnnotationValue(r.NooBaa.GetAnnotations(), "remote-operator")
+	if exists {
+		if strings.ToLower(annotationValue) == strconv.FormatBool(true) {
+			res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+				System: r.Request.Name,
+				Role:   "operator",
+				Email:  options.OperatorAccountEmail,
+			})
+			if err != nil {
+				return fmt.Errorf("cannot create an auth token for remote operator, error: %v", err)
+			}
+			nbremoteAuthToken := &corev1.Secret{}
+			nbremoteAuthToken.Name = r.NooBaaAccount.Name
+			nbremoteAuthToken.Namespace = r.NooBaaAccount.Namespace
+			nbremoteAuthToken.StringData["auth_token"] = res.Token
+			r.Own(nbremoteAuthToken)
+
+			err = r.Client.Create(r.Ctx, nbremoteAuthToken)
+			if err != nil {
+				r.Logger.Errorf("got error on creating remote noobaa secret. error: %v", err)
+			}
+		}
 	}
 
 	log.Infof("✅ Successfully created account %q", r.NooBaaAccount.Name)
