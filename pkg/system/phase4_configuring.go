@@ -66,12 +66,15 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileSystemSecrets(); err != nil {
 		return err
 	}
-	util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints))
-	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
-		return err
-	}
-	if err := r.ReconcileHPAEndpoint(); err != nil {
-		return err
+	// No endpoint creation is required for remote noobaa client
+	if exists := util.IsAnnotationPresent(r.NooBaa.GetAnnotations(), "remote-client-noobaa"); !exists {
+		util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints))
+		if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
+			return err
+		}
+		if err := r.ReconcileHPAEndpoint(); err != nil {
+			return err
+		}
 	}
 	if err := r.RegisterToCluster(); err != nil {
 		return err
@@ -1663,6 +1666,9 @@ func (r *Reconciler) UpdateBucketClassesPhase(Buckets []nb.BucketInfo) {
 
 // ReconcileDeploymentEndpointStatus creates/updates the endpoints deployment
 func (r *Reconciler) ReconcileDeploymentEndpointStatus() error {
+	if exists := util.IsAnnotationPresent(r.NooBaa.GetAnnotations(), "remote-client-noobaa"); !exists {
+		return nil
+	}
 	if !util.KubeCheck(r.DeploymentEndpoint) {
 		return fmt.Errorf("Could not load endpoint deployment")
 	}

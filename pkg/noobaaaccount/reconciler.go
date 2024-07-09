@@ -305,6 +305,17 @@ func (r *Reconciler) ReconcileDeletion() error {
 			return fmt.Errorf("failed to delete account %q. got error: %v", r.NooBaaAccount.Name, err)
 		}
 	} else {
+		if exists := util.IsAnnotationPresent(r.NooBaa.GetAnnotations(), "remote-operator"); exists {
+			nbremoteAuthToken := &corev1.Secret{}
+			nbremoteAuthToken.Name = r.NooBaaAccount.Name
+			nbremoteAuthToken.Namespace = r.NooBaaAccount.Namespace
+			err = r.Client.Delete(r.Ctx, r.Secret)
+			if err != nil {
+				r.Logger.Errorf("got error on deleting remote noobaa secret. error: %v", err)
+			}
+			r.Logger.Infof("✅ Successfully deleted auth_token secret %q", r.NooBaaAccount.Name)
+
+		}
 		r.Logger.Infof("✅ Successfully deleted account %q", r.NooBaaAccount.Name)
 	}
 	return r.FinalizeDeletion()
@@ -372,6 +383,30 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 	if err != nil {
 		r.Logger.Errorf("got error on NooBaaAccount creation. error: %v", err)
 		return err
+	}
+	// create join secret conatining auth token for remote noobaa account
+	if exists := util.IsAnnotationPresent(r.NooBaa.GetAnnotations(), "remote-operator"); exists {
+		res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+			System: r.Request.Name,
+			Role:   "operator",
+			Email:  options.OperatorAccountEmail,
+		})
+		if err != nil {
+			return fmt.Errorf("cannot create an auth token for remote operator, error: %v", err)
+		}
+		if res.Token == "" {
+			return fmt.Errorf("received empty auth token")
+		}
+		nbremoteAuthToken := &corev1.Secret{}
+		nbremoteAuthToken.Name = r.NooBaaAccount.Name
+		nbremoteAuthToken.Namespace = r.NooBaaAccount.Namespace
+		nbremoteAuthToken.StringData["auth_token"] = res.Token
+		r.Own(nbremoteAuthToken)
+
+		err = r.Client.Create(r.Ctx, r.Secret)
+		if err != nil {
+			r.Logger.Errorf("got error on creating remote noobaa secret. error: %v", err)
+		}
 	}
 
 	log.Infof("✅ Successfully created account %q", r.NooBaaAccount.Name)

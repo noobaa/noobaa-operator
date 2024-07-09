@@ -2190,3 +2190,13 @@ func IsDevEnv() bool {
 	}
 	return false
 }
+
+// IsAnnotationPresent checks if an annotation is
+// is present in the Annotations map
+func IsAnnotationPresent(annotations map[string]string, name string) bool {
+	if annotations == nil {
+		return false
+	}
+	_, exists := annotations[name]
+	return exists
+}
