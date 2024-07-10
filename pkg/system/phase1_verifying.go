@@ -266,11 +266,15 @@ func (r *Reconciler) checkExternalPg(postgresDbURL string) error {
 func (r *Reconciler) checkBucketLoggingPVC() error {
 	// Rejecting if 'BucketLoggingPVC' is not provided for 'guaranteed' logging and
 	// also the operator is not running in the ODF environment.
-	sc := &storagev1.StorageClass{
-		TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
-		ObjectMeta: metav1.ObjectMeta{Name: "ocs-storagecluster-cephfs"},
-	}
-	if r.NooBaa.Spec.BucketLogging.BucketLoggingPVC == nil && !util.KubeCheck(sc) {
+	if r.NooBaa.Spec.BucketLogging.BucketLoggingPVC == nil {
+		sc := &storagev1.StorageClass{
+			TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
+			ObjectMeta: metav1.ObjectMeta{Name: "ocs-storagecluster-cephfs"},
+		}
+		// Return nil as the operator running in ODF environment
+		if util.KubeCheck(sc) {
+			return nil
+		}
 		return util.NewPersistentError("InvalidBucketLoggingConfiguration",
 			"'Guaranteed' BucketLogging requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'BucketLoggingPVC' to ensure guaranteed logging")
 	}
@@ -285,7 +289,7 @@ func (r *Reconciler) checkBucketLoggingPVC() error {
 	}
 	if !util.KubeCheck(BucketLoggingPVC) {
 		return util.NewPersistentError("InvalidBucketLoggingConfiguration",
-			"The specified 'BucketLoggingPVC' was not found")
+			fmt.Sprintf("The specified BucketLoggingPVC '%s' was not found", BucketLoggingPVC.Name))
 	}
 
 	// Check if pvc supports RWX access mode
@@ -295,5 +299,5 @@ func (r *Reconciler) checkBucketLoggingPVC() error {
 		}
 	}
 	return util.NewPersistentError("InvalidBucketLoggingConfiguration",
-		"The specified 'BucketLoggingPVC' does not support RWX access mode")
+		fmt.Sprintf("The specified BucketLoggingPVC '%s' does not support RWX access mode", BucketLoggingPVC.Name))
 }
