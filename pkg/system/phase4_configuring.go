@@ -408,6 +408,8 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 				case "GUARANTEED_LOGS_PATH":
 					if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
 						c.Env[j].Value = r.BucketLoggingVolumeMount
+					} else {
+						c.Env[j].Value = ""
 					}
 				}
 			}
