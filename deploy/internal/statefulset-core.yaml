@@ -21,7 +21,7 @@ spec:
       annotations:
         noobaa.io/configmap-hash: ""
     spec:
-      serviceAccountName: noobaa
+      serviceAccountName: noobaa-core
       volumes:
         - name: logs
           emptyDir: {}
@@ -42,6 +42,11 @@ spec:
                   path: token
                   # For testing purposes change the audience to api
                   audience: openshift
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 0
+        fsGroup: 0
+        fsGroupChangePolicy: "OnRootMismatch"
       containers:
         #----------------#
         # CORE CONTAINER #
