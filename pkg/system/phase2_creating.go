@@ -450,6 +450,11 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
 
+	//check if provider mode is enabled and signal the core
+	if annotationValue, _ := util.GetAnnotationValue(r.NooBaa.Annotations, "MulticloudObjectGatewayProviderMode"); annotationValue == "true" {
+		util.GetEnvVariable(&r.CoreApp.Spec.Template.Spec.Containers[0].Env, "CONFIG_JS_RESTRICT_RESOURCE_DELETION").Value = "true"
+	}
+
 	podSpec := &r.CoreApp.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa"
 	coreImageChanged := false
