@@ -421,12 +421,22 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			log.Warnf("⏳ Temporary Error: %s", err)
 		}
 	} else {
-		r.SetPhase(
-			nbv1.SystemPhaseReady,
-			"SystemPhaseReady",
-			"noobaa operator completed reconcile - system is ready",
-		)
-		log.Infof("✅ Done")
+		// Postgres upgrade failure workaround
+		// if the system reconciliation has no other error, but the postgres image is still postresql-12 image, set the status to Rejected
+		if IsPostgresql12Image(r.NooBaaPostgresDB.Spec.Template.Spec.Containers[0].Image) {
+			r.SetPhase(nbv1.SystemPhaseRejected,
+				"PostgresImageVersion",
+				"Noobaa is using Postgresql-12 which indicates a failure to upgrade to Postgresql-15. Please contact support.")
+			log.Errorf("❌ Postgres image version is set to postgresql-12. Indicates a failure to upgrade to Postgresql-15. Please contact support.")
+		} else {
+			r.SetPhase(
+				nbv1.SystemPhaseReady,
+				"SystemPhaseReady",
+				"noobaa operator completed reconcile - system is ready",
+			)
+			log.Infof("✅ Done")
+		}
+
 	}
 
 	err = r.UpdateStatus()

@@ -1116,7 +1116,19 @@ func Connect(isExternal bool) (*Client, error) {
 }
 
 // GetDesiredDBImage returns the desired DB image according to spec or env or default (in options)
-func GetDesiredDBImage(sys *nbv1.NooBaa) string {
+func GetDesiredDBImage(sys *nbv1.NooBaa, currentImage string) string {
+	// Postgres upgrade failure workaround
+	// if the current Postgres image is a postgresql-12 image, use NOOBAA_PSQL12_IMAGE. otherwise use GetdesiredDBImage
+	if IsPostgresql12Image(currentImage) {
+		psql12Image, ok := os.LookupEnv("NOOBAA_PSQL_12_IMAGE")
+		util.Logger().Warnf("The current Postgres image is a postgresql-12 image. using (%s)", psql12Image)
+		if !ok {
+			psql12Image = currentImage
+			util.Logger().Warnf("NOOBAA_PSQL_12_IMAGE is not set. using the current image %s", currentImage)
+		}
+		return psql12Image
+	}
+
 	if sys.Spec.DBImage != nil {
 		return *sys.Spec.DBImage
 	}
@@ -1126,6 +1138,11 @@ func GetDesiredDBImage(sys *nbv1.NooBaa) string {
 	}
 
 	return options.DBImage
+}
+
+// IsPostgresql12Image checks if the image is a postgresql-12 image
+func IsPostgresql12Image(image string) bool {
+	return strings.Contains(image, "postgresql-12")
 }
 
 // CheckSystem checks the state of the system and initializes its status fields

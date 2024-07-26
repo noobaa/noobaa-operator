@@ -74,6 +74,10 @@ var NooBaaImage = ContainerImage
 // it can be overridden for testing or different registry locations.
 var DBImage = "quay.io/sclorg/postgresql-15-c9s"
 
+// Psql12Image is the default postgres12 db image url
+// currently it can not be overridden.
+var Psql12Image = "centos/postgresql-12-centos7"
+
 // DBType is the default db image type
 // it can be overridden for testing or different types.
 var DBType = "postgres"
@@ -213,6 +217,10 @@ func init() {
 	FlagSet.StringVar(
 		&DBImage, "db-image",
 		DBImage, "The database container image",
+	)
+	FlagSet.StringVar(
+		&Psql12Image, "psql-12-image",
+		Psql12Image, "The database old container image",
 	)
 	FlagSet.StringVar(
 		&CosiSideCarImage, "cosi-sidecar-image",

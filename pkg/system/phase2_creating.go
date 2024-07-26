@@ -247,7 +247,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
 		if c.Name == "db" {
-			c.Image = GetDesiredDBImage(r.NooBaa)
+			c.Image = GetDesiredDBImage(r.NooBaa, c.Image)
 			if r.NooBaa.Spec.DBResources != nil {
 				c.Resources = *r.NooBaa.Spec.DBResources
 			}
