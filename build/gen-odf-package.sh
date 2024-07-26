@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "${MANIFESTS}" == "" ] || [ "${CSV_NAME}" == "" ] || [ "${CORE_IMAGE}" == "" ] || [ "${DB_IMAGE}" == "" ] || [ "${OPERATOR_IMAGE}" == "" ] || [ "${COSI_SIDECAR_IMAGE}" == "" ]
+if [ "${MANIFESTS}" == "" ] || [ "${CSV_NAME}" == "" ] || [ "${CORE_IMAGE}" == "" ] || [ "${PSQL_12_IMAGE}" == "" ] || [ "${DB_IMAGE}" == "" ] || [ "${OPERATOR_IMAGE}" == "" ] || [ "${COSI_SIDECAR_IMAGE}" == "" ]
 then
   echo "gen-odf-package.sh: not all required envs were supplied"
   exit 1
@@ -16,6 +16,7 @@ echo "--obc-crd=${OBC_CRD}"
 --replaces "${REPLACES}" \
 --noobaa-image ${CORE_IMAGE} \
 --db-image ${DB_IMAGE} \
+--psql-12-image ${PSQL_12_IMAGE} \
 --operator-image ${OPERATOR_IMAGE} \
 --cosi-sidecar-image ${COSI_SIDECAR_IMAGE} \
 --obc-crd=${OBC_CRD} 
@@ -34,6 +35,8 @@ cat >> ${temp_csv} << EOF
     name: noobaa-core
   - image: ${DB_IMAGE}
     name: noobaa-db
+  - image: ${PSQL_12_IMAGE}
+    name: noobaa-psql-12
   - image: ${OPERATOR_IMAGE}
     name: noobaa-operator
 EOF

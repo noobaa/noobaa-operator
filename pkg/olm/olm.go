@@ -298,6 +298,10 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 					Value: options.DBImage,
 				},
 				corev1.EnvVar{
+					Name:  "NOOBAA_PSQL_12_IMAGE",
+					Value: options.Psql12Image,
+				},
+				corev1.EnvVar{
 					Name:  "ENABLE_NOOBAA_ADMISSION",
 					Value: "true",
 				})
