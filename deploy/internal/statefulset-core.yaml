@@ -177,3 +177,5 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
+            - name: CONFIG_JS_RESTRICT_RESOURCE_DELETION
+              value: "false"

@@ -1424,6 +1424,15 @@ func GetEnvVariable(env *[]corev1.EnvVar, name string) *corev1.EnvVar {
 	return nil
 }
 
+// GetAnnotationValue searches for an annotation within a map of strings and returns if it exists and what its value
+func GetAnnotationValue(annotations map[string]string, name string) (string, bool) {
+	if annotations != nil {
+		val, exists := annotations[name]
+		return val, exists
+	}
+	return "", false
+}
+
 // ReflectEnvVariable will add, update or remove an env variable base on the existence and value of an
 // env variable with the same name on the container running this function.
 func ReflectEnvVariable(env *[]corev1.EnvVar, name string) {
