@@ -35,6 +35,7 @@ spec:
       securityContext:
         runAsNonRoot: true
         allowPrivilegeEscalation: false
+  automountServiceAccountToken: false
   securityContext:
     runAsUser: 10001
     runAsGroup: 0

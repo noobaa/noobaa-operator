@@ -4326,7 +4326,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "a02ebca336c7db9e4b84a13459e30664fd8fd2a8ea238e188685caea52a281fd"
+const Sha256_deploy_internal_pod_agent_yaml = "208a74bcb0238999af0f70fcb6a92389d7cf960b94b469a2b7cfd62d06b66d6f"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -4365,6 +4365,7 @@ spec:
       securityContext:
         runAsNonRoot: true
         allowPrivilegeEscalation: false
+  automountServiceAccountToken: false
   securityContext:
     runAsUser: 10001
     runAsGroup: 0

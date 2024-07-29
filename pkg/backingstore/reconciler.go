@@ -1170,6 +1170,11 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 		return true
 	}
 
+	// if automountServiceAccountToken setting is different than the podAgentTemplate, return true
+	if pod.Spec.AutomountServiceAccountToken == nil || *pod.Spec.AutomountServiceAccountToken != *r.PodAgentTemplate.Spec.AutomountServiceAccountToken {
+		return true
+	}
+
 	podSecrets := pod.Spec.ImagePullSecrets
 	noobaaSecret := r.NooBaa.Spec.ImagePullSecret
 	if noobaaSecret == nil {
