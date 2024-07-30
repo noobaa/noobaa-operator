@@ -1277,14 +1277,37 @@ func (r *Reconciler) updatePodTemplate() error {
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
 	r.PodAgentTemplate.Labels = map[string]string{
-		"app":  "noobaa",
-		"pool": r.BackingStore.Name,
+		"app":                 "noobaa",
+		"pool":                r.BackingStore.Name,
+		"noobaa-backingstore": r.Request.Name,
 	}
 	if r.NooBaa.Spec.Tolerations != nil {
 		r.PodAgentTemplate.Spec.Tolerations = r.NooBaa.Spec.Tolerations
 	}
 	if r.NooBaa.Spec.Affinity != nil {
 		r.PodAgentTemplate.Spec.Affinity = r.NooBaa.Spec.Affinity
+	}
+
+	// Add topology spread constraints
+	honor := corev1.NodeInclusionPolicyHonor
+	if r.PodAgentTemplate.Spec.TopologySpreadConstraints != nil {
+		r.Logger.Info("TopologySpreadConstraints already exists...")
+	} else if !util.HasNodeInclusionPolicyInPodTopologySpread() {
+		r.Logger.Info("TopologySpreadConstraints cannot be set because feature gate NodeInclusionPolicyInPodTopologySpread is not supported on this cluster version")
+	} else {
+		r.Logger.Info("Adding default TopologySpreadConstraints to backingstore pod...")
+		topologySpreadConstraint := corev1.TopologySpreadConstraint{
+			MaxSkew:           1,
+			TopologyKey:       "kubernetes.io/hostname",
+			WhenUnsatisfiable: corev1.ScheduleAnyway,
+			NodeTaintsPolicy:  &honor,
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"noobaa-backingstore": r.Request.Name,
+				},
+			},
+		}
+		r.PodAgentTemplate.Spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{topologySpreadConstraint}
 	}
 
 	return r.updatePodResourcesTemplate(c)

@@ -77,6 +77,8 @@ const (
 	gigabyte             = 1024 * 1024 * 1024
 	petabyte             = gigabyte * 1024 * 1024
 	obcMaxSizeUpperLimit = petabyte * 1023
+
+	topologyConstraintsEnabledKubeVersion = "1.26.0"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -2198,4 +2200,22 @@ func IsDevEnv() bool {
 		return true
 	}
 	return false
+}
+
+// HasNodeInclusionPolicyInPodTopologySpread checks if the cluster supports the spread topology policy
+func HasNodeInclusionPolicyInPodTopologySpread() bool {
+	kubeVersion, err := GetKubeVersion()
+	if err != nil {
+		fmt.Printf("❌ Failed to get kube version %s", err)
+		return false
+	}
+	enabledKubeVersion, err := semver.NewVersion(topologyConstraintsEnabledKubeVersion)
+	if err != nil {
+		Panic(err)
+		return false
+	}
+	if kubeVersion.LessThan(*enabledKubeVersion) {
+		return false
+	}
+	return true
 }
