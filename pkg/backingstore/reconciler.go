@@ -1250,6 +1250,7 @@ func (r *Reconciler) isPodinNoobaa(pod *corev1.Pod) bool {
 }
 
 func (r *Reconciler) updatePodTemplate() error {
+	log := r.Logger.WithField("func", "updatePodTemplate")
 	c := &r.PodAgentTemplate.Spec.Containers[0]
 	for j := range c.Env {
 		switch c.Env[j].Name {
@@ -1277,9 +1278,9 @@ func (r *Reconciler) updatePodTemplate() error {
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
 	r.PodAgentTemplate.Labels = map[string]string{
-		"app":                 "noobaa",
-		"pool":                r.BackingStore.Name,
-		"noobaa-backingstore": r.Request.Name,
+		"app":          "noobaa",
+		"pool":         r.BackingStore.Name,
+		"backingstore": "noobaa",
 	}
 	if r.NooBaa.Spec.Tolerations != nil {
 		r.PodAgentTemplate.Spec.Tolerations = r.NooBaa.Spec.Tolerations
@@ -1288,14 +1289,11 @@ func (r *Reconciler) updatePodTemplate() error {
 		r.PodAgentTemplate.Spec.Affinity = r.NooBaa.Spec.Affinity
 	}
 
-	// Add topology spread constraints
-	honor := corev1.NodeInclusionPolicyHonor
-	if r.PodAgentTemplate.Spec.TopologySpreadConstraints != nil {
-		r.Logger.Info("TopologySpreadConstraints already exists...")
-	} else if !util.HasNodeInclusionPolicyInPodTopologySpread() {
-		r.Logger.Info("TopologySpreadConstraints cannot be set because feature gate NodeInclusionPolicyInPodTopologySpread is not supported on this cluster version")
+	if !util.HasNodeInclusionPolicyInPodTopologySpread() {
+		log.Info("TopologySpreadConstraints cannot be set because feature gate NodeInclusionPolicyInPodTopologySpread is not supported on this cluster version")
 	} else {
-		r.Logger.Info("Adding default TopologySpreadConstraints to backingstore pod...")
+		log.Info("Adding default TopologySpreadConstraints to backingstore pod")
+		honor := corev1.NodeInclusionPolicyHonor
 		topologySpreadConstraint := corev1.TopologySpreadConstraint{
 			MaxSkew:           1,
 			TopologyKey:       "kubernetes.io/hostname",
@@ -1303,7 +1301,7 @@ func (r *Reconciler) updatePodTemplate() error {
 			NodeTaintsPolicy:  &honor,
 			LabelSelector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"noobaa-backingstore": r.Request.Name,
+					"backingstore": "noobaa",
 				},
 			},
 		}
