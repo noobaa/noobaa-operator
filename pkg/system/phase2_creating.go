@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -433,6 +434,16 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			} else {
 				c.Env[j].Value = ""
 			}
+		case "CONFIG_JS_RESTRICT_RESOURCE_DELETION":
+			// check if provider mode is enabled and signal the core
+			annotationValue, annotationExists := util.GetAnnotationValue(r.NooBaa.Annotations, "MulticloudObjectGatewayProviderMode")
+			annotationBoolVal := false
+			if annotationExists {
+				annotationBoolVal = strings.ToLower(annotationValue) == strconv.FormatBool(true)
+			}
+			if annotationBoolVal {
+				c.Env[j].Value = "true"
+			}
 		}
 	}
 }
@@ -449,11 +460,6 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
 	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
-
-	//check if provider mode is enabled and signal the core
-	if annotationValue, _ := util.GetAnnotationValue(r.NooBaa.Annotations, "MulticloudObjectGatewayProviderMode"); annotationValue == "true" {
-		util.GetEnvVariable(&r.CoreApp.Spec.Template.Spec.Containers[0].Env, "CONFIG_JS_RESTRICT_RESOURCE_DELETION").Value = "true"
-	}
 
 	podSpec := &r.CoreApp.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa"
