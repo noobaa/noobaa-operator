@@ -3852,7 +3852,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "846a11f2ff8035ee4beb2dff72339f4cd946b05827c76489a44e921be2c34f48"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "a3825f23a13320c35024a33662e714010814b78dc774712a54ac503db8ea5dde"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3933,6 +3933,10 @@ spec:
             - containerPort: 6443
             - containerPort: 7443
           env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             - name: NOOBAA_DISABLE_COMPRESSION
               valueFrom:
                 configMapKeyRef:
