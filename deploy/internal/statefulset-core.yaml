@@ -93,6 +93,8 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_LEVEL
+            - name: RESTRICT_RESOURCE_DELETION
+              value: "false"
             - name: POSTGRES_HOST
               value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_PORT
@@ -175,5 +177,3 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
-            - name: CONFIG_JS_RESTRICT_RESOURCE_DELETION
-              value: "false"
