@@ -77,6 +77,10 @@ spec:
             - containerPort: 6443
             - containerPort: 7443
           env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             - name: NOOBAA_DISABLE_COMPRESSION
               valueFrom:
                 configMapKeyRef:
