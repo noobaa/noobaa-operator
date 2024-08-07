@@ -459,17 +459,24 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	podSpec.ServiceAccountName = "noobaa"
 	coreImageChanged := false
 
+	// adding the missing Volumes from default podSpec
+	podSpec.Volumes = r.DefaultCoreApp.Volumes
+
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
+
+		// adding the missing VolumeMounts from default container
+		c.VolumeMounts = r.DefaultCoreApp.Containers[i].VolumeMounts
+		// adding the missing Env variable from default container
+		util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Containers[i].Env)
+		r.setDesiredCoreEnv(c)
+
 		switch c.Name {
 		case "core":
 			if c.Image != r.NooBaa.Status.ActualImage {
 				coreImageChanged = true
 				c.Image = r.NooBaa.Status.ActualImage
 			}
-			// adding the missing Env variable from default container
-			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env)
-			r.setDesiredCoreEnv(c)
 			r.setDesiredRootMasterKeyMounts(podSpec, c)
 
 			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
@@ -507,9 +514,6 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				coreImageChanged = true
 				c.Image = r.NooBaa.Status.ActualImage
 			}
-			// adding the missing Env variable from default container
-			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Env)
-			r.setDesiredCoreEnv(c)
 
 			if r.NooBaa.Spec.LogResources != nil {
 				c.Resources = *r.NooBaa.Spec.LogResources
