@@ -4901,7 +4901,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "99c00569849a8e406ba6228de686a53cc73eaac308bc6bed7849bb5a8040d469"
+const Sha256_deploy_internal_statefulset_core_yaml = "47144d144c99d37f1d886ee7b8662c4bfbc430af735520a0469662c9a804b2e5"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5000,6 +5000,8 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_LEVEL
+            - name: CONFIG_JS_RESTRICT_RESOURCE_DELETION
+              value: "false"
             - name: POSTGRES_HOST
               value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_PORT
@@ -5082,8 +5084,6 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
-            - name: CONFIG_JS_RESTRICT_RESOURCE_DELETION
-              value: "false"
 `
 
 const Sha256_deploy_internal_statefulset_postgres_db_yaml = "37a6c36928ba426ca04fd89e1eb2685e10d1a5f65c63ebb40c68a4f5c37645de"
