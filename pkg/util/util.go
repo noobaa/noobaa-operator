@@ -1435,6 +1435,17 @@ func GetAnnotationValue(annotations map[string]string, name string) (string, boo
 	return "", false
 }
 
+// IsRemoteClientNoobaa checks for the existance and value of the remote-client-noobaa annotation
+// within an annotation map, if the annotation doesnt exist it's the same as if its value is false.
+func IsRemoteClientNoobaa(annotations map[string]string) bool {
+	annotationValue, exists := GetAnnotationValue(annotations, "remote-client-noobaa")
+	annotationBoolVal := false
+	if exists {
+		annotationBoolVal = strings.ToLower(annotationValue) == strconv.FormatBool(true)
+	}
+	return annotationBoolVal
+}
+
 // ReflectEnvVariable will add, update or remove an env variable base on the existence and value of an
 // env variable with the same name on the container running this function.
 func ReflectEnvVariable(env *[]corev1.EnvVar, name string) {
