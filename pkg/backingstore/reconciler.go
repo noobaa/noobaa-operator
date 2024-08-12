@@ -81,6 +81,7 @@ type Reconciler struct {
 	PodAgentTemplate *corev1.Pod
 	PvcAgentTemplate *corev1.PersistentVolumeClaim
 	ServiceAccount   *corev1.ServiceAccount
+	CoreAppConfig    *corev1.ConfigMap
 
 	SystemInfo             *nb.SystemInfo
 	ExternalConnectionInfo *nb.ExternalConnectionInfo
@@ -118,6 +119,7 @@ func NewReconciler(
 		NooBaa:           util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		Secret:           util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		ServiceAccount:   util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
+		CoreAppConfig:    util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap),
 		PodAgentTemplate: util.KubeObject(bundle.File_deploy_internal_pod_agent_yaml).(*corev1.Pod),
 		PvcAgentTemplate: util.KubeObject(bundle.File_deploy_internal_pvc_agent_yaml).(*corev1.PersistentVolumeClaim),
 	}
@@ -126,11 +128,13 @@ func NewReconciler(
 	r.BackingStore.Namespace = r.Request.Namespace
 	r.NooBaa.Namespace = r.Request.Namespace
 	r.ServiceAccount.Namespace = r.Request.Namespace
+	r.CoreAppConfig.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.BackingStore.Name = r.Request.Name
 	r.NooBaa.Name = options.SystemName
 	r.ServiceAccount.Name = options.SystemName
+	r.CoreAppConfig.Name = "noobaa-config"
 
 	// Set secret names to empty
 	r.Secret.Namespace = ""
@@ -928,7 +932,7 @@ func (r *Reconciler) CheckExternalConnection(connInfo *nb.CheckExternalConnectio
 	case nb.ExternalConnectionInvalidCredentials:
 		if time.Since(r.BackingStore.CreationTimestamp.Time) < 5*time.Minute {
 			r.Logger.Infof("got invalid credentials. sometimes access keys take time to propagate inside AWS. requeuing for 5 minutes")
-			return fmt.Errorf("Got InvalidCredentials. requeue again")
+			return fmt.Errorf("got InvalidCredentials. requeue again")
 		}
 		fallthrough
 	case nb.ExternalConnectionInvalidEndpoint:
@@ -956,6 +960,10 @@ func (r *Reconciler) CheckExternalConnection(connInfo *nb.CheckExternalConnectio
 
 // ReconcilePool handles the pool using noobaa api
 func (r *Reconciler) ReconcilePool() error {
+
+	if !util.KubeCheck(r.CoreAppConfig) {
+		r.Logger.Warnf("Could not find NooBaa config map")
+	}
 
 	// TODO we only support creation here, but not updates - just for pvpool
 	if r.PoolInfo != nil {
@@ -1160,6 +1168,16 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 			return true
 		}
 	}
+
+	var noobaaLogEnv = "NOOBAA_LOG_LEVEL"
+	var configMapLogLevel = r.CoreAppConfig.Data[noobaaLogEnv]
+	noobaaLogEnvVar := util.GetEnvVariable(&c.Env, noobaaLogEnv)
+
+	if (configMapLogLevel != noobaaLogEnvVar.Value) {
+		r.Logger.Warnf("NOOBAA_LOG_LEVEL Env variable change detected: (%v) on the config map (%v)", noobaaLogEnvVar.Value, configMapLogLevel)
+			return true
+	}
+
 	if c.Image != r.NooBaa.Status.ActualImage {
 		r.Logger.Warnf("Change in Image detected: current image(%v) noobaa image(%v)", c.Image, r.NooBaa.Status.ActualImage)
 		return true
@@ -1167,6 +1185,11 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 
 	if r.needUpdateResources(c) {
 		r.Logger.Warnf("Change in backing store agent resources detected")
+		return true
+	}
+
+	// if automountServiceAccountToken setting is different than the podAgentTemplate, return true
+	if pod.Spec.AutomountServiceAccountToken == nil || *pod.Spec.AutomountServiceAccountToken != *r.PodAgentTemplate.Spec.AutomountServiceAccountToken {
 		return true
 	}
 
@@ -1250,6 +1273,7 @@ func (r *Reconciler) isPodinNoobaa(pod *corev1.Pod) bool {
 }
 
 func (r *Reconciler) updatePodTemplate() error {
+	log := r.Logger.WithField("func", "updatePodTemplate")
 	c := &r.PodAgentTemplate.Spec.Containers[0]
 	for j := range c.Env {
 		switch c.Env[j].Name {
@@ -1262,6 +1286,8 @@ func (r *Reconciler) updatePodTemplate() error {
 					Key: "AGENT_CONFIG",
 				},
 			}
+		case "NOOBAA_LOG_LEVEL":
+			c.Env[j].Value = r.CoreAppConfig.Data["NOOBAA_LOG_LEVEL"]
 		}
 	}
 	util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
@@ -1277,14 +1303,34 @@ func (r *Reconciler) updatePodTemplate() error {
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
 	r.PodAgentTemplate.Labels = map[string]string{
-		"app":  "noobaa",
-		"pool": r.BackingStore.Name,
+		"app":          "noobaa",
+		"pool":         r.BackingStore.Name,
+		"backingstore": "noobaa",
 	}
 	if r.NooBaa.Spec.Tolerations != nil {
 		r.PodAgentTemplate.Spec.Tolerations = r.NooBaa.Spec.Tolerations
 	}
 	if r.NooBaa.Spec.Affinity != nil {
 		r.PodAgentTemplate.Spec.Affinity = r.NooBaa.Spec.Affinity
+	}
+
+	if !util.HasNodeInclusionPolicyInPodTopologySpread() {
+		log.Info("TopologySpreadConstraints cannot be set because feature gate NodeInclusionPolicyInPodTopologySpread is not supported on this cluster version")
+	} else {
+		log.Info("Adding default TopologySpreadConstraints to backingstore pod")
+		honor := corev1.NodeInclusionPolicyHonor
+		topologySpreadConstraint := corev1.TopologySpreadConstraint{
+			MaxSkew:           1,
+			TopologyKey:       "kubernetes.io/hostname",
+			WhenUnsatisfiable: corev1.ScheduleAnyway,
+			NodeTaintsPolicy:  &honor,
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"backingstore": "noobaa",
+				},
+			},
+		}
+		r.PodAgentTemplate.Spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{topologySpreadConstraint}
 	}
 
 	return r.updatePodResourcesTemplate(c)

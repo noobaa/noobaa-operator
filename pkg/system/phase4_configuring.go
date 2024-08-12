@@ -15,7 +15,6 @@ import (
 	"encoding/json"
 
 	"cloud.google.com/go/storage"
-	semver "github.com/coreos/go-semver/semver"
 	"github.com/marstr/randname"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
@@ -42,12 +41,11 @@ import (
 )
 
 const (
-	ibmEndpoint                           = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
-	ibmLocation                           = "%s-standard"
-	ibmCosBucketCred                      = "ibm-cloud-cos-creds"
-	topologyConstraintsEnabledKubeVersion = "1.26.0"
-	minutesToWaitForDefaultBSCreation     = 10
-	credentialsKey                        = "credentials"
+	ibmEndpoint                       = "https://s3.direct.%s.cloud-object-storage.appdomain.cloud"
+	ibmLocation                       = "%s-standard"
+	ibmCosBucketCred                  = "ibm-cloud-cos-creds"
+	minutesToWaitForDefaultBSCreation = 10
+	credentialsKey                    = "credentials"
 )
 
 type gcpAuthJSON struct {
@@ -285,7 +283,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 	disableDefaultTopologyConstraints, found := r.NooBaa.ObjectMeta.Annotations[nbv1.SkipTopologyConstraints]
 	if podSpec.TopologySpreadConstraints != nil {
 		r.Logger.Debugf("deployment %s TopologySpreadConstraints already exists, leaving as is", r.DeploymentEndpoint.Name)
-	} else if !r.hasNodeInclusionPolicyInPodTopologySpread() {
+	} else if !util.HasNodeInclusionPolicyInPodTopologySpread() {
 		r.Logger.Debugf("deployment %s TopologySpreadConstraints cannot be set because feature gate NodeInclusionPolicyInPodTopologySpread is not supported on this cluster version",
 			r.DeploymentEndpoint.Name)
 	} else if found && disableDefaultTopologyConstraints == "true" {
@@ -434,23 +432,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 		}
 	}
 	return nil
-}
-
-func (r *Reconciler) hasNodeInclusionPolicyInPodTopologySpread() bool {
-	kubeVersion, err := util.GetKubeVersion()
-	if err != nil {
-		r.Logger.Printf("❌ Failed to get kube version %s", err)
-		return false
-	}
-	enabledKubeVersion, err := semver.NewVersion(topologyConstraintsEnabledKubeVersion)
-	if err != nil {
-		util.Panic(err)
-		return false
-	}
-	if kubeVersion.LessThan(*enabledKubeVersion) {
-		return false
-	}
-	return true
 }
 
 func (r *Reconciler) setDesiredRootMasterKeyMounts(podSpec *corev1.PodSpec, container *corev1.Container) {

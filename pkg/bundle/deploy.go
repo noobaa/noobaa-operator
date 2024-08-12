@@ -3852,7 +3852,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "846a11f2ff8035ee4beb2dff72339f4cd946b05827c76489a44e921be2c34f48"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "a3825f23a13320c35024a33662e714010814b78dc774712a54ac503db8ea5dde"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3933,6 +3933,10 @@ spec:
             - containerPort: 6443
             - containerPort: 7443
           env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             - name: NOOBAA_DISABLE_COMPRESSION
               valueFrom:
                 configMapKeyRef:
@@ -4326,7 +4330,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "a02ebca336c7db9e4b84a13459e30664fd8fd2a8ea238e188685caea52a281fd"
+const Sha256_deploy_internal_pod_agent_yaml = "7e3cfc034b4fc19567cdc429abaeb7726f69c728f5be360c15cb1a1951443d5d"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -4352,6 +4356,7 @@ spec:
         - name: CONTAINER_PLATFORM
           value: KUBERNETES
         - name: AGENT_CONFIG
+        - name: NOOBAA_LOG_LEVEL
       command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
       # Insert the relevant image for the agent
       ports:
@@ -4365,6 +4370,7 @@ spec:
       securityContext:
         runAsNonRoot: true
         allowPrivilegeEscalation: false
+  automountServiceAccountToken: false
   securityContext:
     runAsUser: 10001
     runAsGroup: 0

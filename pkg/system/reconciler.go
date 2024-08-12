@@ -72,7 +72,7 @@ type Reconciler struct {
 	ServiceAccount            *corev1.ServiceAccount
 	CoreApp                   *appsv1.StatefulSet
 	CoreAppConfig             *corev1.ConfigMap
-	DefaultCoreApp            *corev1.Container
+	DefaultCoreApp            *corev1.PodSpec
 	PostgresDBConf            *corev1.ConfigMap
 	NooBaaPostgresDB          *appsv1.StatefulSet
 	ServiceMgmt               *corev1.Service
@@ -301,7 +301,7 @@ func NewReconciler(
 	r.BucketLoggingVolume = r.Request.Name + "-bucket-logging-volume"
 	r.BucketLoggingVolumeMount = "/var/logs/bucket-logs"
 
-	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.Containers[0].DeepCopy()
+	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.DeepCopy()
 	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.DeepCopy()
 
 	return r
