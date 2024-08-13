@@ -1169,13 +1169,14 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 		}
 	}
 
-	var noobaaLogEnv = "NOOBAA_LOG_LEVEL"
-	var configMapLogLevel = r.CoreAppConfig.Data[noobaaLogEnv]
-	noobaaLogEnvVar := util.GetEnvVariable(&c.Env, noobaaLogEnv)
+	for _, name := range []string{"NOOBAA_LOG_LEVEL", "NOOBAA_LOG_COLOR"} {
+		configMapValue := r.CoreAppConfig.Data[name]
+		noobaaLogEnvVar := util.GetEnvVariable(&c.Env, name)
 
-	if (configMapLogLevel != noobaaLogEnvVar.Value) {
-		r.Logger.Warnf("NOOBAA_LOG_LEVEL Env variable change detected: (%v) on the config map (%v)", noobaaLogEnvVar.Value, configMapLogLevel)
+		if configMapValue != noobaaLogEnvVar.Value {
+			r.Logger.Warnf("%s Env variable change detected: (%v) on the config map (%v)", name, noobaaLogEnvVar.Value, configMapValue)
 			return true
+		}
 	}
 
 	if c.Image != r.NooBaa.Status.ActualImage {
@@ -1288,6 +1289,8 @@ func (r *Reconciler) updatePodTemplate() error {
 			}
 		case "NOOBAA_LOG_LEVEL":
 			c.Env[j].Value = r.CoreAppConfig.Data["NOOBAA_LOG_LEVEL"]
+		case "NOOBAA_LOG_COLOR":
+			c.Env[j].Value = r.CoreAppConfig.Data["NOOBAA_LOG_COLOR"]
 		}
 	}
 	util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
