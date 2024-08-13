@@ -1520,6 +1520,11 @@ func (r *Reconciler) ReconcileSetDbImageAndInitCode(targetImage string, initScri
 		podSpec := &r.NooBaaPostgresDB.Spec.Template.Spec
 		podSpec.ServiceAccountName = "noobaa"
 		if addInit {
+			if podSpec.InitContainers == nil {
+				var NooBaaDBTemplate *appsv1.StatefulSet = util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
+				podSpec.InitContainers = NooBaaDBTemplate.Spec.Template.Spec.InitContainers
+				podSpec.InitContainers[0].Image = targetImage
+			}
 			upgradeContainer := podSpec.InitContainers[0]
 			upgradeContainer.Name = "upgrade-db"
 			upgradeContainer.Command = []string{"sh", "-x", initScript}
