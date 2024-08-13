@@ -3852,7 +3852,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "a3825f23a13320c35024a33662e714010814b78dc774712a54ac503db8ea5dde"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "0784d71f1a50b8b2f216adb957ea4ce90392e39981bd584dd5e98272327a99c2"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3947,6 +3947,11 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_LEVEL
+            - name: NOOBAA_LOG_COLOR
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_LOG_COLOR
             - name: MGMT_ADDR
             - name: SYSLOG_ADDR
             - name: BG_ADDR
@@ -4330,7 +4335,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "7e3cfc034b4fc19567cdc429abaeb7726f69c728f5be360c15cb1a1951443d5d"
+const Sha256_deploy_internal_pod_agent_yaml = "0d3d438a85024b605e1d1b3587c0bf9522f7e30f187fdd0f1d607337e3df90d1"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -4357,6 +4362,7 @@ spec:
           value: KUBERNETES
         - name: AGENT_CONFIG
         - name: NOOBAA_LOG_LEVEL
+        - name: NOOBAA_LOG_COLOR
       command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
       # Insert the relevant image for the agent
       ports:
@@ -4906,7 +4912,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "54acebc824f333be8b8e1b922ea031f2af13dbaf8775a8a5ac80e2ec8537cfd1"
+const Sha256_deploy_internal_statefulset_core_yaml = "447d0c9d6831eb9074e8648609614268430b4d0f89d618a4c9a250053f858290"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5005,6 +5011,11 @@ spec:
                   key: NOOBAA_LOG_LEVEL
             - name: RESTRICT_RESOURCE_DELETION
               value: "false"
+            - name: NOOBAA_LOG_COLOR
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_LOG_COLOR
             - name: POSTGRES_HOST
               value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_PORT

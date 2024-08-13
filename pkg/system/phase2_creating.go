@@ -1252,6 +1252,7 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 		"NOOBAA_DISABLE_COMPRESSION": "false",
 		"DISABLE_DEV_RANDOM_SEED":    "true",
 		"NOOBAA_LOG_LEVEL":           "default_level",
+		"NOOBAA_LOG_COLOR":           "true",
 	}
 	for key, value := range DefaultConfigMapData {
 		if _, ok := r.CoreAppConfig.Data[key]; !ok {
