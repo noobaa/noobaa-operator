@@ -49,8 +49,6 @@ spec:
       securityContext:
         runAsUser: 10001
         runAsGroup: 0
-        fsGroup: 0
-        fsGroupChangePolicy: "OnRootMismatch"
       containers:
         #----------------#
         # CORE CONTAINER #
