@@ -435,21 +435,29 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			log.Warnf("⏳ Temporary Error: %s", err)
 		}
 	} else {
-		// Postgres upgrade failure workaround
-		// if the system reconciliation has no other error, but the postgres image is still postresql-12 image, set the status to Rejected
-		psql12Image, ok := os.LookupEnv("NOOBAA_PSQL_12_IMAGE")
-		if ok && r.NooBaaPostgresDB.Spec.Template.Spec.Containers[0].Image == psql12Image {
-			r.SetPhase(nbv1.SystemPhaseRejected,
-				"PostgresImageVersion",
-				"Noobaa is using Postgresql-12 which indicates a failure to upgrade to Postgresql-15. Please contact support.")
-			log.Errorf("❌ Postgres image version is set to postgresql-12. Indicates a failure to upgrade to Postgresql-15. Please contact support.")
+		sts := util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
+		sts.Namespace = options.Namespace
+		sts.Name = "noobaa-db-pg"
+		if util.KubeCheckQuiet(sts) {
+			// Postgres upgrade failure workaround
+			// if the system reconciliation has no other error, but the postgres image is still postresql-12 image, set the status to Rejected
+			psql12Image, ok := os.LookupEnv("NOOBAA_PSQL_12_IMAGE")
+			if ok && sts.Spec.Template.Spec.Containers[0].Image == psql12Image {
+				r.SetPhase(nbv1.SystemPhaseRejected,
+					"PostgresImageVersion",
+					"Noobaa is using Postgresql-12 which indicates a failure to upgrade to Postgresql-15. Please contact support.")
+				log.Errorf("❌ Postgres image version is set to postgresql-12. Indicates a failure to upgrade to Postgresql-15. Please contact support.")
+			} else {
+				r.SetPhase(
+					nbv1.SystemPhaseReady,
+					"SystemPhaseReady",
+					"noobaa operator completed reconcile - system is ready",
+				)
+				log.Infof("✅ Done")
+			}
 		} else {
-			r.SetPhase(
-				nbv1.SystemPhaseReady,
-				"SystemPhaseReady",
-				"noobaa operator completed reconcile - system is ready",
-			)
-			log.Infof("✅ Done")
+			log.Errorf("❌ Postgres statefulset not found")
+			r.SetPhase(nbv1.SystemPhaseRejected, "DBStatefulsetMissing", "Postgres statefulset not found")
 		}
 	}
 
