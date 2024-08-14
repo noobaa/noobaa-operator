@@ -40,7 +40,7 @@ rules:
 - apiGroups:
   - security.openshift.io
   resourceNames:
-  - noobaa-db
+  - noobaa-core
   resources:
   - securitycontextconstraints
   verbs:
