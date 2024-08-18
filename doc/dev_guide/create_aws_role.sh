@@ -26,6 +26,7 @@ AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
 # The OIDC provider is in the structure: 
 # 1) <OIDC-bucket>.s3.<aws-region>.amazonaws.com. for OIDC bucket configurations are in an S3 public bucket
 # 2) `<characters>.cloudfront.net` for OIDC bucket configurations in an S3 private bucket with a public CloudFront distribution URL
+# 3) OIDC Endpoint URL for ROSA HCP clusters without https:// (example oidc.os1.devshift.org/<characters>)
 OIDC_PROVIDER=$(oc get authentication cluster -ojson | jq -r .spec.serviceAccountIssuer | sed -e "s/^https:\/\///") 
 # the permission (S3 full access)
 POLICY_ARN_STRINGS="arn:aws:iam::aws:policy/AmazonS3FullAccess"

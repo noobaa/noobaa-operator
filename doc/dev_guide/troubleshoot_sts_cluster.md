@@ -41,6 +41,8 @@ aws sts assume-role-with-web-identity --role-arn <role-ARN> --role-session-name 
 
 You should see in the output the credentials (which includes the `AccessKeyId`, `SecretAccessKey`, and `SessionToken` - output example is in file `doc/dev_guide/create_aws_sts_setup_on_minikube.md`, but in case the role is wrong you'll see still `AccessDenied`, so you can create a new role with the script and test it.
 
+Note: if this invalid role was sent as a part of OCP cluster you would need to update the subscription that have this environment variable: in odf-operator and mcg-operator subscriptions (in both of them - either in the UI or editing the YAMLs), search for the ROLEARN env name and update the value.
+
 #### 2) Cluster configurations
 
 ```
