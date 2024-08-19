@@ -5139,7 +5139,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "37a6c36928ba426ca04fd89e1eb2685e10d1a5f65c63ebb40c68a4f5c37645de"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "46460879b565c80900a09017d145e835ca0491a0c9e465ff0c8b9172535843fe"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5169,6 +5169,8 @@ spec:
         - name: db
           image: NOOBAA_DB_IMAGE
           env:
+            - name: POSTGRESQL_UPGRADE
+              value: copy
             - name: POSTGRESQL_DATABASE
               value: nbcore
             - name: LC_COLLATE
