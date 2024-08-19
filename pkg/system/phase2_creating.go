@@ -223,6 +223,80 @@ func (r *Reconciler) SetDesiredServiceDBForPostgres() error {
 	return nil
 }
 
+// Check db update status and add or remove the POSTGRES_UPDATE env from STS
+func (r *Reconciler) addOrRemovePGUpgradeEnvInSTS() {
+	if r.NooBaa.Status.PostgresUpdatePhase != nbv1.UpgradePhaseFinished {
+		for i, container := range r.NooBaaPostgresDB.Spec.Template.Spec.Containers {
+			if container.Name == "db" {
+				envVars := container.Env
+				newEnvVar := corev1.EnvVar{
+					Name:  "POSTGRESQL_UPGRADE",
+					Value: "copy",
+				}
+				envVars = append(envVars, newEnvVar)
+				r.NooBaaPostgresDB.Spec.Template.Spec.Containers[i].Env = envVars
+
+				break
+			}
+		}
+
+		return
+	}
+
+	if r.NooBaa.Status.PostgresUpdatePhase == nbv1.UpgradePhaseFinished {
+		for i, container := range r.NooBaaPostgresDB.Spec.Template.Spec.Containers {
+			if container.Name == "db" {
+				newEnvVars := []corev1.EnvVar{}
+				for _, env := range container.Env {
+					if env.Name != "POSTGRESQL_UPGRADE" {
+						newEnvVars = append(newEnvVars, env)
+					}
+				}
+				r.NooBaaPostgresDB.Spec.Template.Spec.Containers[i].Env = newEnvVars
+
+				break
+			}
+		}
+	}
+}
+
+func (r *Reconciler) isPostgresDBUpgradeReqd() bool {
+	if r.NooBaa.Status.PostgresUpdatePhase != nbv1.UpgradePhaseFinished {
+		for _, container := range r.NooBaaPostgresDB.Spec.Template.Spec.Containers {
+			if container.Name == "db" {
+				for _, env := range container.Env {
+					if env.Name == "POSTGRESQL_UPGRADE" && env.Value == "copy" {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+// GetDesiredDBImage returns the desired DB image according to spec or env or default (in options)
+func (r *Reconciler) GetDesiredDBImage(currentImage string) string {
+	// Postgres upgrade failure workaround
+	// if the current Postgres image is a postgresql-12 image, use NOOBAA_PSQL12_IMAGE. otherwise use GetdesiredDBImage
+	if IsPostgresql12Image(currentImage) {
+		psql12Image, ok := os.LookupEnv("NOOBAA_PSQL_12_IMAGE")
+		util.Logger().Warnf("The current Postgres image is a postgresql-12 image. using (%s)", psql12Image)
+		if !ok {
+			psql12Image = currentImage
+			util.Logger().Warnf("NOOBAA_PSQL_12_IMAGE is not set. using the current image %s", currentImage)
+		}
+		return psql12Image
+	}
+
+	if r.isPostgresDBUpgradeReqd() {
+		r.NooBaa.Status.BeforeUpgradeDbImage = r.NooBaa.Spec.DBImage
+		r.NooBaa.Spec.DBImage = &options.DBImage
+	}
+
+	return options.DBImage
+}
+
 // SetDesiredNooBaaDB updates the NooBaaDB as desired for reconciling
 func (r *Reconciler) SetDesiredNooBaaDB() error {
 	var NooBaaDBTemplate *appsv1.StatefulSet = nil
@@ -238,6 +312,9 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
 	NooBaaDB.Spec.ServiceName = r.ServiceDbPg.Name
 	NooBaaDBTemplate = util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
+
+	// Check db update status and add or remove the POSTGRES_UPDATE env to db STS
+	r.addOrRemovePGUpgradeEnvInSTS()
 
 	podSpec := &NooBaaDB.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa-db"
@@ -256,7 +333,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
 		if c.Name == "db" {
-			c.Image = GetDesiredDBImage(r.NooBaa, c.Image)
+			c.Image = r.GetDesiredDBImage(c.Image)
 			if r.NooBaa.Spec.DBResources != nil {
 				c.Resources = *r.NooBaa.Spec.DBResources
 			}
@@ -1133,6 +1210,7 @@ func (r *Reconciler) ReconcileDB() error {
 
 	result, reconcilePostgresError := r.reconcileObjectAndGetResult(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB, false)
 	if reconcilePostgresError != nil {
+
 		return reconcilePostgresError
 	}
 	if !r.isObjectUpdated(result) && (isDBConfUpdated) {
@@ -1143,6 +1221,11 @@ func (r *Reconciler) ReconcileDB() error {
 		}
 
 	}
+
+	if r.isObjectUpdated(result) {
+		r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhaseFinished
+	}
+
 	return nil
 }
 
