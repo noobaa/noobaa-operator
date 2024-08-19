@@ -123,6 +123,10 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 
 	// create the db only if postgres secret is not given
 	if r.NooBaa.Spec.ExternalPgSecret == nil {
+		if err := r.UpgradeDbPostgres16(); err != nil {
+			return err
+		}
+
 		if err := r.ReconcileDB(); err != nil {
 			return err
 		}
@@ -131,6 +135,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 			return err
 		}
 	}
+
 	// create bucket logging pvc if not provided by user for 'Guaranteed' logging in ODF env
 	if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
 		if err := r.ReconcileODFPersistentLoggingPVC(
@@ -145,13 +150,13 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 
 	// create notification log pvc if bucket notifications is enabled and pvc was not set explicitly
 	if r.NooBaa.Spec.BucketNotifications.Enabled {
-			if err := r.ReconcileODFPersistentLoggingPVC(
-				"bucketNotifications.pvc",
-				"InvalidBucketNotificationConfiguration",
-				"Bucket notifications requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'bucketNotifications.pvc'.",
-				r.NooBaa.Spec.BucketNotifications.PVC,
-				r.BucketNotificationsPVC); err != nil {
-				return err
+		if err := r.ReconcileODFPersistentLoggingPVC(
+			"bucketNotifications.pvc",
+			"InvalidBucketNotificationConfiguration",
+			"Bucket notifications requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'bucketNotifications.pvc'.",
+			r.NooBaa.Spec.BucketNotifications.PVC,
+			r.BucketNotificationsPVC); err != nil {
+			return err
 		}
 	}
 
@@ -169,6 +174,161 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	}
 
 	return nil
+}
+
+func (r *Reconciler) UpgradeDbPostgres16() error {
+	if r.NooBaa.Status.PostgresUpdatePhase == nbv1.UpgradePhaseFinished &&
+		r.NooBaa.Status.PostgresMajorVersion == nbv1.PostgresMajorVersionV16 {
+		r.Logger.Infof("UpgradePostgresDB: DB is already upgraded to postgresql-16")
+		return nil
+	}
+
+	if r.NooBaa.Status.PostgresUpdatePhase != nbv1.UpgradePhasePrepare &&
+		r.NooBaa.Status.PostgresUpdatePhase != nbv1.UpgradePhaseUpgrade &&
+		r.NooBaa.Status.PostgresUpdatePhase != nbv1.UpgradePhaseClean {
+		sts := util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
+		sts.Name = "noobaa-db-pg"
+		sts.Namespace = r.NooBaa.Namespace
+
+		// Postgres database doesn't exists, no need to upgrade.
+		if !util.KubeCheckQuiet(sts) {
+			r.Logger.Infof("UpgradePostgresDB: old STS doesn't exist - no need for upgrade")
+			r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhaseNone
+		} else {
+			desiredImage := GetDesiredDBImage(r.NooBaa, "")
+			// Check whether upgrade is reqd, set phase depending the requirement
+			if r.isPostgresUpgradeReqd(desiredImage, sts) {
+				r.Logger.Infof("UpgradePostgresDB: upgrading postgres16")
+				r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhasePrepare
+			} else {
+				if r.NooBaa.Status.PostgresMajorVersion == nbv1.PostgresMajorVersionV16 {
+					r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhaseFinished
+				} else if strings.Contains(desiredImage, "postgresql-16") {
+					r.NooBaa.Status.PostgresMajorVersion = nbv1.PostgresMajorVersionV16
+					r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhaseFinished
+				} else {
+					r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhaseNone
+				}
+
+			}
+		}
+
+	}
+
+	switch r.NooBaa.Status.PostgresUpdatePhase {
+	case nbv1.UpgradePhasePrepare:
+		if err := r.setEndpointsDeploymentReplicas(0); err != nil {
+			r.Logger.Errorf("UpgradePostgresDB::got error on endpoints deployment reconcile %v", err)
+			return err
+		}
+		desiredImage := GetDesiredDBImage(r.NooBaa, "")
+		if err := r.ReconcileObject(
+			r.NooBaaPostgresDB, func() error {
+				r.updateDBImageForUpgrade(desiredImage)
+				r.setPGUpgradeEnvInSTS()
+				return nil
+			},
+		); err != nil {
+			r.Logger.Errorf("got error on postgres STS reconcile %v", err)
+			break
+		}
+
+		// Update the DB pod
+		restartError := r.RestartDbPods()
+		if restartError != nil {
+			r.Logger.Warn("UpgradePostgresDB: Unable to restart db pods")
+		}
+
+		r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhaseUpgrade
+	case nbv1.UpgradePhaseUpgrade:
+		dbPod := &corev1.Pod{}
+		dbPod.Name = "noobaa-db-pg-0"
+		dbPod.Namespace = r.NooBaaPostgresDB.Namespace
+		if !util.KubeCheckQuiet(dbPod) {
+			return nil
+		}
+		// make sure previous step has finished
+		if dbPod.ObjectMeta.DeletionTimestamp != nil {
+			r.Logger.Infof("UpgradePostgresDB: upgrade-db is not yet running, phase is: %s and deletion time stamp is %v",
+				dbPod.Status.Phase, dbPod.ObjectMeta.DeletionTimestamp)
+			return nil
+		}
+
+		status := r.checkDbContainerStatus(dbPod)
+		if status == "PodInitializing" {
+			r.Logger.Infof("UpgradePostgresDB: upgrade-db cont. upgrade. Waiting for pod to be in Running state ...")
+			return nil
+		}
+
+		if status == "CrashLoopBackOff" || status == "Error" {
+			r.Logger.Errorf("UpgradePostgresDB: upgrade-db container failed to start. Setting the env flag for upgrade and restarting. If the issue is not resolved, check the db logs for more information")
+			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DbUpgrade", "upgrade-db container failed to start. Setting the env flag for upgrade and restarting. If the issue is not resolved, check the db logs for more information")
+			r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhasePrepare
+			return nil
+		}
+
+		if status == "Running" {
+			r.Logger.Infof("UpgradePostgresDB: upgrade-db container failed to start. Setting the env flag for upgrade and restarting. If the issue is not resolved, check the db logs for more information")
+			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal, "DbUpgrade", "Postgres update to 16 is done")
+			r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhaseClean
+			break
+		}
+
+	case nbv1.UpgradePhaseClean:
+		// Check the DB status again, Set phaseFinished only it is in Running state
+		dbPod := &corev1.Pod{}
+		dbPod.Name = "noobaa-db-pg-0"
+		dbPod.Namespace = r.NooBaaPostgresDB.Namespace
+		if !util.KubeCheckQuiet(dbPod) {
+			return nil
+		}
+		status := r.checkDbContainerStatus(dbPod)
+		if status == "Running" {
+			r.NooBaa.Status.PostgresMajorVersion = nbv1.PostgresMajorVersionV16
+			r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhaseFinished
+		} else {
+			// TODO: status = CLBO and status = ERROR cases need to be handled
+			// Till then check for the status again
+			break
+		}
+
+		if err := r.ReconcileObject(r.NooBaaPostgresDB, func() error {
+			r.unSetPGUpgradeEnvInSTS()
+			return nil
+		}); err != nil {
+			r.Logger.Infof("UpgradePostgresDB: Cleaning of POSTGRES_UPGRADE env failed: err %v, retry", err)
+			return nil
+		}
+
+		if err := r.setEndpointsDeploymentReplicas(1); err != nil {
+			r.Logger.Errorf("UpgradePostgresDB::got error on endpoints deployment reconcile %v", err)
+			return err
+		}
+	}
+
+	if err := r.UpdateStatus(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// checkDbContainerStatus checks if postgres upgrade container failed
+func (r *Reconciler) checkDbContainerStatus(dbPod *corev1.Pod) string {
+	for i := range dbPod.Status.ContainerStatuses {
+		if dbPod.Status.ContainerStatuses[i].Name == "db" {
+			r.Logger.Infof("HasDbContainerFailed: Checking state of upgrade-db container: %v", dbPod.Status.ContainerStatuses[i].State)
+			if dbPod.Status.ContainerStatuses[i].State.Terminated != nil {
+				return dbPod.Status.ContainerStatuses[i].State.Terminated.Reason
+			}
+			if dbPod.Status.ContainerStatuses[i].State.Waiting != nil {
+				return dbPod.Status.ContainerStatuses[i].State.Waiting.Reason
+			}
+			if dbPod.Status.ContainerStatuses[i].State.Running != nil {
+				return "Running"
+			}
+		}
+	}
+	return "NotFound"
 }
 
 // SetDesiredServiceAccount updates the ServiceAccount as desired for reconciling
@@ -240,6 +400,82 @@ func (r *Reconciler) SetDesiredServiceDBForPostgres() error {
 	r.ServiceDbPg.Spec.Ports[0].Port = 5432
 	r.ServiceDbPg.Spec.Ports[0].TargetPort = intstr.FromInt(5432)
 	return nil
+}
+
+func (r *Reconciler) updateDBImageForUpgrade(dbImage string) {
+	var podSpec = &r.NooBaaPostgresDB.Spec.Template.Spec
+
+	for i := range podSpec.Containers {
+		c := &podSpec.Containers[i]
+		if c.Name == "db" {
+			// Fetch the DB image from options.go
+			c.Image = dbImage
+		}
+	}
+}
+
+// SetEndpointsDeploymentReplicas updates the number of replicas on the endpoints deployment
+func (r *Reconciler) setEndpointsDeploymentReplicas(replicas int32) error {
+	r.Logger.Infof("UpgradeMigrateDB:: setting endpoints replica count to %d", replicas)
+	return r.ReconcileObject(r.DeploymentEndpoint, func() error {
+		r.DeploymentEndpoint.Spec.Replicas = &replicas
+		return nil
+	})
+}
+
+// Returns true only if desired image and PG major version does not match
+func (r *Reconciler) isPostgresUpgradeReqd(desiredImage string, sts *appsv1.StatefulSet) bool {
+	var currentImage string
+
+	for _, container := range sts.Spec.Template.Spec.Containers {
+		if container.Name == "db" {
+			currentImage = container.Image
+		}
+	}
+	if currentImage != desiredImage &&
+		r.NooBaa.Status.PostgresMajorVersion != nbv1.PostgresMajorVersionV16 {
+		return true
+	}
+	return false
+}
+
+// Set env "POSTGRESQL_UPGRADE=copy" in PG sts to iniate the upgrade
+func (r *Reconciler) setPGUpgradeEnvInSTS() {
+	for i, container := range r.NooBaaPostgresDB.Spec.Template.Spec.Containers {
+		if container.Name == "db" {
+			for _, env := range container.Env {
+				if env.Name == "POSTGRESQL_UPGRADE" {
+					return
+				}
+			}
+			envVars := container.Env
+			newEnvVar := corev1.EnvVar{
+				Name:  "POSTGRESQL_UPGRADE",
+				Value: "copy",
+			}
+
+			envVars = append(envVars, newEnvVar)
+			r.NooBaaPostgresDB.Spec.Template.Spec.Containers[i].Env = envVars
+			return
+		}
+	}
+}
+
+// unSet env "POSTGRESQL_UPGRADE=copy" in PG sts after upgrade
+func (r *Reconciler) unSetPGUpgradeEnvInSTS() {
+	for i, container := range r.NooBaaPostgresDB.Spec.Template.Spec.Containers {
+		if container.Name == "db" {
+			newEnvVars := []corev1.EnvVar{}
+			for _, env := range container.Env {
+				if env.Name != "POSTGRESQL_UPGRADE" {
+					newEnvVars = append(newEnvVars, env)
+				}
+			}
+			r.NooBaaPostgresDB.Spec.Template.Spec.Containers[i].Env = newEnvVars
+			return
+		}
+	}
+	r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhaseNone
 }
 
 // SetDesiredNooBaaDB updates the NooBaaDB as desired for reconciling
@@ -472,10 +708,10 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 
 	if r.NooBaa.Spec.BucketNotifications.Enabled {
 		envVar := corev1.EnvVar{
-			Name: "NOTIFICATION_LOG_DIR",
+			Name:  "NOTIFICATION_LOG_DIR",
 			Value: "/var/logs/notifications",
 		}
-		util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar});
+		util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar})
 	}
 
 }
@@ -555,10 +791,10 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &notificationVolumeMounts)
 
-				notificationVolumes := []corev1.Volume {{
+				notificationVolumes := []corev1.Volume{{
 					Name: notificationsVolume,
-					VolumeSource: corev1.VolumeSource {
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource {
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 							ClaimName: r.BucketNotificationsPVC.Name,
 						},
 					},
@@ -1187,6 +1423,12 @@ func (r *Reconciler) reconcileDBRBAC() error {
 
 // ReconcileDB choose between different types of DB
 func (r *Reconciler) ReconcileDB() error {
+	if r.NooBaa.Status.PostgresUpdatePhase == nbv1.UpgradePhasePrepare ||
+		r.NooBaa.Status.PostgresUpdatePhase == nbv1.UpgradePhaseUpgrade ||
+		r.NooBaa.Status.PostgresUpdatePhase == nbv1.UpgradePhaseClean {
+		r.Logger.Infof("UpgradePostgresDB: Postgres Update in progress")
+		return nil
+	}
 
 	if r.NooBaa.Spec.ExternalPgSecret != nil {
 		return nil
@@ -1217,6 +1459,7 @@ func (r *Reconciler) ReconcileDB() error {
 		}
 
 	}
+
 	return nil
 }
 
@@ -1230,8 +1473,8 @@ func (r *Reconciler) ReconcileDBConfigMap(cm *corev1.ConfigMap, desiredFunc func
 	return r.isObjectUpdated(result), nil
 }
 
-//ReconcileODFPersistentLoggingPVC ensures a persistent logging pvc (either for bucket logging or bucket notificatoins)
-//is properly configured. If needed and possible, allocate one from CephFS
+// ReconcileODFPersistentLoggingPVC ensures a persistent logging pvc (either for bucket logging or bucket notificatoins)
+// is properly configured. If needed and possible, allocate one from CephFS
 func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
 	fieldName string,
 	errorName string,
@@ -1243,7 +1486,7 @@ func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
 
 	// Return if persistent logging PVC already exists
 	if pvcName != nil {
-		pvc.Name = *pvcName;
+		pvc.Name = *pvcName
 		log.Infof("PersistentLoggingPVC %s already exists and supports RWX access mode. Skipping ReconcileODFPersistentLoggingPVC.", *pvcName)
 		return nil
 	}
@@ -1257,7 +1500,7 @@ func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
 	if !r.preparePersistentLoggingPVC(pvc, fieldName) {
 		return util.NewPersistentError(errorName, errorText)
 	}
-	r.Own(pvc);
+	r.Own(pvc)
 
 	log.Infof("Persistent logging PVC %s does not exist. Creating...", pvc.Name)
 	err := r.Client.Create(r.Ctx, pvc)
@@ -1269,7 +1512,7 @@ func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
 
 }
 
-//prepare persistent logging pvc
+// prepare persistent logging pvc
 func (r *Reconciler) preparePersistentLoggingPVC(pvc *corev1.PersistentVolumeClaim, fieldName string) bool {
 	pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}
 
@@ -1282,9 +1525,9 @@ func (r *Reconciler) preparePersistentLoggingPVC(pvc *corev1.PersistentVolumeCla
 	if util.KubeCheck(sc) {
 		r.Logger.Infof("%s not provided, defaulting to 'cephfs' storage class %s to create persistent logging pvc", fieldName, sc.Name)
 		pvc.Spec.StorageClassName = &sc.Name
-		return true;
+		return true
 	} else {
-		return false;
+		return false
 	}
 }
 
