@@ -4906,7 +4906,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "99c00569849a8e406ba6228de686a53cc73eaac308bc6bed7849bb5a8040d469"
+const Sha256_deploy_internal_statefulset_core_yaml = "f35f833d6ce6dd078ff3f5159fd8ae6ca095fc6adf4f4d171d88c526ac145136"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4955,8 +4955,6 @@ spec:
       securityContext:
         runAsUser: 10001
         runAsGroup: 0
-        fsGroup: 0
-        fsGroupChangePolicy: "OnRootMismatch"
       containers:
         #----------------#
         # CORE CONTAINER #
@@ -6343,7 +6341,7 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_core_yaml = "93a1dce5d48364080923b2b8d78ed661d60375ada2bb0b2bde9857ca3960e874"
+const Sha256_deploy_role_core_yaml = "fad0d6b3353f8b2dbbc5bf55f99885917506982ba89c5556727d2047fa95477a"
 
 const File_deploy_role_core_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6387,7 +6385,7 @@ rules:
 - apiGroups:
   - security.openshift.io
   resourceNames:
-  - noobaa-db
+  - noobaa-core
   resources:
   - securitycontextconstraints
   verbs:
@@ -6538,6 +6536,32 @@ seLinuxContext:
 supplementalGroups:
   type: RunAsAny
 readOnlyRootFilesystem: true
+`
+
+const Sha256_deploy_scc_core_yaml = "dd3fb26a323dddbbb9f399b8ff86c41dbbfe63b3bbb0cfe79b785c68948063a8"
+
+const File_deploy_scc_core_yaml = `apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: noobaa-core
+allowPrivilegeEscalation: false
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
+fsGroup:
+  type: MustRunAs
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
 `
 
 const Sha256_deploy_scc_db_yaml = "cea49b11eead99f2704b3f36349473fe2961be6312dbcf5ea56a13ebe3075ee2"
