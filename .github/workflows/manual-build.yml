@@ -1,14 +1,14 @@
 name: Manual Operator Build Dispatch
 
-on: 
+on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to Build From'
+        description: "Branch to Build From"
         required: true
       tag:
-        description: 'Additional tag for the build (such as alpha, beta, etc.) - Optional'
-        default: ''
+        description: "Additional tag for the build (such as alpha, beta, etc.) - Optional"
+        default: ""
 
 jobs:
   publish-image:
@@ -74,9 +74,9 @@ jobs:
         env:
           DOCKERHUB_OWNER: ${{ secrets.GHACTIONSDOCKERHUBNAME }}
         run: |
-            make image VERSION=latest
-            docker tag  noobaa/noobaa-operator ${{ steps.prep.outputs.operatortags }}
-            docker push ${{ steps.prep.outputs.operatortags }}
+          make image VERSION=latest
+          docker tag  noobaa/noobaa-operator ${{ steps.prep.outputs.operatortags }}
+          docker push ${{ steps.prep.outputs.operatortags }}
 
       - name: Build Bundle
         run: |
@@ -84,7 +84,8 @@ jobs:
           csv-name=noobaa-operator.clusterserviceversion.yaml \
           core-image=quay.io/${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }} \
           operator-image=quay.io/${{ steps.prep.outputs.operatortags }} \
-          db-image=centos/postgresql-12-centos7 \
+          db-image=centos/postgresql-15-centos7 \
+          psql-12-image=centos/postgresql-12-centos7 \
           obc-crd="owned" \
           BUNDLE_IMAGE=quay.io/${{ steps.prep.outputs.operatorbundletags }}
 
@@ -95,9 +96,9 @@ jobs:
         env:
           DOCKERHUB_OWNER: ${{ secrets.GHACTIONQUAYNAME }}
         run: |
-            docker tag ${{ steps.prep.outputs.operatortags }} quay.io/${{ steps.prep.outputs.operatortags }} 
-            docker push quay.io/${{ steps.prep.outputs.operatortags }} 
-            docker push quay.io/${{ steps.prep.outputs.operatorbundletags }}
+          docker tag ${{ steps.prep.outputs.operatortags }} quay.io/${{ steps.prep.outputs.operatortags }} 
+          docker push quay.io/${{ steps.prep.outputs.operatortags }} 
+          docker push quay.io/${{ steps.prep.outputs.operatorbundletags }}
 
       - name: Push to ocs-dev as latest
         env:
@@ -108,7 +109,7 @@ jobs:
           docker push quay.io/${{ steps.prep.outputs.ocsdevlatest }}
 
       - name: Push CLI Binary
-        run: |         
+        run: |
           make cli
           make release-cli VERSION=-${{ github.event.inputs.branch }}-${{ steps.prep.outputs.version }}${{ steps.suffix.outputs.suffix }}
           #noobaa-operator-cli
