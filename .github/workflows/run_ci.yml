@@ -16,8 +16,7 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
-      - uses: actions/setup-go@v2 # Could not change to version 3, see issue:
-        # https://github.com/noobaa/noobaa-operator/issues/1031
+      - uses: actions/setup-go@v5
         with:
           go-version: "1.21"
 
@@ -50,7 +49,7 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v5
         with:
           go-version: "1.21"
 
@@ -79,7 +78,7 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v5
         with:
           go-version: "1.21"
 
