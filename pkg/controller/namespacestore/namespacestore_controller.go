@@ -52,8 +52,8 @@ func Add(mgr manager.Manager) error {
 		util.FinalizersChangedPredicate{},
 		namespaceStoreModeChangedPredicate{},
 	)
-	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.NamespaceStore{}), &handler.EnqueueRequestForObject{},
-		namespaceStorePredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &nbv1.NamespaceStore{}, &handler.EnqueueRequestForObject{},
+		namespaceStorePredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func Add(mgr manager.Manager) error {
 			Namespace: obj.GetNamespace(),
 		})
 	})
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), secretsHandler, logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.Secret{}, secretsHandler, logEventsPredicate))
 	if err != nil {
 		return err
 	}

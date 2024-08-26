@@ -30,7 +30,7 @@ type NotificationSource struct {
 }
 
 // Start will setup s.Queue field
-func (s *NotificationSource) Start(context context.Context, handler handler.EventHandler, q workqueue.RateLimitingInterface, predicates ...predicate.Predicate) error {
+func (s *NotificationSource) Start(context context.Context, q workqueue.RateLimitingInterface) error {
 	s.Queue = q
 	return nil
 }
@@ -82,28 +82,28 @@ func Add(mgr manager.Manager) error {
 		handler.OnlyControllerOwner(),
 	)
 
-	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.NooBaa{}), &handler.EnqueueRequestForObject{},
-		noobaaPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &nbv1.NooBaa{}, &handler.EnqueueRequestForObject{},
+		noobaaPredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
-	err = c.Watch(source.Kind(mgr.GetCache(), &appsv1.StatefulSet{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &appsv1.StatefulSet{}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.Service{}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Pod{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.Pod{}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
-	err = c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &appsv1.Deployment{}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.ConfigMap{}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
@@ -123,13 +123,13 @@ func Add(mgr manager.Manager) error {
 	)
 
 	// Watch for StorageClass changes to trigger reconcile and recreate it when deleted
-	err = c.Watch(source.Kind(mgr.GetCache(), &storagev1.StorageClass{}), storageClassHandler, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &storagev1.StorageClass{}, storageClassHandler, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
 	// watch on notificationSource in order to keep the controller work queue
 	notificationSource := &NotificationSource{}
-	err = c.Watch(notificationSource, nil)
+	err = c.Watch(notificationSource)
 	if err != nil {
 		return err
 	}

@@ -53,8 +53,8 @@ func Add(mgr manager.Manager) error {
 	)
 
 	// Watch for changes on resources to trigger reconcile
-	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.BucketClass{}), &handler.EnqueueRequestForObject{},
-		ignoreUnmatchedProvisioner(options.Namespace), bucketClassPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &nbv1.BucketClass{}, &handler.EnqueueRequestForObject{},
+		ignoreUnmatchedProvisioner(options.Namespace), bucketClassPredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
@@ -66,8 +66,8 @@ func Add(mgr manager.Manager) error {
 		})
 	},
 	)
-	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.BackingStore{}), backingStoreHandler,
-		util.IgnoreIfNotInNamespace(options.Namespace), logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &nbv1.BackingStore{}, backingStoreHandler,
+		util.IgnoreIfNotInNamespace(options.Namespace), logEventsPredicate))
 	if err != nil {
 		return err
 	}
@@ -79,8 +79,8 @@ func Add(mgr manager.Manager) error {
 		})
 	},
 	)
-	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.NamespaceStore{}), namespaceStoreHandler,
-		util.IgnoreIfNotInNamespace(options.Namespace), logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &nbv1.NamespaceStore{}, namespaceStoreHandler,
+		util.IgnoreIfNotInNamespace(options.Namespace), logEventsPredicate))
 	if err != nil {
 		return err
 	}
