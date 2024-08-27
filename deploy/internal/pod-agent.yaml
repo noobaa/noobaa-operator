@@ -23,6 +23,7 @@ spec:
           value: KUBERNETES
         - name: AGENT_CONFIG
         - name: NOOBAA_LOG_LEVEL
+        - name: NOOBAA_LOG_COLOR
       command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
       # Insert the relevant image for the agent
       ports:

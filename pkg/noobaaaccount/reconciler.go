@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -22,6 +23,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
+
+const (
+	strTrue string = "true"
 )
 
 // Reconciler is the context for loading or reconciling a noobaa system
@@ -351,22 +356,38 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 		return err
 	}
 
-	var accessKeys nb.S3AccessKeys
-	// if we didn't get the access keys in the create_account reply we might be talking to an older noobaa version (prior to 5.1)
-	// in that case try to get it using read account
-	if len(accountInfo.AccessKeys) == 0 {
-		log.Info("CreateAccountAPI did not return access keys. calling ReadAccountAPI to get keys..")
-		readAccountReply, err := r.NBClient.ReadAccountAPI(nb.ReadAccountParams{Email: r.NooBaaAccount.Name})
-		if err != nil {
-			return err
+	annotationValue, exists := util.GetAnnotationValue(r.NooBaaAccount.Annotations, "remote-operator")
+	if exists {
+		if strings.ToLower(annotationValue) == strTrue {
+			// create join secret conatining auth token for remote noobaa account
+			res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+				System: r.NooBaa.Name,
+				Role:   "operator",
+				Email:  options.OperatorAccountEmail,
+			})
+			if err != nil {
+				return fmt.Errorf("cannot create an auth token for remote operator, error: %v", err)
+			}
+			r.Secret.StringData["auth_token"] = res.Token
 		}
-		accessKeys = readAccountReply.AccessKeys[0]
 	} else {
-		accessKeys = accountInfo.AccessKeys[0]
+		var accessKeys nb.S3AccessKeys
+		// if we didn't get the access keys in the create_account reply we might be talking to an older noobaa version (prior to 5.1)
+		// in that case try to get it using read account
+		if len(accountInfo.AccessKeys) == 0 {
+			log.Info("CreateAccountAPI did not return access keys. calling ReadAccountAPI to get keys..")
+			readAccountReply, err := r.NBClient.ReadAccountAPI(nb.ReadAccountParams{Email: r.NooBaaAccount.Name})
+			if err != nil {
+				return err
+			}
+			accessKeys = readAccountReply.AccessKeys[0]
+		} else {
+			accessKeys = accountInfo.AccessKeys[0]
+		}
+		r.Secret.StringData = map[string]string{}
+		r.Secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
+		r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
 	}
-	r.Secret.StringData = map[string]string{}
-	r.Secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
-	r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
 	r.Own(r.Secret)
 	err = r.Client.Create(r.Ctx, r.Secret)
 	if err != nil {

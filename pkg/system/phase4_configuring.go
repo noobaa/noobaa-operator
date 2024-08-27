@@ -64,12 +64,15 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileSystemSecrets(); err != nil {
 		return err
 	}
-	util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints))
-	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
-		return err
-	}
-	if err := r.ReconcileHPAEndpoint(); err != nil {
-		return err
+	// No endpoint creation is required for remote noobaa client
+	if !util.IsRemoteClientNoobaa(r.NooBaa.GetAnnotations()) {
+		util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints))
+		if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
+			return err
+		}
+		if err := r.ReconcileHPAEndpoint(); err != nil {
+			return err
+		}
 	}
 	if err := r.RegisterToCluster(); err != nil {
 		return err
@@ -1493,10 +1496,10 @@ func (r *Reconciler) ApplyMonitoringLabels(serviceMonitor *monitoringv1.ServiceM
 			if managedBy, ok := monitoringLabels["noobaa.io/managedBy"]; ok {
 				relabelConfig := monitoringv1.RelabelConfig{
 					TargetLabel: "managedBy",
-					Replacement: managedBy,
+					Replacement: &managedBy,
 				}
 				serviceMonitor.Spec.Endpoints[0].RelabelConfigs = append(
-					serviceMonitor.Spec.Endpoints[0].RelabelConfigs, &relabelConfig)
+					serviceMonitor.Spec.Endpoints[0].RelabelConfigs, relabelConfig)
 			} else {
 				r.Logger.Info("noobaa.io/managedBy not specified in monitoring labels")
 			}
@@ -1644,6 +1647,9 @@ func (r *Reconciler) UpdateBucketClassesPhase(Buckets []nb.BucketInfo) {
 
 // ReconcileDeploymentEndpointStatus creates/updates the endpoints deployment
 func (r *Reconciler) ReconcileDeploymentEndpointStatus() error {
+	if util.IsRemoteClientNoobaa(r.NooBaa.GetAnnotations()) {
+		return nil
+	}
 	if !util.KubeCheck(r.DeploymentEndpoint) {
 		return fmt.Errorf("Could not load endpoint deployment")
 	}

@@ -38,6 +38,8 @@ import (
 const (
 	webIdentityTokenPath string = "/var/run/secrets/openshift/serviceaccount/token"
 	roleARNEnvVar        string = "ROLEARN"
+	trueStr              string = "true"
+	falseStr             string = "false"
 )
 
 // ReconcilePhaseCreating runs the reconcile phase
@@ -134,6 +136,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 			return err
 		}
 	}
+	util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_core_yaml).(*secv1.SecurityContextConstraints))
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
 		return err
 	}
@@ -433,6 +436,18 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			} else {
 				c.Env[j].Value = ""
 			}
+		case "RESTRICT_RESOURCE_DELETION":
+			// check if provider mode is enabled and signal the core
+			annotationValue, annotationExists := util.GetAnnotationValue(r.NooBaa.Annotations, "MulticloudObjectGatewayProviderMode")
+			annotationBoolVal := false
+			if annotationExists {
+				annotationBoolVal = strings.ToLower(annotationValue) == trueStr
+			}
+			if annotationBoolVal {
+				c.Env[j].Value = trueStr
+			} else {
+				c.Env[j].Value = falseStr
+			}
 		}
 	}
 }
@@ -449,11 +464,6 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
 	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
-
-	//check if provider mode is enabled and signal the core
-	if annotationValue, _ := util.GetAnnotationValue(r.NooBaa.Annotations, "MulticloudObjectGatewayProviderMode"); annotationValue == "true" {
-		util.GetEnvVariable(&r.CoreApp.Spec.Template.Spec.Containers[0].Env, "CONFIG_JS_RESTRICT_RESOURCE_DELETION").Value = "true"
-	}
 
 	podSpec := &r.CoreApp.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa"
@@ -1242,6 +1252,7 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 		"NOOBAA_DISABLE_COMPRESSION": "false",
 		"DISABLE_DEV_RANDOM_SEED":    "true",
 		"NOOBAA_LOG_LEVEL":           "default_level",
+		"NOOBAA_LOG_COLOR":           "true",
 	}
 	for key, value := range DefaultConfigMapData {
 		if _, ok := r.CoreAppConfig.Data[key]; !ok {
