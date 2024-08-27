@@ -73,19 +73,19 @@ func Add(mgr manager.Manager) error {
 		handler.OnlyControllerOwner(),
 	)
 
-	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.BackingStore{}), &handler.EnqueueRequestForObject{}, backingStorePredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &nbv1.BackingStore{}, &handler.EnqueueRequestForObject{}, backingStorePredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Pod{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.Pod{}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.PersistentVolumeClaim{}), ownerHandler, &filterForOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.PersistentVolumeClaim{}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}), ownerHandler, &filterForNoobaaOwnerPredicate, &logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.ConfigMap{}, ownerHandler, &filterForNoobaaOwnerPredicate, &logEventsPredicate))
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func Add(mgr manager.Manager) error {
 			Namespace: obj.GetNamespace(),
 		})
 	})
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), secretsHandler, logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.Secret{}, secretsHandler, logEventsPredicate))
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func Add(mgr manager.Manager) error {
 			Namespace: obj.GetNamespace(),
 		})
 	})
-	err = c.Watch(source.Kind(mgr.GetCache(), &nbv1.NooBaa{}), noobaaHandler, logEventsPredicate)
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &nbv1.NooBaa{}, noobaaHandler, logEventsPredicate))
 	if err != nil {
 		return err
 	}

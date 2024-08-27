@@ -1496,10 +1496,10 @@ func (r *Reconciler) ApplyMonitoringLabels(serviceMonitor *monitoringv1.ServiceM
 			if managedBy, ok := monitoringLabels["noobaa.io/managedBy"]; ok {
 				relabelConfig := monitoringv1.RelabelConfig{
 					TargetLabel: "managedBy",
-					Replacement: managedBy,
+					Replacement: &managedBy,
 				}
 				serviceMonitor.Spec.Endpoints[0].RelabelConfigs = append(
-					serviceMonitor.Spec.Endpoints[0].RelabelConfigs, &relabelConfig)
+					serviceMonitor.Spec.Endpoints[0].RelabelConfigs, relabelConfig)
 			} else {
 				r.Logger.Info("noobaa.io/managedBy not specified in monitoring labels")
 			}
