@@ -466,7 +466,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
 
 	podSpec := &r.CoreApp.Spec.Template.Spec
-	podSpec.ServiceAccountName = "noobaa"
+	podSpec.ServiceAccountName = "noobaa-core"
 	coreImageChanged := false
 
 	// adding the missing Volumes from default podSpec
