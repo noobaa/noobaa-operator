@@ -6310,17 +6310,17 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_binding_core_yaml = "8e6063e6056d180419063b17d364596a554140bcdb93c521e031f940e9377bb3"
+const Sha256_deploy_role_binding_core_yaml = "99b90a402f770a4c3e7b1bb36c4e9175341f1697ff68a8ff3b121b43ef4d69d5"
 
 const File_deploy_role_binding_core_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: noobaa-core-role-binding
+  name: noobaa-core
   namespace: openshift-storage
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: noobaa-core-role
+  name: noobaa-core
 subjects:
 - kind: ServiceAccount
   name: noobaa-core
@@ -6391,12 +6391,12 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_core_yaml = "fad0d6b3353f8b2dbbc5bf55f99885917506982ba89c5556727d2047fa95477a"
+const Sha256_deploy_role_core_yaml = "c3cfb5b87298224fd6e4e4bff32d3948ad168a0110b8569118a260739ef5d5e7"
 
 const File_deploy_role_core_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: noobaa-core-role
+  name: noobaa-core
 rules:
 - apiGroups:
   - noobaa.io
