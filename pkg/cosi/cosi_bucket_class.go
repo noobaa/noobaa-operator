@@ -304,7 +304,7 @@ func createCommonCOSIBucketclass(cmd *cobra.Command, args []string, bucketClassT
 
 	replicationPolicyJSON, _ := cmd.Flags().GetString("replication-policy")
 	if replicationPolicyJSON != "" {
-		replication, err := util.LoadBucketReplicationJSON(replicationPolicyJSON)
+		replication, err := util.LoadConfigurationJSON(replicationPolicyJSON)
 		if err != nil {
 			log.Fatalf(`❌ %q`, err)
 		}

@@ -1284,7 +1284,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaaaccounts_yaml = "27b83df8c18c92d9ad5d1d759234dba67011ec003c02323464ebd8569a7d548d"
+const Sha256_deploy_crds_noobaa_io_noobaaaccounts_yaml = "f0cb0ed11f34aa671862b662b05a7000cced16011a6338ef97c6e4093d5d48dc"
 
 const File_deploy_crds_noobaa_io_noobaaaccounts_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -1347,6 +1347,8 @@ spec:
                   FS
                 nullable: true
                 properties:
+                  distinguished_name:
+                    type: string
                   gid:
                     type: integer
                   new_buckets_path:
@@ -1356,10 +1358,8 @@ spec:
                   uid:
                     type: integer
                 required:
-                - gid
                 - new_buckets_path
                 - nsfs_only
-                - uid
                 type: object
             required:
             - allow_bucket_creation
@@ -4597,11 +4597,13 @@ spec:
   wildcardPolicy: None
 `
 
-const Sha256_deploy_internal_route_s3_yaml = "16050267fd5cb0a34ff7b4d849a601d2583da1a11394a94f38c4f066c1613f34"
+const Sha256_deploy_internal_route_s3_yaml = "51a2eeee88436d97847f2911a4d05077885dd94bc69c537ad67417bc823a8e20"
 
 const File_deploy_internal_route_s3_yaml = `apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
+  annotations:
+    haproxy.router.openshift.io/disable_cookies: 'true'
   labels:
     app: noobaa
   name: s3
