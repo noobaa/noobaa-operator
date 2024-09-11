@@ -4455,11 +4455,13 @@ spec:
   wildcardPolicy: None
 `
 
-const Sha256_deploy_internal_route_s3_yaml = "16050267fd5cb0a34ff7b4d849a601d2583da1a11394a94f38c4f066c1613f34"
+const Sha256_deploy_internal_route_s3_yaml = "51a2eeee88436d97847f2911a4d05077885dd94bc69c537ad67417bc823a8e20"
 
 const File_deploy_internal_route_s3_yaml = `apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
+  annotations:
+    haproxy.router.openshift.io/disable_cookies: 'true'
   labels:
     app: noobaa
   name: s3
