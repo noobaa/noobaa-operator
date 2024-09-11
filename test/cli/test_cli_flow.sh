@@ -19,6 +19,10 @@ function post_install_tests {
     obc_cycle
     replication_cycle
     check_backingstore
+    #LMLM disabling this on 5.15 branch as it does not belong to a cli flow and fails the CI due to missing resources
+    # obc_nsfs_negative_tests
+    # test_create_obc_with_nsfs_acc_cfg_uid_gid
+    # test_create_obc_with_nsfs_acc_distinguished_name
     # check_dbdump
     account_cycle
     check_deletes

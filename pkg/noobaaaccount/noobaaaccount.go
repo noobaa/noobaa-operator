@@ -189,8 +189,8 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		}
 
 		noobaaAccount.Spec.NsfsAccountConfig = &nbv1.AccountNsfsConfig{
-			UID:            nsfsUID,
-			GID:            nsfsGID,
+			UID:            &nsfsUID,
+			GID:            &nsfsGID,
 			NewBucketsPath: newBucketsPath,
 			NsfsOnly:       nsfsOnly,
 		}

@@ -13,6 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+func Pointerify(number int) *int {
+	return &number
+}
+
 var _ = Describe("BackingStore admission unit tests", func() {
 
 	var (
@@ -709,8 +713,8 @@ var _ = Describe("NooBaaAccount admission unit tests", func() {
 				It("Should Deny Negative UID", func() {
 					na.Spec = nbv1.NooBaaAccountSpec{
 						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
-							UID:            -3,
-							GID:            2,
+							UID:            Pointerify(-3),
+							GID:            Pointerify(2),
 							NewBucketsPath: "/",
 							NsfsOnly:       true,
 						},
@@ -722,8 +726,8 @@ var _ = Describe("NooBaaAccount admission unit tests", func() {
 				It("Should Deny Negative GID", func() {
 					na.Spec = nbv1.NooBaaAccountSpec{
 						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
-							UID:            3,
-							GID:            -2,
+							UID:            Pointerify(3),
+							GID:            Pointerify(-2),
 							NewBucketsPath: "/",
 							NsfsOnly:       true,
 						},
@@ -735,8 +739,8 @@ var _ = Describe("NooBaaAccount admission unit tests", func() {
 				It("Should Allow", func() {
 					na.Spec = nbv1.NooBaaAccountSpec{
 						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
-							UID:            3,
-							GID:            2,
+							UID:            Pointerify(3),
+							GID:            Pointerify(2),
 							NewBucketsPath: "/",
 							NsfsOnly:       true,
 						},
@@ -765,8 +769,8 @@ var _ = Describe("NooBaaAccount admission unit tests", func() {
 					na.Spec = nbv1.NooBaaAccountSpec{
 						AllowBucketCreate: true,
 						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
-							UID:            3,
-							GID:            2,
+							UID:            Pointerify(3),
+							GID:            Pointerify(2),
 							NewBucketsPath: "/",
 							NsfsOnly:       true,
 						},
@@ -783,8 +787,8 @@ var _ = Describe("NooBaaAccount admission unit tests", func() {
 				It("Should Allow", func() {
 					na.Spec = nbv1.NooBaaAccountSpec{
 						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
-							UID:            3,
-							GID:            2,
+							UID:            Pointerify(3),
+							GID:            Pointerify(2),
 							NewBucketsPath: "/",
 							NsfsOnly:       true,
 						},
@@ -792,8 +796,8 @@ var _ = Describe("NooBaaAccount admission unit tests", func() {
 
 					updatedNA.Spec = nbv1.NooBaaAccountSpec{
 						NsfsAccountConfig: &nbv1.AccountNsfsConfig{
-							UID:            30,
-							GID:            20,
+							UID:            Pointerify(30),
+							GID:            Pointerify(20),
 							NewBucketsPath: "/new/",
 							NsfsOnly:       false,
 						},
