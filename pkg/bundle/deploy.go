@@ -5797,7 +5797,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "439f5d9032805eeff3de6520c9baa1b178f1b044091c432f1196349ffb7f544e"
+const Sha256_deploy_operator_yaml = "268ebfb52b373c8b90c184142e06f72f5568d44565ee356cac5cd29a8185f951"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -5826,8 +5826,9 @@ spec:
               path: oidc-token
               expirationSeconds: 3600
               audience: api
-      - name: socket
-        emptyDir: {}
+      # SHOULD BE RETURNED ONCE COSI IS BACK
+      # - name: socket
+      #   emptyDir: {}
       - name: noobaa-ca-inject
         configMap:
           name: noobaa-ca-inject
@@ -5859,25 +5860,26 @@ spec:
           volumeMounts:
           - mountPath: /var/run/secrets/openshift/serviceaccount
             name: oidc-token
-          - mountPath: /var/lib/cosi
-            name: socket
-        - name: objectstorage-provisioner-sidecar
-          image: COSI_SIDECAR_IMAGE
-          args:
-          - "--v=5"
-          resources:
-            limits:
-              cpu: "100m"
-              memory: "512Mi"
-          imagePullPolicy: Always
-          env:
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          volumeMounts:
-          - mountPath: /var/lib/cosi
-            name: socket
+          # SHOULD BE RETURNED ONCE COSI IS BACK
+        #   - mountPath: /var/lib/cosi
+        #     name: socket
+        # - name: objectstorage-provisioner-sidecar
+        #   image: COSI_SIDECAR_IMAGE
+        #   args:
+        #   - "--v=5"
+        #   resources:
+        #     limits:
+        #       cpu: "100m"
+        #       memory: "512Mi"
+        #   imagePullPolicy: Always
+        #   env:
+        #   - name: POD_NAMESPACE
+        #     valueFrom:
+        #       fieldRef:
+        #         fieldPath: metadata.namespace
+        #   volumeMounts:
+        #   - mountPath: /var/lib/cosi
+        #     name: socket
 `
 
 const Sha256_deploy_role_yaml = "e145ce24b4267e2e0e63ab56442295bcc605bdc4f6ef723ad6cc15fd38973101"

@@ -321,7 +321,8 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 		c.Deployment.Spec.Template.Spec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{{Name: options.ImagePullSecret}}
 	}
-	c.Deployment.Spec.Template.Spec.Containers[1].Image = options.CosiSideCarImage
+	// SHOULD BE RETURNED ONCE COSI IS BACK
+	// c.Deployment.Spec.Template.Spec.Containers[1].Image = options.CosiSideCarImage
 
 	return c
 }
