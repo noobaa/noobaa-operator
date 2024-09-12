@@ -52,7 +52,7 @@ func checkExternalSecret(tokenSecretName string, instanceID string, noobaa *nbv1
 
 	k := noobaa.Spec.Security.KeyManagementService
 	uid := string(noobaa.UID)
-	driver := &kms.IBM{uid}
+	driver := &kms.IBM{UID: uid}
 
 	// Generate backend configuration using backend driver instance
 	c, err := driver.Config(k.ConnectionDetails, k.TokenSecretName, noobaa.Namespace)
