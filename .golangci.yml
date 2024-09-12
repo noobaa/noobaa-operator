@@ -1,0 +1,9 @@
+run:
+  timeout: 5m
+
+issues:
+  exclude-dirs:
+    - pkg/apis/noobaa/v1alpha1
+    - pkg/bundle
+  exclude-files:
+    - zz_generated\.go

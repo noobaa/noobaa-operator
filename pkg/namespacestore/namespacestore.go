@@ -895,7 +895,7 @@ func MapSecretToNamespaceStores(secret types.NamespacedName) []reconcile.Request
 	for _, ns := range nsList.Items {
 		nsSecret, err := util.GetNamespaceStoreSecret(&ns)
 		if err != nil {
-			log.Errorf(err.Error())
+			log.Error(err)
 		}
 		if nsSecret != nil && nsSecret.Name == secret.Name {
 			reqs = append(reqs, reconcile.Request{
