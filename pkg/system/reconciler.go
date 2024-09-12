@@ -499,8 +499,8 @@ func (r *Reconciler) VerifyObjectBucketCleanup() error {
 		}
 		msg := fmt.Sprintf("Failed to delete NooBaa. object buckets in namespace %q are not cleaned up. remaining buckets: %+v",
 			r.NooBaa.Namespace, bucketNames)
-		log.Errorf(msg)
-		return fmt.Errorf(msg)
+		log.Error(msg)
+		return errors.New(msg)
 	}
 
 	log.Infof("All object buckets deleted in namespace %q", r.NooBaa.Namespace)
