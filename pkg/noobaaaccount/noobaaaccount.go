@@ -364,7 +364,9 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 	log.Printf("are you sure? y/n")
 
 	for {
-		fmt.Scanln(&decision)
+		if _, err := fmt.Scanln(&decision); err != nil {
+			log.Printf(`are you sure? y/n`)
+		}
 		if decision == "y" {
 			break
 		} else if decision == "n" {
