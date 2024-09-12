@@ -177,7 +177,9 @@ golangci-lint: gen
 .PHONY: golangci-lint
 
 lint: gen
-	@echo "Lint is deprecated and failing due to a dependency. Disabling it as a quick fix to release the CI flow."
+	@echo ""
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	golangci-lint run --config .golangci.yml
 	@echo "✅ lint"
 .PHONY: lint
 

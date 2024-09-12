@@ -1076,7 +1076,7 @@ func MapSecretToBackingStores(secret types.NamespacedName) []reconcile.Request {
 	for _, bs := range bsList.Items {
 		bsSecret, err := util.GetBackingStoreSecret(&bs)
 		if err != nil {
-			log.Errorf(err.Error())
+			log.Error(err)
 		}
 		if bsSecret != nil && bsSecret.Name == secret.Name {
 			reqs = append(reqs, reconcile.Request{
