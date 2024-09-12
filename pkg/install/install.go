@@ -151,19 +151,21 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	if cleanup {
 		var decision string
 
+		log.Printf("--cleanup removes the CRDs and affecting all noobaa instances, are you sure? y/n ")
 		for {
-			log.Printf("--cleanup removes the CRDs and affecting all noobaa instances, are you sure? y/n ")
-			fmt.Scanln(&decision)
+			if _, err := fmt.Scanln(&decision); err != nil {
+				log.Printf(`are you sure? y/n`)
+			}
 
 			if decision == "y" {
 				log.Printf("Will remove CRD (cluster scope)")
 				break
 			} else if decision == "n" {
-				return
+				log.Printf("Will not uninstall as remove CRD (cluster scope) was declined.")
+				log.Fatalf("In order to uninstall agree to remove CRD or remove the --cleanup flag.")
 			}
 		}
 	}
-
 	system.RunSystemVersionsStatus(cmd, args)
 	log.Printf("Namespace: %s", options.Namespace)
 	log.Printf("")
