@@ -318,7 +318,7 @@ func (c *RPCConnWS) ReadMessage() (*RPCMessage, error) {
 	msg.RawBytes = msgBytes
 
 	// Read message buffers if any
-	if msg.Buffers != nil && len(msg.Buffers) > 0 {
+	if len(msg.Buffers) > 0 {
 		buffers, err := io.ReadAll(reader)
 		// if err != nil && err.Error() != "failed to read: cannot use EOFed reader" {
 		if err != nil {
