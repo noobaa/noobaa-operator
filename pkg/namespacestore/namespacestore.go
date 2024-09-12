@@ -369,7 +369,9 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 		log.Printf("Found a Secret in the system with the same credentials (%s)", suggestedSecret.Name)
 		log.Printf("Note that using more then one secret with the same credentials is not supported")
 		log.Printf("do you want to use it for this Namespacestore? y/n")
-		fmt.Scanln(&decision)
+		if _, err := fmt.Scanln(&decision); err != nil {
+			log.Fatalf(`❌ Invalid input, please select y/n`)
+		}
 		if strings.ToLower(decision) == "y" {
 			log.Printf("Will use %s as the Namespacestore Secret", suggestedSecret.Name)
 			err := util.SetNamespaceStoreSecretRef(namespaceStore, &corev1.SecretReference{
@@ -381,8 +383,6 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 			}
 		} else if strings.ToLower(decision) == "n" {
 			log.Fatalf("Not creating Namespacestore")
-		} else {
-			log.Fatalf(`❌ Invalid input, please select y/n`)
 		}
 	}
 
