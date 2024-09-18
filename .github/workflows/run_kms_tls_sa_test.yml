@@ -32,7 +32,7 @@ jobs:
           bash .travis/install-5nodes-kind-cluster.sh
           docker push $OPERATOR_IMAGE
           bash .travis/install-tls-kms-noobaa.sh
-          go get -v github.com/onsi/ginkgo/ginkgo
+          go get -v github.com/onsi/ginkgo/v2
           go install -mod=mod -v github.com/onsi/ginkgo/ginkgo
           ginkgo version
 

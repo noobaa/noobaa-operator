@@ -1,12 +1,14 @@
 package hac_test
 
 import (
+	"context"
 	"log"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"k8s.io/client-go/kubernetes"
@@ -38,7 +40,7 @@ func connectToK8s() (*kubernetes.Clientset, error) {
     return clientset, nil
 }
 
-var _ = BeforeSuite(func() {
+var _ = BeforeSuite(func(ctx context.Context) {
 	By("Connecting to K8S cluster")
 	logger = log.New(GinkgoWriter, "INFO: ", log.Lshortfile)
 
@@ -46,4 +48,4 @@ var _ = BeforeSuite(func() {
 	clientset, err = connectToK8s()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(clientset).ToNot(BeNil())
-}, 60)
+}, NodeTimeout(60*time.Second))
