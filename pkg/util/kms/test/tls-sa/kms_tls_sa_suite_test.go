@@ -1,11 +1,13 @@
 package kmstlstestsa
 
 import (
+	"context"
 	"log"
 	"os"
 	"testing"
+	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -24,6 +26,6 @@ func TestTlsSAKMS(t *testing.T) {
 	RunSpecs(t, "External KMS (TLS Vault) Suite")
 }
 
-var _ = BeforeSuite(func() {
+var _ = BeforeSuite(func(ctx context.Context) {
 	logger = log.New(GinkgoWriter, "INFO: ", log.Lshortfile)
-}, 60)
+}, NodeTimeout(60*time.Second))

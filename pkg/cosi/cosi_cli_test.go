@@ -2,17 +2,18 @@ package cosi
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
 	namespacestore "github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"os"
-	"os/exec"
-	"strings"
 )
 
 var _ = Describe("COSI CLI tests", func() {

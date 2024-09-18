@@ -25,8 +25,8 @@ jobs:
           set -x 
           bash .travis/install-5nodes-kind-cluster.sh
           bash .travis/install-dev-vault.sh
-          go get -v github.com/onsi/ginkgo/ginkgo
-          go install -v github.com/onsi/ginkgo/ginkgo
+          go get -v github.com/onsi/ginkgo/v2
+          go install -v github.com/onsi/ginkgo/v2/ginkgo
           ginkgo version
 
       - name: Build NooBaa

@@ -7,7 +7,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
