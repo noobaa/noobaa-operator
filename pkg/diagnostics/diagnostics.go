@@ -24,6 +24,7 @@ func Cmd() *cobra.Command {
 		CmdCollect(),
 		CmdDbDump(),
 		CmdAnalyze(),
+		CmdReport(),
 	)
 	return cmd
 }
@@ -64,6 +65,17 @@ func CmdAnalyze() *cobra.Command {
 		CmdAnalyzeNamespaceStore(),
 		CmdAnalyzeResources(),
 	)
+	return cmd
+}
+
+// CmdReport returns a CLI command
+func CmdReport() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "report",
+		Short: "Run reports of the status and setup",
+		Run:   RunReport,
+		Args:  cobra.NoArgs,
+	}
 	return cmd
 }
 
