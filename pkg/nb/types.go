@@ -70,7 +70,7 @@ type BucketInfo struct {
 	BucketType   string `json:"bucket_type"`
 	Mode         string `json:"mode"`
 	Undeletable  string `json:"undeletable"`
-	ForceMd5Etag bool   `json:"force_md5_etag"`
+	ForceMd5Etag *bool  `json:"force_md5_etag,omitempty"`
 
 	BucketClaim  *BucketClaimInfo   `json:"bucket_claim,omitempty"`
 	Tiering      *TieringPolicyInfo `json:"tiering,omitempty"`
@@ -340,7 +340,7 @@ type CreateSystemReply struct {
 type CreateBucketParams struct {
 	Name         string               `json:"name"`
 	Tiering      string               `json:"tiering,omitempty"`
-	ForceMd5Etag bool                 `json:"force_md5_etag,omitempty"`
+	ForceMd5Etag *bool                `json:"force_md5_etag,omitempty"`
 	BucketClaim  *BucketClaimInfo     `json:"bucket_claim,omitempty"`
 	Namespace    *NamespaceBucketInfo `json:"namespace,omitempty"`
 	Quota        *QuotaConfig         `json:"quota,omitempty"`
@@ -411,7 +411,7 @@ type CreateAccountParams struct {
 	S3Access          bool                    `json:"s3_access"`
 	AllowBucketCreate bool                    `json:"allow_bucket_creation"`
 	DefaultResource   string                  `json:"default_resource,omitempty"`
-	ForceMd5Etag      bool                    `json:"force_md5_etag,omitempty"`
+	ForceMd5Etag      *bool                   `json:"force_md5_etag,omitempty"`
 	BucketClaimOwner  string                  `json:"bucket_claim_owner,omitempty"`
 	NsfsAccountConfig *nbv1.AccountNsfsConfig `json:"nsfs_account_config,omitempty"`
 }
