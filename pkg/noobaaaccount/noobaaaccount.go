@@ -182,7 +182,10 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	defaultResource, _ := cmd.Flags().GetString("default_resource")
 
 	nsfsAccountConfig, _ := cmd.Flags().GetBool("nsfs_account_config")
-	forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
+	forceMd5EtagPtr, err := util.GetBoolFlagPtr(cmd, "force_md5_etag")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	newBucketsPath, _ := cmd.Flags().GetString("new_buckets_path")
 	nsfsOnly, _ := cmd.Flags().GetBool("nsfs_only")
@@ -198,7 +201,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	noobaaAccount.Name = name
 	noobaaAccount.Namespace = options.Namespace
 	noobaaAccount.Spec.AllowBucketCreate = allowBucketCreate
-	noobaaAccount.Spec.ForceMd5Etag = &forceMd5Etag
+	noobaaAccount.Spec.ForceMd5Etag = forceMd5EtagPtr
 
 	if nsfsAccountConfig {
 		nsfsUID := util.GetFlagIntOrPrompt(cmd, "uid")
@@ -240,7 +243,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 
 	noobaaAccount.Spec.DefaultResource = defaultResource
 
-	err := util.KubeClient().Get(util.Context(), util.ObjectKey(noobaaAccount), noobaaAccount)
+	err = util.KubeClient().Get(util.Context(), util.ObjectKey(noobaaAccount), noobaaAccount)
 	if err == nil {
 		log.Fatalf(`❌ noobaaAccount %q already exists in namespace %q`, noobaaAccount.Name, noobaaAccount.Namespace)
 	}
@@ -272,10 +275,9 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	name := args[0]
 
 	newDefaultResource := util.GetFlagStringOrPrompt(cmd, "new_default_resource")
-	var forceMd5EtagPtr *bool = nil
-	if cmd.Flags().Changed("force_md5_etag") {
-		forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
-		forceMd5EtagPtr = &forceMd5Etag
+	forceMd5EtagPtr, err := util.GetBoolFlagPtr(cmd, "force_md5_etag")
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
