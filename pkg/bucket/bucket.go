@@ -109,11 +109,14 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatal(fmt.Errorf("CreateTieringStructure for PlacementPolicy failed to create policy %q with error: %v", tierName, err))
 	}
 
-	forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
+	forceMd5EtagPtr, err := util.GetBoolFlagPtr(cmd, "force_md5_etag")
+	if err != nil {
+		log.Fatal(err)
+	}
 	maxSize, _ := cmd.Flags().GetString("max-size")
 	maxObjects, _ := cmd.Flags().GetString("max-objects")
 
-	err = nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName, Tiering: tierName, ForceMd5Etag: forceMd5Etag})
+	err = nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName, Tiering: tierName, ForceMd5Etag: forceMd5EtagPtr})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -135,17 +138,24 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	}
 	bucketName := args[0]
 	nbClient := system.GetNBClient()
-	forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
+	forceMd5EtagPtr, err := util.GetBoolFlagPtr(cmd, "force_md5_etag")
+	if err != nil {
+		log.Fatal(err)
+	}
 	maxSize, _ := cmd.Flags().GetString("max-size")
 	maxObjects, _ := cmd.Flags().GetString("max-objects")
 
-	quota, updateQuota := prepareQuotaConfig(maxSize, maxObjects)
-	var err error
-	if updateQuota {
-		err = nbClient.UpdateBucketAPI(nb.CreateBucketParams{Name: bucketName, ForceMd5Etag: forceMd5Etag, Quota: &quota})
-	} else {
-		err = nbClient.UpdateBucketAPI(nb.CreateBucketParams{Name: bucketName, ForceMd5Etag: forceMd5Etag})
+	updateParams := nb.CreateBucketParams{
+		Name:         bucketName,
+		ForceMd5Etag: forceMd5EtagPtr,
 	}
+
+	quota, updateQuota := prepareQuotaConfig(maxSize, maxObjects)
+	if updateQuota {
+		updateParams.Quota = &quota
+	}
+
+	err = nbClient.UpdateBucketAPI(updateParams)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -187,7 +197,9 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	}
 	fmt.Printf("  %-22s : %s\n", "Type", b.BucketType)
 	fmt.Printf("  %-22s : %s\n", "Mode", b.Mode)
-	fmt.Printf("  %-22s : %t\n", "Force Md5 Etag", b.ForceMd5Etag)
+	if b.ForceMd5Etag != nil {
+		fmt.Printf("  %-22s : %t\n", "Force Md5 Etag", *b.ForceMd5Etag)
+	}
 	if b.PolicyModes != nil {
 		fmt.Printf("  %-22s : %s\n", "ResiliencyStatus", b.PolicyModes.ResiliencyStatus)
 		fmt.Printf("  %-22s : %s\n", "QuotaStatus", b.PolicyModes.QuotaStatus)
