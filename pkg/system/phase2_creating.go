@@ -450,6 +450,16 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			}
 		}
 	}
+
+	if r.NooBaa.Spec.NotificationsPVC != nil {
+		envVar := corev1.EnvVar{
+			Name: "NOTIFICATION_LOG_DIR",
+			Value: "/var/logs/notifications",
+		}
+
+		util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar});
+	}
+
 }
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
@@ -519,6 +529,51 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &bucketLogVolumeMounts)
 			}
+
+			if r.NooBaa.Spec.NotificationsPVC != nil {
+				notificationVolumeMounts := []corev1.VolumeMount{{
+					Name:      "notif-vol",
+					MountPath: "/var/logs/notifications",
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &notificationVolumeMounts)
+
+				notificationVolumes := []corev1.Volume {{
+					Name: "notif-vol",
+					VolumeSource: corev1.VolumeSource {
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource {
+							ClaimName: *r.NooBaa.Spec.NotificationsPVC,
+						},
+					},
+				}}
+				util.MergeVolumeList(&podSpec.Volumes, &notificationVolumes)
+
+				//find secrets that tell us how to connect to remote notifications servers,
+				//mount them so core can read them
+				notificatoinSecrets := &corev1.SecretList{}
+				noobaaNotifSelector, _ := labels.Parse("app=noobaa,noobaa=notifications")
+				util.KubeList(notificatoinSecrets, &client.ListOptions{Namespace: options.Namespace, LabelSelector: noobaaNotifSelector})
+
+				for _, notificationSecret := range notificatoinSecrets.Items {
+
+					secretVolumeMounts := []corev1.VolumeMount{{
+						Name:      notificationSecret.Name,
+						MountPath: "/etc/notif_connect/" + notificationSecret.Name,
+						ReadOnly:  true,
+					}}
+					util.MergeVolumeMountList(&c.VolumeMounts, &secretVolumeMounts)
+
+					secretVolumes := []corev1.Volume{{
+						Name: notificationSecret.Name,
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: notificationSecret.Name,
+							},
+						},
+					}}
+					util.MergeVolumeList(&podSpec.Volumes, &secretVolumes)
+				}
+			}
+
 		case "noobaa-log-processor":
 			if c.Image != r.NooBaa.Status.ActualImage {
 				coreImageChanged = true
@@ -624,6 +679,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 		}}
 		util.MergeVolumeList(&podSpec.Volumes, &bucketLogVolumes)
 	}
+
 	return nil
 }
 

@@ -1415,7 +1415,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "3f88c800238f25e5dd26f3f1bf19028571cc646e3aea0f868bfd2ff600ee3ed1"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "0f61ab9eecb4ccd392e5e5e7932baa0fa12ba035b56c4d610a8eaaebb98c8188"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3125,6 +3125,11 @@ spec:
                   update the admin account with new BackingStore/NamespaceStore in order to delete the DefaultBackingStore/DefaultNamespaceStore
                 nullable: true
                 type: boolean
+              notificationsPVC:
+                description: |-
+                  NotificationsPVC (optional) specifies the name of the Persistent Volume Claim (PVC) to be used
+                  for notifications persistent files.
+                type: string
               pvPoolDefaultStorageClass:
                 description: |-
                   PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes.

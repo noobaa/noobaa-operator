@@ -227,6 +227,11 @@ type NooBaaSpec struct {
 	// BucketLogging sets the configuration for bucket logging
 	// +optional
 	BucketLogging BucketLoggingSpec `json:"bucketLogging,omitempty"`
+
+	// NotificationsPVC (optional) specifies the name of the Persistent Volume Claim (PVC) to be used
+	// for notifications persistent files.
+	// +optional
+	NotificationsPVC *string `json:"notificationsPVC,omitempty"`
 }
 
 // AutoscalerSpec defines different actoscaling spec such as autoscaler type and prometheus namespace

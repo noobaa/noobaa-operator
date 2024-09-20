@@ -1706,6 +1706,11 @@ spec:
                   update the admin account with new BackingStore/NamespaceStore in order to delete the DefaultBackingStore/DefaultNamespaceStore
                 nullable: true
                 type: boolean
+              notificationsPVC:
+                description: |-
+                  NotificationsPVC (optional) specifies the name of the Persistent Volume Claim (PVC) to be used
+                  for notifications persistent files.
+                type: string
               pvPoolDefaultStorageClass:
                 description: |-
                   PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes.
