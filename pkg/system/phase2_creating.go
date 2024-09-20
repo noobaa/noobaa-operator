@@ -40,6 +40,7 @@ const (
 	roleARNEnvVar        string = "ROLEARN"
 	trueStr              string = "true"
 	falseStr             string = "false"
+	notificationsVolume  string = "notif-vol"
 )
 
 // ReconcilePhaseCreating runs the reconcile phase
@@ -132,10 +133,28 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	}
 	// create bucket logging pvc if not provided by user for 'Guaranteed' logging in ODF env
 	if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
-		if err := r.ReconcileODFBucketLoggingPVC(); err != nil {
+		if err := r.ReconcileODFPersistentLoggingPVC(
+			"BucketLoggingPVC",
+			"InvalidBucketLoggingConfiguration",
+			"'Guaranteed' BucketLogging requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'BucketLoggingPVC' to ensure guaranteed logging",
+			r.NooBaa.Spec.BucketLogging.BucketLoggingPVC,
+			r.BucketLoggingPVC); err != nil {
 			return err
 		}
 	}
+
+	// create notification log pvc if bucket notifications is enabled and pvc was not set explicitly
+	if r.NooBaa.Spec.BucketNotifications.Enabled {
+			if err := r.ReconcileODFPersistentLoggingPVC(
+				"bucketNotifications.pvc",
+				"InvalidBucketNotificationConfiguration",
+				"Bucket notifications requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'bucketNotifications.pvc'.",
+				r.NooBaa.Spec.BucketNotifications.PVC,
+				r.BucketNotificationsPVC); err != nil {
+				return err
+		}
+	}
+
 	util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_core_yaml).(*secv1.SecurityContextConstraints))
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
 		return err
@@ -450,6 +469,15 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			}
 		}
 	}
+
+	if r.NooBaa.Spec.BucketNotifications.Enabled {
+		envVar := corev1.EnvVar{
+			Name: "NOTIFICATION_LOG_DIR",
+			Value: "/var/logs/notifications",
+		}
+		util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar});
+	}
+
 }
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
@@ -519,6 +547,44 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &bucketLogVolumeMounts)
 			}
+
+			if r.NooBaa.Spec.BucketNotifications.Enabled {
+				notificationVolumeMounts := []corev1.VolumeMount{{
+					Name:      notificationsVolume,
+					MountPath: "/var/logs/notifications",
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &notificationVolumeMounts)
+
+				notificationVolumes := []corev1.Volume {{
+					Name: notificationsVolume,
+					VolumeSource: corev1.VolumeSource {
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource {
+							ClaimName: r.BucketNotificationsPVC.Name,
+						},
+					},
+				}}
+				util.MergeVolumeList(&podSpec.Volumes, &notificationVolumes)
+
+				for _, notifSecret := range r.NooBaa.Spec.BucketNotifications.Connections {
+					secretVolumeMounts := []corev1.VolumeMount{{
+						Name:      notifSecret.Name,
+						MountPath: "/etc/notif_connect/" + notifSecret.Name,
+						ReadOnly:  true,
+					}}
+					util.MergeVolumeMountList(&c.VolumeMounts, &secretVolumeMounts)
+
+					secretVolumes := []corev1.Volume{{
+						Name: notifSecret.Name,
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: notifSecret.Name,
+							},
+						},
+					}}
+					util.MergeVolumeList(&podSpec.Volumes, &secretVolumes)
+				}
+			}
+
 		case "noobaa-log-processor":
 			if c.Image != r.NooBaa.Status.ActualImage {
 				coreImageChanged = true
@@ -624,6 +690,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 		}}
 		util.MergeVolumeList(&podSpec.Volumes, &bucketLogVolumes)
 	}
+
 	return nil
 }
 
@@ -1163,56 +1230,62 @@ func (r *Reconciler) ReconcileDBConfigMap(cm *corev1.ConfigMap, desiredFunc func
 	return r.isObjectUpdated(result), nil
 }
 
-// ReconcileODFBucketLoggingPVC ensures the bucket logging PVC is properly configured for 'guaranteed' logging
-func (r *Reconciler) ReconcileODFBucketLoggingPVC() error {
-	log := r.Logger.WithField("func", "ReconcileBucketLoggingPVC")
+//ReconcileODFPersistentLoggingPVC ensures a persistent logging pvc (either for bucket logging or bucket notificatoins)
+//is properly configured. If needed and possible, allocate one from CephFS
+func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
+	fieldName string,
+	errorName string,
+	errorText string,
+	pvcName *string,
+	pvc *corev1.PersistentVolumeClaim) error {
 
-	// Return if bucket logging PVC already exist
-	if r.NooBaa.Spec.BucketLogging.BucketLoggingPVC != nil {
-		r.BucketLoggingPVC.Name = *r.NooBaa.Spec.BucketLogging.BucketLoggingPVC
-		log.Infof("BucketLoggingPVC %s already exists and supports RWX access mode. Skipping ReconcileODFBucketLoggingPVC.", r.BucketLoggingPVC.Name)
+	log := r.Logger.WithField("func", "ReconcileODFPersistentLoggingPVC")
+
+	// Return if persistent logging PVC already exists
+	if pvc != nil {
+		pvc.Name = *pvcName;
+		log.Infof("PersistentLoggingPVC %s already exists and supports RWX access mode. Skipping ReconcileODFPersistentLoggingPVC.", *pvcName)
 		return nil
 	}
 
-	util.KubeCheck(r.BucketLoggingPVC)
-	if r.BucketLoggingPVC.UID != "" {
-		log.Infof("BucketLoggingPVC %s already exists. Skipping creation.", r.BucketLoggingPVC.Name)
+	util.KubeCheck(pvc)
+	if pvc.UID != "" {
+		log.Infof("Persistent logging PVC %s already exists. Skipping creation.", *pvcName )
 		return nil
 	}
 
-	if err := r.prepareODFBucketLoggingPVC(); err != nil {
-		return err
+	if !r.preparePersistentLoggingPVC(pvc, fieldName) {
+		return util.NewPersistentError(errorName, errorText)
 	}
-	r.Own(r.BucketLoggingPVC)
+	r.Own(pvc);
 
-	log.Infof("BucketLoggingPVC %s does not exist. Creating...", r.BucketLoggingPVC.Name)
-	err := r.Client.Create(r.Ctx, r.BucketLoggingPVC)
+	log.Infof("Persistent logging PVC %s does not exist. Creating...", *pvcName)
+	err := r.Client.Create(r.Ctx, pvc)
 	if err != nil {
 		return err
 	}
 
 	return nil
+
 }
 
-// prepareODFBucketLoggingPVC configures the bucket logging pvc
-func (r *Reconciler) prepareODFBucketLoggingPVC() error {
-	r.BucketLoggingPVC.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}
+//prepare persistent logging pvc
+func (r *Reconciler) preparePersistentLoggingPVC(pvc *corev1.PersistentVolumeClaim, fieldName string) bool {
+	pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}
 
 	sc := &storagev1.StorageClass{
 		TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
 		ObjectMeta: metav1.ObjectMeta{Name: "ocs-storagecluster-cephfs"},
 	}
 
-	// fallback to cephfs storageclass to create bucket logging pvc if running on ODF
+	// fallback to cephfs storageclass to create persistent logging pvc if running on ODF
 	if util.KubeCheck(sc) {
-		r.Logger.Infof("BucketLoggingPVC not provided, defaulting to 'cephfs' storage class %s to create bucket logging pvc", sc.Name)
-		r.BucketLoggingPVC.Spec.StorageClassName = &sc.Name
+		r.Logger.Infof("%s not provided, defaulting to 'cephfs' storage class %s to create persistent logging pvc", fieldName, sc.Name)
+		pvc.Spec.StorageClassName = &sc.Name
+		return true;
 	} else {
-		return util.NewPersistentError("InvalidBucketLoggingConfiguration",
-			"'Guaranteed' BucketLogging requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'BucketLoggingPVC' to ensure guaranteed logging")
+		return false;
 	}
-
-	return nil
 }
 
 // SetDesiredPostgresDBConf fill desired postgres db config map

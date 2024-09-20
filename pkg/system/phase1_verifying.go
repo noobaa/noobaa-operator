@@ -67,7 +67,13 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 	}
 
 	if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
-		if err := r.checkBucketLoggingPVC(); err != nil {
+		if err := r.checkPersistentLoggingPVC(r.NooBaa.Spec.BucketLogging.BucketLoggingPVC, r.BucketLoggingPVC, "InvalidBucketLoggingConfiguration"); err != nil {
+			return err
+		}
+	}
+
+	if r.NooBaa.Spec.BucketNotifications.Enabled {
+		if err := r.checkPersistentLoggingPVC(r.NooBaa.Spec.BucketNotifications.PVC, r.BucketNotificationsPVC, "InvalidBucketNotificationConfiguration"); err != nil {
 			return err
 		}
 	}
@@ -265,11 +271,12 @@ func (r *Reconciler) checkExternalPg(postgresDbURL string) error {
 	return nil
 }
 
-// checkBucketLoggingPVC validates the configuration of bucket logging pvc
-func (r *Reconciler) checkBucketLoggingPVC() error {
-	// Rejecting if 'BucketLoggingPVC' is not provided for 'guaranteed' logging and
-	// also the operator is not running in the ODF environment.
-	if r.NooBaa.Spec.BucketLogging.BucketLoggingPVC == nil {
+// checkPersistentLoggingPVC validates the configuration of pvc for persistent logging
+func (r *Reconciler) checkPersistentLoggingPVC(
+	pvcName *string,
+	pvc *corev1.PersistentVolumeClaim,
+	errorName string) error {
+	if pvcName == nil {
 		sc := &storagev1.StorageClass{
 			TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
 			ObjectMeta: metav1.ObjectMeta{Name: "ocs-storagecluster-cephfs"},
@@ -278,29 +285,29 @@ func (r *Reconciler) checkBucketLoggingPVC() error {
 		if util.KubeCheck(sc) {
 			return nil
 		}
-		return util.NewPersistentError("InvalidBucketLoggingConfiguration",
-			"'Guaranteed' BucketLogging requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'BucketLoggingPVC' to ensure guaranteed logging")
+		return util.NewPersistentError(errorName,
+			"Persistent Volume Claim (PVC) was not specified (and CephFS was not found for a defualt PVC)")
 	}
 
 	// Check if pvc exists in the cluster
-	BucketLoggingPVC := &corev1.PersistentVolumeClaim{
+	PersistentLoggingPVC := &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{Kind: "PersistenVolumeClaim"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      *r.NooBaa.Spec.BucketLogging.BucketLoggingPVC,
+			Name:      *pvcName,
 			Namespace: r.Request.Namespace,
 		},
 	}
-	if !util.KubeCheck(BucketLoggingPVC) {
-		return util.NewPersistentError("InvalidBucketLoggingConfiguration",
-			fmt.Sprintf("The specified BucketLoggingPVC '%s' was not found", BucketLoggingPVC.Name))
+	if !util.KubeCheck(PersistentLoggingPVC) {
+		return util.NewPersistentError(errorName,
+			fmt.Sprintf("The specified persistent logging pvc '%s' was not found", *pvcName))
 	}
 
 	// Check if pvc supports RWX access mode
-	for _, accessMode := range BucketLoggingPVC.Spec.AccessModes {
+	for _, accessMode := range PersistentLoggingPVC.Spec.AccessModes {
 		if accessMode == corev1.ReadWriteMany {
 			return nil
 		}
 	}
-	return util.NewPersistentError("InvalidBucketLoggingConfiguration",
-		fmt.Sprintf("The specified BucketLoggingPVC '%s' does not support RWX access mode", BucketLoggingPVC.Name))
+	return util.NewPersistentError(errorName,
+		fmt.Sprintf("The specified persistent logging pvc '%s' does not support RWX access mode", *pvcName))
 }
