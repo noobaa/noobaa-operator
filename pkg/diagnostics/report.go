@@ -22,13 +22,21 @@ func RunReport(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Could not get core StatefulSet %q in Namespace %q`,
 			coreApp.Name, coreApp.Namespace)
 	}
+
+	// Fetching endpoint configurations
+	endpointApp := util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment)
+	endpointApp.Namespace = options.Namespace
+	if !util.KubeCheck(endpointApp) {
+		log.Fatalf(`❌ Could not get endpoint Deployment %q in Namespace %q`,
+			endpointApp.Name, endpointApp.Namespace)
+	}
 	fmt.Println("")
 
 	// retrieving the status of proxy environment variables
 	proxyStatus(coreApp)
 
-	// retrieving the overriden env variables using `CONFIG_JS_` prefix
-	overridenEnvVar(coreApp)
+	// retrieving the overridden env variables using `CONFIG_JS_` prefix
+	OverriddenEnvVar(coreApp, endpointApp)
 
 	// TODO: Add support for additional features
 }
@@ -50,16 +58,35 @@ func proxyStatus(coreApp *appsv1.StatefulSet) {
 	fmt.Println("")
 }
 
-// overridedEnvVar retrieves and displays overridden environment variables with the prefix `CONFIG_JS_` from the noobaa-core-0 pod
-func overridenEnvVar(coreApp *appsv1.StatefulSet) {
+// overriddenEnvVar retrieves and displays overridden environment variables with the prefix `CONFIG_JS_` from the noobaa-core-0 pod
+func OverriddenEnvVar(coreApp *appsv1.StatefulSet, endpointApp *appsv1.Deployment) {
 	log := util.Logger()
 
-	log.Print("⏳ Retrieving overridden environment variables from the pod `noobaa-core-0`...\n")
-	fmt.Print("Overriden Environment Variables Check:\n----------------------------------\n")
+	log.Print("⏳ Retrieving overridden environment variable details...\n")
+
+	fmt.Print("Overridden Environment Variables Check (NOOBAA-CORE):\n----------------------------------\n")
+	foundCoreEnv := false
 	for _, envVar := range coreApp.Spec.Template.Spec.Containers[0].Env {
 		if strings.HasPrefix(envVar.Name, "CONFIG_JS_") {
-			fmt.Printf("    	✔ %-12s : %s\n", envVar.Name, envVar.Value)
+			fmt.Printf("    	✔ %s : %s\n", envVar.Name, envVar.Value)
+			foundCoreEnv = true
 		}
+	}
+	if !foundCoreEnv {
+		fmt.Printf("	❌ No overridden environment variables found.")
+	}
+	fmt.Println("")
+
+	fmt.Print("Overridden Environment Variables Check (ENDPOINT):\n----------------------------------\n")
+	foundEndpointEnv := false
+	for _, envVar := range endpointApp.Spec.Template.Spec.Containers[0].Env {
+		if strings.HasPrefix(envVar.Name, "CONFIG_JS_") {
+			fmt.Printf("    	✔ %s : %s\n", envVar.Name, envVar.Value)
+			foundEndpointEnv = true
+		}
+	}
+	if !foundEndpointEnv {
+		fmt.Printf("	❌ No overridden environment variables found.")
 	}
 	fmt.Println("")
 }
