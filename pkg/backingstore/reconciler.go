@@ -1173,8 +1173,8 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 		configMapValue := r.CoreAppConfig.Data[name]
 		noobaaLogEnvVar := util.GetEnvVariable(&c.Env, name)
 
-		if configMapValue != noobaaLogEnvVar.Value {
-			r.Logger.Warnf("%s Env variable change detected: (%v) on the config map (%v)", name, noobaaLogEnvVar.Value, configMapValue)
+		if (noobaaLogEnvVar == nil && configMapValue != "") || (noobaaLogEnvVar != nil && configMapValue != noobaaLogEnvVar.Value) {
+			r.Logger.Warnf("%s Env variable change detected: (%v) on the config map (%v)", name, noobaaLogEnvVar, configMapValue)
 			return true
 		}
 	}
