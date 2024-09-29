@@ -361,7 +361,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 
 		case "POSTGRES_HOST":
 			if r.NooBaa.Spec.ExternalPgSecret == nil {
-				c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName
+				c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName + "." + r.NooBaaPostgresDB.Namespace + ".svc"
 			}
 
 		case "DB_TYPE":
