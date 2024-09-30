@@ -5907,7 +5907,7 @@ s3 ls s3://first.bucket
 ` + "`" + `` + "`" + `` + "`" + `
 `
 
-const Sha256_deploy_olm_noobaa_operator_clusterserviceversion_yaml = "900ed615837a7f63510de5bff4bd8ffdcc02bea8cec0cf231d21e32812f78ed7"
+const Sha256_deploy_olm_noobaa_operator_clusterserviceversion_yaml = "3b11ab7cce6a4dfc36ad13f75b37821c8e200aec4cf21007208948e74ce9cc44"
 
 const File_deploy_olm_noobaa_operator_clusterserviceversion_yaml = `apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
@@ -5971,7 +5971,7 @@ spec:
     type: SingleNamespace
   - supported: false
     type: MultiNamespace
-  - supported: false
+  - supported: true
     type: AllNamespaces
   install:
     strategy: deployment
