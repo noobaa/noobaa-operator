@@ -1238,6 +1238,19 @@ func GetFlagStringOrPromptPassword(cmd *cobra.Command, flag string) string {
 	return str
 }
 
+// GetBoolFlagPtr returns a pointer to the boolean flag value if set, or nil if not set
+func GetBoolFlagPtr(cmd *cobra.Command, flag string) (*bool, error) {
+	if cmd.Flags().Changed(flag) {
+		flagVal, err := cmd.Flags().GetBool(flag)
+		if err != nil {
+			return nil, err
+		}
+		return &flagVal, nil
+	}
+
+	return nil, nil
+}
+
 // PrintThisNoteWhenFinishedApplyingAndStartWaitLoop is a common log task
 func PrintThisNoteWhenFinishedApplyingAndStartWaitLoop() {
 	log := Logger()
