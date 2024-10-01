@@ -4771,7 +4771,7 @@ type: Opaque
 data: {}
 `
 
-const Sha256_deploy_internal_service_db_yaml = "7bf9f8bd18c07c5d768392f2bdfcac7f3398c1137eecb0f48983f468234a5a96"
+const Sha256_deploy_internal_service_db_yaml = "ad9f76ccec1a38c07af34d0251e9e3f3d64bfad48ebaebbdfeef653af1e6eafc"
 
 const File_deploy_internal_service_db_yaml = `apiVersion: v1
 kind: Service
@@ -4783,7 +4783,7 @@ metadata:
     service.beta.openshift.io/serving-cert-secret-name: "noobaa-db-serving-cert"
     service.alpha.openshift.io/serving-cert-secret-name: "noobaa-db-serving-cert"
 spec:
-  type: ClusterIP
+  clusterIP: None # headless service
   selector:
     noobaa-db: SYSNAME
   ports:

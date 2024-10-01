@@ -8,7 +8,7 @@ metadata:
     service.beta.openshift.io/serving-cert-secret-name: "noobaa-db-serving-cert"
     service.alpha.openshift.io/serving-cert-secret-name: "noobaa-db-serving-cert"
 spec:
-  type: ClusterIP
+  clusterIP: None # headless service
   selector:
     noobaa-db: SYSNAME
   ports:
