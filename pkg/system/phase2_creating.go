@@ -223,6 +223,24 @@ func (r *Reconciler) SetDesiredServiceDBForPostgres() error {
 	return nil
 }
 
+// Check db update status and if already updated, remove the POSTGRES_UPDATE env from STS
+func (r *Reconciler) checkAndRemovePGUpgradeEnvFromSTS() {
+	if r.NooBaa.Status.PostgresUpdatePhase == nbv1.UpgradePhaseFinished {
+		for i, container := range r.NooBaaPostgresDB.Spec.Template.Spec.Containers {
+			newEnvVars := []corev1.EnvVar{}
+			if container.Name == "db" {
+				for _, env := range container.Env {
+					if env.Name != "POSTGRESQL_UPGRADE" {
+						newEnvVars = append(newEnvVars, env)
+					}
+				}
+				r.NooBaaPostgresDB.Spec.Template.Spec.Containers[i].Env = newEnvVars
+				break
+			}
+		}
+	}
+}
+
 // SetDesiredNooBaaDB updates the NooBaaDB as desired for reconciling
 func (r *Reconciler) SetDesiredNooBaaDB() error {
 	var NooBaaDBTemplate *appsv1.StatefulSet = nil
@@ -238,6 +256,9 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
 	NooBaaDB.Spec.ServiceName = r.ServiceDbPg.Name
 	NooBaaDBTemplate = util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
+
+	// Check db update status and if already updated, remove the POSTGRES_UPDATE env from STS
+	r.checkAndRemovePGUpgradeEnvFromSTS()
 
 	podSpec := &NooBaaDB.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa-db"
@@ -1133,6 +1154,7 @@ func (r *Reconciler) ReconcileDB() error {
 
 	result, reconcilePostgresError := r.reconcileObjectAndGetResult(r.NooBaaPostgresDB, r.SetDesiredNooBaaDB, false)
 	if reconcilePostgresError != nil {
+
 		return reconcilePostgresError
 	}
 	if !r.isObjectUpdated(result) && (isDBConfUpdated) {
@@ -1143,6 +1165,11 @@ func (r *Reconciler) ReconcileDB() error {
 		}
 
 	}
+
+	if r.isObjectUpdated(result) {
+		r.NooBaa.Status.PostgresUpdatePhase = nbv1.UpgradePhaseFinished
+	}
+
 	return nil
 }
 
