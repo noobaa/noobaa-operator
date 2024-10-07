@@ -577,8 +577,8 @@ func (r *BucketRequest) CreateAccount() error {
 			return fmt.Errorf("failed to parse NSFS config %q: %w", r.OBC.Spec.AdditionalConfig["nsfsAccountConfig"], err)
 		}
 		// We prefer to make sure this account is only used for its appropriate NSFS operations
-		nsfsAccountConfig.NewBucketsPath = "";
-		nsfsAccountConfig.NsfsOnly = true;
+		nsfsAccountConfig.NewBucketsPath = ""
+		nsfsAccountConfig.NsfsOnly = true
 		// -1 is the default CLI value which we use to indicate that the UID/GID should not be set
 		// 0 cannot be used since it is a valid GID/UID value
 		var IDNullifier = -1
@@ -587,14 +587,14 @@ func (r *BucketRequest) CreateAccount() error {
 			nsfsAccountConfig.GID = nil
 		}
 	}
-	
+
 	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{
-		Name:              r.AccountName,
-		Email:             r.AccountName,
-		// defaultResource is left as-is only because AllowBucketCreate is false 
-		DefaultResource:   defaultResource,
-		HasLogin:          false,
-		S3Access:          true,
+		Name:  r.AccountName,
+		Email: r.AccountName,
+		// defaultResource is left as-is only because AllowBucketCreate is false
+		DefaultResource: defaultResource,
+		HasLogin:        false,
+		S3Access:        true,
 		// If this field is to be changed, DefaultResource above will need to be modified as well
 		AllowBucketCreate: false,
 		BucketClaimOwner:  r.BucketName,
