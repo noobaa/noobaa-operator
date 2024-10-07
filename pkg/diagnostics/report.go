@@ -9,6 +9,12 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	appNoobaaCore     = "NOOBAA-CORE"
+	appNoobaaEndpoint = "NOOBAA-ENDPOINT"
 )
 
 // RunReport runs a CLI command
@@ -33,22 +39,45 @@ func RunReport(cmd *cobra.Command, args []string) {
 	fmt.Println("")
 
 	// retrieving the status of proxy environment variables
-	proxyStatus(coreApp)
+	proxyStatus(coreApp, endpointApp)
 
 	// retrieving the overridden env variables using `CONFIG_JS_` prefix
-	OverriddenEnvVar(coreApp, endpointApp)
+	overriddenEnvVar(coreApp, endpointApp)
 
 	// TODO: Add support for additional features
 }
 
 // proxyStatus returns the status of the environment variables: HTTP_PROXY, HTTPS_PROXY, and NO_PROXY
-func proxyStatus(coreApp *appsv1.StatefulSet) {
+func proxyStatus(coreApp *appsv1.StatefulSet, endpointApp *appsv1.Deployment) {
 	log := util.Logger()
 
 	log.Print("⏳ Retrieving proxy environment variable details...\n")
-	fmt.Print("Proxy Environment Variables Check:\n----------------------------------\n")
+
+	printProxyStatus(appNoobaaCore, coreApp.Spec.Template.Spec.Containers[0].Env)
+
+	printProxyStatus(appNoobaaEndpoint, endpointApp.Spec.Template.Spec.Containers[0].Env)
+
+	fmt.Println("")
+}
+
+// overriddenEnvVar retrieves and displays overridden environment variables with the prefix `CONFIG_JS_` from the noobaa-core-0 pod
+func overriddenEnvVar(coreApp *appsv1.StatefulSet, endpointApp *appsv1.Deployment) {
+	log := util.Logger()
+
+	log.Print("⏳ Retrieving overridden environment variable details...\n")
+
+	printOverriddenEnvVar(appNoobaaCore, coreApp.Spec.Template.Spec.Containers[0].Env)
+
+	printOverriddenEnvVar(appNoobaaEndpoint, endpointApp.Spec.Template.Spec.Containers[0].Env)
+
+	fmt.Println("")
+}
+
+// printProxyStatus prints the proxy status
+func printProxyStatus(appName string, envVars []corev1.EnvVar) {
+	fmt.Printf("Proxy Environment Variables Check (%s):\n----------------------------------\n", appName)
 	for _, proxyName := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
-		envVar := util.GetEnvVariable(&coreApp.Spec.Template.Spec.Containers[0].Env, proxyName)
+		envVar := util.GetEnvVariable(&envVars, proxyName)
 		if envVar != nil && envVar.Value != "" {
 			fmt.Printf("	✅ %-12s : %s\n", envVar.Name, envVar.Value)
 		} else {
@@ -58,35 +87,18 @@ func proxyStatus(coreApp *appsv1.StatefulSet) {
 	fmt.Println("")
 }
 
-// overriddenEnvVar retrieves and displays overridden environment variables with the prefix `CONFIG_JS_` from the noobaa-core-0 pod
-func OverriddenEnvVar(coreApp *appsv1.StatefulSet, endpointApp *appsv1.Deployment) {
-	log := util.Logger()
-
-	log.Print("⏳ Retrieving overridden environment variable details...\n")
-
-	fmt.Print("Overridden Environment Variables Check (NOOBAA-CORE):\n----------------------------------\n")
-	foundCoreEnv := false
-	for _, envVar := range coreApp.Spec.Template.Spec.Containers[0].Env {
+// printOverriddenEnvVar prints the overridden envVars
+func printOverriddenEnvVar(appName string, envVars []corev1.EnvVar) {
+	fmt.Printf("Overridden Environment Variables Check (%s):\n----------------------------------\n", appName)
+	foundOverriddenEnv := false
+	for _, envVar := range envVars {
 		if strings.HasPrefix(envVar.Name, "CONFIG_JS_") {
 			fmt.Printf("    	✔ %s : %s\n", envVar.Name, envVar.Value)
-			foundCoreEnv = true
+			foundOverriddenEnv = true
 		}
 	}
-	if !foundCoreEnv {
-		fmt.Printf("	❌ No overridden environment variables found.")
-	}
-	fmt.Println("")
-
-	fmt.Print("Overridden Environment Variables Check (ENDPOINT):\n----------------------------------\n")
-	foundEndpointEnv := false
-	for _, envVar := range endpointApp.Spec.Template.Spec.Containers[0].Env {
-		if strings.HasPrefix(envVar.Name, "CONFIG_JS_") {
-			fmt.Printf("    	✔ %s : %s\n", envVar.Name, envVar.Value)
-			foundEndpointEnv = true
-		}
-	}
-	if !foundEndpointEnv {
-		fmt.Printf("	❌ No overridden environment variables found.")
+	if !foundOverriddenEnv {
+		fmt.Print("	❌ No overridden environment variables found.\n")
 	}
 	fmt.Println("")
 }
