@@ -102,7 +102,7 @@ func (v *VersionRotatingSecret) Reconcile(r SecretReconciler) error {
 
 // Get implements SecretStorage interface for the secret map, i.e. rotating master root key
 func (v *VersionRotatingSecret) Get() error {
-	s, _, err := v.k.GetSecret(v.backendSecretName(), v.k.driver.GetContext())
+	s, _, err := v.k.GetSecret(v.BackendSecretName(), v.k.driver.GetContext())
 	if err != nil {
 		// handle k8s get from non-existent secret
 		if strings.Contains(err.Error(), "not found") {
@@ -120,8 +120,8 @@ func (v *VersionRotatingSecret) Get() error {
 	return nil
 }
 
-// backendSecretName returns the rotating secret backend secret name
-func (v *VersionRotatingSecret) backendSecretName() string {
+// BackendSecretName returns the rotating secret backend secret name
+func (v *VersionRotatingSecret) BackendSecretName() string {
 	return v.name + "-root-master-key-backend"
 }
 
@@ -137,7 +137,7 @@ func (v *VersionRotatingSecret) Set(val string) error {
 	s[ActiveRootKey] = key
 	s[key] = val
 	v.data = s
-	_, err := v.k.PutSecret(v.backendSecretName(), toInterfaceMap(s), v.k.driver.SetContext())
+	_, err := v.k.PutSecret(v.BackendSecretName(), toInterfaceMap(s), v.k.driver.SetContext())
 	return err
 }
 
@@ -154,11 +154,15 @@ func (v *VersionRotatingSecret) deleteSingleStringSecret() bool {
 func (v *VersionRotatingSecret) Delete() error {
 	// Delete rotating secret backend
 	backendSecret := &corev1.Secret{}
-	backendSecret.Name = v.backendSecretName()
+	backendSecret.Name = v.BackendSecretName()
 	backendSecret.Namespace = v.ns
 	if !util.KubeDelete(backendSecret) {
 		return fmt.Errorf("KMS Delete error for the rotating master root secret backend")
+	}
 
+	err := v.k.DeleteSecret(v.BackendSecretName(), v.k.driver.DeleteContext())
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -24,7 +24,9 @@ const (
 
 // Vault is a vault driver
 type Vault struct {
-	UID string // NooBaa system UID
+	UID  string // NooBaa system UID
+	name string // NooBaa system name
+	ns   string // NooBaa system namespace
 }
 
 // NewVault is vault driver constructor
@@ -33,7 +35,7 @@ func NewVault(
 	namespace string,
 	uid string,
 ) Driver {
-	return &Vault{uid}
+	return &Vault{uid, name, namespace}
 }
 
 //
@@ -179,8 +181,8 @@ func writeCrtsToFile(secretName string, namespace string, secretValue []byte, en
 
 // Version returns the current driver KMS version
 // either single string or map, i.e. rotating key
-func (*Vault) Version(kms *KMS) Version {
-	return &VersionSingleSecret{kms, nil}
+func (k *Vault) Version(kms *KMS) Version {
+	return &VersionRotatingSecret{VersionBase{kms, nil}, k.name, k.ns}
 }
 
 // Register Vault driver with KMS layer
