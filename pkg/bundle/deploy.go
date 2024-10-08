@@ -3599,14 +3599,14 @@ spec:
     skipServiceCheck: true
 `
 
-const Sha256_deploy_internal_configmap_ca_inject_yaml = "75f8ab503a683bcebd2ed6a2c9f8da0a4c174a62b4e6ca7e97ebc3da847ca866"
+const Sha256_deploy_internal_configmap_ca_inject_yaml = "fac2305a04146c6b553398b1cb69b3ee2f32c5735359f5102590d43d33ccecba"
 
 const File_deploy_internal_configmap_ca_inject_yaml = `apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
     config.openshift.io/inject-trusted-cabundle: "true"
-  name: noobaa-ca-inject
+  name: ocp-injected-ca-bundle
 data: {}
 `
 
@@ -5947,7 +5947,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "1a2c110adc6763047d158e9021ea716e8d16ce734c0302c569b02e114189dff8"
+const Sha256_deploy_operator_yaml = "f1d3f744af5e55b5476c085c10425f93837cf0bdf39d206f3857d3c5e9bc6c78"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -5981,12 +5981,12 @@ spec:
       # SHOULD BE RETURNED ONCE COSI IS BACK
       # - name: socket
       #   emptyDir: {}
-      - name: noobaa-ca-inject
+      - name: ocp-injected-ca-bundle
         configMap:
-          name: noobaa-ca-inject
+          name: ocp-injected-ca-bundle
           items:
           - key: ca-bundle.crt
-            path: tls-ca-bundle.pem
+            path: ca-bundle.crt
           optional: true
       containers:
         - name: noobaa-operator
@@ -5995,8 +5995,8 @@ spec:
           - name: bound-sa-token
             mountPath: /var/run/secrets/openshift/serviceaccount
             readOnly: true
-          - name: noobaa-ca-inject
-            mountPath: /etc/pki/ca-trust/extracted/pem
+          - name: ocp-injected-ca-bundle
+            mountPath: /etc/ocp-injected-ca-bundle
           # SHOULD BE RETURNED ONCE COSI IS BACK
           # - name: socket
           #   mountPath: /var/lib/cosi
