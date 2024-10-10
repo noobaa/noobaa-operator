@@ -3,6 +3,7 @@ package kmstlstestsa
 import (
 	"os"
 
+	"github.com/libopenstorage/secrets"
 	"github.com/libopenstorage/secrets/vault"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
@@ -84,6 +85,45 @@ var _ = Describe("KMS - TLS Vault SA", func() {
 		})
 		Specify("Verify KMS condition status Invalid", func() {
 			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInvalid)).To(BeTrue())
+		})
+		Specify("Delete NooBaa", func() {
+			Expect(util.KubeDelete(noobaa)).To(BeTrue())
+		})
+	})
+
+	Context("Verify Rotate", func() {
+		apiAddress, apiAddressFound := os.LookupEnv("API_ADDRESS")
+		noobaa := getMiniNooBaa()
+		noobaa.Spec.Security.KeyManagementService = tlsSAKMSSpec(apiAddress)
+		noobaa.Spec.Security.KeyManagementService.EnableKeyRotation = true
+		noobaa.Spec.Security.KeyManagementService.Schedule = "* * * * *" // every min
+
+		Specify("Verify API Address", func() {
+			Expect(apiAddressFound).To(BeTrue())
+		})
+		Specify("Create key rotate schedule system", func() {
+			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
+		})
+		Specify("Verify KMS condition Type", func() {
+			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, secrets.TypeVault)).To(BeTrue())
+		})
+		Specify("Verify KMS condition status Init", func() {
+			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
+		})
+		Specify("Restart NooBaa operator", func() {
+			podList := &corev1.PodList{}
+			podSelector, _ := labels.Parse("noobaa-operator=deployment")
+			listOptions := client.ListOptions{Namespace: options.Namespace, LabelSelector: podSelector}
+
+			Expect(util.KubeList(podList, &listOptions)).To(BeTrue())
+			Expect(len(podList.Items)).To(BeEquivalentTo(1))
+			Expect(util.KubeDelete(&podList.Items[0])).To(BeTrue())
+		})
+		Specify("Verify KMS condition status Sync", func() {
+			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSSync)).To(BeTrue())
+		})
+		Specify("Verify KMS condition status Key Rotate", func() {
+			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSKeyRotate)).To(BeTrue())
 		})
 		Specify("Delete NooBaa", func() {
 			Expect(util.KubeDelete(noobaa)).To(BeTrue())
