@@ -275,14 +275,14 @@ spec:
 
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "0073d6ee3d0547a79013d71f0e968bc01e0d2fd5d897c520a6d4038c72de3d2a"
+const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "3c59eda2da91cf4ec6025491d8d1067b4626d3cad5fbd43bb0846ebd6d3126bf"
 
 const File_deploy_crds_noobaa_io_backingstores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.16.3
   name: backingstores.noobaa.io
 spec:
   group: noobaa.io
@@ -594,24 +594,8 @@ spec:
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:
-                  description: |-
-                    ObjectReference contains enough information to let you inspect or modify the referred object.
-                    ---
-                    New uses of this type are discouraged because of difficulty describing its usage when embedded in APIs.
-                     1. Ignored fields.  It includes many fields which are not generally honored.  For instance, ResourceVersion and FieldPath are both very rarely valid in actual usage.
-                     2. Invalid usage help.  It is impossible to add specific help for individual usage.  In most embedded usages, there are particular
-                        restrictions like, "must refer only to types A and B" or "UID not honored" or "name must be restricted".
-                        Those cannot be well described when embedded.
-                     3. Inconsistent validation.  Because the usages are different, the validation rules are different by usage, which makes it hard for users to predict what will happen.
-                     4. The fields are both imprecise and overly precise.  Kind is not a precise mapping to a URL. This can produce ambiguity
-                        during interpretation and require a REST mapping.  In most cases, the dependency is on the group,resource tuple
-                        and the version of the actual struct is irrelevant.
-                     5. We cannot easily change it.  Because this type is embedded in many locations, updates to this type
-                        will affect numerous schemas.  Don't make new APIs embed an underspecified API type they do not control.
-
-
-                    Instead of using this type, create a locally provided and used type that is well-focused on your reference.
-                    For example, ServiceReferences for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533 .
+                  description: ObjectReference contains enough information to let
+                    you inspect or modify the referred object.
                   properties:
                     apiVersion:
                       description: API version of the referent.
@@ -625,7 +609,6 @@ spec:
                         the event) or if no container name is specified "spec.containers[2]" (container with
                         index 2 in this pod). This syntax is chosen only to have some well-defined way of
                         referencing a part of an object.
-                        TODO: this design is not final and this field is subject to change in the future.
                       type: string
                     kind:
                       description: |-
@@ -663,14 +646,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_yaml = "b200d7d1b62625a25cbff2a6f3633ee3f647560c7f2253883decf07a9f2b0486"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_yaml = "303a0b43c30509718a314dd4a0f733679229416cddc52daffe08434d7d4ea652"
 
 const File_deploy_crds_noobaa_io_bucketclasses_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.16.3
   name: bucketclasses.noobaa.io
 spec:
   group: noobaa.io
@@ -866,24 +849,8 @@ spec:
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:
-                  description: |-
-                    ObjectReference contains enough information to let you inspect or modify the referred object.
-                    ---
-                    New uses of this type are discouraged because of difficulty describing its usage when embedded in APIs.
-                     1. Ignored fields.  It includes many fields which are not generally honored.  For instance, ResourceVersion and FieldPath are both very rarely valid in actual usage.
-                     2. Invalid usage help.  It is impossible to add specific help for individual usage.  In most embedded usages, there are particular
-                        restrictions like, "must refer only to types A and B" or "UID not honored" or "name must be restricted".
-                        Those cannot be well described when embedded.
-                     3. Inconsistent validation.  Because the usages are different, the validation rules are different by usage, which makes it hard for users to predict what will happen.
-                     4. The fields are both imprecise and overly precise.  Kind is not a precise mapping to a URL. This can produce ambiguity
-                        during interpretation and require a REST mapping.  In most cases, the dependency is on the group,resource tuple
-                        and the version of the actual struct is irrelevant.
-                     5. We cannot easily change it.  Because this type is embedded in many locations, updates to this type
-                        will affect numerous schemas.  Don't make new APIs embed an underspecified API type they do not control.
-
-
-                    Instead of using this type, create a locally provided and used type that is well-focused on your reference.
-                    For example, ServiceReferences for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533 .
+                  description: ObjectReference contains enough information to let
+                    you inspect or modify the referred object.
                   properties:
                     apiVersion:
                       description: API version of the referent.
@@ -897,7 +864,6 @@ spec:
                         the event) or if no container name is specified "spec.containers[2]" (container with
                         index 2 in this pod). This syntax is chosen only to have some well-defined way of
                         referencing a part of an object.
-                        TODO: this design is not final and this field is subject to change in the future.
                       type: string
                     kind:
                       description: |-
@@ -935,14 +901,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "96901d1227ccbc9ebe61bd875a61e10fc330e6ebc77972a53ddb793a7b6ca3b9"
+const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "427b53370d424315e81fdca907fb51f8106c56e5a2a7b186384348f794ad330d"
 
 const File_deploy_crds_noobaa_io_namespacestores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.16.3
   name: namespacestores.noobaa.io
 spec:
   group: noobaa.io
@@ -1221,24 +1187,8 @@ spec:
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:
-                  description: |-
-                    ObjectReference contains enough information to let you inspect or modify the referred object.
-                    ---
-                    New uses of this type are discouraged because of difficulty describing its usage when embedded in APIs.
-                     1. Ignored fields.  It includes many fields which are not generally honored.  For instance, ResourceVersion and FieldPath are both very rarely valid in actual usage.
-                     2. Invalid usage help.  It is impossible to add specific help for individual usage.  In most embedded usages, there are particular
-                        restrictions like, "must refer only to types A and B" or "UID not honored" or "name must be restricted".
-                        Those cannot be well described when embedded.
-                     3. Inconsistent validation.  Because the usages are different, the validation rules are different by usage, which makes it hard for users to predict what will happen.
-                     4. The fields are both imprecise and overly precise.  Kind is not a precise mapping to a URL. This can produce ambiguity
-                        during interpretation and require a REST mapping.  In most cases, the dependency is on the group,resource tuple
-                        and the version of the actual struct is irrelevant.
-                     5. We cannot easily change it.  Because this type is embedded in many locations, updates to this type
-                        will affect numerous schemas.  Don't make new APIs embed an underspecified API type they do not control.
-
-
-                    Instead of using this type, create a locally provided and used type that is well-focused on your reference.
-                    For example, ServiceReferences for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533 .
+                  description: ObjectReference contains enough information to let
+                    you inspect or modify the referred object.
                   properties:
                     apiVersion:
                       description: API version of the referent.
@@ -1252,7 +1202,6 @@ spec:
                         the event) or if no container name is specified "spec.containers[2]" (container with
                         index 2 in this pod). This syntax is chosen only to have some well-defined way of
                         referencing a part of an object.
-                        TODO: this design is not final and this field is subject to change in the future.
                       type: string
                     kind:
                       description: |-
@@ -1290,14 +1239,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaaaccounts_yaml = "3947b9cfde94b2eaba75717cd727e6bbe7e93ccb8c0a43b1398317004fc7ed6c"
+const Sha256_deploy_crds_noobaa_io_noobaaaccounts_yaml = "4317a1b539d6a491f6afd9f508e75103c50797b7280ad53941f0d2b546f0f6c1"
 
 const File_deploy_crds_noobaa_io_noobaaaccounts_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.16.3
   name: noobaaaccounts.noobaa.io
 spec:
   group: noobaa.io
@@ -1414,24 +1363,8 @@ spec:
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:
-                  description: |-
-                    ObjectReference contains enough information to let you inspect or modify the referred object.
-                    ---
-                    New uses of this type are discouraged because of difficulty describing its usage when embedded in APIs.
-                     1. Ignored fields.  It includes many fields which are not generally honored.  For instance, ResourceVersion and FieldPath are both very rarely valid in actual usage.
-                     2. Invalid usage help.  It is impossible to add specific help for individual usage.  In most embedded usages, there are particular
-                        restrictions like, "must refer only to types A and B" or "UID not honored" or "name must be restricted".
-                        Those cannot be well described when embedded.
-                     3. Inconsistent validation.  Because the usages are different, the validation rules are different by usage, which makes it hard for users to predict what will happen.
-                     4. The fields are both imprecise and overly precise.  Kind is not a precise mapping to a URL. This can produce ambiguity
-                        during interpretation and require a REST mapping.  In most cases, the dependency is on the group,resource tuple
-                        and the version of the actual struct is irrelevant.
-                     5. We cannot easily change it.  Because this type is embedded in many locations, updates to this type
-                        will affect numerous schemas.  Don't make new APIs embed an underspecified API type they do not control.
-
-
-                    Instead of using this type, create a locally provided and used type that is well-focused on your reference.
-                    For example, ServiceReferences for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533 .
+                  description: ObjectReference contains enough information to let
+                    you inspect or modify the referred object.
                   properties:
                     apiVersion:
                       description: API version of the referent.
@@ -1445,7 +1378,6 @@ spec:
                         the event) or if no container name is specified "spec.containers[2]" (container with
                         index 2 in this pod). This syntax is chosen only to have some well-defined way of
                         referencing a part of an object.
-                        TODO: this design is not final and this field is subject to change in the future.
                       type: string
                     kind:
                       description: |-
@@ -1483,14 +1415,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "38b7017c6a61b5cdd86953e2494c7ca98eeb7001c86bb39c8611523691c6de08"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "3f88c800238f25e5dd26f3f1bf19028571cc646e3aea0f868bfd2ff600ee3ed1"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.16.3
   name: noobaas.noobaa.io
 spec:
   group: noobaa.io
@@ -1836,7 +1768,7 @@ spec:
                                     pod labels will be ignored. The default value is empty.
                                     The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                     Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                    This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+                                    This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                   items:
                                     type: string
                                   type: array
@@ -1851,7 +1783,7 @@ spec:
                                     pod labels will be ignored. The default value is empty.
                                     The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                     Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                    This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+                                    This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                   items:
                                     type: string
                                   type: array
@@ -2017,7 +1949,7 @@ spec:
                                 pod labels will be ignored. The default value is empty.
                                 The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                 Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+                                This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                               items:
                                 type: string
                               type: array
@@ -2032,7 +1964,7 @@ spec:
                                 pod labels will be ignored. The default value is empty.
                                 The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                 Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+                                This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                               items:
                                 type: string
                               type: array
@@ -2195,7 +2127,7 @@ spec:
                                     pod labels will be ignored. The default value is empty.
                                     The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                     Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                    This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+                                    This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                   items:
                                     type: string
                                   type: array
@@ -2210,7 +2142,7 @@ spec:
                                     pod labels will be ignored. The default value is empty.
                                     The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                     Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                    This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+                                    This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                   items:
                                     type: string
                                   type: array
@@ -2376,7 +2308,7 @@ spec:
                                 pod labels will be ignored. The default value is empty.
                                 The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                 Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+                                This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                               items:
                                 type: string
                               type: array
@@ -2391,7 +2323,7 @@ spec:
                                 pod labels will be ignored. The default value is empty.
                                 The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                 Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                This is an alpha field and requires enabling MatchLabelKeysInPodAffinity feature gate.
+                                This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                               items:
                                 type: string
                               type: array
@@ -2535,10 +2467,8 @@ spec:
                       Claims lists the names of resources, defined in spec.resourceClaims,
                       that are used by this container.
 
-
                       This is an alpha field and requires enabling the
                       DynamicResourceAllocation feature gate.
-
 
                       This field is immutable. It can only be set for containers.
                     items:
@@ -2549,6 +2479,12 @@ spec:
                             Name must match the name of one entry in pod.spec.resourceClaims of
                             the Pod where this field is used. It makes that resource available
                             inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
                           type: string
                       required:
                       - name
@@ -2599,10 +2535,8 @@ spec:
                       Claims lists the names of resources, defined in spec.resourceClaims,
                       that are used by this container.
 
-
                       This is an alpha field and requires enabling the
                       DynamicResourceAllocation feature gate.
-
 
                       This field is immutable. It can only be set for containers.
                     items:
@@ -2613,6 +2547,12 @@ spec:
                             Name must match the name of one entry in pod.spec.resourceClaims of
                             the Pod where this field is used. It makes that resource available
                             inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
                           type: string
                       required:
                       - name
@@ -2964,10 +2904,8 @@ spec:
                           Claims lists the names of resources, defined in spec.resourceClaims,
                           that are used by this container.
 
-
                           This is an alpha field and requires enabling the
                           DynamicResourceAllocation feature gate.
-
 
                           This field is immutable. It can only be set for containers.
                         items:
@@ -2978,6 +2916,12 @@ spec:
                                 Name must match the name of one entry in pod.spec.resourceClaims of
                                 the Pod where this field is used. It makes that resource available
                                 inside a container.
+                              type: string
+                            request:
+                              description: |-
+                                Request is the name chosen for a request in the referenced claim.
+                                If empty, everything from the claim is made available, otherwise
+                                only the result of this request.
                               type: string
                           required:
                           - name
@@ -3064,9 +3008,7 @@ spec:
                       This field is effectively required, but due to backwards compatibility is
                       allowed to be empty. Instances of this type with an empty value here are
                       almost certainly wrong.
-                      TODO: Add other useful fields. apiVersion, kind, uid?
                       More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      TODO: Drop ` + "`" + `kubebuilder:default` + "`" + ` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
@@ -3124,10 +3066,8 @@ spec:
                       Claims lists the names of resources, defined in spec.resourceClaims,
                       that are used by this container.
 
-
                       This is an alpha field and requires enabling the
                       DynamicResourceAllocation feature gate.
-
 
                       This field is immutable. It can only be set for containers.
                     items:
@@ -3138,6 +3078,12 @@ spec:
                             Name must match the name of one entry in pod.spec.resourceClaims of
                             the Pod where this field is used. It makes that resource available
                             inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
                           type: string
                       required:
                       - name
@@ -3359,24 +3305,8 @@ spec:
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:
-                  description: |-
-                    ObjectReference contains enough information to let you inspect or modify the referred object.
-                    ---
-                    New uses of this type are discouraged because of difficulty describing its usage when embedded in APIs.
-                     1. Ignored fields.  It includes many fields which are not generally honored.  For instance, ResourceVersion and FieldPath are both very rarely valid in actual usage.
-                     2. Invalid usage help.  It is impossible to add specific help for individual usage.  In most embedded usages, there are particular
-                        restrictions like, "must refer only to types A and B" or "UID not honored" or "name must be restricted".
-                        Those cannot be well described when embedded.
-                     3. Inconsistent validation.  Because the usages are different, the validation rules are different by usage, which makes it hard for users to predict what will happen.
-                     4. The fields are both imprecise and overly precise.  Kind is not a precise mapping to a URL. This can produce ambiguity
-                        during interpretation and require a REST mapping.  In most cases, the dependency is on the group,resource tuple
-                        and the version of the actual struct is irrelevant.
-                     5. We cannot easily change it.  Because this type is embedded in many locations, updates to this type
-                        will affect numerous schemas.  Don't make new APIs embed an underspecified API type they do not control.
-
-
-                    Instead of using this type, create a locally provided and used type that is well-focused on your reference.
-                    For example, ServiceReferences for admission registration: https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533 .
+                  description: ObjectReference contains enough information to let
+                    you inspect or modify the referred object.
                   properties:
                     apiVersion:
                       description: API version of the referent.
@@ -3390,7 +3320,6 @@ spec:
                         the event) or if no container name is specified "spec.containers[2]" (container with
                         index 2 in this pod). This syntax is chosen only to have some well-defined way of
                         referencing a part of an object.
-                        TODO: this design is not final and this field is subject to change in the future.
                       type: string
                     kind:
                       description: |-
