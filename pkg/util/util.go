@@ -1153,6 +1153,7 @@ func GetAWSRegion() (string, error) {
 		"ap-southeast-2": "ap-southeast-2",
 		"ap-southeast-3": "ap-southeast-3",
 		"ap-southeast-4": "ap-southeast-4",
+		"ap-southeast-5": "ap-southeast-5",
 		"ap-south-1":     "ap-south-1",
 		"ap-south-2":     "ap-south-2",
 		"me-south-1":     "me-south-1",
