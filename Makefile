@@ -24,7 +24,7 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-CONTROLLER_GEN_VERSION=v0.14.0
+CONTROLLER_GEN_VERSION=v0.16.3
 DEEPCOPY_GEN_VERSION=v0.29.3
 
 GO_LINUX ?= GOOS=linux GOARCH=amd64
@@ -299,7 +299,6 @@ CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
 deepcopy-gen:
-ifneq ($(DEEPCOPY_GEN_VERSION), $(shell deepcopy-gen --version | awk -F ":" '{print $2}'))
 	@{ \
 	echo "Installing deepcopy-gen@$(DEEPCOPY_GEN_VERSION)" ;\
 	set -e ;\
@@ -307,6 +306,5 @@ ifneq ($(DEEPCOPY_GEN_VERSION), $(shell deepcopy-gen --version | awk -F ":" '{pr
 	echo "Installed deepcopy-gen@$(DEEPCOPY_GEN_VERSION)" ;\
 	}
 DEEPCOPY_GEN=$(GOBIN)/deepcopy-gen
-else
-DEEPCOPY_GEN=$(shell which deepcopy-gen)
-endif
+.PHONY: deepcopy-gen
+

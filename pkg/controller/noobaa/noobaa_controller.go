@@ -26,11 +26,11 @@ import (
 
 // NotificationSource specifies a queue of notifications
 type NotificationSource struct {
-	Queue workqueue.RateLimitingInterface
+	Queue workqueue.TypedRateLimitingInterface[reconcile.Request]
 }
 
 // Start will setup s.Queue field
-func (s *NotificationSource) Start(context context.Context, q workqueue.RateLimitingInterface) error {
+func (s *NotificationSource) Start(context context.Context, q workqueue.TypedRateLimitingInterface[reconcile.Request]) error {
 	s.Queue = q
 	return nil
 }
@@ -52,6 +52,7 @@ func Add(mgr manager.Manager) error {
 					mgr.GetEventRecorderFor("noobaa-operator"),
 				).Reconcile()
 			}),
+		SkipNameValidation: &[]bool{true}[0],
 	})
 	if err != nil {
 		return err

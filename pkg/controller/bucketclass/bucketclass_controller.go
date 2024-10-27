@@ -36,6 +36,7 @@ func Add(mgr manager.Manager) error {
 					mgr.GetEventRecorderFor("noobaa-operator"),
 				).Reconcile()
 			}),
+		SkipNameValidation: &[]bool{true}[0],
 	})
 	if err != nil {
 		return err

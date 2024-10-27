@@ -34,6 +34,7 @@ func Add(mgr manager.Manager) error {
 	c, err := controller.New("noobaa-controller", mgr, controller.Options{
 		MaxConcurrentReconciles: 1,
 		Reconciler:              reconcile.Func(doReconcile),
+		SkipNameValidation: &[]bool{true}[0],
 	})
 	if err != nil {
 		return err
