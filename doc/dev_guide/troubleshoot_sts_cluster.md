@@ -24,26 +24,96 @@ Edit the role in the AWS console.
 You can use the script in `scripts/create_aws_role.sh` to help you change the role.
 Most of the time it is related to the "Condition" part under trusted entities.
 
-You also need to see that the token is projected:
+You also need to see that the token is projected - for example in the operator pod:
 ```bash
-MY_TOKEN=$(kubectl exec $(kubectl get pods -n <your-namespace> | grep operator | awk '{ print $1}') -c noobaa-operator -n <your-namespace> -- cat /var/run/secrets/openshift/serviceaccount/token)
+MY_TOKEN_OPERATOR=$(kubectl exec $(kubectl get pods -n <your-namespace> | grep operator | awk '{ print $1}') -c noobaa-operator -n <your-namespace> -- cat /var/run/secrets/openshift/serviceaccount/token)
 ```
 
 ```bash
-echo ${MY_TOKEN}
+echo ${MY_TOKEN_OPERATOR}
 ```
 
 And to verify that the issue is with the role please test it with assume-role-with-web-identity
 
 ```bash
-aws sts assume-role-with-web-identity --role-arn <role-ARN> --role-session-name "test" --web-identity-token ${MY_TOKEN}
+aws sts assume-role-with-web-identity --role-arn <role-ARN> --role-session-name "test" --web-identity-token ${MY_TOKEN_OPERATOR}
 ```
 
 You should see in the output the credentials (which includes the `AccessKeyId`, `SecretAccessKey`, and `SessionToken` - output example is in file `doc/dev_guide/create_aws_sts_setup_on_minikube.md`, but in case the role is wrong you'll see still `AccessDenied`, so you can create a new role with the script and test it.
 
 Note: if this invalid role was sent as a part of OCP cluster you would need to update the subscription that have this environment variable: in odf-operator and mcg-operator subscriptions (in both of them - either in the UI or editing the YAMLs), search for the ROLEARN env name and update the value.
 
-#### 2) Cluster configurations
+#### 2) Missing service account name in the role trusted policy
+In case the role has a partial trust policy, for example - when this feature was launched in version 5.15 the service account name of stateful-set noobaa core was "noobaa" and in version 5.17 it was changed to "noobaa-core". This would cause `AccessDenied` error when the core pod tries assume-role-with-web-identity (hence any action would fail).
+
+##### Solution:
+The steps to trouble shoot this is to verify that every pod that sends a request using assume-role-with-web-identity (operator, core and endpoint) its mounted token has access - by running the mentioned steps in point number 1 (where it was demonstrated only in the operator pod) you should also run it in the endpoint and core pods.
+For example in the core pod as well:
+
+```bash
+MY_TOKEN_CORE=$(kubectl exec $(kubectl get pods -n <your-namespace> | grep core | awk '{ print $1}') -n <your-namespace> -- cat /var/run/secrets/openshift/serviceaccount/token)
+```
+
+Notes:
+- The next step as described in point number 1 it to run  instead of using `MY_TOKEN_OPERATOR` use `MY_TOKEN_CORE`.
+- The token that is projected is different between the pods, and it is fine, what matters is the ability to check the assume-role-with-web-identity with each token. You can decoding the JWT tokens by running:
+
+```bash
+${MY_TOKEN} | cut -d '.' -f 2 | base64 -d | jq .
+```
+
+Partial output (when running on `MY_TOKEN_CORE` instead of `MY_TOKEN`):  
+Note that *** signifies a redacted field.
+In this output you can see that the token service account name is "noobaa-core".
+```
+{
+  "aud": [
+    "openshift"
+  ],
+  "exp": 1730137064,
+  "iat": 1730133464,
+  "iss": "https://kubernetes.default.svc",
+  "jti": ***,
+  "kubernetes.io": {
+    "namespace": "openshift-storage",
+    "node": {
+      "name": ***,
+      "uid": ***
+    },
+    "pod": {
+      "name": "noobaa-core-0",
+      "uid": ***
+    },
+    "serviceaccount": {
+      "name": "noobaa-core",
+      "uid": ***
+    }
+  },
+  "nbf": ***,
+  "sub": "system:serviceaccount:openshift-storage:noobaa-core"
+}
+```
+
+In any case, better ask the user to attach the trust policy as a part of troubleshooting, and make sure to the needed lines of the service name:
+
+```json
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+                "StringEquals": {
+                    "${OIDC_PROVIDER}:sub": [
+                        "system:serviceaccount:openshift-storage:noobaa",
+                        "system:serviceaccount:openshift-storage:noobaa-core",
+                        "system:serviceaccount:openshift-storage:noobaa-endpoint"
+                    ]
+                }
+            }
+```
+where OIDC_PROVIDER will be filled according to the OIDC provider,  
+and the `openshift-storage` is the namespace name (if it runs in a different namespace it would be different).
+
+In case the system is already running and we need to update the trust policy, you would need to ask the user to update it (can be by simply editing the trust policy in the AWS console), then the check of assume-role-with-web-identity should return the credentials instead of `AccessDenied` error.
+
+#### 3) Cluster configurations
 
 ```
 time="2023-11-26T15:17:53Z" level=warning msg="⏳ Temporary Error: could not use AWS AssumeRoleWithWebIdentity with role <role-ARN> and web identity token file /var/run/secrets/openshift/serviceaccount/token, InvalidIdentityToken: No OpenIDConnect provider found in your account for https://kubernetes.default.svc\n\tstatus code: 400, request id: <request-id>" sys=test1/noobaa
@@ -61,7 +131,7 @@ The structure of the output should be:
 2) In case the OIDC bucket configurations are in an S3 private bucket (with a public CloudFront distribution URL): `d111111abcdef8.cloudfront.net` (this example it taken from [AWS docs](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/GettingStartedCreateDistribution.html))
 Please follow the Openshift documentation.
 
-#### 3) Wrong audience
+#### 4) Wrong audience
 
 ```
 time="2023-11-27T08:05:43Z" level=warning msg="⏳ Temporary Error: could not use AWS AssumeRoleWithWebIdentity with role name <role-ARN> and web identity token file /var/run/secrets/openshift/serviceaccount/token, InvalidIdentityToken: Incorrect token audience\n\tstatus code: 400, request id: <request-id>" sys=test1/noobaa
@@ -72,7 +142,7 @@ Add the needed audience to match between the create role and the identity provid
 - api - as we did in the local cluster example in `doc/dev_guide/create_aws_sts_setup_on_minikube.md`.
 - openshift - as needed in the openshift cluster.
 
-#### 4) Missing details:
+#### 5) Missing details:
 
 ```
 time="2023-11-27T07:50:20Z" level=info msg="Secret noobaa-aws-cloud-creds-secret was created successfully by cloud-credentials operator" sys=test1/noobaa
@@ -130,7 +200,7 @@ kubectl delete secret noobaa-aws-cloud-creds-secret -n <your-namespace>
 kubectl logs $(kubectl get pod -n openshift-cloud-credential-operator | grep cloud-credential-operator | awk '{ print $1}') -c cloud-credential-operator -n openshift-cloud-credential-operator --tail 50 -f
 ```
 
-#### 4) Other:
+#### 5) Other:
 
 ```
 time="2023-12-20T09:46:59Z" level=info msg="AssumeRoleWithWebIdentityInput, roleARN = arn:aws:iam::<role-ARN>:role/<role-name> webIdentityTokenPath = /var/run/secrets/openshift/serviceaccount/token, " sys=openshift-storage/noobaa

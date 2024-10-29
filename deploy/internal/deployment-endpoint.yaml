@@ -22,6 +22,7 @@ spec:
       annotations:
         noobaa.io/configmap-hash: ""
     spec:
+        # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa-endpoint
       volumes:
         - name: mgmt-secret

@@ -13,6 +13,7 @@ spec:
         app: noobaa
         noobaa-operator: deployment
     spec:
+        # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa
       securityContext:
         seccompProfile:
