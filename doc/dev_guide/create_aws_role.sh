@@ -15,8 +15,9 @@ ROLE_NAME="shira-28-11" # role name that you pick in your AWS account (replace s
 NAMESPACE="test1" # namespace name where noobaa will be running (replace test1 with your value)
 
 # noobaa variables
-SERVICE_ACCOUNT_NAME_1="noobaa" # The service account name of statefulset core and deployment operator
+SERVICE_ACCOUNT_NAME_1="noobaa" # The service account name of deployment operator
 SERVICE_ACCOUNT_NAME_2="noobaa-endpoint" # The service account name of deployment endpoint
+SERVICE_ACCOUNT_NAME_3="noobaa-core" # The service account name of statefulset core
 
 # AWS variables
 # Please make sure these values are not empty (AWS_ACCOUNT_ID, OIDC_PROVIDER)
@@ -47,8 +48,9 @@ read -r -d '' TRUST_RELATIONSHIP <<EOF
      "Condition": {
        "StringEquals": {
         "${OIDC_PROVIDER}:sub": [
-          "system:serviceaccount:${NAMESPACE}:${SERVICE_ACCOUNT_NAME_1}", 
-          "system:serviceaccount:${NAMESPACE}:${SERVICE_ACCOUNT_NAME_2}"
+          "system:serviceaccount:${NAMESPACE}:${SERVICE_ACCOUNT_NAME_1}",
+          "system:serviceaccount:${NAMESPACE}:${SERVICE_ACCOUNT_NAME_2}",
+          "system:serviceaccount:${NAMESPACE}:${SERVICE_ACCOUNT_NAME_3}"
           ]
        }
      }

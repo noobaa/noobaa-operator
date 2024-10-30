@@ -3820,7 +3820,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "0784d71f1a50b8b2f216adb957ea4ce90392e39981bd584dd5e98272327a99c2"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "21b206c9119e37c4ebba84d5c1e2b1d45b06c716b4def69db9ba9268ef75e1e1"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3846,6 +3846,7 @@ spec:
       annotations:
         noobaa.io/configmap-hash: ""
     spec:
+        # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa-endpoint
       volumes:
         - name: mgmt-secret
@@ -4880,7 +4881,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "447d0c9d6831eb9074e8648609614268430b4d0f89d618a4c9a250053f858290"
+const Sha256_deploy_internal_statefulset_core_yaml = "50e5b11d8e0a2f2bb8a6db8d154b34b6569e160fa7ad2b1fb154001b36c8a152"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4905,6 +4906,7 @@ spec:
       annotations:
         noobaa.io/configmap-hash: ""
     spec:
+    # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa-core
       volumes:
         - name: logs
@@ -5955,7 +5957,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "f1d3f744af5e55b5476c085c10425f93837cf0bdf39d206f3857d3c5e9bc6c78"
+const Sha256_deploy_operator_yaml = "5399fbfcd1c421acd978f2762d6f8c5048d68fb3c5acc79a595d62cd035a3bc0"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -5972,6 +5974,7 @@ spec:
         app: noobaa
         noobaa-operator: deployment
     spec:
+        # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa
       securityContext:
         seccompProfile:
