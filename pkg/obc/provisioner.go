@@ -2,6 +2,7 @@ package obc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -112,7 +113,7 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
 		if util.Contains(finalizersArray, nbv1.GracefulFinalizer) {
 			msg := "NooBaa is in deleting state, new requests will be ignored"
-			log.Errorf(msg)
+			log.Error(msg)
 			return nil, obErrors.NewBucketExistsError(msg)
 		}
 	}
@@ -151,7 +152,7 @@ func (p *Provisioner) Grant(bucketOptions *obAPI.BucketOptions) (*nbv1.ObjectBuc
 		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
 		if util.Contains(finalizersArray, nbv1.GracefulFinalizer) {
 			msg := "NooBaa is in deleting state, new requests will be ignored"
-			log.Errorf(msg)
+			log.Error(msg)
 			return nil, obErrors.NewBucketExistsError(msg)
 		}
 	}
@@ -308,12 +309,12 @@ func NewBucketRequest(
 			}
 
 			p.recorder.Event(r.OBC, "Warning", "MissingBucketClass", msg)
-			return nil, fmt.Errorf(msg)
+			return nil, errors.New(msg)
 		}
 		if r.BucketClass.Status.Phase != nbv1.BucketClassPhaseReady {
 			msg := fmt.Sprintf("BucketClass %q is not ready", bucketClassName)
 			p.recorder.Event(r.OBC, "Warning", "BucketClassNotReady", msg)
-			return nil, fmt.Errorf(msg)
+			return nil, errors.New(msg)
 		}
 		additionalConfig := r.OBC.Spec.AdditionalConfig
 		if additionalConfig == nil {
@@ -554,7 +555,7 @@ func (r *BucketRequest) LogAndGetError(format string, a ...interface{}) error {
 	log := r.Provisioner.Logger
 	msg := fmt.Sprintf(format, a...)
 	log.Error(msg)
-	return fmt.Errorf(msg)
+	return errors.New(msg)
 }
 
 // CreateAccount creates the obc account
@@ -576,8 +577,8 @@ func (r *BucketRequest) CreateAccount() error {
 			return fmt.Errorf("failed to parse NSFS config %q: %w", r.OBC.Spec.AdditionalConfig["nsfsAccountConfig"], err)
 		}
 		// We prefer to make sure this account is only used for its appropriate NSFS operations
-		nsfsAccountConfig.NewBucketsPath = "";
-		nsfsAccountConfig.NsfsOnly = true;
+		nsfsAccountConfig.NewBucketsPath = ""
+		nsfsAccountConfig.NsfsOnly = true
 		// -1 is the default CLI value which we use to indicate that the UID/GID should not be set
 		// 0 cannot be used since it is a valid GID/UID value
 		var IDNullifier = -1
@@ -586,14 +587,14 @@ func (r *BucketRequest) CreateAccount() error {
 			nsfsAccountConfig.GID = nil
 		}
 	}
-	
+
 	accountInfo, err := r.SysClient.NBClient.CreateAccountAPI(nb.CreateAccountParams{
-		Name:              r.AccountName,
-		Email:             r.AccountName,
-		// defaultResource is left as-is only because AllowBucketCreate is false 
-		DefaultResource:   defaultResource,
-		HasLogin:          false,
-		S3Access:          true,
+		Name:  r.AccountName,
+		Email: r.AccountName,
+		// defaultResource is left as-is only because AllowBucketCreate is false
+		DefaultResource: defaultResource,
+		HasLogin:        false,
+		S3Access:        true,
 		// If this field is to be changed, DefaultResource above will need to be modified as well
 		AllowBucketCreate: false,
 		BucketClaimOwner:  r.BucketName,
