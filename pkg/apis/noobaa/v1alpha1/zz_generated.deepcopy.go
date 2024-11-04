@@ -1227,6 +1227,11 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 	in.LoadBalancerSourceSubnets.DeepCopyInto(&out.LoadBalancerSourceSubnets)
 	out.Autoscaler = in.Autoscaler
 	in.BucketLogging.DeepCopyInto(&out.BucketLogging)
+	if in.NotificationsPVC != nil {
+		in, out := &in.NotificationsPVC, &out.NotificationsPVC
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
