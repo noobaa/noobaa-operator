@@ -26,6 +26,8 @@ spec:
         - name: db
           image: NOOBAA_DB_IMAGE
           env:
+            - name: POSTGRESQL_UPGRADE
+              value: copy
             - name: POSTGRESQL_DATABASE
               value: nbcore
             - name: LC_COLLATE
