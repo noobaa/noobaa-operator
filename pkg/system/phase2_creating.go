@@ -1030,6 +1030,13 @@ func (r *Reconciler) keyRotate() error {
 		return err
 	}
 
+	err = k.Get()
+	if err != nil {
+		r.Logger.Errorf("keyRotate, KMS Get error %v", err)
+		r.setKMSConditionStatus(nbv1.ConditionKMSErrorRead)
+		return err
+	}
+
 	// Generate new random root key and set it in the KMS
 	// Key - rotate begins
 	err = k.Set(util.RandomBase64(32))
