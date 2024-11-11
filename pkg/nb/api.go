@@ -19,7 +19,7 @@ type Client interface {
 	SetNamespaceStoreInfo(NamespaceStoreInfo) error
 
 	ListAccountsAPI(ListAccountsParams) (ListAccountsReply, error)
-	ListBucketsAPI() (ListBucketsReply, error)
+	ListBucketsAPI(ListBucketsParams) (ListBucketsReply, error)
 	ListHostsAPI(ListHostsParams) (ListHostsReply, error)
 
 	CreateAuthAPI(CreateAuthParams) (CreateAuthReply, error)
@@ -146,8 +146,8 @@ func (c *RPCClient) ListAccountsAPI(params ListAccountsParams) (ListAccountsRepl
 }
 
 // ListBucketsAPI calls bucket_api.list_buckets()
-func (c *RPCClient) ListBucketsAPI() (ListBucketsReply, error) {
-	req := &RPCMessage{API: "bucket_api", Method: "list_buckets"}
+func (c *RPCClient) ListBucketsAPI(params ListBucketsParams) (ListBucketsReply, error) {
+	req := &RPCMessage{API: "bucket_api", Method: "list_buckets", Params: params}
 	res := &struct {
 		RPCMessage `json:",inline"`
 		Reply      ListBucketsReply `json:"reply"`
