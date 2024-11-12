@@ -166,6 +166,13 @@ var PrometheusNamespace = ""
 // it can be overridden for testing.
 var AWSSTSARN = ""
 
+// All the following variables are used in Azure installations that use short-lived credentials for the default backingstore
+// it can be overridden for testing.
+var AzureSubscriptionID = ""
+var AzureTenantID = ""
+var AzureClientID = ""
+var AzureRegion = ""
+
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
 	return Namespace + ".noobaa.io"
@@ -317,5 +324,21 @@ func init() {
 	FlagSet.StringVar(
 		&AWSSTSARN, "aws-sts-arn",
 		AWSSTSARN, "The AWS STS Role ARN which will assume role",
+	)
+	FlagSet.StringVar(
+		&AzureClientID, "azure-client-id",
+		AzureClientID, "The Azure client ID",
+	)
+	FlagSet.StringVar(
+		&AzureTenantID, "azure-tenant-id",
+		AzureTenantID, "The Azure tenant ID",
+	)
+	FlagSet.StringVar(
+		&AzureSubscriptionID, "azure-subscription-id",
+		AzureSubscriptionID, "The Azure subscription ID",
+	)
+	FlagSet.StringVar(
+		&AzureRegion, "azure-region",
+		AzureRegion, "The Azure region",
 	)
 }

@@ -1,6 +1,6 @@
 module github.com/noobaa/noobaa-operator/v5
 
-go 1.22.0
+go 1.22.3
 
 toolchain go1.22.6
 
@@ -11,7 +11,7 @@ replace (
 )
 
 require (
-	cloud.google.com/go/storage v1.36.0
+	cloud.google.com/go/storage v1.39.1
 	github.com/Azure/azure-sdk-for-go v67.2.0+incompatible
 	github.com/Azure/azure-storage-blob-go v0.15.0
 	github.com/Azure/go-autorest/autorest v0.11.28
@@ -31,8 +31,8 @@ require (
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
 	github.com/onsi/ginkgo/v2 v2.20.2
 	github.com/onsi/gomega v1.34.1
-	github.com/openshift/api v0.0.0-20240301093301-ce10821dc999
-	github.com/openshift/cloud-credential-operator v0.0.0-20231004191224-abdf0627a0cf
+	github.com/openshift/api v0.0.0-20241109205306-a2817b89f7e0
+	github.com/openshift/cloud-credential-operator v0.0.0-20241022212603-a46630073d20
 	github.com/openshift/custom-resource-status v1.1.3-0.20220503160415-f2fdb4999d87
 	github.com/operator-framework/api v0.27.0
 	github.com/operator-framework/operator-lib v0.15.0
@@ -45,7 +45,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.16.0
 	golang.org/x/term v0.25.0
-	google.golang.org/api v0.162.0
+	google.golang.org/api v0.169.0
 	google.golang.org/grpc v1.66.0
 	k8s.io/api v0.31.1
 	k8s.io/apiextensions-apiserver v0.31.1
@@ -54,10 +54,10 @@ require (
 	k8s.io/client-go v0.31.1
 	k8s.io/code-generator v0.31.1
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01
-	k8s.io/kube-aggregator v0.27.1
+	k8s.io/kube-aggregator v0.31.1
 	k8s.io/kube-openapi v0.0.0-20241009091222-67ed5848f094
 	k8s.io/kubectl v0.25.4
-	k8s.io/utils v0.0.0-20240821151609-f90d01438635
+	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6
 	nhooyr.io/websocket v1.8.7
 	sigs.k8s.io/container-object-storage-interface-api v0.1.0
 	sigs.k8s.io/container-object-storage-interface-provisioner-sidecar v0.1.0
@@ -68,7 +68,7 @@ require (
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.6.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.7.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.8.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets v0.12.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/internal v0.7.1 // indirect
@@ -102,7 +102,7 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.112.0 // indirect
+	cloud.google.com/go v0.112.1 // indirect
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	cloud.google.com/go/iam v1.1.6 // indirect
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
@@ -129,7 +129,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
-	github.com/go-playground/validator/v10 v10.15.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -139,7 +138,7 @@ require (
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
-	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
+	github.com/googleapis/gax-go/v2 v2.12.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -201,7 +200,7 @@ require (
 	golang.org/x/time v0.7.0 // indirect
 	golang.org/x/tools v0.26.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
-	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
+	google.golang.org/genproto v0.0.0-20240311173647-c811ad7063a7 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240604185151-ef581f913117 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241007155032-5fefd90f89a9 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect

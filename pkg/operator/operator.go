@@ -151,6 +151,35 @@ func RunUpgrade(cmd *cobra.Command, args []string) {
 		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
 	}
 
+	AzureSTSRegion, _ := cmd.Flags().GetString("azure-region")
+	AzureSTSTenantID, _ := cmd.Flags().GetString("azure-tenant-id")
+	AzureSubscriptionID, _ := cmd.Flags().GetString("azure-subscription-id")
+	AzureClientID, _ := cmd.Flags().GetString("azure-client-id")
+
+	if AWSSTSARNEnv != "" && AzureSTSRegion != "" && AzureSTSTenantID != "" && AzureSubscriptionID != "" && AzureClientID != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, 
+			corev1.EnvVar{
+				// TODO - missing from docs, check the actual name
+				Name:  "REGION",
+				Value: AzureSTSRegion,
+			},
+			corev1.EnvVar{
+				Name:  "TENANTID",
+				Value: AzureSTSTenantID,
+			},
+			corev1.EnvVar{
+				Name:  "SUBSCRIPTIONID",
+				Value: AzureSubscriptionID,
+			},
+			corev1.EnvVar{
+				Name:  "CLIENTID",
+				Value: AzureClientID,
+			},
+		)
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
@@ -223,6 +252,34 @@ func RunInstall(cmd *cobra.Command, args []string) {
 			Name:  "ROLEARN",
 			Value: AWSSTSARNEnv,
 		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	AzureSTSRegion, _ := cmd.Flags().GetString("azure-region")
+	AzureSTSTenantID, _ := cmd.Flags().GetString("azure-tenant-id")
+	AzureSubscriptionID, _ := cmd.Flags().GetString("azure-subscription-id")
+	AzureClientID, _ := cmd.Flags().GetString("azure-client-id")
+
+	if AWSSTSARNEnv != "" && AzureSTSRegion != "" && AzureSTSTenantID != "" && AzureSubscriptionID != "" && AzureClientID != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, 
+			corev1.EnvVar{
+				Name:  "AzureSTSRegion",
+				Value: AzureSTSRegion,
+			},
+			corev1.EnvVar{
+				Name:  "AzureSTSTenantID",
+				Value: AzureSTSTenantID,
+			},
+			corev1.EnvVar{
+				Name:  "AzureSubscriptionID",
+				Value: AzureSubscriptionID,
+			},
+			corev1.EnvVar{
+				Name:  "AzureClientID",
+				Value: AzureClientID,
+			},
+		)
 		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
 	}
 

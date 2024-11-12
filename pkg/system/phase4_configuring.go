@@ -993,6 +993,7 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 }
 
 func (r *Reconciler) prepareAzureBackingStore() error {
+	// TODO - implement default backingstore - requires live env
 	// after we have cloud credential request, wait for credentials secret
 	secretName := r.AzureCloudCreds.Spec.SecretRef.Name
 	cloudCredsSecret := &corev1.Secret{

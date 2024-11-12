@@ -638,6 +638,14 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		conn.Endpoint = IBMCos.Endpoint
 
 	case nbv1.NSStoreTypeAzureBlob:
+		if util.IsSTSClusterNS(r.NamespaceStore) {
+			conn.EndpointType = nb.EndpointTypeAzureSTS
+			conn.AzureSubscriptionID = r.NamespaceStore.Spec.AzureBlob.AzureSubscriptionID
+			conn.AzureTenantID = r.NamespaceStore.Spec.AzureBlob.AzureTenantID
+			conn.AzureClientID = r.NamespaceStore.Spec.AzureBlob.AzureClientID
+			conn.AzureRegion = r.NamespaceStore.Spec.AzureBlob.AzureRegion
+		}
+
 		conn.EndpointType = nb.EndpointTypeAzure
 		conn.Endpoint = "https://blob.core.windows.net"
 		conn.Identity = nb.MaskedString(r.Secret.StringData["AccountName"])
@@ -732,6 +740,10 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 		AWSSTSARN:          r.AddExternalConnectionParams.AWSSTSARN,
 		AzureLogAccessKeys: r.AddExternalConnectionParams.AzureLogAccessKeys,
 		Region:             r.AddExternalConnectionParams.Region,
+		AzureClientID:	      r.AddExternalConnectionParams.AzureClientID,
+		AzureTenantID: 		  r.AddExternalConnectionParams.AzureTenantID,
+		AzureRegion: 		  r.AddExternalConnectionParams.AzureRegion,
+		AzureSubscriptionID:  r.AddExternalConnectionParams.AzureSubscriptionID,
 	}
 
 	if r.UpdateExternalConnectionParams != nil {

@@ -209,6 +209,16 @@ type AzureBlobSpec struct {
 	// Secret refers to a secret that provides the credentials
 	// The secret should define AccountName and AccountKey as provided by Azure Blob.
 	Secret corev1.SecretReference `json:"secret"`
+
+	// All the following fields are required for Azure short-lived token authentication
+	// +optional
+	AzureSubscriptionID string `json:"azureSubscriptionID,omitempty"`
+	// +optional
+	AzureClientID string `json:"azureClientID,omitempty"`
+	// +optional
+	AzureTenantID string `json:"azureTenantID,omitempty"`
+	// +optional
+	AzureRegion string `json:"azureRegion,omitempty"`
 }
 
 // GoogleCloudStorageSpec specifies a backing store of type google-cloud-storage
