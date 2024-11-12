@@ -803,6 +803,14 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		}
 
 	case nbv1.StoreTypeAzureBlob:
+		if util.IsSTSClusterBS(r.BackingStore) {
+			conn.EndpointType = nb.EndpointTypeAzureSTS
+			conn.AzureSubscriptionID = r.BackingStore.Spec.AzureBlob.AzureSubscriptionID
+			conn.AzureTenantID = r.BackingStore.Spec.AzureBlob.AzureTenantID
+			conn.AzureClientID = r.BackingStore.Spec.AzureBlob.AzureClientID
+			conn.AzureRegion = r.BackingStore.Spec.AzureBlob.AzureRegion
+		}
+
 		conn.EndpointType = nb.EndpointTypeAzure
 		conn.Endpoint = "https://blob.core.windows.net"
 		conn.Identity = nb.MaskedString(r.Secret.StringData["AccountName"])
@@ -877,15 +885,19 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	}
 
 	checkConnectionParams := &nb.CheckExternalConnectionParams{
-		Name:               r.AddExternalConnectionParams.Name,
-		EndpointType:       r.AddExternalConnectionParams.EndpointType,
-		Endpoint:           r.AddExternalConnectionParams.Endpoint,
-		Region:             r.AddExternalConnectionParams.Region,
-		Identity:           r.AddExternalConnectionParams.Identity,
-		Secret:             r.AddExternalConnectionParams.Secret,
-		AuthMethod:         r.AddExternalConnectionParams.AuthMethod,
-		AWSSTSARN:          r.AddExternalConnectionParams.AWSSTSARN,
-		AzureLogAccessKeys: r.AddExternalConnectionParams.AzureLogAccessKeys,
+		Name:                 r.AddExternalConnectionParams.Name,
+		EndpointType:         r.AddExternalConnectionParams.EndpointType,
+		Endpoint:             r.AddExternalConnectionParams.Endpoint,
+		Region:               r.AddExternalConnectionParams.Region,
+		Identity:             r.AddExternalConnectionParams.Identity,
+		Secret:               r.AddExternalConnectionParams.Secret,
+		AuthMethod:           r.AddExternalConnectionParams.AuthMethod,
+		AWSSTSARN:            r.AddExternalConnectionParams.AWSSTSARN,
+		AzureLogAccessKeys:   r.AddExternalConnectionParams.AzureLogAccessKeys,
+		AzureClientID:	      r.AddExternalConnectionParams.AzureClientID,
+		AzureTenantID: 		  r.AddExternalConnectionParams.AzureTenantID,
+		AzureRegion: 		  r.AddExternalConnectionParams.AzureRegion,
+		AzureSubscriptionID:  r.AddExternalConnectionParams.AzureSubscriptionID,
 	}
 
 	if r.UpdateExternalConnectionParams != nil {

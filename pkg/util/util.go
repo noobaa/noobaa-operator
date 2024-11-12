@@ -1049,6 +1049,9 @@ func IsSTSClusterBS(bs *nbv1.BackingStore) bool {
 	if bs.Spec.Type == nbv1.StoreTypeAWSS3 {
 		return bs.Spec.AWSS3.AWSSTSRoleARN != nil
 	}
+	if bs.Spec.Type == nbv1.StoreTypeAzureBlob {
+		return bs.Spec.AzureBlob.AzureSubscriptionID != ""
+	}
 	return false
 }
 
@@ -1056,6 +1059,9 @@ func IsSTSClusterBS(bs *nbv1.BackingStore) bool {
 func IsSTSClusterNS(ns *nbv1.NamespaceStore) bool {
 	if ns.Spec.Type == nbv1.NSStoreTypeAWSS3 {
 		return ns.Spec.AWSS3.AWSSTSRoleARN != nil
+	}
+	if ns.Spec.Type == nbv1.NSStoreTypeAzureBlob {
+		return ns.Spec.AzureBlob.AzureSubscriptionID != ""
 	}
 	return false
 }

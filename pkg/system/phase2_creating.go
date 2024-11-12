@@ -36,10 +36,14 @@ import (
 )
 
 const (
-	webIdentityTokenPath string = "/var/run/secrets/openshift/serviceaccount/token"
-	roleARNEnvVar        string = "ROLEARN"
-	trueStr              string = "true"
-	falseStr             string = "false"
+	webIdentityTokenPath    string = "/var/run/secrets/openshift/serviceaccount/token"
+	roleARNEnvVar           string = "ROLEARN"
+	azureSTSSubscriptionID  string = "SUBSCRIPTIONID"
+	azureSTSTenantID        string = "TENANTID"
+	azureSTSClientID        string = "CLIENTID"
+	azureSTSRegion		    string = "REGION"
+	trueStr                 string = "true"
+	falseStr                string = "false"
 )
 
 // ReconcilePhaseCreating runs the reconcile phase
@@ -799,17 +803,54 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 // ReconcileAzureCredentials creates a CredentialsRequest resource if cloud credentials operator is available
 func (r *Reconciler) ReconcileAzureCredentials() error {
 	r.Logger.Info("Running in Azure. will create a CredentialsRequest resource")
+	// check if we have the env var ROLEARN that indicates that this is an OpenShift AWS STS cluster
+	// cluster admin set this env (either in the UI in ARN details or via Subscription yaml) and set the mode to manual
+	// olm will then copy the env from the subscription to the operator deployment (which is where your operator can pick it up from)
+	clientID := os.Getenv(azureSTSClientID)
+	subscriptionID := os.Getenv(azureSTSSubscriptionID)
+	tenantID := os.Getenv(azureSTSTenantID)
+	region := os.Getenv(azureSTSRegion)
+
+	r.Logger.Infof("Azure STS info - clientID: %s, subscriptionID: %s, tenantID: %s, region: %s", clientID, subscriptionID, tenantID, region)
+	if clientID != "" && subscriptionID != "" && tenantID != "" && region != "" {
+		r.IsAzureSTSCluster = true
+	}
+
 	err := r.Client.Get(r.Ctx, util.ObjectKey(r.AzureCloudCreds), r.AzureCloudCreds)
 	if err == nil || meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
 		return nil
 	}
 	if errors.IsNotFound(err) {
+		azureProviderSpec := &cloudcredsv1.AzureProviderSpec{}
+		codec := cloudcredsv1.Codec
+		err = codec.DecodeProviderSpec(r.AzureCloudCreds.Spec.ProviderSpec, azureProviderSpec)
+		if err != nil {
+			r.Logger.Error("error decoding providerSpec from Azure cloud credentials request")
+			return err
+		}
+		// Add short-lived token fields to the creds request (Azure auth info)
+		if r.IsAzureSTSCluster {
+			azureProviderSpec.AzureClientID = clientID
+			azureProviderSpec.AzureSubscriptionID = subscriptionID
+			azureProviderSpec.AzureTenantID = tenantID
+			azureProviderSpec.AzureRegion = region
+		}
+		updatedProviderSpec, err := codec.EncodeProviderSpec(azureProviderSpec)
+		if err != nil {
+			r.Logger.Error("error encoding providerSpec for Azure cloud credentials request")
+			return err
+		}
+		r.AzureCloudCreds.Spec.ProviderSpec = updatedProviderSpec
+		// Add short-lived token fields to the creds request (token path)
+		if r.IsAzureSTSCluster {
+			r.AzureCloudCreds.Spec.CloudTokenPath = webIdentityTokenPath
+		}
 		// credential request does not exist. create one
 		r.Logger.Info("Creating CredentialsRequest resource")
 		r.Own(r.AzureCloudCreds)
 		err = r.Client.Create(r.Ctx, r.AzureCloudCreds)
 		if err != nil {
-			r.Logger.Errorf("got error when trying to create credentials request for azure. %v", err)
+			r.Logger.Errorf(`got error when trying to create credentials request for Azure. %v`, err)
 			return err
 		}
 		return nil

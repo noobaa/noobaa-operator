@@ -87,6 +87,16 @@ spec:
               azureBlob:
                 description: AzureBlob specifies a backing store of type azure-blob
                 properties:
+                  azureClientID:
+                    type: string
+                  azureRegion:
+                    type: string
+                  azureSubscriptionID:
+                    description: All the following fields are required for Azure short-lived
+                      token authentication
+                    type: string
+                  azureTenantID:
+                    type: string
                   secret:
                     description: |-
                       Secret refers to a secret that provides the credentials

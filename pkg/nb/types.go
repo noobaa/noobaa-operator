@@ -663,6 +663,8 @@ const (
 	EndpointTypeAwsSTS EndpointType = "AWSSTS"
 	// EndpointTypeAzure enum
 	EndpointTypeAzure EndpointType = "AZURE"
+	// EndpointTypeAzureSTS enum
+	EndpointTypeAzureSTS EndpointType = "AZURESTS"
 	// EndpointTypeGoogle enum
 	EndpointTypeGoogle EndpointType = "GOOGLE"
 	// EndpointTypeS3Compat enum
@@ -710,15 +712,19 @@ type AzureLogAccessKeysParams struct {
 
 // AddExternalConnectionParams is the params of account_api.add_external_connection()
 type AddExternalConnectionParams struct {
-	Name               string                    `json:"name"`
-	EndpointType       EndpointType              `json:"endpoint_type"`
-	Endpoint           string                    `json:"endpoint"`
-	Identity           MaskedString              `json:"identity"`
-	Secret             MaskedString              `json:"secret"`
-	AuthMethod         CloudAuthMethod           `json:"auth_method,omitempty"`
-	AWSSTSARN          string                    `json:"aws_sts_arn,omitempty"`
-	Region             string                    `json:"region,omitempty"`
-	AzureLogAccessKeys *AzureLogAccessKeysParams `json:"azure_log_access_keys,omitempty"`
+	Name                string                    `json:"name"`
+	EndpointType          EndpointType              `json:"endpoint_type"`
+	Endpoint              string                    `json:"endpoint"`
+	Identity              MaskedString              `json:"identity"`
+	Secret                MaskedString              `json:"secret"`
+	AuthMethod            CloudAuthMethod           `json:"auth_method,omitempty"`
+	AWSSTSARN             string                    `json:"aws_sts_arn,omitempty"`
+	Region                string                    `json:"region,omitempty"`
+	AzureLogAccessKeys    *AzureLogAccessKeysParams `json:"azure_log_access_keys,omitempty"`
+	AzureClientID         string                    `json:"azure_client_id,omitempty"`
+	AzureTenantID   	  string                    `json:"azure_tenant_id,omitempty"`
+	AzureRegion   		  string                    `json:"azure_region,omitempty"`
+	AzureSubscriptionID   string                    `json:"azure_subscription_id,omitempty"`
 }
 
 // CheckExternalConnectionParams is the params of account_api.check_external_connection()
@@ -733,6 +739,10 @@ type CheckExternalConnectionParams struct {
 	IgnoreNameAlreadyExist bool                      `json:"ignore_name_already_exist,omitempty"`
 	AzureLogAccessKeys     *AzureLogAccessKeysParams `json:"azure_log_access_keys,omitempty"`
 	Region                 string                    `json:"region,omitempty"`
+	AzureClientID         string                    `json:"azure_client_id,omitempty"`
+	AzureTenantID   	  string                    `json:"azure_tenant_id,omitempty"`
+	AzureRegion   		  string                    `json:"azure_region,omitempty"`
+	AzureSubscriptionID   string                    `json:"azure_subscription_id,omitempty"`
 }
 
 // CheckExternalConnectionReply is the reply of account_api.check_external_connection()

@@ -61,6 +61,7 @@ func CmdCreate() *cobra.Command {
 		CmdCreateS3Compatible(),
 		CmdCreateIBMCos(),
 		CmdCreateAzureBlob(),
+		CmdCreateAzureBlobSTS(),
 		CmdCreateNSFS(),
 	)
 	return cmd
@@ -243,6 +244,36 @@ func CmdCreateAzureBlob() *cobra.Command {
 	cmd.Flags().String(
 		"access-mode", "read-write",
 		`The resource access privileges read-write|read-only`,
+	)
+	return cmd
+}
+
+// CmdCreateAzureBlobSTS returns a CLI command
+func CmdCreateAzureBlobSTS() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "azure-blob-sts <namespace-store-name>",
+		Short: "Create an Azure Blob namespace store (using a short-lived token)",
+		Run:   RunCreateAzureBlobSTS,
+	}
+	cmd.Flags().String(
+		"target-blob-container", "",
+		"The target container name on Azure storage account",
+	)
+	cmd.Flags().String(
+		"subscription-id", "",
+		"The Azure subscription ID",
+	)
+	cmd.Flags().String(
+		"tenant-id", "",
+		"The Azure tenant ID",
+	)
+	cmd.Flags().String(
+		"client-id", "",
+		"The Azure client ID",
+	)
+	cmd.Flags().String(
+		"region", "",
+		"The Azure region",
 	)
 	return cmd
 }
@@ -503,6 +534,63 @@ func RunCreateAWSSTSS3(cmd *cobra.Command, args []string) {
 		AWSSTSRoleARN: &awsSTSARN,
 	}
 	// Create namespace store CR
+	util.Panic(controllerutil.SetControllerReference(sys, namespaceStore, scheme.Scheme))
+	if !util.KubeCreateFailExisting(namespaceStore) {
+		log.Fatalf(`❌ Could not create NamespaceStore %q in Namespace %q (conflict)`, namespaceStore.Name, namespaceStore.Namespace)
+	}
+	log.Printf("")
+	util.PrintThisNoteWhenFinishedApplyingAndStartWaitLoop()
+	log.Printf("")
+	log.Printf("NamespaceStore Wait Ready:")
+	if WaitReady(namespaceStore) {
+		log.Printf("")
+		log.Printf("")
+		RunStatus(cmd, args)
+	}
+}
+
+// RunCreateAzureBlobSTS runs a CLI command
+func RunCreateAzureBlobSTS(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
+	}
+	name := args[0]
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	sys := o.(*nbv1.NooBaa)
+	sys.Name = options.SystemName
+	sys.Namespace = options.Namespace
+
+	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml)
+	namespaceStore := o.(*nbv1.NamespaceStore)
+	namespaceStore.Name = name
+	namespaceStore.Namespace = options.Namespace
+	namespaceStore.Spec = nbv1.NamespaceStoreSpec{Type: nbv1.NSStoreTypeAzureBlob}
+
+	if !util.KubeCheck(sys) {
+		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
+	}
+
+	err := util.KubeClient().Get(util.Context(), util.ObjectKey(namespaceStore), namespaceStore)
+	if err == nil {
+		log.Fatalf(`❌ NamespaceStore %q already exists in namespace %q`, namespaceStore.Name, namespaceStore.Namespace)
+	}
+
+	targetContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
+	subscriptionID := util.GetFlagStringOrPrompt(cmd, "subscription-id")
+	tenantID := util.GetFlagStringOrPrompt(cmd, "tenant-id")
+	clientID := util.GetFlagStringOrPrompt(cmd, "client-id")
+	region := util.GetFlagStringOrPrompt(cmd, "region")
+
+	namespaceStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
+		TargetBlobContainer: targetContainer,
+		AzureSubscriptionID:      subscriptionID,
+		AzureTenantID:            tenantID,
+		AzureClientID:            clientID,
+		AzureRegion:              region,
+	}
+
+	// Create BS CR
 	util.Panic(controllerutil.SetControllerReference(sys, namespaceStore, scheme.Scheme))
 	if !util.KubeCreateFailExisting(namespaceStore) {
 		log.Fatalf(`❌ Could not create NamespaceStore %q in Namespace %q (conflict)`, namespaceStore.Name, namespaceStore.Namespace)

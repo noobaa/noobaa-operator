@@ -275,7 +275,7 @@ spec:
 
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "3c59eda2da91cf4ec6025491d8d1067b4626d3cad5fbd43bb0846ebd6d3126bf"
+const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "f782ab114d3e290502db7fd47f802429d0a375212c6e59b6645fe5ded5d377e7"
 
 const File_deploy_crds_noobaa_io_backingstores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -385,8 +385,19 @@ spec:
                     description: TargetBlobContainer is the name of the target Azure
                       Blob container
                     type: string
+                  azureSubscriptionID:
+                    description: AzureSubscriptionID is the Azure Subscription ID
+                    type: string
+                  azureTenantID:
+                    description: AzureTenantID is the Azure Tenant ID
+                    type: string
+                  azureClientID:
+                    description: azureClientID is the Azure Account ID
+                    type: string
+                  azureRegion:
+                    description: AzureRegion is the Azure region
+                    type: string
                 required:
-                - secret
                 - targetBlobContainer
                 type: object
               googleCloudStorage:
@@ -901,7 +912,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "427b53370d424315e81fdca907fb51f8106c56e5a2a7b186384348f794ad330d"
+const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "78055565720cf821396f09e87cd80d4fb22cd9d935f1fa386be65d1bc5a0a2d1"
 
 const File_deploy_crds_noobaa_io_namespacestores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -1014,8 +1025,19 @@ spec:
                     description: TargetBlobContainer is the name of the target Azure
                       Blob container
                     type: string
+                  azureSubscriptionID:
+                    description: AzureSubscriptionID is the Azure Subscription ID
+                    type: string
+                  azureTenantID:
+                    description: AzureTenantID is the Azure Tenant ID
+                    type: string
+                  azureClientID:
+                    description: azureClientID is the Azure Account ID
+                    type: string
+                  azureRegion:
+                    description: AzureRegion is the Azure region
+                    type: string
                 required:
-                - secret
                 - targetBlobContainer
                 type: object
               googleCloudStorage:
@@ -1415,7 +1437,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "3f88c800238f25e5dd26f3f1bf19028571cc646e3aea0f868bfd2ff600ee3ed1"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "09079e67703a350301403299b74f8cc4f0a21325a289890863bef0e94991757a"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2700,8 +2722,19 @@ spec:
                         description: TargetBlobContainer is the name of the target
                           Azure Blob container
                         type: string
+                      azureSubscriptionID:
+                        description: AzureSubscriptionID is the Azure Subscription ID
+                        type: string
+                      azureTenantID:
+                        description: AzureTenantID is the Azure Tenant ID
+                        type: string
+                      azureClientID:
+                        description: azureClientID is the Azure Account ID
+                        type: string
+                      azureRegion:
+                        description: AzureRegion is the Azure region
+                        type: string
                     required:
-                    - secret
                     - targetBlobContainer
                     type: object
                   googleCloudStorage:
@@ -3820,7 +3853,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "21b206c9119e37c4ebba84d5c1e2b1d45b06c716b4def69db9ba9268ef75e1e1"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "9a3d682eb1adb118363e41028b3d8680bb2cdd4f798fbeae34de89db80b6961c"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -3978,7 +4011,7 @@ spec:
             - name: sts-secret
               mountPath: /etc/sts-secret
               readOnly: true
-            # used for aws sts endpoint type
+            # used for short lived credentials endpoint types
             - name: bound-sa-token
               mountPath: /var/run/secrets/openshift/serviceaccount
               readOnly: true

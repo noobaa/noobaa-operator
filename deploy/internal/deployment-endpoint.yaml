@@ -154,7 +154,7 @@ spec:
             - name: sts-secret
               mountPath: /etc/sts-secret
               readOnly: true
-            # used for aws sts endpoint type
+            # used for short lived credentials endpoint types
             - name: bound-sa-token
               mountPath: /var/run/secrets/openshift/serviceaccount
               readOnly: true

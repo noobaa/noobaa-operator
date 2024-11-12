@@ -321,6 +321,21 @@ func ValidateNSEmptyAWSARN(ns nbv1.NamespaceStore) error {
 	return nil
 }
 
+// ValidateNSEmptyAzureSTSFields validates if any Azure STS fields are missing from the NamespaceStore spec
+func ValidateNSEmptyAzureSTSFields(ns nbv1.NamespaceStore) error {
+	if ns.Spec.AzureBlob != nil { 
+		if ns.Spec.AzureBlob.AzureSubscriptionID == "" ||
+			ns.Spec.AzureBlob.AzureClientID == "" ||
+			ns.Spec.AzureBlob.AzureTenantID == "" ||
+			ns.Spec.AzureBlob.AzureRegion == "" {
+				return util.ValidationError{
+					Msg: "Failed creating the NamespaceStore, please provide a IDs for the subscription, client, and tenant, as well as a region",
+			}
+		}
+	}
+	return nil
+}
+
 // ValidateNamespacestoreDeletion validates the deleted namespacestore not containing data buckets
 func ValidateNamespacestoreDeletion(ns nbv1.NamespaceStore, systemInfo nb.SystemInfo) error {
 	for _, nsr := range systemInfo.NamespaceResources {

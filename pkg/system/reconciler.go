@@ -91,6 +91,7 @@ type Reconciler struct {
 	AWSCloudCreds             *cloudcredsv1.CredentialsRequest
 	AWSSTSRoleSessionName     string
 	IsAWSSTSCluster           bool
+	IsAzureSTSCluster		  bool
 	AzureCloudCreds           *cloudcredsv1.CredentialsRequest
 	AzureContainerCreds       *corev1.Secret
 	GCPBucketCreds            *corev1.Secret
@@ -296,6 +297,8 @@ func NewReconciler(
 	r.AWSSTSRoleSessionName = "noobaa-sts-default-backing-store-session"
 	// Setting default AWS STS cluster as false
 	r.IsAWSSTSCluster = false
+	// Set default Azure STS cluster as false
+	r.IsAzureSTSCluster = false
 
 	// Set bucket logging volume mount name and path
 	r.BucketLoggingVolume = r.Request.Name + "-bucket-logging-volume"

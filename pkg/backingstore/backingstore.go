@@ -63,6 +63,7 @@ func CmdCreate() *cobra.Command {
 		CmdCreateS3Compatible(),
 		CmdCreateIBMCos(),
 		CmdCreateAzureBlob(),
+		CmdCreateAzureBlobSTS(),
 		CmdCreateGoogleCloudStorage(),
 		CmdCreatePVPool(),
 	)
@@ -207,6 +208,36 @@ func CmdCreateAzureBlob() *cobra.Command {
 	cmd.Flags().String(
 		"secret-name", "",
 		`The name of a secret for authentication - should have AccountName and AccountKey properties`,
+	)
+	return cmd
+}
+
+// CmdCreateAzureBlobSTS returns a CLI command
+func CmdCreateAzureBlobSTS() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "azure-blob-sts <backing-store-name>",
+		Short: "Create an Azure Blob backing store (using a short-lived token)",
+		Run:   RunCreateAzureBlobSTS,
+	}
+	cmd.Flags().String(
+		"target-blob-container", "",
+		"The target container name on Azure storage account",
+	)
+	cmd.Flags().String(
+		"subscription-id", "",
+		"The Azure subscription ID",
+	)
+	cmd.Flags().String(
+		"tenant-id", "",
+		"The Azure tenant ID",
+	)
+	cmd.Flags().String(
+		"client-id", "",
+		"The Azure client ID",
+	)
+	cmd.Flags().String(
+		"region", "",
+		"The Azure region",
 	)
 	return cmd
 }
@@ -628,6 +659,63 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 			},
 		}
 	})
+}
+
+// RunCreateAzureBlobSTS runs a CLI command
+func RunCreateAzureBlobSTS(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
+	}
+	name := args[0]
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	sys := o.(*nbv1.NooBaa)
+	sys.Name = options.SystemName
+	sys.Namespace = options.Namespace
+
+	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml)
+	backStore := o.(*nbv1.BackingStore)
+	backStore.Name = name
+	backStore.Namespace = options.Namespace
+	backStore.Spec = nbv1.BackingStoreSpec{Type: nbv1.StoreTypeAzureBlob}
+
+	if !util.KubeCheck(sys) {
+		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
+	}
+
+	err := util.KubeClient().Get(util.Context(), util.ObjectKey(backStore), backStore)
+	if err == nil {
+		log.Fatalf(`❌ BackingStore %q already exists in namespace %q`, backStore.Name, backStore.Namespace)
+	}
+
+	targetContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
+	subscriptionID := util.GetFlagStringOrPrompt(cmd, "subscription-id")
+	tenantID := util.GetFlagStringOrPrompt(cmd, "tenant-id")
+	clientID := util.GetFlagStringOrPrompt(cmd, "client-id")
+	region := util.GetFlagStringOrPrompt(cmd, "region")
+
+	backStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
+		TargetBlobContainer: targetContainer,
+		AzureSubscriptionID:      subscriptionID,
+		AzureTenantID:            tenantID,
+		AzureClientID:            clientID,
+		AzureRegion:              region,
+	}
+
+	// Create BS CR
+	util.Panic(controllerutil.SetControllerReference(sys, backStore, scheme.Scheme))
+	if !util.KubeCreateFailExisting(backStore) {
+		log.Fatalf(`❌ Could not create BackingStore %q in Namespace %q (conflict)`, backStore.Name, backStore.Namespace)
+	}
+	log.Printf("")
+	util.PrintThisNoteWhenFinishedApplyingAndStartWaitLoop()
+	log.Printf("")
+	log.Printf("BackingStore Wait Ready:")
+	if WaitReady(backStore) {
+		log.Printf("")
+		log.Printf("")
+		RunStatus(cmd, args)
+	}
 }
 
 // RunCreateGoogleCloudStorage runs a CLI command

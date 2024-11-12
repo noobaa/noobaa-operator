@@ -75,8 +75,8 @@ func ValidateBSEmptySecretName(bs nbv1.BackingStore) error {
 		}
 	case nbv1.StoreTypeAzureBlob:
 		if len(bs.Spec.AzureBlob.Secret.Name) == 0 {
-			return util.ValidationError{
-				Msg: "Failed creating the Backingstore, please provide secret name",
+			if err := ValidateAzureSTSFields(bs); err != nil {
+				return err
 			}
 		}
 	case nbv1.StoreTypeGoogleCloudStorage:
@@ -144,6 +144,22 @@ func ValidateAWSSTSARN(bs nbv1.BackingStore) error {
 		if bs.Spec.AWSS3.AWSSTSRoleARN == nil {
 			return util.ValidationError{
 				Msg: "Failed creating the Backingstore, please provide a valid ARN or secret name",
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateAzureSTSFields validates if any Azure STS fields are missing from the NamespaceStore spec
+func ValidateAzureSTSFields(bs nbv1.BackingStore) error {
+	if bs.Spec.AzureBlob != nil { 
+		if bs.Spec.AzureBlob.AzureSubscriptionID == "" ||
+		   bs.Spec.AzureBlob.AzureClientID == "" ||
+		   bs.Spec.AzureBlob.AzureTenantID == "" ||
+		   bs.Spec.AzureBlob.AzureRegion == "" {
+				return util.ValidationError{
+					Msg: `Failed creating the Backingstore, please provide a secret name, or in the case of STS -
+					IDs for the subscription, client, and tenant, as well as a region`,
 			}
 		}
 	}
