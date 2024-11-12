@@ -283,6 +283,12 @@ type ListAccountsReply struct {
 	Accounts []*AccountInfo `json:"accounts"`
 }
 
+// ListBcuketsParams is the params to account_api.list_buckets()
+type ListBucketsParams struct {
+	ContinuationToken *string `json:"continuation_token,omitempty"`
+	MaxBuckets *int `json:"max_buckets,omitempty"`
+}
+
 // ListBucketsReply is the reply of bucket_api.list_buckets()
 type ListBucketsReply struct {
 	Buckets []struct {

@@ -239,7 +239,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 func RunList(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 	nbClient := system.GetNBClient()
-	list, err := nbClient.ListBucketsAPI()
+	list, err := nbClient.ListBucketsAPI(nb.ListBucketsParams{})
 	if err != nil {
 		log.Fatal(err)
 	}
