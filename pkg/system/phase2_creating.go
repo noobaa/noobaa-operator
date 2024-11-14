@@ -1209,7 +1209,7 @@ func (r *Reconciler) prepareODFBucketLoggingPVC() error {
 		r.BucketLoggingPVC.Spec.StorageClassName = &sc.Name
 	} else {
 		return util.NewPersistentError("InvalidBucketLoggingConfiguration",
-			"'Guaranteed' BucketLogging requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'BucketLoggingPVC' to ensure guaranteed logging")
+			"'Guaranteed2' BucketLogging requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'BucketLoggingPVC' to ensure guaranteed logging")
 	}
 
 	return nil
