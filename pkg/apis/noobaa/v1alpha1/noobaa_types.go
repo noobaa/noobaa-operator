@@ -227,6 +227,10 @@ type NooBaaSpec struct {
 	// BucketLogging sets the configuration for bucket logging
 	// +optional
 	BucketLogging BucketLoggingSpec `json:"bucketLogging,omitempty"`
+
+	// BucketNotifications (optional) controls bucket notification options
+	// +optional
+	BucketNotifications BucketNotificationsSpec `json:"bucketNotifications,omitempty"`
 }
 
 // AutoscalerSpec defines different actoscaling spec such as autoscaler type and prometheus namespace
@@ -256,6 +260,22 @@ type BucketLoggingSpec struct {
 	// For ODF: If not provided, the default CephFS storage class will be used to create the PVC.
 	// +optional
 	BucketLoggingPVC *string `json:"bucketLoggingPVC,omitempty"`
+}
+
+//BucketNotificationsSpec controls bucket notification configuration
+type BucketNotificationsSpec struct {
+	// Enabled - whether bucket notifications is enabled
+	Enabled bool `json:"enabled"`
+
+	//PVC (optional) specifies the name of the Persistent Volume Claim (PVC) to be used
+	//for holding pending notifications files.
+	//For ODF - If not provided, the default CepthFS storage class will be used to create the PVC.
+	// +optional
+	PVC *string `json:"pvc,omitempty"`
+
+	//Connections - A list of secrets' names that are used by the notifications configrations
+	//(in the TopicArn field).
+	Connections []corev1.SecretReference `json:"connections,omitempty"`
 }
 
 // LoadBalancerSourceSubnetSpec defines the subnets that will be allowed to access the NooBaa services

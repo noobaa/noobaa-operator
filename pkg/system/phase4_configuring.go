@@ -415,6 +415,15 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 				}
 			}
 
+			if r.NooBaa.Spec.BucketNotifications.Enabled {
+				envVar := corev1.EnvVar{
+					Name: "NOTIFICATION_LOG_DIR",
+					Value: "/var/logs/notifications",
+				}
+
+				util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar});
+			}
+
 			c.SecurityContext = &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
 					Add: []corev1.Capability{"SETUID", "SETGID"},
@@ -531,6 +540,24 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 			MountPath: r.BucketLoggingVolumeMount,
 		}}
 		util.MergeVolumeMountList(&container.VolumeMounts, &bucketLogVolumeMounts)
+	}
+
+	if r.NooBaa.Spec.BucketNotifications.Enabled {
+		notificationVolumes := []corev1.Volume{{
+			Name: "notif-vol",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: r.BucketNotificationsPVC.Name,
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &notificationVolumes)
+
+		notificationVolumeMounts := []corev1.VolumeMount{{
+			Name:      "notif-vol",
+			MountPath: "/var/logs/notifications",
+		}}
+		util.MergeVolumeMountList(&container.VolumeMounts, &notificationVolumeMounts)
 	}
 
 	r.setDesiredRootMasterKeyMounts(podSpec, container)

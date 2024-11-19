@@ -122,6 +122,7 @@ type Reconciler struct {
 	AdapterHPA                *autoscalingv2.HorizontalPodAutoscaler
 	ExternalPgSecret          *corev1.Secret
 	ExternalPgSSLSecret       *corev1.Secret
+	BucketNotificationsPVC    *corev1.PersistentVolumeClaim
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -171,6 +172,7 @@ func NewReconciler(
 		DefaultNsfsPvc:            util.KubeObject(bundle.File_deploy_internal_nsfs_pvc_cr_yaml).(*corev1.PersistentVolumeClaim),
 		OBCStorageClass:           util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass),
 		BucketLoggingPVC:          util.KubeObject(bundle.File_deploy_internal_pvc_agent_yaml).(*corev1.PersistentVolumeClaim),
+		BucketNotificationsPVC:    util.KubeObject(bundle.File_deploy_internal_pvc_agent_yaml).(*corev1.PersistentVolumeClaim),
 		PrometheusRule:            util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule),
 		ServiceMonitorMgmt:        util.KubeObject(bundle.File_deploy_internal_servicemonitor_mgmt_yaml).(*monitoringv1.ServiceMonitor),
 		ServiceMonitorS3:          util.KubeObject(bundle.File_deploy_internal_servicemonitor_s3_yaml).(*monitoringv1.ServiceMonitor),
@@ -230,6 +232,7 @@ func NewReconciler(
 	r.KedaScaled.Namespace = r.Request.Namespace
 	r.AdapterHPA.Namespace = r.Request.Namespace
 	r.BucketLoggingPVC.Namespace = r.Request.Namespace
+	r.BucketNotificationsPVC.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -274,6 +277,7 @@ func NewReconciler(
 	r.KedaScaled.Name = r.Request.Name
 	r.AdapterHPA.Name = r.Request.Name + "-hpav2"
 	r.BucketLoggingPVC.Name = r.Request.Name + "-bucket-logging-pvc"
+	r.BucketNotificationsPVC.Name = r.Request.Name + "-bucket-notifications-pvc"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name

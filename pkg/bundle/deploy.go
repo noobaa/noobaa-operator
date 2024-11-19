@@ -1415,7 +1415,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "3f88c800238f25e5dd26f3f1bf19028571cc646e3aea0f868bfd2ff600ee3ed1"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "e862d263d097ed43f774784eaaf9a616967746b67608fadbe4ca71d93b220ab6"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2446,6 +2446,42 @@ spec:
                       - best-effort(default) - less immune to failures but with better performance
                       - guaranteed - much more reliable but need to provide a storage class that supports RWX PVs
                     type: string
+                type: object
+              bucketNotifications:
+                description: BucketNotifications (optional) controls bucket notification
+                  options
+                properties:
+                  connections:
+                    description: |-
+                      Connections - A list of secrets' names that are used by the notifications configrations
+                      (in the TopicArn field).
+                    items:
+                      description: |-
+                        SecretReference represents a Secret Reference. It has enough information to retrieve secret
+                        in any namespace
+                      properties:
+                        name:
+                          description: name is unique within a namespace to reference
+                            a secret resource.
+                          type: string
+                        namespace:
+                          description: namespace defines the space within which the
+                            secret name must be unique.
+                          type: string
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    type: array
+                  enabled:
+                    description: Enabled - whether bucket notifications is enabled
+                    type: boolean
+                  pvc:
+                    description: |-
+                      PVC (optional) specifies the name of the Persistent Volume Claim (PVC) to be used
+                      for holding pending notifications files.
+                      For ODF - If not provided, the default CepthFS storage class will be used to create the PVC.
+                    type: string
+                required:
+                - enabled
                 type: object
               cleanupPolicy:
                 description: CleanupPolicy (optional) Indicates user's policy for
