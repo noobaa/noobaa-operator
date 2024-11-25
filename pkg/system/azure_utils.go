@@ -51,7 +51,7 @@ func (r *Reconciler) CreateStorageAccount(accountName, accountGroupName string) 
 		storage.AccountCreateParameters{
 			Sku: &storage.Sku{
 				Name: storage.StandardLRS},
-			Kind:     storage.Storage,
+			Kind:     storage.StorageV2,
 			Location: to.StringPtr(r.AzureContainerCreds.StringData["azure_region"]),
 			AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
 				EnableHTTPSTrafficOnly: &enableHTTPSTrafficOnly,
