@@ -617,6 +617,15 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 					SubPath:   subPath,
 				})
 			}
+
+			//this is a way to let containers explicitly know
+			//that an nsr should be mounted on them
+			envVar := corev1.EnvVar{
+				Name: "NSFS_NSR_" + nsStore.Name,
+				Value: "mounted",
+			}
+
+			util.MergeEnvArrays(&container.Env, &[]corev1.EnvVar{envVar});
 		}
 	}
 
