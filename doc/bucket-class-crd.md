@@ -5,7 +5,7 @@ The BucketClass CRD represents a structure that defines bucket policies relating
 Note that placement-bucketclass and namespace-bucketclass both use the same CR, and the difference lies inside the bucket class' `spec` section, more specifically the presence of either the `placementPolicy` or `namespacePolicy` key. 
 
 # Definitions
-- CRD: [noobaa.io_bucketclasses_crd.yaml](../deploy/crds/noobaa.io_bucketclasses_crd.yaml)
+- CRD: [noobaa.io_bucketclasses.yaml](../deploy/crds/noobaa.io_bucketclasses.yaml)
 - CR: [noobaa.io_v1alpha1_bucketclass_cr.yaml](../deploy/crds/noobaa.io_v1alpha1_bucketclass_cr.yaml)
 
 ## Placement Policy
@@ -27,44 +27,6 @@ Cache bucketclasses work by saving read objects in a chosen backingstore, which 
 - Negative (e.g. `-1`) - when the user knows there are no out of band writes, they can use a negative TTL, which means no revalidations are done; if the object is in the cache - it is returned without an ETag comparison. This is the most performant option.
 - Zero (`0`) - the cache will always compare the object's ETag before returning it. This option has a performance cost of getting the ETag from the remote target on each object read. This is the least performant option.
 - Positive (denoted in milliseconds, e.g. `3600000` equals to an hour) - once an object was read and saved in the cache, the chosen amount of time will have to pass prior to the object's ETag being compared again.
-
-## Replication Policy
-It is possible to set a bucketclass-wide replication policy, that will be inherited and used by all future buckets created under that bucketclass.
-
-A replication policy is a JSON-compliant string which defines an array of rules -
-  - Each rule is an object containing a `rule_id`, a `destination bucket`, and an optional `filter` key that contains a `prefix` field.
-  - When a filter with prefix is provided - only objects keys that match the prefix will be replicated
-
-Replication policy:
-
-A bucket-class will define a replication policy for all future NooBaa buckets who will utilize it.
-The policy is a JSON-compliant array of rules (examples are provided at the bottom of this section)
-  - Each rule is an object that contains the following keys:
-    - `rule_id` - which identifies the rule
-    - `destination_bucket` - which dictates the target NooBaa buckets that the objects will be copied to
-    - (optional) `{"filter": {"prefix": <>}}` - if the user wishes to filter the objects that are replicated, the value of this field can be set to a prefix string
-    - (optional, log-based optimization, see below) `sync_deletions` - can be set to a boolean value to indicate whether deletions should be replicated
-    - (optional, log-based optimization, see below) `sync_versions` - can be set to a boolean value to indicate whether object versions should be replicated
-
-In addition, when the bucketclass is backed by namespacestores, each policy can be set to optimize replication by utilizing logs (configured and supplied by the user, currently only supports AWS S3 and Azure Blob):
-  - (optional) `log_replication_info` - an object that contains data related to log-based replication optimization -
-    - (optional on AWS) `endpoint_type` - this field can be set to an appropriate endpoint type (currently, only AZURE is supported)
-    - (necessary on AWS) `{"logs_location": {"logs_bucket": <>}}` - this field should be set to the location of the AWS S3 server access logs
-
-An example of an AWS replication policy with log optimization:
-
-`'{"rules":[{"rule_id":"aws-rule-1", "destination_bucket":"first.bucket", "filter": {"prefix": "a."}}], "log_replication_info": {"logs_location": {"logs_bucket": "logsarehere"}}}'`
-
-An example of an Azure replication policy with log optimization:
-
-`'{"rules":[{"rule_id":"azure-rule-1", "sync_deletions": true, "sync_versions": false, "destination_bucket":"first.bucket"}], "log_replication_info": {"endpoint_type": "AZURE"}}'`
-
-These policies can also be saved as files and passed to the NooBaa CLI. In that case, please note it's necessary to omit the outer single quotes.
-
-# Definitions
-
-- CRD: [noobaa.io_bucketclasses_crd.yaml](../deploy/crds/noobaa.io_bucketclasses_crd.yaml)
-- CR: [noobaa.io_v1alpha1_bucketclass_cr.yaml](../deploy/crds/noobaa.io_v1alpha1_bucketclass_cr.yaml)
 
 ## Constraints:
 - A backing store name may appear in more than one bucket class but may not appear more than once in a certain bucket class.
