@@ -425,6 +425,11 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	bucketClass.Name = args[0]
 	bucketClass.Namespace = options.Namespace
 
+	if !util.KubeCheck(bucketClass) {
+		log.Fatalf(`❌ Could not delete, BucketClass %q in namespace %q does not exist`,
+			bucketClass.Name, bucketClass.Namespace)
+	}
+
 	if !util.KubeDelete(bucketClass) {
 		log.Fatalf(`❌ Could not delete BucketClass %q in namespace %q`,
 			bucketClass.Name, bucketClass.Namespace)
