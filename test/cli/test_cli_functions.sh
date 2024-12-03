@@ -965,13 +965,11 @@ function delete_backingstore_path {
 
 function delete_namespacestore_path {
     local object_bucket namespace_store
-    test_noobaa obc delete ${obc[2]}
-    test_noobaa bucketclass delete ${bucketclass[2]}
     local namespacestore=($(test_noobaa silence namespacestore list | grep -v "NAME" | awk '{print $1}'))
     local bucketclass=($(test_noobaa silence bucketclass list | grep -v "NAME" | awk '{print $1}'))
     local obc=()
     local all_obc=($(test_noobaa silence obc list | grep -v "BUCKET-NAME" | awk '{print $2":"$5}'))
-    
+
     # get obcs that their bucketclass is in bucketclass array
     for object_bucket in ${all_obc[@]}
     do
