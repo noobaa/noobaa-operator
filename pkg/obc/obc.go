@@ -147,7 +147,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ NSFS account config must include both UID and GID as positive integers`)
 	}
 
-	if bucketClassName == "" && ( gid > -1 || uid > -1 || distinguishedName != "" ) {
+	if bucketClassName == "" && (gid > -1 || uid > -1 || distinguishedName != "") {
 		log.Fatalf(`❌ NSFS account config cannot be set without an NSFS bucketclass`)
 	}
 
@@ -330,6 +330,10 @@ func RunDelete(cmd *cobra.Command, args []string) {
 	obc := o.(*nbv1.ObjectBucketClaim)
 	obc.Name = args[0]
 	obc.Namespace = appNamespace
+
+	if !util.KubeCheck(obc) {
+		log.Fatalf(`❌ Could not delete. OBC %q in namespace %q does not exist`, obc.Name, obc.Namespace)
+	}
 
 	if !util.KubeDelete(obc) {
 		log.Fatalf(`❌ Could not delete OBC %q in namespace %q`,
