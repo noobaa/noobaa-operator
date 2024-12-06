@@ -194,13 +194,17 @@ INFO[0000] operator-image: noobaa/noobaa-operator:5.18.0
 You can find documentation related to noobaa operator and noobaa components in kubernetes in [doc](doc) directory.
 For example:
 - [NooBaa](doc/about-noobaa.md) - Basic terminology and links to videos.
-- Customer Resources Definitions ([CRDs](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#adding-custom-resources)):
+- [S3 API Compatibility](doc/s3-compatibility.md) - Overview of S3 API compatibility in NooBaa
+- [AWS API Compatibility](https://github.com/noobaa/noobaa-core/blob/master/docs/design/AWS_API_Compatibility.md) - Overview of AWS API calls support in NooBaa
+- Custom Resource Definitions ([CRDs](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#adding-custom-resources)):
 A custom resource is an extension of the Kubernetes API that is not necessarily available in a default Kubernetes installation. CRDs allow users to create new types of resources without adding another API server.
 Once a custom resource is installed, users can create, update and access its objects using [`kubectl`](https://kubernetes.io/docs/reference/kubectl/), just as they do for built-in resources.
   - [NooBaaSystem](doc/noobaa-crd.md) - The basic CRD to deploy a NooBaa system. Represents a single installation of NooBaa that includes a set of sub-resources (backing-stores, bucket-classes, and buckets).
   - [BackingStore](doc/backing-store-crd.md) - Storage resources. These storage targets are used to store deduplicated, compressed and encrypted chunks of data.
   - [NamespaceStore](doc/namespace-store-crd.md) - Data resources. These storage targets are used to store and read plain data.
   - [BucketClass](doc/bucket-class-crd.md) - Policies applied to a class of buckets, defines bucket policies relating to data placement.
+  - [Bucket Types](doc/bucket-types.md) - Overview of data and namespace buckets, and supported services
+  - [Bucket Replication](doc/bucket-replication.md) - Overview of bucket replication rules in NooBaa, including log-based optimizations, inner workings, and example rules
   - [Account](doc/noobaa-account-crd.md) - We use the account to receive new credentials set for accessing different noobaa services.
 - Bucket Claim:
   - [OBC Provisioner](doc/obc-provisioner.md) - OBC (Object Bucket Claim) is currently the main CR to provision buckets, however it is being deprecated in favor of COSI.
