@@ -2,7 +2,7 @@ package bundle
 
 const Version = "5.18.0"
 
-const Sha256_deploy_cluster_role_yaml = "3f8118853db73926c4f9d14be84ac8f81833c3a7a94a52ecf1e9ebcf712eee93"
+const Sha256_deploy_cluster_role_yaml = "31fc622ff7fa66617be3895bddcb6cfdb97883b75b20bdb2bf04052bd14221a8"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -189,6 +189,14 @@ rules:
       - delete
       - update
       - create
+  - apiGroups:
+      - config.openshift.io
+    resources:
+      - infrastructures
+    verbs:
+      - get
+      - list
+      - watch
 `
 
 const Sha256_deploy_cluster_role_binding_yaml = "15c78355aefdceaf577bd96b4ae949ae424a3febdc8853be0917cf89a63941fc"
