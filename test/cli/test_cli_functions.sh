@@ -1018,6 +1018,11 @@ function delete_account {
     echo_time "✅  delete accounts is done"
 }
 
+function delete_non_existing_resources {
+    test_noobaa should_fail obc delete non-existing-obc
+    test_noobaa should_fail bucketclass delete non-existing-bc
+}
+
 function check_deletes {
     echo_time "💬  Starting the delete cycle"
     local obc=($(test_noobaa silence obc list | grep -v "NAME\|default" | awk '{print $2}'))
@@ -1029,6 +1034,7 @@ function check_deletes {
     delete_backingstore_path
     delete_namespacestore_path
     delete_accounts
+    delete_non_existing_resources
     echo_time "✅  delete cycle is done"
 }
 
