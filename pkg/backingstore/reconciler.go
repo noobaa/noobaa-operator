@@ -1169,6 +1169,13 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 		}
 	}
 
+	var pod_label = pod.Labels["backingstore"]
+	var bs_label = r.BackingStore.Labels["backingstore"]
+	if (bs_label != "") && (pod_label != bs_label) {
+		r.Logger.Warnf("Backingstore lable has been modified to (%v) and it is different from pod lable: (%v)", bs_label, pod_label)
+		return true
+	}
+
 	for _, name := range []string{"NOOBAA_LOG_LEVEL", "NOOBAA_LOG_COLOR"} {
 		configMapValue := r.CoreAppConfig.Data[name]
 		noobaaLogEnvVar := util.GetEnvVariable(&c.Env, name)
@@ -1305,10 +1312,16 @@ func (r *Reconciler) updatePodTemplate() error {
 		r.PodAgentTemplate.Spec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
+
+	bs_label, ok := r.BackingStore.Labels["backingstore"]
+	if !ok || bs_label == "" {
+		bs_label = "noobaa"
+	}
+
 	r.PodAgentTemplate.Labels = map[string]string{
 		"app":          "noobaa",
 		"pool":         r.BackingStore.Name,
-		"backingstore": "noobaa",
+		"backingstore": bs_label,
 	}
 	if r.NooBaa.Spec.Tolerations != nil {
 		r.PodAgentTemplate.Spec.Tolerations = r.NooBaa.Spec.Tolerations
@@ -1329,7 +1342,7 @@ func (r *Reconciler) updatePodTemplate() error {
 			NodeTaintsPolicy:  &honor,
 			LabelSelector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"backingstore": "noobaa",
+					"backingstore": bs_label,
 				},
 			},
 		}
