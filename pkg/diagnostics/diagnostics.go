@@ -27,6 +27,7 @@ func Cmd() *cobra.Command {
 		CmdReport(),
 		CmdDbStatPrepare(),
 		CmdDbStat(),
+		CmdIntCheck(),
 	)
 	return cmd
 }
@@ -174,5 +175,19 @@ func CmdDiagnoseDeprecated() *cobra.Command {
 	}
 	cmd.Flags().String("dir", "", "collect noobaa diagnose tar file into destination directory")
 	cmd.Flags().Bool("db-dump", false, "collect db dump in addition to diagnostics")
+	return cmd
+}
+
+func CmdIntCheck() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "int-check",
+		Short: "Run db integrity check",
+		Run:   RunIntCheck,
+		Args:  cobra.NoArgs,
+	}
+
+	cmd.Flags().String("kubeconfig", "", "kubeconfig path")
+	cmd.Flags().Bool("dump-data-map", false, "if set to true will dump a json object with a full map of object metadata")
+
 	return cmd
 }
