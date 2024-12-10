@@ -5247,6 +5247,43 @@ const File_deploy_internal_text_system_status_readme_rejected_tmpl = `
 	NooBaa Operator Version: {{.OperatorVersion}}
 `
 
+const Sha256_deploy_job_analyze_network_yml = "4f15b1aa0d98aa2eca62e615ed5c290d60a7ceb7c84f40b5f6c6aab0c6c0f5af"
+
+const File_deploy_job_analyze_network_yml = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: noobaa-analyze-network
+  labels:
+    app: noobaa
+spec:
+  completions: 1
+  parallelism: 1
+  backoffLimit: 0
+  activeDeadlineSeconds: 60
+  ttlSecondsAfterFinished: 10
+  template:
+    spec:
+      containers:
+      - name: noobaa-analyze-network
+        image: NOOBAA_CORE_IMAGE_PLACEHOLDER
+        # env:
+        #   - name: RESOURCE_TYPE
+        #   - name: RESOURCE_NAME
+        #   - name: BUCKET
+        #   - name: ENDPOINT
+        #   - name: REGION
+        #   - name: S3_SIGNATURE_VERSION
+        #   - name: HTTP_PROXY
+        #   - name: HTTPS_PROXY
+        #   - name: NO_PROXY
+        #   - name: NODE_EXTRA_CA_CERTS
+        command: 
+            - /bin/bash
+            - -c
+            - "cd /root/node_modules/noobaa-core/; node ./src/tools/diagnostics/analyze_network/analyze_network.js"
+      restartPolicy: Never
+`
+
 const Sha256_deploy_job_analyze_resource_yml = "c80810baeda94fd9dd97a6c62241be5c582e08009bdbb1f2a13992c99d90ea33"
 
 const File_deploy_job_analyze_resource_yml = `apiVersion: batch/v1
