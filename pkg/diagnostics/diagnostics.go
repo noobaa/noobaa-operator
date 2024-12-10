@@ -58,12 +58,13 @@ func CmdDbDump() *cobra.Command {
 func CmdAnalyze() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "analyze",
-		Short: "Analyze the resource status by running tests on it",
+		Short: "Analyze the resource/network status by running tests on it",
 	}
 	cmd.AddCommand(
 		CmdAnalyzeBackingStore(),
 		CmdAnalyzeNamespaceStore(),
 		CmdAnalyzeResources(),
+		CmdAnalyzeNetwork(),
 	)
 	return cmd
 }
@@ -76,6 +77,18 @@ func CmdReport() *cobra.Command {
 		Run:   RunReport,
 		Args:  cobra.NoArgs,
 	}
+	return cmd
+}
+
+// CmdAnalyzeNetwork returns a CLI command
+func CmdAnalyzeNetwork() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "network",
+		Short: "Run network analyze",
+		Run:   RunAnalyzeNetwork,
+	}
+	cmd.Flags().String("job-resources", "", "Analyze job resources JSON")
+	cmd.Flags().String("dir", "", "collect analyze network tar file into destination directory")
 	return cmd
 }
 
