@@ -25,6 +25,8 @@ func Cmd() *cobra.Command {
 		CmdDbDump(),
 		CmdAnalyze(),
 		CmdReport(),
+		CmdDbStatPrepare(),
+		CmdDbStat(),
 	)
 	return cmd
 }
@@ -48,6 +50,29 @@ func CmdDbDump() *cobra.Command {
 		Use:   "db-dump",
 		Short: "Collect db dump",
 		Run:   RunDump,
+		Args:  cobra.NoArgs,
+	}
+	cmd.Flags().String("dir", "", "collect db dump file into destination directory")
+	return cmd
+}
+
+// CmdDbStatPrepare returns a CLI command
+func CmdDbStatPrepare() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "db-stat-prepare",
+		Short: "Prepare db stat data",
+		Run:   RunDBStatPrepare,
+		Args:  cobra.NoArgs,
+	}
+	return cmd
+}
+
+// CmdDbStat returns a CLI command
+func CmdDbStat() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "db-stat",
+		Short: "Collect db statdata and delete the extension",
+		Run:   RunDBStat,
 		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().String("dir", "", "collect db dump file into destination directory")
