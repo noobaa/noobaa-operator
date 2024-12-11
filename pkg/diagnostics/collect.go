@@ -140,7 +140,7 @@ func (c *Collector) CollectPodsLogs(listOptions client.ListOptions) {
 
 		c.CollectDescribe("pod", pod.Name)
 
-		podLogs, _ := util.GetPodLogs(*pod)
+		podLogs, _ := util.GetPodLogs(*pod, nil, false)
 		for containerName, containerLog := range podLogs {
 			targetFile := fmt.Sprintf("%s/%s-%s.log", c.folderName, pod.Name, containerName)
 			err := util.SaveStreamToFile(containerLog, targetFile)

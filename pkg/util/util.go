@@ -695,7 +695,9 @@ func GetPodStatusLine(pod *corev1.Pod) string {
 }
 
 // GetPodLogs info
-func GetPodLogs(pod corev1.Pod) (map[string]io.ReadCloser, error) {
+// Note: tailLines and timestamps can be passed to override the defaults in
+//       PodLogOptions, pass nil and false if you'd like to preserve the defaults
+func GetPodLogs(pod corev1.Pod, tailLines *int64, timestamps bool) (map[string]io.ReadCloser, error) {
 	allContainers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
 	config := KubeConfig()
 	clientset, err := kubernetes.NewForConfig(config)
@@ -726,11 +728,18 @@ func GetPodLogs(pod corev1.Pod) (map[string]io.ReadCloser, error) {
 
 		// retrieve logs from a current instantiation of pod containers
 		podLogOpts := corev1.PodLogOptions{Container: container.Name}
+		podLogOpts.Timestamps = timestamps
+		if tailLines != nil {
+			podLogOpts.TailLines = tailLines
+		}
 		getPodLogOpts(&pod, &podLogOpts, nil)
 
 		// retrieve logs from a previous instantiation of pod containers
-		prevPodLogOpts := corev1.PodLogOptions{Container: container.Name, Previous: true}
+		prevPodLogOpts := corev1.PodLogOptions{Container: container.Name, Previous: true, Timestamps: timestamps}
 		previousSuffix := "previous"
+		if tailLines != nil {
+			prevPodLogOpts.TailLines = tailLines
+		}
 		getPodLogOpts(&pod, &prevPodLogOpts, &previousSuffix)
 	}
 	return containerMap, nil
@@ -1230,6 +1239,15 @@ func GetFlagIntOrPrompt(cmd *cobra.Command, flag string) int {
 		log.Fatalf(`❌ Missing %s %s`, flag, cmd.UsageString())
 	}
 	return val
+}
+
+// ShowStringPrompt prompts a user to provide a string
+func ShowStringPrompt(prompt string) string {
+	fmt.Printf("%s: ", prompt)
+	var str string
+	_, err := fmt.Scan(&str)
+	Panic(err)
+	return str
 }
 
 // GetFlagStringOrPrompt returns flag value but if empty will prompt to read from stdin
