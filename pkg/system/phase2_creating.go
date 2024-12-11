@@ -1242,7 +1242,7 @@ func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
 	log := r.Logger.WithField("func", "ReconcileODFPersistentLoggingPVC")
 
 	// Return if persistent logging PVC already exists
-	if pvc != nil {
+	if pvcName != nil {
 		pvc.Name = *pvcName;
 		log.Infof("PersistentLoggingPVC %s already exists and supports RWX access mode. Skipping ReconcileODFPersistentLoggingPVC.", *pvcName)
 		return nil
@@ -1250,7 +1250,7 @@ func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
 
 	util.KubeCheck(pvc)
 	if pvc.UID != "" {
-		log.Infof("Persistent logging PVC %s already exists. Skipping creation.", *pvcName )
+		log.Infof("Persistent logging PVC %s already exists. Skipping creation.", pvc.Name)
 		return nil
 	}
 
@@ -1259,7 +1259,7 @@ func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
 	}
 	r.Own(pvc);
 
-	log.Infof("Persistent logging PVC %s does not exist. Creating...", *pvcName)
+	log.Infof("Persistent logging PVC %s does not exist. Creating...", pvc.Name)
 	err := r.Client.Create(r.Ctx, pvc)
 	if err != nil {
 		return err
