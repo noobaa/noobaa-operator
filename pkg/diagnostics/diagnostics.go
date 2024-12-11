@@ -188,6 +188,6 @@ func CmdIntCheck() *cobra.Command {
 
 	cmd.Flags().String("kubeconfig", "", "kubeconfig path")
 	cmd.Flags().Bool("dump-data-map", false, "if set to true will dump a json object with a full map of object metadata")
-
+	cmd.Flags().String("dir", "", "dump dir path")
 	return cmd
 }
