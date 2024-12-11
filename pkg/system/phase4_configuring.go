@@ -417,11 +417,11 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 
 			if r.NooBaa.Spec.BucketNotifications.Enabled {
 				envVar := corev1.EnvVar{
-					Name: "NOTIFICATION_LOG_DIR",
+					Name:  "NOTIFICATION_LOG_DIR",
 					Value: "/var/logs/notifications",
 				}
 
-				util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar});
+				util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar})
 			}
 
 			c.SecurityContext = &corev1.SecurityContext{
