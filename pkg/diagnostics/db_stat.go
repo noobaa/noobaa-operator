@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -77,7 +78,7 @@ func (c *CollectorDbStatData) prepareDBStatData() error {
 	c.log.Println("Prepare db Statdata at pod")
 
 	// create pg_stat_statements extension and reset
-	cmd := exec.Command(c.kubeCommand, "exec", "-n", "noobaa", "pod/noobaa-db-pg-0", "--", "psql", "-c",
+	cmd := exec.Command(c.kubeCommand, "exec", "-n", options.Namespace, "pod/noobaa-db-pg-0", "--", "psql", "-c",
 		"create extension pg_stat_statements", "-c", "select pg_stat_reset()", "-c", "select pg_stat_statements_reset()")
 	// handle custom path for kubeconfig file,
 	// see --kubeconfig cli options
@@ -127,7 +128,7 @@ func (c *CollectorDbStatData) generateDBStatData(destDir string) error {
 	// Redirect the command's output to the local stat file
 	defer outfile.Close()
 
-	cmd := exec.Command(c.kubeCommand, "exec", "-n", "noobaa", "pod/noobaa-db-pg-0", "--", "psql", "-c", "SELECT total_plan_time*'1ms'::interval AS total, mean_plan_time*'1ms'::interval AS avg, calls, query from pg_stat_statements ORDER BY total_plan_time DESC LIMIT 10")
+	cmd := exec.Command(c.kubeCommand, "exec", "-n", options.Namespace, "pod/noobaa-db-pg-0", "--", "psql", "-c", "SELECT total_plan_time*'1ms'::interval AS total, mean_plan_time*'1ms'::interval AS avg, calls, query from pg_stat_statements ORDER BY total_plan_time DESC LIMIT 10")
 	if len(c.kubeconfig) > 0 {
 		cmd.Env = append(cmd.Env, "KUBECONFIG="+c.kubeconfig)
 	}
@@ -177,7 +178,7 @@ func (c *CollectorDbStatData) deleteDbRawResources() {
 	}
 	//time.Sleep(2 * time.Second)
 
-	cmd_select_drop := exec.Command(c.kubeCommand, "exec", "-n", "noobaa", "pod/noobaa-db-pg-0", "--", "psql", "-c", "drop extension pg_stat_statements")
+	cmd_select_drop := exec.Command(c.kubeCommand, "exec", "-n", options.Namespace, "pod/noobaa-db-pg-0", "--", "psql", "-c", "drop extension pg_stat_statements")
 	if len(c.kubeconfig) > 0 {
 		cmd_select_drop.Env = append(cmd_select_drop.Env, "KUBECONFIG="+c.kubeconfig)
 	}
