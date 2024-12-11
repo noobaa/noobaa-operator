@@ -3631,12 +3631,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = "84ca6f2a35a413e74a51375bd0ec31c33bb76a00de8e0ef8d02a7798e02ec460"
+const Sha256_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = "8fdf39c530933be6f2d81eee4f5e3bd8a11c56e97b81f32d17313817fc0d4d67"
 
 const File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml = `apiVersion: noobaa.io/v1alpha1
 kind: BackingStore
 metadata:
   name: default
+  labels:
+    backingstore: noobaa
 spec:
 `
 

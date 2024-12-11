@@ -2,4 +2,6 @@ apiVersion: noobaa.io/v1alpha1
 kind: BackingStore
 metadata:
   name: default
+  labels:
+    backingstore: noobaa
 spec:
