@@ -568,7 +568,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				for _, notifSecret := range r.NooBaa.Spec.BucketNotifications.Connections {
 					secretVolumeMounts := []corev1.VolumeMount{{
 						Name:      notifSecret.Name,
-						MountPath: "/etc/notif_connect/" + notifSecret.Name,
+						MountPath: "/etc/notif_connect/",
 						ReadOnly:  true,
 					}}
 					util.MergeVolumeMountList(&c.VolumeMounts, &secretVolumeMounts)
