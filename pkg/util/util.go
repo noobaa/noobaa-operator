@@ -32,6 +32,7 @@ import (
 	nbapis "github.com/noobaa/noobaa-operator/v5/pkg/apis"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	secv1 "github.com/openshift/api/security/v1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
@@ -185,6 +186,7 @@ func init() {
 	Panic(autoscalingv1.AddToScheme(scheme.Scheme))
 	Panic(kedav1alpha1.AddToScheme(scheme.Scheme))
 	Panic(apiregistration.AddToScheme(scheme.Scheme))
+	Panic(configv1.AddToScheme(scheme.Scheme))
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)
@@ -236,6 +238,7 @@ func MapperProvider(config *rest.Config, httpClient *http.Client) (meta.RESTMapp
 				g.Name == "autoscaling" ||
 				g.Name == "batch" ||
 				g.Name == "keda.sh" ||
+				g.Name == "config.openshift.io" ||
 				strings.HasSuffix(g.Name, ".k8s.io") {
 				return true
 			}
@@ -1122,9 +1125,11 @@ func GetIBMRegion() (string, error) {
 	return region, nil
 }
 
-// GetAWSRegion parses the region from a node's name
+// GetAWSRegion determines the AWS region from cluster infrastructure or node name
 func GetAWSRegion() (string, error) {
-	// parse the node name to get AWS region according to this:
+	// Determine the AWS region based on cluster infrastructure or node name
+	// If infrastructure details are unavailable, the node's name is parsed to extract the region
+	// Refer to the following for more details:
 	// https://docs.aws.amazon.com/en_pv/vpc/latest/userguide/vpc-dns.html#vpc-dns-hostnames
 	// The list of regions can be found here:
 	// https://docs.aws.amazon.com/general/latest/gr/rande.html
@@ -1164,17 +1169,36 @@ func GetAWSRegion() (string, error) {
 		"af-south-1":     "af-south-1",
 		"il-central-1":   "il-central-1",
 	}
-	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
-		return "", fmt.Errorf("Failed to list kubernetes nodes")
+	var awsRegion string
+	infrastructure := &configv1.Infrastructure{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster",
+		},
 	}
-	nameSplit := strings.Split(nodesList.Items[0].Name, ".")
-	if len(nameSplit) < 2 {
-		return "", fmt.Errorf("Unexpected node name format: %q", nodesList.Items[0].Name)
+	if _, _, err := KubeGet(infrastructure); err != nil {
+		log.Infof("Failed to fetch cluster infrastructure details: %v", err)
 	}
-	awsRegion := mapValidAWSRegions[nameSplit[1]]
+	if infrastructure.Status.PlatformStatus != nil && infrastructure.Status.PlatformStatus.AWS != nil {
+		awsRegion = mapValidAWSRegions[infrastructure.Status.PlatformStatus.AWS.Region]
+	}
+
+	// Parsing the aws region from node name if not fetched from cluster
+	log.Warn("Falling back to parsing the node name as infrastructure details are unavailable or incomplete")
 	if awsRegion == "" {
-		return "", fmt.Errorf("The parsed AWS region is invalid: %q", awsRegion)
+		nodesList := &corev1.NodeList{}
+		if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+			log.Infof("Failed to list kubernetes nodes")
+		}
+		nameSplit := strings.Split(nodesList.Items[0].Name, ".")
+		if len(nameSplit) < 2 {
+			log.Infof("Unexpected node name format: %q", nodesList.Items[0].Name)
+		}
+		awsRegion = mapValidAWSRegions[nameSplit[1]]
+	}
+
+	// returning error if not fetched from either cluster or node name
+	if awsRegion == "" {
+		return "", fmt.Errorf("Failed to determine the AWS Region.")
 	}
 	return awsRegion, nil
 }
