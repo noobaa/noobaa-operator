@@ -2,7 +2,8 @@
 # Postgresql 15 automatic upgrade Phases
 As part of ODF ver. 15, NooBaa operator will run an automatic upgrade in order to update the DB data to work with this new version.
 
-![image](https://github.com/user-attachments/assets/8561cf15-5eb3-4a1b-a9f6-6c6373543b94)
+![image](https://github.com/user-attachments/assets/9286f25d-0ee7-423c-93a4-fe0986f767b5)
+
 
 
 ## Phase: None
@@ -19,7 +20,7 @@ In this phase we prepare for the upgrade. Below steps prepare for the upgrade
 ```
 
 ## Phase: Upgrade
-Once the pods are restarted, we shoud be waiting in this stage till db pod status to be Running. Once the db pod is Running that indicates the Pg upgrade is successful. Set the DB upgrade phase to CLEANING
+Once the pods are restarted, we shoud be waiting in this stage till db pod status to be Running. Once the db pod is Running that indicates the Pg upgrade is successful. Set the DB upgrade phase to CLEANING. If the status is found to be CrashLoopBackOff or error then we mark the Phase as prepare and set the env and restart the pods to make the pod ready for upgrade. Since the upgrade is completely handled by postgres, if the status remains in error state then we need to check the db logs to fix the issue. We can't really revert the upgrade at this stage
 
 ## Phase: Cleaning
 Phase cleaning is reverse of Prepare phase. 
