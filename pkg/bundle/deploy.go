@@ -1423,7 +1423,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "e862d263d097ed43f774784eaaf9a616967746b67608fadbe4ca71d93b220ab6"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "5bfeed22b7201dfc6d56cda47e573dc0f5cac7350806b142c76509ad73b070b0"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3337,6 +3337,10 @@ spec:
               phase:
                 description: Phase is a simple, high-level summary of where the System
                   is in its lifecycle
+                type: string
+              postgresMajorVersion:
+                description: PostgresMajorVersion is the major version of postgress
+                  db image
                 type: string
               postgresUpdatePhase:
                 description: Upgrade reports the status of the ongoing postgres upgrade

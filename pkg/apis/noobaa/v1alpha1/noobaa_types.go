@@ -385,6 +385,10 @@ type NooBaaStatus struct {
 	// BeforeUpgradeDbImage is the db image used before last db upgrade
 	// +optional
 	BeforeUpgradeDbImage *string `json:"beforeUpgradeDbImage,omitempty"`
+
+	// PostgresMajorVersion is the major version of postgress db image
+	// +optional
+	PostgresMajorVersion PostgresMajorVersion `json:"postgresMajorVersion,omitempty"`
 }
 
 // SystemPhase is a string enum type for system phases
@@ -514,6 +518,12 @@ type EndpointsStatus struct {
 	VirtualHosts []string `json:"virtualHosts"`
 }
 
+type PostgresMajorVersion string
+
+const (
+	PostgresMajorVersionV16 PostgresMajorVersion = "16"
+)
+
 // UpgradePhase is a string enum type for upgrade phases
 type UpgradePhase string
 
@@ -525,7 +535,7 @@ const (
 
 	UpgradePhaseMigrate UpgradePhase = "Migrating"
 
-	UpgradePhaseClean UpgradePhase = "Cleanning"
+	UpgradePhaseClean UpgradePhase = "Cleaning"
 
 	UpgradePhaseFinished UpgradePhase = "DoneUpgrade"
 

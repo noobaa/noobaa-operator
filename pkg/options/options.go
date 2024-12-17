@@ -4,6 +4,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/version"
 
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -72,7 +73,11 @@ var NooBaaImage = ContainerImage
 
 // DBImage is the default db image url
 // it can be overridden for testing or different registry locations.
-var DBImage = "quay.io/sclorg/postgresql-15-c9s"
+var DBImage = "quay.io/sclorg/postgresql-16-c9s"
+
+// Postgress Major version is the major version of Postgress image
+// This is referred for postgres upgrade.
+var PostgresMajorVersion = nbv1.PostgresMajorVersionV16
 
 // Psql12Image is the default postgres12 db image url
 // currently it can not be overridden.
