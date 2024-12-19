@@ -1911,6 +1911,10 @@ spec:
                 description: Phase is a simple, high-level summary of where the System
                   is in its lifecycle
                 type: string
+              postgresMajorVersion:
+                description: PostgresMajorVersion is the major version of postgress
+                  db image
+                type: string
               postgresUpdatePhase:
                 description: Upgrade reports the status of the ongoing postgres upgrade
                   process
