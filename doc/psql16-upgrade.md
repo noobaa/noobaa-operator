@@ -2,9 +2,7 @@
 # Postgresql 15 automatic upgrade Phases
 As part of ODF ver. 15, NooBaa operator will run an automatic upgrade in order to update the DB data to work with this new version.
 
-![image](https://github.com/user-attachments/assets/9286f25d-0ee7-423c-93a4-fe0986f767b5)
-
-
+![Pg16 drawio](https://github.com/user-attachments/assets/11397269-a6d6-40d6-8055-49bd1b9ce07d)
 
 ## Phase: None
 When we have phase = None, means we have not upgraded to PG16 and we check the phase everytime whether upgrade is required. The upgrade required is decided based on the desired image set on the noobaa CR. If it is PG16 then we consider the upgrade and set the Phase to PG16
