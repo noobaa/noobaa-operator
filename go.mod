@@ -16,7 +16,6 @@ require (
 	github.com/Azure/azure-storage-blob-go v0.15.0
 	github.com/Azure/go-autorest/autorest v0.11.28
 	github.com/Azure/go-autorest/autorest/adal v0.9.20
-	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/IBM/keyprotect-go-client v0.12.2
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/aws/aws-sdk-go v1.48.12
@@ -37,22 +36,22 @@ require (
 	github.com/operator-framework/api v0.27.0
 	github.com/operator-framework/operator-lib v0.15.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.76.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.76.2
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rook/rook/pkg/apis v0.0.0-20250103143133-54c2ba5071bc
+	github.com/rook/rook/pkg/apis v0.0.0-20250109065624-77b6565c4f32
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.16.0
-	golang.org/x/term v0.27.0
+	golang.org/x/term v0.29.0
 	google.golang.org/api v0.162.0
-	google.golang.org/grpc v1.66.0
-	k8s.io/api v0.32.0
-	k8s.io/apiextensions-apiserver v0.31.1
-	k8s.io/apimachinery v0.32.0
+	google.golang.org/grpc v1.68.0
+	k8s.io/api v0.32.1
+	k8s.io/apiextensions-apiserver v0.32.1
+	k8s.io/apimachinery v0.32.1
 	k8s.io/cli-runtime v0.28.4
-	k8s.io/client-go v0.32.0
-	k8s.io/code-generator v0.31.1
+	k8s.io/client-go v0.32.1
+	k8s.io/code-generator v0.32.1
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01
 	k8s.io/kube-aggregator v0.27.1
 	k8s.io/kube-openapi v0.0.0-20241212222426-2c72e554b1e7
@@ -62,7 +61,7 @@ require (
 	sigs.k8s.io/container-object-storage-interface-api v0.1.0
 	sigs.k8s.io/container-object-storage-interface-provisioner-sidecar v0.1.0
 	sigs.k8s.io/container-object-storage-interface-spec v0.1.0
-	sigs.k8s.io/controller-runtime v0.19.0
+	sigs.k8s.io/controller-runtime v0.19.1
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -72,6 +71,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.8.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets v0.12.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/internal v0.7.1 // indirect
+	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/containernetworking/cni v1.2.3 // indirect
@@ -96,15 +96,15 @@ require (
 	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
-	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
-	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c // indirect
+	golang.org/x/sync v0.11.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	k8s.io/gengo/v2 v2.0.0-20240911193312-2b36238f13e9 // indirect
 )
 
 require (
 	cloud.google.com/go v0.112.0 // indirect
-	cloud.google.com/go/compute/metadata v0.3.0 // indirect
+	cloud.google.com/go/compute/metadata v0.5.0 // indirect
 	cloud.google.com/go/iam v1.1.6 // indirect
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
@@ -121,8 +121,8 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
-	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/gemalto/flume v0.13.1 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
@@ -177,9 +177,9 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.9 // indirect
 	github.com/portworx/sched-ops v1.20.4-rc1.0.20220208024433-611d861089d4 // indirect
-	github.com/prometheus/client_golang v1.20.4 // indirect
+	github.com/prometheus/client_golang v1.20.5 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.60.0 // indirect
+	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/russross/blackfriday v1.5.2 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
@@ -189,21 +189,21 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.26.0 // indirect
+	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/arch v0.4.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/oauth2 v0.24.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
-	golang.org/x/time v0.8.0 // indirect
-	golang.org/x/tools v0.28.0 // indirect
+	golang.org/x/net v0.34.0 // indirect
+	golang.org/x/oauth2 v0.26.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/time v0.10.0 // indirect
+	golang.org/x/tools v0.29.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240604185151-ef581f913117 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241007155032-5fefd90f89a9 // indirect
-	google.golang.org/protobuf v1.36.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250204164813-702378808489 // indirect
+	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
