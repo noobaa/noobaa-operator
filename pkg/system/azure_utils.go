@@ -10,7 +10,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/Azure/go-autorest/autorest/to"
+	"k8s.io/utils/ptr"
 )
 
 func (r *Reconciler) getStorageAccountsClient() storage.AccountsClient {
@@ -52,7 +52,7 @@ func (r *Reconciler) CreateStorageAccount(accountName, accountGroupName string) 
 			Sku: &storage.Sku{
 				Name: storage.StandardLRS},
 			Kind:     storage.StorageV2,
-			Location: to.StringPtr(r.AzureContainerCreds.StringData["azure_region"]),
+			Location: ptr.To(r.AzureContainerCreds.StringData["azure_region"]),
 			AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
 				EnableHTTPSTrafficOnly: &enableHTTPSTrafficOnly,
 				AllowBlobPublicAccess:  &allowBlobPublicAccess,
@@ -91,8 +91,8 @@ func (r *Reconciler) CheckAccountNameAvailability(accountName string) (storage.C
 	result, err := storageAccountsClient.CheckNameAvailability(
 		r.Ctx,
 		storage.AccountCheckNameAvailabilityParameters{
-			Name: to.StringPtr(accountName),
-			Type: to.StringPtr("Microsoft.Storage/storageAccounts"),
+			Name: ptr.To(accountName),
+			Type: ptr.To("Microsoft.Storage/storageAccounts"),
 		})
 	return result, err
 }
