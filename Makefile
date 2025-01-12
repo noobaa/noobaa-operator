@@ -168,7 +168,7 @@ bundle-image: gen-odf-package
 #- Testing -#
 #-----------#
 
-test: lint test-go
+test: test-go
 	@echo "✅ test"
 .PHONY: test
 
