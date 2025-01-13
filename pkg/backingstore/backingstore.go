@@ -395,7 +395,9 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 		log.Printf("Found a Secret in the system with the same credentials (%s)", suggestedSecret.Name)
 		log.Printf("Note that using more then one secret with the same credentials is not supported")
 		log.Printf("do you want to use it for this Backingstore? y/n")
-		fmt.Scanln(&decision)
+		if _, err := fmt.Scanln(&decision); err != nil {
+			log.Fatalf(`❌ Invalid input, please select y/n`)
+		}
 		if strings.ToLower(decision) == "y" {
 			log.Printf("Will use %s as the Backingstore %s Secret", suggestedSecret.Name, backStore.Name)
 			err := util.SetBackingStoreSecretRef(backStore, &corev1.SecretReference{
@@ -407,8 +409,6 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 			}
 		} else if strings.ToLower(decision) == "n" {
 			log.Fatalf("Not creating Backingstore")
-		} else {
-			log.Fatalf(`❌ Invalid input, please select y/n`)
 		}
 	}
 
@@ -1076,7 +1076,7 @@ func MapSecretToBackingStores(secret types.NamespacedName) []reconcile.Request {
 	for _, bs := range bsList.Items {
 		bsSecret, err := util.GetBackingStoreSecret(&bs)
 		if err != nil {
-			log.Errorf(err.Error())
+			log.Error(err)
 		}
 		if bsSecret != nil && bsSecret.Name == secret.Name {
 			reqs = append(reqs, reconcile.Request{
