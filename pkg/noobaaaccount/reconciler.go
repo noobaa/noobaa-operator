@@ -353,7 +353,8 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 
 	accountInfo, err := r.NBClient.CreateAccountAPI(createAccountParams)
 	if err != nil {
-		return err
+		return util.NewPersistentError("InvalidCreateAccountParams",
+			fmt.Sprintf("%v", err.Error()))
 	}
 
 	annotationValue, exists := util.GetAnnotationValue(r.NooBaaAccount.Annotations, "remote-operator")
@@ -428,7 +429,8 @@ func (r *Reconciler) UpdateNooBaaAccount() error {
 
 		err := r.NBClient.UpdateAccountS3Access(updateAccountS3AccessParams)
 		if err != nil {
-			return err
+			return util.NewPersistentError("InvalidUpdateAccountS3AccessParams",
+				fmt.Sprintf("%v", err.Error()))
 		}
 		log.Infof("✅ Successfully updated account %q", r.NooBaaAccount.Name)
 	}
