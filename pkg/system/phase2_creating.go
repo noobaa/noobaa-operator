@@ -478,6 +478,9 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 		util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar});
 	}
 
+	if r.NooBaa.Spec.EnvVariablesOverride != nil && r.NooBaa.Spec.EnvVariablesOverride.Core != nil {
+		util.MergeEnvArrays(&c.Env, &r.NooBaa.Spec.EnvVariablesOverride.Core);
+	}
 }
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
