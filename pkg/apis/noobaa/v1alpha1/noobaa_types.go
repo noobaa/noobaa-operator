@@ -91,6 +91,11 @@ type NooBaaSpec struct {
 	// +kubebuilder:validation:Enum=postgres
 	DBType DBTypes `json:"dbType,omitempty"`
 
+	// EnvVariablesOverride (optional) overrides the environment variables for all NooBaa's pods
+	// Can be used for exemple to add CONFIG_JS_ variables to modify core pod behaviour
+	// +optional
+	EnvVariablesOverride *EnvVariablesOverrideSpec `json:"envVariablesOverride,omitempty"`
+
 	// CoreResources (optional) overrides the default resource requirements for the server container
 	// +optional
 	CoreResources *corev1.ResourceRequirements `json:"coreResources,omitempty"`
@@ -244,6 +249,14 @@ type AutoscalerSpec struct {
 	// +optional
 	PrometheusNamespace string `json:"prometheusNamespace,omitempty"`
 }
+
+// EnvVariablesOverrideSpec defines the env override structure for each component deploying pods (ex: StatefulSet)
+type EnvVariablesOverrideSpec struct {
+	// Variables override for core statefulset
+	Core []corev1.EnvVar `json:"core,omitempty"`
+}
+
+
 
 // BucketLoggingSpec defines the bucket logging configuration
 type BucketLoggingSpec struct {
