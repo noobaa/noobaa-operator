@@ -479,7 +479,11 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 	}
 
 	if r.NooBaa.Spec.EnvVariablesOverride != nil && r.NooBaa.Spec.EnvVariablesOverride.Core != nil {
-		util.MergeEnvArrays(&c.Env, &r.NooBaa.Spec.EnvVariablesOverride.Core);
+		// util.MergeEnvArrays will keep variables of the first array provided in
+		// arguments in case of a conflict, so we provide the override array first
+		// and then set the container Env array to the resulting merged array
+		util.MergeEnvArrays(&r.NooBaa.Spec.EnvVariablesOverride.Core, &c.Env);
+		c.Env = r.NooBaa.Spec.EnvVariablesOverride.Core;
 	}
 }
 
