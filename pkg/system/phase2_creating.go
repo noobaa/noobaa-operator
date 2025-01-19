@@ -477,14 +477,6 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 		}
 		util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar});
 	}
-
-	if r.NooBaa.Spec.EnvVariablesOverride != nil && r.NooBaa.Spec.EnvVariablesOverride.Core != nil {
-		// util.MergeEnvArrays will keep variables of the first array provided in
-		// arguments in case of a conflict, so we provide the override array first
-		// and then set the container Env array to the resulting merged array
-		util.MergeEnvArrays(&r.NooBaa.Spec.EnvVariablesOverride.Core, &c.Env);
-		c.Env = r.NooBaa.Spec.EnvVariablesOverride.Core;
-	}
 }
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
@@ -622,6 +614,14 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
 			}
+		}
+
+		if r.NooBaa.Spec.EnvVariablesOverride != nil && r.NooBaa.Spec.EnvVariablesOverride.Core != nil {
+			// util.MergeEnvArrays will keep variables of the first array provided in
+			// arguments in case of a conflict, so we provide the override array first
+			// and then set the container Env array to the resulting merged array
+			util.MergeEnvArrays(&r.NooBaa.Spec.EnvVariablesOverride.Core, &c.Env);
+			c.Env = r.NooBaa.Spec.EnvVariablesOverride.Core;
 		}
 	}
 	if r.NooBaa.Spec.ImagePullSecret == nil {

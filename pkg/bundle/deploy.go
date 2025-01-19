@@ -1423,7 +1423,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "c354dda7e40756f33fe9daf07a240e92b55ac9c537bdf51101e8fe0f47cefc7e"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "d159d72a783f65f4c9ff716fc2c2c7ba4983c36d73ad3ca3b29c87cfe3707767"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3071,11 +3071,19 @@ spec:
                       type: object
                   type: object
                 envVariablesOverride:
-                  description: "huh"
+                  description: Override variables for all pods managed by NooBaa's operator
                   type: object
                   properties:
                     core:
-                      description: "List of environment variables to set in the Core statefulset container. Cannot be updated."
+                      description: "List of environment variables to set in the Core statefulset containers."
+                      items:
+                        description: EnvVar represents an environment variable present in a Container.
+                        x-kubernetes-preserve-unknown-fields: true
+                        type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                      type: array
+                    endpoint:
+                      description: "List of environment variables to set in the Endpoint deployment containers."
                       items:
                         description: EnvVar represents an environment variable present in a Container.
                         x-kubernetes-preserve-unknown-fields: true

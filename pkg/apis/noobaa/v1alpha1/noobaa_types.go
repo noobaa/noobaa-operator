@@ -254,6 +254,9 @@ type AutoscalerSpec struct {
 type EnvVariablesOverrideSpec struct {
 	// Variables override for core statefulset
 	Core []corev1.EnvVar `json:"core,omitempty"`
+
+	// Variables override for endpoint deployment
+	Endpoint []corev1.EnvVar `json:"endpoint,omitempty"`
 }
 
 
