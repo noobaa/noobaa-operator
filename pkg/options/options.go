@@ -61,7 +61,7 @@ var Namespace = "noobaa"
 
 // OperatorImage is the container image url built from https://github.com/noobaa/noobaa-operator
 // it can be overridden for testing or different registry locations.
-var OperatorImage = "noobaa/noobaa-operator:" + version.Version
+var OperatorImage = "nooverflow/noobaa-operator:" + version.Version
 
 // CosiSideCarImage is the container image url built from https://github.com/kubernetes-sigs/container-object-storage-interface-provisioner-sidecar
 var CosiSideCarImage = "gcr.io/k8s-staging-sig-storage/objectstorage-sidecar/objectstorage-sidecar:v20221117-v0.1.0-22-g0e67387"
