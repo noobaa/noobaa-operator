@@ -608,6 +608,26 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 			}
 		}
 	}
+
+	for _, notifSecret := range r.NooBaa.Spec.BucketNotifications.Connections {
+		secretVolumeMounts := []corev1.VolumeMount{{
+			Name:      notifSecret.Name,
+			MountPath: "/etc/notif_connect/" + notifSecret.Name,
+			ReadOnly:  true,
+		}}
+		util.MergeVolumeMountList(&container.VolumeMounts, &secretVolumeMounts)
+
+		secretVolumes := []corev1.Volume{{
+			Name: notifSecret.Name,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: notifSecret.Name,
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &secretVolumes)
+	}
+
 	return nil
 }
 
