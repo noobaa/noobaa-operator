@@ -84,7 +84,7 @@ jobs:
 
       - name: Save logs
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: admission-tests-logs
           path: noobaa-operator/admission-tests-logs

@@ -91,7 +91,7 @@ jobs:
 
       - name: Save logs - COSI
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cosi-tests-logs
           path: noobaa-operator/cosi-tests-logs
