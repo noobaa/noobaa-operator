@@ -1159,6 +1159,8 @@ func GetAWSRegion() (string, error) {
 		"ap-southeast-3": "ap-southeast-3",
 		"ap-southeast-4": "ap-southeast-4",
 		"ap-southeast-5": "ap-southeast-5",
+		// Currently in AWS table there is no region ap-southeast-6
+		"ap-southeast-7": "ap-southeast-7",
 		"ap-south-1":     "ap-south-1",
 		"ap-south-2":     "ap-south-2",
 		"me-south-1":     "me-south-1",
@@ -1168,6 +1170,7 @@ func GetAWSRegion() (string, error) {
 		"us-gov-east-1":  "us-gov-east-1",
 		"af-south-1":     "af-south-1",
 		"il-central-1":   "il-central-1",
+		"mx-central-1":   "mx-central-1",
 	}
 	var awsRegion string
 	infrastructure := &configv1.Infrastructure{
