@@ -41,7 +41,7 @@ func simpleKmsSpec(token, apiAddress string) nbv1.KeyManagementServiceSpec {
 func checkExternalSecret(noobaa *nbv1.NooBaa, expectedNil bool) {
 	k := noobaa.Spec.Security.KeyManagementService
 	uid := string(noobaa.UID)
-	driver := &kms.Vault{uid}
+	driver := &kms.Vault{UID: uid}
 	path := k.ConnectionDetails[vault.VaultBackendPathKey] + driver.Path()
 	cmd := exec.Command("kubectl", "exec", "vault-0", "--", "vault", "kv", "get", path)
 	logger.Printf("Running command: path %v args %v ", cmd.Path, cmd.Args)

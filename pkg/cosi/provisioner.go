@@ -119,7 +119,7 @@ func (p *Provisioner) DriverCreateBucket(ctx context.Context,
 		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
 		if util.Contains(finalizersArray, nbv1.GracefulFinalizer) {
 			msg := "NooBaa is in deleting state, new requests will be ignored"
-			log.Errorf(msg)
+			log.Error(msg)
 			return nil, status.Error(codes.Internal, msg)
 		}
 	}
@@ -185,7 +185,7 @@ func (p *Provisioner) DriverGrantBucketAccess(ctx context.Context,
 		finalizersArray := r.SysClient.NooBaa.GetFinalizers()
 		if util.Contains(finalizersArray, nbv1.GracefulFinalizer) {
 			msg := "NooBaa is in deleting state, new requests will be ignored"
-			log.Errorf(msg)
+			log.Error(msg)
 			return nil, status.Error(codes.Internal, msg)
 		}
 	}
