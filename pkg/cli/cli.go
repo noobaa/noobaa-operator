@@ -10,6 +10,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucket"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
+	"github.com/noobaa/noobaa-operator/v5/pkg/cnpg"
 	"github.com/noobaa/noobaa-operator/v5/pkg/cosi"
 	"github.com/noobaa/noobaa-operator/v5/pkg/crd"
 	"github.com/noobaa/noobaa-operator/v5/pkg/diagnostics"
@@ -141,6 +142,7 @@ Load noobaa completion to bash:
 			operator.Cmd(),
 			system.Cmd(),
 			system.CmdAPICall(),
+			cnpg.CmdCNPG(),
 			bucket.Cmd(),
 			pvstore.Cmd(),
 			crd.Cmd(),

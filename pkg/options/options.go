@@ -166,6 +166,19 @@ var PrometheusNamespace = ""
 // it can be overridden for testing.
 var AWSSTSARN = ""
 
+// CnpgVersion is the version of cloudnative-pg operator to use
+var CnpgVersion = "1.25.0"
+
+// CnpgImage is the container image url of cloudnative-pg operator
+// temporarily defaulting to an arm64 image
+var CnpgImage = "quay.io/noobaa/cloudnative-pg-testing:1.25.0-arm64"
+
+// UseCnpgApiGroup indicates if the original CloudNativePG API group should be used for the installation manifests
+var UseCnpgApiGroup = false
+
+// CnpgApiGroup is the API group used for cloudnative-pg CRDs
+var CnpgApiGroup = "postgresql.cnpg.noobaa.io"
+
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
 	return Namespace + ".noobaa.io"
@@ -317,5 +330,17 @@ func init() {
 	FlagSet.StringVar(
 		&AWSSTSARN, "aws-sts-arn",
 		AWSSTSARN, "The AWS STS Role ARN which will assume role",
+	)
+	FlagSet.StringVar(
+		&CnpgVersion, "cnpg-version",
+		CnpgVersion, "Version of CloudNativePG operator",
+	)
+	FlagSet.StringVar(
+		&CnpgImage, "cnpg-image",
+		CnpgImage, "CloudNativePG operator image",
+	)
+	FlagSet.BoolVar(
+		&UseCnpgApiGroup, "use-cnpg-api-group",
+		UseCnpgApiGroup, "Use the original CloudNativePG API group for the installation manifests. Should be used when using an original image of CloudNativePG.",
 	)
 }
