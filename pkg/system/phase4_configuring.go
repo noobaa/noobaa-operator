@@ -229,7 +229,7 @@ func (r *Reconciler) SetDesiredSecretAdminAccountInfo() error {
 	if err != nil {
 		return fmt.Errorf("cannot read admin account info, error: %v", err)
 	}
-	if account.AccessKeys == nil || len(account.AccessKeys) <= 0 {
+	if len(account.AccessKeys) <= 0 {
 		return fmt.Errorf("admin account has no access keys yet")
 	}
 
@@ -417,11 +417,11 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 
 			if r.NooBaa.Spec.BucketNotifications.Enabled {
 				envVar := corev1.EnvVar{
-					Name: "NOTIFICATION_LOG_DIR",
+					Name:  "NOTIFICATION_LOG_DIR",
 					Value: "/var/logs/notifications",
 				}
 
-				util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar});
+				util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar})
 			}
 
 			c.SecurityContext = &corev1.SecurityContext{
