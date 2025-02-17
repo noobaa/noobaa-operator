@@ -6,6 +6,7 @@ import (
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
+	"github.com/noobaa/noobaa-operator/v5/pkg/cnpg"
 	"github.com/noobaa/noobaa-operator/v5/pkg/crd"
 	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/noobaaaccount"
@@ -26,8 +27,10 @@ func CmdInstall() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().Bool("use-obc-cleanup-policy", false, "Create NooBaa system with obc cleanup policy")
+	cmd.Flags().Bool("use-cnpg", false, "Install CloudNativePG operator for HA PostgreSQL")
 	cmd.AddCommand(
 		CmdYaml(),
+		cnpg.CmdCNPG(),
 	)
 	return cmd
 }
@@ -63,10 +66,10 @@ func CmdUpgrade() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upgrade --noobaa-image <noobaa-image-path-and-tag> --operator-image <operator-image-path-and-tag>",
 		Short: "Upgrade the system, its components and CRDS",
-		Long:  "The command should be used in conjunction with the global flags --noobaa-image and " + 
-		"--operator-image to upgrade the system and its components to the desired versions.",
-		Run:   RunUpgrade,
-		Args:  cobra.NoArgs,
+		Long: "The command should be used in conjunction with the global flags --noobaa-image and " +
+			"--operator-image to upgrade the system and its components to the desired versions.",
+		Run:  RunUpgrade,
+		Args: cobra.NoArgs,
 	}
 	return cmd
 }
@@ -107,6 +110,15 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	log.Printf("Operator Install:")
 	operator.RunInstall(cmd, args)
 	log.Printf("")
+
+	// Check if CNPG installation is requested
+	useCNPG, _ := cmd.Flags().GetBool("use-cnpg")
+	if useCNPG {
+		log.Printf("CloudNativePG Operator Install:")
+		cnpg.RunInstall(cmd, args)
+		log.Printf("")
+	}
+
 	log.Printf("System Create:")
 	system.RunCreate(cmd, args)
 	log.Printf("")
@@ -175,6 +187,9 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 	log.Printf("Operator Delete:")
 	operator.RunUninstall(cmd, args)
 	log.Printf("")
+	log.Printf("CloudNativePG Operator Delete:")
+	cnpg.RunUninstall(cmd, args)
+	log.Printf("")
 	if cleanup {
 		log.Printf("CRD Delete:")
 		crd.RunDelete(cmd, args)
@@ -197,6 +212,9 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	log.Printf("")
 	log.Printf("Operator Status:")
 	operator.RunStatus(cmd, args)
+	log.Printf("")
+	log.Printf("CloudNativePG Operator Status:")
+	cnpg.RunStatus(cmd, args)
 	log.Printf("")
 	log.Printf("System Wait Ready:")
 	if system.WaitReady() {
