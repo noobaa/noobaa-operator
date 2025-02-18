@@ -116,7 +116,6 @@ spec:
             - name: ENDPOINT_GROUP_ID
             - name: LOCAL_MD_SERVER
             - name: LOCAL_N2N_AGENT
-            - name: NOOBAA_ROOT_SECRET
             - name: NODE_EXTRA_CA_CERTS
             - name: GUARANTEED_LOGS_PATH
             - name: CONTAINER_CPU_REQUEST

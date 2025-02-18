@@ -431,8 +431,6 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			if r.NooBaa.Spec.ExternalPgSSLUnauthorized {
 				c.Env[j].Value = "true"
 			}
-		case "NOOBAA_ROOT_SECRET":
-			c.Env[j].Value = r.SecretRootMasterKey
 		case "NODE_EXTRA_CA_CERTS":
 			c.Env[j].Value = r.ApplyCAsToPods
 		case "GUARANTEED_LOGS_PATH":
