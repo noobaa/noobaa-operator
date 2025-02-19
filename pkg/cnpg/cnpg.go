@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
+	"slices"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
@@ -26,15 +26,21 @@ import (
 )
 
 type CnpgResources struct {
-	ClusterRoles                    []*rbacv1.ClusterRole
-	ClusterRoleBindings             []*rbacv1.ClusterRoleBinding
-	ConfigMaps                      []*corev1.ConfigMap
-	CustomResourceDefinitions       []*apiextv1.CustomResourceDefinition
-	Deployments                     []*appsv1.Deployment
-	MutatingWebhookConfigurations   []*admissionv1.MutatingWebhookConfiguration
-	Services                        []*corev1.Service
-	ValidatingWebhookConfigurations []*admissionv1.ValidatingWebhookConfiguration
-	ServiceAccounts                 []*corev1.ServiceAccount
+	CnpgOperatorDeployment         *appsv1.Deployment
+	CnpgManagerClusterRole         *rbacv1.ClusterRole
+	CnpgManagerClusterRoleBinding  *rbacv1.ClusterRoleBinding
+	CnpgManagerRole                *rbacv1.Role
+	CnpgManagerRoleBinding         *rbacv1.RoleBinding
+	ConfigMap                      *corev1.ConfigMap
+	MutatingWebhookConfiguration   *admissionv1.MutatingWebhookConfiguration
+	WebhooksService                *corev1.Service
+	ValidatingWebhookConfiguration *admissionv1.ValidatingWebhookConfiguration
+	ServiceAccount                 *corev1.ServiceAccount
+	CRDs                           []*apiextv1.CustomResourceDefinition
+
+	// cluster role and binding for the webhooks permissions
+	CnpgWebhooksClusterRole        *rbacv1.ClusterRole
+	CnpgWebhooksClusterRoleBinding *rbacv1.ClusterRoleBinding
 }
 
 // CmdCNPG returns a CLI command
@@ -74,41 +80,21 @@ func RunInstall(cmd *cobra.Command, args []string) {
 		util.Panic(err)
 	}
 
-	for _, cr := range cnpgRes.ClusterRoles {
-		util.KubeCreateSkipExisting(cr)
-	}
-
-	for _, sa := range cnpgRes.ServiceAccounts {
-		util.KubeCreateSkipExisting(sa)
-	}
-
-	for _, crb := range cnpgRes.ClusterRoleBindings {
-		util.KubeCreateSkipExisting(crb)
-	}
-
-	for _, cm := range cnpgRes.ConfigMaps {
-		util.KubeCreateSkipExisting(cm)
-	}
-
-	for _, crd := range cnpgRes.CustomResourceDefinitions {
+	for _, crd := range cnpgRes.CRDs {
 		util.KubeCreateSkipExisting(crd)
 	}
-
-	for _, mwh := range cnpgRes.MutatingWebhookConfigurations {
-		util.KubeCreateSkipExisting(mwh)
-	}
-
-	for _, svc := range cnpgRes.Services {
-		util.KubeCreateSkipExisting(svc)
-	}
-
-	for _, vwh := range cnpgRes.ValidatingWebhookConfigurations {
-		util.KubeCreateSkipExisting(vwh)
-	}
-
-	for _, depl := range cnpgRes.Deployments {
-		util.KubeCreateSkipExisting(depl)
-	}
+	util.KubeCreateSkipExisting(cnpgRes.ServiceAccount)
+	util.KubeCreateSkipExisting(cnpgRes.CnpgManagerRoleBinding)
+	util.KubeCreateSkipExisting(cnpgRes.CnpgManagerClusterRoleBinding)
+	util.KubeCreateSkipExisting(cnpgRes.CnpgWebhooksClusterRoleBinding)
+	util.KubeCreateSkipExisting(cnpgRes.CnpgWebhooksClusterRole)
+	util.KubeCreateSkipExisting(cnpgRes.ConfigMap)
+	util.KubeCreateSkipExisting(cnpgRes.MutatingWebhookConfiguration)
+	util.KubeCreateSkipExisting(cnpgRes.ValidatingWebhookConfiguration)
+	util.KubeCreateSkipExisting(cnpgRes.CnpgOperatorDeployment)
+	util.KubeCreateSkipExisting(cnpgRes.CnpgManagerClusterRole)
+	util.KubeCreateSkipExisting(cnpgRes.CnpgManagerRole)
+	util.KubeCreateSkipExisting(cnpgRes.WebhooksService)
 }
 
 // CmdUninstall returns a CLI command
@@ -129,41 +115,26 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 		util.Panic(err)
 	}
 
-	// Delete resources in reverse order of creation
-	for _, depl := range resources.Deployments {
-		util.KubeDelete(depl)
-	}
+	// Delete the resources
+	util.KubeDelete(resources.CnpgOperatorDeployment)
+	util.KubeDelete(resources.WebhooksService)
+	util.KubeDelete(resources.MutatingWebhookConfiguration)
+	util.KubeDelete(resources.ValidatingWebhookConfiguration)
+	util.KubeDelete(resources.ConfigMap)
+	util.KubeDelete(resources.CnpgManagerRoleBinding)
+	util.KubeDelete(resources.CnpgManagerRole)
+	util.KubeDelete(resources.CnpgManagerClusterRoleBinding)
+	util.KubeDelete(resources.CnpgManagerClusterRole)
+	util.KubeDelete(resources.CnpgWebhooksClusterRoleBinding)
+	util.KubeDelete(resources.CnpgWebhooksClusterRole)
+	util.KubeDelete(resources.ServiceAccount)
 
-	for _, sa := range resources.ServiceAccounts {
-		util.KubeDelete(sa)
-	}
-
-	for _, vwh := range resources.ValidatingWebhookConfigurations {
-		util.KubeDelete(vwh)
-	}
-
-	for _, svc := range resources.Services {
-		util.KubeDelete(svc)
-	}
-
-	for _, mwh := range resources.MutatingWebhookConfigurations {
-		util.KubeDelete(mwh)
-	}
-
-	for _, crd := range resources.CustomResourceDefinitions {
-		util.KubeDelete(crd)
-	}
-
-	for _, cm := range resources.ConfigMaps {
-		util.KubeDelete(cm)
-	}
-
-	for _, crb := range resources.ClusterRoleBindings {
-		util.KubeDelete(crb)
-	}
-
-	for _, cr := range resources.ClusterRoles {
-		util.KubeDelete(cr)
+	// if using the cleanup flag, delete the CRDs
+	cleanup, _ := cmd.Flags().GetBool("cleanup")
+	if cleanup {
+		for _, crd := range resources.CRDs {
+			util.KubeDelete(crd)
+		}
 	}
 }
 
@@ -188,41 +159,22 @@ func RunYaml(cmd *cobra.Command, args []string) {
 	p := printers.YAMLPrinter{}
 
 	// Print all resources by type
-	for _, cr := range resources.ClusterRoles {
-		util.Panic(p.PrintObj(cr, os.Stdout))
-	}
-
-	for _, crb := range resources.ClusterRoleBindings {
-		util.Panic(p.PrintObj(crb, os.Stdout))
-	}
-
-	for _, cm := range resources.ConfigMaps {
-		util.Panic(p.PrintObj(cm, os.Stdout))
-	}
-
-	for _, crd := range resources.CustomResourceDefinitions {
+	util.Panic(p.PrintObj(resources.ServiceAccount, os.Stdout))
+	util.Panic(p.PrintObj(resources.CnpgManagerClusterRole, os.Stdout))
+	util.Panic(p.PrintObj(resources.CnpgManagerClusterRoleBinding, os.Stdout))
+	util.Panic(p.PrintObj(resources.CnpgManagerRole, os.Stdout))
+	util.Panic(p.PrintObj(resources.CnpgManagerRoleBinding, os.Stdout))
+	util.Panic(p.PrintObj(resources.CnpgWebhooksClusterRole, os.Stdout))
+	util.Panic(p.PrintObj(resources.CnpgWebhooksClusterRoleBinding, os.Stdout))
+	util.Panic(p.PrintObj(resources.ConfigMap, os.Stdout))
+	util.Panic(p.PrintObj(resources.MutatingWebhookConfiguration, os.Stdout))
+	util.Panic(p.PrintObj(resources.ValidatingWebhookConfiguration, os.Stdout))
+	util.Panic(p.PrintObj(resources.CnpgOperatorDeployment, os.Stdout))
+	util.Panic(p.PrintObj(resources.WebhooksService, os.Stdout))
+	for _, crd := range resources.CRDs {
 		util.Panic(p.PrintObj(crd, os.Stdout))
 	}
 
-	for _, deploy := range resources.Deployments {
-		util.Panic(p.PrintObj(deploy, os.Stdout))
-	}
-
-	for _, mwh := range resources.MutatingWebhookConfigurations {
-		util.Panic(p.PrintObj(mwh, os.Stdout))
-	}
-
-	for _, svc := range resources.Services {
-		util.Panic(p.PrintObj(svc, os.Stdout))
-	}
-
-	for _, vwh := range resources.ValidatingWebhookConfigurations {
-		util.Panic(p.PrintObj(vwh, os.Stdout))
-	}
-
-	for _, sa := range resources.ServiceAccounts {
-		util.Panic(p.PrintObj(sa, os.Stdout))
-	}
 }
 
 // CmdStatus returns a CLI command
@@ -247,10 +199,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	}
 
 	// Check only the deployment
-	for _, deploy := range resources.Deployments {
-		util.KubeCheck(deploy)
-	}
-
+	util.KubeCheck(resources.CnpgOperatorDeployment)
 }
 
 // LoadCnpgResources loads all CloudNativePG resources from the embedded manifests
@@ -261,70 +210,172 @@ func LoadCnpgResources() (*CnpgResources, error) {
 		return nil, err
 	}
 
-	// Validate that we have all expected resources
-	if err := validateResources(cnpgRes); err != nil {
-		return nil, err
-	}
-
 	//modify resources according to options
 	modifyResources(cnpgRes)
 
 	return cnpgRes, nil
 }
 
+// modifyCnpgRbac modifies the RBAC resources for CloudNativePG operator
+func modifyCnpgRbac(cnpgRes *CnpgResources) {
+
+	// most of the rules in the cnpg-manager role can be namespace scoped
+	// only rules for "nodes" and "clusterimagecatalogs" should be cluster scoped
+	const cnpgManagerRoleName = "cnpg-manager"
+	cnpgRes.CnpgManagerRole = &rbacv1.Role{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Role",
+			APIVersion: "rbac.authorization.k8s.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cnpgManagerRoleName,
+			Namespace: options.Namespace,
+		},
+		// we copy the rules from the cluster role
+		Rules: cnpgRes.CnpgManagerClusterRole.Rules,
+	}
+
+	// add role binding for the role
+	cnpgRes.CnpgManagerRoleBinding = &rbacv1.RoleBinding{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "RoleBinding",
+			APIVersion: "rbac.authorization.k8s.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cnpg-manager-rolebinding",
+			Namespace: options.Namespace,
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     cnpgManagerRoleName,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      cnpgManagerRoleName,
+				Namespace: options.Namespace,
+			},
+		},
+	}
+
+	// remove all unnecessary rules from the cluster role
+	// find the rules for "nodes" and "clusterimagecatalogs" and append to new rules
+	newRules := []rbacv1.PolicyRule{}
+	for _, rule := range cnpgRes.CnpgManagerClusterRole.Rules {
+		if slices.Contains(rule.Resources, "nodes") {
+			newRules = append(newRules, rbacv1.PolicyRule{
+				Verbs:     rule.Verbs,
+				APIGroups: rule.APIGroups,
+				Resources: []string{"nodes"},
+			})
+		}
+		if slices.Contains(rule.Resources, "clusterimagecatalogs") {
+			newRules = append(newRules, rbacv1.PolicyRule{
+				Verbs:     rule.Verbs,
+				APIGroups: rule.APIGroups,
+				Resources: []string{"clusterimagecatalogs"},
+			})
+		}
+	}
+	cnpgRes.CnpgManagerClusterRole.Rules = newRules
+
+	//update namespace in the cluster role binding
+	for i := range cnpgRes.CnpgManagerClusterRoleBinding.Subjects {
+		cnpgRes.CnpgManagerClusterRoleBinding.Subjects[i].Namespace = options.Namespace
+	}
+
+	// for non-OLM deployments we need to add cluster-wide permissions for the webhooks
+	// create a new cluster role and binding for the webhooks. These are not used in the CSV
+	// see here: https://github.com/cloudnative-pg/cloudnative-pg/blob/bad5a251642655399eca392abf5d981668fbd8cc/internal/cmd/manager/controller/controller.go#L362-L390
+	cnpgRes.CnpgWebhooksClusterRole = &rbacv1.ClusterRole{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ClusterRole",
+			APIVersion: "rbac.authorization.k8s.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cnpg-webhooks-cluster-role",
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"admissionregistration.k8s.io"},
+				Resources: []string{"mutatingwebhookconfigurations", "validatingwebhookconfigurations"},
+				Verbs:     []string{"get", "patch"},
+			},
+		},
+	}
+	cnpgRes.CnpgWebhooksClusterRoleBinding = &rbacv1.ClusterRoleBinding{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ClusterRoleBinding",
+			APIVersion: "rbac.authorization.k8s.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cnpg-webhooks-cluster-rolebinding",
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "cnpg-webhooks-cluster-role",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      "cnpg-manager",
+				Namespace: options.Namespace,
+			},
+		},
+	}
+}
+
 // modifyResources modifies the resources according to options
 func modifyResources(cnpgRes *CnpgResources) {
 
 	// update the deployment namespace, image
-	for _, depl := range cnpgRes.Deployments {
-		depl.Namespace = options.Namespace
-		depl.Spec.Template.Spec.Containers[0].Image = options.CnpgImage
-		// add app:noobaa label to the deployments pod
-		depl.Spec.Template.Labels["app"] = "noobaa"
-		// remove RunAsUser and RunAsGroup from the deployment.
-		// This is done for openshift compatibility, otherwise it fails to match an SCC
-		depl.Spec.Template.Spec.SecurityContext.RunAsUser = nil
-		depl.Spec.Template.Spec.SecurityContext.RunAsGroup = nil
-		depl.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser = nil
-		depl.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup = nil
-	}
-
-	// update the cluster role bindings namespace
-	for _, crb := range cnpgRes.ClusterRoleBindings {
-		for i := range crb.Subjects {
-			crb.Subjects[i].Namespace = options.Namespace
+	depl := cnpgRes.CnpgOperatorDeployment
+	depl.Namespace = options.Namespace
+	depl.Spec.Template.Spec.Containers[0].Image = options.CnpgImage
+	// add app:noobaa label to the deployments pod
+	depl.Spec.Template.Labels["app"] = "noobaa"
+	// remove RunAsUser and RunAsGroup from the deployment.
+	// This is done for openshift compatibility, otherwise it fails to match an SCC
+	depl.Spec.Template.Spec.SecurityContext.RunAsUser = nil
+	depl.Spec.Template.Spec.SecurityContext.RunAsGroup = nil
+	depl.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser = nil
+	depl.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup = nil
+	// add WATCH_NAMESPACE env variable to the deployment to restrict the operator to current namespace
+	depl.Spec.Template.Spec.Containers[0].Env = append(depl.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+		Name: "WATCH_NAMESPACE",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.namespace",
+			},
+		},
+	})
+	// modify the env variable OPERATOR_IMAGE_NAME according to options.CnpgImage
+	for i := range depl.Spec.Template.Spec.Containers[0].Env {
+		if depl.Spec.Template.Spec.Containers[0].Env[i].Name == "OPERATOR_IMAGE_NAME" {
+			depl.Spec.Template.Spec.Containers[0].Env[i].Value = options.CnpgImage
 		}
 	}
+
+	modifyCnpgRbac(cnpgRes)
 
 	// update the service account namespace
-	for _, sa := range cnpgRes.ServiceAccounts {
-		sa.Namespace = options.Namespace
-	}
+	cnpgRes.ServiceAccount.Namespace = options.Namespace
 
 	// update the configmap namespace
-	for _, cm := range cnpgRes.ConfigMaps {
-		cm.Namespace = options.Namespace
-	}
+	cnpgRes.ConfigMap.Namespace = options.Namespace
 
 	// update the namespace in the  mutating webhooks
-	for _, mwh := range cnpgRes.MutatingWebhookConfigurations {
-		for i := range mwh.Webhooks {
-			mwh.Webhooks[i].ClientConfig.Service.Namespace = options.Namespace
-		}
+	for i := range cnpgRes.MutatingWebhookConfiguration.Webhooks {
+		cnpgRes.MutatingWebhookConfiguration.Webhooks[i].ClientConfig.Service.Namespace = options.Namespace
 	}
-
-	// update the namespace in the validating webhooks
-	for _, vwh := range cnpgRes.ValidatingWebhookConfigurations {
-		for i := range vwh.Webhooks {
-			vwh.Webhooks[i].ClientConfig.Service.Namespace = options.Namespace
-		}
+	for i := range cnpgRes.ValidatingWebhookConfiguration.Webhooks {
+		cnpgRes.ValidatingWebhookConfiguration.Webhooks[i].ClientConfig.Service.Namespace = options.Namespace
 	}
 
 	// update the namespace in the service
-	for _, svc := range cnpgRes.Services {
-		svc.Namespace = options.Namespace
-	}
-
+	cnpgRes.WebhooksService.Namespace = options.Namespace
 }
 
 // modifyYamlBytes modifies the YAML bytes to replace the API group and webhooks path
@@ -394,34 +445,36 @@ func getResourcesFromYaml() (*CnpgResources, error) {
 			return nil, fmt.Errorf("failed to decode document: %v", err)
 		}
 
-		// Store the resource in the appropriate slice based on its type
+		// Store the resource in the appropriate object in the cnpgRes struct
 		switch gvk.Kind {
 		case "ClusterRole":
-			cnpgRes.ClusterRoles = append(cnpgRes.ClusterRoles, obj.(*rbacv1.ClusterRole))
+			if obj.(*rbacv1.ClusterRole).Name == "cnpg-manager" {
+				cnpgRes.CnpgManagerClusterRole = obj.(*rbacv1.ClusterRole)
+			}
 
 		case "ClusterRoleBinding":
-			cnpgRes.ClusterRoleBindings = append(cnpgRes.ClusterRoleBindings, obj.(*rbacv1.ClusterRoleBinding))
+			cnpgRes.CnpgManagerClusterRoleBinding = obj.(*rbacv1.ClusterRoleBinding)
 
 		case "ConfigMap":
-			cnpgRes.ConfigMaps = append(cnpgRes.ConfigMaps, obj.(*corev1.ConfigMap))
+			cnpgRes.ConfigMap = obj.(*corev1.ConfigMap)
 
 		case "CustomResourceDefinition":
-			cnpgRes.CustomResourceDefinitions = append(cnpgRes.CustomResourceDefinitions, obj.(*apiextv1.CustomResourceDefinition))
+			cnpgRes.CRDs = append(cnpgRes.CRDs, obj.(*apiextv1.CustomResourceDefinition))
 
 		case "Deployment":
-			cnpgRes.Deployments = append(cnpgRes.Deployments, obj.(*appsv1.Deployment))
+			cnpgRes.CnpgOperatorDeployment = obj.(*appsv1.Deployment)
 
 		case "MutatingWebhookConfiguration":
-			cnpgRes.MutatingWebhookConfigurations = append(cnpgRes.MutatingWebhookConfigurations, obj.(*admissionv1.MutatingWebhookConfiguration))
+			cnpgRes.MutatingWebhookConfiguration = obj.(*admissionv1.MutatingWebhookConfiguration)
 
 		case "Service":
-			cnpgRes.Services = append(cnpgRes.Services, obj.(*corev1.Service))
+			cnpgRes.WebhooksService = obj.(*corev1.Service)
 
 		case "ValidatingWebhookConfiguration":
-			cnpgRes.ValidatingWebhookConfigurations = append(cnpgRes.ValidatingWebhookConfigurations, obj.(*admissionv1.ValidatingWebhookConfiguration))
+			cnpgRes.ValidatingWebhookConfiguration = obj.(*admissionv1.ValidatingWebhookConfiguration)
 
 		case "ServiceAccount":
-			cnpgRes.ServiceAccounts = append(cnpgRes.ServiceAccounts, obj.(*corev1.ServiceAccount))
+			cnpgRes.ServiceAccount = obj.(*corev1.ServiceAccount)
 
 		case "Namespace":
 			// Skip namespace as it's handled separately
@@ -431,38 +484,35 @@ func getResourcesFromYaml() (*CnpgResources, error) {
 		}
 	}
 
+	// After reading all documents, validate that all required resources were found
+	if cnpgRes.CnpgManagerClusterRole == nil {
+		return nil, fmt.Errorf("required ClusterRole 'cnpg-manager' not found in manifest")
+	}
+	if cnpgRes.CnpgManagerClusterRoleBinding == nil {
+		return nil, fmt.Errorf("required ClusterRoleBinding not found in manifest")
+	}
+	if cnpgRes.ConfigMap == nil {
+		return nil, fmt.Errorf("required ConfigMap not found in manifest")
+	}
+	if cnpgRes.CnpgOperatorDeployment == nil {
+		return nil, fmt.Errorf("required Deployment not found in manifest")
+	}
+	if cnpgRes.MutatingWebhookConfiguration == nil {
+		return nil, fmt.Errorf("required MutatingWebhookConfiguration not found in manifest")
+	}
+	if cnpgRes.ValidatingWebhookConfiguration == nil {
+		return nil, fmt.Errorf("required ValidatingWebhookConfiguration not found in manifest")
+	}
+	if cnpgRes.ServiceAccount == nil {
+		return nil, fmt.Errorf("required ServiceAccount not found in manifest")
+	}
+	if cnpgRes.WebhooksService == nil {
+		return nil, fmt.Errorf("required Service not found in manifest")
+	}
+	expectedNumberOfCrds := 9
+	if len(cnpgRes.CRDs) != expectedNumberOfCrds {
+		return nil, fmt.Errorf("expected %d CustomResourceDefinitions, got %d", expectedNumberOfCrds, len(cnpgRes.CRDs))
+	}
+
 	return cnpgRes, nil
-}
-
-// validateResources checks that all required resources are present
-func validateResources(res *CnpgResources) error {
-	var errors []string
-
-	// Expected counts for each resource type
-	expectations := map[string]struct {
-		actualCount   int
-		expactedCount int
-	}{
-		"ClusterRole":                    {actualCount: len(res.ClusterRoles), expactedCount: 7},
-		"ClusterRoleBinding":             {actualCount: len(res.ClusterRoleBindings), expactedCount: 1},
-		"ConfigMap":                      {actualCount: len(res.ConfigMaps), expactedCount: 1},
-		"CustomResourceDefinition":       {actualCount: len(res.CustomResourceDefinitions), expactedCount: 9},
-		"Deployment":                     {actualCount: len(res.Deployments), expactedCount: 1},
-		"MutatingWebhookConfiguration":   {actualCount: len(res.MutatingWebhookConfigurations), expactedCount: 1},
-		"Service":                        {actualCount: len(res.Services), expactedCount: 1},
-		"ValidatingWebhookConfiguration": {actualCount: len(res.ValidatingWebhookConfigurations), expactedCount: 1},
-		"ServiceAccount":                 {actualCount: len(res.ServiceAccounts), expactedCount: 1},
-	}
-
-	for resourceType, exp := range expectations {
-		if exp.actualCount != exp.expactedCount {
-			errors = append(errors, fmt.Sprintf("expected %d %s(s), got %d", exp.expactedCount, resourceType, exp.actualCount))
-		}
-	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("resource validation failed: %s", strings.Join(errors, "; "))
-	}
-
-	return nil
 }
