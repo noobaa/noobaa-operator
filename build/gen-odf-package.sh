@@ -8,7 +8,9 @@ missing_envs=""
 [ "${DB_IMAGE}" == "" ] && missing_envs="${missing_envs} DB_IMAGE"
 [ "${OPERATOR_IMAGE}" == "" ] && missing_envs="${missing_envs} OPERATOR_IMAGE"
 [ "${COSI_SIDECAR_IMAGE}" == "" ] && missing_envs="${missing_envs} COSI_SIDECAR_IMAGE"
-[ "${CNPG_IMAGE}" == "" ] && missing_envs="${missing_envs} CNPG_IMAGE"
+
+# temporarily ignore CNPG image.
+# [ "${CNPG_IMAGE}" == "" ] && missing_envs="${missing_envs} CNPG_IMAGE"
 
 if [ "${missing_envs}" != "" ]
 then
@@ -30,8 +32,8 @@ echo "--obc-crd=${OBC_CRD}"
 --psql-12-image ${PSQL_12_IMAGE} \
 --operator-image ${OPERATOR_IMAGE} \
 --cosi-sidecar-image ${COSI_SIDECAR_IMAGE} \
---obc-crd=${OBC_CRD} \
---cnpg-image ${CNPG_IMAGE}
+--obc-crd=${OBC_CRD}
+# --cnpg-image ${CNPG_IMAGE}
 
 temp_csv=$(mktemp)
 
