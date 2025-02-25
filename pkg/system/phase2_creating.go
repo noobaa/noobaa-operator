@@ -1134,11 +1134,15 @@ func (r *Reconciler) ReconcileSecretMap(data map[string]string) error {
 		return fmt.Errorf("system Reconciler ReconcileSecretMap data is nil")
 	}
 	// this will remove keys that are older than 6 months ago and will leave at least 20 keys
-	err := kms.RemoveOldKeysFromSecret(data,time.Now().AddDate(0, -6, 0), 20)
+	deleted_keys, err := kms.RemoveOldKeysFromSecret(data,time.Now().AddDate(0, 0, -1), 20)
 	if err != nil {
 		return fmt.Errorf("Failed removing old keys from secret %w", err)
 	}
 	if err := r.ReconcileObject(r.SecretRootMasterMap, func() error {
+		if deleted_keys > 0 {
+			r.Logger.Infof("ReconcileSecretMap: removed %d old keys from mounted secret", deleted_keys)
+			r.SecretRootMasterMap.Data = map[string][]byte{}
+		}
 		r.SecretRootMasterMap.StringData = data
 		return nil
 	}); err != nil {

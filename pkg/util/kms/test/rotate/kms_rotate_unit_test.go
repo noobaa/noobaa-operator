@@ -20,6 +20,7 @@ var _ = Describe("KMS - K8S Key Rotate - Unit", func() {
 			given_time   time.Time
 			minKeys  int
 			expected map[string]string
+			delete_keys int
 		}{
 		{
 			name: "No keys to remove - all keys are out of range",
@@ -38,6 +39,7 @@ var _ = Describe("KMS - K8S Key Rotate - Unit", func() {
 				fmt.Sprintf("key-%v", now.AddDate(0, -8, 0).UnixNano()):           "8_month_old_key",
 				fmt.Sprintf("key-%v", now.AddDate(0, -9, 0).UnixNano()):           "9_month_old_key",
 			},
+			delete_keys: 0,
 		},
 		{
 			name: "Remove keys older than 6 months",
@@ -53,6 +55,7 @@ var _ = Describe("KMS - K8S Key Rotate - Unit", func() {
 				fmt.Sprintf("key-%v", now.AddDate(0, -5, 0).UnixNano()):           "5_month_old_key",
 				fmt.Sprintf("key-%v", now.AddDate(0, -6, 0).UnixNano()):           "6_month_old_key",
 			},
+			delete_keys: 3,
 		},
 		{
 			name: "Remove keys older than 15 days - Retain at least min_keys keys",
@@ -64,6 +67,7 @@ var _ = Describe("KMS - K8S Key Rotate - Unit", func() {
 				fmt.Sprintf("key-%v", now.AddDate(0, -1, 0).UnixNano()):           "1_month_old_key",
 				fmt.Sprintf("key-%v", now.AddDate(0, -2, 0).UnixNano()):           "2_month_old_key",
 			},
+			delete_keys: 7,
 		},
 		}
 		for _, tt := range tests {
@@ -74,8 +78,9 @@ var _ = Describe("KMS - K8S Key Rotate - Unit", func() {
 				}
 				secret["active_root_key"] = active_key
 				secret[active_key] = "latest_key"
-				err := kms.RemoveOldKeysFromSecret(secret, tt.given_time, tt.minKeys)
+				deleted_keys, err := kms.RemoveOldKeysFromSecret(secret, tt.given_time, tt.minKeys)
 				Expect(err).ShouldNot(HaveOccurred())
+				Expect(deleted_keys).To(Equal(tt.delete_keys))
 				Expect(secret).To(Equal(tt.expected))
 			})
 		}

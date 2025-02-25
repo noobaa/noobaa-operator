@@ -144,7 +144,7 @@ var _ = Describe("KMS - K8S Key Rotate", func() {
 			s.Name = noobaa.Name + "-root-master-key-volume"
 			s.Namespace = noobaa.Namespace
 			Expect(util.KubeCheck(s)).To(BeTrue())
-			Expect(len(s.StringData)).To(BeEquivalentTo(22)) // 20 keys + 1 active key + 1 rotated key
+			Expect(len(s.StringData)).To(BeEquivalentTo(21)) // 20 keys + 1 active key
 		})
 		Specify("Delete NooBaa", func() {
 			Expect(util.KubeDelete(noobaa)).To(BeTrue())
