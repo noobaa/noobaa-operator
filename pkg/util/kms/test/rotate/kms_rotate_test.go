@@ -1,6 +1,9 @@
 package kmsrotatetest
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/libopenstorage/secrets"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
@@ -24,7 +27,7 @@ func getMiniNooBaa() *nbv1.NooBaa {
 func getSchedMiniNooBaa() *nbv1.NooBaa {
 	nb := getMiniNooBaa()
 	nb.Spec.Security.KeyManagementService.EnableKeyRotation = true
-	nb.Spec.Security.KeyManagementService.Schedule = "* * * * *" // every min
+	nb.Spec.Security.KeyManagementService.Schedule = "*/2 * * * *" // every 2 min
 	return nb
 }
 
@@ -101,6 +104,90 @@ var _ = Describe("KMS - K8S Key Rotate", func() {
 		})
 		Specify("Verify KMS condition status Key Rotate", func() {
 			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSKeyRotate)).To(BeTrue())
+		})
+		Specify("Delete NooBaa", func() {
+			Expect(util.KubeDelete(noobaa)).To(BeTrue())
+		})
+	})
+	
+	Context("Verify Rotate - Max key Limit", func() {
+		noobaa := getSchedMiniNooBaa()
+		now := time.Now()
+
+		Specify("Create new format K8S root master key secret", func() {
+			s := &corev1.Secret{}
+			secret := map[string]string{}
+			for i := 1; i < 50; i++ {
+				secret[fmt.Sprintf("key-%v", now.AddDate(0, -i, 0).UnixNano())] = fmt.Sprintf("%v month a go", i)
+			}
+			secret["active_root_key"] = fmt.Sprintf("key-%v", now.UnixNano())
+			secret[fmt.Sprintf("key-%v", now.UnixNano())] = "latest_key"
+
+			s.Name = noobaa.Name + "-root-master-key-backend"
+			s.Namespace = noobaa.Namespace
+			s.StringData = secret
+
+
+			Expect(util.KubeCreateFailExisting(s)).To(BeTrue())
+		})
+		Specify("Create key rotate schedule system", func() {
+			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
+		})
+		Specify("Verify KMS condition Type", func() {
+			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, secrets.TypeK8s)).To(BeTrue())
+		})
+		Specify("Verify KMS condition status Key Rotate", func() {
+			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSKeyRotate)).To(BeTrue())
+		})
+		Specify("Verify the secret was updated as should", func() {
+			s := &corev1.Secret{}
+			s.Name = noobaa.Name + "-root-master-key-volume"
+			s.Namespace = noobaa.Namespace
+			Expect(util.KubeCheck(s)).To(BeTrue())
+			Expect(len(s.StringData)).To(BeEquivalentTo(21)) // 20 keys + 1 active key
+		})
+		Specify("Delete NooBaa", func() {
+			Expect(util.KubeDelete(noobaa)).To(BeTrue())
+		})
+	})
+
+	Context("Verify Rotate - 6 Months Limit", func() {
+		noobaa := getSchedMiniNooBaa()
+		now := time.Now()
+
+		Specify("Create new format K8S root master key secret", func() {
+			s := &corev1.Secret{}
+			secret := map[string]string{}
+			for i := 1; i < 50; i++ {
+				secret[fmt.Sprintf("key-%v", now.AddDate(0, 0, -i).UnixNano())] = fmt.Sprintf("%v days a go", i)
+			}
+			secret[fmt.Sprintf("key-%v", now.AddDate(0, -6, 0).UnixNano())] = "6 months a go" // Should be removed
+			secret[fmt.Sprintf("key-%v", now.AddDate(0, -7, 0).UnixNano())] = "7 months a go" // Should be removed
+			secret["active_root_key"] = fmt.Sprintf("key-%v", now.UnixNano())
+			secret[fmt.Sprintf("key-%v", now.UnixNano())] = "latest_key"
+
+			s.Name = noobaa.Name + "-root-master-key-backend"
+			s.Namespace = noobaa.Namespace
+			s.StringData = secret
+
+
+			Expect(util.KubeCreateFailExisting(s)).To(BeTrue())
+		})
+		Specify("Create key rotate schedule system", func() {
+			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
+		})
+		Specify("Verify KMS condition Type", func() {
+			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, secrets.TypeK8s)).To(BeTrue())
+		})
+		Specify("Verify KMS condition status Key Rotate", func() {
+			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSKeyRotate)).To(BeTrue())
+		})
+		Specify("Verify the secret was updated as should", func() {
+			s := &corev1.Secret{}
+			s.Name = noobaa.Name + "-root-master-key-volume"
+			s.Namespace = noobaa.Namespace
+			Expect(util.KubeCheck(s)).To(BeTrue())
+			Expect(len(s.StringData)).To(BeEquivalentTo(52)) // 50 keys + 1 active key + 1 rotated key
 		})
 		Specify("Delete NooBaa", func() {
 			Expect(util.KubeDelete(noobaa)).To(BeTrue())
