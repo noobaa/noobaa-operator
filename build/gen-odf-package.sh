@@ -9,8 +9,8 @@ missing_envs=""
 [ "${OPERATOR_IMAGE}" == "" ] && missing_envs="${missing_envs} OPERATOR_IMAGE"
 [ "${COSI_SIDECAR_IMAGE}" == "" ] && missing_envs="${missing_envs} COSI_SIDECAR_IMAGE"
 
-# temporarily defaulting to an arm64 image.
-[ "${CNPG_IMAGE}" == "" ] && CNPG_IMAGE="quay.io/noobaa/cloudnative-pg-testing:1.25.0-arm64"
+# set default image if not set
+[ "${CNPG_IMAGE}" == "" ] && CNPG_IMAGE="quay.io/noobaa/cloudnative-pg-noobaa:v1.25.0"
 
 if [ "${missing_envs}" != "" ]
 then
@@ -33,7 +33,7 @@ echo "--obc-crd=${OBC_CRD}"
 --operator-image ${OPERATOR_IMAGE} \
 --cosi-sidecar-image ${COSI_SIDECAR_IMAGE} \
 --obc-crd=${OBC_CRD}
-# --cnpg-image ${CNPG_IMAGE}
+--cnpg-image ${CNPG_IMAGE}
 
 temp_csv=$(mktemp)
 
