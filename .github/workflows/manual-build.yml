@@ -87,6 +87,7 @@ jobs:
           db-image=centos/postgresql-15-centos7 \
           psql-12-image=centos/postgresql-12-centos7 \
           obc-crd="owned" \
+          cnpg-image=quay.io/noobaa/cloudnative-pg-noobaa:v1.25.0 \
           BUNDLE_IMAGE=quay.io/${{ steps.prep.outputs.operatorbundletags }}
 
       - name: Login to Quay.io Registry
