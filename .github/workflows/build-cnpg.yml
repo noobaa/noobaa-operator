@@ -1,0 +1,31 @@
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The tag or branch that will be used as the base image for the CNPG Operator (default: v1.25.0 )"
+        required: false
+        default: "v1.25.0"
+
+jobs:
+  build-cnpg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout CNPG Repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'cloudnative-pg/cloudnative-pg'
+          ref: ${{ github.event.inputs.tag }}
+          path: 'cloudnative-pg'
+
+      - name: Build CNPG Image
+        run: |
+          cd cloudnative-pg
+          find . -name .git -a -type d -prune -o -type f -exec sed -i -e 's|postgresql.cnpg.io|postgresql.cnpg.noobaa.io|g' -e 's|postgresql-cnpg-io|postgresql-cnpg-noobaa-io|g' {} +
+          make CONTROLLER_IMG=quay.io/noobaa/cloudnative-pg-noobaa:${{ github.event.inputs.tag }} docker-build
+
+      - name: Login to Quay.io Registry
+        run: echo ${{ secrets.GHACTIONQUAYTOKEN }} | docker login quay.io -u ${{ secrets.GHACTIONQUAYNAME }} --password-stdin
+
+      - name: Push CNPG Image to Quay
+        run: docker push quay.io/noobaa/cloudnative-pg-noobaa:${{ github.event.inputs.tag }}
