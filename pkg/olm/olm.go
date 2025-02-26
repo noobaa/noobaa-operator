@@ -797,8 +797,9 @@ func addCnpgToCSV(csv *operv1.ClusterServiceVersion, csvParams *generateCSVParam
 	// add cnpg deployment and rules to InstallStrategy
 	csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs = append(csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs,
 		operv1.StrategyDeploymentSpec{
-			Name: resources.CnpgOperatorDeployment.Name,
-			Spec: resources.CnpgOperatorDeployment.Spec,
+			Name:  resources.CnpgOperatorDeployment.Name,
+			Spec:  resources.CnpgOperatorDeployment.Spec,
+			Label: resources.CnpgOperatorDeployment.Labels,
 		})
 	csv.Spec.InstallStrategy.StrategySpec.ClusterPermissions = append(csv.Spec.InstallStrategy.StrategySpec.ClusterPermissions,
 		operv1.StrategyDeploymentPermissions{

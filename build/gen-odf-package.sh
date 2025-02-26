@@ -9,8 +9,8 @@ missing_envs=""
 [ "${OPERATOR_IMAGE}" == "" ] && missing_envs="${missing_envs} OPERATOR_IMAGE"
 [ "${COSI_SIDECAR_IMAGE}" == "" ] && missing_envs="${missing_envs} COSI_SIDECAR_IMAGE"
 
-# temporarily ignore CNPG image.
-# [ "${CNPG_IMAGE}" == "" ] && missing_envs="${missing_envs} CNPG_IMAGE"
+# temporarily defaulting to an arm64 image.
+[ "${CNPG_IMAGE}" == "" ] && CNPG_IMAGE="quay.io/noobaa/cloudnative-pg-testing:1.25.0-arm64"
 
 if [ "${missing_envs}" != "" ]
 then

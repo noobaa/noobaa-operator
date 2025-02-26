@@ -386,15 +386,15 @@ func modifyYamlBytes(manifestBytes []byte) []byte {
 	}
 
 	// Replace API group if different from the original
-	originalGroup := "cnpg.io"
-	noobaaGroupDomain := "cnpg.noobaa.io"
+	originalGroup := "postgresql.cnpg.io"
+	noobaaGroupDomain := "postgresql.cnpg.noobaa.io"
 	mofifiedManifestBytes := bytes.ReplaceAll(manifestBytes,
 		[]byte(originalGroup),
 		[]byte(noobaaGroupDomain))
 
 	// Replace the webhooks path in the mutating webhook configuration
-	originalPath := "cnpg-io"
-	newPath := "cnpg-noobaa-io"
+	originalPath := "postgresql-cnpg-io"
+	newPath := "postgresql-cnpg-noobaa-io"
 	mofifiedManifestBytes = bytes.ReplaceAll(mofifiedManifestBytes,
 		[]byte(originalPath),
 		[]byte(newPath))
