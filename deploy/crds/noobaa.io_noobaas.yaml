@@ -1573,6 +1573,26 @@ spec:
                         type: object
                     type: object
                 type: object
+              envVariablesOverride:
+                description: Override variables for all pods managed by NooBaa's operator
+                type: object
+                properties:
+                  core:
+                    description: List of environment variables to set in the Core statefulset containers.
+                    items:
+                      description: EnvVar represents an environment variable present in a Container.
+                      x-kubernetes-preserve-unknown-fields: true
+                      type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                    type: array
+                  endpoint:
+                    description: List of environment variables to set in the Endpoint deployment containers.
+                    items:
+                      description: EnvVar represents an environment variable present in a Container.
+                      x-kubernetes-preserve-unknown-fields: true
+                      type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                    type: array
               externalPgSSLRequired:
                 description: ExternalPgSSLRequired (optional) holds an optional boolean
                   to force ssl connections to the external Postgres DB
