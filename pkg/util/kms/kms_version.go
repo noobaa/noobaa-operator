@@ -2,6 +2,8 @@ package kms
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -201,6 +203,54 @@ func (v *VersionRotatingSecret) Upgrade() error {
 // for secret map, i.e. rotating master root key
 func keyName() string {
 	return fmt.Sprintf("key-%v", time.Now().UnixNano())
+}
+
+// RemoveOldKeysFromSecret removes keys that are older than given time, and will leave at least min_keys keys
+func RemoveOldKeysFromSecret(data map[string]string, givenTime time.Time, minKeys int) (int, error) {
+	leftKeys := len(data)
+	if (leftKeys <= minKeys) {
+		return 0, nil
+	}
+	var entries []struct {
+		key   string
+		value int64
+	}
+	for k := range data {
+		if k == ActiveRootKey {
+			continue
+		}
+		// We want to split "key-<timestamp>" to get the timestamp
+		splitKey := strings.Split(k, "-");
+		if len(splitKey) != 2 {
+			return 0, fmt.Errorf("KMS Key is not in the correct format")
+		}	
+		keyDate, err := strconv.ParseInt(splitKey[1], 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("KMS Key is not in the correct format %w", err)
+		}
+		entries = append(entries, struct {
+			key   string
+			value int64
+		}{key: k, value: keyDate})
+	}
+	// Sort entries by timestamp (oldest first)
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].value < entries[j].value
+	})
+	deletedKeys := 0
+	leftKeys = len(entries)
+	for _, entry := range entries {
+		if leftKeys <= minKeys {
+			break
+		}
+		old_key_timestamp := time.Unix(0, entry.value)
+		if old_key_timestamp.Before(givenTime) {
+			delete(data, entry.key)
+			leftKeys--
+			deletedKeys++
+		}
+	}
+	return deletedKeys, nil
 }
 
 // toInterfaceMap converts map of string to string to map of string to interface
