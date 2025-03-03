@@ -219,7 +219,7 @@ func (r *Reconciler) SetDesiredSecretAdminAccountInfo() error {
 	if err != nil {
 		return fmt.Errorf("cannot read admin account info, error: %v", err)
 	}
-	if account.AccessKeys == nil || len(account.AccessKeys) <= 0 {
+	if len(account.AccessKeys) <= 0 {
 		return fmt.Errorf("admin account has no access keys yet")
 	}
 
