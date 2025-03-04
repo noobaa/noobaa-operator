@@ -358,6 +358,13 @@ func modifyResources(cnpgRes *CnpgResources) {
 		}
 	}
 
+	// modify the web hook secret
+	for i := range depl.Spec.Template.Spec.Volumes {
+		if depl.Spec.Template.Spec.Volumes[i].Name == "webhook-certificates" {
+			depl.Spec.Template.Spec.Volumes[i].Secret.SecretName = "webhook-cert-secret"
+		}
+	}
+
 	modifyCnpgRbac(cnpgRes)
 
 	// update the service account namespace
@@ -365,6 +372,8 @@ func modifyResources(cnpgRes *CnpgResources) {
 
 	// update the configmap namespace
 	cnpgRes.ConfigMap.Namespace = options.Namespace
+	cnpgRes.ConfigMap.Name = "cnpg-controller-manager-config"
+	cnpgRes.ConfigMap.Data["WebhookCertDir"] = "/run/secrets/cnpg.io/webhook";
 
 	// update the namespace in the  mutating webhooks
 	for i := range cnpgRes.MutatingWebhookConfiguration.Webhooks {
