@@ -9,9 +9,6 @@ missing_envs=""
 [ "${OPERATOR_IMAGE}" == "" ] && missing_envs="${missing_envs} OPERATOR_IMAGE"
 [ "${COSI_SIDECAR_IMAGE}" == "" ] && missing_envs="${missing_envs} COSI_SIDECAR_IMAGE"
 
-# set default image if not set
-[ "${CNPG_IMAGE}" == "" ] && CNPG_IMAGE="quay.io/noobaa/cloudnative-pg-noobaa:v1.25.0"
-
 if [ "${missing_envs}" != "" ]
 then
   echo "gen-odf-package.sh: missing required environment variables:${missing_envs}"
@@ -20,10 +17,10 @@ fi
 
 echo "--obc-crd=${OBC_CRD}"
 
-./build/_output/bin/noobaa-operator-local olm catalog -n openshift-storage \
+# Build the command base
+cmd="./build/_output/bin/noobaa-operator-local olm catalog -n openshift-storage \
 --dir ${MANIFESTS} \
 --odf \
---include-cnpg \
 --csv-name ${CSV_NAME} \
 --skip-range "${SKIP_RANGE}" \
 --replaces "${REPLACES}" \
@@ -32,8 +29,17 @@ echo "--obc-crd=${OBC_CRD}"
 --psql-12-image ${PSQL_12_IMAGE} \
 --operator-image ${OPERATOR_IMAGE} \
 --cosi-sidecar-image ${COSI_SIDECAR_IMAGE} \
---obc-crd=${OBC_CRD}
---cnpg-image ${CNPG_IMAGE}
+--obc-crd=${OBC_CRD}"
+
+# Add CNPG flags only if CNPG_IMAGE is set and not empty
+if [ -n "${CNPG_IMAGE}" ]; then
+    cmd+=" --include-cnpg"
+    cmd+=" --cnpg-image ${CNPG_IMAGE}"
+fi
+
+
+# Execute the command
+eval $cmd
 
 temp_csv=$(mktemp)
 

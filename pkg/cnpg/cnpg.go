@@ -336,12 +336,6 @@ func modifyResources(cnpgRes *CnpgResources) {
 	depl.Spec.Template.Spec.Containers[0].Image = options.CnpgImage
 	// add app:noobaa label to the deployments pod
 	depl.Spec.Template.Labels["app"] = "noobaa"
-	// remove RunAsUser and RunAsGroup from the deployment.
-	// This is done for openshift compatibility, otherwise it fails to match an SCC
-	depl.Spec.Template.Spec.SecurityContext.RunAsUser = nil
-	depl.Spec.Template.Spec.SecurityContext.RunAsGroup = nil
-	depl.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser = nil
-	depl.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup = nil
 	// add WATCH_NAMESPACE env variable to the deployment to restrict the operator to current namespace
 	depl.Spec.Template.Spec.Containers[0].Env = append(depl.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 		Name: "WATCH_NAMESPACE",
