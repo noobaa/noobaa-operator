@@ -22,8 +22,8 @@ cmd="./build/_output/bin/noobaa-operator-local olm catalog -n openshift-storage 
 --dir ${MANIFESTS} \
 --odf \
 --csv-name ${CSV_NAME} \
---skip-range "${SKIP_RANGE}" \
---replaces "${REPLACES}" \
+--skip-range '${SKIP_RANGE}' \
+--replaces '${REPLACES}' \
 --noobaa-image ${CORE_IMAGE} \
 --db-image ${DB_IMAGE} \
 --psql-12-image ${PSQL_12_IMAGE} \
