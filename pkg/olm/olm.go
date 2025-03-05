@@ -782,6 +782,28 @@ func addCnpgToCSV(csv *operv1.ClusterServiceVersion, csvParams *generateCSVParam
 	// get cnpg resources
 	resources := csvParams.CnpgResources
 
+	trueVal := true
+	falseVal := false
+
+	// Perform modifications to the cnpg operator deployment for OLM deployments
+	// following this changes yaml: https://github.com/cloudnative-pg/cloudnative-pg/blob/main/config/olm-default/olm_changes.yaml
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.SecurityContext.RunAsUser = nil
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.SecurityContext.RunAsGroup = nil
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.SecurityContext.SeccompProfile = nil
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.SecurityContext.RunAsNonRoot = &trueVal
+
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser = nil
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup = nil
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation = &falseVal
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.Containers[0].SecurityContext.ReadOnlyRootFilesystem = &trueVal
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.Containers[0].SecurityContext.Capabilities = &corev1.Capabilities{
+		Drop: []corev1.Capability{"ALL"},
+	}
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.Containers[0].Env = append(resources.CnpgOperatorDeployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+		Name:  "WEBHOOK_CERT_DIR",
+		Value: "/apiserver.local.config/certificates",
+	})
+
 	if csvParams.IsForODF {
 		// add tolerations to the cnpg operator deployment
 		resources.CnpgOperatorDeployment.Spec.Template.Spec.Tolerations = []corev1.Toleration{
