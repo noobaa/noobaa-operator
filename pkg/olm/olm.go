@@ -849,6 +849,51 @@ func addCnpgToCSV(csv *operv1.ClusterServiceVersion, csvParams *generateCSVParam
 		csv.Spec.CustomResourceDefinitions.Owned = append(csv.Spec.CustomResourceDefinitions.Owned, crdDesc)
 	}
 
+	// add webhook definitions to the CSV
+	for _, webhook := range resources.ValidatingWebhookConfiguration.Webhooks {
+		webhookDefinition := operv1.WebhookDescription{
+			Type:                    operv1.ValidatingAdmissionWebhook,
+			AdmissionReviewVersions: webhook.AdmissionReviewVersions,
+			ContainerPort:           443,
+			TargetPort: &intstr.IntOrString{
+				Type:   intstr.Int,
+				IntVal: 9443,
+				StrVal: "9443",
+			},
+			DeploymentName: resources.CnpgOperatorDeployment.Name,
+			FailurePolicy:  webhook.FailurePolicy,
+			MatchPolicy:    webhook.MatchPolicy,
+			GenerateName:   webhook.Name,
+			Rules:          webhook.Rules,
+			SideEffects:    webhook.SideEffects,
+			WebhookPath:    webhook.ClientConfig.Service.Path,
+		}
+		csv.Spec.WebhookDefinitions = append(csv.Spec.WebhookDefinitions, webhookDefinition)
+
+	}
+
+	for _, webhook := range resources.MutatingWebhookConfiguration.Webhooks {
+		webhookDefinition := operv1.WebhookDescription{
+			Type:                    operv1.MutatingAdmissionWebhook,
+			AdmissionReviewVersions: webhook.AdmissionReviewVersions,
+			ContainerPort:           443,
+			TargetPort: &intstr.IntOrString{
+				Type:   intstr.Int,
+				IntVal: 9443,
+				StrVal: "9443",
+			},
+			DeploymentName: resources.CnpgOperatorDeployment.Name,
+			FailurePolicy:  webhook.FailurePolicy,
+			MatchPolicy:    webhook.MatchPolicy,
+			GenerateName:   webhook.Name,
+			Rules:          webhook.Rules,
+			SideEffects:    webhook.SideEffects,
+			WebhookPath:    webhook.ClientConfig.Service.Path,
+		}
+		csv.Spec.WebhookDefinitions = append(csv.Spec.WebhookDefinitions, webhookDefinition)
+
+	}
+
 	csv.Spec.RelatedImages = append(csv.Spec.RelatedImages, operv1.RelatedImage{
 		Name:  "cnpg-operator",
 		Image: options.CnpgImage,
