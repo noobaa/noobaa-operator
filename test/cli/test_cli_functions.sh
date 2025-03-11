@@ -172,6 +172,34 @@ function timeout {
     done
 }
 
+function test_aws {
+     if [ "${1}" == "silence" ]; then
+        silence=true
+        shift
+    fi
+
+    local options=$*
+
+    NOOBAA_ACCESS_KEY=$(kuberun get secret noobaa-admin -n test -o json | jq -r '.data.AWS_ACCESS_KEY_ID|@base64d')
+    NOOBAA_SECRET_KEY=$(kuberun get secret noobaa-admin -n test -o json | jq -r '.data.AWS_SECRET_ACCESS_KEY|@base64d')
+    ENDPOINT=$(kuberun get noobaa noobaa -n test -o json | jq -r '.status.services.serviceS3.nodePorts[0]')
+
+    if [ -z "${NOOBAA_ACCESS_KEY}" ] || [ -z "${NOOBAA_SECRET_KEY}" ] || [ -z "${ENDPOINT}" ]; then
+        echo_time "❌  Failed to retrieve NooBaa credentials or endpoint, Exiting."
+        exit 1
+    fi
+
+    AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true \
+        aws --endpoint $ENDPOINT --no-verify-ssl ${options}
+
+    if [ $? -ne 0 ]; then
+        echo_time "❌  aws ${options} failed, Exiting"
+        exit 1
+    elif [ ! ${silence} ]; then
+        echo_time "✅  aws ${options} passed"
+    fi
+}
+
 function install {
     local use_obc_cleanup_policy
     
@@ -713,10 +741,42 @@ function obc_cycle {
         unset flag
     done
     check_obc
+    verify_bucket_tagging
 
     # aws s3 --endpoint-url XXX ls
     echo_time "✅  obc cycle is done"
 }
+
+function verify_bucket_tagging {
+    local obc_name="obc-buck-tagging"
+
+    echo_time "💬 Creating Object Bucket Claim (OBC): $obc_name"
+    test_noobaa --timeout obc create $obc_name
+
+    # fetching bucket_name from obc
+    bucket_name=$(kuberun get obc $obc_name -o json | jq -r '.spec.bucketName')
+
+    # updating the obc labels
+    new_label_key="test-label"
+    new_label_value="verified"
+    echo_time "💬 Updating OBC labels: $new_label_key=$new_label_value"
+    kuberun silence label obc $obc_name $new_label_key=$new_label_value --overwrite
+
+    # checking bucket tagging after updating obc labels
+    echo_time "💬 Fetching updated bucket tags for: $bucket_name"
+    tags=$(test_aws s3api get-bucket-tagging --bucket "$bucket_name" 2>/dev/null || echo "No Tags")
+
+    if [[ "$tags" == "No Tags" ]]; then
+        echo_time "❌  No tags found for bucket: $bucket_name"
+        exit 1
+    else
+        echo_time "✅  Bucket tagging verified: $tags"
+    fi
+
+    echo_time "💬  Deleting OBC: $obc_name"
+    test_noobaa --timeout obc delete ${obc_name}
+}
+
 
 function account_cycle {
     echo_time "💬  Starting the account cycle"
@@ -1143,14 +1203,10 @@ function check_default_backingstore {
 
     echo_time "💬 Deleting Noobaa default backingstore and its connected instances"
     echo_time "💬 Deleting buckets"
-    NOOBAA_ACCESS_KEY=$(kuberun get secret noobaa-admin -n test -o json | jq -r '.data.AWS_ACCESS_KEY_ID|@base64d')
-    NOOBAA_SECRET_KEY=$(kuberun get secret noobaa-admin -n test -o json | jq -r '.data.AWS_SECRET_ACCESS_KEY|@base64d')
-    ENDPOINT=$(kuberun get noobaa noobaa -n test -o json | jq -r '.status.services.serviceS3.nodePorts[0]')
-    echo $ENDPOINT
-    AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 ls
-    for bucket in $(AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 ls | awk '{print $3}'); 
+    test_aws s3 ls
+    for bucket in $(test_aws s3 ls | awk '{print $3}');
     do  
-        AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 rb "s3://${bucket}" --force ; 
+        test_aws s3 rb "s3://${bucket}" --force ;
     done
     "💬 Deleting non-default accounts"
     delete_account
