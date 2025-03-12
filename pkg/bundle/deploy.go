@@ -6090,7 +6090,7 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "e145ce24b4267e2e0e63ab56442295bcc605bdc4f6ef723ad6cc15fd38973101"
+const Sha256_deploy_role_yaml = "657d632a42e9ed89ad6c0b2d909517346ab32ab0f8f208d5c9178fa8ad28681d"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6230,6 +6230,18 @@ rules:
   - delete
 - apiGroups:
   - rbac.authorization.k8s.io
+  resources:
+  - '*'
+  verbs: 
+  - '*'
+- apiGroups:
+  - postgresql.cnpg.noobaa.io
+  resources:
+  - '*'
+  verbs: 
+  - '*'
+- apiGroups:
+  - postgresql.cnpg.io
   resources:
   - '*'
   verbs: 

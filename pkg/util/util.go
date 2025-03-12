@@ -26,6 +26,7 @@ import (
 	"time"
 	"unicode"
 
+	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	semver "github.com/coreos/go-semver/semver"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
@@ -187,6 +188,8 @@ func init() {
 	Panic(kedav1alpha1.AddToScheme(scheme.Scheme))
 	Panic(apiregistration.AddToScheme(scheme.Scheme))
 	Panic(configv1.AddToScheme(scheme.Scheme))
+	// add vanilla cnpg scheme
+	Panic(cnpgv1.AddToScheme(scheme.Scheme))
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)
@@ -239,6 +242,8 @@ func MapperProvider(config *rest.Config, httpClient *http.Client) (meta.RESTMapp
 				g.Name == "batch" ||
 				g.Name == "keda.sh" ||
 				g.Name == "config.openshift.io" ||
+				g.Name == "postgresql.cnpg.noobaa.io" ||
+				g.Name == "postgresql.cnpg.io" ||
 				strings.HasSuffix(g.Name, ".k8s.io") {
 				return true
 			}

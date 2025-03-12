@@ -12,6 +12,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/spf13/cobra"
 
+	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	cnpgReleases "github.com/cloudnative-pg/cloudnative-pg/releases"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -345,6 +346,12 @@ func modifyResources(cnpgRes *CnpgResources) {
 			},
 		},
 	})
+	if options.UseCnpgApiGroup {
+		depl.Spec.Template.Spec.Containers[0].Env = append(depl.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "CNPG_API_VERSION",
+			Value: "postgresql.cnpg.io/v1",
+		})
+	}
 	// modify the env variable OPERATOR_IMAGE_NAME according to options.CnpgImage
 	for i := range depl.Spec.Template.Spec.Containers[0].Env {
 		if depl.Spec.Template.Spec.Containers[0].Env[i].Name == "OPERATOR_IMAGE_NAME" {
@@ -509,4 +516,45 @@ func getResourcesFromYaml() (*CnpgResources, error) {
 	}
 
 	return cnpgRes, nil
+}
+
+// getCnpgAPIVersion returns the API version to use for CNPG resources
+// by default it's "postgresql.cnpg.noobaa.io/v1"
+func getCnpgAPIVersion() string {
+	apiVersion := os.Getenv("CNPG_API_VERSION")
+	if apiVersion == "" {
+		apiVersion = "postgresql.cnpg.noobaa.io/v1"
+	}
+	return apiVersion
+}
+
+func GetCnpgImageCatalogObj(namespace string, name string) *cnpgv1.ImageCatalog {
+
+	cnpgImageCatalog := &cnpgv1.ImageCatalog{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: getCnpgAPIVersion(),
+			Kind:       "ImageCatalog",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+	return cnpgImageCatalog
+}
+
+// GetCnpgCluster returns a new CNPG cluster resource
+func GetCnpgClusterObj(namespace string, name string) *cnpgv1.Cluster {
+	// cnpgCluster := util.KubeObject(bundle.File_deploy_internal_cnpg_cluster_yaml).(*cnpgv1.Cluster)
+	cnpgCluster := &cnpgv1.Cluster{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: getCnpgAPIVersion(),
+			Kind:       "Cluster",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+	return cnpgCluster
 }
