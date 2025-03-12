@@ -91,6 +91,14 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return nil
 	}
 
+	if r.shouldReconcileCNPGCluster() {
+		r.Logger.Infof("Reconciling CNPG cluster")
+		if err := r.ReconcileCNPGCluster(); err != nil {
+			return err
+		}
+	}
+
+	// reconcile the core app config
 	if err := r.ReconcileObject(r.CoreAppConfig, r.SetDesiredCoreAppConfig); err != nil {
 		return err
 	}
@@ -112,7 +120,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
 		return err
 	}
-	if r.NooBaa.Spec.ExternalPgSecret == nil {
+	if r.shouldReconcileStandaloneDB() {
 		if err := r.ReconcileObject(r.SecretDB, nil); err != nil {
 			return err
 		}
@@ -122,7 +130,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	}
 
 	// create the db only if postgres secret is not given
-	if r.NooBaa.Spec.ExternalPgSecret == nil {
+	if r.shouldReconcileStandaloneDB() {
 		if err := r.ReconcileDB(); err != nil {
 			return err
 		}
@@ -145,13 +153,13 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 
 	// create notification log pvc if bucket notifications is enabled and pvc was not set explicitly
 	if r.NooBaa.Spec.BucketNotifications.Enabled {
-			if err := r.ReconcileODFPersistentLoggingPVC(
-				"bucketNotifications.pvc",
-				"InvalidBucketNotificationConfiguration",
-				"Bucket notifications requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'bucketNotifications.pvc'.",
-				r.NooBaa.Spec.BucketNotifications.PVC,
-				r.BucketNotificationsPVC); err != nil {
-				return err
+		if err := r.ReconcileODFPersistentLoggingPVC(
+			"bucketNotifications.pvc",
+			"InvalidBucketNotificationConfiguration",
+			"Bucket notifications requires a Persistent Volume Claim (PVC) with ReadWriteMany (RWX) access mode. Please specify the 'bucketNotifications.pvc'.",
+			r.NooBaa.Spec.BucketNotifications.PVC,
+			r.BucketNotificationsPVC); err != nil {
+			return err
 		}
 	}
 
@@ -314,7 +322,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 				if r.NooBaa.Spec.DBStorageClass != nil {
 					pvc.Spec.StorageClassName = r.NooBaa.Spec.DBStorageClass
 				} else {
-					storageClassName, err := r.findLocalStorageClass()
+					storageClassName, err := findLocalStorageClass()
 					if err != nil {
 						r.Logger.Errorf("got error finding a default/local storage class. error: %v", err)
 						return err
@@ -379,8 +387,13 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
 
 		case "POSTGRES_HOST":
-			if r.NooBaa.Spec.ExternalPgSecret == nil {
+			if r.shouldReconcileStandaloneDB() {
 				c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName + "." + r.NooBaaPostgresDB.Namespace + ".svc"
+			} else if r.shouldReconcileCNPGCluster() {
+				if c.Env[j].Value != "" {
+					c.Env[j].Value = ""
+				}
+				c.Env[j].ValueFrom = r.getEnvFromClusterSecretKey("host")
 			}
 
 		case "DB_TYPE":
@@ -396,10 +409,10 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
 			}
 		case "POSTGRES_USER":
-			if r.NooBaa.Spec.ExternalPgSecret == nil {
-				if c.Env[j].Value != "" {
-					c.Env[j].Value = ""
-				}
+			if c.Env[j].Value != "" {
+				c.Env[j].Value = ""
+			}
+			if r.shouldReconcileStandaloneDB() {
 				c.Env[j].ValueFrom = &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
@@ -408,12 +421,14 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 						Key: "user",
 					},
 				}
+			} else if r.shouldReconcileCNPGCluster() {
+				c.Env[j].ValueFrom = r.getEnvFromClusterSecretKey("username")
 			}
 		case "POSTGRES_PASSWORD":
-			if r.NooBaa.Spec.ExternalPgSecret == nil {
-				if c.Env[j].Value != "" {
-					c.Env[j].Value = ""
-				}
+			if c.Env[j].Value != "" {
+				c.Env[j].Value = ""
+			}
+			if r.shouldReconcileStandaloneDB() {
 				c.Env[j].ValueFrom = &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
@@ -422,6 +437,8 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 						Key: "password",
 					},
 				}
+			} else if r.shouldReconcileCNPGCluster() {
+				c.Env[j].ValueFrom = r.getEnvFromClusterSecretKey("password")
 			}
 		case "POSTGRES_CONNECTION_STRING":
 			if r.NooBaa.Spec.ExternalPgSecret != nil {
@@ -472,10 +489,10 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 
 	if r.NooBaa.Spec.BucketNotifications.Enabled {
 		envVar := corev1.EnvVar{
-			Name: "NOTIFICATION_LOG_DIR",
+			Name:  "NOTIFICATION_LOG_DIR",
 			Value: "/var/logs/notifications",
 		}
-		util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar});
+		util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar})
 	}
 
 }
@@ -555,10 +572,10 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &notificationVolumeMounts)
 
-				notificationVolumes := []corev1.Volume {{
+				notificationVolumes := []corev1.Volume{{
 					Name: notificationsVolume,
-					VolumeSource: corev1.VolumeSource {
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource {
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 							ClaimName: r.BucketNotificationsPVC.Name,
 						},
 					},
@@ -1241,8 +1258,8 @@ func (r *Reconciler) ReconcileDBConfigMap(cm *corev1.ConfigMap, desiredFunc func
 	return r.isObjectUpdated(result), nil
 }
 
-//ReconcileODFPersistentLoggingPVC ensures a persistent logging pvc (either for bucket logging or bucket notificatoins)
-//is properly configured. If needed and possible, allocate one from CephFS
+// ReconcileODFPersistentLoggingPVC ensures a persistent logging pvc (either for bucket logging or bucket notificatoins)
+// is properly configured. If needed and possible, allocate one from CephFS
 func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
 	fieldName string,
 	errorName string,
@@ -1254,7 +1271,7 @@ func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
 
 	// Return if persistent logging PVC already exists
 	if pvcName != nil {
-		pvc.Name = *pvcName;
+		pvc.Name = *pvcName
 		log.Infof("PersistentLoggingPVC %s already exists and supports RWX access mode. Skipping ReconcileODFPersistentLoggingPVC.", *pvcName)
 		return nil
 	}
@@ -1268,7 +1285,7 @@ func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
 	if !r.preparePersistentLoggingPVC(pvc, fieldName) {
 		return util.NewPersistentError(errorName, errorText)
 	}
-	r.Own(pvc);
+	r.Own(pvc)
 
 	log.Infof("Persistent logging PVC %s does not exist. Creating...", pvc.Name)
 	err := r.Client.Create(r.Ctx, pvc)
@@ -1280,7 +1297,7 @@ func (r *Reconciler) ReconcileODFPersistentLoggingPVC(
 
 }
 
-//prepare persistent logging pvc
+// prepare persistent logging pvc
 func (r *Reconciler) preparePersistentLoggingPVC(pvc *corev1.PersistentVolumeClaim, fieldName string) bool {
 	pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}
 
@@ -1293,9 +1310,9 @@ func (r *Reconciler) preparePersistentLoggingPVC(pvc *corev1.PersistentVolumeCla
 	if util.KubeCheck(sc) {
 		r.Logger.Infof("%s not provided, defaulting to 'cephfs' storage class %s to create persistent logging pvc", fieldName, sc.Name)
 		pvc.Spec.StorageClassName = &sc.Name
-		return true;
+		return true
 	} else {
-		return false;
+		return false
 	}
 }
 
@@ -1359,7 +1376,7 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 	return nil
 }
 
-func (r *Reconciler) findLocalStorageClass() (string, error) {
+func findLocalStorageClass() (string, error) {
 	lsoStorageClassNames := []string{}
 	scList := &storagev1.StorageClassList{}
 	util.KubeList(scList)

@@ -13,6 +13,7 @@ import (
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/cnpg"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
@@ -66,6 +67,7 @@ func CmdCreate() *cobra.Command {
 	cmd.Flags().String("core-resources", "", "Core resources JSON")
 	cmd.Flags().String("db-resources", "", "DB resources JSON")
 	cmd.Flags().String("endpoint-resources", "", "Endpoint resources JSON")
+	cmd.Flags().Bool("use-standalone-db", false, "Create NooBaa system with standalone DB (Legacy)")
 	cmd.Flags().Bool("use-obc-cleanup-policy", false, "Create NooBaa system with obc cleanup policy")
 	return cmd
 }
@@ -360,6 +362,8 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	dbResourcesJSON, _ := cmd.Flags().GetString("db-resources")
 	endpointResourcesJSON, _ := cmd.Flags().GetString("endpoint-resources")
 	useOBCCleanupPolicy, _ := cmd.Flags().GetBool("use-obc-cleanup-policy")
+	useStandaloneDB, _ := cmd.Flags().GetBool("use-standalone-db")
+	useCNPG := !useStandaloneDB
 
 	if useOBCCleanupPolicy {
 		sys.Spec.CleanupPolicy.Confirmation = nbv1.DeleteOBCConfirmation
@@ -416,6 +420,21 @@ func RunCreate(cmd *cobra.Command, args []string) {
 			secret.Name = sys.Spec.ExternalPgSSLSecret.Name
 			secret.Data = secretData
 			util.KubeCreateSkipExisting(secret)
+		}
+	}
+
+	if useCNPG {
+		dbVolumeSize := ""
+		if sys.Spec.DBVolumeResources != nil {
+			dbVolumeSize = sys.Spec.DBVolumeResources.Requests.Storage().String()
+		}
+		sys.Spec.DBSpec = &nbv1.NooBaaDBSpec{
+			DBImage:              sys.Spec.DBImage,
+			PostgresMajorVersion: &options.PostgresMajorVersion,
+			Instances:            &options.PostgresInstances,
+			DBResources:          sys.Spec.DBResources,
+			DBMinVolumeSize:      dbVolumeSize,
+			DBStorageClass:       sys.Spec.DBStorageClass,
 		}
 	}
 
@@ -721,7 +740,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	r.CheckAll()
 	var NooBaaDB *appsv1.StatefulSet = r.NooBaaPostgresDB
 
-	if r.NooBaa.Spec.ExternalPgSecret == nil {
+	if r.shouldReconcileStandaloneDB() {
 		// NoobaaDB
 		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
 			t := &NooBaaDB.Spec.VolumeClaimTemplates[i]
@@ -887,57 +906,35 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 	log := util.Logger()
 	klient := util.KubeClient()
 
-	operApp := &appsv1.Deployment{}
-	operAppName := "noobaa-operator"
-	operAppErr := klient.Get(util.Context(),
-		client.ObjectKey{Namespace: sys.Namespace, Name: operAppName},
-		operApp)
-
-	if errors.IsNotFound(operAppErr) {
-		log.Printf(`❌ Deployment %q is missing.`, operAppName)
+	operAppReady, operAppErr := CheckDeploymentReady(sys, "noobaa-operator", "noobaa-operator=deployment")
+	if !operAppReady {
 		return operAppErr
 	}
-	if operAppErr != nil {
-		log.Printf(`❌ Deployment %q unknown error in Get(): %s`, operAppName, operAppErr)
-		return operAppErr
-	}
-	desiredReplicas := int32(1)
-	if operApp.Spec.Replicas != nil {
-		desiredReplicas = *operApp.Spec.Replicas
-	}
-	if operApp.Status.Replicas != desiredReplicas {
-		log.Printf(`⏳ System Phase is %q. Deployment %q is not ready:`+
-			` ReadyReplicas %d/%d`,
-			sys.Status.Phase,
-			operAppName,
-			operApp.Status.ReadyReplicas,
-			desiredReplicas)
-		return nil
-	}
 
-	operPodList := &corev1.PodList{}
-	operPodSelector, _ := labels.Parse("noobaa-operator=deployment")
-	operPodErr := klient.List(util.Context(),
-		operPodList,
-		&client.ListOptions{Namespace: sys.Namespace, LabelSelector: operPodSelector})
+	if sys.Spec.DBSpec != nil && sys.Spec.ExternalPgSecret == nil {
 
-	if operPodErr != nil {
-		return operPodErr
-	}
-	if len(operPodList.Items) != int(desiredReplicas) {
-		return fmt.Errorf("Can't find the operator pods")
-	}
-	operPod := &operPodList.Items[0]
-	if operPod.Status.Phase != corev1.PodRunning {
-		log.Printf(`⏳ System Phase is %q. Pod %q is not yet ready: %s`,
-			sys.Status.Phase, operPod.Name, util.GetPodStatusLine(operPod))
-		return nil
-	}
-	for i := range operPod.Status.ContainerStatuses {
-		c := &operPod.Status.ContainerStatuses[i]
-		if !c.Ready {
-			log.Printf(`⏳ System Phase is %q. Container %q is not yet ready: %s`,
-				sys.Status.Phase, c.Name, util.GetContainerStatusLine(c))
+		cnpgOperReady, cnpgOperErr := CheckDeploymentReady(sys, "cnpg-controller-manager", "app.kubernetes.io/name=cloudnative-pg")
+		if !cnpgOperReady {
+			return cnpgOperErr
+		}
+
+		cnpgCluster := cnpg.GetCnpgClusterObj(sys.Namespace, sys.Name+pgClusterSuffix)
+		cnpgClusterErr := klient.Get(util.Context(),
+			client.ObjectKey{Namespace: sys.Namespace, Name: cnpgCluster.Name},
+			cnpgCluster)
+		if errors.IsNotFound(cnpgClusterErr) {
+			log.Printf(`⏳ System Phase is %q. CNPG Cluster %q is not found yet`,
+				sys.Status.Phase, cnpgCluster.Name)
+			return nil
+		}
+		if cnpgClusterErr != nil {
+			log.Printf(`⏳ System Phase is %q. CNPG Cluster %q is not found yet (error): %s`,
+				sys.Status.Phase, cnpgCluster.Name, cnpgClusterErr)
+			return nil
+		}
+		if !isClusterReady(cnpgCluster) {
+			log.Printf(`⏳ System Phase is %q. CNPG Cluster %q is not ready: %s`,
+				sys.Status.Phase, cnpgCluster.Name, cnpgCluster.Status.Phase)
 			return nil
 		}
 	}
@@ -958,7 +955,7 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 			sys.Status.Phase, coreAppName, coreAppErr)
 		return nil
 	}
-	desiredReplicas = int32(1)
+	desiredReplicas := int32(1)
 	if coreApp.Spec.Replicas != nil {
 		desiredReplicas = *coreApp.Spec.Replicas
 	}
@@ -1001,6 +998,68 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 
 	log.Printf(`⏳ System Phase is %q. Waiting for phase ready ...`, sys.Status.Phase)
 	return nil
+}
+
+// CheckDeployment checks if the deployment is ready
+func CheckDeploymentReady(sys *nbv1.NooBaa, operAppName string, listLabel string) (bool, error) {
+
+	log := util.Logger()
+	klient := util.KubeClient()
+
+	operApp := &appsv1.Deployment{}
+	operAppErr := klient.Get(util.Context(),
+		client.ObjectKey{Namespace: sys.Namespace, Name: operAppName},
+		operApp)
+
+	if errors.IsNotFound(operAppErr) {
+		log.Printf(`❌ Deployment %q is missing.`, operAppName)
+		return false, operAppErr
+	}
+	if operAppErr != nil {
+		log.Printf(`❌ Deployment %q unknown error in Get(): %s`, operAppName, operAppErr)
+		return false, operAppErr
+	}
+	desiredReplicas := int32(1)
+	if operApp.Spec.Replicas != nil {
+		desiredReplicas = *operApp.Spec.Replicas
+	}
+	if operApp.Status.Replicas != desiredReplicas {
+		log.Printf(`⏳ System Phase is %q. Deployment %q is not ready:`+
+			` ReadyReplicas %d/%d`,
+			sys.Status.Phase,
+			operAppName,
+			operApp.Status.ReadyReplicas,
+			desiredReplicas)
+		return false, nil
+	}
+
+	operPodList := &corev1.PodList{}
+	operPodSelector, _ := labels.Parse(listLabel)
+	operPodErr := klient.List(util.Context(),
+		operPodList,
+		&client.ListOptions{Namespace: sys.Namespace, LabelSelector: operPodSelector})
+
+	if operPodErr != nil {
+		return false, operPodErr
+	}
+	if len(operPodList.Items) != int(desiredReplicas) {
+		return false, fmt.Errorf("Can't find the operator pods")
+	}
+	operPod := &operPodList.Items[0]
+	if operPod.Status.Phase != corev1.PodRunning {
+		log.Printf(`⏳ System Phase is %q. Pod %q is not yet ready: %s`,
+			sys.Status.Phase, operPod.Name, util.GetPodStatusLine(operPod))
+		return false, nil
+	}
+	for i := range operPod.Status.ContainerStatuses {
+		c := &operPod.Status.ContainerStatuses[i]
+		if !c.Ready {
+			log.Printf(`⏳ System Phase is %q. Container %q in pod %q is not yet ready: %s`,
+				sys.Status.Phase, c.Name, operPod.Name, util.GetContainerStatusLine(c))
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // Client is the system client for making mgmt or s3 calls (with operator/admin credentials)

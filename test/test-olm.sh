@@ -69,7 +69,7 @@ function wait_for_operator() {
 
 function test_operator() {
     MINI_RESOURCES='{"requests":{"cpu":"10m","memory":"128Mi"}}'
-    ${NOOBAA_OPERATOR_LOCAL} --mini install
+    ${NOOBAA_OPERATOR_LOCAL} --mini install --use-standalone-db
     while [ "$(kubectl get noobaa/noobaa -o jsonpath={.status.phase})" != "Ready" ]
     do
         echo -n '.'

@@ -144,7 +144,7 @@ gen-api-fail-if-dirty: gen-api
 gen-olm: gen
 	rm -rf $(OLM)
 	go build -o $(NOOBAA_OPERATOR_LOCAL) -mod=vendor $(CMD_MANAGER)
-	$(NOOBAA_OPERATOR_LOCAL) olm catalog -n my-noobaa-operator --dir $(OUTPUT)/olm
+	$(NOOBAA_OPERATOR_LOCAL) olm catalog -n my-noobaa-operator --include-cnpg --cnpg-image quay.io/noobaa/cloudnative-pg-noobaa:v1.25.0 --dir $(OUTPUT)/olm
 	python3 -m venv $(VENV) && \
 		. $(VENV)/bin/activate && \
 		pip3 install --upgrade pip && \

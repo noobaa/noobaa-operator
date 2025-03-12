@@ -77,6 +77,10 @@ type NooBaaSpec struct {
 	// +optional
 	Image *string `json:"image,omitempty"`
 
+	// DBSpec (optional) DB spec for a managed postgres cluster
+	// +optional
+	DBSpec *NooBaaDBSpec `json:"dbSpec,omitempty"`
+
 	// DBImage (optional) overrides the default image for the db container
 	// +optional
 	DBImage *string `json:"dbImage,omitempty"`
@@ -262,7 +266,7 @@ type BucketLoggingSpec struct {
 	BucketLoggingPVC *string `json:"bucketLoggingPVC,omitempty"`
 }
 
-//BucketNotificationsSpec controls bucket notification configuration
+// BucketNotificationsSpec controls bucket notification configuration
 type BucketNotificationsSpec struct {
 	// Enabled - whether bucket notifications is enabled
 	Enabled bool `json:"enabled"`
@@ -302,6 +306,35 @@ type KeyManagementServiceSpec struct {
 	Schedule          string            `json:"schedule,omitempty"`
 	ConnectionDetails map[string]string `json:"connectionDetails,omitempty"`
 	TokenSecretName   string            `json:"tokenSecretName,omitempty"`
+}
+
+// NooBaaDBSpec defines the desired state of a managed postgres cluster
+// +k8s:openapi-gen=true
+type NooBaaDBSpec struct {
+	// DBImage (optional) overrides the default image for the db instances
+	// +optional
+	DBImage *string `json:"image,omitempty"`
+
+	// PostgresMajorVersion (optional) overrides the default postgres major version
+	// It is the user's responsibility to ensure that the postgres image matches the major version.
+	PostgresMajorVersion *int `json:"postgresMajorVersion,omitempty"`
+
+	// Instances (optional) overrides the default number of db instances
+	// +optional
+	Instances *int `json:"instances,omitempty"`
+
+	// DBResources (optional) overrides the default resource requirements for the db container
+	// +optional
+	DBResources *corev1.ResourceRequirements `json:"dbResources,omitempty"`
+
+	// DBMinVolumeSize (optional) overrides the default PVC resource requirements for the database volume.
+	// The actual requested PVC might be larger if the DB requires more space.
+	// +optional
+	DBMinVolumeSize string `json:"dbMinVolumeSize,omitempty"`
+
+	// DBStorageClass (optional) overrides the default cluster StorageClass for the database volume.
+	// +optional
+	DBStorageClass *string `json:"dbStorageClass,omitempty"`
 }
 
 // EndpointsSpec defines the desired state of noobaa endpoint deployment
@@ -385,6 +418,10 @@ type NooBaaStatus struct {
 	// BeforeUpgradeDbImage is the db image used before last db upgrade
 	// +optional
 	BeforeUpgradeDbImage *string `json:"beforeUpgradeDbImage,omitempty"`
+
+	// DBStatus is the status of the postgres cluster
+	// +optional
+	DBStatus *NooBaaDBStatus `json:"dbStatus,omitempty"`
 }
 
 // SystemPhase is a string enum type for system phases
@@ -412,6 +449,29 @@ const (
 
 	// SystemPhaseReady means the noobaa system has been created and ready to serve.
 	SystemPhaseReady SystemPhase = "Ready"
+)
+
+type NooBaaDBStatus struct {
+	// DBClusterStatus is the status of the postgres cluster
+	DBClusterStatus DBClusterStatus `json:"dbClusterStatus,omitempty"`
+
+	// DBCurrentImage is the image of the postgres cluster
+	DBCurrentImage string `json:"dbCurrentImage,omitempty"`
+
+	// CurrentPgMajorVersion is the major version of the postgres cluster
+	CurrentPgMajorVersion int `json:"currentPgMajorVersion,omitempty"`
+}
+
+type DBClusterStatus string
+
+const (
+	// DBClusterStatusNone means the DB is not created
+	DBClusterStatusNone      DBClusterStatus = "None"
+	DBClusterStatusCreating  DBClusterStatus = "Creating"
+	DBClusterStatusUpdating  DBClusterStatus = "Updating"
+	DBClusterStatusImporting DBClusterStatus = "Importing"
+	DBClusterStatusReady     DBClusterStatus = "Ready"
+	DBClusterStatusFailed    DBClusterStatus = "Failed"
 )
 
 // These are the valid conditions types and statuses:
