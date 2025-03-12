@@ -1423,7 +1423,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "e862d263d097ed43f774784eaaf9a616967746b67608fadbe4ca71d93b220ab6"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "725c47214b416f1013e75f3407b2ff5c718f1593eb0979019658816d9ce1146c"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2630,6 +2630,92 @@ spec:
                       More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                     type: object
                 type: object
+              dbSpec:
+                description: DBSpec (optional) DB spec for a managed postgres cluster
+                properties:
+                  dbMinVolumeSize:
+                    description: |-
+                      DBMinVolumeSize (optional) overrides the default PVC resource requirements for the database volume.
+                      The actual requested PVC might be larger if the DB requires more space.
+                    type: string
+                  dbResources:
+                    description: DBResources (optional) overrides the default resource
+                      requirements for the db container
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+                          This is an alpha field and requires enabling the
+                          DynamicResourceAllocation feature gate.
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                            request:
+                              description: |-
+                                Request is the name chosen for a request in the referenced claim.
+                                If empty, everything from the claim is made available, otherwise
+                                only the result of this request.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                  dbStorageClass:
+                    description: DBStorageClass (optional) overrides the default cluster
+                      StorageClass for the database volume.
+                    type: string
+                  image:
+                    description: DBImage (optional) overrides the default image for
+                      the db instances
+                    type: string
+                  instances:
+                    description: Instances (optional) overrides the default number
+                      of db instances
+                    type: integer
+                  postgresMajorVersion:
+                    description: |-
+                      PostgresMajorVersion (optional) overrides the default postgres major version
+                      It is the user's responsibility to ensure that the postgres image matches the major version.
+                    type: integer
+                type: object
               dbStorageClass:
                 description: |-
                   DBStorageClass (optional) overrides the default cluster StorageClass for the database volume.
@@ -3307,6 +3393,20 @@ spec:
                   - type
                   type: object
                 type: array
+              dbStatus:
+                description: DBStatus is the status of the postgres cluster
+                properties:
+                  currentPgMajorVersion:
+                    description: CurrentPgMajorVersion is the major version of the
+                      postgres cluster
+                    type: integer
+                  dbClusterStatus:
+                    description: DBClusterStatus is the status of the postgres cluster
+                    type: string
+                  dbCurrentImage:
+                    description: DBCurrentImage is the image of the postgres cluster
+                    type: string
+                type: object
               endpoints:
                 description: |-
                   Endpoints reports the actual number of endpoints in the endpoint deployment
@@ -6090,7 +6190,7 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "e145ce24b4267e2e0e63ab56442295bcc605bdc4f6ef723ad6cc15fd38973101"
+const Sha256_deploy_role_yaml = "657d632a42e9ed89ad6c0b2d909517346ab32ab0f8f208d5c9178fa8ad28681d"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6230,6 +6330,18 @@ rules:
   - delete
 - apiGroups:
   - rbac.authorization.k8s.io
+  resources:
+  - '*'
+  verbs: 
+  - '*'
+- apiGroups:
+  - postgresql.cnpg.noobaa.io
+  resources:
+  - '*'
+  verbs: 
+  - '*'
+- apiGroups:
+  - postgresql.cnpg.io
   resources:
   - '*'
   verbs: 
