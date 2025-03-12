@@ -3813,6 +3813,41 @@ spec:
     skipServiceCheck: true
 `
 
+const Sha256_deploy_internal_cnpg_cluster_yaml = "6bca50b66a38b23c391a02b7778d8b49cfb542975b28360d1ab1bb5a4864185f"
+
+const File_deploy_internal_cnpg_cluster_yaml = `apiVersion: postgresql.cnpg.noobaa.io/v1
+kind: Cluster
+metadata:
+  name: noobaa
+  namespace: danny
+spec:
+  instances: 2
+  bootstrap:
+    initdb:
+      database: nbcore
+      import:
+        type: microservice
+        databases:
+          - nbcore
+        source:
+          externalCluster: noobaa-db-pg
+        #postImportApplicationSQL:
+        #- |
+        #  INSERT YOUR SQL QUERIES HERE
+  storage:
+    size: 3Gi
+  externalClusters:
+    - name: noobaa-db-pg
+      connectionParameters:
+        # Use the correct IP or host name for the source database
+        host: noobaa-db-pg-0.noobaa-db-pg.danny.svc
+        user: noobaa
+        dbname: nbcore
+      password:
+        name: noobaa-db
+        key: password
+`
+
 const Sha256_deploy_internal_configmap_ca_inject_yaml = "fac2305a04146c6b553398b1cb69b3ee2f32c5735359f5102590d43d33ccecba"
 
 const File_deploy_internal_configmap_ca_inject_yaml = `apiVersion: v1
@@ -6090,7 +6125,7 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "e145ce24b4267e2e0e63ab56442295bcc605bdc4f6ef723ad6cc15fd38973101"
+const Sha256_deploy_role_yaml = "657d632a42e9ed89ad6c0b2d909517346ab32ab0f8f208d5c9178fa8ad28681d"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6230,6 +6265,18 @@ rules:
   - delete
 - apiGroups:
   - rbac.authorization.k8s.io
+  resources:
+  - '*'
+  verbs: 
+  - '*'
+- apiGroups:
+  - postgresql.cnpg.noobaa.io
+  resources:
+  - '*'
+  verbs: 
+  - '*'
+- apiGroups:
+  - postgresql.cnpg.io
   resources:
   - '*'
   verbs: 

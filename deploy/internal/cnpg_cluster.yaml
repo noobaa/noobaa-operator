@@ -1,0 +1,31 @@
+apiVersion: postgresql.cnpg.noobaa.io/v1
+kind: Cluster
+metadata:
+  name: noobaa
+  namespace: danny
+spec:
+  instances: 2
+  bootstrap:
+    initdb:
+      database: nbcore
+      import:
+        type: microservice
+        databases:
+          - nbcore
+        source:
+          externalCluster: noobaa-db-pg
+        #postImportApplicationSQL:
+        #- |
+        #  INSERT YOUR SQL QUERIES HERE
+  storage:
+    size: 3Gi
+  externalClusters:
+    - name: noobaa-db-pg
+      connectionParameters:
+        # Use the correct IP or host name for the source database
+        host: noobaa-db-pg-0.noobaa-db-pg.danny.svc
+        user: noobaa
+        dbname: nbcore
+      password:
+        name: noobaa-db
+        key: password
