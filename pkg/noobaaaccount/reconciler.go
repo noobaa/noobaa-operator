@@ -369,7 +369,11 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 			if err != nil {
 				return fmt.Errorf("cannot create an auth token for remote operator, error: %v", err)
 			}
+			accessKeys := accountInfo.AccessKeys[0]
 			r.Secret.StringData["auth_token"] = res.Token
+			r.Secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
+			r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
+
 		}
 	} else {
 		var accessKeys nb.S3AccessKeys
