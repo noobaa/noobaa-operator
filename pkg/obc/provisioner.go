@@ -130,9 +130,9 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 		return nil, err
 	}
 
-	err = r.putBucketTagging()
+	err = UpdateBucketTagging(r.SysClient, r.OBC)
 	if err != nil {
-		logrus.Warnf("failed executing putBucketTagging on bucket: %v, %v", r.BucketName, err)
+		logrus.Warnf("failed executing UpdateBucketTagging on bucket: %v, %v", r.BucketName, err)
 	}
 	return r.OB, nil
 }
@@ -237,6 +237,58 @@ func (p *Provisioner) Update(ob *nbv1.ObjectBucket) error {
 	}
 
 	if err = r.UpdateBucket(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UpdateBucketTagging is not handled by lib-bucket-provisioner and is a customized function to update bucket tagging with OBC labels
+func UpdateBucketTagging(sysClient *system.Client, obc *nbv1.ObjectBucketClaim) error {
+	if obc == nil || obc.Labels == nil {
+		return fmt.Errorf("OBC is not provided or doesn't contain any label")
+	}
+
+	client := &http.Client{Transport: util.InsecureHTTPTransport}
+	s3Status := &sysClient.NooBaa.Status.Services.ServiceS3
+	s3Config := &aws.Config{
+		Credentials: credentials.NewStaticCredentials(
+			sysClient.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"],
+			sysClient.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"],
+			"",
+		),
+		Region:           aws.String("us-east-1"),
+		Endpoint:         aws.String(s3Status.InternalDNS[0]),
+		S3ForcePathStyle: aws.Bool(true),
+		HTTPClient:       client,
+	}
+	s3Session, err := session.NewSession(s3Config)
+	if err != nil {
+		return err
+	}
+	s3Client := s3.New(s3Session)
+
+	// convert labels to tagging array
+	taggingArray := []*s3.Tag{}
+	for key, value := range obc.Labels {
+		// no need to put tagging of these labels
+		if !util.Contains([]string{"app", "noobaa-domain", "bucket-provisioner"}, key) {
+			keyPointer := key
+			valuePointer := value
+			taggingArray = append(taggingArray, &s3.Tag{Key: &keyPointer, Value: &valuePointer})
+		}
+	}
+	logrus.Infof("put bucket tagging on bucket: %s tagging: %+v ", obc.Spec.BucketName, taggingArray)
+	if len(taggingArray) == 0 {
+		return nil
+	}
+	_, err = s3Client.PutBucketTagging(&s3.PutBucketTaggingInput{
+		Bucket: &obc.Spec.BucketName,
+		Tagging: &s3.Tagging{
+			TagSet: taggingArray,
+		},
+	})
+	if err != nil {
 		return err
 	}
 
@@ -672,54 +724,6 @@ func (r *BucketRequest) DeleteBucket() error {
 		log.Infof("✅ Successfully deleted bucket %q", r.BucketName)
 	}
 
-	return nil
-}
-
-// putBucketTagging calls s3 putBucketTagging on the created noobaa bucket
-func (r *BucketRequest) putBucketTagging() error {
-
-	client := &http.Client{Transport: util.InsecureHTTPTransport}
-	s3Status := &r.SysClient.NooBaa.Status.Services.ServiceS3
-	s3Config := &aws.Config{
-		Credentials: credentials.NewStaticCredentials(
-			r.SysClient.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"],
-			r.SysClient.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"],
-			"",
-		),
-		Region:           aws.String("us-east-1"),
-		Endpoint:         aws.String(s3Status.InternalDNS[0]),
-		S3ForcePathStyle: aws.Bool(true),
-		HTTPClient:       client,
-	}
-	s3Session, err := session.NewSession(s3Config)
-	if err != nil {
-		return err
-	}
-	s3Client := s3.New(s3Session)
-
-	// convert labels to tagging array
-	taggingArray := []*s3.Tag{}
-	for key, value := range r.OBC.Labels {
-		// no need to put tagging of these labels
-		if !util.Contains([]string{"app", "noobaa-domain", "bucket-provisioner"}, key) {
-			keyPointer := key
-			valuePointer := value
-			taggingArray = append(taggingArray, &s3.Tag{Key: &keyPointer, Value: &valuePointer})
-		}
-	}
-	logrus.Infof("put bucket tagging on bucket: %s tagging: %+v ", r.BucketName, taggingArray)
-	if len(taggingArray) == 0 {
-		return nil
-	}
-	_, err = s3Client.PutBucketTagging(&s3.PutBucketTaggingInput{
-		Bucket: &r.BucketName,
-		Tagging: &s3.Tagging{
-			TagSet: taggingArray,
-		},
-	})
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
