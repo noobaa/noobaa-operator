@@ -188,8 +188,10 @@ func init() {
 	Panic(kedav1alpha1.AddToScheme(scheme.Scheme))
 	Panic(apiregistration.AddToScheme(scheme.Scheme))
 	Panic(configv1.AddToScheme(scheme.Scheme))
-	// add vanilla cnpg scheme
-	Panic(cnpgv1.AddToScheme(scheme.Scheme))
+	if os.Getenv("USE_CNPG_API_GROUP") == "true" {
+		// add vanilla cnpg scheme
+		Panic(cnpgv1.AddToScheme(scheme.Scheme))
+	}
 }
 
 // KubeConfig loads kubernetes client config from default locations (flags, user dir, etc)

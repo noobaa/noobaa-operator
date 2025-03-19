@@ -27,7 +27,7 @@ func CmdInstall() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().Bool("use-obc-cleanup-policy", false, "Create NooBaa system with obc cleanup policy")
-	cmd.Flags().Bool("use-cnpg", false, "Install CloudNativePG operator for HA PostgreSQL")
+	cmd.Flags().Bool("use-standalone-db", false, "Create NooBaa system with standalone DB (Legacy)")
 	cmd.AddCommand(
 		CmdYaml(),
 		cnpg.CmdCNPG(),
@@ -112,7 +112,8 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	log.Printf("")
 
 	// Check if CNPG installation is requested
-	useCNPG, _ := cmd.Flags().GetBool("use-cnpg")
+	useStandaloneDB, _ := cmd.Flags().GetBool("use-standalone-db")
+	useCNPG := !useStandaloneDB
 	if useCNPG {
 		log.Printf("CloudNativePG Operator Install:")
 		cnpg.RunInstall(cmd, args)

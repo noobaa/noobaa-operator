@@ -72,11 +72,21 @@ var NooBaaImage = ContainerImage
 
 // DBImage is the default db image url
 // it can be overridden for testing or different registry locations.
-var DBImage = "quay.io/sclorg/postgresql-15-c9s"
+var DBImage = "quay.io/sclorg/postgresql-16-c9s"
+
+// PostgresMajorVersion is the default postgres major version
+// it must match the postgres image version
+var PostgresMajorVersion = 16
+
+// PostgresInstances is the default number of postgres instances in a managed postgres cluster
+var PostgresInstances = 2
 
 // Psql12Image is the default postgres12 db image url
 // currently it can not be overridden.
 var Psql12Image = "centos/postgresql-12-centos7"
+
+// DefaultDBVolumeSize is the default volume size
+var DefaultDBVolumeSize = "50Gi"
 
 // DBType is the default db image type
 // it can be overridden for testing or different types.
@@ -174,6 +184,8 @@ var CnpgVersion = "1.25.0"
 var CnpgImage = "quay.io/noobaa/cloudnative-pg-testing:1.25.0-arm64"
 
 // UseCnpgApiGroup indicates if the original CloudNativePG API group should be used for the installation manifests
+// Relevant for the CLI commands. during reconciliation we look at the env variable USE_CNPG_API_GROUP to determine
+// if we should use the original API group
 var UseCnpgApiGroup = false
 
 // CnpgApiGroup is the API group used for cloudnative-pg CRDs

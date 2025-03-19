@@ -360,6 +360,8 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	dbResourcesJSON, _ := cmd.Flags().GetString("db-resources")
 	endpointResourcesJSON, _ := cmd.Flags().GetString("endpoint-resources")
 	useOBCCleanupPolicy, _ := cmd.Flags().GetBool("use-obc-cleanup-policy")
+	useStandaloneDB, _ := cmd.Flags().GetBool("use-standalone-db")
+	useCNPG := !useStandaloneDB
 
 	if useOBCCleanupPolicy {
 		sys.Spec.CleanupPolicy.Confirmation = nbv1.DeleteOBCConfirmation
@@ -416,6 +418,21 @@ func RunCreate(cmd *cobra.Command, args []string) {
 			secret.Name = sys.Spec.ExternalPgSSLSecret.Name
 			secret.Data = secretData
 			util.KubeCreateSkipExisting(secret)
+		}
+	}
+
+	if useCNPG {
+		dbVolumeSize := ""
+		if sys.Spec.DBVolumeResources != nil {
+			dbVolumeSize = sys.Spec.DBVolumeResources.Requests.Storage().String()
+		}
+		sys.Spec.DBSpec = &nbv1.NooBaaDBSpec{
+			DBImage:              sys.Spec.DBImage,
+			PostgresMajorVersion: &options.PostgresMajorVersion,
+			Instances:            &options.PostgresInstances,
+			DBResources:          sys.Spec.DBResources,
+			DBMinVolumeSize:      dbVolumeSize,
+			DBStorageClass:       sys.Spec.DBStorageClass,
 		}
 	}
 
@@ -721,7 +738,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	r.CheckAll()
 	var NooBaaDB *appsv1.StatefulSet = r.NooBaaPostgresDB
 
-	if r.NooBaa.Spec.ExternalPgSecret == nil {
+	if r.shouldReconcileStandaloneDB() {
 		// NoobaaDB
 		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
 			t := &NooBaaDB.Spec.VolumeClaimTemplates[i]

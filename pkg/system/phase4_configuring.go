@@ -909,7 +909,7 @@ func (r *Reconciler) preparePVPoolBackingStore() error {
 	if r.NooBaa.Spec.PVPoolDefaultStorageClass != nil {
 		r.DefaultBackingStore.Spec.PVPool.StorageClass = *r.NooBaa.Spec.PVPoolDefaultStorageClass
 	} else {
-		storageClassName, err := r.findLocalStorageClass()
+		storageClassName, err := findLocalStorageClass()
 		if err != nil {
 			r.Logger.Errorf("got error finding a default/local storage class. error: %v", err)
 			return err

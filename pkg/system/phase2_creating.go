@@ -91,9 +91,11 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return nil
 	}
 
-	// reconcile DB
-	if err := r.ReconcileCNPGCluster(); err != nil {
-		return err
+	if r.shouldReconcileCNPGCluster() {
+		r.Logger.Infof("Reconciling CNPG cluster")
+		if err := r.ReconcileCNPGCluster(); err != nil {
+			return err
+		}
 	}
 
 	// reconcile the core app config
@@ -118,7 +120,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	if err := r.ReconcileObject(r.SecretServer, nil); err != nil {
 		return err
 	}
-	if r.NooBaa.Spec.ExternalPgSecret == nil {
+	if r.shouldReconcileStandaloneDB() {
 		if err := r.ReconcileObject(r.SecretDB, nil); err != nil {
 			return err
 		}
@@ -128,7 +130,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	}
 
 	// create the db only if postgres secret is not given
-	if r.NooBaa.Spec.ExternalPgSecret == nil {
+	if r.shouldReconcileStandaloneDB() {
 		if err := r.ReconcileDB(); err != nil {
 			return err
 		}
@@ -320,7 +322,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 				if r.NooBaa.Spec.DBStorageClass != nil {
 					pvc.Spec.StorageClassName = r.NooBaa.Spec.DBStorageClass
 				} else {
-					storageClassName, err := r.findLocalStorageClass()
+					storageClassName, err := findLocalStorageClass()
 					if err != nil {
 						r.Logger.Errorf("got error finding a default/local storage class. error: %v", err)
 						return err
@@ -385,8 +387,13 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			c.Env[j].Value = r.SetDesiredAgentProfile(c.Env[j].Value)
 
 		case "POSTGRES_HOST":
-			if r.NooBaa.Spec.ExternalPgSecret == nil {
+			if r.shouldReconcileStandaloneDB() {
 				c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName + "." + r.NooBaaPostgresDB.Namespace + ".svc"
+			} else if r.shouldReconcileCNPGCluster() {
+				if c.Env[j].Value != "" {
+					c.Env[j].Value = ""
+				}
+				c.Env[j].ValueFrom = r.getEnvFromClusterSecretKey("host")
 			}
 
 		case "DB_TYPE":
@@ -402,10 +409,10 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
 			}
 		case "POSTGRES_USER":
-			if r.NooBaa.Spec.ExternalPgSecret == nil {
-				if c.Env[j].Value != "" {
-					c.Env[j].Value = ""
-				}
+			if c.Env[j].Value != "" {
+				c.Env[j].Value = ""
+			}
+			if r.shouldReconcileStandaloneDB() {
 				c.Env[j].ValueFrom = &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
@@ -414,12 +421,14 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 						Key: "user",
 					},
 				}
+			} else if r.shouldReconcileCNPGCluster() {
+				c.Env[j].ValueFrom = r.getEnvFromClusterSecretKey("username")
 			}
 		case "POSTGRES_PASSWORD":
-			if r.NooBaa.Spec.ExternalPgSecret == nil {
-				if c.Env[j].Value != "" {
-					c.Env[j].Value = ""
-				}
+			if c.Env[j].Value != "" {
+				c.Env[j].Value = ""
+			}
+			if r.shouldReconcileStandaloneDB() {
 				c.Env[j].ValueFrom = &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
@@ -428,6 +437,8 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 						Key: "password",
 					},
 				}
+			} else if r.shouldReconcileCNPGCluster() {
+				c.Env[j].ValueFrom = r.getEnvFromClusterSecretKey("password")
 			}
 		case "POSTGRES_CONNECTION_STRING":
 			if r.NooBaa.Spec.ExternalPgSecret != nil {
@@ -1365,7 +1376,7 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 	return nil
 }
 
-func (r *Reconciler) findLocalStorageClass() (string, error) {
+func findLocalStorageClass() (string, error) {
 	lsoStorageClassNames := []string{}
 	scList := &storagev1.StorageClassList{}
 	util.KubeList(scList)
