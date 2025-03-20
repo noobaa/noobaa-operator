@@ -8,6 +8,7 @@ env:
   GO111MODULE: "on"
   GOPROXY: "https://proxy.golang.org"
   KUBERNETES_VERSION: "v1.17.3"
+  USE_MINIKUBE_DOCKER_ENV: "true" 
 
 jobs:
   run-tests:
@@ -25,7 +26,15 @@ jobs:
         run: |
           bash .travis/install-tools.sh
           bash .travis/install-python.sh
-          sudo bash .travis/install-minikube.sh
+
+      - name: Start Minikube
+        id: minikube
+        uses: medyagh/setup-minikube@latest
+        with:
+          cpus: 'max'
+          memory: 'max'
+      
+  
 
       - name: Run Generate API
         id: run-gen-api
@@ -33,7 +42,7 @@ jobs:
 
       - name: Run Build
         id: run-build
-        run: make build || exit 1
+        run: eval $(minikube docker-env) && make build || exit 1
 
       - name: Run Test
         id: run-test
@@ -41,7 +50,7 @@ jobs:
 
       - name: Run Test OLM
         id: run-test-olm
-        run: sudo env "PATH=$PATH" make test-olm || exit 1
+        run: eval $(minikube docker-env) && make test-olm || exit 1
 
   run-cli-tests:
     runs-on: ubuntu-latest
@@ -58,19 +67,45 @@ jobs:
         run: |
           bash .travis/install-tools.sh
           bash .travis/install-python.sh
-          sudo bash .travis/install-minikube.sh
 
+      - name: Start Minikube
+        id: minikube
+        uses: medyagh/setup-minikube@latest
+        with:
+          cpus: 'max'
+          memory: 'max'
+      
       - name: Run Build CLI
         id: run-build-cli
         run: make cli || exit 1
 
       - name: Run Build Image
         id: run-build-image
-        run: make image || exit 1
+        run: eval $(minikube docker-env) && make image || exit 1
 
       - name: Run Test CLI
         id: run-test-cli
-        run: sudo make test-cli-flow || exit 1
+        run: make test-cli-flow || exit 1
+
+      - name: Collect logs
+        if: ${{ failure() }}
+        run: |
+          set -x
+          ./build/_output/bin/noobaa-operator diagnostics collect --db-dump --dir=tests-logs -n test
+
+      - name: Save logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests-logs
+          path: ./tests-logs
+
+        # Uncomment this step in case where you want to connect to the VM of this workflow using SSH.
+        # Pay attention that this workflow was configured with a timeout, and you might change it for this step.
+        # - name: Setup tmate session
+        #   if: ${{ failure() }}
+        #   uses: mxschmitt/action-tmate@v3
+
 
   run-core-config-map-tests:
     runs-on: ubuntu-latest
@@ -87,7 +122,15 @@ jobs:
         run: |
           bash .travis/install-tools.sh
           bash .travis/install-python.sh
-          sudo bash .travis/install-minikube.sh
+
+
+      - name: Start Minikube
+        id: minikube
+        uses: medyagh/setup-minikube@latest
+        with:
+          cpus: 'max'
+          memory: 'max'
+  
 
       - name: Run Build CLI
         id: run-build-cli
@@ -95,8 +138,8 @@ jobs:
 
       - name: Run Build Image
         id: run-build-image
-        run: make image || exit 1
+        run: eval $(minikube docker-env) && make image || exit 1
 
       - name: Run Test Core config map
         id: run-test-core-config-map-flow
-        run: sudo make test-core-config-map-flow || exit 1
+        run: make test-core-config-map-flow || exit 1

@@ -32,24 +32,24 @@ jobs:
         run: |
           set -x
           cd ./noobaa-operator
-          sudo bash .travis/install-minikube.sh
           go get -v github.com/onsi/ginkgo/v2
           go install -v github.com/onsi/ginkgo/v2/ginkgo
           ginkgo version
 
-      - name: Change settings for k8s and minikube
-        run: |
-          sudo mv /root/.kube /root/.minikube $HOME
-          sudo chown -R $USER $HOME/.kube $HOME/.minikube
-          sed "s/root/home\/$USER/g" $HOME/.kube/config > tmp; mv tmp $HOME/.kube/config
-
+      - name: Start Minikube
+        id: minikube
+        uses: medyagh/setup-minikube@latest
+        with:
+          cpus: 'max'
+          memory: 'max'
+          driver: 'none'
       - name: Build operator image
         run: |
           set -x
           cd ./noobaa-operator
           make cli
           make image
-          sudo docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
+          docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
 
       - name: Install noobaa system
         run: |
