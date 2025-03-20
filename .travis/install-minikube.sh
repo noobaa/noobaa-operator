@@ -16,8 +16,8 @@ sudo apt-get update && sudo apt-get install socat && sudo apt-get install conntr
 
 MINIKUBE_DEBUG=""
 #MINIKUBE_DEBUG="--alsologtostderr --v=5"
-export MINIKUBE_VERSION=v1.18.1
-export KUBERNETES_VERSION=v1.20.2
+export MINIKUBE_VERSION=v1.35.0
+export KUBERNETES_VERSION=v1.32.0
 
 
 sudo mount --make-rshared /
@@ -28,7 +28,7 @@ curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/${KUB
     chmod +x kubectl &&  \
     sudo mv kubectl /usr/local/bin/
 
-curl -Lo minikube https://storage.googleapis.com/minikube/releases/${MINIKUBE_VERSION}/minikube-linux-amd64 && \
+curl -Lo minikube https://github.com/kubernetes/minikube/releases/download/${MINIKUBE_VERSION}/minikube-linux-amd64 && \
     chmod +x minikube &&  \
     sudo mv minikube /usr/local/bin/minikube
 
@@ -36,11 +36,11 @@ mkdir "${HOME}"/.kube || true
 # touch "${HOME}"/.kube/config
 
 # minikube config
-minikube config set WantNoneDriverWarning false
+# minikube config set WantNoneDriverWarning false
 minikube config set vm-driver none
 
 minikube version
-sudo minikube start --kubernetes-version=$KUBERNETES_VERSION ${MINIKUBE_DEBUG}
+sudo minikube start --kubernetes-version=$KUBERNETES_VERSION ${MINIKUBE_DEBUG} --wait all
 # sudo chown -R travis: /home/travis/.minikube/
 
 minikube update-context || true
