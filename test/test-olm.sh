@@ -58,7 +58,10 @@ function wait_for_operator() {
     echo "----> Wait for CSV to be ready ..."
     while [ "$(kubectl get csv noobaa-operator.v$VERSION -o jsonpath={.status.phase})" != "Succeeded" ]
     do
-        echo -n '.'
+        kubectl describe csv noobaa-operator.v$VERSION || true
+        kubectl get pod || true
+        kubectl get deployment || true
+        kubectl describe deployment noobaa-operator || true
         sleep 1
     done
 
