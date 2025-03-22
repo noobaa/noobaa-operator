@@ -12,6 +12,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/spf13/cobra"
 
+	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	cnpgReleases "github.com/cloudnative-pg/cloudnative-pg/releases"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -42,6 +43,11 @@ type CnpgResources struct {
 	CnpgWebhooksClusterRole        *rbacv1.ClusterRole
 	CnpgWebhooksClusterRoleBinding *rbacv1.ClusterRoleBinding
 }
+
+var (
+	CnpgAPIGroup   = getCnpgAPIGroup()
+	CnpgAPIVersion = CnpgAPIGroup + "/v1"
+)
 
 // CmdCNPG returns a CLI command
 func CmdCNPG() *cobra.Command {
@@ -345,6 +351,12 @@ func modifyResources(cnpgRes *CnpgResources) {
 			},
 		},
 	})
+	if options.UseCnpgApiGroup {
+		depl.Spec.Template.Spec.Containers[0].Env = append(depl.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "USE_CNPG_API_GROUP",
+			Value: "true",
+		})
+	}
 	// modify the env variable OPERATOR_IMAGE_NAME according to options.CnpgImage
 	for i := range depl.Spec.Template.Spec.Containers[0].Env {
 		if depl.Spec.Template.Spec.Containers[0].Env[i].Name == "OPERATOR_IMAGE_NAME" {
@@ -509,4 +521,46 @@ func getResourcesFromYaml() (*CnpgResources, error) {
 	}
 
 	return cnpgRes, nil
+}
+
+// getCnpgAPIGroup returns the API group to use for CNPG resources
+// by default it's "postgresql.cnpg.noobaa.io"
+func getCnpgAPIGroup() string {
+	useCnpgApiGroup := os.Getenv("USE_CNPG_API_GROUP")
+	if useCnpgApiGroup == "true" {
+		return "postgresql.cnpg.io"
+	}
+	return "postgresql.cnpg.noobaa.io"
+}
+
+func GetCnpgImageCatalogObj(namespace string, name string) *cnpgv1.ImageCatalog {
+
+	cnpgImageCatalog := &cnpgv1.ImageCatalog{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: CnpgAPIVersion,
+			Kind:       "ImageCatalog",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+	return cnpgImageCatalog
+}
+
+// GetCnpgCluster returns a new CNPG cluster resource
+func GetCnpgClusterObj(namespace string, name string) *cnpgv1.Cluster {
+	// cnpgCluster := util.KubeObject(bundle.File_deploy_internal_cnpg_cluster_yaml).(*cnpgv1.Cluster)
+	cnpgCluster := &cnpgv1.Cluster{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: CnpgAPIVersion,
+			Kind:       "Cluster",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels:    map[string]string{},
+		},
+	}
+	return cnpgCluster
 }

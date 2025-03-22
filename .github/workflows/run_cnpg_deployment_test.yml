@@ -1,0 +1,47 @@
+name: Run CNPG Deployment Test
+on: [push, pull_request, workflow_dispatch]
+description: "Basic sanity test noobaa deployment using a CNPG cluster"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  GO111MODULE: "on"
+  GOPROXY: "https://proxy.golang.org"
+  NAMESPACE: "test"
+
+jobs:
+  cnpg-deployment-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Start Minikube
+        id: minikube
+        uses: medyagh/setup-minikube@latest
+        with:
+            cpus: 'max'
+            memory: 'max'
+
+      - name: Run Build CLI
+        id: run-build-cli
+        run: make cli || exit 1
+
+      - name: Run Build Image
+        id: run-build-image
+        run: eval $(minikube docker-env) && make image || exit 1
+
+      - name: Install noobaa
+        run: ./build/_output/bin/noobaa-operator-local -n ${NAMESPACE} --mini install
+
+      - name: Check Statuses
+        run: |
+          set -x
+          kubectl get noobaa noobaa -n ${NAMESPACE} -o json | jq -r '.status.phase'
+          kubectl get pods -n ${NAMESPACE}
+         
