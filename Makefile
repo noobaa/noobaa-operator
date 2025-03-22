@@ -15,7 +15,7 @@ VERSION ?= $(shell go run cmd/version/main.go)
 IMAGE ?= noobaa/noobaa-operator:$(VERSION)
 DEV_IMAGE ?= noobaa/noobaa-operator-dev:$(VERSION)
 REPO ?= github.com/noobaa/noobaa-operator
-CATALOG_IMAGE ?= noobaa/noobaa-operator-catalog:$(VERSION)
+CATALOG_IMAGE ?= localhost:5000/noobaa/noobaa-operator-catalog:integration
 BUNDLE_IMAGE ?= noobaa/noobaa-operator-bundle:$(VERSION)
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -201,7 +201,7 @@ test-go: gen cli
 .PHONY: test-go
 
 test-cli-flow:
-	$(TIME) ./test/cli/test_cli_flow.sh
+	$(TIME) ./test/cli/test_cli_flow.sh --operator-image localhost:5000/noobaa/noobaa-operator:integration
 	@echo "✅ test-cli-flow"
 .PHONY: test-cli-flow
 

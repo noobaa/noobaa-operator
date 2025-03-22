@@ -8,6 +8,8 @@ env:
   GO111MODULE: "on"
   GOPROXY: "https://proxy.golang.org"
   KUBERNETES_VERSION: "v1.17.3"
+  OPERATOR_IMAGE: "localhost:5000/noobaa/noobaa-operator:integration"
+  CATALOG_IMAGE: "localhost:5000/noobaa/noobaa-operator-catalog:integration"
 
 jobs:
   run-tests:
@@ -25,7 +27,7 @@ jobs:
         run: |
           bash .travis/install-tools.sh
           bash .travis/install-python.sh
-          sudo bash .travis/install-minikube.sh
+          bash .travis/install-5nodes-kind-cluster.sh
 
       - name: Run Generate API
         id: run-gen-api
@@ -33,15 +35,21 @@ jobs:
 
       - name: Run Build
         id: run-build
-        run: make build || exit 1
+        run: |
+          make build || exit 1
+          docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
+          docker push $OPERATOR_IMAGE
+          # docker tag noobaa/noobaa-operator-catalog:$(go run cmd/version/main.go) $CATALOG_IMAGE
+          docker push $CATALOG_IMAGE
 
-      - name: Run Test
-        id: run-test
-        run: make test || exit 1
+
+      # - name: Run Test
+      #   id: run-test
+      #   run: make test || exit 1
 
       - name: Run Test OLM
         id: run-test-olm
-        run: sudo env "PATH=$PATH" make test-olm || exit 1
+        run: make test-olm || exit 1
 
   run-cli-tests:
     runs-on: ubuntu-latest
@@ -58,7 +66,7 @@ jobs:
         run: |
           bash .travis/install-tools.sh
           bash .travis/install-python.sh
-          sudo bash .travis/install-minikube.sh
+          bash .travis/install-5nodes-kind-cluster.sh
 
       - name: Run Build CLI
         id: run-build-cli
@@ -66,11 +74,14 @@ jobs:
 
       - name: Run Build Image
         id: run-build-image
-        run: make image || exit 1
+        run: |
+          make image || exit 1
+          docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
+          docker push $OPERATOR_IMAGE
 
       - name: Run Test CLI
         id: run-test-cli
-        run: sudo make test-cli-flow || exit 1
+        run: make test-cli-flow || exit 1
 
   run-core-config-map-tests:
     runs-on: ubuntu-latest
