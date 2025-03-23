@@ -149,6 +149,8 @@ func RunUpgrade(cmd *cobra.Command, args []string) {
 	log.Printf("System versions prior to upgrade:\n")
 	system.RunSystemVersionsStatus(cmd, args)
 	log.Printf("Namespace: %s\n", options.Namespace)
+	log.Printf("CNPG upgrade:")
+	cnpg.RunUpgrade(cmd, args)
 	log.Printf("CRD upgrade:")
 	crd.RunUpgrade(cmd, args)
 	log.Printf("\nOperator upgrade:")

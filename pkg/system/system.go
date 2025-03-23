@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/url"
 	"os"
@@ -446,13 +447,38 @@ func RunCreate(cmd *cobra.Command, args []string) {
 
 // RunUpgrade runs a CLI command
 func RunUpgrade(cmd *cobra.Command, args []string) {
-	// Template the a system CR with an upgraded core image.
-	// We currently opt to not upgrade the DB image as part of this process to prevent complications.
-	sys := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa)
+
+	sys := &nbv1.NooBaa{
+		TypeMeta: metav1.TypeMeta{Kind: "NooBaa"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      options.SystemName,
+			Namespace: options.Namespace,
+		},
+	}
+
+	if !util.KubeCheck(sys) {
+		log.Fatalf("NooBaa system %q not found", options.SystemName)
+	}
+
 	if options.NooBaaImage != "" {
 		image := options.NooBaaImage
 		sys.Spec.Image = &image
 		sys.Namespace = options.Namespace
+	}
+
+	dbVolumeSize := ""
+	if sys.Spec.DBVolumeResources != nil {
+		dbVolumeSize = sys.Spec.DBVolumeResources.Requests.Storage().String()
+	}
+
+	// set dbSpec
+	sys.Spec.DBSpec = &nbv1.NooBaaDBSpec{
+		DBImage:              &options.DBImage,
+		PostgresMajorVersion: &options.PostgresMajorVersion,
+		Instances:            &options.PostgresInstances,
+		DBResources:          sys.Spec.DBResources,
+		DBMinVolumeSize:      dbVolumeSize,
+		DBStorageClass:       sys.Spec.DBStorageClass,
 	}
 	util.KubeApply(sys)
 }

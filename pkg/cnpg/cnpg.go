@@ -103,6 +103,31 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	util.KubeCreateSkipExisting(cnpgRes.WebhooksService)
 }
 
+// RunInstall runs the CloudNativePG operator installation
+func RunUpgrade(cmd *cobra.Command, args []string) {
+
+	cnpgRes, err := LoadCnpgResources()
+	if err != nil {
+		util.Panic(err)
+	}
+
+	for _, crd := range cnpgRes.CRDs {
+		util.KubeApply(crd)
+	}
+	util.KubeApply(cnpgRes.ServiceAccount)
+	util.KubeApply(cnpgRes.CnpgManagerRoleBinding)
+	util.KubeApply(cnpgRes.CnpgManagerClusterRoleBinding)
+	util.KubeApply(cnpgRes.CnpgWebhooksClusterRoleBinding)
+	util.KubeApply(cnpgRes.CnpgWebhooksClusterRole)
+	util.KubeApply(cnpgRes.ConfigMap)
+	util.KubeApply(cnpgRes.MutatingWebhookConfiguration)
+	util.KubeApply(cnpgRes.ValidatingWebhookConfiguration)
+	util.KubeApply(cnpgRes.CnpgOperatorDeployment)
+	util.KubeApply(cnpgRes.CnpgManagerClusterRole)
+	util.KubeApply(cnpgRes.CnpgManagerRole)
+	util.KubeApply(cnpgRes.WebhooksService)
+}
+
 // CmdUninstall returns a CLI command
 func CmdUninstall() *cobra.Command {
 	cmd := &cobra.Command{
