@@ -440,6 +440,13 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 
 			r.DeploymentEndpoint.Spec.Template.Annotations["noobaa.io/configmap-hash"] = r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"]
 
+			if r.NooBaa.Spec.EnvVariablesOverride != nil && r.NooBaa.Spec.EnvVariablesOverride.Endpoint != nil {
+				// util.MergeEnvArrays will keep variables of the first array provided in
+				// arguments in case of a conflict, so we provide the override array first
+				// and then set the container Env array to the resulting merged array
+				util.MergeEnvArrays(&r.NooBaa.Spec.EnvVariablesOverride.Endpoint, &c.Env);
+				c.Env = r.NooBaa.Spec.EnvVariablesOverride.Endpoint;
+			}
 			return r.setDesiredEndpointMounts(podSpec, c)
 		}
 	}

@@ -12,10 +12,10 @@ TIME ?= time -p
 ARCH ?= $(shell uname -m)
 
 VERSION ?= $(shell go run cmd/version/main.go)
-IMAGE ?= noobaa/noobaa-operator:$(VERSION)
+IMAGE ?= nooverflow/noobaa-operator:$(VERSION)
 DEV_IMAGE ?= noobaa/noobaa-operator-dev:$(VERSION)
 REPO ?= github.com/noobaa/noobaa-operator
-CATALOG_IMAGE ?= noobaa/noobaa-operator-catalog:$(VERSION)
+CATALOG_IMAGE ?= nooverflow/noobaa-operator-catalog:$(VERSION)
 BUNDLE_IMAGE ?= noobaa/noobaa-operator-bundle:$(VERSION)
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -291,7 +291,7 @@ test-util: vendor
 	@echo "✅ test-util"
 .PHONY: test-util
 
-test-validations: 
+test-validations:
 	ginkgo -v pkg/validations
 	@echo "✅ test-validations"
 .PHONY: test-validations
