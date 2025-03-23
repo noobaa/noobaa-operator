@@ -1,6 +1,8 @@
 module github.com/noobaa/noobaa-operator/v5
 
-go 1.21
+go 1.22
+
+toolchain go1.22.7
 
 replace (
 	// TODO: remove this replace once https://github.com/libopenstorage/secrets/pull/83 is merged
@@ -70,16 +72,20 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.5.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets v0.12.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/internal v0.7.1 // indirect
-	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.1 // indirect
-	github.com/containernetworking/cni v1.1.2 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2 // indirect
+	github.com/Masterminds/semver/v3 v3.2.1 // indirect
+	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
+	github.com/containernetworking/cni v1.2.0-rc1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-test/deep v1.1.0 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.0 // indirect
-	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/hashicorp/vault/api/auth/kubernetes v0.6.0 // indirect
-	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.6.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
+	github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/hashicorp/vault/api/auth/kubernetes v0.8.0 // indirect
+	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.5 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
@@ -111,15 +117,13 @@ require (
 	github.com/ansel1/merry/v2 v2.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/sonic v1.10.0 // indirect
-	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.11.3 // indirect
 	github.com/evanphx/json-patch/v5 v5.8.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gemalto/flume v0.13.1 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-openapi/jsonpointer v0.20.3 // indirect
 	github.com/go-openapi/jsonreference v0.20.5 // indirect
@@ -144,7 +148,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.6 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-5 // indirect
-	github.com/hashicorp/vault/api v1.12.2 // indirect
+	github.com/hashicorp/vault/api v1.15.0 // indirect
 	github.com/hashicorp/vault/api/auth/approle v0.6.0 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
