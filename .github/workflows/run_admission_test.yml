@@ -54,7 +54,7 @@ jobs:
           cd ./noobaa-operator
           ./build/_output/bin/noobaa-operator crd create -n test
           ./build/_output/bin/noobaa-operator operator install --operator-image=$OPERATOR_IMAGE --admission --test-env -n test
-          ./build/_output/bin/noobaa-operator system create \
+          ./build/_output/bin/noobaa-operator system create --use-standalone-db \
           --db-resources='{ "limits": {"cpu": "80m","memory": "1G"}, "requests": {"cpu": "80m","memory": "1G"}}' \
           --core-resources='{ "limits": {"cpu": "80m","memory": "1G"}, "requests": {"cpu": "80m","memory": "1G"}}' \
           --endpoint-resources='{ "limits": {"cpu": "80m","memory": "1G"}, "requests": {"cpu": "80m","memory": "1G"}}' \

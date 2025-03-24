@@ -11,6 +11,7 @@ import (
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/cnpg"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
@@ -18,6 +19,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/version"
 	"github.com/pkg/errors"
 
+	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
@@ -123,6 +125,10 @@ type Reconciler struct {
 	ExternalPgSecret          *corev1.Secret
 	ExternalPgSSLSecret       *corev1.Secret
 	BucketNotificationsPVC    *corev1.PersistentVolumeClaim
+
+	// CNPG resources
+	CNPGImageCatalog *cnpgv1.ImageCatalog
+	CNPGCluster      *cnpgv1.Cluster
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -185,6 +191,9 @@ func NewReconciler(
 		KedaTriggerAuthentication: util.KubeObject(bundle.File_deploy_internal_hpa_keda_trigger_authentication_yaml).(*kedav1alpha1.TriggerAuthentication),
 		KedaScaled:                util.KubeObject(bundle.File_deploy_internal_hpa_keda_scaled_object_yaml).(*kedav1alpha1.ScaledObject),
 		AdapterHPA:                util.KubeObject(bundle.File_deploy_internal_hpav2_autoscaling_yaml).(*autoscalingv2.HorizontalPodAutoscaler),
+
+		CNPGImageCatalog: cnpg.GetCnpgImageCatalogObj(req.Namespace, req.Name+pgImageCatalogSuffix),
+		CNPGCluster:      cnpg.GetCnpgClusterObj(req.Namespace, req.Name+pgClusterSuffix),
 	}
 
 	// Set Namespace
@@ -291,7 +300,7 @@ func NewReconciler(
 	r.SecretServer.StringData["jwt"] = util.RandomBase64(16)
 	r.SecretServer.StringData["server_secret"] = util.RandomHex(4)
 
-	if r.NooBaa.Spec.ExternalPgSecret == nil {
+	if r.shouldReconcileStandaloneDB() {
 		r.SecretDB.StringData["user"] = "noobaa"
 		r.SecretDB.StringData["password"] = util.RandomBase64(10)
 	}
@@ -322,13 +331,14 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.ServiceS3)
 	util.KubeCheck(r.ServiceSts)
 	util.KubeCheck(r.ServiceSyslog)
-	if r.NooBaa.Spec.ExternalPgSecret == nil {
+	if r.shouldReconcileStandaloneDB() {
 		util.KubeCheck(r.SecretDB)
-		if r.NooBaa.Spec.ExternalPgSecret == nil {
-			util.KubeCheck(r.PostgresDBConf)
-			util.KubeCheck(r.NooBaaPostgresDB)
-			util.KubeCheck(r.ServiceDbPg)
-		}
+		util.KubeCheck(r.PostgresDBConf)
+		util.KubeCheck(r.NooBaaPostgresDB)
+		util.KubeCheck(r.ServiceDbPg)
+	} else if r.shouldReconcileCNPGCluster() {
+		util.KubeCheck(r.CNPGImageCatalog)
+		util.KubeCheck(r.CNPGCluster)
 	}
 	util.KubeCheck(r.SecretServer)
 	util.KubeCheck(r.SecretOp)

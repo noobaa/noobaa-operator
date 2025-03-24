@@ -27,7 +27,8 @@ func CmdInstall() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().Bool("use-obc-cleanup-policy", false, "Create NooBaa system with obc cleanup policy")
-	cmd.Flags().Bool("use-cnpg", false, "Install CloudNativePG operator for HA PostgreSQL")
+	cmd.Flags().Bool("use-standalone-db", false, "Create NooBaa system with standalone DB (Legacy)")
+	cmd.Flags().Bool("no-wait", false, "Don't wait for the system to be ready. Exit after applying the changes")
 	cmd.AddCommand(
 		CmdYaml(),
 		cnpg.CmdCNPG(),
@@ -112,7 +113,8 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	log.Printf("")
 
 	// Check if CNPG installation is requested
-	useCNPG, _ := cmd.Flags().GetBool("use-cnpg")
+	useStandaloneDB, _ := cmd.Flags().GetBool("use-standalone-db")
+	useCNPG := !useStandaloneDB
 	if useCNPG {
 		log.Printf("CloudNativePG Operator Install:")
 		cnpg.RunInstall(cmd, args)
@@ -122,6 +124,15 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	log.Printf("System Create:")
 	system.RunCreate(cmd, args)
 	log.Printf("")
+
+	noWait, _ := cmd.Flags().GetBool("no-wait")
+	if noWait {
+		log.Printf("NOTE:")
+		log.Printf("  - This command has finished applying changes to the cluster.")
+		log.Printf("  - The installation is still in progress. You can monitor using the 'noobaa status' command.")
+		return
+	}
+
 	util.PrintThisNoteWhenFinishedApplyingAndStartWaitLoop()
 	log.Printf("")
 	log.Printf("System Wait Ready:")

@@ -204,7 +204,7 @@ function install {
     local use_obc_cleanup_policy
     
     [ $((RANDOM%2)) -gt 0 ] && use_obc_cleanup_policy="--use-obc-cleanup-policy"
-    test_noobaa install --${RESOURCE} --admission ${use_obc_cleanup_policy}
+    test_noobaa install --${RESOURCE} --admission ${use_obc_cleanup_policy} --use-standalone-db
 
     wait_for_noobaa_ready
     wait_for_backingstore_ready noobaa-default-backing-store

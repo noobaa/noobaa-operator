@@ -15,4 +15,10 @@ var (
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion}
+
+	// GroupVersion is group version used to register these objects
+	CNPGGroupVersion = schema.GroupVersion{Group: "postgresql.cnpg.noobaa.io", Version: "v1"}
+
+	// CNPGSchemeBuilder is used to add go types to the GroupVersionKind scheme
+	CNPGSchemeBuilder = &scheme.Builder{GroupVersion: CNPGGroupVersion}
 )
