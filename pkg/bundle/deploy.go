@@ -3964,7 +3964,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "21b206c9119e37c4ebba84d5c1e2b1d45b06c716b4def69db9ba9268ef75e1e1"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "e76dc7c81a02fb396263e61311b2bc0d765f32377d1b9d2ec3f435fced2fb0c3"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4085,7 +4085,6 @@ spec:
             - name: ENDPOINT_GROUP_ID
             - name: LOCAL_MD_SERVER
             - name: LOCAL_N2N_AGENT
-            - name: NOOBAA_ROOT_SECRET
             - name: NODE_EXTRA_CA_CERTS
             - name: GUARANTEED_LOGS_PATH
             - name: CONTAINER_CPU_REQUEST
@@ -5025,7 +5024,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "50e5b11d8e0a2f2bb8a6db8d154b34b6569e160fa7ad2b1fb154001b36c8a152"
+const Sha256_deploy_internal_statefulset_core_yaml = "14226b25028637a7176dbdb4a6fa6e90a9e63cddd5f39cbe0c044f433b0a4764"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5145,7 +5144,6 @@ spec:
               value: postgres
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
-            - name: NOOBAA_ROOT_SECRET
             - name: NODE_EXTRA_CA_CERTS
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
