@@ -92,10 +92,11 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	}
 
 	if r.shouldReconcileCNPGCluster() {
-		r.Logger.Infof("Reconciling CNPG cluster")
 		if err := r.ReconcileCNPGCluster(); err != nil {
 			return err
 		}
+	} else {
+		r.Logger.Infof("noobaa spec has no db spec. will use a standalone DB and not a cluster")
 	}
 
 	// reconcile the core app config
@@ -513,6 +514,13 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	podSpec := &r.CoreApp.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa-core"
 	coreImageChanged := false
+
+	if r.CoreApp.Spec.Replicas != nil && *r.CoreApp.Spec.Replicas == 0 {
+		// replicas can be set to 0 if the cluster went through data import to DB cluster
+		// restore back to 1 replica
+		oneReplica := int32(1)
+		r.CoreApp.Spec.Replicas = &oneReplica
+	}
 
 	// adding the missing Volumes from default podSpec
 	podSpec.Volumes = r.DefaultCoreApp.Volumes

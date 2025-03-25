@@ -24,6 +24,7 @@ require (
 	github.com/coreos/go-semver v0.3.1
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/gemalto/kmip-go v0.0.10
+	github.com/go-test/deep v1.1.0
 	github.com/google/uuid v1.6.0
 	github.com/kedacore/keda/v2 v2.7.0
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20221122204822-d1a8c34382f1
@@ -84,7 +85,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
-	github.com/go-test/deep v1.1.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect

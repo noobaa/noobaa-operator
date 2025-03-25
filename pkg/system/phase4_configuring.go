@@ -277,6 +277,17 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
+
+	if r.DeploymentEndpoint.Spec.Replicas != nil && *r.DeploymentEndpoint.Spec.Replicas == 0 {
+		// replicas can be set to 0 if the cluster went through data import to DB cluster
+		// restore back to the minimum number of replicas
+		minReplicas := int32(1)
+		if endpointsSpec != nil {
+			minReplicas = max(minReplicas, endpointsSpec.MinCount)
+		}
+		r.DeploymentEndpoint.Spec.Replicas = &minReplicas
+	}
+
 	rootUIDGid := int64(0)
 	podSpec.SecurityContext.RunAsUser = &rootUIDGid
 	podSpec.SecurityContext.RunAsGroup = &rootUIDGid

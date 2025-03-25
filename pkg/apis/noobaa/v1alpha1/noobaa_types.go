@@ -465,13 +465,23 @@ type NooBaaDBStatus struct {
 type DBClusterStatus string
 
 const (
-	// DBClusterStatusNone means the DB is not created
-	DBClusterStatusNone      DBClusterStatus = "None"
-	DBClusterStatusCreating  DBClusterStatus = "Creating"
-	DBClusterStatusUpdating  DBClusterStatus = "Updating"
+	// DBClusterStatusNone means there is no DB cluster configured
+	DBClusterStatusNone DBClusterStatus = "None"
+
+	// DBClusterStatusCreating means a new DB cluster is being created
+	DBClusterStatusCreating DBClusterStatus = "Creating"
+
+	// DBClusterStatusUpdating means the DB cluster is being updated
+	DBClusterStatusUpdating DBClusterStatus = "Updating"
+
+	// DBClusterStatusImporting means a new DB cluster is being created and data is being imported from the previous DB
 	DBClusterStatusImporting DBClusterStatus = "Importing"
-	DBClusterStatusReady     DBClusterStatus = "Ready"
-	DBClusterStatusFailed    DBClusterStatus = "Failed"
+
+	// DBClusterStatusReady means the DB cluster is ready
+	DBClusterStatusReady DBClusterStatus = "Ready"
+
+	// DBClusterStatusFailed means the DB cluster reconciliation encountered an error
+	DBClusterStatusFailed DBClusterStatus = "Failed"
 )
 
 // These are the valid conditions types and statuses:
