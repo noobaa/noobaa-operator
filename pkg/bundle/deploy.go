@@ -1423,7 +1423,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "725c47214b416f1013e75f3407b2ff5c718f1593eb0979019658816d9ce1146c"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "3416255059a8149d163f9db9d4c3501612458a1d5a52cf3094581cfafff8404f"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2633,6 +2633,12 @@ spec:
               dbSpec:
                 description: DBSpec (optional) DB spec for a managed postgres cluster
                 properties:
+                  dbConf:
+                    additionalProperties:
+                      type: string
+                    description: DBConf (optional) overrides the default postgresql
+                      db config
+                    type: object
                   dbMinVolumeSize:
                     description: |-
                       DBMinVolumeSize (optional) overrides the default PVC resource requirements for the database volume.

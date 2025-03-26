@@ -49,6 +49,10 @@ var (
 	CnpgAPIVersion = CnpgAPIGroup + "/v1"
 )
 
+const (
+	CnpgDeploymentName = "cnpg-controller-manager"
+)
+
 // CmdCNPG returns a CLI command
 func CmdCNPG() *cobra.Command {
 	cmd := &cobra.Command{
@@ -103,7 +107,7 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	util.KubeCreateSkipExisting(cnpgRes.WebhooksService)
 }
 
-// RunInstall runs the CloudNativePG operator installation
+// RunUpgrade runs the CloudNativePG operator installation
 func RunUpgrade(cmd *cobra.Command, args []string) {
 
 	cnpgRes, err := LoadCnpgResources()
@@ -363,6 +367,7 @@ func modifyResources(cnpgRes *CnpgResources) {
 
 	// update the deployment namespace, image
 	depl := cnpgRes.CnpgOperatorDeployment
+	depl.Name = CnpgDeploymentName
 	depl.Namespace = options.Namespace
 	depl.Spec.Template.Spec.Containers[0].Image = options.CnpgImage
 	// add app:noobaa label to the deployments pod
