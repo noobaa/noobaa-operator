@@ -121,6 +121,12 @@ func RunInstall(cmd *cobra.Command, args []string) {
 		log.Printf("")
 	}
 
+	// wait for the operators to be ready before creating the system
+	util.WaitForOperatorDeploymentReady(options.Namespace, "noobaa-operator")
+	if useCNPG {
+		util.WaitForOperatorDeploymentReady(options.Namespace, cnpg.CnpgDeploymentName)
+	}
+
 	log.Printf("System Create:")
 	system.RunCreate(cmd, args)
 	log.Printf("")

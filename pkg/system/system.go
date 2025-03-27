@@ -939,7 +939,7 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 
 	if sys.Spec.DBSpec != nil && sys.Spec.ExternalPgSecret == nil {
 
-		cnpgOperReady, cnpgOperErr := CheckDeploymentReady(sys, "cnpg-controller-manager", "app.kubernetes.io/name=cloudnative-pg")
+		cnpgOperReady, cnpgOperErr := CheckDeploymentReady(sys, cnpg.CnpgDeploymentName, "app.kubernetes.io/name=cloudnative-pg")
 		if !cnpgOperReady {
 			return cnpgOperErr
 		}
@@ -1049,7 +1049,7 @@ func CheckDeploymentReady(sys *nbv1.NooBaa, operAppName string, listLabel string
 	if operApp.Spec.Replicas != nil {
 		desiredReplicas = *operApp.Spec.Replicas
 	}
-	if operApp.Status.Replicas != desiredReplicas {
+	if operApp.Status.ReadyReplicas != desiredReplicas {
 		log.Printf(`⏳ System Phase is %q. Deployment %q is not ready:`+
 			` ReadyReplicas %d/%d`,
 			sys.Status.Phase,

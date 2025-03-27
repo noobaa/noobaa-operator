@@ -12,6 +12,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -19,6 +20,9 @@ import (
 const (
 	pgClusterSuffix      = "-db-pg-cluster"
 	pgImageCatalogSuffix = "-db-pg-image-catalog"
+
+	noobaaDBUser = "noobaa"
+	noobaaDBName = "nbcore"
 )
 
 // ReconcileCNPGCluster reconciles the CNPG cluster
@@ -150,7 +154,7 @@ func (r *Reconciler) reconcileDBCluster() error {
 	if r.CNPGCluster.UID == "" {
 		// Cluster resource was not created yet. Create it and handle import if needed
 
-		if err := r.reconcileClusterImport(); err != nil {
+		if err := r.reconcileClusterCreateOrImport(); err != nil {
 			r.cnpgLogError("got error setting up cluster import. error: %v", err)
 			return err
 		}
@@ -240,6 +244,16 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 		return err
 	}
 
+	// set tolerations and node affinity to the cluster spec
+	if r.NooBaa.Spec.Affinity != nil {
+		r.CNPGCluster.Spec.Affinity.NodeAffinity = r.NooBaa.Spec.Affinity.NodeAffinity
+	}
+	if r.NooBaa.Spec.Tolerations != nil {
+		r.CNPGCluster.Spec.Affinity.Tolerations = r.NooBaa.Spec.Tolerations
+	}
+
+	r.setPostgresConfig()
+
 	// TODO: consider specifying a separate WAL storage configuration in Spec.WalStorage
 	// currently, the same storage will be used for both DB and WAL
 
@@ -247,7 +261,7 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 
 }
 
-func (r *Reconciler) reconcileClusterImport() error {
+func (r *Reconciler) reconcileClusterCreateOrImport() error {
 
 	// The bootstrap configuration should only be set for the CR creation.
 
@@ -255,8 +269,9 @@ func (r *Reconciler) reconcileClusterImport() error {
 	if r.CNPGCluster.Spec.Bootstrap == nil {
 		r.CNPGCluster.Spec.Bootstrap = &cnpgv1.BootstrapConfiguration{
 			InitDB: &cnpgv1.BootstrapInitDB{
-				Database: "nbcore",
-				Owner:    "noobaa",
+				Database:      noobaaDBName,
+				Owner:         noobaaDBUser,
+				LocaleCollate: "C",
 			},
 		}
 	}
@@ -286,7 +301,7 @@ func (r *Reconciler) reconcileClusterImport() error {
 			// microservice type - import only the nbcore database
 			Type: cnpgv1.MicroserviceSnapshotType,
 			Databases: []string{
-				"nbcore",
+				noobaaDBName,
 			},
 		}
 
@@ -296,8 +311,8 @@ func (r *Reconciler) reconcileClusterImport() error {
 				Name: externalClusterName,
 				ConnectionParameters: map[string]string{
 					"host":   r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName + "." + r.NooBaaPostgresDB.Namespace + ".svc",
-					"user":   "noobaa",
-					"dbname": "nbcore",
+					"user":   noobaaDBUser,
+					"dbname": noobaaDBName,
 				},
 				Password: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -314,6 +329,57 @@ func (r *Reconciler) reconcileClusterImport() error {
 		return nil
 	}
 
+}
+
+func (r *Reconciler) setPostgresConfig() {
+
+	// set postgresql configuration
+	// initially using the same as in configmap-postgres-db.yaml. we should reavaluate these values
+	desiredParameters := r.CNPGCluster.Spec.PostgresConfiguration.Parameters
+	if desiredParameters == nil {
+		desiredParameters = map[string]string{}
+	}
+	overrideParameters := map[string]string{
+		"huge_pages":                   "off",
+		"max_connections":              "600",
+		"effective_cache_size":         "3GB",
+		"maintenance_work_mem":         "256MB",
+		"checkpoint_completion_target": "0.9",
+		"wal_buffers":                  "16MB",
+		"default_statistics_target":    "100",
+		"random_page_cost":             "1.1",
+		"effective_io_concurrency":     "300",
+		"work_mem":                     "1747kB",
+		"min_wal_size":                 "2GB",
+		"max_wal_size":                 "8GB",
+		// setting pg_stat_statements config
+		// cnpg operator will automatically add the extension to the DB (https://cloudnative-pg.io/documentation/1.25/postgresql_conf/#enabling-pg_stat_statements)
+		"pg_stat_statements.track": "all",
+	}
+	// a reasonable value for shared_buffers when mem>1GB is 25% of the total memory (https://www.postgresql.org/docs/9.1/runtime-config-resource.html)
+	// if resources are not specified, we will use the default value
+	if r.NooBaa.Spec.DBResources != nil {
+		requiredDBMemMB := r.NooBaa.Spec.DBSpec.DBResources.Requests.Memory().ScaledValue(resource.Mega)
+		sharedBuffersMB := requiredDBMemMB / 4
+		desiredParameters["shared_buffers"] = fmt.Sprintf("%dMB", sharedBuffersMB)
+	}
+
+	// set any parameters from DBSpec.DBConf in overrideParameters
+	if r.NooBaa.Spec.DBSpec.DBConf != nil {
+		for k, v := range r.NooBaa.Spec.DBSpec.DBConf {
+			overrideParameters[k] = v
+		}
+	}
+
+	// override the desired parameters with the override parameters
+	for param, overrideVal := range overrideParameters {
+		if desiredParameters[param] != overrideVal {
+			r.cnpgLog("overriding postgres config parameter %q with value %q", param, overrideVal)
+			desiredParameters[param] = overrideVal
+		}
+	}
+
+	r.CNPGCluster.Spec.PostgresConfiguration.Parameters = desiredParameters
 }
 
 func (r *Reconciler) stopNoobaaPodsAndGetNumRunningPods() (int, error) {
@@ -437,5 +503,6 @@ func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSp
 		existingClusterSpec.Instances != r.CNPGCluster.Spec.Instances ||
 		!reflect.DeepEqual(existingClusterSpec.Resources, r.CNPGCluster.Spec.Resources) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.StorageClass, r.CNPGCluster.Spec.StorageConfiguration.StorageClass) ||
-		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.Size, r.CNPGCluster.Spec.StorageConfiguration.Size)
+		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.Size, r.CNPGCluster.Spec.StorageConfiguration.Size) ||
+		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.Parameters, r.CNPGCluster.Spec.PostgresConfiguration.Parameters)
 }

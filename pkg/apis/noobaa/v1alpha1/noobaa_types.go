@@ -335,6 +335,10 @@ type NooBaaDBSpec struct {
 	// DBStorageClass (optional) overrides the default cluster StorageClass for the database volume.
 	// +optional
 	DBStorageClass *string `json:"dbStorageClass,omitempty"`
+
+	// DBConf (optional) overrides the default postgresql db config
+	// +optional
+	DBConf map[string]string `json:"dbConf,omitempty"`
 }
 
 // EndpointsSpec defines the desired state of noobaa endpoint deployment

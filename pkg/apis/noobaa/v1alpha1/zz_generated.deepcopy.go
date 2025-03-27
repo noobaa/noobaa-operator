@@ -1114,6 +1114,13 @@ func (in *NooBaaDBSpec) DeepCopyInto(out *NooBaaDBSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.DBConf != nil {
+		in, out := &in.DBConf, &out.DBConf
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 

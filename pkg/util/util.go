@@ -44,6 +44,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
+	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -1293,6 +1294,31 @@ func PrintThisNoteWhenFinishedApplyingAndStartWaitLoop() {
 	log.Printf("  - This command has finished applying changes to the cluster.")
 	log.Printf("  - From now on, it only loops and reads the status, to monitor the operator work.")
 	log.Printf("  - You may Ctrl-C at any time to stop the loop and watch it manually.")
+}
+
+// WaitForOperatorDeploymentReady waits for a deployment to be have the desired number of replicas ready
+func WaitForOperatorDeploymentReady(namespace string, name string) {
+	for {
+		deployment := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		found := KubeCheckQuiet(deployment)
+		if found {
+			ready := deployment.Status.ReadyReplicas == deployment.Status.Replicas
+			if !ready {
+				log.Printf("⏳ Waiting for %s deployment to be ready", name)
+			} else {
+				log.Printf("✅ %s deployment is ready.", name)
+				break
+			}
+		} else {
+			log.Printf("❌ %s deployment not found", name)
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
 
 // DiscoverOAuthEndpoints uses a well known url to get info on the cluster oauth2 endpoints
