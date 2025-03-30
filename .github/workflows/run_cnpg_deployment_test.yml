@@ -41,7 +41,15 @@ jobs:
 
       - name: Check Statuses
         run: |
-          set -x
-          kubectl get noobaa noobaa -n ${NAMESPACE} -o json | jq -r '.status.phase'
           kubectl get pods -n ${NAMESPACE}
+          noobaa_status=$(kubectl get noobaa noobaa -n ${NAMESPACE} -o json | jq -r '.status.phase')
+          if [ "$noobaa_status" != "Ready" ]; then
+            kubectl -n ${NAMESPACE} describe noobaa
+            kubectl -n ${NAMESPACE} describe deployment
+            kubectl -n ${NAMESPACE} describe pod
+            kubectl -n ${NAMESPACE} describe cluster
+            echo "FAILED: Noobaa is not Ready. Check resources descriptions above"
+            exit 1
+          fi
+
          
