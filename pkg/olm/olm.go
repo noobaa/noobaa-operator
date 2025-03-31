@@ -230,11 +230,17 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 		}
 	})
 
-	// write cnpg crds to manifest dir
+	// write cnpg resources to manifest dir
 	if csvParams.IncludeCnpg {
+		// write crds
 		for _, c := range csvParams.CnpgResources.CRDs {
 			util.Panic(util.WriteYamlFile(versionDir+c.Name+".crd.yaml", c))
 		}
+
+		// write configmap cnpg-default-monitoring
+		cm := csvParams.CnpgResources.ConfigMap
+		cm.Namespace = ""
+		util.Panic(util.WriteYamlFile(versionDir+cm.Name+".configmap.yaml", cm))
 	}
 
 }
