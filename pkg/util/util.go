@@ -143,8 +143,8 @@ var (
 	}
 )
 
-// AddToRootCAs adds a local cert file to Our GlobalCARefreshingTransport
-func AddToRootCAs(localCertFile string) error {
+// CombineCaBundle combines a local cert file to Our GlobalCARefreshingTransport
+func CombineCaBundle(localCertFile string) error {
 	rootCAs, _ := x509.SystemCertPool()
 	if rootCAs == nil {
 		rootCAs = x509.NewCertPool()
@@ -169,7 +169,7 @@ func AddToRootCAs(localCertFile string) error {
 		}
 
 		// Trust the augmented cert pool in our client
-		log.Infof("Successfuly appended %q to RootCAs", certFile)
+		log.Infof("Successfully appended %q to RootCAs", certFile)
 	}
 	GlobalCARefreshingTransport.TLSClientConfig.RootCAs = rootCAs
 	return nil

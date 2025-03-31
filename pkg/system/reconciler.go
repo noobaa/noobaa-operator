@@ -404,9 +404,9 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	err = util.AddToRootCAs(options.ServiceServingCertCAFile)
+	err = util.CombineCaBundle(options.ServiceServingCertCAFile)
 	if err == nil {
-		r.ApplyCAsToPods = options.ServiceServingCertCAFile
+		r.ApplyCAsToPods = options.InjectedBundleCertCAFile
 	} else if !os.IsNotExist(err) {
 		log.Errorf("❌ NooBaa %q failed to add root CAs to system default", r.NooBaa.Name)
 		res.RequeueAfter = 3 * time.Second
