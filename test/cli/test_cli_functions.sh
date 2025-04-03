@@ -1203,6 +1203,10 @@ function check_default_backingstore {
 
     echo_time "💬 Deleting Noobaa default backingstore and its connected instances"
     echo_time "💬 Deleting buckets"
+    # adding a sleep to avoid seeing buckets in deleting state (in list bucket)
+    # after handling issue: https://github.com/noobaa/noobaa-core/issues/8931
+    # this sleep should be deleted
+    sleep 60
     test_aws s3 ls
     for bucket in $(test_aws s3 ls | awk '{print $3}');
     do  
