@@ -68,7 +68,7 @@ type Reconciler struct {
 	OperatorVersion          string
 	OAuthEndpoints           *util.OAuth2Endpoints
 	PostgresConnectionString string
-	ApplyCAsToPods           string
+	ApplyCAsToPods           string // the CA will be applied to the core and endpoint pods
 
 	NooBaa                    *nbv1.NooBaa
 	ServiceAccount            *corev1.ServiceAccount
