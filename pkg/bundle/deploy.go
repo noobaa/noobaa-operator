@@ -1423,7 +1423,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "3416255059a8149d163f9db9d4c3501612458a1d5a52cf3094581cfafff8404f"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "aed8cc731e6c6a182d75aa975ed8e7849d229eae6c823c4b3d5b3ae50d74f127"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2641,8 +2641,9 @@ spec:
                     type: object
                   dbMinVolumeSize:
                     description: |-
-                      DBMinVolumeSize (optional) overrides the default PVC resource requirements for the database volume.
-                      The actual requested PVC might be larger if the DB requires more space.
+                      DBMinVolumeSize (optional) The initial size of the database volume.The actual size might be larger.
+                      Increasing the size of the volume is supported if the underlying storage class supports volume expansion.
+                      The new size should be larger than actualVolumeSize in dbStatus for the volume to be resized.
                     type: string
                   dbResources:
                     description: DBResources (optional) overrides the default resource
@@ -3402,6 +3403,10 @@ spec:
               dbStatus:
                 description: DBStatus is the status of the postgres cluster
                 properties:
+                  actualVolumeSize:
+                    description: ActualVolumeSize is the actual size of the postgres
+                      cluster volume. This can be different than the requested size
+                    type: string
                   currentPgMajorVersion:
                     description: CurrentPgMajorVersion is the major version of the
                       postgres cluster
@@ -6194,7 +6199,7 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "657d632a42e9ed89ad6c0b2d909517346ab32ab0f8f208d5c9178fa8ad28681d"
+const Sha256_deploy_role_yaml = "6d98627f4b3c9834710856edf01c6ed71fcefe1e78b15189343423ecc524e18d"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6228,6 +6233,14 @@ rules:
   - serviceaccounts
   verbs:
   - '*'
+- apiGroups:
+  - ""
+  resources:
+  - pods/exec
+  verbs:
+  - create
+  resourceNames:
+  - noobaa-db-pg-0
 - apiGroups:
   - apps
   resources:
