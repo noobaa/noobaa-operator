@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -125,10 +126,10 @@ func CmdCreateAWSSTSS3() *cobra.Command {
 // CmdCreateGoogleCloudStorage returns a CLI command
 func CmdCreateGoogleCloudStorage() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true, //TODO: remove once we want to expose it. 
-		Use:   "google-cloud-storage <namespace-store-name>",
-		Short: "Create google-cloud-storage namespace store",
-		Run:   RunCreateGoogleCloudStorage,
+		Hidden: true, //TODO: remove once we want to expose it.
+		Use:    "google-cloud-storage <namespace-store-name>",
+		Short:  "Create google-cloud-storage namespace store",
+		Run:    RunCreateGoogleCloudStorage,
 	}
 	cmd.Flags().String(
 		"target-bucket", "",
@@ -320,6 +321,12 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 	log := util.Logger()
 	if len(args) != 1 || args[0] == "" {
 		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
+	}
+	endpoint := util.GetFlagStringOrPrompt(cmd, "endpoint")
+	sigVer, _ := cmd.Flags().GetString("signature-version")
+	u, _ := url.Parse(endpoint)
+	if u.Scheme == "http" && sigVer == "v4" {
+		log.Fatalf("Non-secure endpoint works only with v2 signature-version. Please select signature version v2 for namespacestore")
 	}
 	name := args[0]
 	secretName, _ := cmd.Flags().GetString("secret-name")
