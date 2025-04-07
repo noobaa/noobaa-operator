@@ -64,6 +64,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/remotecommand"
 	apiregistration "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"k8s.io/utils/ptr"
 	cosiv1 "sigs.k8s.io/container-object-storage-interface-api/apis/objectstorage/v1alpha1"
@@ -742,6 +743,62 @@ func GetPodLogs(pod corev1.Pod) (map[string]io.ReadCloser, error) {
 		getPodLogOpts(&pod, &prevPodLogOpts, &previousSuffix)
 	}
 	return containerMap, nil
+}
+
+// ExecCommandInPod executes a command in a pod and returns the stdout and stderr
+func ExecCommandInPod(podName string, namespace string, container string, cmd []string) (stdoutStr string, stderrStr string, err error) {
+	config := KubeConfig()
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Errorf("could not create client set for host %s, reason: %s\n", config.Host, err)
+		return "", "", err
+	}
+
+	req := clientset.CoreV1().RESTClient().Post().Resource("pods").Name(podName).Namespace(namespace).SubResource("exec")
+	option := &corev1.PodExecOptions{
+		Command:   cmd,
+		Container: container,
+		Stdin:     false,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       false,
+	}
+	req.VersionedParams(option, scheme.ParameterCodec)
+	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
+	if err != nil {
+		log.Errorf("could not create SPDY executor for req %s, reason: %s", req.URL(), err)
+		return "", "", err
+	}
+	var stdout, stderr bytes.Buffer
+	opts := remotecommand.StreamOptions{
+		Stdin:  nil,
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Tty:    false,
+	}
+	err = exec.StreamWithContext(ctx, opts)
+	stderrStr = stderr.String()
+	stdoutStr = stdout.String()
+	return stdoutStr, stderrStr, err
+}
+
+// GetVolumeUsedPercent returns the used storage percentage of the volume
+func GetVolumeUsedPercent(namespace string, podName string, containerName string, mountPath string) (int, error) {
+	cmd := []string{"df", "--output=pcent", mountPath}
+	stdout, stderr, err := ExecCommandInPod(podName, namespace, containerName, cmd)
+	if err != nil {
+		log.Errorf("failed to run df. cmd=%q, pod %s in namespace %s, error: %s, stderr: %s", cmd, podName, namespace, err, stderr)
+		return 0, err
+	}
+	stdout = strings.TrimSpace(stdout)
+	lines := strings.Split(stdout, "\n")
+	percentStr := strings.TrimSpace(lines[len(lines)-1])
+	percentStr = strings.ReplaceAll(percentStr, "%", "")
+	percentValue, err := strconv.Atoi(percentStr)
+	if err != nil {
+		return 0, err
+	}
+	return percentValue, nil
 }
 
 // SaveStreamToFile info

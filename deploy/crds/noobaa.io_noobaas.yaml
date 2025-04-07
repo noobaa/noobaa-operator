@@ -1214,8 +1214,9 @@ spec:
                     type: object
                   dbMinVolumeSize:
                     description: |-
-                      DBMinVolumeSize (optional) overrides the default PVC resource requirements for the database volume.
-                      The actual requested PVC might be larger if the DB requires more space.
+                      DBMinVolumeSize (optional) The initial size of the database volume.The actual size might be larger.
+                      Increasing the size of the volume is supported if the underlying storage class supports volume expansion.
+                      The new size should be larger than actualVolumeSize in dbStatus for the volume to be resized.
                     type: string
                   dbResources:
                     description: DBResources (optional) overrides the default resource
@@ -1975,6 +1976,10 @@ spec:
               dbStatus:
                 description: DBStatus is the status of the postgres cluster
                 properties:
+                  actualVolumeSize:
+                    description: ActualVolumeSize is the actual size of the postgres
+                      cluster volume. This can be different than the requested size
+                    type: string
                   currentPgMajorVersion:
                     description: CurrentPgMajorVersion is the major version of the
                       postgres cluster

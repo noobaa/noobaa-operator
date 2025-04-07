@@ -31,6 +31,14 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - ""
+  resources:
+  - pods/exec
+  verbs:
+  - create
+  resourceNames:
+  - noobaa-db-pg-0
+- apiGroups:
   - apps
   resources:
   - deployments

@@ -67,7 +67,9 @@ func (r *Reconciler) ReconcileCNPGCluster() error {
 
 	if isClusterReady(r.CNPGCluster) {
 		r.cnpgLog("cnpg cluster is ready")
+		// update the DB status
 		r.NooBaa.Status.DBStatus.DBClusterStatus = nbv1.DBClusterStatusReady
+		r.NooBaa.Status.DBStatus.ActualVolumeSize = r.CNPGCluster.Spec.StorageConfiguration.Size
 
 		standaloneDBPod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -279,6 +281,7 @@ func (r *Reconciler) reconcileClusterCreateOrImport() error {
 	// We first want to check if a standalone DB statefulset exists, and trigger import if so
 	util.KubeCheck(r.NooBaaPostgresDB)
 	if r.NooBaaPostgresDB.UID != "" {
+
 		r.cnpgLog("standalone DB statefulset found, setting up import")
 
 		// stop core and endpoints pods and wait for them to be terminated
@@ -321,6 +324,34 @@ func (r *Reconciler) reconcileClusterCreateOrImport() error {
 					Key: "password",
 				},
 			},
+		}
+
+		// cnpg will perform the import using the PV of the new DB instance. We need to make sure the PV is large enough.
+		// If the used percentage is over the threshold (currently 33%), double the size of the PV.
+		usedSpaceThreshold := 33
+		oldDbPodName := r.NooBaaPostgresDB.Name + "-0"
+		oldDbContainerName := r.NooBaaPostgresDB.Spec.Template.Spec.Containers[0].Name
+		oldDbMountPath := r.NooBaaPostgresDB.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath
+		percent, err := util.GetVolumeUsedPercent(options.Namespace, oldDbPodName, oldDbContainerName, oldDbMountPath)
+		if err != nil {
+			r.cnpgLogError("failed to get the existing DB volume used percentage. error: %v", err)
+			return err
+		}
+		if percent > usedSpaceThreshold {
+			// get the actual size of the PV from the PVC.
+			// Not using the requested size from noobaa CR, since it can be different from the actual due to manual resize that could have been done.
+			pvc := &corev1.PersistentVolumeClaim{}
+			pvc.Name = r.NooBaaPostgresDB.Spec.VolumeClaimTemplates[0].Name + "-" + oldDbPodName
+			pvc.Namespace = options.Namespace
+			if !util.KubeCheck(pvc) {
+				return fmt.Errorf("failed to get the existing DB PVC %s in namespace %s", pvc.Name, options.Namespace)
+			}
+			pvcSize := pvc.Status.Capacity[corev1.ResourceStorage]
+			existingPvcSize := pvcSize.String()
+			// set the cluster sorage size to double the size of the existing PVC
+			pvcSize.Mul(2)
+			r.cnpgLog("the existing DB PVC has %d%% used space, out of %s. setting the cluster storage size to %s to avoid import failure", percent, existingPvcSize, pvcSize.String())
+			r.CNPGCluster.Spec.StorageConfiguration.Size = pvcSize.String()
 		}
 		return nil
 	} else {
@@ -448,11 +479,25 @@ func setDesiredStorageConf(storageConfiguration *cnpgv1.StorageConfiguration, db
 		storageConfiguration.StorageClass = &storageClassName
 	}
 
+	// set storageConfiguration.Size only if it is not set or if it is less than dbSpec.DBMinVolumeSize
+	desiredSize := options.DefaultDBVolumeSize
 	if dbSpec.DBMinVolumeSize != "" {
-		storageConfiguration.Size = dbSpec.DBMinVolumeSize
-	} else {
-		storageConfiguration.Size = options.DefaultDBVolumeSize
+		desiredSize = dbSpec.DBMinVolumeSize
 	}
+	if storageConfiguration.Size != "" {
+		currentQuantity, err := resource.ParseQuantity(storageConfiguration.Size)
+		if err != nil {
+			return err
+		}
+		desiredQuantity, err := resource.ParseQuantity(desiredSize)
+		if err != nil {
+			return err
+		}
+		if currentQuantity.Cmp(desiredQuantity) > 0 {
+			desiredSize = storageConfiguration.Size
+		}
+	}
+	storageConfiguration.Size = desiredSize
 
 	return nil
 }

@@ -327,8 +327,9 @@ type NooBaaDBSpec struct {
 	// +optional
 	DBResources *corev1.ResourceRequirements `json:"dbResources,omitempty"`
 
-	// DBMinVolumeSize (optional) overrides the default PVC resource requirements for the database volume.
-	// The actual requested PVC might be larger if the DB requires more space.
+	// DBMinVolumeSize (optional) The initial size of the database volume.The actual size might be larger.
+	// Increasing the size of the volume is supported if the underlying storage class supports volume expansion.
+	// The new size should be larger than actualVolumeSize in dbStatus for the volume to be resized.
 	// +optional
 	DBMinVolumeSize string `json:"dbMinVolumeSize,omitempty"`
 
@@ -464,6 +465,9 @@ type NooBaaDBStatus struct {
 
 	// CurrentPgMajorVersion is the major version of the postgres cluster
 	CurrentPgMajorVersion int `json:"currentPgMajorVersion,omitempty"`
+
+	// ActualVolumeSize is the actual size of the postgres cluster volume. This can be different than the requested size
+	ActualVolumeSize string `json:"actualVolumeSize,omitempty"`
 }
 
 type DBClusterStatus string
