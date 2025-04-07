@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -125,10 +126,10 @@ func CmdCreateAWSSTSS3() *cobra.Command {
 // CmdCreateGoogleCloudStorage returns a CLI command
 func CmdCreateGoogleCloudStorage() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true, //TODO: remove once we want to expose it. 
-		Use:   "google-cloud-storage <namespace-store-name>",
-		Short: "Create google-cloud-storage namespace store",
-		Run:   RunCreateGoogleCloudStorage,
+		Hidden: true, //TODO: remove once we want to expose it.
+		Use:    "google-cloud-storage <namespace-store-name>",
+		Short:  "Create google-cloud-storage namespace store",
+		Run:    RunCreateGoogleCloudStorage,
 	}
 	cmd.Flags().String(
 		"target-bucket", "",
@@ -173,7 +174,7 @@ func CmdCreateS3Compatible() *cobra.Command {
 		"The target S3 endpoint",
 	)
 	cmd.Flags().String(
-		"signature-version", "v4",
+		"signature-version", "",
 		"The S3 signature version v4|v2",
 	)
 	cmd.Flags().String(
@@ -321,6 +322,7 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 	if len(args) != 1 || args[0] == "" {
 		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
 	}
+
 	name := args[0]
 	secretName, _ := cmd.Flags().GetString("secret-name")
 	cmdAccessMode, _ := cmd.Flags().GetString("access-mode")
@@ -557,12 +559,23 @@ func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 // RunCreateS3Compatible runs a CLI command
 func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.NSStoreTypeS3Compatible, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
+		log := util.Logger()
 		endpoint := util.GetFlagStringOrPrompt(cmd, "endpoint")
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 		sigVer, _ := cmd.Flags().GetString("signature-version")
 		secretName, _ := cmd.Flags().GetString("secret-name")
 		mandatoryProperties := []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}
-
+		u, _ := url.Parse(endpoint)
+		if u.Scheme == "http" {
+			if sigVer == "v4" {
+				log.Fatalf("Non-secure endpoint works only with v2 signature-version. Please select signature version v2 for namespacestore")
+			}
+			sigVer = "v2"
+		} else {
+			if sigVer == "" {
+				sigVer = "v4"
+			}
+		}
 		if secretName == "" {
 			accessKey := util.GetFlagStringOrPromptPassword(cmd, "access-key")
 			secretKey := util.GetFlagStringOrPromptPassword(cmd, "secret-key")
