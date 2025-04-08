@@ -18,14 +18,28 @@ jobs:
           ref: ${{ github.event.inputs.tag }}
           path: 'cloudnative-pg'
 
-      - name: Build CNPG Image
+      - name: Modify API group
         run: |
           cd cloudnative-pg
           find . -name .git -a -type d -prune -o -type f -exec sed -i -e 's|postgresql.cnpg.io|postgresql.cnpg.noobaa.io|g' -e 's|postgresql-cnpg-io|postgresql-cnpg-noobaa-io|g' {} +
-          make CONTROLLER_IMG=quay.io/noobaa/cloudnative-pg-noobaa:${{ github.event.inputs.tag }} docker-build
 
       - name: Login to Quay.io Registry
         run: echo ${{ secrets.GHACTIONQUAYTOKEN }} | docker login quay.io -u ${{ secrets.GHACTIONQUAYNAME }} --password-stdin
+
+      - name: Build and push
+        uses: docker/bake-action@4ba453fbc2db7735392b93edf935aaf9b1e8f747 # v6
+        id: bake-push
+        env:
+          environment: "production"
+          buildVersion: ${{ github.event.inputs.tag }}
+          tag: ${{ github.event.inputs.tag }}
+          registry: quay.io/noobaa/cloudnative-pg-noobaa
+        with:
+          source: .
+          push: false
+          no-cache: true
+          targets: "default"
+
 
       - name: Push CNPG Image to Quay
         run: docker push quay.io/noobaa/cloudnative-pg-noobaa:${{ github.event.inputs.tag }}
