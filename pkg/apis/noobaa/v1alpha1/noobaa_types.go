@@ -202,6 +202,11 @@ type NooBaaSpec struct {
 	// +optional
 	DisableLoadBalancerService bool `json:"disableLoadBalancerService,omitempty"`
 
+	// DisableRoutes (optional) disables the reconciliation of openshift route resources in the cluster
+	// +nullable
+	// +optional
+	DisableRoutes bool `json:"disableRoutes,omitempty"`
+
 	// Deprecated: DefaultBackingStoreSpec is not supported anymore, use ManualDefaultBackingStore instead.
 	// +optional
 	DefaultBackingStoreSpec *BackingStoreSpec `json:"defaultBackingStoreSpec,omitempty"`

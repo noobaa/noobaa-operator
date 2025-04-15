@@ -61,14 +61,20 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 	if err := r.ReconcileObject(r.ServiceS3, r.SetDesiredServiceS3); err != nil {
 		return err
 	}
-	if err := r.ReconcileObjectOptional(r.RouteS3, r.SetDesiredRouteS3); err != nil {
-		return err
+	// reconcile noobaa-s3 route only if routes are enabled
+	if !r.NooBaa.Spec.DisableRoutes {
+		if err := r.ReconcileObjectOptional(r.RouteS3, r.SetDesiredRouteS3); err != nil {
+			return err
+		}
 	}
 	if err := r.ReconcileObject(r.ServiceSts, r.SetDesiredServiceSts); err != nil {
 		return err
 	}
-	if err := r.ReconcileObjectOptional(r.RouteSts, nil); err != nil {
-		return err
+	// reconcile noobaa-sts route only if routes are enabled
+	if !r.NooBaa.Spec.DisableRoutes {
+		if err := r.ReconcileObjectOptional(r.RouteSts, nil); err != nil {
+			return err
+		}
 	}
 	// the credentials that are created by cloud-credentials-operator sometimes take time
 	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
@@ -173,8 +179,11 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 
-	if err := r.ReconcileObjectOptional(r.RouteMgmt, nil); err != nil {
-		return err
+	// reconcile noobaa-mgmt route only if routes are enabled
+	if !r.NooBaa.Spec.DisableRoutes {
+		if err := r.ReconcileObjectOptional(r.RouteMgmt, nil); err != nil {
+			return err
+		}
 	}
 
 	return nil

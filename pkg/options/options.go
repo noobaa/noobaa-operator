@@ -141,6 +141,9 @@ var DevEnv = false
 // DisableLoadBalancerService is used for setting the service type to ClusterIP instead of LoadBalancer
 var DisableLoadBalancerService = false
 
+// DisableRoutes is used to disable the reconciliation of openshift route resources
+var DisableRoutes = false
+
 // CosiDriverPath is the cosi socket fs path
 var CosiDriverPath = "/var/lib/cosi/cosi.sock"
 
@@ -305,6 +308,10 @@ func init() {
 	FlagSet.BoolVar(
 		&DisableLoadBalancerService, "disable-load-balancer",
 		false, "Set the service type to ClusterIP instead of LoadBalancer",
+	)
+	FlagSet.BoolVar(
+		&DisableRoutes, "disable-routes",
+		false, "disable the reconciliation of openshift route resources",
 	)
 	FlagSet.StringVar(
 		&CosiDriverPath, "cosi-driver-path",

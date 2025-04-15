@@ -1423,7 +1423,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "aed8cc731e6c6a182d75aa975ed8e7849d229eae6c823c4b3d5b3ae50d74f127"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "1637077ca2e0d584cd4203469f809b215af45ee4ba5358a283bbd7a5bf1b573e"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3005,6 +3005,11 @@ spec:
               disableLoadBalancerService:
                 description: DisableLoadBalancerService (optional) sets the service
                   type to ClusterIP instead of LoadBalancer
+                nullable: true
+                type: boolean
+              disableRoutes:
+                description: DisableRoutes (optional) disables the reconciliation
+                  of openshift route resources in the cluster
                 nullable: true
                 type: boolean
               endpoints:
