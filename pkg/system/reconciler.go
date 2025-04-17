@@ -68,7 +68,7 @@ type Reconciler struct {
 	OperatorVersion          string
 	OAuthEndpoints           *util.OAuth2Endpoints
 	PostgresConnectionString string
-	ApplyCAsToPods           string
+	ApplyCAsToPods           string // the CA will be applied to the core and endpoint pods
 
 	NooBaa                    *nbv1.NooBaa
 	ServiceAccount            *corev1.ServiceAccount
@@ -282,7 +282,7 @@ func NewReconciler(
 	r.RouteS3.Name = r.ServiceS3.Name
 	r.RouteSts.Name = r.ServiceSts.Name
 	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
-	r.CaBundleConf.Name = r.Request.Name + "-ca-inject"
+	r.CaBundleConf.Name = "ocp-injected-ca-bundle"
 	r.KedaScaled.Name = r.Request.Name
 	r.AdapterHPA.Name = r.Request.Name + "-hpav2"
 	r.BucketLoggingPVC.Name = r.Request.Name + "-bucket-logging-pvc"
@@ -404,9 +404,10 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	err = util.AddToRootCAs(options.ServiceServingCertCAFile)
+	err = util.CombineCaBundle(util.ServiceServingCertCAFile)
 	if err == nil {
-		r.ApplyCAsToPods = options.ServiceServingCertCAFile
+		// r.ApplyCAsToPods = util.InjectedBundleCertCAFile
+		r.ApplyCAsToPods = util.ServiceServingCertCAFile // back as it was
 	} else if !os.IsNotExist(err) {
 		log.Errorf("❌ NooBaa %q failed to add root CAs to system default", r.NooBaa.Name)
 		res.RequeueAfter = 3 * time.Second
