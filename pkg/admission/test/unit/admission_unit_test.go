@@ -560,6 +560,67 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 				})
 			})
 		})
+
+		Describe("S3-compatible namespacestore", func() {
+			Context("signature version and non-secure endpoint", func() {
+				It("Should Deny", func() {
+					ns.Spec = nbv1.NamespaceStoreSpec{
+						Type: nbv1.NSStoreTypeS3Compatible,
+						S3Compatible: &nbv1.S3CompatibleSpec{
+							Endpoint:         "http://test.com",
+							SignatureVersion: "v4",
+							TargetBucket:     "test",
+							Secret: corev1.SecretReference{
+								Name:      "secret-name",
+								Namespace: "test",
+							},
+						},
+					}
+					ns.Name = "nsfs-signV4-http-endpoint"
+					err = validations.ValidateNamespaceStore(ns)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Non-secure endpoint works only with signature-version \"v2\". Please select signature version v2 for namespacestore"))
+				})
+
+				It("Should Allow", func() {
+					ns.Spec = nbv1.NamespaceStoreSpec{
+						Type: nbv1.NSStoreTypeS3Compatible,
+						S3Compatible: &nbv1.S3CompatibleSpec{
+							Endpoint:         "http://test.com",
+							SignatureVersion: "v2",
+							TargetBucket:     "test",
+							Secret: corev1.SecretReference{
+								Name:      "secret-name",
+								Namespace: "test",
+							},
+						},
+					}
+					ns.Name = "nsfs-signV4-http-endpoint"
+					err = validations.ValidateNamespaceStore(ns)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+
+			Context("signature version and secure endpoint", func() {
+				It("Should Allow", func() {
+					ns.Spec = nbv1.NamespaceStoreSpec{
+						Type: nbv1.NSStoreTypeS3Compatible,
+						S3Compatible: &nbv1.S3CompatibleSpec{
+							Endpoint:         "https://test.com",
+							SignatureVersion: "v4",
+							TargetBucket:     "test",
+							Secret: corev1.SecretReference{
+								Name:      "secret-name",
+								Namespace: "test",
+							},
+						},
+					}
+					ns.Name = "nsfs-signV4-https-endpoint"
+					err = validations.ValidateNamespaceStore(ns)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+		})
 	})
 
 	Describe("Validate update operations", func() {

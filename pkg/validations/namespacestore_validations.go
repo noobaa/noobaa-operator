@@ -104,7 +104,7 @@ func ValidateNsStoreS3Compatible(nsStore *nbv1.NamespaceStore) error {
 		return nil
 	}
 
-	err := ValidateSignatureVersion(s3Compatible.SignatureVersion, nsStore.Name)
+	err := ValidateSignatureVersion(s3Compatible.SignatureVersion, s3Compatible.Endpoint, nsStore.Name)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func ValidateNsStoreIBMCos(nsStore *nbv1.NamespaceStore) error {
 		return nil
 	}
 
-	err := ValidateSignatureVersion(IBMCos.SignatureVersion, nsStore.Name)
+	err := ValidateSignatureVersion(IBMCos.SignatureVersion, "", nsStore.Name)
 	if err != nil {
 		return err
 	}
@@ -138,8 +138,8 @@ func ValidateNsStoreIBMCos(nsStore *nbv1.NamespaceStore) error {
 	return nil
 }
 
-//ValidateSignatureVersion validation, must be empty or v2 or v4
-func ValidateSignatureVersion(signature nbv1.S3SignatureVersion, nsStoreName string) error {
+// ValidateSignatureVersion validation, must be empty or v2 or v4
+func ValidateSignatureVersion(signature nbv1.S3SignatureVersion, nsStoreEndpoint string, nsStoreName string) error {
 	if signature != "" &&
 		signature != nbv1.S3SignatureVersionV2 &&
 		signature != nbv1.S3SignatureVersionV4 {
@@ -147,10 +147,21 @@ func ValidateSignatureVersion(signature nbv1.S3SignatureVersion, nsStoreName str
 			Msg: fmt.Sprintf("Invalid s3 signature version %q for namespace store %q", signature, nsStoreName),
 		}
 	}
+
+	if nsStoreEndpoint != "" {
+		u, _ := url.Parse(nsStoreEndpoint)
+		if u.Scheme == "http" {
+			if signature == "v4" {
+				return util.ValidationError{
+					Msg: fmt.Sprintf("Non-secure endpoint works only with signature-version %q. Please select signature version v2 for namespacestore", "v2"),
+				}
+			}
+		}
+	}
 	return nil
 }
 
-//ValidateEndPoint Endpoint validation and sets default
+// ValidateEndPoint Endpoint validation and sets default
 func ValidateEndPoint(endPointPointer *string) error {
 	endPoint := *endPointPointer
 
@@ -311,10 +322,10 @@ func ValidateTargetNSBucketChange(ns nbv1.NamespaceStore, oldNs nbv1.NamespaceSt
 
 // ValidateNSEmptyAWSARN validates if ARN is present in the NamespaceStore Spec
 func ValidateNSEmptyAWSARN(ns nbv1.NamespaceStore) error {
-	if ns.Spec.AWSS3 != nil { 
+	if ns.Spec.AWSS3 != nil {
 		if ns.Spec.AWSS3.AWSSTSRoleARN == nil {
-				return util.ValidationError{
-					Msg: "Failed creating the NamespaceStore, please provide a valid ARN or secret name",
+			return util.ValidationError{
+				Msg: "Failed creating the NamespaceStore, please provide a valid ARN or secret name",
 			}
 		}
 	}
