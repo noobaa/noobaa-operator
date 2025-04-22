@@ -90,6 +90,9 @@ const (
 
 	// InjectedBundleCertCAFile points to OCP root CA to be added to the default root CA list
 	InjectedBundleCertCAFile = "/etc/ocp-injected-ca-bundle/ca-bundle.crt"
+
+	// CombinedCaBundlePath points to the combined CA bundle file
+	CombinedCaBundlePath = "/tmp/ca-bundle.crt"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
