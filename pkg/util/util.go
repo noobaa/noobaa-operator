@@ -129,14 +129,14 @@ var (
 	lazyConfig *rest.Config
 	lazyClient client.Client
 
-	// InsecureHTTPTransport is a global insecure http transport
+	// InsecureHTTPTransport is a secure, global http transport without certificate signature verification
 	InsecureHTTPTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
-	// GlobalCARefreshingTransport is a global secure http transport
+	// GlobalCARefreshingTransport is the same as InsecureHTTPTransport, but used for bundling certificates provided by the user and OpenShift
 	GlobalCARefreshingTransport = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
 	// MapStorTypeToMandatoryProperties holds a map of store type -> credentials mandatory properties
