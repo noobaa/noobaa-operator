@@ -26,3 +26,7 @@ spec:
       name: bg-https
     - port: 8446
       name: hosted-agents-https
+    - name: mgmt-proxy
+      port: 8447
+      protocol: TCP
+      targetPort: mgmt-proxy

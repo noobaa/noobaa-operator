@@ -43,10 +43,39 @@ spec:
                   path: token
                   # For testing purposes change the audience to api
                   audience: openshift
+        - name: secret-mgmt-auth-proxy
+          secret:
+            defaultMode: 420
+            secretName: mgmt-auth-proxy
       securityContext:
         runAsUser: 10001
         runAsGroup: 0
       containers:
+        - name: oauth-proxy
+          image: quay.io/openshift/origin-oauth-proxy:4.16
+          imagePullPolicy: IfNotPresent
+          ports:
+          - name: mgmt-proxy
+            containerPort: 8447
+            protocol: TCP
+          args:
+            - -https-address=:8447
+            - -provider=openshift
+            - -email-domain=*
+            - -openshift-service-account=noobaa-core
+            - -upstream=http://localhost:8080
+            - -tls-cert=/etc/tls/private/tls.crt
+            - -tls-key=/etc/tls/private/tls.key
+            - -proxy-prefix=/app/v1
+            - -cookie-secret-file=/etc/proxy/secrets/session_secret
+            - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            - -openshift-sar={"resource":"services","name":"noobaa-mgmt","namespace":"noobaa","verb":"get"}
+            - -openshift-delegate-urls={"/":{"resource":"services","namespace":"noobaa","verb":"get"}}
+          volumeMounts:
+            - mountPath: /etc/tls/private
+              name: mgmt-secret
+            - mountPath: /etc/proxy/secrets
+              name: secret-mgmt-auth-proxy
         #----------------#
         # CORE CONTAINER #
         #----------------#

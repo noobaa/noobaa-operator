@@ -6,7 +6,7 @@ metadata:
   name: noobaa-mgmt
 spec:
   port:
-    targetPort: mgmt-https
+    targetPort: mgmt-proxy
   tls:
     termination: reencrypt
     insecureEdgeTerminationPolicy: Redirect
