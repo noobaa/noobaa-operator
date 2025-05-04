@@ -54,6 +54,10 @@ spec:
           secret:
             secretName: noobaa-server
             optional: true
+        - name: auth-endpoint
+          secret:
+            secretName: endpoint-auth-proxy
+            optional: true
       containers:
         - name: endpoint
           image: NOOBAA_CORE_IMAGE
@@ -161,6 +165,32 @@ spec:
             tcpSocket:
               port: 6001 # ready when s3 port is open
             timeoutSeconds: 5
+        - name: oauth-proxy
+          image: quay.io/openshift/origin-oauth-proxy:4.16
+          imagePullPolicy: IfNotPresent
+          ports:
+          - name: endpoint-proxy
+            containerPort: 7003
+            protocol: TCP
+          args:
+            - -https-address=:7003
+            - -provider=openshift
+            - -email-domain=*
+            - -openshift-service-account=noobaa-endpoint
+            - -upstream=http://localhost:7004
+            - -tls-cert=/etc/endpoint-tls/tls.crt
+            - -tls-key=/etc/endpoint-tls/tls.key
+            - -cookie-secret-file=/etc/proxy-secrets/session_secret
+            - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            - -openshift-sar={"resource":"services","name":"s3","namespace":"noobaa","verb":"get"}
+            - -openshift-delegate-urls={"/":{"resource":"services","namespace":"noobaa","verb":"get"}}
+          volumeMounts:
+            - name: s3-secret
+              mountPath: /etc/endpoint-tls
+              readOnly: true
+            - name: auth-endpoint
+              mountPath: /etc/proxy-secrets
+              readOnly: true
       securityContext:
         runAsUser: 0
         runAsGroup: 0
