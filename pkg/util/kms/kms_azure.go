@@ -21,6 +21,8 @@ const (
 // AzureVault is a azure kms driver
 type AzureVault struct {
 	UID string // NooBaa system UID
+	name string // NooBaa system name
+	ns   string // NooBaa system namespace
 }
 
 // NewAzureVault is azure driver constructor
@@ -29,7 +31,7 @@ func NewAzureVault(
 	namespace string,
 	uid string,
 ) Driver {
-	return &AzureVault{uid}
+	return &AzureVault{uid, name, namespace}
 }
 
 //
@@ -107,8 +109,8 @@ func createCertTempFile(config map[string]interface{}, namespace string) error {
 
 // Version returns the current driver KMS version
 // either single string or map, i.e. rotating key
-func (*AzureVault) Version(kms *KMS) Version {
-	return &VersionSingleSecret{kms, nil}
+func (k *AzureVault) Version(kms *KMS) Version {
+	return &VersionRotatingSecret{VersionBase{kms, nil}, k.name, k.ns}
 }
 
 // Register Azure driver with KMS layer
