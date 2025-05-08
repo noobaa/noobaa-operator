@@ -58,10 +58,15 @@ spec:
               mountPath: /var/lib/pgsql
             - name: noobaa-postgres-config-volume
               mountPath: /opt/app-root/src/postgresql-cfg
+            - name: shm
+              mountPath: /dev/shm
       volumes:
         - name: noobaa-postgres-config-volume
           configMap:
             name: noobaa-postgres-config
+        - name: shm
+          emptyDir:
+            medium: Memory
       securityContext:
         runAsUser: 10001
         runAsGroup: 0
