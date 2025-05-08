@@ -259,9 +259,14 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 					},
 				},
 			}
-
 		}
 	}
+
+	// set terminationGracePeriodSeconds to 70 seconds to allow for graceful shutdown
+	// we set 70 to account for the 60 seconds timeout of the fast shutdow in preStop,  plus some slack
+	// see here: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#hook-handler-execution
+	gracePeriod := int64(70)
+	podSpec.TerminationGracePeriodSeconds = &gracePeriod
 
 	if r.NooBaa.Spec.ImagePullSecret == nil {
 		podSpec.ImagePullSecrets =
