@@ -100,6 +100,8 @@ spec:
             mountPath: /opt/app-root/src/postgresql-cfg
           - name: noobaa-postgres-initdb-sh-volume
             mountPath: /init
+          - name: shm
+            mountPath: /dev/shm
       volumes:
       - name: noobaa-postgres-config-volume
         configMap:
@@ -107,6 +109,9 @@ spec:
       - name: noobaa-postgres-initdb-sh-volume
         configMap:
           name: noobaa-postgres-initdb-sh
+      - name: shm
+        emptyDir:
+          medium: Memory
       securityContext: 
         runAsUser: 10001
         runAsGroup: 0

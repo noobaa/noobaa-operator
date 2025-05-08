@@ -3620,7 +3620,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_configmap_postgres_db_yaml = "afe8a865abf2b033229df9dcea392abc1cb27df965d5ff0181f6d931504dce4e"
+const Sha256_deploy_internal_configmap_postgres_db_yaml = "9e522258577e9b24d289e005e74c8125cffcd56652533fe30ee109c7fb4b95e0"
 
 const File_deploy_internal_configmap_postgres_db_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3648,6 +3648,7 @@ data:
     min_wal_size = 2GB
     max_wal_size = 8GB
     shared_preload_libraries = 'pg_stat_statements'
+    pg_stat_statements.track = all
 `
 
 const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "5ef599d78f148d91023d38ef516f73a0d903dfb060eb382fb741b65291955fbe"
@@ -5015,7 +5016,7 @@ spec:
           storage: 50Gi
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "ea7ea63d019cb84327e89fbfa6a34788e0f43726ae8b2446eb1801e2a50240e1"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "ed43a30779f93d49fdacfa88362ec8290bd0502f2a1ef809cdee6110ce691941"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5119,6 +5120,8 @@ spec:
             mountPath: /opt/app-root/src/postgresql-cfg
           - name: noobaa-postgres-initdb-sh-volume
             mountPath: /init
+          - name: shm
+            mountPath: /dev/shm
       volumes:
       - name: noobaa-postgres-config-volume
         configMap:
@@ -5126,6 +5129,9 @@ spec:
       - name: noobaa-postgres-initdb-sh-volume
         configMap:
           name: noobaa-postgres-initdb-sh
+      - name: shm
+        emptyDir:
+          medium: Memory
       securityContext: 
         runAsUser: 10001
         runAsGroup: 0
@@ -5141,8 +5147,7 @@ spec:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 50Gi
-`
+            storage: 50Gi`
 
 const Sha256_deploy_internal_text_system_status_readme_progress_tmpl = "d26aa1028e4a235018cc46e00392d3209d3e09e8320f3692be6346a9cfdf289a"
 
