@@ -84,6 +84,15 @@ const (
 
 	topologyConstraintsEnabledKubeVersion = "1.26.0"
 	trueStr                               = "true"
+
+	// ServiceServingCertCAFile points to OCP default root CA list
+	ServiceServingCertCAFile = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+
+	// InjectedBundleCertCAFile points to OCP root CA to be added to the default root CA list
+	InjectedBundleCertCAFile = "/etc/ocp-injected-ca-bundle/ca-bundle.crt"
+
+	// CombinedCaBundlePath points to the combined CA bundle file
+	CombinedCaBundlePath = "/tmp/ca-bundle.crt"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -120,14 +129,14 @@ var (
 	lazyConfig *rest.Config
 	lazyClient client.Client
 
-	// InsecureHTTPTransport is a global insecure http transport
+	// InsecureHTTPTransport is a secure, global http transport without certificate signature verification
 	InsecureHTTPTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
-	// GlobalCARefreshingTransport is a global secure http transport
+	// GlobalCARefreshingTransport is the same as InsecureHTTPTransport, but used for bundling certificates provided by the user and OpenShift
 	GlobalCARefreshingTransport = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
 	// MapStorTypeToMandatoryProperties holds a map of store type -> credentials mandatory properties
@@ -143,15 +152,15 @@ var (
 	}
 )
 
-// AddToRootCAs adds a local cert file to Our GlobalCARefreshingTransport
-func AddToRootCAs(localCertFile string) error {
+// CombineCaBundle combines a local cert file to Our GlobalCARefreshingTransport
+func CombineCaBundle(localCertFile string) error {
 	rootCAs, _ := x509.SystemCertPool()
 	if rootCAs == nil {
 		rootCAs = x509.NewCertPool()
 	}
 
 	var certFiles = []string{
-		"/etc/ocp-injected-ca-bundle.crt",
+		InjectedBundleCertCAFile,
 		localCertFile,
 	}
 
@@ -169,7 +178,7 @@ func AddToRootCAs(localCertFile string) error {
 		}
 
 		// Trust the augmented cert pool in our client
-		log.Infof("Successfuly appended %q to RootCAs", certFile)
+		log.Infof("Successfully appended %q to RootCAs", certFile)
 	}
 	GlobalCARefreshingTransport.TLSClientConfig.RootCAs = rootCAs
 	return nil
