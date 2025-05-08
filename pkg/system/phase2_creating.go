@@ -303,8 +303,22 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 			if r.NooBaa.Spec.DBResources != nil {
 				c.Resources = *r.NooBaa.Spec.DBResources
 			}
+
+			c.Lifecycle = &corev1.Lifecycle{
+				PreStop: &corev1.LifecycleHandler{
+					Exec: &corev1.ExecAction{
+						Command: []string{"/bin/sh", "-c", "pg_ctl -D /var/lib/pgsql/data/userdata/ -w -t 60 -m fast stop"},
+					},
+				},
+			}
 		}
 	}
+
+	// set terminationGracePeriodSeconds to 70 seconds to allow for graceful shutdown
+	// we set 70 to account for the 60 seconds timeout of the fast shutdow in preStop,  plus some slack
+	// see here: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#hook-handler-execution
+	gracePeriod := int64(70)
+	podSpec.TerminationGracePeriodSeconds = &gracePeriod
 
 	if r.NooBaa.Spec.ImagePullSecret == nil {
 		podSpec.ImagePullSecrets =
