@@ -3869,7 +3869,7 @@ metadata:
 data: {}
 `
 
-const Sha256_deploy_internal_configmap_postgres_db_yaml = "afe8a865abf2b033229df9dcea392abc1cb27df965d5ff0181f6d931504dce4e"
+const Sha256_deploy_internal_configmap_postgres_db_yaml = "9e522258577e9b24d289e005e74c8125cffcd56652533fe30ee109c7fb4b95e0"
 
 const File_deploy_internal_configmap_postgres_db_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3897,6 +3897,7 @@ data:
     min_wal_size = 2GB
     max_wal_size = 8GB
     shared_preload_libraries = 'pg_stat_statements'
+    pg_stat_statements.track = all
 `
 
 const Sha256_deploy_internal_deployment_endpoint_yaml = "0784d71f1a50b8b2f216adb957ea4ce90392e39981bd584dd5e98272327a99c2"
@@ -5147,7 +5148,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "37a6c36928ba426ca04fd89e1eb2685e10d1a5f65c63ebb40c68a4f5c37645de"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "d0242805c8719ef45290746b42706fb69805cfd40be6258986454d256112fa7c"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5209,10 +5210,15 @@ spec:
               mountPath: /var/lib/pgsql
             - name: noobaa-postgres-config-volume
               mountPath: /opt/app-root/src/postgresql-cfg
+            - name: shm
+              mountPath: /dev/shm
       volumes:
         - name: noobaa-postgres-config-volume
           configMap:
             name: noobaa-postgres-config
+        - name: shm
+          emptyDir:
+            medium: Memory
       securityContext:
         runAsUser: 10001
         runAsGroup: 0
