@@ -3980,7 +3980,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "e76dc7c81a02fb396263e61311b2bc0d765f32377d1b9d2ec3f435fced2fb0c3"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "702cd71dbf837b6883e47d1aa2003b37fce77e218143c602481f2f264a5181eb"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4037,6 +4037,10 @@ spec:
         - name: noobaa-server
           secret:
             secretName: noobaa-server
+            optional: true
+        - name: auth-endpoint
+          secret:
+            secretName: endpoint-auth-proxy
             optional: true
       containers:
         - name: endpoint
@@ -4145,6 +4149,32 @@ spec:
             tcpSocket:
               port: 6001 # ready when s3 port is open
             timeoutSeconds: 5
+        - name: oauth-proxy
+          image: quay.io/openshift/origin-oauth-proxy:4.16
+          imagePullPolicy: IfNotPresent
+          ports:
+          - name: endpoint-proxy
+            containerPort: 7003
+            protocol: TCP
+          args:
+            - -https-address=:7003
+            - -provider=openshift
+            - -email-domain=*
+            - -openshift-service-account=noobaa-endpoint
+            - -upstream=http://localhost:7004
+            - -tls-cert=/etc/endpoint-tls/tls.crt
+            - -tls-key=/etc/endpoint-tls/tls.key
+            - -cookie-secret-file=/etc/proxy-secrets/session_secret
+            - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            - -openshift-sar={"resource":"services","name":"s3","namespace":"noobaa","verb":"get"}
+            - -openshift-delegate-urls={"/":{"resource":"services","namespace":"noobaa","verb":"get"}}
+          volumeMounts:
+            - name: s3-secret
+              mountPath: /etc/endpoint-tls
+              readOnly: true
+            - name: auth-endpoint
+              mountPath: /etc/proxy-secrets
+              readOnly: true
       securityContext:
         runAsUser: 0
         runAsGroup: 0
@@ -4785,7 +4815,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_route_mgmt_yaml = "1d462d165da5a660b85900e46a11e4d1a53e1498bf9d086b4b68afdceab08394"
+const Sha256_deploy_internal_route_mgmt_yaml = "102ac697ed0c3211bb83dc7b706ffe864040ab942c93876532d209782b1643cb"
 
 const File_deploy_internal_route_mgmt_yaml = `apiVersion: route.openshift.io/v1
 kind: Route
@@ -4795,7 +4825,7 @@ metadata:
   name: noobaa-mgmt
 spec:
   port:
-    targetPort: mgmt-https
+    targetPort: mgmt-proxy
   tls:
     termination: reencrypt
     insecureEdgeTerminationPolicy: Redirect
@@ -4881,7 +4911,7 @@ spec:
       name: postgres
 `
 
-const Sha256_deploy_internal_service_mgmt_yaml = "fa5f052fb360e6893fc446a318413a6f494a8610706ae7e36ff985b3b3a5c070"
+const Sha256_deploy_internal_service_mgmt_yaml = "bf5cb53bd93f440fd746040b842ddb9d2f63110c1b604b1ce6b0cd8e57c8f4ff"
 
 const File_deploy_internal_service_mgmt_yaml = `apiVersion: v1
 kind: Service
@@ -4911,9 +4941,13 @@ spec:
       name: bg-https
     - port: 8446
       name: hosted-agents-https
+    - name: mgmt-proxy
+      port: 8447
+      protocol: TCP
+      targetPort: mgmt-proxy
 `
 
-const Sha256_deploy_internal_service_s3_yaml = "df7d8c8ee81b820678b7d8648b26c6cf86da6be00caedad052c3848db5480c37"
+const Sha256_deploy_internal_service_s3_yaml = "30e70b0e972929e4a5b61ed54144dbe9cb80a2b1313362495313bdacc45ac114"
 
 const File_deploy_internal_service_s3_yaml = `apiVersion: v1
 kind: Service
@@ -4940,6 +4974,8 @@ spec:
       name: md-https
     - port: 7004
       name: metrics
+      protocol: TCP
+      targetPort: endpoint-proxy
 
 `
 
@@ -5040,7 +5076,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "14226b25028637a7176dbdb4a6fa6e90a9e63cddd5f39cbe0c044f433b0a4764"
+const Sha256_deploy_internal_statefulset_core_yaml = "29e80614732ff6994eeecb33e0d8835a1a1b7443bbc41cf9271bf6b5acc3fba4"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5087,10 +5123,40 @@ spec:
                   path: token
                   # For testing purposes change the audience to api
                   audience: openshift
+        - name: secret-mgmt-auth-proxy
+          secret:
+            defaultMode: 420
+            secretName: mgmt-auth-proxy
       securityContext:
         runAsUser: 10001
         runAsGroup: 0
       containers:
+        - name: oauth-proxy
+          image: quay.io/openshift/origin-oauth-proxy:4.16
+          imagePullPolicy: IfNotPresent
+          ports:
+          - name: mgmt-proxy
+            containerPort: 8447
+            protocol: TCP
+          args:
+            - -https-address=:8447
+            - -provider=openshift
+            - -email-domain=*
+            - -openshift-service-account=noobaa-core
+            - -upstream=http://localhost:8080
+            - -tls-cert=/etc/tls/private/tls.crt
+            - -tls-key=/etc/tls/private/tls.key
+            - -cookie-secret-file=/etc/proxy/secrets/session_secret
+            - -openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            - -openshift-sar={"resource":"services","name":"noobaa-mgmt","namespace":"noobaa","verb":"get"}
+            - -openshift-delegate-urls={"/":{"resource":"services","namespace":"noobaa","verb":"get"}}
+          volumeMounts:
+            - mountPath: /etc/tls/private
+              name: mgmt-secret
+              readOnly: true
+            - mountPath: /etc/proxy/secrets
+              name: secret-mgmt-auth-proxy
+              readOnly: true
         #----------------#
         # CORE CONTAINER #
         #----------------#
@@ -6402,6 +6468,22 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
+const Sha256_deploy_role_binding_auth_delegator_proxy_yaml = "7e512792d38d0ecb783ca627985b343d77bfc45c645a121436dda5b3e3179587"
+
+const File_deploy_role_binding_auth_delegator_proxy_yaml = `kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: auth-proxy-auth-delegator
+  namespace: noobaa
+subjects:
+  - kind: ServiceAccount
+    name: noobaa-core
+    namespace: noobaa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: 'system:auth-delegator'`
+
 const Sha256_deploy_role_binding_auth_reader_hpav2_yaml = "342faf51f7e0f2e718a1479ed4a74cca0775a4f8328215a552e0f5ecde31d092"
 
 const File_deploy_role_binding_auth_reader_hpav2_yaml = `apiVersion: rbac.authorization.k8s.io/v1
@@ -6499,7 +6581,7 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_core_yaml = "c3cfb5b87298224fd6e4e4bff32d3948ad168a0110b8569118a260739ef5d5e7"
+const Sha256_deploy_role_core_yaml = "f7dc765d2bd2996721ea9ad79f712066654213e47ea9d37dc4a78d849f4f7ada"
 
 const File_deploy_role_core_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6548,7 +6630,16 @@ rules:
   - securitycontextconstraints
   verbs:
   - use
-`
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  - create
+  - update
+  - list
+  - watch`
 
 const Sha256_deploy_role_db_yaml = "bc7eeca1125dfcdb491ab8eb69e3dcbce9f004a467b88489f85678b3c6872cce"
 
@@ -6797,13 +6888,14 @@ metadata:
     serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"noobaa-mgmt"}}'
 `
 
-const Sha256_deploy_service_account_core_yaml = "7e8f1d49bdba0969a33e8acc676cc5e2d50af9f4c94112b6de07548f3f704c24"
+const Sha256_deploy_service_account_core_yaml = "fb7c5eebfa0a0a7447e20c97ed10a6ef7861e02b213f262be9d0c775f9552915"
 
 const File_deploy_service_account_core_yaml = `apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: noobaa-core
-
+  annotations:
+    serviceaccounts.openshift.io/oauth-redirectreference.noobaa-core: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"noobaa-mgmt"}}'
 `
 
 const Sha256_deploy_service_account_db_yaml = "fcbccd7518ee5a426b071a3acc85d22142e27c5628b61ce4292cc393d2ecac31"
@@ -6814,12 +6906,14 @@ metadata:
   name: noobaa-db
 `
 
-const Sha256_deploy_service_account_endpoint_yaml = "c2331e027114658e48a2bd1139b00cce06dfd834aa682eae923de54874a6baed"
+const Sha256_deploy_service_account_endpoint_yaml = "74f0557416e82cead0add0041d946f6511e32674374bcdca57bf0e7dd71494f5"
 
 const File_deploy_service_account_endpoint_yaml = `apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: noobaa-endpoint
+  annotations:
+    serviceaccounts.openshift.io/oauth-redirecturi.endpoint: "//:7004"
 `
 
 const Sha256_deploy_service_account_ui_yaml = "d6cb0e92fdb350148399e1ac42bfa640e254bdbb295c9a15dc9edfd4335e73f6"
