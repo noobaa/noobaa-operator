@@ -334,6 +334,10 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 					Value: options.Psql12Image,
 				},
 				corev1.EnvVar{
+					Name:  "NOOBAA_AUTH_PROXY_IMAGE",
+					Value: options.AuthProxyImage,
+				},
+				corev1.EnvVar{
 					Name:  "ENABLE_NOOBAA_ADMISSION",
 					Value: "true",
 				})

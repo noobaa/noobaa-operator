@@ -29,6 +29,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -126,6 +127,10 @@ type Reconciler struct {
 	ExternalPgSSLSecret       *corev1.Secret
 	BucketNotificationsPVC    *corev1.PersistentVolumeClaim
 
+	CoreAuthRoleBinding *rbacv1.ClusterRoleBinding
+	SecretMgmtAuthProxy *corev1.Secret
+	SecreCoreSAToken    *corev1.Secret
+
 	// CNPG resources
 	CNPGImageCatalog *cnpgv1.ImageCatalog
 	CNPGCluster      *cnpgv1.Cluster
@@ -192,6 +197,10 @@ func NewReconciler(
 		KedaScaled:                util.KubeObject(bundle.File_deploy_internal_hpa_keda_scaled_object_yaml).(*kedav1alpha1.ScaledObject),
 		AdapterHPA:                util.KubeObject(bundle.File_deploy_internal_hpav2_autoscaling_yaml).(*autoscalingv2.HorizontalPodAutoscaler),
 
+		CoreAuthRoleBinding: util.KubeObject(bundle.File_deploy_role_binding_core_auth_delegator_yaml).(*rbacv1.ClusterRoleBinding),
+		SecretMgmtAuthProxy: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecreCoreSAToken:    util.KubeObject(bundle.File_deploy_internal_secret_core_sa_token_yaml).(*corev1.Secret),
+
 		CNPGImageCatalog: cnpg.GetCnpgImageCatalogObj(req.Namespace, req.Name+pgImageCatalogSuffix),
 		CNPGCluster:      cnpg.GetCnpgClusterObj(req.Namespace, req.Name+pgClusterSuffix),
 	}
@@ -243,6 +252,10 @@ func NewReconciler(
 	r.BucketLoggingPVC.Namespace = r.Request.Namespace
 	r.BucketNotificationsPVC.Namespace = r.Request.Namespace
 
+	//r.CoreAuthRoleBinding.Namespace = r.Request.Namespace
+	r.SecretMgmtAuthProxy.Namespace = r.Request.Namespace
+	r.SecreCoreSAToken.Namespace = r.Request.Namespace
+
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
 	r.ServiceAccount.Name = r.Request.Name
@@ -287,6 +300,7 @@ func NewReconciler(
 	r.AdapterHPA.Name = r.Request.Name + "-hpav2"
 	r.BucketLoggingPVC.Name = r.Request.Name + "-bucket-logging-pvc"
 	r.BucketNotificationsPVC.Name = r.Request.Name + "-bucket-notifications-pvc"
+	r.SecretMgmtAuthProxy.Name = "mgmt-auth-proxy"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name

@@ -81,6 +81,10 @@ var PostgresMajorVersion = 16
 // PostgresInstances is the default number of postgres instances in a managed postgres cluster
 var PostgresInstances = 2
 
+// AuthProxyImage is the default oauth-proxy url
+// it can be overridden for testing or different registry locations.
+var AuthProxyImage = "quay.io/openshift/origin-oauth-proxy:4.16"
+
 // Psql12Image is the default postgres12 db image url
 // currently it can not be overridden.
 var Psql12Image = "centos/postgresql-12-centos7"
@@ -244,6 +248,10 @@ func init() {
 	FlagSet.StringVar(
 		&DBImage, "db-image",
 		DBImage, "The database container image",
+	)
+	FlagSet.StringVar(
+		&AuthProxyImage, "auth-proxy-image",
+		AuthProxyImage, "The auth-proxy constainer image",
 	)
 	FlagSet.StringVar(
 		&Psql12Image, "psql-12-image",

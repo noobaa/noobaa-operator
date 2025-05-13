@@ -23,4 +23,5 @@ spec:
       name: md-https
     - port: 7004
       name: metrics
+      targetPort: endpoint-proxy
 
