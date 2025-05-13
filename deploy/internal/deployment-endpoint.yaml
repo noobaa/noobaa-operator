@@ -177,6 +177,7 @@ spec:
             - -provider=openshift
             - -email-domain=*
             - -openshift-service-account=noobaa-endpoint
+            - -client-id=system:serviceaccount:noobaa:noobaa-endpoint
             - -upstream=http://localhost:7004
             - -tls-cert=/etc/endpoint-tls/tls.crt
             - -tls-key=/etc/endpoint-tls/tls.key

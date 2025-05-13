@@ -175,6 +175,12 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 
+	//Management Auth Proxy changes - start
+	/*if err := r.ReconcileMgmtAuthProxy(); err != nil {
+		logrus.Infof("ReconcileMgmtAuthProxySecret @@@@@@@@@@@@ %s", err)
+		return err
+	}*/
+
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}
@@ -186,6 +192,39 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		}
 	}
 
+	return nil
+}
+
+// ReconcileMgmtAuthProxySecret set auth related info in secret
+func (r *Reconciler) ReconcileMgmtAuthProxy() error {
+	logrus.Infof("ReconcileMgmtAuthProxySecret %s", r.SecretMgmtAuthProxy.Name)
+	if err := r.ReconcileObject(r.SecretMgmtAuthProxy, r.SetDesiredSecretMgmtAuthProxy); err != nil {
+		logrus.Infof("SetDesiredSecretMgmtAuthProxy %s", err)
+		return err
+	}
+
+	if err := r.ReconcileObject(r.CoreAuthRoleBinding, r.SetDesiredCoreAuthClusterRoleBinding); err != nil {
+		logrus.Infof("SetDesiredCoreAuthClusterRoleBinding %s", err)
+		return err
+	}
+
+	if err := r.ReconcileObject(r.SecreCoreSAToken, nil); err != nil {
+		logrus.Infof("SecreCoreSAToken %s", err)
+		return err
+	}
+	return nil
+}
+
+// ReconcileCoreAuthClusterRoleBinding set core auth delegator rolebinding
+func (r *Reconciler) SetDesiredCoreAuthClusterRoleBinding() error {
+	r.Logger.Info("ReconcileCoreAuthClusterRoleBinding")
+	r.CoreAuthRoleBinding.Subjects[0].Namespace = options.Namespace
+	return nil
+}
+
+// SetDesiredSecretMgmtAuthProxy set auth related info in admin secret
+func (r *Reconciler) SetDesiredSecretMgmtAuthProxy() error {
+	r.SecretMgmtAuthProxy.StringData["session_secret"] = util.RandomBase64(40)
 	return nil
 }
 
@@ -647,6 +686,21 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
 			}
+		case "oauth-proxy":
+			c.Image = GetDesiredAuthProxyImage(r.NooBaa)
+			var reqCPU, reqMem resource.Quantity
+			reqCPU, _ = resource.ParseQuantity("100m")
+			reqMem, _ = resource.ParseQuantity("256Mi")
+
+			logResourceList := corev1.ResourceList{
+				corev1.ResourceCPU:    reqCPU,
+				corev1.ResourceMemory: reqMem,
+			}
+			c.Resources = corev1.ResourceRequirements{
+				Requests: logResourceList,
+				Limits:   logResourceList,
+			}
+
 		}
 	}
 	if r.NooBaa.Spec.ImagePullSecret == nil {

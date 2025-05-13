@@ -1423,7 +1423,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "1637077ca2e0d584cd4203469f809b215af45ee4ba5358a283bbd7a5bf1b573e"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "063ad30a1b9c20051dd92a37442bb6e317239cb216aeae6b6542a2d1687578b3"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2423,6 +2423,10 @@ spec:
                 nullable: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              authProxyImage:
+                description: AuthProxyImage (optional) overrides the default image
+                  for the auth-proxy
+                type: string
               autoscaler:
                 description: Configuration related to autoscaling
                 properties:
@@ -3980,7 +3984,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "702cd71dbf837b6883e47d1aa2003b37fce77e218143c602481f2f264a5181eb"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "8edb081f183b0b40940697078d011bbae03a72c29868460580e5a8dce0701083"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4161,6 +4165,7 @@ spec:
             - -provider=openshift
             - -email-domain=*
             - -openshift-service-account=noobaa-endpoint
+            - -client-id=system:serviceaccount:noobaa:noobaa-endpoint
             - -upstream=http://localhost:7004
             - -tls-cert=/etc/endpoint-tls/tls.crt
             - -tls-key=/etc/endpoint-tls/tls.key
@@ -4879,6 +4884,16 @@ spec:
   wildcardPolicy: None
 `
 
+const Sha256_deploy_internal_secret_core_sa_token_yaml = "0250209bc91e992e120767a0ad455000554fcbb617f08edf69022141741ae4a4"
+
+const File_deploy_internal_secret_core_sa_token_yaml = `apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-core-sa-token
+  annotations:
+    kubernetes.io/service-account.name: "noobaa-core" 
+type: kubernetes.io/service-account-token`
+
 const Sha256_deploy_internal_secret_empty_yaml = "d63aaeaf7f9c7c1421fcc138ee2f31d2461de0dec2f68120bc9cce367d4d4186"
 
 const File_deploy_internal_secret_empty_yaml = `apiVersion: v1
@@ -4947,7 +4962,7 @@ spec:
       targetPort: mgmt-proxy
 `
 
-const Sha256_deploy_internal_service_s3_yaml = "30e70b0e972929e4a5b61ed54144dbe9cb80a2b1313362495313bdacc45ac114"
+const Sha256_deploy_internal_service_s3_yaml = "7ab8754a89b1408fb12b6387b2185c54738944c5c88018731001bf7374c48e4e"
 
 const File_deploy_internal_service_s3_yaml = `apiVersion: v1
 kind: Service
@@ -4974,7 +4989,6 @@ spec:
       name: md-https
     - port: 7004
       name: metrics
-      protocol: TCP
       targetPort: endpoint-proxy
 
 `
@@ -5076,7 +5090,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "29e80614732ff6994eeecb33e0d8835a1a1b7443bbc41cf9271bf6b5acc3fba4"
+const Sha256_deploy_internal_statefulset_core_yaml = "bd1c369ae3b87b3f481b8b359a03bae1b6a37110ae105d18c23ae8dade12dde7"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5132,7 +5146,8 @@ spec:
         runAsGroup: 0
       containers:
         - name: oauth-proxy
-          image: quay.io/openshift/origin-oauth-proxy:4.16
+          #image: quay.io/openshift/origin-oauth-proxy:4.16
+          image: NOOBAA_AUTH_PROXY_IMAGE
           imagePullPolicy: IfNotPresent
           ports:
           - name: mgmt-proxy
@@ -5142,6 +5157,7 @@ spec:
             - -https-address=:8447
             - -provider=openshift
             - -email-domain=*
+            - -client-id=system:serviceaccount:noobaa:noobaa-core
             - -openshift-service-account=noobaa-core
             - -upstream=http://localhost:8080
             - -tls-cert=/etc/tls/private/tls.crt
@@ -6468,22 +6484,6 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_binding_auth_delegator_proxy_yaml = "7e512792d38d0ecb783ca627985b343d77bfc45c645a121436dda5b3e3179587"
-
-const File_deploy_role_binding_auth_delegator_proxy_yaml = `kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: auth-proxy-auth-delegator
-  namespace: noobaa
-subjects:
-  - kind: ServiceAccount
-    name: noobaa-core
-    namespace: noobaa
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: 'system:auth-delegator'`
-
 const Sha256_deploy_role_binding_auth_reader_hpav2_yaml = "342faf51f7e0f2e718a1479ed4a74cca0775a4f8328215a552e0f5ecde31d092"
 
 const File_deploy_role_binding_auth_reader_hpav2_yaml = `apiVersion: rbac.authorization.k8s.io/v1
@@ -6516,6 +6516,20 @@ subjects:
 - kind: ServiceAccount
   name: noobaa-core
 `
+
+const Sha256_deploy_role_binding_core_auth_delegator_yaml = "e5c18c4062c8cbc75f58edd4dc9220872060df6dfb127ce48d85953c2603230c"
+
+const File_deploy_role_binding_core_auth_delegator_yaml = `kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: core-auth-proxy-auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: noobaa-core
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: 'system:auth-delegator'`
 
 const Sha256_deploy_role_binding_db_yaml = "3a4872fcde50e692ae52bbd208a8e1d115c574431c25a9644a7c820ae13c7748"
 

@@ -85,6 +85,10 @@ type NooBaaSpec struct {
 	// +optional
 	DBImage *string `json:"dbImage,omitempty"`
 
+	// AuthProxyImage (optional) overrides the default image for the auth-proxy
+	// +optional
+	AuthProxyImage *string `json:"authProxyImage,omitempty"`
+
 	// DBConf (optional) overrides the default postgresql db config
 	// +optional
 	DBConf *string `json:"dbConf,omitempty"`

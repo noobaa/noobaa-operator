@@ -1304,3 +1304,17 @@ func SetAllowNoobaaDeletion(noobaa *nbv1.NooBaa) error {
 	}
 	return nil
 }
+
+// GetDesiredAuthProxyImage returns the desired auth-proxy image according to spec or env or default (in options)
+func GetDesiredAuthProxyImage(sys *nbv1.NooBaa) string {
+
+	if sys.Spec.AuthProxyImage != nil {
+		return *sys.Spec.AuthProxyImage
+	}
+
+	if os.Getenv("AUTH_PROXY_IMAGE") != "" {
+		return os.Getenv("AUTH_PROXY_IMAGE")
+	}
+
+	return options.AuthProxyImage
+}

@@ -996,6 +996,10 @@ spec:
                 nullable: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              authProxyImage:
+                description: AuthProxyImage (optional) overrides the default image
+                  for the auth-proxy
+                type: string
               autoscaler:
                 description: Configuration related to autoscaling
                 properties:

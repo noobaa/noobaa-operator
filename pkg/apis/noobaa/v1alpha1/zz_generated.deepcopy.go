@@ -1201,6 +1201,11 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.AuthProxyImage != nil {
+		in, out := &in.AuthProxyImage, &out.AuthProxyImage
+		*out = new(string)
+		**out = **in
+	}
 	if in.DBConf != nil {
 		in, out := &in.DBConf, &out.DBConf
 		*out = new(string)

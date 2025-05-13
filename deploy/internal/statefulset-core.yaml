@@ -52,7 +52,8 @@ spec:
         runAsGroup: 0
       containers:
         - name: oauth-proxy
-          image: quay.io/openshift/origin-oauth-proxy:4.16
+          #image: quay.io/openshift/origin-oauth-proxy:4.16
+          image: NOOBAA_AUTH_PROXY_IMAGE
           imagePullPolicy: IfNotPresent
           ports:
           - name: mgmt-proxy
@@ -62,6 +63,7 @@ spec:
             - -https-address=:8447
             - -provider=openshift
             - -email-domain=*
+            - -client-id=system:serviceaccount:noobaa:noobaa-core
             - -openshift-service-account=noobaa-core
             - -upstream=http://localhost:8080
             - -tls-cert=/etc/tls/private/tls.crt
