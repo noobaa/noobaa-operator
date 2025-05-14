@@ -8,6 +8,11 @@ spec:
   endpoints:
   - port: metrics
     path: /
+    authorization:
+      type: 'Bearer'
+      credentials:
+        name: metrics-auth-secret
+        key: metrics_token
   namespaceSelector: {}
   selector:
     matchLabels:

@@ -135,6 +135,32 @@ func (r *Reconciler) ReconcileSystemSecrets() error {
 	if err := r.ReconcileObject(r.SecretEndpoints, r.SetDesiredSecretEndpoints); err != nil {
 		return err
 	}
+
+	if err := r.ReconcileObject(r.SecretMetricsAuth, r.SetDesiredMetricsAuth); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetDesiredMetricsAuth updates the ServiceAccount as desired for reconciling
+func (r *Reconciler) SetDesiredMetricsAuth() error {
+
+	// Load string data from data
+	util.SecretResetStringDataFromData(r.SecretMetricsAuth)
+	// SecretMetricsAuth exists means the system already created and we can skip
+	if r.SecretMetricsAuth.StringData["metrics_token"] != "" {
+		return nil
+	}
+	res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+		System: r.Request.Name,
+		Role:   "metrics-auth",
+		Email:  options.OperatorAccountEmail,
+	})
+	if err != nil {
+		return fmt.Errorf("cannot create an auth token for metrics, error: %v", err)
+	}
+	r.SecretMetricsAuth.StringData["metrics_token"] = res.Token
 	return nil
 }
 
@@ -619,11 +645,11 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 			//this is a way to let containers explicitly know
 			//that an nsr should be mounted on them
 			envVar := corev1.EnvVar{
-				Name: "NSFS_NSR_" + nsStore.Name,
+				Name:  "NSFS_NSR_" + nsStore.Name,
 				Value: "mounted",
 			}
 
-			util.MergeEnvArrays(&container.Env, &[]corev1.EnvVar{envVar});
+			util.MergeEnvArrays(&container.Env, &[]corev1.EnvVar{envVar})
 		}
 	}
 
