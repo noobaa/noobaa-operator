@@ -1,4 +1,5 @@
 name: Admission Webhook Tests
+
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
@@ -8,6 +9,7 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
+
     steps:
       - name: Checkout noobaa-operator
         uses: actions/checkout@v3
@@ -15,31 +17,29 @@ jobs:
           repository: "noobaa/noobaa-operator"
           path: "noobaa-operator"
 
-      - name: Setup Go on runner
-        uses: actions/setup-go@v3
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version: "1.20"
 
       - name: Set environment variables
         run: |
-          echo PATH=$PATH:$HOME/go/bin                           >> $GITHUB_ENV
-          echo OPERATOR_IMAGE=noobaa/noobaa-operator:integration >> $GITHUB_ENV
-          echo CHANGE_MINIKUBE_NONE_USER=true                    >> $GITHUB_ENV
+          echo "PATH=$PATH:$HOME/go/bin" >> $GITHUB_ENV
+          echo "OPERATOR_IMAGE=noobaa/noobaa-operator:integration" >> $GITHUB_ENV
 
-      - name: Deploy dependencies
+      - name: Setup Minikube
+        uses: medyagh/setup-minikube@v0.0.14
+        with:
+          driver: docker
+          kubernetes-version: v1.29.0
+
+      - name: Verify Minikube is running
+        run: minikube status
+
+      - name: Setup Ginkgo
         run: |
-          set -x
-          cd ./noobaa-operator
-          sudo bash .travis/install-minikube.sh
-          go get -v github.com/onsi/ginkgo/ginkgo
-          go install -v github.com/onsi/ginkgo/ginkgo
+          go install github.com/onsi/ginkgo/v2/ginkgo@latest
           ginkgo version
-
-      - name: Change settings for k8s and minikube
-        run: |
-          sudo mv /root/.kube /root/.minikube $HOME
-          sudo chown -R $USER $HOME/.kube $HOME/.minikube
-          sed "s/root/home\/$USER/g" $HOME/.kube/config > tmp; mv tmp $HOME/.kube/config
 
       - name: Build operator image
         run: |
@@ -47,7 +47,8 @@ jobs:
           cd ./noobaa-operator
           make cli
           make image
-          sudo docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
+          docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
+          minikube image load $OPERATOR_IMAGE
 
       - name: Install noobaa system
         run: |
@@ -88,9 +89,3 @@ jobs:
         with:
           name: admission-tests-logs
           path: noobaa-operator/admission-tests-logs
-
-        # Uncomment this step in case where you want to connect to the VM of this workflow using SSH.
-        # Pay attention that this workflow was configured with a timeout, and you might change it for this step.
-        # - name: Setup tmate session
-        #   if: ${{ failure() }}
-        #   uses: mxschmitt/action-tmate@v3
