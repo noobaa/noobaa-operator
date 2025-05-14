@@ -125,6 +125,7 @@ type Reconciler struct {
 	ExternalPgSecret          *corev1.Secret
 	ExternalPgSSLSecret       *corev1.Secret
 	BucketNotificationsPVC    *corev1.PersistentVolumeClaim
+	SecretMetricsAuth         *corev1.Secret
 
 	// CNPG resources
 	CNPGImageCatalog *cnpgv1.ImageCatalog
@@ -194,6 +195,8 @@ func NewReconciler(
 
 		CNPGImageCatalog: cnpg.GetCnpgImageCatalogObj(req.Namespace, req.Name+pgImageCatalogSuffix),
 		CNPGCluster:      cnpg.GetCnpgClusterObj(req.Namespace, req.Name+pgClusterSuffix),
+
+		SecretMetricsAuth: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 	}
 
 	// Set Namespace
@@ -242,6 +245,7 @@ func NewReconciler(
 	r.AdapterHPA.Namespace = r.Request.Namespace
 	r.BucketLoggingPVC.Namespace = r.Request.Namespace
 	r.BucketNotificationsPVC.Namespace = r.Request.Namespace
+	r.SecretMetricsAuth.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -287,6 +291,7 @@ func NewReconciler(
 	r.AdapterHPA.Name = r.Request.Name + "-hpav2"
 	r.BucketLoggingPVC.Name = r.Request.Name + "-bucket-logging-pvc"
 	r.BucketNotificationsPVC.Name = r.Request.Name + "-bucket-notifications-pvc"
+	r.SecretMetricsAuth.Name = r.Request.Name + "-metrics-auth-secret"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name
