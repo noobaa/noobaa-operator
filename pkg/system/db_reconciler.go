@@ -254,6 +254,13 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 		r.CNPGCluster.Spec.Affinity.Tolerations = r.NooBaa.Spec.Tolerations
 	}
 
+	// by default enable monitoring of the DB instances. if the annotation is "true", disable monitoring
+	disableMonStr := r.NooBaa.ObjectMeta.Annotations[nbv1.DisableDBDefaultMonitoring]
+	if r.CNPGCluster.Spec.Monitoring == nil {
+		r.CNPGCluster.Spec.Monitoring = &cnpgv1.MonitoringConfiguration{}
+	}
+	r.CNPGCluster.Spec.Monitoring.EnablePodMonitor = disableMonStr != "true"
+
 	r.setPostgresConfig()
 
 	// TODO: consider specifying a separate WAL storage configuration in Spec.WalStorage
@@ -549,5 +556,6 @@ func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSp
 		!reflect.DeepEqual(existingClusterSpec.Resources, r.CNPGCluster.Spec.Resources) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.StorageClass, r.CNPGCluster.Spec.StorageConfiguration.StorageClass) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.Size, r.CNPGCluster.Spec.StorageConfiguration.Size) ||
+		!reflect.DeepEqual(existingClusterSpec.Monitoring, r.CNPGCluster.Spec.Monitoring) ||
 		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.Parameters, r.CNPGCluster.Spec.PostgresConfiguration.Parameters)
 }
