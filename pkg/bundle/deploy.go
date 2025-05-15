@@ -3980,7 +3980,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "e76dc7c81a02fb396263e61311b2bc0d765f32377d1b9d2ec3f435fced2fb0c3"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "6e69c76e3a5beeb55b30f045a30492cef835295e351360f464942962be4cdbc3"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4006,7 +4006,7 @@ spec:
       annotations:
         noobaa.io/configmap-hash: ""
     spec:
-        # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
+      # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa-endpoint
       volumes:
         - name: mgmt-secret
@@ -4090,12 +4090,16 @@ spec:
             - name: POSTGRES_HOST
             - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
-              value: nbcore
             - name: POSTGRES_USER
             - name: POSTGRES_PASSWORD
             - name: POSTGRES_CONNECTION_STRING
             - name: POSTGRES_SSL_REQUIRED
             - name: POSTGRES_SSL_UNAUTHORIZED
+            - name: POSTGRES_HOST_PATH
+            - name: POSTGRES_USER_PATH
+            - name: POSTGRES_PASSWORD_PATH
+            - name: POSTGRES_DBNAME_PATH
+            - name: POSTGRES_PORT_PATH
             - name: VIRTUAL_HOSTS
             - name: REGION
             - name: ENDPOINT_GROUP_ID
@@ -5040,7 +5044,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "14226b25028637a7176dbdb4a6fa6e90a9e63cddd5f39cbe0c044f433b0a4764"
+const Sha256_deploy_internal_statefulset_core_yaml = "ac5e3c4caf9983c154a706f808f02cfd2bea064729d90bba3d5ad42547b8d100"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5065,7 +5069,7 @@ spec:
       annotations:
         noobaa.io/configmap-hash: ""
     spec:
-    # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
+      # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa-core
       volumes:
         - name: logs
@@ -5149,12 +5153,16 @@ spec:
               value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
-              value: nbcore
             - name: POSTGRES_USER
             - name: POSTGRES_PASSWORD
             - name: POSTGRES_CONNECTION_STRING
             - name: POSTGRES_SSL_REQUIRED
             - name: POSTGRES_SSL_UNAUTHORIZED
+            - name: POSTGRES_HOST_PATH
+            - name: POSTGRES_USER_PATH
+            - name: POSTGRES_PASSWORD_PATH
+            - name: POSTGRES_DBNAME_PATH
+            - name: POSTGRES_PORT_PATH
             - name: GUARANTEED_LOGS_PATH
             - name: DB_TYPE
               value: postgres
