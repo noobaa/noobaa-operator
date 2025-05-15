@@ -526,15 +526,8 @@ func (r *Reconciler) shouldReconcileStandaloneDB() bool {
 	return r.NooBaa.Spec.DBSpec == nil && r.NooBaa.Spec.ExternalPgSecret == nil
 }
 
-func (r *Reconciler) getEnvFromClusterSecretKey(key string) *corev1.EnvVarSource {
-	return &corev1.EnvVarSource{
-		SecretKeyRef: &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: r.CNPGCluster.Name + "-app",
-			},
-			Key: key,
-		},
-	}
+func (r *Reconciler) getClusterSecretName() string {
+	return r.CNPGCluster.Name + "-app"
 }
 
 func (r *Reconciler) cnpgLog(format string, args ...interface{}) {

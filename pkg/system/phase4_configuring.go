@@ -491,6 +491,22 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 	podSpec.Volumes = r.DefaultDeploymentEndpoint.Volumes
 	container.VolumeMounts = r.DefaultDeploymentEndpoint.Containers[0].VolumeMounts
 
+	if r.shouldReconcileCNPGCluster() {
+		dbSecretVolumeMounts := []corev1.VolumeMount{{
+			Name:      r.CNPGCluster.Name,
+			MountPath: postgresSecretMountPath,
+			ReadOnly:  true,
+		}}
+		util.MergeVolumeMountList(&container.VolumeMounts, &dbSecretVolumeMounts)
+	} else if r.NooBaa.Spec.ExternalPgSecret != nil {
+		dbSecretVolumeMounts := []corev1.VolumeMount{{
+			Name:      r.NooBaa.Spec.ExternalPgSecret.Name,
+			MountPath: postgresSecretMountPath,
+			ReadOnly:  true,
+		}}
+		util.MergeVolumeMountList(&container.VolumeMounts, &dbSecretVolumeMounts)
+	}
+
 	if util.KubeCheckQuiet(r.CaBundleConf) {
 		configMapVolumes := []corev1.Volume{{
 			Name: r.CaBundleConf.Name,
@@ -619,11 +635,11 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 			//this is a way to let containers explicitly know
 			//that an nsr should be mounted on them
 			envVar := corev1.EnvVar{
-				Name: "NSFS_NSR_" + nsStore.Name,
+				Name:  "NSFS_NSR_" + nsStore.Name,
 				Value: "mounted",
 			}
 
-			util.MergeEnvArrays(&container.Env, &[]corev1.EnvVar{envVar});
+			util.MergeEnvArrays(&container.Env, &[]corev1.EnvVar{envVar})
 		}
 	}
 
@@ -644,6 +660,28 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 			},
 		}}
 		util.MergeVolumeList(&podSpec.Volumes, &secretVolumes)
+	}
+
+	if r.shouldReconcileCNPGCluster() {
+		dbSecretVolumes := []corev1.Volume{{
+			Name: r.CNPGCluster.Name,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: r.getClusterSecretName(),
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &dbSecretVolumes)
+	} else if r.NooBaa.Spec.ExternalPgSecret != nil {
+		externalPgVolumes := []corev1.Volume{{
+			Name: r.NooBaa.Spec.ExternalPgSecret.Name,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: r.NooBaa.Spec.ExternalPgSecret.Name,
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &externalPgVolumes)
 	}
 
 	return nil

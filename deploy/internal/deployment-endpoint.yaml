@@ -22,7 +22,7 @@ spec:
       annotations:
         noobaa.io/configmap-hash: ""
     spec:
-        # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
+      # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa-endpoint
       volumes:
         - name: mgmt-secret
@@ -106,12 +106,16 @@ spec:
             - name: POSTGRES_HOST
             - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
-              value: nbcore
             - name: POSTGRES_USER
             - name: POSTGRES_PASSWORD
             - name: POSTGRES_CONNECTION_STRING
             - name: POSTGRES_SSL_REQUIRED
             - name: POSTGRES_SSL_UNAUTHORIZED
+            - name: POSTGRES_HOST_PATH
+            - name: POSTGRES_USER_PATH
+            - name: POSTGRES_PASSWORD_PATH
+            - name: POSTGRES_DBNAME_PATH
+            - name: POSTGRES_PORT_PATH
             - name: VIRTUAL_HOSTS
             - name: REGION
             - name: ENDPOINT_GROUP_ID
