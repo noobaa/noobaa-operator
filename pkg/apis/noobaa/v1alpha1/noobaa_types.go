@@ -642,6 +642,9 @@ const (
 
 	// SkipTopologyConstraints is Annotation name for disabling default topology Constraints
 	SkipTopologyConstraints = "noobaa.io/skip_topology_spread_constraints"
+
+	// DisableDBDefaultMonitoring is Annotation name for disabling default db monitoring
+	DisableDBDefaultMonitoring = "noobaa.io/disable_db_default_monitoring"
 )
 
 // DBTypes is a string enum type for specify the types of DB that are supported.
