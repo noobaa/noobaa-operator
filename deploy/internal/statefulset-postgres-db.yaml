@@ -60,6 +60,10 @@ spec:
               mountPath: /opt/app-root/src/postgresql-cfg
             - name: shm
               mountPath: /dev/shm
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/usr/local/bin/db-crash-collector.sh"]
       volumes:
         - name: noobaa-postgres-config-volume
           configMap:
