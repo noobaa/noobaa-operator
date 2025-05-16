@@ -8,10 +8,25 @@ spec:
   endpoints:
   - port: mgmt
     path: /metrics/web_server
+    authorization:
+      type: 'Bearer'
+      credentials:
+        name: metrics-auth-secret
+        key: metrics_token
   - port: mgmt
     path: /metrics/bg_workers
+    authorization:
+      type: 'Bearer'
+      credentials:
+        name: metrics-auth-secret
+        key: metrics_token
   - port: mgmt
     path: /metrics/hosted_agents
+    authorization:
+      type: 'Bearer'
+      credentials:
+        name: metrics-auth-secret
+        key: metrics_token
   namespaceSelector: {}
   selector:
     matchLabels:

@@ -5000,7 +5000,7 @@ spec:
     noobaa-operator: deployment
 `
 
-const Sha256_deploy_internal_servicemonitor_mgmt_yaml = "172b25b71872e74fb32ecf32b9c68d41cc60d155cb469ed5ecf7ad282f3e597a"
+const Sha256_deploy_internal_servicemonitor_mgmt_yaml = "6d4c3cbfe71850695d143831dbb595d755311f22819b0e1120661f7f91482331"
 
 const File_deploy_internal_servicemonitor_mgmt_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -5012,17 +5012,32 @@ spec:
   endpoints:
   - port: mgmt
     path: /metrics/web_server
+    authorization:
+      type: 'Bearer'
+      credentials:
+        name: metrics-auth-secret
+        key: metrics_token
   - port: mgmt
     path: /metrics/bg_workers
+    authorization:
+      type: 'Bearer'
+      credentials:
+        name: metrics-auth-secret
+        key: metrics_token
   - port: mgmt
     path: /metrics/hosted_agents
+    authorization:
+      type: 'Bearer'
+      credentials:
+        name: metrics-auth-secret
+        key: metrics_token
   namespaceSelector: {}
   selector:
     matchLabels:
       noobaa-mgmt-svc: "true"
 `
 
-const Sha256_deploy_internal_servicemonitor_s3_yaml = "e3940bdfdfbaf5cacefa51f92623ffb00e5360e58640c67558b5cf5135edd57f"
+const Sha256_deploy_internal_servicemonitor_s3_yaml = "c25d7f3aa817a2f2709d848ab2a65de0425afdd7e01221d75b4bbf63368facef"
 
 const File_deploy_internal_servicemonitor_s3_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -5034,6 +5049,11 @@ spec:
   endpoints:
   - port: metrics
     path: /
+    authorization:
+      type: 'Bearer'
+      credentials:
+        name: metrics-auth-secret
+        key: metrics_token
   namespaceSelector: {}
   selector:
     matchLabels:
