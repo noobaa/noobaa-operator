@@ -1,0 +1,51 @@
+name: Run Core Config Map Tests
+
+on: [push, pull_request, workflow_dispatch]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-core-config-map-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Set environment variables
+        run: |
+          echo "PATH=$PATH:$HOME/go/bin" >> $GITHUB_ENV
+          echo "OPERATOR_IMAGE=noobaa/noobaa-operator:integration" >> $GITHUB_ENV
+
+      - name: Setup Minikube
+        uses: medyagh/setup-minikube@v0.0.14
+        with:
+          driver: docker
+          kubernetes-version: v1.29.0
+
+      - name: Verify Minikube is running
+        run: minikube status
+
+      - name: Install Tools
+        run: |
+          bash ./.travis/install-tools.sh
+          bash ./.travis/install-python.sh
+
+      - name: Build operator image
+        run: |
+          set -x
+          make cli
+          make image
+          docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
+          minikube image load $OPERATOR_IMAGE
+
+      - name: Run Core Config Map Tests
+        run: make test-core-config-map-flow
