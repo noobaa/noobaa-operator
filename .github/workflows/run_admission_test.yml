@@ -28,10 +28,10 @@ jobs:
           echo "OPERATOR_IMAGE=noobaa/noobaa-operator:integration" >> $GITHUB_ENV
 
       - name: Setup Minikube
-        uses: medyagh/setup-minikube@v0.0.14
+        uses: medyagh/setup-minikube@v0.0.19
         with:
           driver: docker
-          kubernetes-version: v1.29.0
+          kubernetes-version: v1.33.0
 
       - name: Verify Minikube is running
         run: minikube status
