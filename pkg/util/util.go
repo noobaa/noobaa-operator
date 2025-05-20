@@ -90,6 +90,9 @@ const (
 
 	// InjectedBundleCertCAFile points to OCP root CA to be added to the default root CA list
 	InjectedBundleCertCAFile = "/etc/ocp-injected-ca-bundle/ca-bundle.crt"
+
+	// CombinedCaBundlePath points to the combined CA bundle file
+	CombinedCaBundlePath = "/tmp/ca-bundle.crt"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -126,12 +129,12 @@ var (
 	lazyConfig *rest.Config
 	lazyClient client.Client
 
-	// InsecureHTTPTransport is a global insecure http transport
+	// InsecureHTTPTransport is an HTTP transport that skips certificate signature verification
 	InsecureHTTPTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
-	// GlobalCARefreshingTransport is a global secure http transport
+	// GlobalCARefreshingTransport is an HTTP transport that verifies certificate signing
 	GlobalCARefreshingTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
 	}

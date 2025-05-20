@@ -473,7 +473,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				c.Env[j].Value = "true"
 			}
 		case "NODE_EXTRA_CA_CERTS":
-			c.Env[j].Value = r.ApplyCAsToPods
+			c.Env[j].Value = r.UserCertBundlePath
 		case "GUARANTEED_LOGS_PATH":
 			if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
 				c.Env[j].Value = r.BucketLoggingVolumeMount
