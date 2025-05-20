@@ -414,7 +414,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 						c.Env[j].Value = ""
 					}
 				case "NODE_EXTRA_CA_CERTS":
-					c.Env[j].Value = r.ApplyCAsToPods
+					c.Env[j].Value = r.UserCertBundlePath
 				case "GUARANTEED_LOGS_PATH":
 					if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
 						c.Env[j].Value = r.BucketLoggingVolumeMount
@@ -491,7 +491,8 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 	podSpec.Volumes = r.DefaultDeploymentEndpoint.Volumes
 	container.VolumeMounts = r.DefaultDeploymentEndpoint.Containers[0].VolumeMounts
 
-	if util.KubeCheckQuiet(r.CaBundleConf) {
+	// we want to check that the cm exists and also that it has data in it
+	if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
 		configMapVolumes := []corev1.Volume{{
 			Name: r.CaBundleConf.Name,
 			VolumeSource: corev1.VolumeSource{
@@ -509,7 +510,7 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 		util.MergeVolumeList(&podSpec.Volumes, &configMapVolumes)
 		configMapVolumeMounts := []corev1.VolumeMount{{
 			Name:      r.CaBundleConf.Name,
-			MountPath: "/etc/ocp-injected-ca-bundle.crt",
+			MountPath: "/etc/ocp-injected-ca-bundle",
 			ReadOnly:  true,
 		}}
 		util.MergeVolumeMountList(&container.VolumeMounts, &configMapVolumeMounts)
@@ -1370,7 +1371,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		Transport: util.InsecureHTTPTransport,
 		Timeout:   10 * time.Second,
 	}
-	if r.ApplyCAsToPods != "" {
+	if r.UserCertBundlePath != "" {
 		client.Transport = util.GlobalCARefreshingTransport
 	}
 
