@@ -38,7 +38,7 @@ jobs:
 
       - name: Setup Ginkgo
         run: |
-          go install github.com/onsi/ginkgo/v2/ginkgo@latest
+          go install github.com/onsi/ginkgo/ginkgo@latest
           ginkgo version
 
       - name: Build operator image
