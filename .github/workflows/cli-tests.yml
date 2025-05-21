@@ -49,3 +49,16 @@ jobs:
 
       - name: Run CLI Tests
         run: make test-cli-flow
+
+      - name: Collect logs
+        if: ${{ failure() }}
+        run: |
+          set -x
+          ./build/_output/bin/noobaa-operator diagnostics collect --db-dump --dir=tests-logs -n test
+
+      - name: Save logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests-logs
+          path: tests-logs

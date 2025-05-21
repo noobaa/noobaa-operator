@@ -850,7 +850,7 @@ function account_update {
             echo_time "💬  Deleting crd account ${account_name}"
             test_noobaa account delete ${account_name}
             echo_time "💬  Deleting backingstore ${new_default_resource}"
-            test_noobaa backingstore delete ${new_default_resource}
+            test_noobaa --timeout backingstore delete ${new_default_resource}
         fi
     fi
 }
