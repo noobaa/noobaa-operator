@@ -36,11 +36,12 @@ import (
 )
 
 const (
-	webIdentityTokenPath string = "/var/run/secrets/openshift/serviceaccount/token"
-	roleARNEnvVar        string = "ROLEARN"
-	trueStr              string = "true"
-	falseStr             string = "false"
-	notificationsVolume  string = "notif-vol"
+	webIdentityTokenPath    string = "/var/run/secrets/openshift/serviceaccount/token"
+	roleARNEnvVar           string = "ROLEARN"
+	trueStr                 string = "true"
+	falseStr                string = "false"
+	notificationsVolume     string = "notif-vol"
+	postgresSecretMountPath string = "/etc/postgres-secret"
 )
 
 // ReconcilePhaseCreating runs the reconcile phase
@@ -400,10 +401,9 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			if r.shouldReconcileStandaloneDB() {
 				c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName + "." + r.NooBaaPostgresDB.Namespace + ".svc"
 			} else if r.shouldReconcileCNPGCluster() {
-				if c.Env[j].Value != "" {
-					c.Env[j].Value = ""
-				}
-				c.Env[j].ValueFrom = r.getEnvFromClusterSecretKey("host")
+				// clear env. it will be passed by mounting the secret
+				c.Env[j].Value = ""
+				c.Env[j].ValueFrom = nil
 			}
 
 		case "DB_TYPE":
@@ -419,9 +419,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				c.Env[j].Value = r.OAuthEndpoints.TokenEndpoint
 			}
 		case "POSTGRES_USER":
-			if c.Env[j].Value != "" {
-				c.Env[j].Value = ""
-			}
+			c.Env[j].Value = ""
 			if r.shouldReconcileStandaloneDB() {
 				c.Env[j].ValueFrom = &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
@@ -432,12 +430,11 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 					},
 				}
 			} else if r.shouldReconcileCNPGCluster() {
-				c.Env[j].ValueFrom = r.getEnvFromClusterSecretKey("username")
+				// clear env. it will be passed by mounting the secret
+				c.Env[j].ValueFrom = nil
 			}
 		case "POSTGRES_PASSWORD":
-			if c.Env[j].Value != "" {
-				c.Env[j].Value = ""
-			}
+			c.Env[j].Value = ""
 			if r.shouldReconcileStandaloneDB() {
 				c.Env[j].ValueFrom = &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
@@ -448,22 +445,13 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 					},
 				}
 			} else if r.shouldReconcileCNPGCluster() {
-				c.Env[j].ValueFrom = r.getEnvFromClusterSecretKey("password")
+				// clear env. it will be passed by mounting the secret
+				c.Env[j].ValueFrom = nil
 			}
 		case "POSTGRES_CONNECTION_STRING":
-			if r.NooBaa.Spec.ExternalPgSecret != nil {
-				if c.Env[j].Value != "" {
-					c.Env[j].Value = ""
-				}
-				c.Env[j].ValueFrom = &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: r.NooBaa.Spec.ExternalPgSecret.Name,
-						},
-						Key: "db_url",
-					},
-				}
-			}
+			// clear env. it will be passed by mounting the secret
+			c.Env[j].Value = ""
+			c.Env[j].ValueFrom = nil
 		case "POSTGRES_SSL_REQUIRED":
 			if r.NooBaa.Spec.ExternalPgSSLRequired {
 				c.Env[j].Value = "true"
@@ -472,6 +460,20 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			if r.NooBaa.Spec.ExternalPgSSLUnauthorized {
 				c.Env[j].Value = "true"
 			}
+
+		case "POSTGRES_DBNAME_PATH":
+			c.Env[j].Value = postgresSecretMountPath + "/dbname"
+		case "POSTGRES_PASSWORD_PATH":
+			c.Env[j].Value = postgresSecretMountPath + "/password"
+		case "POSTGRES_PORT_PATH":
+			c.Env[j].Value = postgresSecretMountPath + "/port"
+		case "POSTGRES_USER_PATH":
+			c.Env[j].Value = postgresSecretMountPath + "/username"
+		case "POSTGRES_HOST_PATH":
+			c.Env[j].Value = postgresSecretMountPath + "/host"
+		case "POSTGRES_CONNECTION_STRING_PATH":
+			c.Env[j].Value = postgresSecretMountPath + "/db_url"
+
 		case "NODE_EXTRA_CA_CERTS":
 			c.Env[j].Value = r.ApplyCAsToPods
 		case "GUARANTEED_LOGS_PATH":
@@ -556,6 +558,23 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			if r.NooBaa.Spec.CoreResources != nil {
 				c.Resources = *r.NooBaa.Spec.CoreResources
 			}
+
+			if r.shouldReconcileCNPGCluster() {
+				dbSecretVolumeMounts := []corev1.VolumeMount{{
+					Name:      r.CNPGCluster.Name,
+					MountPath: postgresSecretMountPath,
+					ReadOnly:  true,
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &dbSecretVolumeMounts)
+			} else if r.NooBaa.Spec.ExternalPgSecret != nil {
+				dbSecretVolumeMounts := []corev1.VolumeMount{{
+					Name:      r.NooBaa.Spec.ExternalPgSecret.Name,
+					MountPath: postgresSecretMountPath,
+					ReadOnly:  true,
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &dbSecretVolumeMounts)
+			}
+
 			if util.KubeCheckQuiet(r.CaBundleConf) {
 				configMapVolumeMounts := []corev1.VolumeMount{{
 					Name:      r.CaBundleConf.Name,
@@ -721,6 +740,28 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			},
 		}}
 		util.MergeVolumeList(&podSpec.Volumes, &bucketLogVolumes)
+	}
+
+	if r.shouldReconcileCNPGCluster() {
+		dbSecretVolumes := []corev1.Volume{{
+			Name: r.CNPGCluster.Name,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: r.getClusterSecretName(),
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &dbSecretVolumes)
+	} else if r.NooBaa.Spec.ExternalPgSecret != nil {
+		externalPgVolumes := []corev1.Volume{{
+			Name: r.NooBaa.Spec.ExternalPgSecret.Name,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: r.NooBaa.Spec.ExternalPgSecret.Name,
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &externalPgVolumes)
 	}
 
 	return nil
