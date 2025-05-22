@@ -283,7 +283,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 			c.Lifecycle = &corev1.Lifecycle{
 				PreStop: &corev1.LifecycleHandler{
 					Exec: &corev1.ExecAction{
-						Command: []string{"/bin/sh", "-c", "pg_ctl -D /var/lib/pgsql/data/userdata/ -w -t 60 -m fast stop"},
+						Command: []string{"/bin/sh", "-c", "/usr/local/bin/db-crash-collector.sh &&pg_ctl -D /var/lib/pgsql/data/userdata/ -w -t 60 -m fast stop"},
 					},
 				},
 			}

@@ -3676,16 +3676,20 @@ metadata:
 spec: {}
 `
 
-const Sha256_deploy_internal_Dockerfile_postgres = "ed2f9a37fd057494e1dddace4685514c004678ed1d06b1092272395ee71c4406"
+const Sha256_deploy_internal_Dockerfile_postgres = "45f8d46af35b72be69e5e8a4c871d0466bbd61dbb8cc645c3714e7d8ec5ab88c"
 
 const File_deploy_internal_Dockerfile_postgres = `FROM quay.io/sclorg/postgresql-15-c9s
 
-# Copy the wrapper scripts
-COPY scripts/run-postgresql-wrapper.sh /usr/local/bin/run-postgresql-wrapper.sh
-COPY scripts/db-crash-collector.sh /usr/local/bin/db-crash-collector.sh
+# Switch to root user for script preparation
+USER root
 
-# Make the scripts executable
+# Copy the wrapper scripts and make them executable
+COPY scripts/run-postgresql-wrapper.sh /usr/local/bin/
+COPY scripts/db-crash-collector.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/run-postgresql-wrapper.sh /usr/local/bin/db-crash-collector.sh
+
+# Switch back to the default user
+USER 1001
 
 # Use our wrapper as the command
 CMD ["/usr/local/bin/run-postgresql-wrapper.sh"] `
@@ -5239,7 +5243,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "b323c6189379186bf2f2c3aa8086672192cabb9bc6ba6a81a4dd78a661a439dd"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "d0242805c8719ef45290746b42706fb69805cfd40be6258986454d256112fa7c"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5303,10 +5307,6 @@ spec:
               mountPath: /opt/app-root/src/postgresql-cfg
             - name: shm
               mountPath: /dev/shm
-          lifecycle:
-            preStop:
-              exec:
-                command: ["/usr/local/bin/db-crash-collector.sh"]
       volumes:
         - name: noobaa-postgres-config-volume
           configMap:
