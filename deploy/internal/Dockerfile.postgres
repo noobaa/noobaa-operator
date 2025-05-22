@@ -1,11 +1,15 @@
 FROM quay.io/sclorg/postgresql-15-c9s
 
-# Copy the wrapper scripts
-COPY scripts/run-postgresql-wrapper.sh /usr/local/bin/run-postgresql-wrapper.sh
-COPY scripts/db-crash-collector.sh /usr/local/bin/db-crash-collector.sh
+# Switch to root user for script preparation
+USER root
 
-# Make the scripts executable
+# Copy the wrapper scripts and make them executable
+COPY scripts/run-postgresql-wrapper.sh /usr/local/bin/
+COPY scripts/db-crash-collector.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/run-postgresql-wrapper.sh /usr/local/bin/db-crash-collector.sh
+
+# Switch back to the default user
+USER 1001
 
 # Use our wrapper as the command
 CMD ["/usr/local/bin/run-postgresql-wrapper.sh"] 
