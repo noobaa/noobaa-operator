@@ -4753,7 +4753,7 @@ spec:
   wildcardPolicy: None
 `
 
-const Sha256_deploy_internal_scripts_db_crash_collector_sh = "0ba8287c99f8480b3427a1e050edb69f6d2af43f3552376bb7f6770e16108af7"
+const Sha256_deploy_internal_scripts_db_crash_collector_sh = "846bd8c46a1e0702e24aa34554cbb3ee2857ee64032edb84441692414129be71"
 
 const File_deploy_internal_scripts_db_crash_collector_sh = `#!/bin/bash
 
@@ -4820,9 +4820,7 @@ log "Creating summary file"
 echo "Crash Diagnostics Summary" > "$SUMMARY_FILE"
 echo "========================" >> "$SUMMARY_FILE"
 echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')" >> "$SUMMARY_FILE"
-echo "Hostname: $(hostname)" >> "$SUMMARY_FILE"
 echo "Pod Name: ${HOSTNAME:-unknown}" >> "$SUMMARY_FILE"
-echo "Container ID: $(cat /proc/self/cgroup | grep -o -E '[0-9a-f]{64}' | head -n1)" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 echo "Files collected:" >> "$SUMMARY_FILE"
 ls -l "$DIAG_DIR" >> "$SUMMARY_FILE"
