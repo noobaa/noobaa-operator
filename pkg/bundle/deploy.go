@@ -3676,6 +3676,20 @@ metadata:
 spec: {}
 `
 
+const Sha256_deploy_internal_Dockerfile_postgres = "ed2f9a37fd057494e1dddace4685514c004678ed1d06b1092272395ee71c4406"
+
+const File_deploy_internal_Dockerfile_postgres = `FROM quay.io/sclorg/postgresql-15-c9s
+
+# Copy the wrapper scripts
+COPY scripts/run-postgresql-wrapper.sh /usr/local/bin/run-postgresql-wrapper.sh
+COPY scripts/db-crash-collector.sh /usr/local/bin/db-crash-collector.sh
+
+# Make the scripts executable
+RUN chmod +x /usr/local/bin/run-postgresql-wrapper.sh /usr/local/bin/db-crash-collector.sh
+
+# Use our wrapper as the command
+CMD ["/usr/local/bin/run-postgresql-wrapper.sh"] `
+
 const Sha256_deploy_internal_admission_webhook_yaml = "6ac4c09a3923e2545fe484dbf68171d718669cf03e874889f44e005ed5f8529c"
 
 const File_deploy_internal_admission_webhook_yaml = `apiVersion: admissionregistration.k8s.io/v1
@@ -4735,6 +4749,116 @@ spec:
   wildcardPolicy: None
 `
 
+const Sha256_deploy_internal_scripts_db_crash_collector_sh = "0ba8287c99f8480b3427a1e050edb69f6d2af43f3552376bb7f6770e16108af7"
+
+const File_deploy_internal_scripts_db_crash_collector_sh = `#!/bin/bash
+
+set -euo pipefail
+
+# Create diagnostics directory if it doesn't exist
+DIAG_DIR="/var/lib/pgsql/diagnostics/crash_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$DIAG_DIR"
+
+# Function to log messages
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$DIAG_DIR/collector.log"
+}
+
+log "Starting crash diagnostics collection"
+
+# Find the correct userdata directory
+USERDATA_DIR=""
+if [ -d "/var/lib/pgsql/data/userdata" ]; then
+    USERDATA_DIR="/var/lib/pgsql/data/userdata"
+elif [ -d "/var/lib/pgsql/data/data/userdata/data/userdata" ]; then
+    USERDATA_DIR="/var/lib/pgsql/data/data/userdata/data/userdata"
+else
+    log "WARNING: Could not find userdata directory in either expected location."
+fi
+
+# Save relevant config files if possible
+if [ -n "$USERDATA_DIR" ]; then
+    log "Using userdata directory: $USERDATA_DIR"
+    for f in postgresql.conf pg_hba.conf; do
+        if [ -f "$USERDATA_DIR/$f" ]; then
+            cp "$USERDATA_DIR/$f" "$DIAG_DIR/"
+        fi
+    done
+    # Copy PostgreSQL logs if present
+    if [ -d "$USERDATA_DIR/log" ]; then
+        cp -r "$USERDATA_DIR/log" "$DIAG_DIR/pg_log"
+    fi
+fi
+
+# Collect PostgreSQL database information
+log "Collecting PostgreSQL database information"
+psql -c "\du" > "$DIAG_DIR/roles.txt" 2>/dev/null || log "Failed to get roles"
+psql -c "\l" > "$DIAG_DIR/databases.txt" 2>/dev/null || log "Failed to get databases"
+psql -d nbcore -c "\dt" > "$DIAG_DIR/nbcore_tables.txt" 2>/dev/null || log "Failed to get nbcore tables"
+
+# Collect environment variables
+log "Collecting environment variables"
+env | sort > "$DIAG_DIR/env.txt"
+
+# Collect process list
+log "Collecting process list"
+ps auxww > "$DIAG_DIR/ps.txt"
+
+# Save termination log if it exists
+if [ -f /dev/termination-log ]; then
+    log "Saving termination log"
+    cp /dev/termination-log "$DIAG_DIR/termination-log.txt"
+fi
+
+# Create a summary file
+SUMMARY_FILE="$DIAG_DIR/summary.txt"
+log "Creating summary file"
+echo "Crash Diagnostics Summary" > "$SUMMARY_FILE"
+echo "========================" >> "$SUMMARY_FILE"
+echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')" >> "$SUMMARY_FILE"
+echo "Hostname: $(hostname)" >> "$SUMMARY_FILE"
+echo "Pod Name: ${HOSTNAME:-unknown}" >> "$SUMMARY_FILE"
+echo "Container ID: $(cat /proc/self/cgroup | grep -o -E '[0-9a-f]{64}' | head -n1)" >> "$SUMMARY_FILE"
+echo "" >> "$SUMMARY_FILE"
+echo "Files collected:" >> "$SUMMARY_FILE"
+ls -l "$DIAG_DIR" >> "$SUMMARY_FILE"
+
+log "Crash diagnostics collection complete. Files saved in $DIAG_DIR" `
+
+const Sha256_deploy_internal_scripts_run_postgresql_wrapper_sh = "7d37aca4f89ac897f44310e8d0f4fafecdca61c6e1180370c773bfff3e622ab0"
+
+const File_deploy_internal_scripts_run_postgresql_wrapper_sh = `#!/bin/bash
+
+# Create diagnostics directory if it doesn't exist
+DIAG_DIR="/var/lib/pgsql/diagnostics"
+mkdir -p "$DIAG_DIR"
+
+# Create a timestamped log file for this run
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="${DIAG_DIR}/postgres_${TIMESTAMP}.log"
+
+# Function to log messages with timestamp
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+log "Starting PostgreSQL wrapper script"
+log "Log file: $LOG_FILE"
+
+# Log environment variables (excluding sensitive data)
+log "Environment variables:"
+env | grep -v -E 'PASSWORD|SECRET|KEY' | sort | tee -a "$LOG_FILE"
+
+# Log system information
+log "System information:"
+df -h | tee -a "$LOG_FILE"
+free -h | tee -a "$LOG_FILE"
+
+log "Starting PostgreSQL initialization..."
+
+# Set up logging for all subsequent commands and execute run-postgresql
+exec 1> >(tee -a "$LOG_FILE") 2>&1 /usr/bin/run-postgresql "$@" `
+
 const Sha256_deploy_internal_secret_empty_yaml = "d63aaeaf7f9c7c1421fcc138ee2f31d2461de0dec2f68120bc9cce367d4d4186"
 
 const File_deploy_internal_secret_empty_yaml = `apiVersion: v1
@@ -5115,7 +5239,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "d0242805c8719ef45290746b42706fb69805cfd40be6258986454d256112fa7c"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "b323c6189379186bf2f2c3aa8086672192cabb9bc6ba6a81a4dd78a661a439dd"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5179,6 +5303,10 @@ spec:
               mountPath: /opt/app-root/src/postgresql-cfg
             - name: shm
               mountPath: /dev/shm
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/usr/local/bin/db-crash-collector.sh"]
       volumes:
         - name: noobaa-postgres-config-volume
           configMap:
