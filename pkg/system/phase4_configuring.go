@@ -534,7 +534,8 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 		util.MergeVolumeMountList(&container.VolumeMounts, &dbSecretVolumeMounts)
 	}
 
-	if util.KubeCheckQuiet(r.CaBundleConf) {
+	// we want to check that the cm exists and also that it has data in it
+	if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
 		configMapVolumes := []corev1.Volume{{
 			Name: r.CaBundleConf.Name,
 			VolumeSource: corev1.VolumeSource{
