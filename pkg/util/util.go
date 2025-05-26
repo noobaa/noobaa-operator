@@ -151,7 +151,7 @@ func AddToRootCAs(localCertFile string) error {
 	}
 
 	var certFiles = []string{
-		"/etc/ocp-injected-ca-bundle.crt",
+		"/etc/ocp-injected-ca-bundle/ca-bundle.crt",
 		localCertFile,
 	}
 
