@@ -84,6 +84,12 @@ const (
 
 	topologyConstraintsEnabledKubeVersion = "1.26.0"
 	trueStr                               = "true"
+
+	// ServiceServingCertCAFile points to OCP default root CA list
+	ServiceServingCertCAFile = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+
+	// InjectedBundleCertCAFile points to OCP root CA to be added to the default root CA list
+	InjectedBundleCertCAFile = "/etc/ocp-injected-ca-bundle/ca-bundle.crt"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -151,7 +157,7 @@ func CombineCaBundle(localCertFile string) error {
 	}
 
 	var certFiles = []string{
-		"/etc/ocp-injected-ca-bundle/ca-bundle.crt",
+		InjectedBundleCertCAFile,
 		localCertFile,
 	}
 
