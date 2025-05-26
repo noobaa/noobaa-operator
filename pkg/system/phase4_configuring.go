@@ -441,7 +441,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 						c.Env[j].Value = ""
 					}
 				case "NODE_EXTRA_CA_CERTS":
-					c.Env[j].Value = r.ApplyCAsToPods
+					c.Env[j].Value = r.UserCertBundlePath
 				case "GUARANTEED_LOGS_PATH":
 					if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
 						c.Env[j].Value = r.BucketLoggingVolumeMount
@@ -1436,7 +1436,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		Transport: util.InsecureHTTPTransport,
 		Timeout:   10 * time.Second,
 	}
-	if r.ApplyCAsToPods != "" {
+	if r.UseRefreshingTransport {
 		client.Transport = util.GlobalCARefreshingTransport
 	}
 
