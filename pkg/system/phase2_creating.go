@@ -578,7 +578,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			if util.KubeCheckQuiet(r.CaBundleConf) {
 				configMapVolumeMounts := []corev1.VolumeMount{{
 					Name:      r.CaBundleConf.Name,
-					MountPath: "/etc/ocp-injected-ca-bundle.crt",
+					MountPath: "/etc/ocp-injected-ca-bundle",
 					ReadOnly:  true,
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
@@ -661,7 +661,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			if util.KubeCheckQuiet(r.CaBundleConf) {
 				configMapVolumeMounts := []corev1.VolumeMount{{
 					Name:      r.CaBundleConf.Name,
-					MountPath: "/etc/ocp-injected-ca-bundle.crt",
+					MountPath: "/etc/ocp-injected-ca-bundle",
 					ReadOnly:  true,
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
