@@ -1,9 +1,18 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+  exclusions:
+    paths:
+      - pkg/apis/noobaa/v1alpha1
+      - pkg/bundle
+      - zz_generated\.go
+
 run:
   timeout: 5m
-
-issues:
-  exclude-dirs:
-    - pkg/apis/noobaa/v1alpha1
-    - pkg/bundle
-  exclude-files:
-    - zz_generated\.go
