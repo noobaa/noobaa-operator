@@ -25,6 +25,7 @@ require (
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/gemalto/kmip-go v0.0.10
 	github.com/go-test/deep v1.1.0
+	github.com/golangci/golangci-lint/v2 v2.1.6 // tool
 	github.com/google/uuid v1.6.0
 	github.com/kedacore/keda/v2 v2.7.0
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20221122204822-d1a8c34382f1

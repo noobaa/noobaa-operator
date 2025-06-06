@@ -190,8 +190,7 @@ golangci-lint: gen
 
 lint: gen
 	@echo ""
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	golangci-lint run --config .golangci.yml
+	$(GOBIN)/golangci-lint run --config .golangci.yml
 	@echo "✅ lint"
 .PHONY: lint
 
