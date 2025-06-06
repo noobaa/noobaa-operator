@@ -190,6 +190,10 @@ golangci-lint: gen
 
 lint: gen
 	@echo ""
+	@if [ ! -f "$(GOBIN)/golangci-lint" ]; then \
+		echo "Installing golangci-lint..."; \
+		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6; \
+	fi
 	$(GOBIN)/golangci-lint run --config .golangci.yml
 	@echo "✅ lint"
 .PHONY: lint
