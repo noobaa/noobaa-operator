@@ -195,7 +195,7 @@ test-cli-flow:
 .PHONY: test-cli-flow
 
 test-core-config-map-flow:
-	$(TIME) ./test/cli/test_cli_flow.sh --check_core_config_map
+	$(TIME) ./test/cli/test_cli_flow.sh --check_core_config_map --dev
 	@echo "✅ test-core-config-map-flow"
 .PHONY: test-core-config-map-flow
 
