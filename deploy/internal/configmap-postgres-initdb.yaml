@@ -61,7 +61,7 @@ data:
           set +e
           # dump the db. retry 3 times in case of failure
           for i in {1..3}; do
-            pg_dumpall -U postgres > /$HOME/data/dump.sql
+            pg_dumpall -U postgres -c > /$HOME/data/dump.sql
             if [ $? -eq 0 ]; then
               break
             elif [ $i -eq 3 ]; then

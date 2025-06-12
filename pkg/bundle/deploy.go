@@ -3651,7 +3651,7 @@ data:
     pg_stat_statements.track = all
 `
 
-const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "5ef599d78f148d91023d38ef516f73a0d903dfb060eb382fb741b65291955fbe"
+const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "8b0a6104e2cfe38b2d105548120319b0e8b6a0564c75ea0fb9152027785c95e4"
 
 const File_deploy_internal_configmap_postgres_initdb_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3716,7 +3716,7 @@ data:
           set +e
           # dump the db. retry 3 times in case of failure
           for i in {1..3}; do
-            pg_dumpall -U postgres > /$HOME/data/dump.sql
+            pg_dumpall -U postgres -c > /$HOME/data/dump.sql
             if [ $? -eq 0 ]; then
               break
             elif [ $i -eq 3 ]; then
