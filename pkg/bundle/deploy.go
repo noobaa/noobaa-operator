@@ -1,6 +1,6 @@
 package bundle
 
-const Version = "5.19.0"
+const Version = "5.20.0"
 
 const Sha256_deploy_cluster_role_yaml = "31fc622ff7fa66617be3895bddcb6cfdb97883b75b20bdb2bf04052bd14221a8"
 
