@@ -48,9 +48,6 @@ const (
 
 	// SystemName is a constant as we want just a single system per namespace
 	SystemName = "noobaa"
-
-	// ServiceServingCertCAFile points to OCP root CA to be added to the default root CA list
-	ServiceServingCertCAFile = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
 )
 
 // Namespace is the target namespace for locating the noobaa system
