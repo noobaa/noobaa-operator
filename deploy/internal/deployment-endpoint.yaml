@@ -97,6 +97,16 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_COLOR
+            - name: NOOBAA_METRICS_AUTH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_METRICS_AUTH_ENABLED
+            - name: NOOBAA_VERSION_AUTH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_VERSION_AUTH_ENABLED
             - name: MGMT_ADDR
             - name: SYSLOG_ADDR
             - name: BG_ADDR

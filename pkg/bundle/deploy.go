@@ -3980,7 +3980,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "6e69c76e3a5beeb55b30f045a30492cef835295e351360f464942962be4cdbc3"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "8cd3ac9930997965ab9fef72cbbe8bda1474f848ee8bfe2ee9af8fc6ea58dd69"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4081,6 +4081,16 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_COLOR
+            - name: NOOBAA_METRICS_AUTH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_METRICS_AUTH_ENABLED
+            - name: NOOBAA_VERSION_AUTH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_VERSION_AUTH_ENABLED
             - name: MGMT_ADDR
             - name: SYSLOG_ADDR
             - name: BG_ADDR
@@ -5044,7 +5054,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "ac5e3c4caf9983c154a706f808f02cfd2bea064729d90bba3d5ad42547b8d100"
+const Sha256_deploy_internal_statefulset_core_yaml = "477895e38effe338eeec7c35c1e051ea361db0b21946f03dcdbe46b08dc79f03"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5149,6 +5159,16 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_COLOR
+            - name: NOOBAA_METRICS_AUTH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_METRICS_AUTH_ENABLED
+            - name: NOOBAA_VERSION_AUTH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_VERSION_AUTH_ENABLED
             - name: POSTGRES_HOST
               value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_PORT
