@@ -1542,6 +1542,7 @@ func (r *Reconciler) ReconcileSetDbImageAndInitCode(targetImage string, initScri
 func (r *Reconciler) HasUpgradeDbContainerFailed(dbPod *corev1.Pod) string {
 	//when init container restart policy is Always, pod state will not be set to failed on container error.
 	//check for persistent error in container
+	r.Logger.Infof("HasUpgradeDbContainerFailed: upgrade-db containers status: %v", dbPod.Status.InitContainerStatuses)
 	for i := range dbPod.Status.InitContainerStatuses {
 		if dbPod.Status.InitContainerStatuses[i].Name == "upgrade-db" {
 			r.Logger.Infof("HasUpgradeDbContainerFailed: Checking state of upgrade-db container: %v", dbPod.Status.InitContainerStatuses[i].State)
