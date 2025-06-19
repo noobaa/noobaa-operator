@@ -119,7 +119,7 @@ release: release-docker release-cli
 #- Generate -#
 #------------#
 
-gen: vendor pkg/bundle/deploy.go
+gen: install-hooks vendor pkg/bundle/deploy.go
 	@echo "✅ gen"
 .PHONY: gen
 
@@ -190,8 +190,11 @@ golangci-lint: gen
 
 lint: gen
 	@echo ""
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	golangci-lint run --config .golangci.yml
+	@if [ ! -f "$(GOBIN)/golangci-lint" ]; then \
+		echo "Installing golangci-lint..."; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
+	fi
+	$(GOBIN)/golangci-lint run --config .golangci.yml
 	@echo "✅ lint"
 .PHONY: lint
 
@@ -320,3 +323,11 @@ deepcopy-gen:
 DEEPCOPY_GEN=$(GOBIN)/deepcopy-gen
 .PHONY: deepcopy-gen
 
+install-hooks:
+	@if [ -d .git ]; then \
+		if [ "$(shell git config core.hooksPath)" != ".githooks" ]; then \
+			git config core.hooksPath .githooks; \
+			echo "Git hooks path set to .githooks"; \
+		fi; \
+	fi
+.PHONY: install-hooks
