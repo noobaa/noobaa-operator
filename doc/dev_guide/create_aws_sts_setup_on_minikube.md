@@ -81,36 +81,10 @@ ls -al
 
 Note: every time you do `minikube delete` and `minikube start` you will need to create this new file (and the 2 files that are described in next steps).
 
-### Creating AWS resources manually - Using the Amazon web console:
-7. Create s3 bucket (you already did it in the step Initial Setup - Create S3 Bucket).
-
-8. Create Identity Provider: IAM &rarr; Identity providers &rarr; Add provider &rarr; Provider type: choose OpenID Connect &rarr; Provider URL: paste the value of OPENID_BUCKET_URL &rarr; click on `Get thumbprint`` &rarr; Audience: api (type api in the field) &rarr; Click on add provider.
-
-9. Create role: IAM &rarr; Roles &rarr; Create Role &rarr; Trusted entity type: Web Identity &rarr; Identity Provider should be the name of the provider that we added (with structure: https://<oidc_bucket_name>.s3.<aws_region>.amazonaws.com ) &rarr; Add the permission: `AmazonS3FullAccess`.
-
-When you finish, check in the Trusted entities that you see:
-
-```json
-    "Principal": {
-        "Federated": "arn:aws:iam::<account-id>:oidc-provider/<oidc-bucket-name>.s3.<region>.amazonaws.com"
-    },
-    "Action": "sts:AssumeRoleWithWebIdentity",
-    "Condition": {
-        "StringEquals": {
-            "<oidc-bucket-name>.s3.<region>.amazonaws.com:aud": "api"
-        }
-```
-
-10. In later steps you will need to provide the ARN of the role (you can easily copy it from AWS console, it looks like `arn:aws:iam::<id-account>:role/<role-name>` you can create a variable in the terminal:
-
-```bash
-OIDC_ROLE_ARN='<paste here you role ARN>'
-```
-
 ### Build an OIDC configuration
 Note: those steps were taken from [OCP 4.7 doc](https://docs.openshift.com/container-platform/4.7/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#sts-mode-installing-manual-config_cco-mode-sts), there you can read the full explanations for each command).
 
-11. Create a file named `keys.json` that contains the following information:
+7. Create a file named `keys.json` that contains the following information:
 
 ```json
 {
@@ -148,7 +122,7 @@ printf "%016x" $(openssl rsa -pubin -in sa-signer.pub -noout -text | grep Expone
 
 Note: in the commands above were piping to `base64 -w0``, since I don't have this flag on MAC I removed it.
 
-12. Create a file named `openid-configuration` that contains the following information:
+8. Create a file named `openid-configuration` that contains the following information:
 
 ```json
 {
@@ -177,7 +151,7 @@ Note: in the commands above were piping to `base64 -w0``, since I don't have thi
 **Where:**
 - You need the paste the value of `${OPENID_BUCKET_URL}`.
 
-13. Upload the OIDC configuration:
+9. Upload the OIDC configuration:
 
 ```bash
 aws s3api put-object --bucket ${OPENID_BUCKET_NAME} --key keys.json --body ./keys.json
@@ -187,7 +161,7 @@ aws s3api put-object --bucket ${OPENID_BUCKET_NAME} --key keys.json --body ./key
 aws s3api put-object --bucket ${OPENID_BUCKET_NAME} --key '.well-known/openid-configuration' --body ./openid-configuration
 ```
 
-14. Allow the AWS IAM OIDC identity provider to read these files:
+10. Allow the AWS IAM OIDC identity provider to read these files:
 
 ```bash
 aws s3api put-object-acl --bucket ${OPENID_BUCKET_NAME} --key keys.json --acl public-read
@@ -197,14 +171,40 @@ aws s3api put-object-acl --bucket ${OPENID_BUCKET_NAME} --key keys.json --acl pu
 aws s3api put-object-acl --bucket ${OPENID_BUCKET_NAME} --key '.well-known/openid-configuration' --acl public-read
 ```
 
-15. You can verify that the configuration are public available by using your browser (Chrome, Firefox, etc.) and enter the URL of: 
+11. You can verify that the configuration are public available by using your browser (Chrome, Firefox, etc.) and enter the URL of: 
 https://<oidc-bucket-name>.s3.<region>.amazonaws.com/keys.json
 https://<oidc-bucket-name>.s3.<region>.amazonaws.com/.well-known/openid-configuration
+
+### Creating AWS resources manually - Using the Amazon web console:
+12. Create s3 bucket (you already did it in the step Initial Setup - Create S3 Bucket).
+
+13. Create Identity Provider: IAM &rarr; Identity providers &rarr; Add provider &rarr; Provider type: choose OpenID Connect &rarr; Provider URL: paste the value of OPENID_BUCKET_URL &rarr; click on `Get thumbprint`` &rarr; Audience: api (type api in the field) &rarr; Click on add provider.
+
+14. Create role: IAM &rarr; Roles &rarr; Create Role &rarr; Trusted entity type: Web Identity &rarr; Identity Provider should be the name of the provider that we added (with structure: https://<oidc_bucket_name>.s3.<aws_region>.amazonaws.com ) &rarr; Add the permission: `AmazonS3FullAccess`.
+
+When you finish, check in the Trusted entities that you see:
+
+```json
+    "Principal": {
+        "Federated": "arn:aws:iam::<account-id>:oidc-provider/<oidc-bucket-name>.s3.<region>.amazonaws.com"
+    },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+        "StringEquals": {
+            "<oidc-bucket-name>.s3.<region>.amazonaws.com:aud": "api"
+        }
+```
+
+15. In later steps you will need to provide the ARN of the role (you can easily copy it from AWS console, it looks like `arn:aws:iam::<id-account>:role/<role-name>` you can create a variable in the terminal:
+
+```bash
+OIDC_ROLE_ARN='<paste here you role ARN>'
+```
 
 ### Test:
 We would create an nginx pod and fetch the Service Account token from it and then run `assume-role-with-web-identity` and see that we can get the credentials.
 
-15. Create a nginx pod
+16. Create a nginx pod
 
 ```bash
 kubectl apply -f - <<EOF
@@ -230,13 +230,13 @@ spec:
 EOF
 ```
 
-16. Fetch the Projected service account token and save it in `WEB_IDENTITY_TOKEN`.
+17. Fetch the Projected service account token and save it in `WEB_IDENTITY_TOKEN`.
 
 ```bash
 WEB_IDENTITY_TOKEN=$(kubectl exec nginx -- cat /var/run/secrets/tokens/oidc-token)
 ```
 
-17. Use assume-role-with-web-identity
+18. Use assume-role-with-web-identity
 
 ```bash
 aws sts assume-role-with-web-identity --role-arn ${OIDC_ROLE_ARN} --role-session-name "test" --web-identity-token ${WEB_IDENTITY_TOKEN}
@@ -261,3 +261,15 @@ You should see in the output the credentials (which includes the `AccessKeyId`, 
     "Audience": "api"
 }
 ```
+
+#### Create backing store using STS
+
+Noobaa WEB_IDENTITY_TOKEN Audience value is `openshift` because of that You shouls update the Audience in Identity Provider to opeshift.
+
+```bash
+TARGET_BUCKET='<target bucket name>'
+```
+
+```
+nb backingstore create aws-sts-s3 {backing-store} --target-bucket ${TARGET_BUCKET} --aws-sts-arn ${OIDC_ROLE_ARN}
+``` 
