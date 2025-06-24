@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"strings"
 	"time"
 
 	"crypto/tls"
@@ -34,8 +35,6 @@ const (
 	protocolMajor = 1
 	protocolMinor = 4
 
-	// Expected secret data length in bits
-	cryptographicLength = 256
 )
 
 // KMIPSecretStorage is a KMIP backend Key Management Systems (KMS)
@@ -261,10 +260,15 @@ func (k *KMIPSecretStorage) GetSecret(
 
 	log := util.Logger()
 
+	lookfor := KMIPUniqueID // Addition to upgrade
+	if strings.HasSuffix(secretID, "-root-master-key-backend") {
+		lookfor = NewKMIPUniqueID
+	}
+
 	// KMIP key uniqueIdentifier
-	uniqueIdentifier, exists := k.secret.StringData[KMIPUniqueID]
+	uniqueIdentifier, exists := k.secret.StringData[lookfor]
 	if !exists {
-		log.Errorf("KMIPSecretStorage.GetSecret() uniqueIdentifier %v does not exist in secret %v", KMIPUniqueID, k.secret)
+		log.Errorf("KMIPSecretStorage.GetSecret() uniqueIdentifier %v does not exist in secret %v", lookfor, k.secret)
 		return nil, secrets.NoVersion, secrets.ErrInvalidSecretId
 	}
 
@@ -305,9 +309,6 @@ func (k *KMIPSecretStorage) GetSecret(
 	if getRespPayload.SymmetricKey.KeyBlock.KeyFormatType != kmip14.KeyFormatTypeRaw {
 		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  KeyBlock format type actual %v, expected KeyFormatTypeRaw %v", getRespPayload.SymmetricKey.KeyBlock.KeyFormatType, kmip14.KeyFormatTypeRaw)
 	}
-	if getRespPayload.SymmetricKey.KeyBlock.CryptographicLength != cryptographicLength {
-		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  KeyBlock crypto len actual %v, expected %v", getRespPayload.SymmetricKey.KeyBlock.CryptographicLength, cryptographicLength)
-	}
 	if getRespPayload.SymmetricKey.KeyBlock.CryptographicAlgorithm != kmip14.CryptographicAlgorithmAES {
 		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  KeyBlock crypto algo actual %v, expected CryptographicAlgorithmAES %v", getRespPayload.SymmetricKey.KeyBlock.CryptographicAlgorithm, kmip14.CryptographicAlgorithmAES)
 	}
@@ -329,10 +330,6 @@ func (k *KMIPSecretStorage) PutSecret(
 	keyContext map[string]string,
 ) (secrets.Version, error) {
 	log := util.Logger()
-	if _, exists := k.secret.StringData[KMIPUniqueID]; exists {
-		log.Errorf("KMIPSecretStorage.PutSecret() Key UniqueIdentifier %v was not found in the secret", KMIPUniqueID)
-		return secrets.NoVersion, secrets.ErrSecretExists
-	}
 
 	// Register the key value the KMIP endpoint
 	value := plainText[secretID].(string)
@@ -356,7 +353,7 @@ func (k *KMIPSecretStorage) PutSecret(
 				KeyValue: &kmip.KeyValue{
 					KeyMaterial: valueBytes,
 				},
-				CryptographicLength:    cryptographicLength,
+				CryptographicLength:    len(valueBytes) * 8, // in bits
 				CryptographicAlgorithm: kmip14.CryptographicAlgorithmAES,
 			},
 		},
@@ -380,7 +377,7 @@ func (k *KMIPSecretStorage) PutSecret(
 		return secrets.NoVersion, err
 	}
 
-	k.secret.StringData[KMIPUniqueID] = registerRespPayload.UniqueIdentifier
+	k.secret.StringData[NewKMIPUniqueID] = registerRespPayload.UniqueIdentifier
 	if !util.KubeUpdate(k.secret) {
 		log.Errorf("Failed to update KMS secret %v in ns %v", k.secret.Name, k.secret.Namespace)
 		return secrets.NoVersion, fmt.Errorf("Failed to update KMS secret %v in ns %v", k.secret.Name, k.secret.Namespace)
@@ -396,8 +393,12 @@ func (k *KMIPSecretStorage) DeleteSecret(
 ) error {
 	log := util.Logger()
 
+	lookfor := KMIPUniqueID // Addition to upgrade
+	if strings.HasSuffix(secretID, "-root-master-key-backend") {
+		lookfor = NewKMIPUniqueID
+	}
 	// Find the key ID
-	uniqueIdentifier, exists := k.secret.StringData[KMIPUniqueID]
+	uniqueIdentifier, exists := k.secret.StringData[lookfor]
 	if !exists {
 		log.Errorf("KMIPSecretStorage.DeleteSecret() No uniqueIdentifier in the secret")
 		return secrets.ErrInvalidSecretId
@@ -437,8 +438,8 @@ func (k *KMIPSecretStorage) DeleteSecret(
 		return fmt.Errorf("Unexpected uniqueIdentifier %v in destroy response , expected %v", destroyRespPayload.UniqueIdentifier, uniqueIdentifier)
 	}
 
-	delete(k.secret.Data, KMIPUniqueID)
-	delete(k.secret.StringData, KMIPUniqueID)
+	delete(k.secret.Data, lookfor)
+	delete(k.secret.StringData, lookfor)
 	if !util.KubeUpdate(k.secret) {
 		log.Errorf("Failed to update KMS secret %v in ns %v", k.secret.Name, k.secret.Namespace)
 		return fmt.Errorf("Failed to update KMS secret %v in ns %v", k.secret.Name, k.secret.Namespace)
