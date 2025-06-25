@@ -237,11 +237,7 @@ func (r *Reconciler) checkExternalPg(postgresDbURL string) error {
 			fmt.Sprintf("failed openning a connection to external DB url: %q, error: %s",
 				dbURL, err))
 	}
-	defer func() {
-		if closeErr := db.Close(); closeErr != nil {
-			r.Logger.Warnf("Failed to close database connection: %v", closeErr)
-		}
-	}()
+	defer util.SafeClose(db, "Failed to close database connection")
 	err = db.Ping()
 	if err != nil {
 		return util.NewPersistentError("InvalidExternalPgUrl",

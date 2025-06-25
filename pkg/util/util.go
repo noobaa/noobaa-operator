@@ -806,22 +806,15 @@ func SaveStreamToFile(body io.ReadCloser, path string) error {
 	if body == nil {
 		return nil
 	}
-	defer func() {
-		if closeErr := body.Close(); closeErr != nil {
-			log.Warnf("Failed to close body stream: %v", closeErr)
-		}
-	}()
+	defer SafeClose(body, "Failed to close body stream")
+
 	f, err := os.Create(path)
 	if err != nil {
 		log.Errorf(`Could not save stream to file: %s, reason: %s\n`, path, err)
 		return err
 	}
 
-	defer func() {
-		if closeErr := f.Close(); closeErr != nil {
-			log.Warnf("Failed to close file %s: %v", path, closeErr)
-		}
-	}()
+	defer SafeClose(f, fmt.Sprintf("Failed to close file %s", path))
 
 	if _, err := io.Copy(f, body); err != nil {
 		log.Errorf(`Could not write to file: %s, reason: %s\n`, path, err)
@@ -842,11 +835,7 @@ func SaveCRsToFile(crs runtime.Object, path string) error {
 		return err
 	}
 
-	defer func() {
-		if closeErr := f.Close(); closeErr != nil {
-			log.Warnf("Failed to close file %s: %v", path, closeErr)
-		}
-	}()
+	defer SafeClose(f, fmt.Sprintf("Failed to close file %s", path))
 
 	p := printers.YAMLPrinter{}
 	err = p.PrintObj(crs, f)
@@ -1402,9 +1391,7 @@ func DiscoverOAuthEndpoints() (*OAuth2Endpoints, error) {
 	res, err := client.Get(oAuthWellKnownEndpoint)
 	defer func() {
 		if res != nil && res.Body != nil {
-			if closeErr := res.Body.Close(); closeErr != nil {
-				log.Warnf("Failed to close HTTP response body: %v", closeErr)
-			}
+			SafeClose(res.Body, "Failed to close HTTP response body")
 		}
 	}()
 	if err != nil {
@@ -1463,18 +1450,10 @@ func Tar(src string, writers ...io.Writer) error {
 	mw := io.MultiWriter(writers...)
 
 	gzw := gzip.NewWriter(mw)
-	defer func() {
-		if closeErr := gzw.Close(); closeErr != nil {
-			log.Warnf("Failed to close gzip writer: %v", closeErr)
-		}
-	}()
+	defer SafeClose(gzw, "Failed to close gzip writer")
 
 	tw := tar.NewWriter(gzw)
-	defer func() {
-		if closeErr := tw.Close(); closeErr != nil {
-			log.Warnf("Failed to close tar writer: %v", closeErr)
-		}
-	}()
+	defer SafeClose(tw, "Failed to close tar writer")
 
 	// walk path
 	return filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
@@ -1509,11 +1488,7 @@ func Tar(src string, writers ...io.Writer) error {
 			return err
 		}
 
-		defer func() {
-			if closeErr := f.Close(); closeErr != nil {
-				log.Warnf("Failed to close file %s: %v", file, closeErr)
-			}
-		}()
+		defer SafeClose(f, fmt.Sprintf("Failed to close file %s", file))
 
 		// copy file data into tar writer
 		if _, err := io.Copy(tw, f); err != nil {
@@ -1532,11 +1507,7 @@ func WriteYamlFile(name string, obj runtime.Object, moreObjects ...runtime.Objec
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			log.Warnf("Failed to close file %s: %v", name, closeErr)
-		}
-	}()
+	defer SafeClose(file, fmt.Sprintf("Failed to close file %s", name))
 
 	err = p.PrintObj(obj, file)
 	if err != nil {
@@ -2375,6 +2346,15 @@ func IsDevEnv() bool {
 		return true
 	}
 	return false
+}
+
+// SafeClose is a generic function that attempts to close any object with a Close() method
+// and logs any errors that occur during the close operation.
+// This is useful for defer statements to ensure resources are properly closed.
+func SafeClose[T interface{ Close() error }](resource T, errorMsg string) {
+	if closeErr := resource.Close(); closeErr != nil {
+		log.Warnf("%s: %v", errorMsg, closeErr)
+	}
 }
 
 // HasNodeInclusionPolicyInPodTopologySpread checks if the cluster supports the spread topology policy

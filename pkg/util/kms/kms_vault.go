@@ -160,11 +160,7 @@ func writeCrtsToFile(secretName string, namespace string, secretValue []byte, en
 	}
 
 	// close the temp file when out of scope
-	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			util.Logger().Warnf("Failed to close temp file %s: %v", file.Name(), closeErr)
-		}
-	}()
+	defer util.SafeClose(file, fmt.Sprintf("Failed to close temp file %s", file.Name()))
 
 	// Write into a file
 	err = os.WriteFile(file.Name(), secretValue, 0444)

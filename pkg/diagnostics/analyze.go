@@ -418,7 +418,7 @@ func setJobAnalyzeResource(cmd *cobra.Command, analyzeResourceJob *batchv1.Job, 
 func waitFinish(job *batchv1.Job) bool {
 	klient := util.KubeClient()
 	interval := time.Duration(3)
-	
+
 	err := wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		err := klient.Get(util.Context(), util.ObjectKey(job), job)
 		if err != nil {
@@ -474,11 +474,7 @@ func printTestsSummary(folderName string) error {
 				log.Errorf("❌ Could not open file: %v", err)
 				return err
 			}
-			defer func() {
-				if closeErr := file.Close(); closeErr != nil {
-					log.Warnf("Failed to close file %s: %v", path, closeErr)
-				}
-			}()
+			defer util.SafeClose(file, fmt.Sprintf("Failed to close file %s", path))
 
 			scanner := bufio.NewScanner(file)
 			shouldPrint := false
