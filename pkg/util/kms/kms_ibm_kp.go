@@ -2,7 +2,6 @@ package kms
 
 import (
 	"fmt"
-	"os"
 	"syscall"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"

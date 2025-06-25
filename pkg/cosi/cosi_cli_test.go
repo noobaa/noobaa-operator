@@ -2,7 +2,6 @@ package cosi
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 

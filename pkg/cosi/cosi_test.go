@@ -3,7 +3,6 @@ package cosi
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
