@@ -555,7 +555,7 @@ func (r *Reconciler) LoadNamespaceStoreSecret() error {
 				}
 				secret = suggestedSecret
 			}
-			if util.IsOwnedByNoobaa(secret.ObjectMeta.OwnerReferences) {
+			if util.IsOwnedByNoobaa(secret.OwnerReferences) {
 				err = util.SetOwnerReference(r.NamespaceStore, secret, r.Scheme)
 				if _, isAlreadyOwnedErr := err.(*controllerutil.AlreadyOwnedError); !isAlreadyOwnedErr {
 					if err == nil {

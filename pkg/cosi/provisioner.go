@@ -240,10 +240,8 @@ func NewBucketRequest(
 	bucketDelReq *cosi.DriverDeleteBucketRequest,
 ) (*APIRequest, error) {
 	log := p.Logger
-	IsExternalRPCConnection := false
-	if util.IsTestEnv() {
-		IsExternalRPCConnection = true
-	}
+	IsExternalRPCConnection := util.IsTestEnv()
+
 	sysClient, err := system.Connect(IsExternalRPCConnection)
 	if err != nil {
 		return nil, err
@@ -283,10 +281,8 @@ func NewAccountRequest(
 	accountCreateReq *cosi.DriverGrantBucketAccessRequest,
 	accountDelReq *cosi.DriverRevokeBucketAccessRequest,
 ) (*APIRequest, error) {
-	IsExternalRPCConnection := false
-	if util.IsTestEnv() {
-		IsExternalRPCConnection = true
-	}
+	IsExternalRPCConnection := util.IsTestEnv()
+
 	sysClient, err := system.Connect(IsExternalRPCConnection)
 	if err != nil {
 		return nil, err
