@@ -351,7 +351,7 @@ func (r *Reconciler) creatBasicSecretTargetRef(log *logrus.Entry) []kedav1alpha1
 
 func (r *Reconciler) validateKeda() bool {
 	err := r.Client.Get(r.Ctx, util.ObjectKey(r.KedaScaled), r.KedaScaled)
-	return !(meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err))
+	return !meta.IsNoMatchError(err) && !runtime.IsNotRegisteredError(err)
 }
 
 func getPrometheus(log *logrus.Entry, prometheusNamespace string) (*monitoringv1.Prometheus, error) {

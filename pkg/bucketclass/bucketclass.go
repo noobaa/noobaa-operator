@@ -658,7 +658,8 @@ func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []rec
 			continue
 		}
 		policyType := bc.Spec.NamespacePolicy.Type
-		if policyType == nbv1.NSBucketClassTypeSingle {
+		switch policyType {
+		case nbv1.NSBucketClassTypeSingle:
 			nsr := bc.Spec.NamespacePolicy.Single.Resource
 			if nsr == namespacestore.Name {
 				reqs = append(reqs, reconcile.Request{
@@ -668,7 +669,7 @@ func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []rec
 					},
 				})
 			}
-		} else if policyType == nbv1.NSBucketClassTypeCache {
+		case nbv1.NSBucketClassTypeCache:
 			nsr := bc.Spec.NamespacePolicy.Cache.HubResource
 			if nsr == namespacestore.Name {
 				reqs = append(reqs, reconcile.Request{
@@ -678,7 +679,7 @@ func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []rec
 					},
 				})
 			}
-		} else if policyType == nbv1.NSBucketClassTypeMulti {
+		case nbv1.NSBucketClassTypeMulti:
 			nsr := bc.Spec.NamespacePolicy.Multi.WriteResource
 			if nsr == namespacestore.Name {
 				reqs = append(reqs, reconcile.Request{
@@ -749,7 +750,8 @@ func CreateNamespaceBucketInfoStructure(namespacePolicy nbv1.NamespacePolicy, pa
 	var readResources []nb.NamespaceResourceFullConfig
 	namespaceBucketInfo := &nb.NamespaceBucketInfo{}
 
-	if namespacePolicyType == nbv1.NSBucketClassTypeSingle {
+	switch namespacePolicyType {
+	case nbv1.NSBucketClassTypeSingle:
 
 		namespaceBucketInfo.WriteResource = nb.NamespaceResourceFullConfig{
 			Resource: namespacePolicy.Single.Resource,
@@ -757,7 +759,7 @@ func CreateNamespaceBucketInfoStructure(namespacePolicy nbv1.NamespacePolicy, pa
 		}
 		namespaceBucketInfo.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{
 			Resource: namespacePolicy.Single.Resource})
-	} else if namespacePolicyType == nbv1.NSBucketClassTypeMulti {
+	case nbv1.NSBucketClassTypeMulti:
 		if namespacePolicy.Multi.WriteResource != "" {
 			namespaceBucketInfo.WriteResource = nb.NamespaceResourceFullConfig{
 				Resource: namespacePolicy.Multi.WriteResource,
@@ -769,7 +771,7 @@ func CreateNamespaceBucketInfoStructure(namespacePolicy nbv1.NamespacePolicy, pa
 			readResources = append(readResources, nb.NamespaceResourceFullConfig{Resource: rr})
 		}
 		namespaceBucketInfo.ReadResources = readResources
-	} else if namespacePolicyType == nbv1.NSBucketClassTypeCache {
+	case nbv1.NSBucketClassTypeCache:
 		namespaceBucketInfo.WriteResource = nb.NamespaceResourceFullConfig{Resource: namespacePolicy.Cache.HubResource}
 		namespaceBucketInfo.ReadResources = append(readResources, nb.NamespaceResourceFullConfig{Resource: namespacePolicy.Cache.HubResource})
 		namespaceBucketInfo.Caching = &nb.CacheSpec{TTLMs: namespacePolicy.Cache.Caching.TTL}

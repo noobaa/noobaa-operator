@@ -34,7 +34,7 @@ func Add(mgr manager.Manager) error {
 	c, err := controller.New("noobaa-controller", mgr, controller.Options{
 		MaxConcurrentReconciles: 1,
 		Reconciler:              reconcile.Func(doReconcile),
-		SkipNameValidation: &[]bool{true}[0],
+		SkipNameValidation:      &[]bool{true}[0],
 	})
 	if err != nil {
 		return err
@@ -93,8 +93,8 @@ func doReconcile(context context.Context, req reconcile.Request) (reconcile.Resu
 	backingStoreList := nbv1.BackingStoreList{}
 	util.KubeList(&backingStoreList, client.InNamespace(options.Namespace))
 	for _, bs := range backingStoreList.Items {
-		if bs.Spec.S3Compatible != nil && bs.ObjectMeta.Annotations != nil {
-			if _, ok := bs.ObjectMeta.Annotations["rgw"]; ok {
+		if bs.Spec.S3Compatible != nil && bs.Annotations != nil {
+			if _, ok := bs.Annotations["rgw"]; ok {
 				avail := nb.UInt64ToBigInt(cephCapacity.AvailableBytes)
 				err := nbClient.UpdateCloudPoolAPI(nb.UpdateCloudPoolParams{
 					Name:              bs.Name,

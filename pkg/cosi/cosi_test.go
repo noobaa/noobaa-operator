@@ -3,7 +3,6 @@ package cosi
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
@@ -21,7 +20,7 @@ import (
 )
 
 var _ = Describe("COSI driver/provisioner tests", func() {
-	os.Setenv("TEST_ENV", "true")
+	util.SafeSetEnv("TEST_ENV", "true")
 	options.Namespace = "test"
 
 	defaultBackingStoreName := "noobaa-default-backing-store"

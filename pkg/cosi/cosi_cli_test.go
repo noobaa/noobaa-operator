@@ -2,7 +2,6 @@ package cosi
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -17,7 +16,7 @@ import (
 )
 
 var _ = Describe("COSI CLI tests", func() {
-	os.Setenv("TEST_ENV", "true")
+	util.SafeSetEnv("TEST_ENV", "true")
 	options.Namespace = "test"
 
 	CLIPath := "../../build/_output/bin/noobaa-operator-local"

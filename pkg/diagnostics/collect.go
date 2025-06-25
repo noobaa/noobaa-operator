@@ -116,7 +116,7 @@ func (c *Collector) CollectDescribe(Kind string, Name string) {
 		c.log.Printf(`❌ cannot create file %v: %v`, fileName, err)
 		return
 	}
-	defer outfile.Close()
+	defer util.SafeClose(outfile, fmt.Sprintf("Failed to close file %s", fileName))
 	cmd.Stdout = outfile
 
 	// run kubectl describe

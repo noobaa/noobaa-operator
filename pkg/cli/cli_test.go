@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -19,7 +18,7 @@ const (
 
 var _ = Describe("CLI tests", func() {
 
-	os.Setenv("TEST_ENV", "true")
+	util.SafeSetEnv("TEST_ENV", "true")
 
 	Context("Noobaa CLI functions", func() {
 		It("CLI with no arguments", func() {
