@@ -806,13 +806,22 @@ func SaveStreamToFile(body io.ReadCloser, path string) error {
 	if body == nil {
 		return nil
 	}
-	defer body.Close()
+	defer func() {
+		if closeErr := body.Close(); closeErr != nil {
+			log.Warnf("Failed to close body stream: %v", closeErr)
+		}
+	}()
 	f, err := os.Create(path)
 	if err != nil {
 		log.Errorf(`Could not save stream to file: %s, reason: %s\n`, path, err)
 		return err
 	}
-	defer f.Close()
+
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			log.Warnf("Failed to close file %s: %v", path, closeErr)
+		}
+	}()
 
 	if _, err := io.Copy(f, body); err != nil {
 		log.Errorf(`Could not write to file: %s, reason: %s\n`, path, err)
@@ -833,7 +842,12 @@ func SaveCRsToFile(crs runtime.Object, path string) error {
 		return err
 	}
 
-	defer f.Close()
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			log.Warnf("Failed to close file %s: %v", path, closeErr)
+		}
+	}()
+
 	p := printers.YAMLPrinter{}
 	err = p.PrintObj(crs, f)
 	if err != nil {
@@ -1266,7 +1280,7 @@ func GetAWSRegion() (string, error) {
 
 	// returning error if not fetched from either cluster or node name
 	if awsRegion == "" {
-		return "", fmt.Errorf("Failed to determine the AWS Region.")
+		return "", fmt.Errorf("Failed to determine the AWS region")
 	}
 	return awsRegion, nil
 }
@@ -1388,7 +1402,9 @@ func DiscoverOAuthEndpoints() (*OAuth2Endpoints, error) {
 	res, err := client.Get(oAuthWellKnownEndpoint)
 	defer func() {
 		if res != nil && res.Body != nil {
-			res.Body.Close()
+			if closeErr := res.Body.Close(); closeErr != nil {
+				log.Warnf("Failed to close HTTP response body: %v", closeErr)
+			}
 		}
 	}()
 	if err != nil {
@@ -1447,10 +1463,18 @@ func Tar(src string, writers ...io.Writer) error {
 	mw := io.MultiWriter(writers...)
 
 	gzw := gzip.NewWriter(mw)
-	defer gzw.Close()
+	defer func() {
+		if closeErr := gzw.Close(); closeErr != nil {
+			log.Warnf("Failed to close gzip writer: %v", closeErr)
+		}
+	}()
 
 	tw := tar.NewWriter(gzw)
-	defer tw.Close()
+	defer func() {
+		if closeErr := tw.Close(); closeErr != nil {
+			log.Warnf("Failed to close tar writer: %v", closeErr)
+		}
+	}()
 
 	// walk path
 	return filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
@@ -1485,7 +1509,11 @@ func Tar(src string, writers ...io.Writer) error {
 			return err
 		}
 
-		defer f.Close()
+		defer func() {
+			if closeErr := f.Close(); closeErr != nil {
+				log.Warnf("Failed to close file %s: %v", file, closeErr)
+			}
+		}()
 
 		// copy file data into tar writer
 		if _, err := io.Copy(tw, f); err != nil {
@@ -1504,7 +1532,11 @@ func WriteYamlFile(name string, obj runtime.Object, moreObjects ...runtime.Objec
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			log.Warnf("Failed to close file %s: %v", name, closeErr)
+		}
+	}()
 
 	err = p.PrintObj(obj, file)
 	if err != nil {

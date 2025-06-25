@@ -94,7 +94,11 @@ func (c *CollectorDbDump) generatePostgresDump(destDir string) error {
 	}
 
 	// Redirect the command's output to the local dump file
-	defer outfile.Close()
+	defer func() {
+		if closeErr := outfile.Close(); closeErr != nil {
+			c.log.Printf("Failed to close dump file %s: %v", dumpFilePath, closeErr)
+		}
+	}()
 	cmd.Stdout = outfile
 
 	// Execute the command, generating the dump file

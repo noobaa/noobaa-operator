@@ -69,7 +69,9 @@ func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder recor
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		// remove socket in case it is already bound
-		os.Remove(options.CosiDriverPath)
+		if err := os.Remove(options.CosiDriverPath); err != nil && !os.IsNotExist(err) {
+			log.Warnf("Failed to remove existing socket file %s: %v", options.CosiDriverPath, err)
+		}
 		util.Panic(cosiProv.Run(ctx))
 	}()
 

@@ -474,7 +474,11 @@ func printTestsSummary(folderName string) error {
 				log.Errorf("❌ Could not open file: %v", err)
 				return err
 			}
-			defer file.Close()
+			defer func() {
+				if closeErr := file.Close(); closeErr != nil {
+					log.Warnf("Failed to close file %s: %v", path, closeErr)
+				}
+			}()
 
 			scanner := bufio.NewScanner(file)
 			shouldPrint := false

@@ -135,13 +135,17 @@ func (k *KMIPSecretStorage) connect() (*tls.Conn, error) {
 		}
 	}
 	if err = conn.Handshake(); err != nil {
-		conn.Close()
+		if closeErr := conn.Close(); closeErr != nil {
+			util.Logger().Warnf("Failed to close connection after handshake error: %v", closeErr)
+		}
 		return nil, err
 	}
 
 	// KMIP handshake
 	if err = k.discover(conn); err != nil {
-		conn.Close()
+		if closeErr := conn.Close(); closeErr != nil {
+			util.Logger().Warnf("Failed to close connection after discover error: %v", closeErr)
+		}
 		return nil, err
 	}
 	return conn, nil
@@ -273,7 +277,11 @@ func (k *KMIPSecretStorage) GetSecret(
 		log.Errorf("KMIPSecretStorage.GetSecret() failed to connect %v", err)
 		return nil, secrets.NoVersion, err
 	}
-	defer conn.Close()
+	defer func() {
+		if closeErr := conn.Close(); closeErr != nil {
+			log.Warnf("Failed to close KMIP connection: %v", closeErr)
+		}
+	}()
 
 	respMsg, decoder, uniqueBatchItemID, err := k.send(conn, kmip14.OperationGet, kmip.GetRequestPayload{
 		UniqueIdentifier: uniqueIdentifier,
@@ -346,7 +354,11 @@ func (k *KMIPSecretStorage) PutSecret(
 		log.Errorf("KMIPSecretStorage.PutSecret() can not connect %v", err)
 		return secrets.NoVersion, err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Errorf("failed to close connection: %v", err)
+		}
+	}()
 
 	registerPayload := kmip.RegisterRequestPayload{
 		ObjectType: kmip14.ObjectTypeSymmetricKey,
@@ -407,7 +419,11 @@ func (k *KMIPSecretStorage) DeleteSecret(
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Errorf("failed to close connection: %v", err)
+		}
+	}()
 
 	respMsg, decoder, uniqueBatchItemID, err := k.send(conn, kmip14.OperationDestroy, kmip.DestroyRequestPayload{
 		UniqueIdentifier: uniqueIdentifier,

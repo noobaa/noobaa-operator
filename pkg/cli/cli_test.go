@@ -19,7 +19,9 @@ const (
 
 var _ = Describe("CLI tests", func() {
 
-	os.Setenv("TEST_ENV", "true")
+	if err := os.Setenv("TEST_ENV", "true"); err != nil {
+		util.Logger().Warnf("Failed to set TEST_ENV environment variable: %v", err)
+	}
 
 	Context("Noobaa CLI functions", func() {
 		It("CLI with no arguments", func() {

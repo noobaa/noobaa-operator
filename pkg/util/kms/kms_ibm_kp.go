@@ -41,7 +41,9 @@ func (i *IBM) Config(config map[string]string, tokenSecretName, namespace string
 	if !instanceIDFound {
 		return nil, fmt.Errorf("❌ Unable to find IBM Key Protect instance ID in CR %v", IbmInstanceIDKey)
 	}
-	os.Setenv(IbmInstanceIDKey, instanceID)
+	if err := os.Setenv(IbmInstanceIDKey, instanceID); err != nil {
+		util.Logger().Warnf("Failed to set IBM instance ID environment variable: %v", err)
+	}
 
 	// Fetch API Key from k8s secret
 	_, api := syscall.Getenv(IbmServiceAPIKey)
@@ -69,7 +71,9 @@ func (*IBM) keysFromSecret(tokenSecretName, namespace string, c map[string]inter
 			return fmt.Errorf(`❌ Could not find key %v in secret %q in namespace %q`, key, secret.Name, secret.Namespace)
 		}
 		c[key] = val
-		os.Setenv(key, val) // cache the value in environment
+		if err := os.Setenv(key, val); err != nil { // cache the value in environment
+			util.Logger().Warnf("Failed to set environment variable %s: %v", key, err)
+		}
 	}
 
 	return nil
