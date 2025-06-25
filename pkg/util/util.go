@@ -2357,6 +2357,14 @@ func SafeClose[T interface{ Close() error }](resource T, errorMsg string) {
 	}
 }
 
+// SafeSetEnv is a generic function that attempts to set an environment variable
+// and logs any errors that occur during the set operation.
+func SafeSetEnv(envVarName string, envVarValue string) {
+	if err := os.Setenv(envVarName, envVarValue); err != nil {
+		log.Warnf("Failed to set env var %s: %v", envVarName, err)
+	}
+}
+
 // HasNodeInclusionPolicyInPodTopologySpread checks if the cluster supports the spread topology policy
 func HasNodeInclusionPolicyInPodTopologySpread() bool {
 	kubeVersion, err := GetKubeVersion()

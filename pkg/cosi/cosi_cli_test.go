@@ -17,9 +17,7 @@ import (
 )
 
 var _ = Describe("COSI CLI tests", func() {
-	if err := os.Setenv("TEST_ENV", "true"); err != nil {
-		util.Logger().Warnf("Failed to set TEST_ENV environment variable: %v", err)
-	}
+	util.SafeSetEnv("TEST_ENV", "true")
 	options.Namespace = "test"
 
 	CLIPath := "../../build/_output/bin/noobaa-operator-local"

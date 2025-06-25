@@ -21,9 +21,7 @@ import (
 )
 
 var _ = Describe("COSI driver/provisioner tests", func() {
-	if err := os.Setenv("TEST_ENV", "true"); err != nil {
-		util.Logger().Printf("failed to set TEST_ENV: %v", err)
-	}
+	util.SafeSetEnv("TEST_ENV", "true")
 	options.Namespace = "test"
 
 	defaultBackingStoreName := "noobaa-default-backing-store"

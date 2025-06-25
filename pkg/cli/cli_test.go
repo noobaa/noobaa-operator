@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -19,9 +18,7 @@ const (
 
 var _ = Describe("CLI tests", func() {
 
-	if err := os.Setenv("TEST_ENV", "true"); err != nil {
-		util.Logger().Warnf("Failed to set TEST_ENV environment variable: %v", err)
-	}
+	util.SafeSetEnv("TEST_ENV", "true")
 
 	Context("Noobaa CLI functions", func() {
 		It("CLI with no arguments", func() {
