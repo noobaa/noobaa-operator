@@ -1,9 +1,16 @@
+version: "2"
+
+linters:
+  exclusions:
+    paths:
+      - pkg/apis/noobaa/v1alpha1
+      - pkg/bundle
+      - zz_generated\.go
+    rules:
+      - linters:
+          - staticcheck
+        # We ignore capitalized error strings since it's a common pattern in the codebase
+        text: "ST1005:"
+
 run:
   timeout: 5m
-
-issues:
-  exclude-dirs:
-    - pkg/apis/noobaa/v1alpha1
-    - pkg/bundle
-  exclude-files:
-    - zz_generated\.go
