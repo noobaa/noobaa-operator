@@ -14,6 +14,7 @@ const (
 	KMIPEndpoint      = "KMIP_ENDPOINT"
 	KMIPSecret        = "KMIP_CERTS_SECRET"
 	KMIPUniqueID      = "UniqueIdentifier"
+	NewKMIPUniqueID   = "UniqueIdentifierNew"
 	KMIPTLSServerName = "TLS_SERVER_NAME"
 	KMIPReadTimeOut   = "READ_TIMEOUT"
 	KMIPWriteTimeOut  = "WRITE_TIMEOUT"
@@ -25,6 +26,9 @@ const (
 
 // KMIP is a kmip driver
 type KMIP struct {
+	UID  string // NooBaa system UID
+	name string // NooBaa system name
+	ns   string // NooBaa system namespace
 }
 
 // NewKMIP is KMIP driver constructor
@@ -33,7 +37,7 @@ func NewKMIP(
 	namespace string,
 	uid string,
 ) Driver {
-	return &KMIP{}
+	return &KMIP{uid, name, namespace}
 }
 
 //
@@ -108,7 +112,7 @@ func (k *KMIP) DeleteContext() map[string]string {
 // Version returns the current driver KMS version
 // either single string or map, i.e. rotating key
 func (k *KMIP) Version(kms *KMS) Version {
-	return &VersionSingleSecret{kms, nil}
+	return &VersionRotatingSecret{VersionBase{kms, nil}, k.name, k.ns}
 }
 
 // Register KMIP driver with KMS layer
