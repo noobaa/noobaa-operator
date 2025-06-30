@@ -9,6 +9,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/spf13/cobra"
 )
@@ -109,21 +110,26 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatal(fmt.Errorf("CreateTieringStructure for PlacementPolicy failed to create policy %q with error: %v", tierName, err))
 	}
 
-	forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
-	maxSize, _ := cmd.Flags().GetString("max-size")
-	maxObjects, _ := cmd.Flags().GetString("max-objects")
-
-	err = nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName, Tiering: tierName, ForceMd5Etag: forceMd5Etag})
+	forceMd5EtagPtr, err := util.GetBoolFlagPtr(cmd, "force_md5_etag")
 	if err != nil {
 		log.Fatal(err)
 	}
+	maxSize, _ := cmd.Flags().GetString("max-size")
+	maxObjects, _ := cmd.Flags().GetString("max-objects")
 
-	quota, updateQuota := prepareQuotaConfig(maxSize, maxObjects)
-	if updateQuota {
-		err = nbClient.UpdateBucketAPI(nb.CreateBucketParams{Name: bucketName, Quota: &quota})
-		if err != nil {
-			log.Fatal(err)
-		}
+	quota, err := prepareQuotaConfig(bucketName, maxSize, maxObjects)
+	if err != nil {
+		log.Fatalf(`❌ Could not create bucket "%q" quota validation failed %q`, bucketName, err)
+	}
+
+	err = nbClient.CreateBucketAPI(nb.CreateBucketParams{Name: bucketName, Tiering: tierName, ForceMd5Etag: forceMd5EtagPtr})
+	if err != nil {
+		log.Fatal(err)
+	}
+	// calling updateBucketAPI to update quota for bucket
+	err = nbClient.UpdateBucketAPI(nb.CreateBucketParams{Name: bucketName, Quota: &quota})
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -135,17 +141,27 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	}
 	bucketName := args[0]
 	nbClient := system.GetNBClient()
-	forceMd5Etag, _ := cmd.Flags().GetBool("force_md5_etag")
+	forceMd5EtagPtr, err := util.GetBoolFlagPtr(cmd, "force_md5_etag")
+	if err != nil {
+		log.Fatal(err)
+	}
 	maxSize, _ := cmd.Flags().GetString("max-size")
 	maxObjects, _ := cmd.Flags().GetString("max-objects")
 
-	quota, updateQuota := prepareQuotaConfig(maxSize, maxObjects)
-	var err error
-	if updateQuota {
-		err = nbClient.UpdateBucketAPI(nb.CreateBucketParams{Name: bucketName, ForceMd5Etag: forceMd5Etag, Quota: &quota})
-	} else {
-		err = nbClient.UpdateBucketAPI(nb.CreateBucketParams{Name: bucketName, ForceMd5Etag: forceMd5Etag})
+	updateParams := nb.CreateBucketParams{
+		Name:         bucketName,
+		ForceMd5Etag: forceMd5EtagPtr,
 	}
+
+	if maxSize != "" || maxObjects != "" {
+		quota, err := prepareQuotaConfig(bucketName, maxSize, maxObjects)
+		if err != nil {
+			log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %q`, bucketName, err)
+		}
+		updateParams.Quota = &quota
+	}
+
+	err = nbClient.UpdateBucketAPI(updateParams)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -187,7 +203,9 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	}
 	fmt.Printf("  %-22s : %s\n", "Type", b.BucketType)
 	fmt.Printf("  %-22s : %s\n", "Mode", b.Mode)
-	fmt.Printf("  %-22s : %t\n", "Force Md5 Etag", b.ForceMd5Etag)
+	if b.ForceMd5Etag != nil {
+		fmt.Printf("  %-22s : %t\n", "Force Md5 Etag", *b.ForceMd5Etag)
+	}
 	if b.PolicyModes != nil {
 		fmt.Printf("  %-22s : %s\n", "ResiliencyStatus", b.PolicyModes.ResiliencyStatus)
 		fmt.Printf("  %-22s : %s\n", "QuotaStatus", b.PolicyModes.QuotaStatus)
@@ -239,25 +257,29 @@ func RunList(cmd *cobra.Command, args []string) {
 	fmt.Printf("\n")
 }
 
-func prepareQuotaConfig(maxSize string, maxObjects string) (nb.QuotaConfig, bool) {
+func prepareQuotaConfig(bucketName string, maxSize string, maxObjects string) (nb.QuotaConfig, error) {
 	var bucketMaxSize, bucketMaxObjects int64
-	updateQuota := false
-
-	if len(maxSize) > 0 {
-		bucketMaxSize, _ = strconv.ParseInt(maxSize, 10, 64)
-		updateQuota = true
-	}
-	if len(maxObjects) > 0 {
-		bucketMaxObjects, _ = strconv.ParseInt(maxObjects, 10, 64)
-		updateQuota = true
-	}
 	quota := nb.QuotaConfig{}
-	if bucketMaxSize > 0 {
-		f, u := nb.GetBytesAndUnits(bucketMaxSize, 2)
-		quota.Size = &nb.SizeQuotaConfig{Value: f, Unit: u}
+
+	// validate quota config for bucket
+	if err := util.ValidateQuotaConfig(bucketName, maxSize, maxObjects); err != nil {
+		return quota, err
 	}
-	if bucketMaxObjects > 0 {
-		quota.Quantity = &nb.QuantityQuotaConfig{Value: int(bucketMaxObjects)}
+
+	if maxSize != "" {
+		quantity, _ := resource.ParseQuantity(maxSize)
+		bucketMaxSize = quantity.Value()
+		if bucketMaxSize > 0 {
+			f, u := nb.GetBytesAndUnits(bucketMaxSize, 2)
+			quota.Size = &nb.SizeQuotaConfig{Value: f, Unit: u}
+		}
 	}
-	return quota, updateQuota
+	if maxObjects != "" {
+		bucketMaxObjects, _ = strconv.ParseInt(maxObjects, 10, 64)
+		if bucketMaxObjects > 0 {
+			quota.Quantity = &nb.QuantityQuotaConfig{Value: int(bucketMaxObjects)}
+		}
+	}
+
+	return quota, nil
 }

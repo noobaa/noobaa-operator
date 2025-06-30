@@ -333,7 +333,7 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 		DefaultResource:   r.NooBaaAccount.Spec.DefaultResource,
 		HasLogin:          false,
 		S3Access:          true,
-		ForceMd5Etag:      *r.NooBaaAccount.Spec.ForceMd5Etag,
+		ForceMd5Etag:      r.NooBaaAccount.Spec.ForceMd5Etag,
 		AllowBucketCreate: r.NooBaaAccount.Spec.AllowBucketCreate,
 	}
 
