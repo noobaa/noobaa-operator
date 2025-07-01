@@ -1,0 +1,63 @@
+name: Update Noobaa-Core container image tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      container_image_tag:
+        description: 'The container image tag for noobaa-core'
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GITHUB_TOKEN: ${{ secrets.GHACTION_TOKEN_WRITE }}
+
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+      
+      - name: Update ContainerImageTag in options.go
+        run: |
+          tag=${{ github.event.inputs.container_image_tag }}
+          safe_tag=$(printf '%s\n' "$tag" | sed 's/[&/]/\\&/g')
+          sed -i "s/ContainerImageTag = \".*\"/ContainerImageTag = \"${safe_tag}\"/" pkg/options/options.go
+      
+      - name: Commit & Push changes
+        run: |
+          git config --global user.email "github-action@noobaa.io"
+          git config --global user.name "NooBaa GitHub Action"
+          git checkout -b update-core-tag-${{ github.event.inputs.container_image_tag }}
+          git diff
+          git add pkg/options/options.go
+          git commit -m "chore: update noobaa-core image tag to ${{ github.event.inputs.container_image_tag }}"
+          git push origin update-core-tag-${{ github.event.inputs.container_image_tag }}
+
+      - name: Create Pull Request
+        id: create_pr
+        run: |
+          gh auth login --with-token <<< "${{ secrets.GHACTION_TOKEN_WRITE }}"
+          PR_URL=$(gh pr create \
+            --title "Update ContainerImageTag to ${{ github.event.inputs.container_image_tag }}" \
+            --body "Automated update of ContainerImageTag to ${{ github.event.inputs.container_image_tag }} in options.go" \
+            --head update-core-tag-${{ github.event.inputs.container_image_tag }} \
+            --base master \
+            --json url -q .url)
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+      
+      - name: Wait for PR checks and merge
+        run: |
+          gh auth login --with-token <<< "${{ secrets.GHACTION_TOKEN_WRITE }}"
+          echo "Waiting for checks to pass on: ${{ steps.create_pr.outputs.pr_url }}"
+          gh pr checks "${{ steps.create_pr.outputs.pr_url }}" --watch
+
+          echo "Merging PR..."
+          gh pr merge "${{ steps.create_pr.outputs.pr_url }}" --merge --admin --delete-branch
