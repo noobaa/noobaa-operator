@@ -176,6 +176,21 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 
+	// before reconciling the core, check if the image was changed so an upgrade is needed.
+	// if upgrade is needed, stop the core and endpoints pods to allow the upgrade_manager in noobaa-core to run without interruptions
+	if util.KubeCheckQuiet(r.CoreApp) {
+		if r.NooBaa.Status.ActualImage != r.CoreApp.Spec.Template.Spec.Containers[0].Image {
+			numRunningPods, err := r.stopNoobaaPodsAndGetNumRunningPods()
+			if err != nil {
+				return fmt.Errorf("got error stopping noobaa-core and noobaa-endpoint pods. error: %v", err)
+			}
+			// wait for the endpoints to be stopped
+			if numRunningPods != 0 {
+				return fmt.Errorf("waiting for noobaa-core and noobaa-endpoint pods to be terminated before upgrade. %d pods are still running", numRunningPods)
+			}
+		}
+	}
+
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}
@@ -545,6 +560,21 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 
 		switch c.Name {
 		case "core":
+
+			if c.ReadinessProbe == nil {
+				c.ReadinessProbe = &corev1.Probe{
+					ProbeHandler: corev1.ProbeHandler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path:   "/version",
+							Port:   intstr.FromInt(8080),
+							Scheme: corev1.URISchemeHTTP,
+						},
+					},
+					InitialDelaySeconds: 5,
+					TimeoutSeconds:      2,
+				}
+			}
+
 			if c.Image != r.NooBaa.Status.ActualImage {
 				coreImageChanged = true
 				c.Image = r.NooBaa.Status.ActualImage
