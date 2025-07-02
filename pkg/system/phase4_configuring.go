@@ -46,6 +46,7 @@ const (
 	ibmCosBucketCred                  = "ibm-cloud-cos-creds"
 	minutesToWaitForDefaultBSCreation = 10
 	credentialsKey                    = "credentials"
+	metricsAuthKey                    = "metrics_token"
 )
 
 type gcpAuthJSON struct {
@@ -135,6 +136,32 @@ func (r *Reconciler) ReconcileSystemSecrets() error {
 	if err := r.ReconcileObject(r.SecretEndpoints, r.SetDesiredSecretEndpoints); err != nil {
 		return err
 	}
+
+	if err := r.ReconcileObject(r.SecretMetricsAuth, r.SetDesiredMetricsAuth); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetDesiredMetricsAuth updates the ServiceAccount as desired for reconciling
+func (r *Reconciler) SetDesiredMetricsAuth() error {
+
+	// Load string data from data
+	util.SecretResetStringDataFromData(r.SecretMetricsAuth)
+	// SecretMetricsAuth exists means the system already created and we can skip
+	if r.SecretMetricsAuth.StringData[metricsAuthKey] != "" {
+		return nil
+	}
+	res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
+		System: r.NooBaa.Name,
+		Role:   "metrics",
+		Email:  options.OperatorAccountEmail,
+	})
+	if err != nil {
+		return fmt.Errorf("cannot create an auth token for metrics, error: %v", err)
+	}
+	r.SecretMetricsAuth.StringData[metricsAuthKey] = res.Token
 	return nil
 }
 
@@ -1621,13 +1648,40 @@ func (r *Reconciler) ReconcileServiceMonitors() error {
 
 	r.ApplyMonitoringLabels(r.ServiceMonitorMgmt)
 
-	if err := r.ReconcileObjectOptional(r.ServiceMonitorMgmt, nil); err != nil {
+	if err := r.ReconcileObjectOptional(r.ServiceMonitorMgmt, r.setDesiredServiceMonitorMgmt); err != nil {
 		return err
 	}
-	if err := r.ReconcileObjectOptional(r.ServiceMonitorS3, nil); err != nil {
+	if err := r.ReconcileObjectOptional(r.ServiceMonitorS3, r.setDesiredServiceMonitorS3); err != nil {
 		return err
 	}
 	return nil
+}
+
+// setDesiredServiceMonitorMgmt set authorization to managemnt ServiceMonitor
+func (r *Reconciler) setDesiredServiceMonitorMgmt() error {
+	r.setServiceMonitorAuthorization(r.ServiceMonitorMgmt.Spec.Endpoints)
+	return nil
+}
+
+// setDesiredServiceMonitorS3 set authorization to s3 ServiceMonitor
+func (r *Reconciler) setDesiredServiceMonitorS3() error {
+	r.setServiceMonitorAuthorization(r.ServiceMonitorS3.Spec.Endpoints)
+	return nil
+}
+
+// setServiceMonitorAuthorization set authorization to both managemnt and s3 ServiceMonitor
+func (r *Reconciler) setServiceMonitorAuthorization(endpoints []monitoringv1.Endpoint) {
+	for i := range endpoints {
+		endpoints[i].Authorization = &monitoringv1.SafeAuthorization{
+			Type: "Bearer",
+			Credentials: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: r.SecretMetricsAuth.Name,
+				},
+				Key: metricsAuthKey,
+			},
+		}
+	}
 }
 
 // ReconcileReadSystem calls read_system on noobaa server and stores the result
