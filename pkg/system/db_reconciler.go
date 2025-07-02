@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -297,7 +296,7 @@ func (r *Reconciler) reconcileClusterCreateOrImport() error {
 			r.cnpgLogError("got error stopping noobaa-core and noobaa-endpoint pods. error: %v", err)
 			return err
 		}
-		if numRunningPods > 0 {
+		if numRunningPods != 0 {
 			r.cnpgLog("waiting for noobaa-core and noobaa-endpoint pods to be terminated")
 			return fmt.Errorf("waiting for noobaa-core and noobaa-endpoint pods to be terminated")
 		}
@@ -418,34 +417,6 @@ func (r *Reconciler) setPostgresConfig() {
 	}
 
 	r.CNPGCluster.Spec.PostgresConfiguration.Parameters = desiredParameters
-}
-
-func (r *Reconciler) stopNoobaaPodsAndGetNumRunningPods() (int, error) {
-	// stop core\endpoints pods
-	zeroReplicas := int32(0)
-	if err := r.ReconcileObject(r.CoreApp, func() error {
-		r.CoreApp.Spec.Replicas = &zeroReplicas
-		return nil
-	}); err != nil {
-		r.cnpgLogError("got error stopping noobaa-core pods. error: %v", err)
-		return -1, err
-	}
-	if err := r.ReconcileObject(r.DeploymentEndpoint, func() error {
-		r.DeploymentEndpoint.Spec.Replicas = &zeroReplicas
-		return nil
-	}); err != nil {
-		r.cnpgLogError("got error stopping noobaa-endpoints pods. error: %v", err)
-		return -1, err
-	}
-	corePodsList := &corev1.PodList{}
-	if !util.KubeList(corePodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-core": "noobaa"}) {
-		return -1, fmt.Errorf("got error listing noobaa-core pods")
-	}
-	endpointPodsList := &corev1.PodList{}
-	if !util.KubeList(endpointPodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-s3": "noobaa"}) {
-		return -1, fmt.Errorf("got error listing noobaa-endpoints pods")
-	}
-	return len(corePodsList.Items) + len(endpointPodsList.Items), nil
 }
 
 func getDesiredMajorVersion(dbSpec *nbv1.NooBaaDBSpec) int {

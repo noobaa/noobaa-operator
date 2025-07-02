@@ -703,3 +703,32 @@ func (r *Reconciler) isObjectUpdated(result controllerutil.OperationResult) bool
 func (r *Reconciler) Own(obj metav1.Object) {
 	util.Panic(controllerutil.SetControllerReference(r.NooBaa, obj, r.Scheme))
 }
+
+// stopNoobaaPodsAndGetNumRunningPods stops the noobaa pods and returns the number of running pods
+func (r *Reconciler) stopNoobaaPodsAndGetNumRunningPods() (int, error) {
+	// stop core\endpoints pods
+	zeroReplicas := int32(0)
+	if err := r.ReconcileObject(r.CoreApp, func() error {
+		r.CoreApp.Spec.Replicas = &zeroReplicas
+		return nil
+	}); err != nil {
+		r.Logger.Errorf("got error stopping noobaa-core pods. error: %v", err)
+		return -1, err
+	}
+	if err := r.ReconcileObject(r.DeploymentEndpoint, func() error {
+		r.DeploymentEndpoint.Spec.Replicas = &zeroReplicas
+		return nil
+	}); err != nil {
+		r.Logger.Errorf("got error stopping noobaa-endpoints pods. error: %v", err)
+		return -1, err
+	}
+	corePodsList := &corev1.PodList{}
+	if !util.KubeList(corePodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-core": "noobaa"}) {
+		return -1, fmt.Errorf("got error listing noobaa-core pods")
+	}
+	endpointPodsList := &corev1.PodList{}
+	if !util.KubeList(endpointPodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-s3": "noobaa"}) {
+		return -1, fmt.Errorf("got error listing noobaa-endpoints pods")
+	}
+	return len(corePodsList.Items) + len(endpointPodsList.Items), nil
+}
