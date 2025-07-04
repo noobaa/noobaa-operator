@@ -68,7 +68,7 @@ type Reconciler struct {
 	OperatorVersion          string
 	OAuthEndpoints           *util.OAuth2Endpoints
 	PostgresConnectionString string
-	ApplyCAsToPods           string
+	UserCertBundlePath       string
 
 	NooBaa                    *nbv1.NooBaa
 	ServiceAccount            *corev1.ServiceAccount
@@ -286,7 +286,7 @@ func NewReconciler(
 	r.RouteS3.Name = r.ServiceS3.Name
 	r.RouteSts.Name = r.ServiceSts.Name
 	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
-	r.CaBundleConf.Name = r.Request.Name + "-ca-inject"
+	r.CaBundleConf.Name = "ocp-injected-ca-bundle"
 	r.KedaScaled.Name = r.Request.Name
 	r.AdapterHPA.Name = r.Request.Name + "-hpav2"
 	r.BucketLoggingPVC.Name = r.Request.Name + "-bucket-logging-pvc"
@@ -409,11 +409,17 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	err = util.AddToRootCAs(options.ServiceServingCertCAFile)
+	err = util.CombineCaBundle(util.ServiceServingCertCAFile)
 	if err == nil {
-		r.ApplyCAsToPods = options.ServiceServingCertCAFile
+		// TODO: Use this once noobaa-core#8973 is merged
+		// Until then, we have to choose between using the injected cert bundle or the service serving cert ca file.
+		// For now, we use the service serving certs to allow the product to continue working, even if without user provided certs.
+		// r.UserCertBundlePath = util.CombinedCaBundlePath
+		r.UserCertBundlePath = util.ServiceServingCertCAFile
 	} else if !os.IsNotExist(err) {
 		log.Errorf("❌ NooBaa %q failed to add root CAs to system default", r.NooBaa.Name)
+		// Fallback to the service serving cert CA file
+		r.UserCertBundlePath = util.ServiceServingCertCAFile
 		res.RequeueAfter = 3 * time.Second
 		return res, nil
 	}
