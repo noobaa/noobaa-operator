@@ -195,7 +195,8 @@ func (r *Reconciler) SetDesiredSecretOp() error {
 			return fmt.Errorf("Could not read the system status, error: %v", err)
 		}
 
-		if res1.State == "DOES_NOT_EXIST" {
+		switch res1.State {
+		case "DOES_NOT_EXIST":
 			res2, err := r.NBClient.CreateSystemAPI(nb.CreateSystemParams{
 				Name:     r.Request.Name,
 				Email:    r.SecretAdmin.StringData["email"],
@@ -207,12 +208,12 @@ func (r *Reconciler) SetDesiredSecretOp() error {
 
 			r.SecretOp.StringData["auth_token"] = res2.OperatorToken
 
-		} else if res1.State == "COULD_NOT_INITIALIZE" {
+		case "COULD_NOT_INITIALIZE":
 			// TODO: Try to recover from this situation, maybe delete the system.
 			return util.NewPersistentError("SystemCouldNotInitialize",
 				"Something went wrong during system initialization")
 
-		} else if res1.State == "READY" {
+		case "READY":
 			// Trying to create token for admin so we could use it to create
 			// a token for the operator account
 			res3, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
@@ -321,7 +322,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 	podSpec.ServiceAccountName = "noobaa-endpoint"
 
 	honor := corev1.NodeInclusionPolicyHonor
-	disableDefaultTopologyConstraints, found := r.NooBaa.ObjectMeta.Annotations[nbv1.SkipTopologyConstraints]
+	disableDefaultTopologyConstraints, found := r.NooBaa.Annotations[nbv1.SkipTopologyConstraints]
 	if podSpec.TopologySpreadConstraints != nil {
 		r.Logger.Debugf("deployment %s TopologySpreadConstraints already exists, leaving as is", r.DeploymentEndpoint.Name)
 	} else if !util.HasNodeInclusionPolicyInPodTopologySpread() {
@@ -1457,10 +1458,10 @@ func (r *Reconciler) prepareCephBackingStore() error {
 	}
 
 	// create backing store
-	if r.DefaultBackingStore.ObjectMeta.Annotations == nil {
-		r.DefaultBackingStore.ObjectMeta.Annotations = map[string]string{}
+	if r.DefaultBackingStore.Annotations == nil {
+		r.DefaultBackingStore.Annotations = map[string]string{}
 	}
-	r.DefaultBackingStore.ObjectMeta.Annotations["rgw"] = ""
+	r.DefaultBackingStore.Annotations["rgw"] = ""
 	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeS3Compatible
 	r.DefaultBackingStore.Spec.S3Compatible = &nbv1.S3CompatibleSpec{
 		Secret:           corev1.SecretReference{Name: secretName, Namespace: options.Namespace},

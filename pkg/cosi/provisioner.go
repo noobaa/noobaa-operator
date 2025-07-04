@@ -69,7 +69,9 @@ func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder recor
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		// remove socket in case it is already bound
-		os.Remove(options.CosiDriverPath)
+		if err := os.Remove(options.CosiDriverPath); err != nil && !os.IsNotExist(err) {
+			log.Warnf("Failed to remove existing socket file %s: %v", options.CosiDriverPath, err)
+		}
 		util.Panic(cosiProv.Run(ctx))
 	}()
 
@@ -240,10 +242,8 @@ func NewBucketRequest(
 	bucketDelReq *cosi.DriverDeleteBucketRequest,
 ) (*APIRequest, error) {
 	log := p.Logger
-	IsExternalRPCConnection := false
-	if util.IsTestEnv() {
-		IsExternalRPCConnection = true
-	}
+	IsExternalRPCConnection := util.IsTestEnv()
+
 	sysClient, err := system.Connect(IsExternalRPCConnection)
 	if err != nil {
 		return nil, err
@@ -283,10 +283,8 @@ func NewAccountRequest(
 	accountCreateReq *cosi.DriverGrantBucketAccessRequest,
 	accountDelReq *cosi.DriverRevokeBucketAccessRequest,
 ) (*APIRequest, error) {
-	IsExternalRPCConnection := false
-	if util.IsTestEnv() {
-		IsExternalRPCConnection = true
-	}
+	IsExternalRPCConnection := util.IsTestEnv()
+
 	sysClient, err := system.Connect(IsExternalRPCConnection)
 	if err != nil {
 		return nil, err

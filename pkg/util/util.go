@@ -806,13 +806,15 @@ func SaveStreamToFile(body io.ReadCloser, path string) error {
 	if body == nil {
 		return nil
 	}
-	defer body.Close()
+	defer SafeClose(body, "Failed to close body stream")
+
 	f, err := os.Create(path)
 	if err != nil {
 		log.Errorf(`Could not save stream to file: %s, reason: %s\n`, path, err)
 		return err
 	}
-	defer f.Close()
+
+	defer SafeClose(f, fmt.Sprintf("Failed to close file %s", path))
 
 	if _, err := io.Copy(f, body); err != nil {
 		log.Errorf(`Could not write to file: %s, reason: %s\n`, path, err)
@@ -833,7 +835,8 @@ func SaveCRsToFile(crs runtime.Object, path string) error {
 		return err
 	}
 
-	defer f.Close()
+	defer SafeClose(f, fmt.Sprintf("Failed to close file %s", path))
+
 	p := printers.YAMLPrinter{}
 	err = p.PrintObj(crs, f)
 	if err != nil {
@@ -1267,7 +1270,7 @@ func GetAWSRegion() (string, error) {
 
 	// returning error if not fetched from either cluster or node name
 	if awsRegion == "" {
-		return "", fmt.Errorf("Failed to determine the AWS Region.")
+		return "", fmt.Errorf("Failed to determine the AWS region")
 	}
 	return awsRegion, nil
 }
@@ -1389,7 +1392,7 @@ func DiscoverOAuthEndpoints() (*OAuth2Endpoints, error) {
 	res, err := client.Get(oAuthWellKnownEndpoint)
 	defer func() {
 		if res != nil && res.Body != nil {
-			res.Body.Close()
+			SafeClose(res.Body, "Failed to close HTTP response body")
 		}
 	}()
 	if err != nil {
@@ -1448,10 +1451,10 @@ func Tar(src string, writers ...io.Writer) error {
 	mw := io.MultiWriter(writers...)
 
 	gzw := gzip.NewWriter(mw)
-	defer gzw.Close()
+	defer SafeClose(gzw, "Failed to close gzip writer")
 
 	tw := tar.NewWriter(gzw)
-	defer tw.Close()
+	defer SafeClose(tw, "Failed to close tar writer")
 
 	// walk path
 	return filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
@@ -1473,7 +1476,7 @@ func Tar(src string, writers ...io.Writer) error {
 		}
 
 		// update the name to correctly reflect the desired destination when untaring
-		header.Name = strings.TrimPrefix(strings.Replace(file, src, "", -1), string(filepath.Separator))
+		header.Name = strings.TrimPrefix(strings.ReplaceAll(file, src, ""), string(filepath.Separator))
 
 		// write the header
 		if err := tw.WriteHeader(header); err != nil {
@@ -1486,7 +1489,7 @@ func Tar(src string, writers ...io.Writer) error {
 			return err
 		}
 
-		defer f.Close()
+		defer SafeClose(f, fmt.Sprintf("Failed to close file %s", file))
 
 		// copy file data into tar writer
 		if _, err := io.Copy(tw, f); err != nil {
@@ -1505,7 +1508,7 @@ func WriteYamlFile(name string, obj runtime.Object, moreObjects ...runtime.Objec
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer SafeClose(file, fmt.Sprintf("Failed to close file %s", name))
 
 	err = p.PrintObj(obj, file)
 	if err != nil {
@@ -2344,6 +2347,23 @@ func IsDevEnv() bool {
 		return true
 	}
 	return false
+}
+
+// SafeClose is a generic function that attempts to close any object with a Close() method
+// and logs any errors that occur during the close operation.
+// This is useful for defer statements to ensure resources are properly closed.
+func SafeClose[T interface{ Close() error }](resource T, errorMsg string) {
+	if closeErr := resource.Close(); closeErr != nil {
+		log.Warnf("%s: %v", errorMsg, closeErr)
+	}
+}
+
+// SafeSetEnv is a generic function that attempts to set an environment variable
+// and logs any errors that occur during the set operation.
+func SafeSetEnv(envVarName string, envVarValue string) {
+	if err := os.Setenv(envVarName, envVarValue); err != nil {
+		log.Warnf("Failed to set env var %s: %v", envVarName, err)
+	}
 }
 
 // HasNodeInclusionPolicyInPodTopologySpread checks if the cluster supports the spread topology policy

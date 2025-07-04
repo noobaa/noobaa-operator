@@ -391,10 +391,10 @@ func NewBucketRequest(
 			},
 		}
 	} else {
-		if ob.Spec.Connection == nil || ob.Spec.Connection.Endpoint == nil {
+		if ob.Spec.Connection == nil || ob.Spec.Endpoint == nil {
 			return nil, fmt.Errorf("ObjectBucket has no connection/endpoint info %+v", ob)
 		}
-		r.BucketName = ob.Spec.Connection.Endpoint.BucketName
+		r.BucketName = ob.Spec.Endpoint.BucketName
 		r.AccountName = ob.Spec.AdditionalState["account"]
 		bucketClassName := ob.Spec.AdditionalState["bucketclass"]
 
@@ -403,8 +403,8 @@ func NewBucketRequest(
 			p.Logger.Warnf("BucketClass %q not found in namespace %q", bucketClassName, p.Namespace)
 		}
 		r.BucketClass = bucketClass
-		if r.OB.Spec.Connection.Endpoint.AdditionalConfigData == nil {
-			r.OB.Spec.Connection.Endpoint.AdditionalConfigData = map[string]string{}
+		if r.OB.Spec.Endpoint.AdditionalConfigData == nil {
+			r.OB.Spec.Endpoint.AdditionalConfigData = map[string]string{}
 		}
 	}
 

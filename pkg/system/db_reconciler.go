@@ -254,7 +254,7 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 	}
 
 	// by default enable monitoring of the DB instances. if the annotation is "true", disable monitoring
-	disableMonStr := r.NooBaa.ObjectMeta.Annotations[nbv1.DisableDBDefaultMonitoring]
+	disableMonStr := r.NooBaa.Annotations[nbv1.DisableDBDefaultMonitoring]
 	if r.CNPGCluster.Spec.Monitoring == nil {
 		r.CNPGCluster.Spec.Monitoring = &cnpgv1.MonitoringConfiguration{}
 	}

@@ -41,11 +41,11 @@ func ValidateNSFSAccountConfig(NSFSConfig string, bucketclass string) error {
 		// Check whether only UID or only GID were provided
 		if *configObj.UID < 0 || *configObj.GID < 0 {
 			return fmt.Errorf("UID and GID must be positive integers")
-		// Check whether a distinguished name was provided alongside UID or GID
+			// Check whether a distinguished name was provided alongside UID or GID
 		} else if configObj.DistinguishedName != "" && (*configObj.GID > -1 || *configObj.UID > -1) {
 			return fmt.Errorf(`NSFS account config cannot include both distinguished name and UID/GID`)
 		}
-	// Otherwise, validate the distinguished name
+		// Otherwise, validate the distinguished name
 	} else if configObj.DistinguishedName != "" {
 		if !linuxUsernameRegex.MatchString(configObj.DistinguishedName) {
 			return fmt.Errorf("DistinguishedName must be a valid username by Linux standards")
@@ -82,10 +82,8 @@ func ValidateReplicationPolicy(bucketName string, replicationPolicy string, upda
 	}
 
 	log.Infof("ValidateReplicationPolicy: validating replication: replicationParams: %+v", replicationParams)
-	IsExternalRPCConnection := false
-	if util.IsTestEnv() || isCLI {
-		IsExternalRPCConnection = true
-	}
+	IsExternalRPCConnection := util.IsTestEnv() || isCLI
+
 	sysClient, err := system.Connect(IsExternalRPCConnection)
 	if err != nil {
 		return fmt.Errorf("Provisioner Failed to validate replication of bucket %q with error: %v", bucketName, err)

@@ -58,8 +58,8 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			if err != nil {
 				return fmt.Errorf("failed to write k8s secret tls.key content to a file %v", err)
 			}
-			os.Setenv("PGSSLKEY", "/tmp/tls.key")
-			os.Setenv("PGSSLCERT", "/tmp/tls.crt")
+			util.SafeSetEnv("PGSSLKEY", "/tmp/tls.key")
+			util.SafeSetEnv("PGSSLCERT", "/tmp/tls.crt")
 		}
 		if err := r.checkExternalPg(r.ExternalPgSecret.StringData["db_url"]); err != nil {
 			return err
@@ -233,7 +233,7 @@ func (r *Reconciler) checkExternalPg(postgresDbURL string) error {
 			fmt.Sprintf("failed openning a connection to external DB url: %q, error: %s",
 				dbURL, err))
 	}
-	defer db.Close()
+	defer util.SafeClose(db, "Failed to close database connection")
 	err = db.Ping()
 	if err != nil {
 		return util.NewPersistentError("InvalidExternalPgUrl",

@@ -742,15 +742,16 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 			},
 		}
 
-		if c.Spec.Group == nbv1.SchemeGroupVersion.Group {
+		switch c.Spec.Group {
+		case nbv1.SchemeGroupVersion.Group:
 			csv.Spec.CustomResourceDefinitions.Owned = append(csv.Spec.CustomResourceDefinitions.Owned, crdDesc)
-		} else if c.Spec.Group == obAPI.Domain {
+		case obAPI.Domain:
 			if csvParams != nil && csvParams.OBCMode == OBCOwned {
 				csv.Spec.CustomResourceDefinitions.Owned = append(csv.Spec.CustomResourceDefinitions.Owned, crdDesc)
 			} else if csvParams == nil || csvParams.OBCMode == OBCRequired {
 				csv.Spec.CustomResourceDefinitions.Required = append(csv.Spec.CustomResourceDefinitions.Required, crdDesc)
 			} // else OBCMode == OBCNone, do nothing
-		} else {
+		default:
 			csv.Spec.CustomResourceDefinitions.Required = append(csv.Spec.CustomResourceDefinitions.Required, crdDesc)
 		}
 	})
