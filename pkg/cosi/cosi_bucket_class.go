@@ -229,11 +229,12 @@ func createCommonCOSIBucketclass(cmd *cobra.Command, args []string, bucketClassT
 	bucketClass.DriverName = options.COSIDriverName()
 
 	deletionPolicy, _ := cmd.Flags().GetString("deletion-policy")
-	if deletionPolicy == "delete" {
+	switch deletionPolicy {
+	case "delete":
 		bucketClass.DeletionPolicy = nbv1.COSIDeletionPolicyDelete
-	} else if deletionPolicy == "retain" {
+	case "retain":
 		bucketClass.DeletionPolicy = nbv1.COSIDeletionPolicyRetain
-	} else {
+	default:
 		log.Fatalf(`❌ Invalid deletion policy, valid values are delete or retain %s`, deletionPolicy)
 	}
 

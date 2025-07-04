@@ -278,7 +278,8 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 		if viper.IsSet(fmt.Sprintf("resources.%s", componentName)) {
 			var component *corev1.ResourceRequirements
 
-			if componentName == "core" {
+			switch componentName {
+			case "core":
 				if sys.Spec.CoreResources == nil {
 					sys.Spec.CoreResources = &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{},
@@ -286,7 +287,7 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 					}
 				}
 				component = sys.Spec.CoreResources
-			} else if componentName == "db" {
+			case "db":
 				if sys.Spec.DBResources == nil {
 					sys.Spec.DBResources = &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{},
@@ -294,7 +295,7 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 					}
 				}
 				component = sys.Spec.DBResources
-			} else if componentName == "endpoints" {
+			case "endpoints":
 				if sys.Spec.Endpoints == nil {
 					sys.Spec.Endpoints = &nbv1.EndpointsSpec{
 						MinCount: viper.GetInt32("resources.endpoints.minCount"),
@@ -765,7 +766,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	sysKey := client.ObjectKey{Namespace: options.Namespace, Name: options.SystemName}
 	r := NewReconciler(sysKey, klient, scheme.Scheme, nil)
 	r.CheckAll()
-	var NooBaaDB *appsv1.StatefulSet = r.NooBaaPostgresDB
+	var NooBaaDB = r.NooBaaPostgresDB
 
 	if r.shouldReconcileStandaloneDB() {
 		// NoobaaDB

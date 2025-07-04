@@ -306,7 +306,7 @@ func (r *Reconciler) LoadBackingStoreSecret() error {
 					}
 					secret = suggestedSecret
 				}
-				if util.IsOwnedByNoobaa(secret.ObjectMeta.OwnerReferences) {
+				if util.IsOwnedByNoobaa(secret.OwnerReferences) {
 					err = util.SetOwnerReference(r.BackingStore, secret, r.Scheme)
 					if _, isAlreadyOwnedErr := err.(*controllerutil.AlreadyOwnedError); !isAlreadyOwnedErr {
 						if err == nil {
@@ -715,9 +715,10 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		conn.Identity = nb.MaskedString(r.Secret.StringData["AWS_ACCESS_KEY_ID"])
 		conn.Secret = nb.MaskedString(r.Secret.StringData["AWS_SECRET_ACCESS_KEY"])
 		s3Compatible := r.BackingStore.Spec.S3Compatible
-		if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV4 {
+		switch s3Compatible.SignatureVersion {
+		case nbv1.S3SignatureVersionV4:
 			conn.AuthMethod = "AWS_V4"
-		} else if s3Compatible.SignatureVersion == nbv1.S3SignatureVersionV2 {
+		case nbv1.S3SignatureVersionV2:
 			conn.AuthMethod = "AWS_V2"
 		}
 		if s3Compatible.Endpoint == "" {
@@ -761,9 +762,10 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		conn.Identity = nb.MaskedString(r.Secret.StringData["IBM_COS_ACCESS_KEY_ID"])
 		conn.Secret = nb.MaskedString(r.Secret.StringData["IBM_COS_SECRET_ACCESS_KEY"])
 		IBMCos := r.BackingStore.Spec.IBMCos
-		if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV4 {
+		switch IBMCos.SignatureVersion {
+		case nbv1.S3SignatureVersionV4:
 			conn.AuthMethod = "AWS_V4"
-		} else if IBMCos.SignatureVersion == nbv1.S3SignatureVersionV2 {
+		case nbv1.S3SignatureVersionV2:
 			conn.AuthMethod = "AWS_V2"
 		}
 		if IBMCos.Endpoint == "" {
@@ -1010,8 +1012,8 @@ func (r *Reconciler) ReconcilePool() error {
 	}
 
 	if r.CreateCloudPoolParams != nil {
-		if r.BackingStore.ObjectMeta.Annotations != nil {
-			if _, ok := r.BackingStore.ObjectMeta.Annotations["rgw"]; ok {
+		if r.BackingStore.Annotations != nil {
+			if _, ok := r.BackingStore.Annotations["rgw"]; ok {
 				cephCluster := &cephv1.CephCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ocs-storagecluster",

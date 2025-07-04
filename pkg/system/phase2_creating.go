@@ -388,7 +388,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 						r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBStorageClassIsImmutable",
 							"spec.dbStorageClass is immutable and cannot be updated for volume %q in existing %s %q"+
 								" since it requires volume recreate and migrate which is unsupported by the operator",
-							pvc.Name, r.CoreApp.TypeMeta.Kind, r.CoreApp.Name)
+							pvc.Name, r.CoreApp.Kind, r.CoreApp.Name)
 					}
 				}
 				if r.NooBaa.Spec.DBVolumeResources != nil &&
@@ -397,7 +397,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 					r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBVolumeResourcesIsImmutable",
 						"spec.dbVolumeResources is immutable and cannot be updated for volume %q in existing %s %q"+
 							" since it requires volume recreate and migrate which is unsupported by the operator",
-						pvc.Name, r.CoreApp.TypeMeta.Kind, r.CoreApp.Name)
+						pvc.Name, r.CoreApp.Kind, r.CoreApp.Name)
 				}
 			}
 		}
@@ -855,7 +855,7 @@ func (r *Reconciler) ReconcileRGWCredentials() error {
 	// Log all stores and take the first one for not.
 	// TODO: need to decide what to do if multiple objectstores in one namespace
 	r.Logger.Infof("found %d ceph objectstores: %v", len(cephObjectStoreList.Items), cephObjectStoreList.Items)
-	storeName := cephObjectStoreList.Items[0].ObjectMeta.Name
+	storeName := cephObjectStoreList.Items[0].Name
 	r.Logger.Infof("using objectstore %q as a default backing store", storeName)
 
 	// create ceph objectstore user
@@ -1469,7 +1469,7 @@ func findLocalStorageClass() (string, error) {
 	scList := &storagev1.StorageClassList{}
 	util.KubeList(scList)
 	for _, sc := range scList.Items {
-		if sc.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+		if sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
 			return sc.Name, nil
 		}
 		if sc.Provisioner == "kubernetes.io/no-provisioner" {
