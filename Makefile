@@ -119,7 +119,7 @@ release: release-docker release-cli
 #- Generate -#
 #------------#
 
-gen: vendor pkg/bundle/deploy.go
+gen: install-hooks vendor pkg/bundle/deploy.go
 	@echo "✅ gen"
 .PHONY: gen
 
@@ -329,3 +329,11 @@ deepcopy-gen:
 DEEPCOPY_GEN=$(GOBIN)/deepcopy-gen
 .PHONY: deepcopy-gen
 
+install-hooks:
+	@if [ -d .git ]; then \
+		if [ "$(shell git config core.hooksPath)" != ".githooks" ]; then \
+			git config core.hooksPath .githooks; \
+			echo "Git hooks path set to .githooks"; \
+		fi; \
+	fi
+.PHONY: install-hooks
