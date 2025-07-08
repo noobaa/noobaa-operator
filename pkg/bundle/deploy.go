@@ -4866,7 +4866,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "9e5d53eeabce0afc9f3059802f579dc1b69e07c9b1954a8e9bdb9008ac3534d0"
+const Sha256_deploy_internal_statefulset_core_yaml = "d4c4947b5c53b52ff82a5385c86d4c79873f1677f14134f1da1007ea021bce29"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4891,7 +4891,7 @@ spec:
       annotations:
         noobaa.io/configmap-hash: ""
     spec:
-      serviceAccountName: noobaa
+      serviceAccountName: noobaa-core
       volumes:
         - name: logs
           emptyDir: {}
@@ -4916,6 +4916,11 @@ spec:
                   path: token
                   # For testing purposes change the audience to api
                   audience: openshift
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 0
+        fsGroup: 0
+        fsGroupChangePolicy: "OnRootMismatch"
       containers:
         #----------------#
         # CORE CONTAINER #
@@ -6226,13 +6231,12 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_binding_core_yaml = "99b90a402f770a4c3e7b1bb36c4e9175341f1697ff68a8ff3b121b43ef4d69d5"
+const Sha256_deploy_role_binding_core_yaml = "23dd0d60002ea999cc9f7e10fb3a8000e2c19f8a3ee27971f443acd06f698729"
 
 const File_deploy_role_binding_core_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: noobaa-core
-  namespace: openshift-storage
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -6240,7 +6244,6 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: noobaa-core
-  namespace: openshift-storage
 `
 
 const Sha256_deploy_role_binding_db_yaml = "3a4872fcde50e692ae52bbd208a8e1d115c574431c25a9644a7c820ae13c7748"
@@ -6530,7 +6533,7 @@ supplementalGroups:
   type: RunAsAny
 `
 
-const Sha256_deploy_scc_endpoint_yaml = "f9407c9f1fd1876eabbaad4cf910a05e57db33a2d590b2e2efad22bd1e3f8876"
+const Sha256_deploy_scc_endpoint_yaml = "b540b01b4e31dde0c5ff93c116f7873350a186c8985a35e21388091b63b221c7"
 
 const File_deploy_scc_endpoint_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -6557,7 +6560,7 @@ requiredDropCapabilities:
 runAsUser:
   type: RunAsAny
 seLinuxContext:
-  type: RunAsAny
+  type: MustRunAs
 supplementalGroups:
   type: RunAsAny
 volumes:
@@ -6579,12 +6582,13 @@ metadata:
     serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"noobaa-mgmt"}}'
 `
 
-const Sha256_deploy_service_account_core_yaml = "d2de6e8e56a41a2e6aeb44197b7590e254c68e0f62b9fee7e4a7edc5f9ba7b1a"
+const Sha256_deploy_service_account_core_yaml = "7e8f1d49bdba0969a33e8acc676cc5e2d50af9f4c94112b6de07548f3f704c24"
 
 const File_deploy_service_account_core_yaml = `apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: noobaa-core
+
 `
 
 const Sha256_deploy_service_account_db_yaml = "fcbccd7518ee5a426b071a3acc85d22142e27c5628b61ce4292cc393d2ecac31"

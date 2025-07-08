@@ -389,14 +389,17 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.SA = util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount)
 	c.SACore = util.KubeObject(bundle.File_deploy_service_account_core_yaml).(*corev1.ServiceAccount)
 	c.SAEndpoint = util.KubeObject(bundle.File_deploy_service_account_endpoint_yaml).(*corev1.ServiceAccount)
+	c.SACore = util.KubeObject(bundle.File_deploy_service_account_core_yaml).(*corev1.ServiceAccount)
 	c.SAUI = util.KubeObject(bundle.File_deploy_service_account_ui_yaml).(*corev1.ServiceAccount)
 	c.Role = util.KubeObject(bundle.File_deploy_role_yaml).(*rbacv1.Role)
 	c.RoleCore = util.KubeObject(bundle.File_deploy_role_core_yaml).(*rbacv1.Role)
 	c.RoleEndpoint = util.KubeObject(bundle.File_deploy_role_endpoint_yaml).(*rbacv1.Role)
+	c.RoleCore = util.KubeObject(bundle.File_deploy_role_core_yaml).(*rbacv1.Role)
 	c.RoleUI = util.KubeObject(bundle.File_deploy_role_ui_yaml).(*rbacv1.ClusterRole)
 	c.RoleBinding = util.KubeObject(bundle.File_deploy_role_binding_yaml).(*rbacv1.RoleBinding)
 	c.RoleBindingCore = util.KubeObject(bundle.File_deploy_role_binding_core_yaml).(*rbacv1.RoleBinding)
 	c.RoleBindingEndpoint = util.KubeObject(bundle.File_deploy_role_binding_endpoint_yaml).(*rbacv1.RoleBinding)
+	c.RoleBindingCore = util.KubeObject(bundle.File_deploy_role_binding_core_yaml).(*rbacv1.RoleBinding)
 	c.ClusterRole = util.KubeObject(bundle.File_deploy_cluster_role_yaml).(*rbacv1.ClusterRole)
 	c.ClusterRoleBinding = util.KubeObject(bundle.File_deploy_cluster_role_binding_yaml).(*rbacv1.ClusterRoleBinding)
 	c.Deployment = util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
@@ -408,6 +411,7 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.Role.Namespace = options.Namespace
 	c.RoleCore.Namespace = options.Namespace
 	c.RoleEndpoint.Namespace = options.Namespace
+	c.RoleCore.Namespace = options.Namespace
 	c.RoleBinding.Namespace = options.Namespace
 	c.RoleBindingEndpoint.Namespace = options.Namespace
 	c.RoleBindingCore.Namespace = options.Namespace
