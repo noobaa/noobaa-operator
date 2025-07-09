@@ -252,6 +252,9 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 	if r.NooBaa.Spec.Tolerations != nil {
 		r.CNPGCluster.Spec.Affinity.Tolerations = r.NooBaa.Spec.Tolerations
 	}
+	if r.NooBaa.Spec.TopologyKey != "" {
+		r.CNPGCluster.Spec.Affinity.TopologyKey = r.NooBaa.Spec.TopologyKey
+	}
 
 	// by default enable monitoring of the DB instances. if the annotation is "true", disable monitoring
 	disableMonStr := r.NooBaa.Annotations[nbv1.DisableDBDefaultMonitoring]
@@ -517,6 +520,7 @@ func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSp
 	return !reflect.DeepEqual(existingClusterSpec.InheritedMetadata, r.CNPGCluster.Spec.InheritedMetadata) ||
 		!reflect.DeepEqual(existingClusterSpec.ImageCatalogRef, r.CNPGCluster.Spec.ImageCatalogRef) ||
 		existingClusterSpec.Instances != r.CNPGCluster.Spec.Instances ||
+		existingClusterSpec.Affinity.TopologyKey != r.CNPGCluster.Spec.Affinity.TopologyKey ||
 		!reflect.DeepEqual(existingClusterSpec.Resources, r.CNPGCluster.Spec.Resources) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.StorageClass, r.CNPGCluster.Spec.StorageConfiguration.StorageClass) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.Size, r.CNPGCluster.Spec.StorageConfiguration.Size) ||

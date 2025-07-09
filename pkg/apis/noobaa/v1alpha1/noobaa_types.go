@@ -159,6 +159,10 @@ type NooBaaSpec struct {
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
+	// TopologyKey (optional) the TopologyKey to pass as the domain for TopologySpreadConstraint and Affinity of noobaa components
+	// It is used by the endpoints and the DB pods to control pods distribution between topology domains (host/zone)
+	TopologyKey string `json:"topologyKey,omitempty"`
+
 	// ImagePullSecret (optional) sets a pull secret for the system image
 	// +optional
 	ImagePullSecret *corev1.LocalObjectReference `json:"imagePullSecret,omitempty"`

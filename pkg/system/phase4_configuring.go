@@ -333,7 +333,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			r.DeploymentEndpoint.Name, nbv1.SkipTopologyConstraints)
 	} else {
 		r.Logger.Debugf("default TopologySpreadConstraints is added to %s deployment", r.DeploymentEndpoint.Name)
-		topologySpreadConstraint := corev1.TopologySpreadConstraint{
+		topologySpreadConstraintHost := corev1.TopologySpreadConstraint{
 			MaxSkew:           1,
 			TopologyKey:       "kubernetes.io/hostname",
 			WhenUnsatisfiable: corev1.ScheduleAnyway,
@@ -344,7 +344,20 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 				},
 			},
 		}
-		podSpec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{topologySpreadConstraint}
+		podSpec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{topologySpreadConstraintHost}
+		if r.NooBaa.Spec.TopologyKey != "" && r.NooBaa.Spec.TopologyKey != "kubernetes.io/hostname" {
+			podSpec.TopologySpreadConstraints = append(podSpec.TopologySpreadConstraints, corev1.TopologySpreadConstraint{
+				MaxSkew:           1,
+				TopologyKey:       r.NooBaa.Spec.TopologyKey,
+				WhenUnsatisfiable: corev1.ScheduleAnyway,
+				NodeTaintsPolicy:  &honor,
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"noobaa-s3": r.Request.Name,
+					},
+				},
+			})
+		}
 	}
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
