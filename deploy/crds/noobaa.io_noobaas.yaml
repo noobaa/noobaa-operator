@@ -984,6 +984,11 @@ spec:
                         type: array
                         x-kubernetes-list-type: atomic
                     type: object
+                  topologyKey:
+                    description: |-
+                      TopologyKey (optional) the TopologyKey to pass as the domain for TopologySpreadConstraint and Affinity of noobaa components
+                      It is used by the endpoints and the DB pods to control pods distribution between topology domains (host/zone)
+                    type: string
                 type: object
               annotations:
                 additionalProperties:

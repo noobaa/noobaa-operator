@@ -157,7 +157,7 @@ type NooBaaSpec struct {
 
 	// Affinity (optional) passed through to noobaa's pods
 	// +optional
-	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	Affinity *AffinitySpec `json:"affinity,omitempty"`
 
 	// ImagePullSecret (optional) sets a pull secret for the system image
 	// +optional
@@ -240,6 +240,24 @@ type NooBaaSpec struct {
 	// BucketNotifications (optional) controls bucket notification options
 	// +optional
 	BucketNotifications BucketNotificationsSpec `json:"bucketNotifications,omitempty"`
+}
+
+// Affinity is a group of affinity scheduling rules.
+type AffinitySpec struct {
+	// Describes node affinity scheduling rules for the pod.
+	// +optional
+	NodeAffinity *corev1.NodeAffinity `json:"nodeAffinity,omitempty" protobuf:"bytes,1,opt,name=nodeAffinity"`
+	// Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)).
+	// +optional
+	PodAffinity *corev1.PodAffinity `json:"podAffinity,omitempty" protobuf:"bytes,2,opt,name=podAffinity"`
+	// Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).
+	// +optional
+	PodAntiAffinity *corev1.PodAntiAffinity `json:"podAntiAffinity,omitempty" protobuf:"bytes,3,opt,name=podAntiAffinity"`
+
+	// TopologyKey (optional) the TopologyKey to pass as the domain for TopologySpreadConstraint and Affinity of noobaa components
+	// It is used by the endpoints and the DB pods to control pods distribution between topology domains (host/zone)
+	// +optional
+	TopologyKey string `json:"topologyKey,omitempty"`
 }
 
 // AutoscalerSpec defines different actoscaling spec such as autoscaler type and prometheus namespace
@@ -640,7 +658,7 @@ const (
 	// DeleteOBCConfirmation represents the validation to destry obc
 	DeleteOBCConfirmation CleanupConfirmationProperty = "yes-really-destroy-obc"
 
-	// SkipTopologyConstraints is Annotation name for disabling default topology Constraints
+	// SkipTopologyConstraints is Annotation name for skipping the reconciliation of the default topology Constraints
 	SkipTopologyConstraints = "noobaa.io/skip_topology_spread_constraints"
 
 	// DisableDBDefaultMonitoring is Annotation name for disabling default db monitoring
