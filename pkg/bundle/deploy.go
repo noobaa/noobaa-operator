@@ -4866,7 +4866,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "d4c4947b5c53b52ff82a5385c86d4c79873f1677f14134f1da1007ea021bce29"
+const Sha256_deploy_internal_statefulset_core_yaml = "2e2b20a646cf8b7a1551bdcf30c9e8a2496e46ef792b0dfd98bea0c2d4aee06e"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -4919,8 +4919,6 @@ spec:
       securityContext:
         runAsUser: 10001
         runAsGroup: 0
-        fsGroup: 0
-        fsGroupChangePolicy: "OnRootMismatch"
       containers:
         #----------------#
         # CORE CONTAINER #
@@ -6505,6 +6503,32 @@ seLinuxContext:
 supplementalGroups:
   type: RunAsAny
 readOnlyRootFilesystem: true
+`
+
+const Sha256_deploy_scc_core_yaml = "dd3fb26a323dddbbb9f399b8ff86c41dbbfe63b3bbb0cfe79b785c68948063a8"
+
+const File_deploy_scc_core_yaml = `apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: noobaa-core
+allowPrivilegeEscalation: false
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
+fsGroup:
+  type: MustRunAs
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
 `
 
 const Sha256_deploy_scc_db_yaml = "cea49b11eead99f2704b3f36349473fe2961be6312dbcf5ea56a13ebe3075ee2"
