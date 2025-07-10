@@ -264,6 +264,7 @@ func (k *KMIPSecretStorage) GetSecret(
 
 	lookfor := KMIPUniqueID // Addition to upgrade
 	var activeKeyID string
+	util.KubeCheck(k.secret)
 	if strings.HasSuffix(secretID, "-root-master-key-backend") {
 		lookfor = NewKMIPUniqueID
 		exists := false
@@ -415,9 +416,10 @@ func (k *KMIPSecretStorage) DeleteSecret(
 		lookfor = NewKMIPUniqueID
 	}
 	// Find the key ID
+	util.KubeCheck(k.secret)
 	uniqueIdentifier, exists := k.secret.StringData[lookfor]
 	if !exists {
-		log.Errorf("KMIPSecretStorage.DeleteSecret() No uniqueIdentifier in the secret")
+		log.Errorf("KMIPSecretStorage.DeleteSecret() No uniqueIdentifier %v in the secret %v", lookfor, k.secret.Name)
 		return secrets.ErrInvalidSecretId
 	}
 
