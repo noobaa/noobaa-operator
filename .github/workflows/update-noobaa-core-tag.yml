@@ -1,0 +1,75 @@
+name: Update Noobaa-Core container image tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      container_image_tag:
+        description: 'The container image tag for noobaa-core'
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  update-tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GITHUB_TOKEN: ${{ secrets.GHACTION_TOKEN_WRITE }} # We need a token with write permissions to create/merge the PR
+
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Replace ContainerImageTag
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: 'ContainerImageTag = "[^"]*"'
+          replace: 'ContainerImageTag = "${{ github.event.inputs.container_image_tag }}"'
+          include: 'pkg/options/options.go'
+          regex: true
+
+      - name: Check for changes
+        run: |
+          if git diff --quiet pkg/options/options.go; then
+            echo "Noobaa Core image tag is already up to date"
+            echo "No changes needed - canceling workflow"
+            gh run cancel ${{ github.run_id }}
+          fi
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.email "github-action@noobaa.io"
+          git config --global user.name "NooBaa GitHub Action"
+          git checkout -b update-core-tag-${{ github.event.inputs.container_image_tag }}
+          git add pkg/options/options.go
+          git commit -m "chore: update noobaa-core image tag to ${{ github.event.inputs.container_image_tag }}"
+          git push origin update-core-tag-${{ github.event.inputs.container_image_tag }}
+
+      - name: Create Pull Request
+        id: create_pr
+        run: |
+          PR_URL=$(gh pr create \
+            --title "Update ContainerImageTag to ${{ github.event.inputs.container_image_tag }}" \
+            --body "Automated update of ContainerImageTag to ${{ github.event.inputs.container_image_tag }} in options.go" \
+            --head update-core-tag-${{ github.event.inputs.container_image_tag }} \
+            --base master)
+          echo "PR created: $PR_URL"
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+
+      - name: Wait for PR checks and merge
+        run: |
+          echo "Waiting for checks to pass on: ${{ steps.create_pr.outputs.pr_url }}"
+          echo "Waiting 60 seconds for checks to start..."
+          sleep 60
+
+          echo "Checking PR status..."
+          gh pr checks "${{ steps.create_pr.outputs.pr_url }}" --watch
+
+          echo "Rebasing and merging PR..."
+          gh pr merge "${{ steps.create_pr.outputs.pr_url }}" --rebase --admin --delete-branch
