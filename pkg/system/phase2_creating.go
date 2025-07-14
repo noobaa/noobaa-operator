@@ -564,10 +564,8 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			if c.ReadinessProbe == nil {
 				c.ReadinessProbe = &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
-						HTTPGet: &corev1.HTTPGetAction{
-							Path:   "/version",
-							Port:   intstr.FromInt(8080),
-							Scheme: corev1.URISchemeHTTP,
+						TCPSocket: &corev1.TCPSocketAction{
+							Port: intstr.FromInt(8080),
 						},
 					},
 					InitialDelaySeconds: 5,

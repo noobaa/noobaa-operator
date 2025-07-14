@@ -5054,7 +5054,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "7ac104a8eb3a333f0d0c356976bd6955290b1f90de02d47e3c291e935ab7c476"
+const Sha256_deploy_internal_statefulset_core_yaml = "40aefcf8dbd77e40dfcbe3db3725b56a832c8a81c282c6ba4adc98ce8a65d470"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5110,11 +5110,10 @@ spec:
         #----------------#
         - name: core
           readinessProbe:
-            httpGet:
-              path: /version
+            tcpSocket:
               port: 8080
-              initialDelaySeconds: 5
-              timeoutSeconds: 2
+            initialDelaySeconds: 5
+            timeoutSeconds: 2
           image: NOOBAA_CORE_IMAGE
           volumeMounts:
             - name: logs
