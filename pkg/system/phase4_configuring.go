@@ -297,7 +297,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec
 	podSpec.Tolerations = r.NooBaa.Spec.Tolerations
-	podSpec.Affinity = r.NooBaa.Spec.Affinity
+	podSpec.Affinity = r.GetAffinity()
 	if r.NooBaa.Spec.ImagePullSecret == nil {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{}
@@ -323,17 +323,15 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 
 	honor := corev1.NodeInclusionPolicyHonor
 	disableDefaultTopologyConstraints, found := r.NooBaa.Annotations[nbv1.SkipTopologyConstraints]
-	if podSpec.TopologySpreadConstraints != nil {
-		r.Logger.Debugf("deployment %s TopologySpreadConstraints already exists, leaving as is", r.DeploymentEndpoint.Name)
-	} else if !util.HasNodeInclusionPolicyInPodTopologySpread() {
+	if !util.HasNodeInclusionPolicyInPodTopologySpread() {
 		r.Logger.Debugf("deployment %s TopologySpreadConstraints cannot be set because feature gate NodeInclusionPolicyInPodTopologySpread is not supported on this cluster version",
 			r.DeploymentEndpoint.Name)
 	} else if found && disableDefaultTopologyConstraints == "true" {
-		r.Logger.Debugf("deployment %s TopologySpreadConstraints will not be set because annotation %s was set on noobaa CR",
+		r.Logger.Debugf("deployment %s TopologySpreadConstraints reconciliation will be skipped because annotation %s was set on noobaa CR",
 			r.DeploymentEndpoint.Name, nbv1.SkipTopologyConstraints)
 	} else {
 		r.Logger.Debugf("default TopologySpreadConstraints is added to %s deployment", r.DeploymentEndpoint.Name)
-		topologySpreadConstraint := corev1.TopologySpreadConstraint{
+		topologySpreadConstraintHost := corev1.TopologySpreadConstraint{
 			MaxSkew:           1,
 			TopologyKey:       "kubernetes.io/hostname",
 			WhenUnsatisfiable: corev1.ScheduleAnyway,
@@ -344,7 +342,20 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 				},
 			},
 		}
-		podSpec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{topologySpreadConstraint}
+		podSpec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{topologySpreadConstraintHost}
+		if r.NooBaa.Spec.Affinity != nil && r.NooBaa.Spec.Affinity.TopologyKey != "" && r.NooBaa.Spec.Affinity.TopologyKey != "kubernetes.io/hostname" {
+			podSpec.TopologySpreadConstraints = append(podSpec.TopologySpreadConstraints, corev1.TopologySpreadConstraint{
+				MaxSkew:           1,
+				TopologyKey:       r.NooBaa.Spec.Affinity.TopologyKey,
+				WhenUnsatisfiable: corev1.ScheduleAnyway,
+				NodeTaintsPolicy:  &honor,
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"noobaa-s3": r.Request.Name,
+					},
+				},
+			})
+		}
 	}
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]

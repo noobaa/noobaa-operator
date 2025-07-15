@@ -1329,7 +1329,11 @@ func (r *Reconciler) updatePodTemplate() error {
 		r.PodAgentTemplate.Spec.Tolerations = r.NooBaa.Spec.Tolerations
 	}
 	if r.NooBaa.Spec.Affinity != nil {
-		r.PodAgentTemplate.Spec.Affinity = r.NooBaa.Spec.Affinity
+		r.PodAgentTemplate.Spec.Affinity = &corev1.Affinity{
+			NodeAffinity:    r.NooBaa.Spec.Affinity.NodeAffinity,
+			PodAffinity:     r.NooBaa.Spec.Affinity.PodAffinity,
+			PodAntiAffinity: r.NooBaa.Spec.Affinity.PodAntiAffinity,
+		}
 	}
 
 	if !util.HasNodeInclusionPolicyInPodTopologySpread() {

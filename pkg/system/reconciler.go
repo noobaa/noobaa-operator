@@ -732,3 +732,17 @@ func (r *Reconciler) stopNoobaaPodsAndGetNumRunningPods() (int, error) {
 	}
 	return len(corePodsList.Items) + len(endpointPodsList.Items), nil
 }
+
+func (r *Reconciler) GetAffinity() *corev1.Affinity {
+	if r.NooBaa == nil {
+		return nil
+	}
+	if r.NooBaa.Spec.Affinity == nil {
+		return nil
+	}
+	return &corev1.Affinity{
+		NodeAffinity:    r.NooBaa.Spec.Affinity.NodeAffinity,
+		PodAffinity:     r.NooBaa.Spec.Affinity.PodAffinity,
+		PodAntiAffinity: r.NooBaa.Spec.Affinity.PodAntiAffinity,
+	}
+}

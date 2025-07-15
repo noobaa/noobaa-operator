@@ -248,6 +248,12 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 	// set tolerations and node affinity to the cluster spec
 	if r.NooBaa.Spec.Affinity != nil {
 		r.CNPGCluster.Spec.Affinity.NodeAffinity = r.NooBaa.Spec.Affinity.NodeAffinity
+		if r.NooBaa.Spec.Affinity.TopologyKey != "" {
+			r.CNPGCluster.Spec.Affinity.TopologyKey = r.NooBaa.Spec.Affinity.TopologyKey
+		}
+	} else {
+		r.CNPGCluster.Spec.Affinity.NodeAffinity = nil
+		r.CNPGCluster.Spec.Affinity.TopologyKey = ""
 	}
 	if r.NooBaa.Spec.Tolerations != nil {
 		r.CNPGCluster.Spec.Affinity.Tolerations = r.NooBaa.Spec.Tolerations
@@ -517,6 +523,7 @@ func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSp
 	return !reflect.DeepEqual(existingClusterSpec.InheritedMetadata, r.CNPGCluster.Spec.InheritedMetadata) ||
 		!reflect.DeepEqual(existingClusterSpec.ImageCatalogRef, r.CNPGCluster.Spec.ImageCatalogRef) ||
 		existingClusterSpec.Instances != r.CNPGCluster.Spec.Instances ||
+		!reflect.DeepEqual(existingClusterSpec.Affinity, r.CNPGCluster.Spec.Affinity) ||
 		!reflect.DeepEqual(existingClusterSpec.Resources, r.CNPGCluster.Spec.Resources) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.StorageClass, r.CNPGCluster.Spec.StorageConfiguration.StorageClass) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.Size, r.CNPGCluster.Spec.StorageConfiguration.Size) ||

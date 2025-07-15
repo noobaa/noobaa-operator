@@ -1423,7 +1423,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "1637077ca2e0d584cd4203469f809b215af45ee4ba5358a283bbd7a5bf1b573e"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "9aed761f69a7c552dd6c2dfc558fd055d6c236765a0728b9a39abf289827668f"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2411,6 +2411,11 @@ spec:
                         type: array
                         x-kubernetes-list-type: atomic
                     type: object
+                  topologyKey:
+                    description: |-
+                      TopologyKey (optional) the TopologyKey to pass as the domain for TopologySpreadConstraint and Affinity of noobaa components
+                      It is used by the endpoints and the DB pods to control pods distribution between topology domains (host/zone)
+                    type: string
                 type: object
               annotations:
                 additionalProperties:
