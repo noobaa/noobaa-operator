@@ -1,11 +1,9 @@
 name: Update Noobaa-Core container image tag
 
 on:
+  schedule:
+    - cron: '0 0 1 * *'
   workflow_dispatch:
-    inputs:
-      container_image_tag:
-        description: 'The container image tag for noobaa-core'
-        required: true
 
 permissions:
   contents: write
@@ -17,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      GITHUB_TOKEN: ${{ secrets.GHACTION_TOKEN_WRITE }} # We need a token with write permissions to create/merge the PR
+      GITHUB_TOKEN: ${{ secrets.GHACTION_TOKEN_PR_PERMS }}
 
     steps:
       - name: Checkout master
@@ -25,11 +23,18 @@ jobs:
         with:
           ref: master
 
+      - name: Generate container image tag
+        id: generate_tag
+        run: |
+          tag="master-$(date -d 'yesterday' +%Y%m%d)" # using yesterday's date to ensure the image is available
+          echo "Generated tag: $tag"
+          echo "container_image_tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Replace ContainerImageTag
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: 'ContainerImageTag = "[^"]*"'
-          replace: 'ContainerImageTag = "${{ github.event.inputs.container_image_tag }}"'
+          replace: 'ContainerImageTag = "${{ steps.generate_tag.outputs.container_image_tag }}"'
           include: 'pkg/options/options.go'
           regex: true
 
@@ -45,22 +50,21 @@ jobs:
         run: |
           git config --global user.email "github-action@noobaa.io"
           git config --global user.name "NooBaa GitHub Action"
-          git checkout -b update-core-tag-${{ github.event.inputs.container_image_tag }}
+          git checkout -B update-core-tag-${{ steps.generate_tag.outputs.container_image_tag }}
           git add pkg/options/options.go
-          git commit -m "chore: update noobaa-core image tag to ${{ github.event.inputs.container_image_tag }}"
-          git push origin update-core-tag-${{ github.event.inputs.container_image_tag }}
+          git commit -m "chore: update noobaa-core image tag to ${{ steps.generate_tag.outputs.container_image_tag }}"
+          git push origin update-core-tag-${{ steps.generate_tag.outputs.container_image_tag }}
 
       - name: Create Pull Request
         id: create_pr
         run: |
           PR_URL=$(gh pr create \
-            --title "Update ContainerImageTag to ${{ github.event.inputs.container_image_tag }}" \
-            --body "Automated update of ContainerImageTag to ${{ github.event.inputs.container_image_tag }} in options.go" \
-            --head update-core-tag-${{ github.event.inputs.container_image_tag }} \
+            --title "Update ContainerImageTag to ${{ steps.generate_tag.outputs.container_image_tag }}" \
+            --body "Automated update of ContainerImageTag to ${{ steps.generate_tag.outputs.container_image_tag }} in options.go" \
+            --head update-core-tag-${{ steps.generate_tag.outputs.container_image_tag }} \
             --base master)
           echo "PR created: $PR_URL"
           echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
-
 
       - name: Wait for PR checks and merge
         run: |
@@ -73,3 +77,12 @@ jobs:
 
           echo "Rebasing and merging PR..."
           gh pr merge "${{ steps.create_pr.outputs.pr_url }}" --rebase --admin --delete-branch
+
+      - name: Cleanup branch on failure
+        if: always()
+        run: |
+          branch_name="update-core-tag-${{ steps.generate_tag.outputs.container_image_tag }}"
+          if git ls-remote --heads origin "$branch_name" | grep -q "$branch_name"; then
+            echo "Branch $branch_name still exists, deleting..."
+            git push origin --delete "$branch_name"
+          fi
