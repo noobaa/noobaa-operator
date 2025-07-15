@@ -52,11 +52,10 @@ spec:
         #----------------#
         - name: core
           readinessProbe:
-            httpGet:
-              path: /version
+            tcpSocket:
               port: 8080
-              initialDelaySeconds: 5
-              timeoutSeconds: 2
+            initialDelaySeconds: 5
+            timeoutSeconds: 2
           image: NOOBAA_CORE_IMAGE
           volumeMounts:
             - name: logs
