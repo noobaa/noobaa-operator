@@ -410,7 +410,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	err = util.CombineCaBundle(util.ServiceServingCertCAFile)
-	r.UserCertBundlePath = util.ServiceServingCertCAFile
+	r.UserCertBundlePath = util.ServiceAccountCAFile
 	if !os.IsNotExist(err) {
 		log.Errorf("❌ NooBaa %q failed to add root CAs to system default: %v", r.NooBaa.Name, err)
 		res.RequeueAfter = 3 * time.Second
