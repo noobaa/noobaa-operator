@@ -94,8 +94,8 @@ const (
 	// CombinedCaBundlePath points to the combined CA bundle file
 	CombinedCaBundlePath = "/tmp/ca-bundle.crt"
 
-	// ServiceAccountCAFile points to the OCP root CA bundle
-	ServiceAccountCAFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	// APIServerCA points to the OCP root CA bundle
+	APIServerCA = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -165,7 +165,7 @@ func CombineCaBundle(localCertFile string) error {
 	var certFiles = []string{
 		InjectedBundleCertCAFile,
 		localCertFile,
-		ServiceAccountCAFile,
+		APIServerCA,
 	}
 
 	for _, certFile := range certFiles {
