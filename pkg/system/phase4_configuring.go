@@ -1448,7 +1448,7 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		Transport: util.InsecureHTTPTransport,
 		Timeout:   10 * time.Second,
 	}
-	if r.UseRefreshingTransport {
+	if r.UserCertBundlePath != "" {
 		client.Transport = util.GlobalCARefreshingTransport
 	}
 
