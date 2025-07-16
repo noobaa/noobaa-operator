@@ -410,16 +410,9 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	err = util.CombineCaBundle(util.ServiceServingCertCAFile)
-	if err == nil {
-		// TODO: Use this once noobaa-core#8973 is merged
-		// Until then, we have to choose between using the injected cert bundle or the service serving cert ca file.
-		// For now, we use the service serving certs to allow the product to continue working, even if without user provided certs.
-		// r.UserCertBundlePath = util.CombinedCaBundlePath
-		r.UserCertBundlePath = util.ServiceServingCertCAFile
-	} else if !os.IsNotExist(err) {
-		// Fallback to the service serving cert CA file
-		r.UserCertBundlePath = util.ServiceServingCertCAFile
-		log.Errorf("❌ NooBaa %q failed to add root CAs to system default", r.NooBaa.Name)
+	r.UserCertBundlePath = util.ServiceServingCertCAFile
+	if !os.IsNotExist(err) {
+		log.Errorf("❌ NooBaa %q failed to add root CAs to system default: %v", r.NooBaa.Name, err)
 		res.RequeueAfter = 3 * time.Second
 		return res, nil
 	}
