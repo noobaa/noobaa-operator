@@ -1,0 +1,9 @@
+name: Nightly Upgrade Tests
+on:
+  schedule:
+    - cron: '0 4 * * *'
+      
+jobs:
+  nightly-upgrade-tests:
+    uses: ./.github/workflows/upgrade-tests-workflow.yaml
+    secrets: inherit
