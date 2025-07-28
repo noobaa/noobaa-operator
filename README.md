@@ -154,8 +154,8 @@ The following options can be passed to any command:
     --manual-default-backingstore=false: allow to delete the default backingstore
     --mini=false: Signal the operator that it is running in a low resource environment
     -n, --namespace='default': Target namespace
-    --noobaa-image='noobaa/noobaa-core:5.18.7': NooBaa image
-    --operator-image='noobaa/noobaa-operator:5.18.7': Operator image
+    --noobaa-image='noobaa/noobaa-core:5.18.8': NooBaa image
+    --operator-image='noobaa/noobaa-operator:5.18.8': Operator image
     --pg-ssl-cert='': ssl cert for postgres (client-side cert - need to be signed by external pg accepted CA)
     --pg-ssl-key='': ssl key for postgres (client-side cert - need to be signed by external pg accepted CA)
     --pg-ssl-required=false: Force noobaa to work with ssl (external postgres - server-side) [if server cert is self-signed, needs to add --ssl-unauthorized]
@@ -177,9 +177,9 @@ $ noobaa version
 ```
 
 ```
-INFO[0000] CLI version: 5.18.7
-INFO[0000] noobaa-image: noobaa/noobaa-core:5.18.7
-INFO[0000] operator-image: noobaa/noobaa-operator:5.18.7
+INFO[0000] CLI version: 5.18.8
+INFO[0000] noobaa-image: noobaa/noobaa-core:5.18.8
+INFO[0000] operator-image: noobaa/noobaa-operator:5.18.8
 ```
 
 ## Troubleshooting
