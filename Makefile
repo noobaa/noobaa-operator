@@ -305,6 +305,11 @@ test-validations:
 	@echo "✅ test-validations"
 .PHONY: test-validations
 
+test-upgrade: vendor
+	ginkgo -v test/upgrade
+	@echo "✅ test-upgrade"
+.PHONY: test-upgrade
+
 # find or download controller-gen if necessary
 controller-gen:
 ifneq ($(CONTROLLER_GEN_VERSION), $(shell controller-gen --version | awk -F ":" '{print $2}'))
