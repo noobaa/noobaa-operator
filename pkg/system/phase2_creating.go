@@ -527,10 +527,12 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			if r.NooBaa.Spec.CoreResources != nil {
 				c.Resources = *r.NooBaa.Spec.CoreResources
 			}
-			if util.KubeCheckQuiet(r.CaBundleConf) {
+
+			// we want to check that the cm exists and also that it has data in it
+			if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
 				configMapVolumeMounts := []corev1.VolumeMount{{
 					Name:      r.CaBundleConf.Name,
-					MountPath: "/etc/ocp-injected-ca-bundle.crt",
+					MountPath: "/etc/ocp-injected-ca-bundle",
 					ReadOnly:  true,
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
@@ -610,10 +612,11 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 					Limits:   logResourceList,
 				}
 			}
-			if util.KubeCheckQuiet(r.CaBundleConf) {
+			// we want to check that the cm exists and also that it has data in it
+			if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
 				configMapVolumeMounts := []corev1.VolumeMount{{
 					Name:      r.CaBundleConf.Name,
-					MountPath: "/etc/ocp-injected-ca-bundle.crt",
+					MountPath: "/etc/ocp-injected-ca-bundle",
 					ReadOnly:  true,
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
@@ -653,7 +656,8 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 
 	r.CoreApp.Spec.Template.Annotations["noobaa.io/configmap-hash"] = r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"]
 
-	if util.KubeCheckQuiet(r.CaBundleConf) {
+	// we want to check that the cm exists and also that it has data in it
+	if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
 		configMapVolumes := []corev1.Volume{{
 			Name: r.CaBundleConf.Name,
 			VolumeSource: corev1.VolumeSource{
