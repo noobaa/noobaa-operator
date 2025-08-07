@@ -1,0 +1,41 @@
+name: Upgrade Tests Workflow
+on: 
+  workflow_call:
+    inputs:
+      source_version:
+        type: string
+        description: "Version to upgrade From"
+        required: false
+      target_version:
+        type: string
+        description: "Version to upgrade to"
+        required: false
+    
+jobs:
+  upgrade-tests-workflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Set environment variables
+        run: |
+          echo PATH=$PATH:$HOME/go/bin  >> $GITHUB_ENV
+
+      - name: Deploy Dependencies
+        run: |
+          set -x
+          bash .travis/install-5nodes-kind-cluster.sh
+          go get -v github.com/onsi/ginkgo/v2
+          go install -v github.com/onsi/ginkgo/v2/ginkgo
+          ginkgo version
+
+      - name: Run Upgrade test
+        run: UPGRADE_TEST_OPERATOR_SOURCE_VERSION=${{ inputs.source_version }} UPGRADE_TEST_OPERATOR_TARGET_VERSION=${{ inputs.target_version }} make test-upgrade
