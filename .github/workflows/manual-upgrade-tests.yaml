@@ -1,4 +1,4 @@
-name: Full Upgrade Test
+name: Manual Upgrade Test
 on:
   workflow_dispatch:
     inputs:
@@ -10,7 +10,7 @@ on:
         required: false
 
 jobs:
-  nightly-upgrade-tests:
+  manual-upgrade-tests:
     uses: ./.github/workflows/upgrade-tests-workflow.yaml
     secrets: inherit
     with:
