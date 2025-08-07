@@ -305,7 +305,7 @@ test-validations:
 	@echo "✅ test-validations"
 .PHONY: test-validations
 
-test-upgrade: vendor
+test-upgrade: gen cli
 	ginkgo -v test/upgrade
 	@echo "✅ test-upgrade"
 .PHONY: test-upgrade
