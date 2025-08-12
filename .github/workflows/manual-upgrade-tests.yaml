@@ -1,0 +1,18 @@
+name: Manual Upgrade Test
+on:
+  workflow_dispatch:
+    inputs:
+      source_version:
+        description: "Version to upgrade From"
+        required: false
+      target_version:
+        description: "Version to upgrade to"
+        required: false
+
+jobs:
+  manual-upgrade-tests:
+    uses: ./.github/workflows/upgrade-tests-workflow.yaml
+    secrets: inherit
+    with:
+      source_version: ${{ github.event.inputs.source_version }}
+      target_version: ${{ github.event.inputs.target_version }}

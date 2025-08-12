@@ -6602,7 +6602,7 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_core_yaml = "c3cfb5b87298224fd6e4e4bff32d3948ad168a0110b8569118a260739ef5d5e7"
+const Sha256_deploy_role_core_yaml = "1ec420603dcec64b247852d106535a85a1a866129f78f790c2e5c9285f029ae7"
 
 const File_deploy_role_core_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6651,6 +6651,16 @@ rules:
   - securitycontextconstraints
   verbs:
   - use
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  - create
+  - update
+  - list
+  - watch
 `
 
 const Sha256_deploy_role_db_yaml = "bc7eeca1125dfcdb491ab8eb69e3dcbce9f004a467b88489f85678b3c6872cce"

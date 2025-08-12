@@ -45,3 +45,13 @@ rules:
   - securitycontextconstraints
   verbs:
   - use
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  - create
+  - update
+  - list
+  - watch
