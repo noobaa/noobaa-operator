@@ -52,7 +52,7 @@ jobs:
           git config --global user.name "NooBaa GitHub Action"
           git checkout -B update-core-tag-${{ steps.generate_tag.outputs.container_image_tag }}
           git add pkg/options/options.go
-          git commit -m "chore: update noobaa-core image tag to ${{ steps.generate_tag.outputs.container_image_tag }}"
+          git commit -s -m "chore: update noobaa-core image tag to ${{ steps.generate_tag.outputs.container_image_tag }}"
           git push origin update-core-tag-${{ steps.generate_tag.outputs.container_image_tag }}
 
       - name: Create Pull Request
