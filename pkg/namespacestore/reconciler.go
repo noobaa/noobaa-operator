@@ -354,7 +354,7 @@ func (r *Reconciler) ReconcileDeletion(systemFound bool) error {
 			internalPoolName := ""
 			for i := range r.SystemInfo.Pools {
 				pool := &r.SystemInfo.Pools[i]
-				if pool.ResourceType == "INTERNAL" {
+				if pool.Name == "backingstores" {
 					internalPoolName = pool.Name
 					break
 				}
