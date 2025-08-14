@@ -1294,6 +1294,36 @@ func LoadConfigMapFromFlags() {
 	}
 }
 
+// MapSecretToBackingStores returns a list of backingstores that uses the secret in their secretReference
+// used by backingstore_controller to watch secrets changes
+func MapSecretToNooBaa(secret types.NamespacedName) []reconcile.Request {
+	log := util.Logger()
+	log.Infof("checking which nooBaas to reconcile. mapping secret %v to nooBaas external postgres secret", secret)
+	nbList := &nbv1.NooBaaList{
+		TypeMeta: metav1.TypeMeta{Kind: "NooBaaList"},
+	}
+	if !util.KubeList(nbList, &client.ListOptions{Namespace: secret.Namespace}) {
+		log.Infof("Could not found NooBaa in namespace %q, while trying to find NooBaa that uses %s secret", secret.Namespace, secret.Name)
+		return nil
+	}
+
+	reqs := []reconcile.Request{}
+
+	for _, nb := range nbList.Items {
+		nbSecret := util.GetNooBaaExternalPgSecret(&nb)
+		if nbSecret != nil && nbSecret.Name == secret.Name {
+			reqs = append(reqs, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      nb.Name,
+					Namespace: nb.Namespace,
+				},
+			})
+		}
+	}
+
+	return reqs
+}
+
 // SetAllowNoobaaDeletion sets AllowNoobaaDeletion Noobaa CR field to true so the webhook won't block the deletion
 func SetAllowNoobaaDeletion(noobaa *nbv1.NooBaa) error {
 	// Explicitly allow deletion of NooBaa CR
