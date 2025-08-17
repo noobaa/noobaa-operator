@@ -77,7 +77,7 @@ func (r *Reconciler) ReconcileCNPGCluster() error {
 			},
 		}
 
-		if util.KubeCheck(standaloneDBPod) {
+		if util.KubeCheckQuiet(standaloneDBPod) {
 			// stop the standalone DB pod. For now it is only scaled down to 0 replicas, to keep it around as backup
 			r.cnpgLog("Scaling down the standalone DB pod")
 			if err := r.ReconcileObject(r.NooBaaPostgresDB, func() error {
