@@ -4537,7 +4537,7 @@ spec:
         claimName: noobaa-pv-claim
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "3d136d9c9891c9d3bdfdab4d8b5104ab31329b0740744a2e0bbcb34fa26bebf2"
+const Sha256_deploy_internal_prometheus_rules_yaml = "9dba8cfe7b655d3467b091531c95e6d34e8bd179f36ece6eaf3cff8ef73df23d"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -4788,66 +4788,38 @@ spec:
         severity: critical
   - name: noobaa-db-alert.rules
     rules:
-      - alert: NooBaaDatabaseReachingCapacity
-        annotations:
-          description: The NooBaa database on pod noobaa-db-pg-cluster-1 is using 80% of its PVC requested size.
-          message: NooBaa NooBaa database on pod noobaa-db-pg-cluster-1 is using 80% of its PVC capacity.
-          severity_level: warning
-          storage_type: NooBaa
-        expr: |
-          (
-            cnpg_pg_database_size_bytes{datname="nbcore", namespace="openshift-storage", pod="noobaa-db-pg-cluster-1"}
-            /on(namespace) group_left(persistentvolumeclaim)
-            kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace="openshift-storage", persistentvolumeclaim="noobaa-db-pg-cluster-1"}
-          ) * 100 > 80
-        for: 5m
-        labels:
-          severity: warning
-      - alert: NooBaaDatabaseReachingCapacity
-        annotations:
-          description: The NooBaa database on pod noobaa-db-pg-cluster-2 is using 80% of its PVC requested size.
-          message: NooBaa NooBaa database on pod noobaa-db-pg-cluster-2 is using 80% of its PVC capacity.
-          severity_level: warning
-          storage_type: NooBaa
-        expr: |
-          (
-            cnpg_pg_database_size_bytes{datname="nbcore", namespace="openshift-storage", pod="noobaa-db-pg-cluster-2"}
-            /on(namespace) group_left(persistentvolumeclaim)
-            kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace="openshift-storage", persistentvolumeclaim="noobaa-db-pg-cluster-2"}
-          ) * 100 > 80
-        for: 5m
-        labels:
-          severity: warning
-      - alert: NooBaaDatabaseStorageFull
-        annotations:
-          description: The NooBaa database on pod noobaa-db-pg-cluster-1 is using over 90% of its PVC requested size. Increase the DB size as soon as possible.
-          message: NooBaa NooBaa database on pod noobaa-db-pg-cluster-1 is using over 90% of its PVC capacity.
-          severity_level: critical
-          storage_type: NooBaa
-        expr: |
-          (
-            cnpg_pg_database_size_bytes{datname="nbcore", namespace="openshift-storage", pod="noobaa-db-pg-cluster-1"}
-            /on(namespace) group_left(persistentvolumeclaim)
-            kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace="openshift-storage", persistentvolumeclaim="noobaa-db-pg-cluster-1"}
-          ) * 100 > 90
-        for: 5m
-        labels:
-          severity: critical
-      - alert: NooBaaDatabaseStorageFull
-        annotations:
-          description: The NooBaa database on pod noobaa-db-pg-cluster-2 is using over 90% of its PVC requested size. Increase the DB size as soon as possible.
-          message: NooBaa NooBaa database on pod noobaa-db-pg-cluster-2 is using over 90% of its PVC capacity.
-          severity_level: critical
-          storage_type: NooBaa
-        expr: |
-          (
-            cnpg_pg_database_size_bytes{datname="nbcore", namespace="openshift-storage", pod="noobaa-db-pg-cluster-2"}
-            /on(namespace) group_left(persistentvolumeclaim)
-            kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace="openshift-storage", persistentvolumeclaim="noobaa-db-pg-cluster-2"}
-          ) * 100 > 90
-        for: 5m
-        labels:
-          severity: critical
+    - alert: NooBaaDatabaseReachingCapacity
+      annotations:
+        description: The NooBaa database on pod {{ $labels.pod }} has reached 80% of its PVC capacity.
+        message: The NooBaa database on pod {{ $labels.pod }} is consuming 80% of its PVC capacity. Plan to increase the PVC size soon to prevent service impact.
+        severity_level: warning
+        storage_type: NooBaa
+      expr: |
+        ((sum by (pod) (cnpg_collector_pg_wal{value="size"})
+        + sum by (pod) (cnpg_pg_database_size_bytes{datname="nbcore"}))
+        /
+        sum by (pod) (
+        label_replace(kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace="openshift-storage"}, "pod", "$1", "persistentvolumeclaim", "(.*)"
+        ))) * 100 > 80
+      for: 5m
+      labels:
+        severity: warning    
+    - alert: NooBaaDatabaseStorageFull
+      annotations:
+        description: The NooBaa database on pod {{ $labels.pod }} has exceeded 90% of its PVC capacity. Immediate action is required
+        message: The NooBaa database on pod {{ $labels.pod }} has exceeded 90% of its PVC capacity. Expand the PVC size now to avoid imminent service disruption.
+        severity_level: critical
+        storage_type: NooBaa
+      expr: |
+        ((sum by (pod) (cnpg_collector_pg_wal{value="size"})
+        + sum by (pod) (cnpg_pg_database_size_bytes{datname="nbcore"}))
+        /
+        sum by (pod) (
+        label_replace(kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace="openshift-storage"}, "pod", "$1", "persistentvolumeclaim", "(.*)"
+        ))) * 100 > 90
+      for: 1m
+      labels:
+        severity: critical
 `
 
 const Sha256_deploy_internal_pvc_agent_yaml = "c76fd98867e2e098204377899568a6e1e60062ece903c7bcbeb3444193ec13f8"
