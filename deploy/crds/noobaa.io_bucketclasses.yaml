@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.3
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: bucketclasses.noobaa.io
 spec:
   group: noobaa.io
@@ -127,6 +127,8 @@ spec:
                             BackingStores is an unordered list of backing store names.
                             The meaning of the list depends on the placement.
                           items:
+                            description: BackingStoreName is just a name-reference
+                              to a BackingStore
                             type: string
                           type: array
                         placement:
