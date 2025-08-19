@@ -1,8 +1,6 @@
 module github.com/noobaa/noobaa-operator/v5
 
-go 1.23.0
-
-toolchain go1.23.4
+go 1.24
 
 replace (
 	// TODO: remove this replace once https://github.com/libopenstorage/secrets/pull/83 is merged
