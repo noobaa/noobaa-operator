@@ -21,7 +21,7 @@ jobs:
           ref: ${{ github.event.inputs.branch }}
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
 
       - name: Get Current Date
         id: date
