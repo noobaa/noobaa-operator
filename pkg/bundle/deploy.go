@@ -6390,7 +6390,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "d78f7c32af03516bc70f0bddc65ad4837a138c9bd334676a020d870edf9a8467"
+const Sha256_deploy_operator_yaml = "44022d49f1e87196410ff28589fca9001c25928957dfa3db208eab58220d364d"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -6436,6 +6436,9 @@ spec:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
           terminationMessagePolicy: FallbackToLogsOnError
+          ports:
+            - name: readyz
+              containerPort: 8081
           volumeMounts:
           - name: bound-sa-token
             mountPath: /var/run/secrets/openshift/serviceaccount
@@ -6445,6 +6448,29 @@ spec:
           # SHOULD BE RETURNED ONCE COSI IS BACK
           # - name: socket
           #   mountPath: /var/lib/cosi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: readyz
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /readyz
+              port: readyz
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: readyz
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
           resources:
             limits:
               cpu: "250m"
