@@ -33,6 +33,8 @@ func Cmd() *cobra.Command {
 		Use:   "operator",
 		Short: "Deployment using operator",
 	}
+	// health-probe flag available on operator and inherited by subcommands
+	cmd.PersistentFlags().String("health-probe-bind-address", ":8081", "HTTP address for health/readiness probes (e.g., :8081)")
 	cmd.AddCommand(
 		CmdInstall(),
 		CmdUninstall(),
