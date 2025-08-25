@@ -1216,6 +1216,7 @@ func GetAWSRegion() (string, error) {
 		"eu-south-1":     "eu-south-1",
 		"eu-south-2":     "eu-south-2",
 		"ap-east-1":      "ap-east-1",
+		"ap-east-2":      "ap-east-2",
 		"ap-northeast-1": "ap-northeast-1",
 		"ap-northeast-2": "ap-northeast-2",
 		"ap-northeast-3": "ap-northeast-3",
