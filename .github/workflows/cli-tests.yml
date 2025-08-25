@@ -18,8 +18,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
-
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+          cache-dependency-path: |
+            **/go.sum
       - name: Set environment variables
         run: |
           echo "PATH=$PATH:$HOME/go/bin" >> $GITHUB_ENV
