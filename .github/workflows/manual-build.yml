@@ -21,7 +21,11 @@ jobs:
           ref: ${{ github.event.inputs.branch }}
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+          cache-dependency-path: |
+            **/go.sum
 
       - name: Get Current Date
         id: date
