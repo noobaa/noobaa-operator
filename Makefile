@@ -190,9 +190,9 @@ golangci-lint: gen
 
 lint: gen
 	@echo ""
-	@if [ ! -f "$(GOBIN)/golangci-lint" ] || [ "v2.1.6" != "$$($(GOBIN)/golangci-lint --version 2>/dev/null | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' || echo '')" ]; then \
-		echo "Installing golangci-lint v2.1.6..."; \
-		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6; \
+	@if [ ! -f "$(GOBIN)/golangci-lint" ] || ! $(GOBIN)/golangci-lint --version 2>/dev/null | grep -q "version 2.4.0"; then \
+		echo "Installing golangci-lint v2.4.0..."; \
+		go install -a github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.4.0; \
 	fi
 	@if [ -n "$(FILES)" ]; then \
 		echo "Running lint on changed files: $(FILES)"; \
