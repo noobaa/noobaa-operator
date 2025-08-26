@@ -7167,3 +7167,84 @@ metadata:
   name: custom-metrics-prometheus-adapter
 `
 
+const Sha256_deploy_warp_warp_job_yaml = "dab54e11a74caf45f5cd0f5b54c88c3937a1837e00744164f670f2dad58cefc4"
+
+const File_deploy_warp_warp_job_yaml = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: warp-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: warp-job
+        env:
+          - name: WARP_ACCESS_KEY
+          - name: WARP_SECRET_KEY
+        image: "minio/warp:latest"
+        imagePullPolicy: Always
+      restartPolicy: Never
+  backoffLimit: 0
+
+`
+
+const Sha256_deploy_warp_warp_svc_yaml = "b9d0fff93a030ab846817d6bbdbe85a52b0277312f5f1c8933a7cc4a44a0f6c5"
+
+const File_deploy_warp_warp_svc_yaml = `apiVersion: v1
+kind: Service
+metadata:
+  name: warp
+  labels:
+    app: warp
+spec:
+  publishNotReadyAddresses: true
+  clusterIP: None
+  ports:
+    - port: 7761
+      name: warp
+  selector:
+    app: warp`
+
+const Sha256_deploy_warp_warp_yaml = "869bfc23eaf9c79ef03d8315257c0e63136cda2772c00353bff54e4f699be471"
+
+const File_deploy_warp_warp_yaml = `apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: warp
+  labels:
+    app: warp
+spec:
+  serviceName: warp
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: warp
+  template:
+    metadata:
+      name: warp
+      labels:
+        app: warp
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - warp
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: warp
+          image: "minio/warp:latest"
+          imagePullPolicy: Always
+          args:
+            - client
+          ports:
+            - name: http
+              containerPort: 7761
+
+`
+
