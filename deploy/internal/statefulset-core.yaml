@@ -130,6 +130,7 @@ spec:
             - name: POSTGRES_PASSWORD_PATH
             - name: POSTGRES_DBNAME_PATH
             - name: POSTGRES_PORT_PATH
+            - name: POSTGRES_CONNECTION_STRING_PATH
             - name: GUARANTEED_LOGS_PATH
             - name: DB_TYPE
               value: postgres
