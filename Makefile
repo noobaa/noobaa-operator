@@ -183,11 +183,6 @@ test: lint test-go
 	@echo "✅ test"
 .PHONY: test
 
-golangci-lint: gen
-	golangci-lint run --disable-all -E varcheck,structcheck,typecheck,errcheck,gosimple,unused,deadcode,ineffassign,staticcheck --timeout=10m
-	@echo "✅ golangci-lint"
-.PHONY: golangci-lint
-
 lint: gen
 	@echo ""
 	@if [ ! -f "$(GOBIN)/golangci-lint" ] || [ "v2.1.6" != "$$($(GOBIN)/golangci-lint --version 2>/dev/null | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' || echo '')" ]; then \
