@@ -467,7 +467,11 @@ func (r *BucketRequest) CreateAndUpdateBucket(
 
 	// create NS bucket
 	if r.BucketClass.Spec.NamespacePolicy != nil {
-		createBucketParams.Namespace = bucketclass.CreateNamespaceBucketInfoStructure(*r.BucketClass.Spec.NamespacePolicy, r.OBC.Spec.AdditionalConfig["path"])
+		path := r.OBC.Spec.AdditionalConfig["path"]
+		if path == "" {
+			path = r.BucketName
+		}
+		createBucketParams.Namespace = bucketclass.CreateNamespaceBucketInfoStructure(*r.BucketClass.Spec.NamespacePolicy, path)
 	}
 
 	err = r.SysClient.NBClient.CreateBucketAPI(*createBucketParams)
