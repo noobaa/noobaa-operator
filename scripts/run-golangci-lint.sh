@@ -25,8 +25,8 @@ install_golangci_lint() {
         GOBIN=$(go env GOPATH)/bin
     fi
     
-    if [ ! -f "$GOBIN/golangci-lint" ]; then
-        echo "Installing latest golangci-lint and building with local toolchain"
+    if [ ! -x "$GOBIN/golangci-lint" ]; then
+        echo "Installing latest golangci-lint..."
         if ! go -a install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; then
             echo "⚠️ Failed to install golangci-lint"
             exit 0
@@ -57,11 +57,11 @@ run_precommit_lint() {
     BASE=$(git rev-parse --verify HEAD 2>/dev/null || echo "")
     
     if [ -z "$BASE" ]; then
-        # Initial commit – lint everything staged
-        golangci-lint run --issues-exit-code=$ISSUES_EXIT_CODE $STAGED_FILES
+        # Initial commit – lint only staged files
+        golangci-lint run --issues-exit-code=$ISSUES_EXIT_CODE --config .golangci.yml $STAGED_FILES
     else
-        # Use new-from-rev to only check new/modified code
-        golangci-lint run --issues-exit-code=$ISSUES_EXIT_CODE --new-from-rev="$BASE"
+        # Lint only staged changes vs HEAD
+        golangci-lint run --issues-exit-code=$ISSUES_EXIT_CODE --config .golangci.yml --new-from-rev="$BASE" $STAGED_FILES
     fi
     
     # Store the exit code
