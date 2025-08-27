@@ -16,7 +16,11 @@ readonly ISSUES_EXIT_CODE=42
 MODE="$1"
 shift
 
-export PATH="$PATH:$(go env GOPATH)/bin"
+# Safely check whether Go is installed and set the GOPATH
+ if command -v go >/dev/null 2>&1; then
+     GOPATH_BIN="$(go env GOPATH)/bin"
+     export PATH="$PATH:$GOPATH_BIN"
+ fi
 
 # Function to install golangci-lint (for makefile mode)
 install_golangci_lint() {
