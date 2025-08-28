@@ -1,38 +1,11 @@
 #!/bin/sh
-export PATH="$PATH:$(go env GOPATH)/bin"
 
-command -v golangci-lint >/dev/null 2>&1 || {
-  echo "❌ golangci-lint not found – run 'make lint' to install it automatically"
-  exit 1
-}
+# Pre-commit hook that runs golangci-lint on staged Go files
+# Uses the unified golangci-lint script
 
-# Get list of staged Go files
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.go$' | sed 's| |\\ |g')
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# If there are no staged Go files, exit successfully
-if [ -z "$STAGED_FILES" ]; then
-  echo "✅ No staged Go files were found, exiting"
-  exit 0
-fi
-
-# Run golangci-lint on staged files
-echo "Running golangci-lint on staged files..."
-BASE=$(git rev-parse --verify HEAD 2>/dev/null || echo "")
-if [ -z "$BASE" ]; then
-  golangci-lint run $STAGED_FILES   # initial commit – lint everything staged
-else
-  golangci-lint run --new-from-rev="$BASE"
-fi
-
-# Store the exit code
-LINT_EXIT_CODE=$?
-
-# If golangci-lint found errors, exit with error
-if [ $LINT_EXIT_CODE -ne 0 ]; then
-  echo "❌ golangci-lint found errors in staged files. Please fix them before committing."
-  exit 1
-fi
-
-echo "✅ golangci-lint passed!"
-
-exit 0 
+# Call the unified golangci-lint script in precommit mode
+exec "$PROJECT_ROOT/scripts/run-golangci-lint.sh" precommit 
