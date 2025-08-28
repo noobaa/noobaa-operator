@@ -29,12 +29,10 @@ install_golangci_lint() {
         GOBIN=$(go env GOPATH)/bin
     fi
     
-    if [ ! -x "$GOBIN/golangci-lint" ]; then
-        echo "Installing latest golangci-lint..."
-        if ! go -a install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; then
-            echo "⚠️ Failed to install golangci-lint"
-            exit 0
-        fi
+    echo "Installing the latest golangci-lint with local toolchain"
+    if ! GOTOOLCHAIN=local go -a install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest"; then
+        echo "⚠️ Failed to install golangci-lint"
+        exit 0
     fi
 }
 
