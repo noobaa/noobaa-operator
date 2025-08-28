@@ -49,12 +49,23 @@ run_precommit_lint() {
         exit 0
     fi
     
-    # Get list of staged Go files
-    STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.go$' | sed 's| |\\ |g')
-    
+    # Collect staged Go files as positional args, preserving spaces in filenames
+
+    # Save current field separator
+    OLD_IFS="${IFS}"
+    # Set the field separator to a newline
+    IFS='
+    '
+    # Disable filename expansion to preserve spaces in filenames
+    set -f
+    # Collect staged Go files as positional args
+    set -- $(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.go$' || true)
+    # Re-enable filename expansion
+    set +f
+    # Restore original field separator
+    IFS="${OLD_IFS}"
     # If there are no staged Go files, exit successfully
-    if [ -z "${STAGED_FILES}" ]
-    then
+    if [ "$#" -eq 0 ]; then
         echo "✅ No staged Go files were found, exiting"
         exit 0
     fi
@@ -65,10 +76,10 @@ run_precommit_lint() {
     if [ -z "${BASE}" ]
     then
         # Initial commit – lint only staged files
-        golangci-lint run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml "${STAGED_FILES}"
+        golangci-lint run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml "${@}"
     else
         # Lint only staged changes vs HEAD
-        golangci-lint run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml --new-from-rev="${BASE}" "${STAGED_FILES}"
+        golangci-lint run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml --new-from-rev="${BASE}" "${@}"
     fi
     
     # Store the exit code
