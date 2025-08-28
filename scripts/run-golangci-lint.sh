@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Unified golangci-lint runner script
-# Usage: ./scripts/run-golangci-lint.sh <mode> [files...]
+# Usage: ./scripts/run-golangci-lint.sh <mode>
 # Modes: precommit, makefile
 
 # Uncomment this to see the commands being run
@@ -34,7 +34,7 @@ install_golangci_lint() {
     fi
     
     echo "Installing the latest golangci-lint with local toolchain"
-    if ! GOTOOLCHAIN=local go -a install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest"
+    if ! GOTOOLCHAIN=local go install -a "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest"
     then
         echo "⚠️ Failed to install golangci-lint"
         exit 0
@@ -104,14 +104,8 @@ run_makefile_lint() {
         GOBIN=$(go env GOPATH)/bin
     fi
     
-    # Check if specific files were provided
-    if [ ${#} -gt 0 ]
-    then
-        echo "Running lint on specified files: ${*}"
-    else
-        echo "Running lint on all files"
-    fi
-    "${GOBIN}/golangci-lint" run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml "${@}"
+    echo "Running lint on all files"
+    "${GOBIN}/golangci-lint" run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml
     
     # Store the exit code
     LINT_EXIT_CODE=${?}
@@ -133,13 +127,13 @@ run_makefile_lint() {
 # Main logic
 case "${MODE}" in
     "precommit")
-        run_precommit_lint "${@}"
+        run_precommit_lint
         ;;
     "makefile")
-        run_makefile_lint "${@}"
+        run_makefile_lint
         ;;
     *)
-        echo "Usage: ${0} <mode> [files...]"
+        echo "Usage: ${0} <mode>"
         echo "Modes: precommit, makefile"
         exit 1
         ;;
