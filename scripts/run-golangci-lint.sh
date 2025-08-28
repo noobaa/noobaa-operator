@@ -14,9 +14,6 @@
 readonly ISSUES_EXIT_CODE=42
 
 MODE="${1}"
-# Remove the first argument from the list of arguments
-# so that we're
-shift
 
 # Safely check whether Go is installed and set the GOPATH
  if command -v go >/dev/null 2>&1
@@ -68,10 +65,10 @@ run_precommit_lint() {
     if [ -z "${BASE}" ]
     then
         # Initial commit – lint only staged files
-        golangci-lint run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml ${STAGED_FILES}
+        golangci-lint run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml "${STAGED_FILES}"
     else
         # Lint only staged changes vs HEAD
-        golangci-lint run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml --new-from-rev="${BASE}" ${STAGED_FILES}
+        golangci-lint run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml --new-from-rev="${BASE}" "${STAGED_FILES}"
     fi
     
     # Store the exit code
