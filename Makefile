@@ -185,9 +185,10 @@ test: lint test-go
 
 lint: gen
 	@echo ""
-	@if [ -n "$(FILES)" ]; then \
-		echo "Running lint on changed files: $(FILES)"; \
-		./scripts/run-golangci-lint.sh makefile $(FILES); \
+# FILES_TO_LINT is passed externally to the makefile, e.g. make lint FILES="pkg/..."
+	@if [ -n "$(FILES_TO_LINT)" ]; then \
+		echo "Running lint on changed files: $(FILES_TO_LINT)"; \
+		./scripts/run-golangci-lint.sh makefile $(FILES_TO_LINT); \
 	else \
 		echo "Running lint on all files"; \
 		./scripts/run-golangci-lint.sh makefile; \
