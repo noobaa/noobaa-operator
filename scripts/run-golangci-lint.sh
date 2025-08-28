@@ -15,7 +15,7 @@ readonly ISSUES_EXIT_CODE=42
 
 MODE="${1}"
 # Remove the first argument from the list of arguments
-# so that we're left with the list of files to lint
+# so that we're
 shift
 
 # Safely check whether Go is installed and set the GOPATH
@@ -75,7 +75,7 @@ run_precommit_lint() {
     fi
     
     # Store the exit code
-    LINT_EXIT_CODE=$?
+    LINT_EXIT_CODE=${?}
     
     # Handle exit codes properly
     if [ ${LINT_EXIT_CODE} -eq ${ISSUES_EXIT_CODE} ];
@@ -105,17 +105,17 @@ run_makefile_lint() {
     fi
     
     # Check if specific files were provided
-    if [ $# -gt 0 ];
+    if [ ${#} -gt 0 ];
     then
-        echo "Running lint on specified files: $*"
-        "${GOBIN}/golangci-lint" run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml "$@"
+        echo "Running lint on specified files: ${*}"
+        "${GOBIN}/golangci-lint" run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml "${@}"
     else
         echo "Running lint on all files"
         "${GOBIN}/golangci-lint" run --issues-exit-code=${ISSUES_EXIT_CODE} --config .golangci.yml
     fi
     
     # Store the exit code
-    LINT_EXIT_CODE=$?
+    LINT_EXIT_CODE=${?}
     
     # Handle exit codes properly
     if [ ${LINT_EXIT_CODE} -eq ${ISSUES_EXIT_CODE} ];
@@ -134,13 +134,13 @@ run_makefile_lint() {
 # Main logic
 case "${MODE}" in
     "precommit")
-        run_precommit_lint "$@"
+        run_precommit_lint "${@}"
         ;;
     "makefile")
-        run_makefile_lint "$@"
+        run_makefile_lint "${@}"
         ;;
     *)
-        echo "Usage: $0 <mode> [files...]"
+        echo "Usage: ${0} <mode> [files...]"
         echo "Modes: precommit, makefile"
         exit 1
         ;;
