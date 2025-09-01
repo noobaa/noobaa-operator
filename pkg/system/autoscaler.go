@@ -363,7 +363,7 @@ func getPrometheus(log *logrus.Entry, prometheusNamespace string) (*monitoringv1
 		log.Errorf("❌ prometheus not found in namespace %s", prometheusNamespace)
 		return nil, fmt.Errorf("prometheus not found in namespace %s", prometheusNamespace)
 	}
-	return prometheusList.Items[0], nil
+	return &prometheusList.Items[0], nil
 }
 
 func (r *Reconciler) checkAndCreatePrometheusSecret(serviceAccountName string, promethesNamespace string) error {
