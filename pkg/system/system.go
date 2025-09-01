@@ -891,7 +891,7 @@ func RunReconcile(cmd *cobra.Command, args []string) {
 		if err != nil {
 			return false, err
 		}
-		if res.Requeue || res.RequeueAfter != 0 {
+		if res.RequeueAfter != 0 {
 			log.Printf("\nRetrying in %d seconds\n", interval)
 			return false, nil
 		}
