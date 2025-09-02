@@ -3979,7 +3979,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "8cd3ac9930997965ab9fef72cbbe8bda1474f848ee8bfe2ee9af8fc6ea58dd69"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "4221668694225599735ba859f68e47a9de8ce1aca685e0acd266c80e338bbda5"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4040,6 +4040,7 @@ spec:
       containers:
         - name: endpoint
           image: NOOBAA_CORE_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
           command:
             - /noobaa_init_files/noobaa_init.sh
             - init_endpoint
@@ -5087,7 +5088,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "40aefcf8dbd77e40dfcbe3db3725b56a832c8a81c282c6ba4adc98ce8a65d470"
+const Sha256_deploy_internal_statefulset_core_yaml = "34da89373b8398adb670d779a35f5c5a94365da99b5a2db65715fd62a7638d5c"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5148,6 +5149,7 @@ spec:
             initialDelaySeconds: 5
             timeoutSeconds: 2
           image: NOOBAA_CORE_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
             - name: logs
               mountPath: /log
@@ -5258,6 +5260,7 @@ spec:
             allowPrivilegeEscalation: false
         - name: noobaa-log-processor
           image: NOOBAA_CORE_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
           command:
             [
               "/root/node_modules/noobaa-core/src/deploy/NVA_build/noobaa_logs.sh",
@@ -5294,7 +5297,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "37a6c36928ba426ca04fd89e1eb2685e10d1a5f65c63ebb40c68a4f5c37645de"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "cd739b491f35e77972c55078e6b1ea1362f3897194ed9c89fcf962a1ad6a4c3c"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5323,6 +5326,7 @@ spec:
         #--------------------#
         - name: db
           image: NOOBAA_DB_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
           env:
             - name: POSTGRESQL_DATABASE
               value: nbcore
@@ -6181,7 +6185,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "aa8da1c289a05b3c94b9393b04307d38814a67625ac6a8006dace4d09366f35b"
+const Sha256_deploy_operator_yaml = "d78f7c32af03516bc70f0bddc65ad4837a138c9bd334676a020d870edf9a8467"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -6226,6 +6230,7 @@ spec:
       containers:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
           - name: bound-sa-token
             mountPath: /var/run/secrets/openshift/serviceaccount

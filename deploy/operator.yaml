@@ -41,6 +41,7 @@ spec:
       containers:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
           - name: bound-sa-token
             mountPath: /var/run/secrets/openshift/serviceaccount

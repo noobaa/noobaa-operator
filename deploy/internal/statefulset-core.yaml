@@ -57,6 +57,7 @@ spec:
             initialDelaySeconds: 5
             timeoutSeconds: 2
           image: NOOBAA_CORE_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
             - name: logs
               mountPath: /log
@@ -167,6 +168,7 @@ spec:
             allowPrivilegeEscalation: false
         - name: noobaa-log-processor
           image: NOOBAA_CORE_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
           command:
             [
               "/root/node_modules/noobaa-core/src/deploy/NVA_build/noobaa_logs.sh",
