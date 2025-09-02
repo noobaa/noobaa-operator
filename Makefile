@@ -184,18 +184,7 @@ test: lint test-go
 .PHONY: test
 
 lint: gen
-	@echo ""
-	@if [ ! -f "$(GOBIN)/golangci-lint" ] || [ "v2.1.6" != "$$($(GOBIN)/golangci-lint --version 2>/dev/null | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' || echo '')" ]; then \
-		echo "Installing golangci-lint v2.1.6..."; \
-		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6; \
-	fi
-	@if [ -n "$(FILES)" ]; then \
-		echo "Running lint on changed files: $(FILES)"; \
-		$(GOBIN)/golangci-lint run --config .golangci.yml $(FILES); \
-	else \
-		echo "Running lint on all files"; \
-		$(GOBIN)/golangci-lint run --config .golangci.yml; \
-	fi
+	@./scripts/run-golangci-lint.sh makefile
 	@echo "✅ lint"
 .PHONY: lint
 
