@@ -32,9 +32,10 @@ import (
 
 // Change below variables to serve metrics on different host or port.
 var (
-	metricsHost       = "0.0.0.0"
-	metricsPort int32 = 8383
-	log               = util.Logger()
+	metricsHost           = "0.0.0.0"
+	metricsPort     int32 = 8383
+	healthProbeAddr       = ":8081"
+	log                   = util.Logger()
 )
 
 // RunOperator is the main function of the operator but it is called from a cobra.Command
@@ -45,8 +46,6 @@ func RunOperator(cmd *cobra.Command, args []string) {
 		util.InitLogger(logrus.DebugLevel)
 	}
 	version.RunVersion(cmd, args)
-	// Probe address from CLI flag (defaults to :8081)
-	probeAddr, _ := cmd.Flags().GetString("health-probe-bind-address")
 
 	config := util.KubeConfig()
 
@@ -69,7 +68,7 @@ func RunOperator(cmd *cobra.Command, args []string) {
 		Metrics: metricsServer.Options{
 			BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 		},
-		HealthProbeBindAddress: probeAddr, // Serve /healthz and /readyz here
+		HealthProbeBindAddress: healthProbeAddr, // Serve /healthz and /readyz here
 	})
 	if err != nil {
 		log.Fatalf("Failed to create manager: %s", err)
@@ -101,15 +100,9 @@ func RunOperator(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed AddToClusterScopedManager: %s", err)
 	}
 
-	// Register health and readiness endpoints on mgr
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		log.Fatalf("Failed to add health check: %s", err)
-	}
-
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		log.Fatalf("Failed to add readiness check: %s", err)
 	}
-
 
 	util.Panic(mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 		system.RunOperatorCreate(cmd, args)
