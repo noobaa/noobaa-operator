@@ -545,7 +545,7 @@ func getResourcesFromYaml() (*CnpgResources, error) {
 	if cnpgRes.WebhooksService == nil {
 		return nil, fmt.Errorf("required Service not found in manifest")
 	}
-	expectedNumberOfCrds := 9
+	expectedNumberOfCrds := 10
 	if len(cnpgRes.CRDs) != expectedNumberOfCrds {
 		return nil, fmt.Errorf("expected %d CustomResourceDefinitions, got %d", expectedNumberOfCrds, len(cnpgRes.CRDs))
 	}
