@@ -24,6 +24,7 @@ import (
 
 	"github.com/operator-framework/operator-lib/leader"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	metricsServer "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -31,9 +32,10 @@ import (
 
 // Change below variables to serve metrics on different host or port.
 var (
-	metricsHost       = "0.0.0.0"
-	metricsPort int32 = 8383
-	log               = util.Logger()
+	metricsHost           = "0.0.0.0"
+	metricsPort     int32 = 8383
+	healthProbeAddr       = ":8081"
+	log                   = util.Logger()
 )
 
 // RunOperator is the main function of the operator but it is called from a cobra.Command
@@ -66,6 +68,7 @@ func RunOperator(cmd *cobra.Command, args []string) {
 		Metrics: metricsServer.Options{
 			BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 		},
+		HealthProbeBindAddress: healthProbeAddr, // Serve /healthz and /readyz here
 	})
 	if err != nil {
 		log.Fatalf("Failed to create manager: %s", err)
@@ -95,6 +98,10 @@ func RunOperator(cmd *cobra.Command, args []string) {
 	}
 	if err := controller.AddToClusterScopedManager(cmgr); err != nil {
 		log.Fatalf("Failed AddToClusterScopedManager: %s", err)
+	}
+
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		log.Fatalf("Failed to add readiness check: %s", err)
 	}
 
 	util.Panic(mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
