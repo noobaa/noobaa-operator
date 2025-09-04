@@ -57,6 +57,7 @@ spec:
       containers:
         - name: endpoint
           image: NOOBAA_CORE_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
           command:
             - /noobaa_init_files/noobaa_init.sh
             - init_endpoint

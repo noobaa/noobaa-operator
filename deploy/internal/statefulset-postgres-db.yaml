@@ -25,6 +25,7 @@ spec:
         #--------------------#
         - name: db
           image: NOOBAA_DB_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
           env:
             - name: POSTGRESQL_DATABASE
               value: nbcore
