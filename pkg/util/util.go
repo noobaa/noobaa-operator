@@ -28,6 +28,7 @@ import (
 
 	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	semver "github.com/coreos/go-semver/semver"
+	"github.com/golang-jwt/jwt/v4"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
 	nbapis "github.com/noobaa/noobaa-operator/v5/pkg/apis"
@@ -1847,7 +1848,7 @@ func NooBaaCondStatus(noobaa *nbv1.NooBaa, s corev1.ConditionStatus) bool {
 func NooBaaCondition(noobaa *nbv1.NooBaa, t conditionsv1.ConditionType, s corev1.ConditionStatus) bool {
 	found := false
 
-	timeout := 120 // seconds
+	timeout := 5 * 60 // seconds
 	for i := 0; i < timeout; i++ {
 		_, _, err := KubeGet(noobaa)
 		Panic(err)
@@ -2388,4 +2389,22 @@ func HasNodeInclusionPolicyInPodTopologySpread() bool {
 		return false
 	}
 	return true
+}
+
+func MakeAuthToken(payload map[string]any, secret []byte) (string, error) {
+	if len(secret) == 0 {
+		return "", fmt.Errorf("jwt signing secret missing")
+	}
+
+	filtered := jwt.MapClaims{}
+
+	allowedFields := []string{"account_id", "system_id", "role", "extra", "authorized_by", "email", "system"}
+	for _, field := range allowedFields {
+		val, ok := payload[field]
+		if ok {
+			filtered[field] = val
+		}
+	}
+
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, filtered).SignedString(secret)
 }

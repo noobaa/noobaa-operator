@@ -361,19 +361,25 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 	if exists {
 		if strings.ToLower(annotationValue) == strTrue {
 			// create join secret conatining auth token for remote noobaa account
-			res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-				System: r.NooBaa.Name,
-				Role:   "operator",
-				Email:  options.OperatorAccountEmail,
-			})
+			secretServer := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+			secretServer.Namespace = r.Request.Namespace
+			secretServer.Name = options.SystemName
+			if !util.KubeCheck(secretServer) {
+				return fmt.Errorf("cannot create an auth token for remote operator - server secret not found")
+			}
+
+			token, err := util.MakeAuthToken(map[string]any{
+				"system": r.NooBaa.Name,
+				"role":   "operator",
+				"email":  options.OperatorAccountEmail,
+			}, []byte(secretServer.StringData["jwt"]))
 			if err != nil {
 				return fmt.Errorf("cannot create an auth token for remote operator, error: %v", err)
 			}
 			accessKeys := accountInfo.AccessKeys[0]
-			r.Secret.StringData["auth_token"] = res.Token
+			r.Secret.StringData["auth_token"] = token
 			r.Secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
 			r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
-
 		}
 	} else {
 		var accessKeys nb.S3AccessKeys
