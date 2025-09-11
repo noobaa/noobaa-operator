@@ -46,6 +46,8 @@ export NOOBAA_OPERATOR_LOCAL ?= $(BIN)/noobaa-operator-local
 export OPERATOR_SDK_VERSION ?= v0.17.2
 export OPERATOR_SDK ?= build/_tools/operator-sdk-$(OPERATOR_SDK_VERSION)
 
+CONTAINER_IMAGE_BUILDER_ARGS?=
+
 #------------#
 #- Building -#
 #------------#
@@ -66,7 +68,7 @@ cli: gen
 
 image: $(docker) gen
 	GOOS=linux CGO_ENABLED=$(or ${CGO_ENABLED},0) go build -o $(BIN)/noobaa-operator -gcflags all=-trimpath="$(MK_PARENT)" -asmflags all=-trimpath="$(MK_PARENT)" -mod=vendor $(CMD_MANAGER)
-	docker build -f build/Dockerfile -t $(IMAGE) .
+	docker build $(CONTAINER_IMAGE_BUILDER_ARGS) -f build/Dockerfile -t $(IMAGE) .
 	@echo "✅ image"
 .PHONY: image
 
@@ -151,7 +153,7 @@ gen-olm: gen
 		pip3 install operator-courier==2.1.11 && \
 		pip3 install setuptools && \
 		operator-courier --verbose verify --ui_validate_io $(OLM)
-	docker build -t $(CATALOG_IMAGE) -f build/catalog-source.Dockerfile .
+	docker build $(CONTAINER_IMAGE_BUILDER_ARGS) -t $(CATALOG_IMAGE) -f build/catalog-source.Dockerfile .
 	@echo "✅ gen-olm"
 .PHONY: gen-olm
 
