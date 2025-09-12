@@ -118,7 +118,6 @@ spec:
                   name: noobaa-config
                   key: NOOBAA_VERSION_AUTH_ENABLED
             - name: POSTGRES_HOST
-              value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
             - name: POSTGRES_USER
@@ -131,6 +130,7 @@ spec:
             - name: POSTGRES_PASSWORD_PATH
             - name: POSTGRES_DBNAME_PATH
             - name: POSTGRES_PORT_PATH
+            - name: POSTGRES_CONNECTION_STRING_PATH
             - name: GUARANTEED_LOGS_PATH
             - name: DB_TYPE
               value: postgres
