@@ -286,7 +286,7 @@ type ListAccountsReply struct {
 // ListBcuketsParams is the params to account_api.list_buckets()
 type ListBucketsParams struct {
 	ContinuationToken *string `json:"continuation_token,omitempty"`
-	MaxBuckets *int `json:"max_buckets,omitempty"`
+	MaxBuckets        *int    `json:"max_buckets,omitempty"`
 }
 
 // ListBucketsReply is the reply of bucket_api.list_buckets()
@@ -314,19 +314,6 @@ type ListHostsReply struct {
 // HostInfo is the information of a host(partial)
 type HostInfo struct {
 	Name string `json:"name"`
-}
-
-// CreateAuthParams is the params of auth_api.create_auth()
-type CreateAuthParams struct {
-	System   string `json:"system"`
-	Role     string `json:"role"`
-	Email    string `json:"email"`
-	Password string `json:"password,omitempty"`
-}
-
-// CreateAuthReply is the reply of auth_api.create_auth()
-type CreateAuthReply struct {
-	Token string `json:"token"`
 }
 
 // CreateSystemParams is the params of system_api.create_system()
@@ -437,13 +424,6 @@ type GenerateAccountKeysParams struct {
 type UpdateAccountKeysParams struct {
 	Email      string       `json:"email"`
 	AccessKeys S3AccessKeys `json:"access_keys"`
-}
-
-// ResetPasswordParams is the params of account_api.reset_password()
-type ResetPasswordParams struct {
-	Email                string       `json:"email"`
-	VerificationPassword MaskedString `json:"verification_password"`
-	Password             MaskedString `json:"password"`
 }
 
 // BackingStoreInfo describes backingstore info
@@ -585,15 +565,15 @@ type DeleteNamespaceResourceParams struct {
 
 // UpdateAccountParams is the params of account_api.update_account_s3_access()
 type UpdateAccountParams struct {
-	Name                *string                  `json:"username,omitempty"`
-	Email               string                   `json:"email"`
-	NewEmail            *string                  `json:"new_email,omitempty"`
-	AllowedIPs          *[]struct {
-		Start   string `json:"start"`
-		End     string `json:"end"`
+	Name       *string `json:"username,omitempty"`
+	Email      string  `json:"email"`
+	NewEmail   *string `json:"new_email,omitempty"`
+	AllowedIPs *[]struct {
+		Start string `json:"start"`
+		End   string `json:"end"`
 	} `json:"ips,omitempty"`
-	RoleConfig          interface{}              `json:"role_config,omitempty"`
-	RemoveRoleConfig    bool                     `json:"remove_role_config,omitempty"`
+	RoleConfig       interface{} `json:"role_config,omitempty"`
+	RemoveRoleConfig bool        `json:"remove_role_config,omitempty"`
 }
 
 // UpdateAccountS3AccessParams is the params of account_api.update_account_s3_access()
