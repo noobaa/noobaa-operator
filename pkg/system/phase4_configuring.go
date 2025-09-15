@@ -153,15 +153,16 @@ func (r *Reconciler) SetDesiredMetricsAuth() error {
 	if r.SecretMetricsAuth.StringData[metricsAuthKey] != "" {
 		return nil
 	}
-	res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-		System: r.NooBaa.Name,
-		Role:   "metrics",
-		Email:  options.OperatorAccountEmail,
-	})
+
+	token, err := util.MakeAuthToken(map[string]any{
+		"system": r.NooBaa.Name,
+		"role":   "metrics",
+		"email":  options.OperatorAccountEmail,
+	}, []byte(r.SecretServer.StringData["jwt"]))
 	if err != nil {
 		return fmt.Errorf("cannot create an auth token for metrics, error: %v", err)
 	}
-	r.SecretMetricsAuth.StringData[metricsAuthKey] = res.Token
+	r.SecretMetricsAuth.StringData[metricsAuthKey] = token
 	return nil
 }
 
@@ -214,28 +215,15 @@ func (r *Reconciler) SetDesiredSecretOp() error {
 				"Something went wrong during system initialization")
 
 		case "READY":
-			// Trying to create token for admin so we could use it to create
-			// a token for the operator account
-			res3, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-				System:   r.Request.Name,
-				Role:     "admin",
-				Email:    r.SecretAdmin.StringData["email"],
-				Password: r.SecretAdmin.StringData["password"],
-			})
-			if err != nil {
-				return fmt.Errorf("cannot create an auth token for admin, error: %v", err)
-			}
-
-			r.NBClient.SetAuthToken(res3.Token)
-			res4, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-				System: r.Request.Name,
-				Role:   "operator",
-				Email:  options.OperatorAccountEmail,
-			})
+			token, err := util.MakeAuthToken(map[string]any{
+				"system": r.Request.Name,
+				"role":   "operator",
+				"email":  options.OperatorAccountEmail,
+			}, []byte(r.SecretServer.StringData["jwt"]))
 			if err != nil {
 				return fmt.Errorf("cannot create an auth token for operator, error: %v", err)
 			}
-			r.SecretOp.StringData["auth_token"] = res4.Token
+			r.SecretOp.StringData["auth_token"] = token
 		}
 
 		// Remote noobaa case
@@ -275,16 +263,16 @@ func (r *Reconciler) SetDesiredSecretEndpoints() error {
 	// Load string data from data
 	util.SecretResetStringDataFromData(r.SecretEndpoints)
 
-	res, err := r.NBClient.CreateAuthAPI(nb.CreateAuthParams{
-		System: r.Request.Name,
-		Role:   "admin",
-		Email:  options.AdminAccountEmail,
-	})
+	token, err := util.MakeAuthToken(map[string]any{
+		"system": r.Request.Name,
+		"role":   "admin",
+		"email":  options.AdminAccountEmail,
+	}, []byte(r.SecretServer.StringData["jwt"]))
 	if err != nil {
 		return fmt.Errorf("cannot create auth token for use by endpoints, error: %v", err)
 	}
 
-	r.SecretEndpoints.StringData["auth_token"] = res.Token
+	r.SecretEndpoints.StringData["auth_token"] = token
 	return nil
 }
 

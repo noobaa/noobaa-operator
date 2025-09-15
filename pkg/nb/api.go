@@ -22,7 +22,6 @@ type Client interface {
 	ListBucketsAPI(ListBucketsParams) (ListBucketsReply, error)
 	ListHostsAPI(ListHostsParams) (ListHostsReply, error)
 
-	CreateAuthAPI(CreateAuthParams) (CreateAuthReply, error)
 	CreateSystemAPI(CreateSystemParams) (CreateSystemReply, error)
 	CreateAccountAPI(CreateAccountParams) (CreateAccountReply, error)
 	CreateBucketAPI(CreateBucketParams) error
@@ -65,7 +64,6 @@ type Client interface {
 
 	GenerateAccountKeysAPI(GenerateAccountKeysParams) error
 	UpdateAccountKeysAPI(UpdateAccountKeysParams) error
-	ResetPasswordAPI(ResetPasswordParams) error
 }
 
 // ReadAuthAPI calls auth_api.read_auth()
@@ -162,17 +160,6 @@ func (c *RPCClient) ListHostsAPI(params ListHostsParams) (ListHostsReply, error)
 	res := &struct {
 		RPCMessage `json:",inline"`
 		Reply      ListHostsReply `json:"reply"`
-	}{}
-	err := c.Call(req, res)
-	return res.Reply, err
-}
-
-// CreateAuthAPI calls auth_api.create_auth()
-func (c *RPCClient) CreateAuthAPI(params CreateAuthParams) (CreateAuthReply, error) {
-	req := &RPCMessage{API: "auth_api", Method: "create_auth", Params: params}
-	res := &struct {
-		RPCMessage `json:",inline"`
-		Reply      CreateAuthReply `json:"reply"`
 	}{}
 	err := c.Call(req, res)
 	return res.Reply, err
@@ -442,11 +429,5 @@ func (c *RPCClient) GenerateAccountKeysAPI(params GenerateAccountKeysParams) err
 // UpdateAccountKeysAPI calls account_api.update_account_keys()
 func (c *RPCClient) UpdateAccountKeysAPI(params UpdateAccountKeysParams) error {
 	req := &RPCMessage{API: "account_api", Method: "update_account_keys", Params: params}
-	return c.Call(req, nil)
-}
-
-// ResetPasswordAPI calls account_api.reset_password()
-func (c *RPCClient) ResetPasswordAPI(params ResetPasswordParams) error {
-	req := &RPCMessage{API: "account_api", Method: "reset_password", Params: params}
 	return c.Call(req, nil)
 }

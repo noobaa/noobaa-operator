@@ -791,8 +791,6 @@ function account_cycle {
     #admin account that don't have a secret and don't have CRD 
     account_regenerate_keys "operator@noobaa.io"
     account_update_keys "operator@noobaa.io" "Ab987654321987654321" "Ab+/987654321987654321987654321987654321"
-    # testing account reset password
-    account_reset_password "admin@noobaa.io"
     # testing nsfs accounts
     # account_nsfs_cycle TODO re-enable.
     # update account default resource
@@ -938,31 +936,6 @@ function account_update_keys {
         echo_time "❌ Looks like the SECRET_ACCESS were not updated, Exiting"
         exit 1
     fi
-}
-
-function account_reset_password {
-    local account=${1}
-    local password=$(get_admin_password)
-    #reset password should work
-    test_noobaa account passwd ${account} --old-password ${password} --new-password "test" --retype-new-password "test"
-    # Should fail if the old password is not correct
-    test_noobaa should_fail account passwd ${account} --old-password "test1" --new-password "test" --retype-new-password "test"
-    # Should fail if we got the same password as the old one
-    test_noobaa should_fail account passwd ${account} --old-password "test" --new-password "test" --retype-new-password "test"
-    # Should fail if we got the same password twice 
-    test_noobaa should_fail account passwd ${account} --old-password "test" --new-password "test1" --retype-new-password "test2"
-}
-
-function get_admin_password {
-    local password
-    while read line
-    do
-        if [[ ${line} =~ "password" ]]
-        then
-            password=$(echo ${line//\"/} | awk -F ":" '{print $2}')
-        fi
-    done < <(yes | test_noobaa status --show-secrets)
-    echo ${password}
 }
 
 function account_nsfs_cycle {
@@ -1218,6 +1191,7 @@ function check_default_backingstore {
     echo_time "💬 Creating new-default-backing-store and updating the admin account default_resourse with it"
     test_noobaa backingstore create pv-pool new-default-backing-store --num-volumes 1 --pv-size-gb 16
     test_noobaa account update admin@noobaa.io --new_default_resource=new-default-backing-store
+    test_noobaa account update operator@noobaa.io --new_default_resource=new-default-backing-store
     test_noobaa api account list_accounts {}
     test_noobaa account list
 

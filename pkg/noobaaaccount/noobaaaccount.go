@@ -37,7 +37,6 @@ func Cmd() *cobra.Command {
 		CmdUpdate(),
 		CmdRegenerate(),
 		CmdCredentials(),
-		CmdPasswd(),
 		CmdDelete(),
 		CmdStatus(),
 		CmdList(),
@@ -101,28 +100,6 @@ func CmdCredentials() *cobra.Command {
 	cmd.Flags().String(
 		"secret-key", "",
 		`Secret key for authentication - The best practice is to **omit this flag**. In that case, the CLI will prompt to securely read it from the terminal, avoiding the risk of leaking secrets in the shell history.`,
-	)
-	return cmd
-}
-
-// CmdPasswd returns a CLI command
-func CmdPasswd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "passwd <noobaa-account-name>",
-		Short: "reset password for noobaa account",
-		Run:   RunPasswd,
-	}
-	cmd.Flags().String(
-		"old-password", "",
-		`Old Password for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
-	)
-	cmd.Flags().String(
-		"new-password", "",
-		`New Password for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
-	)
-	cmd.Flags().String(
-		"retype-new-password", "",
-		`Retype new Password for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
 	)
 	return cmd
 }
@@ -285,8 +262,16 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	noobaaAccount.Name = name
 	noobaaAccount.Namespace = options.Namespace
 
-	isResourceBackingStore := checkResourceBackingStore(newDefaultResource)
-	isResourceNamespaceStore := checkResourceNamespaceStore(newDefaultResource)
+	sysClient, err := system.Connect(true)
+	if err != nil {
+		log.Fatalf("❌ failed to run RPC call: %s", err)
+	}
+
+	_, err = sysClient.NBClient.ReadPoolAPI(nb.ReadPoolParams{Name: newDefaultResource})
+	isResourceBackingStore := err == nil
+
+	_, err = sysClient.NBClient.ReadNamespaceResourceAPI(nb.ReadNamespaceResourceParams{Name: newDefaultResource})
+	isResourceNamespaceStore := err == nil
 
 	if isResourceBackingStore && isResourceNamespaceStore {
 		log.Fatalf(`❌  got BackingStore and NamespaceStore %q in namespace %q`,
@@ -434,53 +419,6 @@ func RunCredentials(cmd *cobra.Command, args []string) {
 
 		RunStatus(cmd, args)
 	}
-}
-
-// RunPasswd runs a CLI command
-func RunPasswd(cmd *cobra.Command, args []string) {
-	log := util.Logger()
-
-	if len(args) != 1 || args[0] == "" {
-		log.Fatalf(`❌ Missing expected arguments: <noobaa-account-name> %s`, cmd.UsageString())
-	}
-
-	name := args[0]
-
-	oldPassword := util.GetFlagStringOrPromptPassword(cmd, "old-password")
-	newPassword := util.GetFlagStringOrPromptPassword(cmd, "new-password")
-	retypeNewPassword := util.GetFlagStringOrPromptPassword(cmd, "retype-new-password")
-
-	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
-
-	if name == "admin@noobaa.io" {
-		secret.Name = "noobaa-admin"
-	} else {
-		secret.Name = fmt.Sprintf("noobaa-account-%s", name)
-	}
-	secret.Namespace = options.Namespace
-	if !util.KubeCheck(secret) {
-		log.Fatalf(`❌  Could not find secret: %s, will not reset password`, secret.Name)
-	}
-
-	if oldPassword != secret.StringData["password"] {
-		log.Fatalf(`❌  Password is incorrect, aborting.`)
-	}
-
-	err := ResetPassword(name, oldPassword, newPassword, retypeNewPassword)
-	if err != nil {
-		log.Fatalf(`❌ Could not reset password for %q: %v`, name, err)
-	}
-
-	secret.StringData = map[string]string{}
-	secret.StringData["password"] = newPassword
-
-	//If we will not be able to update the secret we will print the credentials as they allready been changed by the RPC
-	if !util.KubeUpdate(secret) {
-		log.Fatalf(`❌  Failed to update the secret %s with the new password, please write it down.`, secret.Name)
-	}
-
-	log.Printf("✅ Successfully reset the password for the account %q", name)
-
 }
 
 // RunDelete runs a CLI command
@@ -875,47 +813,6 @@ func ValidateAccessKeys(accessKeys nb.S3AccessKeys) {
 	if !util.SecretKeyRegexp.MatchString(string(accessKeys.SecretKey)) {
 		log.Fatalf(`❌ Account secret length must be 40, and must contain only alpha-numeric chars, "+", "/"`)
 	}
-}
-
-// ResetPassword reset noobaa account password
-func ResetPassword(name string, oldPassword string, newPassword string, retypeNewPassword string) error {
-	sysClient, err := system.Connect(true)
-	if err != nil {
-		return err
-	}
-
-	PasswordResstrictions(oldPassword, newPassword, retypeNewPassword)
-
-	err = sysClient.NBClient.ResetPasswordAPI(nb.ResetPasswordParams{
-		Email:                name,
-		VerificationPassword: nb.MaskedString(oldPassword),
-		Password:             nb.MaskedString(newPassword),
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// PasswordResstrictions checks for all kind of password restrictions
-func PasswordResstrictions(oldPassword string, newPassword string, retypeNewPassword string) {
-	log := util.Logger()
-
-	//Checking that we did not get the same password as the old one
-	if newPassword == oldPassword {
-		log.Fatalf(`❌  The password cannot match the old password, aborting.`)
-	}
-
-	//Checking that we got the same password twice
-	if newPassword != retypeNewPassword {
-		log.Fatalf(`❌  The password and is not matching the retype, aborting.`)
-	}
-
-	//TODO... This is the place for adding more restrictions
-	// length of password
-	// charecters
-
 }
 
 // checkResourceBackingStore checks if a resourceName exists and if BackingStore
