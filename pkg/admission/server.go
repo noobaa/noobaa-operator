@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/signal"
 	"syscall"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/sirupsen/logrus"
 )
 
@@ -67,13 +67,11 @@ func RunAdmissionServer() {
 	log.Infof("Server running and listening in port: %s", port)
 
 	// listening shutdown singal
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-	<-signalChan
-
-	log.Info("Got shutdown signal, shutting down webhook server gracefully...")
-	err = server.Shutdown(context.Background())
-	if err != nil {
-		log.Info("Failed to Shutdown admission server")
-	}
+	util.OnSignal(func() {
+		log.Info("Got shutdown signal, shutting down webhook server gracefully...")
+		err = server.Shutdown(context.Background())
+		if err != nil {
+			log.Info("Failed to Shutdown admission server")
+		}
+	}, syscall.SIGINT, syscall.SIGTERM)
 }
