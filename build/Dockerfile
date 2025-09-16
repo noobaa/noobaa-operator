@@ -11,9 +11,6 @@ RUN microdnf -y install tar
 # install operator binary
 COPY ${NOOBAA_BIN_PATH} ${OPERATOR}
 
-# copy scripts
-COPY build/bin /usr/local/bin
-RUN  /usr/local/bin/user_setup
 USER ${USER_UID}
 
 ENTRYPOINT ["/usr/local/bin/noobaa-operator"]
