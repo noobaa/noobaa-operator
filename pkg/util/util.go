@@ -1863,6 +1863,21 @@ func NooBaaCondition(noobaa *nbv1.NooBaa, t conditionsv1.ConditionType, s corev1
 	return found
 }
 
+// GetNooBaaExternalPgSecret returns the secret and adding the namespace if it is missing
+func GetNooBaaExternalPgSecret(nb *nbv1.NooBaa) *corev1.SecretReference {
+	var secretRef *corev1.SecretReference
+	if nb.Spec.ExternalPgSecret != nil {
+		secretRef = &corev1.SecretReference{
+			Name:      nb.Spec.ExternalPgSecret.Name,
+			Namespace: nb.Spec.ExternalPgSecret.Namespace,
+		}
+		if secretRef.Namespace == "" {
+			secretRef.Namespace = nb.Namespace
+		}
+	}
+	return secretRef
+}
+
 // GetAvailabeKubeCli will check which k8s cli command is availabe in the system: oc or kubectl
 // returns one of: "oc" or "kubectl"
 func GetAvailabeKubeCli() string {
