@@ -16,3 +16,4 @@ build-releases/
 noobaa.cfg.yaml
 
 *.IGNORE
+.idea/
