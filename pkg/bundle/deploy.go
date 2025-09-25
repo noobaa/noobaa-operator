@@ -283,14 +283,14 @@ spec:
 
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "3c59eda2da91cf4ec6025491d8d1067b4626d3cad5fbd43bb0846ebd6d3126bf"
+const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "1b202cb74ba1bd0e54627bb55e14feea349c2f3d1604776ccaa040c37a932bef"
 
 const File_deploy_crds_noobaa_io_backingstores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.3
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: backingstores.noobaa.io
 spec:
   group: noobaa.io
@@ -654,14 +654,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_yaml = "303a0b43c30509718a314dd4a0f733679229416cddc52daffe08434d7d4ea652"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_yaml = "4397dc7ad11b72bc50f3744b5f9f66f22e76bc09ae2358dcf21c3aa376318d44"
 
 const File_deploy_crds_noobaa_io_bucketclasses_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.3
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: bucketclasses.noobaa.io
 spec:
   group: noobaa.io
@@ -785,6 +785,8 @@ spec:
                             BackingStores is an unordered list of backing store names.
                             The meaning of the list depends on the placement.
                           items:
+                            description: BackingStoreName is just a name-reference
+                              to a BackingStore
                             type: string
                           type: array
                         placement:
@@ -909,14 +911,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "427b53370d424315e81fdca907fb51f8106c56e5a2a7b186384348f794ad330d"
+const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "dc1da64540920101bfb80e331920a3bc2b0b39ea27aacf148109b3fd91ed134e"
 
 const File_deploy_crds_noobaa_io_namespacestores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.3
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: namespacestores.noobaa.io
 spec:
   group: noobaa.io
@@ -1247,14 +1249,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaaaccounts_yaml = "4317a1b539d6a491f6afd9f508e75103c50797b7280ad53941f0d2b546f0f6c1"
+const Sha256_deploy_crds_noobaa_io_noobaaaccounts_yaml = "8bc46314e327636719cd220e5d8c3745762f3008b8b5c58a62722ef9003688e6"
 
 const File_deploy_crds_noobaa_io_noobaaaccounts_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.3
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: noobaaaccounts.noobaa.io
 spec:
   group: noobaa.io
@@ -1423,14 +1425,14 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "1637077ca2e0d584cd4203469f809b215af45ee4ba5358a283bbd7a5bf1b573e"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "3a8414e076620c77a293dcdc1904fa69f9bb378840a1e1d0ec82fdd143e72f8f"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.3
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: noobaas.noobaa.io
 spec:
   group: noobaa.io
@@ -1776,7 +1778,6 @@ spec:
                                     pod labels will be ignored. The default value is empty.
                                     The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                     Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                    This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                   items:
                                     type: string
                                   type: array
@@ -1791,7 +1792,6 @@ spec:
                                     pod labels will be ignored. The default value is empty.
                                     The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                     Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                    This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                   items:
                                     type: string
                                   type: array
@@ -1957,7 +1957,6 @@ spec:
                                 pod labels will be ignored. The default value is empty.
                                 The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                 Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                               items:
                                 type: string
                               type: array
@@ -1972,7 +1971,6 @@ spec:
                                 pod labels will be ignored. The default value is empty.
                                 The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                 Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                               items:
                                 type: string
                               type: array
@@ -2135,7 +2133,6 @@ spec:
                                     pod labels will be ignored. The default value is empty.
                                     The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                     Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                    This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                   items:
                                     type: string
                                   type: array
@@ -2150,7 +2147,6 @@ spec:
                                     pod labels will be ignored. The default value is empty.
                                     The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                     Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                    This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                                   items:
                                     type: string
                                   type: array
@@ -2316,7 +2312,6 @@ spec:
                                 pod labels will be ignored. The default value is empty.
                                 The same key is forbidden to exist in both matchLabelKeys and labelSelector.
                                 Also, matchLabelKeys cannot be set when labelSelector isn't set.
-                                This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                               items:
                                 type: string
                               type: array
@@ -2331,7 +2326,6 @@ spec:
                                 pod labels will be ignored. The default value is empty.
                                 The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.
                                 Also, mismatchLabelKeys cannot be set when labelSelector isn't set.
-                                This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).
                               items:
                                 type: string
                               type: array
