@@ -1848,7 +1848,7 @@ func NooBaaCondStatus(noobaa *nbv1.NooBaa, s corev1.ConditionStatus) bool {
 func NooBaaCondition(noobaa *nbv1.NooBaa, t conditionsv1.ConditionType, s corev1.ConditionStatus) bool {
 	found := false
 
-	timeout := 5 * 60 // seconds
+	timeout := 10 * 60 // seconds
 	for i := 0; i < timeout; i++ {
 		_, _, err := KubeGet(noobaa)
 		Panic(err)

@@ -23,7 +23,9 @@ func TestRotateKMS(t *testing.T) {
 	}
 
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "KMS (K8S Key Rotate) Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()  
+	suiteConfig.FailFast = true  
+	RunSpecs(t, "KMS (K8S Key Rotate) Suite", suiteConfig, reporterConfig)  
 }
 
 var _ = BeforeSuite(func(ctx context.Context) {

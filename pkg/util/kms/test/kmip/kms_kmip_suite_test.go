@@ -23,7 +23,9 @@ func TestKMIPKMS(t *testing.T) {
 	}
 
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "KMS KMIP Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()  
+	suiteConfig.FailFast = true  
+	RunSpecs(t, "KMS KMIP Suite", suiteConfig, reporterConfig)  
 }
 
 var _ = BeforeSuite(func(ctx context.Context) {
