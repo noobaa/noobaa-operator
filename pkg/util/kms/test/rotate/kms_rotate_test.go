@@ -81,6 +81,11 @@ var _ = Describe("KMS - K8S Key Rotate", func() {
 	Context("Verify Rotate", func() {
 		noobaa := getSchedMiniNooBaa()
 
+		secret := &corev1.Secret{}
+		secret.Name = noobaa.Name + "-root-master-key-backend"
+		secret.Namespace = noobaa.Namespace
+		_ = util.KubeDelete(secret) 
+
 		Specify("Create key rotate schedule system", func() {
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
 		})
