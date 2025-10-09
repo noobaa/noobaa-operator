@@ -15,4 +15,7 @@ build-releases/
 # NooBaa config file
 noobaa.cfg.yaml
 
+# ignore any DS_Store file created by macos
+.DS_Store
+
 *.IGNORE

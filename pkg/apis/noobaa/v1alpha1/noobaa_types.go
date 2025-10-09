@@ -368,6 +368,47 @@ type NooBaaDBSpec struct {
 	// DBConf (optional) overrides the default postgresql db config
 	// +optional
 	DBConf map[string]string `json:"dbConf,omitempty"`
+
+	// DBBackup (optional) configure automatic scheduled backups of the database volume.
+	// Currently, only volume snapshots are supported.
+	// +optional
+	DBBackup *DBBackupSpec `json:"dbBackup,omitempty"`
+
+	// DBRecovery (optional) configure database recovery from snapshot
+	// +optional
+	DBRecovery *DBRecoverySpec `json:"dbRecovery,omitempty"`
+}
+
+// DBBackupSpec defines the desired parameters for the database automatic backup
+type DBBackupSpec struct {
+	// Schedule the schedule for the database backup in cron format.
+	// +kubebuilder:validation:Required
+	Schedule string `json:"schedule"`
+
+	// VolumeSnapshot the volume snapshot backup configuration.
+	// Currently this is the only supported backup method and hence it is required.
+	// +kubebuilder:validation:Required
+	VolumeSnapshot *VolumeSnapshotBackupSpec `json:"volumeSnapshot,omitempty"`
+}
+
+type VolumeSnapshotBackupSpec struct {
+	// VolumeSnapshotClass the volume snapshot class for the database volume.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	VolumeSnapshotClass string `json:"volumeSnapshotClass"`
+
+	// MaxSnapshots the maximum number of snapshots to keep.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Minimum=1
+	MaxSnapshots int `json:"maxSnapshots"`
+}
+
+// DBRecoverySpec defines the desired parameters for database recovery from snapshot
+type DBRecoverySpec struct {
+	// VolumeSnapshotName specifies the name of the volume snapshot to recover from
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	VolumeSnapshotName string `json:"volumeSnapshotName"`
 }
 
 // EndpointsSpec defines the desired state of noobaa endpoint deployment
@@ -496,6 +537,14 @@ type NooBaaDBStatus struct {
 
 	// ActualVolumeSize is the actual size of the postgres cluster volume. This can be different than the requested size
 	ActualVolumeSize string `json:"actualVolumeSize,omitempty"`
+
+	// BackupStatus reports the status of database backups
+	// +optional
+	BackupStatus *DBBackupStatus `json:"backupStatus,omitempty"`
+
+	// RecoveryStatus reports the status of database recovery
+	// +optional
+	RecoveryStatus *DBRecoveryStatus `json:"recoveryStatus,omitempty"`
 }
 
 type DBClusterStatus string
@@ -513,11 +562,61 @@ const (
 	// DBClusterStatusImporting means a new DB cluster is being created and data is being imported from the previous DB
 	DBClusterStatusImporting DBClusterStatus = "Importing"
 
+	// DBClusterStatusRecovering means a new DB cluster is being created and data is being recovered from a volume snapshot
+	DBClusterStatusRecovering DBClusterStatus = "Recovering"
+
 	// DBClusterStatusReady means the DB cluster is ready
 	DBClusterStatusReady DBClusterStatus = "Ready"
 
 	// DBClusterStatusFailed means the DB cluster reconciliation encountered an error
 	DBClusterStatusFailed DBClusterStatus = "Failed"
+)
+
+// DBBackupStatus reports the status of database backups
+type DBBackupStatus struct {
+	// LastBackupTime timestamp of the last successful backup
+	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
+
+	// NextBackupTime timestamp of the next scheduled backup
+	NextBackupTime *metav1.Time `json:"nextBackupTime,omitempty"`
+
+	// TotalSnapshots current number of snapshots
+	TotalSnapshots int `json:"totalSnapshots,omitempty"`
+
+	// AvailableSnapshots list of available snapshot names
+	AvailableSnapshots []string `json:"availableSnapshots,omitempty"`
+}
+
+// DBRecoveryStatus reports the status of database recovery
+type DBRecoveryStatus struct {
+	// Status current recovery status
+	Status DBRecoveryStatusType `json:"status,omitempty"`
+
+	// SnapshotName name of the snapshot being recovered from
+	SnapshotName string `json:"snapshotName,omitempty"`
+
+	// RecoveryTime timestamp when recovery was initiated
+	RecoveryTime *metav1.Time `json:"recoveryTime,omitempty"`
+}
+
+// DBRecoveryStatusType represents the status of database recovery
+type DBRecoveryStatusType string
+
+const (
+	// DBRecoveryStatusNone means no recovery is configured or in progress
+	DBRecoveryStatusNone DBRecoveryStatusType = "None"
+
+	// DBRecoveryStatusPending means recovery is pending cluster deletion
+	DBRecoveryStatusPending DBRecoveryStatusType = "Pending"
+
+	// DBRecoveryStatusRunning means recovery is currently in progress
+	DBRecoveryStatusRunning DBRecoveryStatusType = "Running"
+
+	// DBRecoveryStatusCompleted means recovery has completed successfully
+	DBRecoveryStatusCompleted DBRecoveryStatusType = "Completed"
+
+	// DBRecoveryStatusFailed means recovery has failed
+	DBRecoveryStatusFailed DBRecoveryStatusType = "Failed"
 )
 
 // These are the valid conditions types and statuses:
