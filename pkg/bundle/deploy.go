@@ -1425,7 +1425,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "ee1ecf4ecb2fa8686e5e8de9dba25f962df79b57fd34abd482a9bfef4d4622fe"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "7580edbc009f9c4e2a40261bbbe4f824f55ce37a3d3466d8cb5ed94d93015eef"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2632,6 +2632,28 @@ spec:
               dbSpec:
                 description: DBSpec (optional) DB spec for a managed postgres cluster
                 properties:
+                  dbBackup:
+                    description: |-
+                      DBBackup (optional) configure automatic scheduled backups of the database volume.
+                      Currently, only volume snapshots are supported.
+                    properties:
+                      maxSnapshots:
+                        description: MaxSnapshots the maximum number of snapshots
+                          to keep.
+                        type: integer
+                      schedule:
+                        description: Schedule the schedule for the database backup
+                          in cron format.
+                        type: string
+                      volumeSnapshotClass:
+                        description: VolumeSnapshotClass the volume snapshot class
+                          for the database volume.
+                        type: string
+                    required:
+                    - maxSnapshots
+                    - schedule
+                    - volumeSnapshotClass
+                    type: object
                   dbConf:
                     additionalProperties:
                       type: string
@@ -2644,6 +2666,17 @@ spec:
                       Increasing the size of the volume is supported if the underlying storage class supports volume expansion.
                       The new size should be larger than actualVolumeSize in dbStatus for the volume to be resized.
                     type: string
+                  dbRecovery:
+                    description: DBRecovery (optional) configure database recovery
+                      from snapshot
+                    properties:
+                      volumeSnapshotName:
+                        description: VolumeSnapshotName specifies the name of the
+                          volume snapshot to recover from
+                        type: string
+                    required:
+                    - volumeSnapshotName
+                    type: object
                   dbResources:
                     description: DBResources (optional) overrides the default resource
                       requirements for the db container
@@ -3411,6 +3444,29 @@ spec:
                     description: ActualVolumeSize is the actual size of the postgres
                       cluster volume. This can be different than the requested size
                     type: string
+                  backupStatus:
+                    description: BackupStatus reports the status of database backups
+                    properties:
+                      availableSnapshots:
+                        description: AvailableSnapshots list of available snapshot
+                          names
+                        items:
+                          type: string
+                        type: array
+                      lastBackupTime:
+                        description: LastBackupTime timestamp of the last successful
+                          backup
+                        format: date-time
+                        type: string
+                      nextBackupTime:
+                        description: NextBackupTime timestamp of the next scheduled
+                          backup
+                        format: date-time
+                        type: string
+                      totalSnapshots:
+                        description: TotalSnapshots current number of snapshots
+                        type: integer
+                    type: object
                   currentPgMajorVersion:
                     description: CurrentPgMajorVersion is the major version of the
                       postgres cluster
@@ -3421,6 +3477,21 @@ spec:
                   dbCurrentImage:
                     description: DBCurrentImage is the image of the postgres cluster
                     type: string
+                  recoveryStatus:
+                    description: RecoveryStatus reports the status of database recovery
+                    properties:
+                      recoveryTime:
+                        description: RecoveryTime timestamp when recovery was initiated
+                        format: date-time
+                        type: string
+                      snapshotName:
+                        description: SnapshotName name of the snapshot being recovered
+                          from
+                        type: string
+                      status:
+                        description: Status current recovery status
+                        type: string
+                    type: object
                 type: object
               endpoints:
                 description: |-
