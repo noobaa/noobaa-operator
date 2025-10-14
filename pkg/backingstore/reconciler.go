@@ -32,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+const agentConfigSecretMountPath string = "/etc/agent-config"
+
 // ModeInfo holds local information for a backing store mode.
 type ModeInfo struct {
 	Phase    nbv1.BackingStorePhase
@@ -994,8 +996,8 @@ func (r *Reconciler) ReconcilePool() error {
 			}
 			return err
 		}
-		if r.Secret.StringData["AGENT_CONFIG"] == "" {
-			r.Secret.StringData["AGENT_CONFIG"] = res
+		if r.Secret.StringData["agent_config"] == "" {
+			r.Secret.StringData["agent_config"] = res
 			util.KubeUpdate(r.Secret)
 		}
 		err = r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultResourceParams{
@@ -1050,14 +1052,14 @@ func (r *Reconciler) reconcilePvPool() error {
 	if r.Secret.StringData == nil {
 		return fmt.Errorf("reconcilePvPool: r.Secret.StringData is not initialized yet")
 	}
-	if r.Secret.StringData["AGENT_CONFIG"] == "" {
+	if r.Secret.StringData["agent_config"] == "" {
 		res, err := r.NBClient.GetHostsPoolAgentConfigAPI(nb.GetHostsPoolAgentConfigParams{
 			Name: r.BackingStore.Name,
 		})
 		if err != nil {
 			return err
 		}
-		r.Secret.StringData["AGENT_CONFIG"] = res
+		r.Secret.StringData["agent_config"] = res
 		util.KubeUpdate(r.Secret)
 	}
 	podsList := &corev1.PodList{}
@@ -1287,15 +1289,8 @@ func (r *Reconciler) updatePodTemplate() error {
 	c := &r.PodAgentTemplate.Spec.Containers[0]
 	for j := range c.Env {
 		switch c.Env[j].Name {
-		case "AGENT_CONFIG":
-			c.Env[j].ValueFrom = &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: r.Secret.Name,
-					},
-					Key: "AGENT_CONFIG",
-				},
-			}
+		case "AGENT_CONFIG_PATH":
+			c.Env[j].Value = agentConfigSecretMountPath + "/agent_config"
 		case "NOOBAA_LOG_LEVEL":
 			c.Env[j].Value = r.CoreAppConfig.Data["NOOBAA_LOG_LEVEL"]
 		case "NOOBAA_LOG_COLOR":
@@ -1354,6 +1349,25 @@ func (r *Reconciler) updatePodTemplate() error {
 		}
 		r.PodAgentTemplate.Spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{topologySpreadConstraint}
 	}
+
+	// add volume mount for agent config secret
+	agentConfigVolumeMounts := []corev1.VolumeMount{{
+		Name:      r.Secret.Name,
+		MountPath: agentConfigSecretMountPath,
+		ReadOnly:  true,
+	}}
+	util.MergeVolumeMountList(&c.VolumeMounts, &agentConfigVolumeMounts)
+
+	// add volume definition for agent config secret
+	agentConfigVolumes := []corev1.Volume{{
+		Name: r.Secret.Name,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: r.Secret.Name,
+			},
+		},
+	}}
+	util.MergeVolumeList(&r.PodAgentTemplate.Spec.Volumes, &agentConfigVolumes)
 
 	return r.updatePodResourcesTemplate(c)
 }

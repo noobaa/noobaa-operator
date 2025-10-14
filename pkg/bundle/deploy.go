@@ -4477,7 +4477,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "0d3d438a85024b605e1d1b3587c0bf9522f7e30f187fdd0f1d607337e3df90d1"
+const Sha256_deploy_internal_pod_agent_yaml = "720da6d93fa26862b23bb29db71ea03695b4e428f7594d23665db1ac779dd65a"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -4502,7 +4502,7 @@ spec:
         # Insert the relevant config for the current agent
         - name: CONTAINER_PLATFORM
           value: KUBERNETES
-        - name: AGENT_CONFIG
+        - name: AGENT_CONFIG_PATH
         - name: NOOBAA_LOG_LEVEL
         - name: NOOBAA_LOG_COLOR
       command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
