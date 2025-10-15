@@ -49,6 +49,7 @@ func RunCollect(cmd *cobra.Command, args []string) {
 	c.CollectPVs(listOptions)
 	c.CollectPVCs(listOptions)
 	c.CollectSCC()
+	c.CollectDBUpgradeLogs()
 
 	c.ExportDiagnostics(destDir)
 
@@ -149,6 +150,28 @@ func (c *Collector) CollectPodsLogs(listOptions client.ListOptions) {
 			}
 		}
 	}
+}
+
+// CollectDBUpgradeLogs collects the logs produced during psql 12 to 15 upgrade.
+func (c *Collector) CollectDBUpgradeLogs() {
+	// List all pods and select only noobaa pods within the relevant namespace
+	c.log.Println("Collecting upgrade logs from DB pod")
+
+	upgradeLogNames := []string{"revertdb.log", "upgradedb.log", "dumpdb.log"}
+
+	for _, logName := range upgradeLogNames {
+		cmd := exec.Command(c.kubeCommand, "cp", "-n", options.Namespace, "noobaa-db-pg-0:/var/lib/pgsql/"+logName, c.folderName+"/"+logName)
+		// handle custom path for kubeconfig file,
+		// see --kubeconfig cli options
+		if len(c.kubeconfig) > 0 {
+			cmd.Env = append(cmd.Env, "KUBECONFIG="+c.kubeconfig)
+		}
+		// Execute the command, generating the dump file
+		if err := cmd.Run(); err != nil {
+			c.log.Printf(`❌ cannot export upgrade log %s from DB pod: %v`, logName, err)
+		}
+	}
+
 }
 
 // CollectPVs collects describe of PVs
