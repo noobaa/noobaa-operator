@@ -4477,7 +4477,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "720da6d93fa26862b23bb29db71ea03695b4e428f7594d23665db1ac779dd65a"
+const Sha256_deploy_internal_pod_agent_yaml = "7f6eef302f0a07ca766cef61693db9d1f66f4f7aabe4d8d01a84cfa9176b12ad"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -4515,6 +4515,9 @@ spec:
           mountPath: /noobaa_storage
         - name: tmp-logs-vol
           mountPath: /usr/local/noobaa/logs
+        - name: agent-config-secret
+          mountPath: AGENT_CONFIG_MOUNT_PATH
+          readOnly: true
       securityContext:
         runAsNonRoot: true
         allowPrivilegeEscalation: false
@@ -4530,6 +4533,9 @@ spec:
     - name: noobaastorage
       persistentVolumeClaim:
         claimName: noobaa-pv-claim
+    - name: agent-config-secret
+      secret:
+        secretName: AGENT_CONFIG_SECRET_NAME
 `
 
 const Sha256_deploy_internal_prometheus_rules_yaml = "9dba8cfe7b655d3467b091531c95e6d34e8bd179f36ece6eaf3cff8ef73df23d"

@@ -34,6 +34,9 @@ spec:
           mountPath: /noobaa_storage
         - name: tmp-logs-vol
           mountPath: /usr/local/noobaa/logs
+        - name: agent-config-secret
+          mountPath: AGENT_CONFIG_MOUNT_PATH
+          readOnly: true
       securityContext:
         runAsNonRoot: true
         allowPrivilegeEscalation: false
@@ -49,3 +52,6 @@ spec:
     - name: noobaastorage
       persistentVolumeClaim:
         claimName: noobaa-pv-claim
+    - name: agent-config-secret
+      secret:
+        secretName: AGENT_CONFIG_SECRET_NAME

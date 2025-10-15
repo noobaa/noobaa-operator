@@ -1350,24 +1350,19 @@ func (r *Reconciler) updatePodTemplate() error {
 		r.PodAgentTemplate.Spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{topologySpreadConstraint}
 	}
 
-	// add volume mount for agent config secret
-	agentConfigVolumeMounts := []corev1.VolumeMount{{
-		Name:      r.Secret.Name,
-		MountPath: agentConfigSecretMountPath,
-		ReadOnly:  true,
-	}}
-	util.MergeVolumeMountList(&c.VolumeMounts, &agentConfigVolumeMounts)
+	// replace AGENT_CONFIG_MOUNT_PATH with actual mount path
+	for i := range r.PodAgentTemplate.Spec.Containers[0].VolumeMounts {
+		if r.PodAgentTemplate.Spec.Containers[0].VolumeMounts[i].MountPath == "AGENT_CONFIG_MOUNT_PATH" {
+			r.PodAgentTemplate.Spec.Containers[0].VolumeMounts[i].MountPath = agentConfigSecretMountPath
+		}
+	}
 
-	// add volume definition for agent config secret
-	agentConfigVolumes := []corev1.Volume{{
-		Name: r.Secret.Name,
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: r.Secret.Name,
-			},
-		},
-	}}
-	util.MergeVolumeList(&r.PodAgentTemplate.Spec.Volumes, &agentConfigVolumes)
+	// replace AGENT_CONFIG_SECRET_NAME with actual secret name
+	for i := range r.PodAgentTemplate.Spec.Volumes {
+		if r.PodAgentTemplate.Spec.Volumes[i].Secret != nil && r.PodAgentTemplate.Spec.Volumes[i].Secret.SecretName == "AGENT_CONFIG_SECRET_NAME" {
+			r.PodAgentTemplate.Spec.Volumes[i].Secret.SecretName = r.Secret.Name
+		}
+	}
 
 	return r.updatePodResourcesTemplate(c)
 }
