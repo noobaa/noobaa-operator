@@ -4477,7 +4477,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "0d3d438a85024b605e1d1b3587c0bf9522f7e30f187fdd0f1d607337e3df90d1"
+const Sha256_deploy_internal_pod_agent_yaml = "74237f435120c893cd8e349e9ac685dd1c884e121c018f46e48228f845a51093"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -4502,7 +4502,8 @@ spec:
         # Insert the relevant config for the current agent
         - name: CONTAINER_PLATFORM
           value: KUBERNETES
-        - name: AGENT_CONFIG
+        - name: AGENT_CONFIG_PATH
+          value: /etc/agent-config/agent_config
         - name: NOOBAA_LOG_LEVEL
         - name: NOOBAA_LOG_COLOR
       command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
@@ -4515,6 +4516,9 @@ spec:
           mountPath: /noobaa_storage
         - name: tmp-logs-vol
           mountPath: /usr/local/noobaa/logs
+        - name: agent-config-secret
+          mountPath: /etc/agent-config
+          readOnly: true
       securityContext:
         runAsNonRoot: true
         allowPrivilegeEscalation: false
@@ -4530,6 +4534,9 @@ spec:
     - name: noobaastorage
       persistentVolumeClaim:
         claimName: noobaa-pv-claim
+    - name: agent-config-secret
+      secret:
+        secretName: AGENT_CONFIG_SECRET_NAME
 `
 
 const Sha256_deploy_internal_prometheus_rules_yaml = "9dba8cfe7b655d3467b091531c95e6d34e8bd179f36ece6eaf3cff8ef73df23d"
