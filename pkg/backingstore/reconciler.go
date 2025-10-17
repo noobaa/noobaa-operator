@@ -32,8 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const agentConfigSecretMountPath string = "/etc/agent-config"
-
 // ModeInfo holds local information for a backing store mode.
 type ModeInfo struct {
 	Phase    nbv1.BackingStorePhase
@@ -1289,8 +1287,6 @@ func (r *Reconciler) updatePodTemplate() error {
 	c := &r.PodAgentTemplate.Spec.Containers[0]
 	for j := range c.Env {
 		switch c.Env[j].Name {
-		case "AGENT_CONFIG_PATH":
-			c.Env[j].Value = agentConfigSecretMountPath + "/agent_config"
 		case "NOOBAA_LOG_LEVEL":
 			c.Env[j].Value = r.CoreAppConfig.Data["NOOBAA_LOG_LEVEL"]
 		case "NOOBAA_LOG_COLOR":
@@ -1348,13 +1344,6 @@ func (r *Reconciler) updatePodTemplate() error {
 			},
 		}
 		r.PodAgentTemplate.Spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{topologySpreadConstraint}
-	}
-
-	// replace AGENT_CONFIG_MOUNT_PATH with actual mount path
-	for i := range r.PodAgentTemplate.Spec.Containers[0].VolumeMounts {
-		if r.PodAgentTemplate.Spec.Containers[0].VolumeMounts[i].MountPath == "AGENT_CONFIG_MOUNT_PATH" {
-			r.PodAgentTemplate.Spec.Containers[0].VolumeMounts[i].MountPath = agentConfigSecretMountPath
-		}
 	}
 
 	// replace AGENT_CONFIG_SECRET_NAME with actual secret name
