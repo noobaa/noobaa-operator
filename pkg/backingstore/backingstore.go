@@ -247,6 +247,9 @@ const (
 	// Dev ENV minimal resources
 	devEnvMinCPUString    string = "500m"
 	devEnvMinMemoryString string = "500Mi"
+
+	// Default volume size for pv-pool backing store
+	defaultVolumeSize = int64(20 * 1024 * 1024 * 1024) // 20Gi=20*1024^3
 )
 
 // CmdCreatePVPool returns a CLI command
