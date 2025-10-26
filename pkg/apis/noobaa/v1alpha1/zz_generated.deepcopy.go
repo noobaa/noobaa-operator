@@ -741,6 +741,11 @@ func (in *LoadBalancerSourceSubnetSpec) DeepCopyInto(out *LoadBalancerSourceSubn
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.IAM != nil {
+		in, out := &in.IAM, &out.IAM
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -1568,6 +1573,7 @@ func (in *ServicesStatus) DeepCopyInto(out *ServicesStatus) {
 	in.ServiceMgmt.DeepCopyInto(&out.ServiceMgmt)
 	in.ServiceS3.DeepCopyInto(&out.ServiceS3)
 	in.ServiceSts.DeepCopyInto(&out.ServiceSts)
+	in.ServiceIam.DeepCopyInto(&out.ServiceIam)
 	in.ServiceSyslog.DeepCopyInto(&out.ServiceSyslog)
 	return
 }

@@ -77,6 +77,15 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 			return err
 		}
 	}
+	if err := r.ReconcileObject(r.ServiceIam, r.SetDesiredServiceIam); err != nil {
+		return err
+	}
+	// reconcile noobaa-iam route only if routes are enabled
+	if !r.NooBaa.Spec.DisableRoutes {
+		if err := r.ReconcileObjectOptional(r.RouteIam, r.SetDesiredRouteIam); err != nil {
+			return err
+		}
+	}
 	// the credentials that are created by cloud-credentials-operator sometimes take time
 	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
 	// creating the credential request as early as possible to try and avoid it
@@ -264,6 +273,28 @@ func (r *Reconciler) SetDesiredServiceSts() error {
 		r.ServiceSts.Spec.LoadBalancerSourceRanges = r.NooBaa.Spec.LoadBalancerSourceSubnets.STS
 	}
 	r.ServiceSts.Spec.Selector["noobaa-s3"] = r.Request.Name
+	return nil
+}
+
+// SetDesiredServiceIam updates the ServiceIam as desired for reconciling
+func (r *Reconciler) SetDesiredServiceIam() error {
+	if r.NooBaa.Spec.DisableLoadBalancerService {
+		r.ServiceIam.Spec.Type = corev1.ServiceTypeClusterIP
+		r.ServiceIam.Spec.LoadBalancerSourceRanges = []string{}
+	} else {
+		// It is here in case disableLoadBalancerService is removed from the crd or changed to false
+		r.ServiceIam.Spec.Type = corev1.ServiceTypeLoadBalancer
+		r.ServiceIam.Spec.LoadBalancerSourceRanges = r.NooBaa.Spec.LoadBalancerSourceSubnets.IAM
+	}
+	r.ServiceIam.Spec.Selector["noobaa-s3"] = r.Request.Name
+	return nil
+}
+
+// SetDesiredRouteIam updates the RouteIam as desired for reconciling
+func (r *Reconciler) SetDesiredRouteIam() error {
+	if r.NooBaa.Spec.DenyHTTP {
+		r.RouteIam.Spec.TLS.InsecureEdgeTerminationPolicy = "None"
+	}
 	return nil
 }
 
