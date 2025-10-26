@@ -33,6 +33,7 @@ type AnnotationsSpec map[string]Annotations
 // +kubebuilder:resource:shortName=nb
 // +kubebuilder:printcolumn:name="S3-Endpoints",type="string",JSONPath=".status.services.serviceS3.nodePorts",description="S3 Endpoints"
 // +kubebuilder:printcolumn:name="Sts-Endpoints",type="string",JSONPath=".status.services.serviceSts.nodePorts",description="STS Endpoints"
+// +kubebuilder:printcolumn:name="Iam-Endpoints",type="string",JSONPath=".status.services.serviceIam.nodePorts",description="IAM Endpoints"
 // +kubebuilder:printcolumn:name="Syslog-Endpoints",type="string",JSONPath=".status.services.serviceSyslog.nodePorts",description="Syslog Endpoints"
 // +kubebuilder:printcolumn:name="Image",type="string",JSONPath=".status.actualImage",description="Actual Image"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
@@ -314,6 +315,10 @@ type LoadBalancerSourceSubnetSpec struct {
 	// STS is a list of subnets that will be allowed to access the Noobaa STS service
 	// +optional
 	STS []string `json:"sts,omitempty"`
+
+	// IAM is a list of subnets that will be allowed to access the Noobaa IAM service
+	// +optional
+	IAM []string `json:"iam,omitempty"`
 }
 
 // SecuritySpec is security spec to include various security items such as kms
@@ -559,6 +564,7 @@ type ServicesStatus struct {
 	ServiceS3   ServiceStatus `json:"serviceS3"`
 	// +optional
 	ServiceSts    ServiceStatus `json:"serviceSts,omitempty"`
+	ServiceIam    ServiceStatus `json:"serviceIam,omitempty"`
 	ServiceSyslog ServiceStatus `json:"serviceSyslog,omitempty"`
 }
 
