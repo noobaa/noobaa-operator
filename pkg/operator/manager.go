@@ -46,7 +46,10 @@ func RunOperator(cmd *cobra.Command, args []string) {
 	}
 	version.RunVersion(cmd, args)
 	// Probe address from CLI flag (defaults to :8081)
-	probeAddr, _ := cmd.Flags().GetString("health-probe-bind-address")
+	probeAddr := os.Getenv("HEALTH_PROBE_BIND_ADDRESS")
+	if probeAddr == "" {
+		probeAddr = ":8081"
+	}
 
 	config := util.KubeConfig()
 
@@ -109,7 +112,6 @@ func RunOperator(cmd *cobra.Command, args []string) {
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		log.Fatalf("Failed to add readiness check: %s", err)
 	}
-
 
 	util.Panic(mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 		system.RunOperatorCreate(cmd, args)

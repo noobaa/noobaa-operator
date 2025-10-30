@@ -6231,10 +6231,6 @@ spec:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
           terminationMessagePolicy: FallbackToLogsOnError
-          args:
-            - operator  
-            - run       
-            - --health-probe-bind-address=:8081
           ports:
             - name: healthz
               containerPort: 8081
@@ -6953,4 +6949,3 @@ metadata:
     app: prometheus-adapter
   name: custom-metrics-prometheus-adapter
 `
-
