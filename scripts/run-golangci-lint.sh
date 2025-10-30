@@ -27,7 +27,7 @@ MODE="${1}"
 # Function to install golangci-lint (for makefile mode)
 install_golangci_lint() {
     echo "Installing the latest golangci-lint with local toolchain"
-    if ! go install -a "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest"
+    if ! go install -a "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0"
     then
         echo "⚠️ Failed to install golangci-lint"
         exit 0
