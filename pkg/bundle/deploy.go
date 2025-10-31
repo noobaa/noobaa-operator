@@ -6238,6 +6238,9 @@ spec:
         - name: noobaa-operator
           image: NOOBAA_OPERATOR_IMAGE
           terminationMessagePolicy: FallbackToLogsOnError
+          ports:
+            - name: healthz
+              containerPort: 8081
           volumeMounts:
           - name: bound-sa-token
             mountPath: /var/run/secrets/openshift/serviceaccount
@@ -6247,6 +6250,29 @@ spec:
           # SHOULD BE RETURNED ONCE COSI IS BACK
           # - name: socket
           #   mountPath: /var/lib/cosi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: healthz
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /readyz
+              port: healthz
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: healthz
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
           resources:
             limits:
               cpu: "250m"
@@ -6930,4 +6956,3 @@ metadata:
     app: prometheus-adapter
   name: custom-metrics-prometheus-adapter
 `
-
