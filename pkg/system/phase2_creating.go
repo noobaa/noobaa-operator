@@ -487,7 +487,9 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 		case "POSTGRES_HOST_PATH":
 			c.Env[j].Value = postgresSecretMountPath + "/host"
 		case "POSTGRES_CONNECTION_STRING_PATH":
-			c.Env[j].Value = postgresSecretMountPath + "/db_url"
+			if r.NooBaa.Spec.ExternalPgSecret != nil {
+				c.Env[j].Value = postgresSecretMountPath + "/db_url"
+			}
 
 		case "NODE_EXTRA_CA_CERTS":
 			c.Env[j].Value = r.ApplyCAsToPods
