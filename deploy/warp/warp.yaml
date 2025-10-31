@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: warp
+  labels:
+    app: warp
+spec:
+  serviceName: warp
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: warp
+  template:
+    metadata:
+      name: warp
+      labels:
+        app: warp
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - warp
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: warp
+          image: "minio/warp:latest"
+          imagePullPolicy: Always
+          args:
+            - client
+          ports:
+            - name: http
+              containerPort: 7761
+
