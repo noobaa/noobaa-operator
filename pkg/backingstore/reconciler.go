@@ -993,8 +993,8 @@ func (r *Reconciler) ReconcilePool() error {
 			}
 			return err
 		}
-		if r.Secret.StringData["AGENT_CONFIG"] == "" {
-			r.Secret.StringData["AGENT_CONFIG"] = res
+		if r.Secret.StringData["agent_config"] == "" {
+			r.Secret.StringData["agent_config"] = res
 			util.KubeUpdate(r.Secret)
 		}
 		err = r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultResourceParams{
@@ -1049,14 +1049,14 @@ func (r *Reconciler) reconcilePvPool() error {
 	if r.Secret.StringData == nil {
 		return fmt.Errorf("reconcilePvPool: r.Secret.StringData is not initialized yet")
 	}
-	if r.Secret.StringData["AGENT_CONFIG"] == "" {
+	if r.Secret.StringData["agent_config"] == "" {
 		res, err := r.NBClient.GetHostsPoolAgentConfigAPI(nb.GetHostsPoolAgentConfigParams{
 			Name: r.BackingStore.Name,
 		})
 		if err != nil {
 			return err
 		}
-		r.Secret.StringData["AGENT_CONFIG"] = res
+		r.Secret.StringData["agent_config"] = res
 		util.KubeUpdate(r.Secret)
 	}
 	podsList := &corev1.PodList{}
@@ -1286,15 +1286,6 @@ func (r *Reconciler) updatePodTemplate() error {
 	c := &r.PodAgentTemplate.Spec.Containers[0]
 	for j := range c.Env {
 		switch c.Env[j].Name {
-		case "AGENT_CONFIG":
-			c.Env[j].ValueFrom = &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: r.Secret.Name,
-					},
-					Key: "AGENT_CONFIG",
-				},
-			}
 		case "NOOBAA_LOG_LEVEL":
 			c.Env[j].Value = r.CoreAppConfig.Data["NOOBAA_LOG_LEVEL"]
 		case "NOOBAA_LOG_COLOR":
@@ -1352,6 +1343,13 @@ func (r *Reconciler) updatePodTemplate() error {
 			},
 		}
 		r.PodAgentTemplate.Spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{topologySpreadConstraint}
+	}
+
+	// replace AGENT_CONFIG_SECRET_NAME with actual secret name
+	for i, vol := range r.PodAgentTemplate.Spec.Volumes {
+		if vol.Secret != nil && vol.Secret.SecretName == "AGENT_CONFIG_SECRET_NAME" {
+			r.PodAgentTemplate.Spec.Volumes[i].Secret.SecretName = r.Secret.Name
+		}
 	}
 
 	return r.updatePodResourcesTemplate(c)
