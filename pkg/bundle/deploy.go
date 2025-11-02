@@ -1425,7 +1425,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "ee1ecf4ecb2fa8686e5e8de9dba25f962df79b57fd34abd482a9bfef4d4622fe"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "0b124e4d763e8aecff6486d8f70491d8dfd30f35fb863746ef2fcb12bff69fbf"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -1453,6 +1453,10 @@ spec:
     - description: STS Endpoints
       jsonPath: .status.services.serviceSts.nodePorts
       name: Sts-Endpoints
+      type: string
+    - description: IAM Endpoints
+      jsonPath: .status.services.serviceIam.nodePorts
+      name: Iam-Endpoints
       type: string
     - description: Syslog Endpoints
       jsonPath: .status.services.serviceSyslog.nodePorts
@@ -3185,6 +3189,12 @@ spec:
                   only from the listed subnets. This field will have no effect if DisableLoadBalancerService is set
                   to true
                 properties:
+                  iam:
+                    description: IAM is a list of subnets that will be allowed to
+                      access the Noobaa IAM service
+                    items:
+                      type: string
+                    type: array
                   s3:
                     description: S3 is a list of subnets that will be allowed to access
                       the Noobaa S3 service
@@ -3511,6 +3521,61 @@ spec:
               services:
                 description: Services reports addresses for the services
                 properties:
+                  serviceIam:
+                    description: ServiceStatus is the status info and network addresses
+                      of a service
+                    properties:
+                      externalDNS:
+                        description: ExternalDNS are external public addresses for
+                          the service
+                        items:
+                          type: string
+                        type: array
+                      externalIP:
+                        description: |-
+                          ExternalIP are external public addresses for the service
+                          LoadBalancerPorts such as AWS ELB provide public address and load balancing for the service
+                          IngressPorts are manually created public addresses for the service
+                          https://kubernetes.io/docs/concepts/services-networking/service/#external-ips
+                          https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer
+                          https://kubernetes.io/docs/concepts/services-networking/ingress/
+                        items:
+                          type: string
+                        type: array
+                      internalDNS:
+                        description: InternalDNS are internal addresses of the service
+                          inside the cluster
+                        items:
+                          type: string
+                        type: array
+                      internalIP:
+                        description: |-
+                          InternalIP are internal addresses of the service inside the cluster
+                          https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+                        items:
+                          type: string
+                        type: array
+                      nodePorts:
+                        description: |-
+                          NodePorts are the most basic network available.
+                          NodePorts use the networks available on the hosts of kubernetes nodes.
+                          This generally works from within a pod, and from the internal
+                          network of the nodes, but may fail from public network.
+                          https://kubernetes.io/docs/concepts/services-networking/service/#nodeport
+                        items:
+                          type: string
+                        type: array
+                      podPorts:
+                        description: |-
+                          PodPorts are the second most basic network address.
+                          Every pod has an IP in the cluster and the pods network is a mesh
+                          so the operator running inside a pod in the cluster can use this address.
+                          Note: pod IPs are not guaranteed to persist over restarts, so should be rediscovered.
+                          Note2: when running the operator outside of the cluster, pod IP is not accessible.
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   serviceMgmt:
                     description: ServiceStatus is the status info and network addresses
                       of a service
@@ -3979,7 +4044,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "4221668694225599735ba859f68e47a9de8ce1aca685e0acd266c80e338bbda5"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "993fc53b16da6485abff75cf76a0d0d15f10e2319f0b519010808e2ea20df1c6"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4019,6 +4084,10 @@ spec:
         - name: sts-secret
           secret:
             secretName: noobaa-sts-serving-cert
+            optional: true
+        - name: iam-secret
+          secret:
+            secretName: noobaa-iam-serving-cert
             optional: true
         # This service account token can be used to provide identity outside the cluster.
         # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
@@ -4061,6 +4130,8 @@ spec:
             - containerPort: 6001
             - containerPort: 6443
             - containerPort: 7443
+            - containerPort: 13443
+              name: iam-https
           env:
             - name: NODE_NAME
               valueFrom:
@@ -4147,6 +4218,9 @@ spec:
               readOnly: true
             - name: noobaa-server
               mountPath: /etc/noobaa-server
+              readOnly: true
+            - name: iam-secret
+              mountPath: /etc/iam-secret
               readOnly: true
             - name: sts-secret
               mountPath: /etc/sts-secret
@@ -4840,6 +4914,26 @@ spec:
       storage: 30Gi
 `
 
+const Sha256_deploy_internal_route_iam_yaml = "c97f843db5676140b2307ef13bf9354158eb546dcc7325adf225b24ec323c73a"
+
+const File_deploy_internal_route_iam_yaml = `apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: noobaa
+  name: iam
+spec:
+  port:
+    targetPort: iam-https
+  tls:
+    termination: reencrypt
+  to:
+    kind: Service
+    name: iam
+    weight: 100
+  wildcardPolicy: None
+`
+
 const Sha256_deploy_internal_route_mgmt_yaml = "1d462d165da5a660b85900e46a11e4d1a53e1498bf9d086b4b68afdceab08394"
 
 const File_deploy_internal_route_mgmt_yaml = `apiVersion: route.openshift.io/v1
@@ -4934,6 +5028,28 @@ spec:
     - port: 5432
       targetPort: 5432
       name: postgres
+`
+
+const Sha256_deploy_internal_service_iam_yaml = "3c1640e8f5435889c0718eaf2cabf9271b83fcbcabf51e8c0b34f9897c1c982c"
+
+const File_deploy_internal_service_iam_yaml = `apiVersion: v1
+kind: Service
+metadata:
+  name: iam
+  labels:
+    app: noobaa
+    noobaa-iam-svc: "true"
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: 'noobaa-iam-serving-cert'
+    service.alpha.openshift.io/serving-cert-secret-name: 'noobaa-iam-serving-cert'
+spec:
+  type: LoadBalancer
+  selector:
+    noobaa-s3: SYSNAME
+  ports:
+    - port: 443
+      targetPort: iam-https
+      name: iam-https
 `
 
 const Sha256_deploy_internal_service_mgmt_yaml = "fa5f052fb360e6893fc446a318413a6f494a8610706ae7e36ff985b3b3a5c070"

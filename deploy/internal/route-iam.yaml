@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: noobaa
+  name: iam
+spec:
+  port:
+    targetPort: iam-https
+  tls:
+    termination: reencrypt
+  to:
+    kind: Service
+    name: iam
+    weight: 100
+  wildcardPolicy: None
