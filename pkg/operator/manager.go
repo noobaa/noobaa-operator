@@ -24,6 +24,7 @@ import (
 
 	"github.com/operator-framework/operator-lib/leader"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	metricsServer "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -44,6 +45,11 @@ func RunOperator(cmd *cobra.Command, args []string) {
 		util.InitLogger(logrus.DebugLevel)
 	}
 	version.RunVersion(cmd, args)
+	// Probe address from CLI flag (defaults to :8081)
+	probeAddr := os.Getenv("HEALTH_PROBE_BIND_ADDRESS")
+	if probeAddr == "" {
+		probeAddr = ":8081"
+	}
 
 	config := util.KubeConfig()
 
@@ -66,6 +72,7 @@ func RunOperator(cmd *cobra.Command, args []string) {
 		Metrics: metricsServer.Options{
 			BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 		},
+		HealthProbeBindAddress: probeAddr, // Serve /healthz and /readyz here
 	})
 	if err != nil {
 		log.Fatalf("Failed to create manager: %s", err)
@@ -95,6 +102,11 @@ func RunOperator(cmd *cobra.Command, args []string) {
 	}
 	if err := controller.AddToClusterScopedManager(cmgr); err != nil {
 		log.Fatalf("Failed AddToClusterScopedManager: %s", err)
+	}
+
+	// Register readiness endpoint on mgr
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		log.Fatalf("Failed to add readiness check: %s", err)
 	}
 
 	util.Panic(mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
