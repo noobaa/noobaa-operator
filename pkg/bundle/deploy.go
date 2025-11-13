@@ -5293,7 +5293,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "34da89373b8398adb670d779a35f5c5a94365da99b5a2db65715fd62a7638d5c"
+const Sha256_deploy_internal_statefulset_core_yaml = "3dba40ad6babb033832e999680f333849bf3f194a24aa1163587529315ebe8da"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5416,6 +5416,7 @@ spec:
                   key: NOOBAA_VERSION_AUTH_ENABLED
             - name: POSTGRES_HOST
               value: "noobaa-db-pg-0.noobaa-db-pg"
+            - name: POSTGRES_HOST_RO
             - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
             - name: POSTGRES_USER
