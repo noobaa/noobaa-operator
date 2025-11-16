@@ -4,16 +4,20 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 
 	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	"github.com/go-test/deep"
+	storagesnapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/cnpg"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -92,6 +96,12 @@ func (r *Reconciler) ReconcileCNPGCluster() error {
 
 	} else {
 		return fmt.Errorf("cnpg cluster is not ready")
+	}
+
+	// Reconcile backup configuration
+	if err := r.reconcileDBBackup(); err != nil {
+		r.cnpgLogError("got error reconciling backup. error: %v", err)
+		return err
 	}
 
 	return nil
@@ -268,6 +278,28 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 
 	r.setPostgresConfig()
 
+	// Configure backup settings if specified
+	if backupSpec := r.NooBaa.Spec.DBSpec.DBBackup; backupSpec != nil {
+		if backupSpec.VolumeSnapshot == nil {
+			r.cnpgLogError("volume snapshot backup configuration is not specified")
+			return fmt.Errorf("volume snapshot backup configuration is not specified")
+		}
+		offlineBackup := false
+		if r.CNPGCluster.Spec.Backup == nil {
+			r.CNPGCluster.Spec.Backup = &cnpgv1.BackupConfiguration{
+				VolumeSnapshot: &cnpgv1.VolumeSnapshotConfiguration{
+					ClassName: backupSpec.VolumeSnapshot.VolumeSnapshotClass,
+					Online:    &offlineBackup,
+				},
+			}
+		} else {
+			r.CNPGCluster.Spec.Backup.VolumeSnapshot.ClassName = backupSpec.VolumeSnapshot.VolumeSnapshotClass
+		}
+	} else {
+		// Remove backup configuration if not specified
+		r.CNPGCluster.Spec.Backup = nil
+	}
+
 	// TODO: consider specifying a separate WAL storage configuration in Spec.WalStorage
 	// currently, the same storage will be used for both DB and WAL
 
@@ -372,6 +404,170 @@ func (r *Reconciler) reconcileClusterCreateOrImport() error {
 		return nil
 	}
 
+}
+
+// reconcileDBBackup reconciles the backup configuration for the CNPG cluster
+func (r *Reconciler) reconcileDBBackup() error {
+	if r.NooBaa.Spec.DBSpec.DBBackup == nil {
+		// Clean up existing backup resources if any
+		if err := r.cleanupDBBackup(); err != nil {
+			r.cnpgLogError("got error cleaning up existing backup resources. error: %v", err)
+			return err
+		}
+		r.NooBaa.Status.DBStatus.BackupStatus = nil
+		return nil
+	}
+
+	if r.NooBaa.Status.DBStatus.BackupStatus == nil {
+		r.NooBaa.Status.DBStatus.BackupStatus = &nbv1.DBBackupStatus{}
+	}
+
+	// currently only volume snapshot backup is supported. VolumeSnapshot is required.
+	if r.NooBaa.Spec.DBSpec.DBBackup.VolumeSnapshot == nil {
+		r.cnpgLogError("volume snapshot backup configuration is not specified")
+		return fmt.Errorf("volume snapshot backup configuration is not specified")
+	}
+
+	// Create or update ScheduledBackup
+	if err := r.reconcileScheduledBackup(); err != nil {
+		r.cnpgLogError("got error reconciling scheduled backup. error: %v", err)
+		return err
+	}
+
+	// reconcile the backup retention
+	if err := r.reconcileBackupRetention(); err != nil {
+		r.cnpgLogError("got error reconciling backup retention. error: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *Reconciler) getBackupResourceName() string {
+	return r.CNPGCluster.Name + "-backup"
+}
+
+func (r *Reconciler) reconcileScheduledBackup() error {
+	backupSpec := r.NooBaa.Spec.DBSpec.DBBackup
+	offlineBackup := false
+	// convert the standard cron schedule to the cnpg cron schedule
+	cnpgSchedule, err := convertToSixFieldCron(backupSpec.Schedule)
+	if err != nil {
+		r.cnpgLogError("failed to convert cron schedule to six-field format. error: %v", err)
+		return err
+	}
+	scheduledBackup := cnpg.GetCnpgScheduledBackupObj(r.CNPGCluster.Namespace, r.getBackupResourceName())
+
+	return r.ReconcileObject(scheduledBackup, func() error {
+		// Update spec if needed
+		scheduledBackup.Spec.Schedule = cnpgSchedule
+		scheduledBackup.Spec.Cluster.Name = r.CNPGCluster.Name
+		scheduledBackup.Spec.Method = cnpgv1.BackupMethodVolumeSnapshot
+		scheduledBackup.Spec.Online = &offlineBackup
+		if scheduledBackup.Status.LastScheduleTime != nil {
+			r.NooBaa.Status.DBStatus.BackupStatus.LastBackupTime = scheduledBackup.Status.LastScheduleTime
+		}
+		if scheduledBackup.Status.NextScheduleTime != nil {
+			r.NooBaa.Status.DBStatus.BackupStatus.NextBackupTime = scheduledBackup.Status.NextScheduleTime
+		}
+		return nil
+	})
+}
+
+func (r *Reconciler) reconcileBackupRetention() error {
+	maxSnapshots := r.NooBaa.Spec.DBSpec.DBBackup.VolumeSnapshot.MaxSnapshots
+	if maxSnapshots == 0 {
+		r.cnpgLog("backup retention is not specified, skipping")
+		return nil
+	}
+
+	// list all backupResources created as part of the scheduled backup
+	backups, err := r.listBackupResourcesOrderByCreate()
+	if err != nil {
+		r.cnpgLogError("got error listing cluster volume snapshots. error: %v", err)
+		return err
+	}
+	totalSnapshots := len(backups.Items)
+	avaialableItems := backups.Items
+	if totalSnapshots > maxSnapshots {
+		numToDelete := totalSnapshots - maxSnapshots
+		avaialableItems = avaialableItems[numToDelete:]
+		r.cnpgLog("found %d backups, maxSnapshots is %d, deleting the oldest %d backups", totalSnapshots, maxSnapshots, numToDelete)
+		// delete the oldest backups
+		for _, backup := range backups.Items[:numToDelete] {
+			snapshotName := backup.Name
+			if len(backup.Status.BackupSnapshotStatus.Elements) > 0 {
+				// although the expected snapshot name is the same as the backup name, take it from the backup status to be on the safe side
+				snapshotName = backup.Status.BackupSnapshotStatus.Elements[0].Name
+			}
+
+			r.cnpgLog("deleting snapshot %s", snapshotName)
+			// if encountering an error we only report it and continue with the reconciliation
+			if err := r.Client.Delete(r.Ctx, &storagesnapshotv1.VolumeSnapshot{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      snapshotName,
+					Namespace: r.CNPGCluster.Namespace,
+				},
+			}); err != nil {
+				r.cnpgLogError("got error deleting snapshot %s. error: %v", snapshotName, err)
+				// skipping the deletion of the backup so we can try to delete again next time
+				continue
+			}
+
+			r.cnpgLog("deleting backup %s", backup.Name)
+			if err := r.Client.Delete(r.Ctx, &backup); err != nil {
+				r.cnpgLogError("got error deleting backup %s. error: %v", backup.Name, err)
+				continue
+			}
+			totalSnapshots--
+		}
+	}
+
+	// update the backup status
+	r.NooBaa.Status.DBStatus.BackupStatus.TotalSnapshots = totalSnapshots
+	avaiallableSnapshots := []string{}
+	for _, item := range avaialableItems {
+		avaiallableSnapshots = append(avaiallableSnapshots, item.Name)
+	}
+	r.NooBaa.Status.DBStatus.BackupStatus.AvailableSnapshots = avaiallableSnapshots
+
+	return nil
+}
+
+func (r *Reconciler) listBackupResourcesOrderByCreate() (*cnpgv1.BackupList, error) {
+	backupResources := cnpg.GetCnpgBackupListObj(r.CNPGCluster.Namespace)
+	// list all backup resources having the label cnpg.io/scheduled-backup: <scheduled-backup-name>
+	if err := r.Client.List(r.Ctx, backupResources, client.InNamespace(r.CNPGCluster.Namespace), client.MatchingLabels{
+		"cnpg.io/scheduled-backup": r.getBackupResourceName(),
+	}); err != nil {
+		r.cnpgLogError("got error listing backup resources. error: %v", err)
+		return nil, err
+	}
+	// filter to only include completed backups (MatchingFields requires field index which isn't configured)
+	filteredItems := []cnpgv1.Backup{}
+	for _, backup := range backupResources.Items {
+		if backup.Status.Phase == cnpgv1.BackupPhaseCompleted {
+			filteredItems = append(filteredItems, backup)
+		}
+	}
+	// sort the list by creation timestamp
+	slices.SortFunc(filteredItems, func(a, b cnpgv1.Backup) int {
+		return a.CreationTimestamp.Compare(b.CreationTimestamp.Time)
+	})
+	backupResources.Items = filteredItems
+	return backupResources, nil
+}
+
+func (r *Reconciler) cleanupDBBackup() error {
+	scheduledBackup := cnpg.GetCnpgScheduledBackupObj(r.CNPGCluster.Namespace, r.getBackupResourceName())
+
+	if util.KubeCheckQuiet(scheduledBackup) {
+		r.cnpgLog("removing ScheduledBackup %s", scheduledBackup.Name)
+		if err := r.Client.Delete(r.Ctx, scheduledBackup); err != nil && !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *Reconciler) setPostgresConfig() {
@@ -515,11 +711,35 @@ func (r *Reconciler) cnpgLogError(format string, args ...interface{}) {
 	r.Logger.Errorf("cnpg:: "+format, args...)
 }
 
+// convertToSixFieldCron converts a cron schedule to six-field format.
+// cnpg requires the schedule to be in six-field format, so we need to convert the standard cron schedule to six-field format.
+func convertToSixFieldCron(schedule string) (string, error) {
+	// If it starts with @, it's a descriptor or interval - return as-is
+	if len(schedule) > 0 && schedule[0] == '@' {
+		return schedule, nil
+	}
+
+	// Count the number of space-separated fields
+	fields := strings.Fields(schedule)
+
+	// If already 6 fields, return as-is
+	if len(fields) == 6 {
+		return schedule, nil
+	}
+
+	// If 5 fields (standard cron), prepend "0" for seconds
+	if len(fields) == 5 {
+		return "0 " + schedule, nil
+	}
+
+	// If not 5 or 6 fields, return an error
+	return "", fmt.Errorf("invalid cron schedule %q", schedule)
+}
+
 // wasClusterSpecChanged checks if any of the cluster spec fields that matter for us were changed.
 // This need to be updated if we change more fields in the cluster spec.
 // For some reason reflect.DeepEqual always returns false when comparing the entire spec.
 func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSpec) bool {
-
 	return !reflect.DeepEqual(existingClusterSpec.InheritedMetadata, r.CNPGCluster.Spec.InheritedMetadata) ||
 		!reflect.DeepEqual(existingClusterSpec.ImageCatalogRef, r.CNPGCluster.Spec.ImageCatalogRef) ||
 		existingClusterSpec.Instances != r.CNPGCluster.Spec.Instances ||
@@ -528,5 +748,6 @@ func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSp
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.StorageClass, r.CNPGCluster.Spec.StorageConfiguration.StorageClass) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.Size, r.CNPGCluster.Spec.StorageConfiguration.Size) ||
 		!reflect.DeepEqual(existingClusterSpec.Monitoring, r.CNPGCluster.Spec.Monitoring) ||
-		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.Parameters, r.CNPGCluster.Spec.PostgresConfiguration.Parameters)
+		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.Parameters, r.CNPGCluster.Spec.PostgresConfiguration.Parameters) ||
+		!reflect.DeepEqual(existingClusterSpec.Backup, r.CNPGCluster.Spec.Backup)
 }

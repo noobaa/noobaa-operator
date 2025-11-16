@@ -33,5 +33,25 @@ func init() {
 			APIVersion: "postgresql.cnpg.noobaa.io/v1",
 			Kind:       "ImageCatalogList",
 		},
+	}, &cnpgv1.ScheduledBackup{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "postgresql.cnpg.noobaa.io/v1",
+			Kind:       "ScheduledBackup",
+		},
+	}, &cnpgv1.ScheduledBackupList{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "postgresql.cnpg.noobaa.io/v1",
+			Kind:       "ScheduledBackupList",
+		},
+	}, &cnpgv1.Backup{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "postgresql.cnpg.noobaa.io/v1",
+			Kind:       "Backup",
+		},
+	}, &cnpgv1.BackupList{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "postgresql.cnpg.noobaa.io/v1",
+			Kind:       "BackupList",
+		},
 	})
 }

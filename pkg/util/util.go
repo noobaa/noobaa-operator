@@ -31,6 +31,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	obv1 "github.com/kube-object-storage/lib-bucket-provisioner/pkg/apis/objectbucket.io/v1alpha1"
+	storagesnapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	nbapis "github.com/noobaa/noobaa-operator/v5/pkg/apis"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
@@ -197,6 +198,7 @@ func init() {
 	Panic(kedav1alpha1.AddToScheme(scheme.Scheme))
 	Panic(apiregistration.AddToScheme(scheme.Scheme))
 	Panic(configv1.AddToScheme(scheme.Scheme))
+	Panic(storagesnapshotv1.AddToScheme(scheme.Scheme))
 	if os.Getenv("USE_CNPG_API_GROUP") == "true" {
 		// add vanilla cnpg scheme
 		Panic(cnpgv1.AddToScheme(scheme.Scheme))
