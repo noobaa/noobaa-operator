@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: warp-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: warp-job
+        env:
+          - name: WARP_ACCESS_KEY
+          - name: WARP_SECRET_KEY
+        image: "minio/warp:latest"
+        imagePullPolicy: Always
+      restartPolicy: Never
+  backoffLimit: 0
+
