@@ -594,3 +594,38 @@ func GetCnpgClusterObj(namespace string, name string) *cnpgv1.Cluster {
 	}
 	return cnpgCluster
 }
+
+func GetCnpgScheduledBackupObj(namespace string, name string) *cnpgv1.ScheduledBackup {
+	cnpgScheduledBackup := &cnpgv1.ScheduledBackup{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: CnpgAPIVersion,
+			Kind:       "ScheduledBackup",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: cnpgv1.ScheduledBackupSpec{},
+	}
+	return cnpgScheduledBackup
+}
+
+func GetCnpgBackupObj(namespace string, name string) *cnpgv1.Backup {
+	cnpgBackup := &cnpgv1.Backup{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: CnpgAPIVersion,
+			Kind:       "Backup",
+		},
+	}
+	return cnpgBackup
+}
+
+func GetCnpgBackupListObj(namespace string) *cnpgv1.BackupList {
+	cnpgBackupList := &cnpgv1.BackupList{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: CnpgAPIVersion,
+			Kind:       "BackupList",
+		},
+	}
+	return cnpgBackupList
+}

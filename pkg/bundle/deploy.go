@@ -6509,7 +6509,7 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "6d98627f4b3c9834710856edf01c6ed71fcefe1e78b15189343423ecc524e18d"
+const Sha256_deploy_role_yaml = "22c739e1b81a9d3c1b167b89c0e8e6757b2981b1434071aa4441332ec4c68d64"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6673,6 +6673,15 @@ rules:
   - '*'
   verbs: 
   - '*'
+- apiGroups:
+  - snapshot.storage.k8s.io
+  resources:
+  - volumesnapshots
+  verbs:
+  - get
+  - list
+  - watch
+  - delete
 `
 
 const Sha256_deploy_role_binding_yaml = "59a2627156ed3db9cd1a4d9c47e8c1044279c65e84d79c525e51274329cb16ff"

@@ -160,3 +160,12 @@ rules:
   - '*'
   verbs: 
   - '*'
+- apiGroups:
+  - snapshot.storage.k8s.io
+  resources:
+  - volumesnapshots
+  verbs:
+  - get
+  - list
+  - watch
+  - delete
