@@ -19,3 +19,4 @@ noobaa.cfg.yaml
 .DS_Store
 
 *.IGNORE
+.idea/
