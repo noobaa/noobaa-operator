@@ -452,6 +452,12 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				c.Env[j].ValueFrom = nil
 			}
 
+		case "POSTGRES_HOST_RO":
+			if r.shouldReconcileCNPGCluster() {
+				//RO host is not part of the cnpg app secret, so we're setting it here
+				c.Env[j].Value = r.CNPGCluster.Name + "-ro"
+			}
+
 		case "DB_TYPE":
 			c.Env[j].Value = "postgres"
 
