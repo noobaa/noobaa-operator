@@ -454,16 +454,8 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 
 		case "POSTGRES_HOST_RO":
 			if r.shouldReconcileCNPGCluster() {
-				//RO host is not part of the cnpg app secret, so we're getting it here from the service
-				services := &corev1.ServiceList{}
-				cnpg_label, _ := labels.Parse("app=noobaa,cnpg.io/cluster=noobaa-db-pg-cluster")
-				util.KubeList(services, &client.ListOptions{Namespace: r.NooBaaPostgresDB.Namespace, LabelSelector: cnpg_label})
-				for _, service := range services.Items {
-					if (service.Spec.Selector["cnpg.io/instanceRole"] == "replica") {
-						c.Env[j].Value = service.Name
-						break
-					}
-				}
+				//RO host is not part of the cnpg app secret, so we're setting it here
+				c.Env[j].Value = r.CNPGCluster.Name + "-ro"
 			}
 
 		case "DB_TYPE":
