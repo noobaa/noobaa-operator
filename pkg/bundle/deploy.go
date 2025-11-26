@@ -6391,7 +6391,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "44022d49f1e87196410ff28589fca9001c25928957dfa3db208eab58220d364d"
+const Sha256_deploy_operator_yaml = "49b1f15cdda417e6cd5b99dd162ca666e24bf18184f5abc45eaaa690da6d3898"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -6399,6 +6399,8 @@ metadata:
   name: noobaa-operator
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       noobaa-operator: deployment

@@ -48,7 +48,7 @@ func RunOperator(cmd *cobra.Command, args []string) {
 	// Probe address from CLI flag (defaults to :8081)
 	probeAddr := os.Getenv("HEALTH_PROBE_BIND_ADDRESS")
 	if probeAddr == "" {
-		probeAddr = ":8081"
+		probeAddr = "0.0.0.0:8081"
 	}
 
 	config := util.KubeConfig()
