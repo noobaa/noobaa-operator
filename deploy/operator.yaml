@@ -4,6 +4,8 @@ metadata:
   name: noobaa-operator
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       noobaa-operator: deployment
