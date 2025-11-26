@@ -567,7 +567,6 @@ func (r *Reconciler) ReadSystemInfo() error {
 			))
 		}
 
-		const defaultVolumeSize = int64(20 * 1024 * 1024 * 1024) // 20Gi=20*1024^3
 		var volumeSize int64
 		pvPool := r.BackingStore.Spec.PVPool
 		if pvPool.VolumeResources != nil {
@@ -1374,7 +1373,14 @@ func (r *Reconciler) updatePvcTemplate() {
 	} else if r.NooBaa.Spec.PVPoolDefaultStorageClass != nil {
 		r.PvcAgentTemplate.Spec.StorageClassName = r.NooBaa.Spec.PVPoolDefaultStorageClass
 	}
-	r.PvcAgentTemplate.Spec.Resources = *r.BackingStore.Spec.PVPool.VolumeResources
+	var volumeSize resource.Quantity
+	pvPool := r.BackingStore.Spec.PVPool
+	if pvPool.VolumeResources != nil {
+		volumeSize = pvPool.VolumeResources.Requests[corev1.ResourceStorage]
+	} else {
+		volumeSize = *resource.NewQuantity(defaultVolumeSize, resource.BinarySI)
+	}
+	r.PvcAgentTemplate.Spec.Resources.Requests[corev1.ResourceStorage] = volumeSize
 	r.PvcAgentTemplate.Labels = map[string]string{
 		"app":  "noobaa",
 		"pool": r.BackingStore.Name,
