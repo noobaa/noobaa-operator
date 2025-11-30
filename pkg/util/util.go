@@ -1237,7 +1237,7 @@ func GetAWSRegion() (string, error) {
 		"ap-southeast-3": "ap-southeast-3",
 		"ap-southeast-4": "ap-southeast-4",
 		"ap-southeast-5": "ap-southeast-5",
-		// Currently in AWS table there is no region ap-southeast-6
+		"ap-southeast-6": "ap-southeast-6",
 		"ap-southeast-7": "ap-southeast-7",
 		"ap-south-1":     "ap-south-1",
 		"ap-south-2":     "ap-south-2",
