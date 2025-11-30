@@ -616,6 +616,10 @@ func GetCnpgBackupObj(namespace string, name string) *cnpgv1.Backup {
 			APIVersion: CnpgAPIVersion,
 			Kind:       "Backup",
 		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
 	}
 	return cnpgBackup
 }
