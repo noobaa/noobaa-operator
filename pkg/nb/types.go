@@ -411,6 +411,8 @@ type CreateAccountParams struct {
 
 // CreateAccountReply is the reply of account_api.create_account()
 type CreateAccountReply struct {
+	Id         string         `json:"id"`
+	ARN        string         `json:"arn"`
 	Token      string         `json:"token"`
 	AccessKeys []S3AccessKeys `json:"access_keys"`
 }
