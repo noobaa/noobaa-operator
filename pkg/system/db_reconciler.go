@@ -32,16 +32,14 @@ const (
 
 // ReconcileCNPGCluster reconciles the CNPG cluster
 // There are several cases to handle:
-// 1. Reconciling a fresh install - No CNPG cluster and no previous DB to import from
+// 1. Reconciling a fresh install - No CNPG cluster and no DBRecovery configuration
 //   - In this case we need to create a new empty CNPG cluster
 //   - Create a new CNPG image catalog
 //   - Create a new CNPG cluster
 //
-// 2. Reconciling an upgrade from a version with a standalone DB - No CNPG cluster and DB statefulset exists
-//   - In this case we need to create a new CNPG cluster and import the DB from the previous statefulset
-//   - Import is done by providing externalCluster details in the CNPG cluster spec (https://cloudnative-pg.io/documentation/1.25/database_import/#the-microservice-type)
-//   - After Import is completed, cleanup the old DB resources. For now we only scale down the standalone DB pod to 0 replicas
-//   - All other pods (core, endpoints) should be stopped before starting the import
+// 2. Reconciling recovery from a snapshot - CNPG cluster was deleted by the user to initiate a recovery from a snapshot
+//   - In this case we need to create a new CNPG cluster and set the bootstrap configuration to recover from the snapshot
+//   - All other pods (core, endpoints) should be stopped before starting the recovery
 //
 // 3. Reconciling an existing CNPG cluster with no standalone DB - CNPG cluster exists and DB statefulset does not exist
 //   - If the major version is the same, check if the DB image is changed and update the ImageCatalog
@@ -149,8 +147,11 @@ func (r *Reconciler) reconcileDBCluster() error {
 
 	// Apply changes to the cluster resources. create or update the modified cluster
 	if r.CNPGCluster.UID == "" {
+		// If the cluster CR has not been created yet (UID = ""), it means one of two options.:
+		// 1. The cluster is being created for the first time
+		// 2. The cluster is being recovered from a snapshot
 
-		// Cluster resource is missing. Check if noobaa CR has a recovery configuration.
+		// Check if noobaa CR has a recovery configuration.
 		if r.NooBaa.Spec.DBSpec.DBRecovery == nil {
 			// No recovery configuration found, set bootstrap configuration to init a new DB
 			if r.CNPGCluster.Spec.Bootstrap == nil {
@@ -205,11 +206,11 @@ func (r *Reconciler) reconcileDBCluster() error {
 			r.cnpgLog("cluster spec is changed, updating cluster. diff: %v", diff)
 
 			currentDBClusterStatus := r.NooBaa.Status.DBStatus.DBClusterStatus
-			// avoid updating a cluster that is being created or imported.
+			// avoid updating a cluster that is being created.
 			// We might want to consider allowing this somehow for supportability (through annotation or something)
-			if currentDBClusterStatus == nbv1.DBClusterStatusCreating || currentDBClusterStatus == nbv1.DBClusterStatusImporting {
-				r.cnpgLog("the cluster spec was changed but the cluster creation or import is still in progress, skipping update")
-				return fmt.Errorf("cluster creation or import is still in progress, skipping update")
+			if currentDBClusterStatus == nbv1.DBClusterStatusCreating || currentDBClusterStatus == nbv1.DBClusterStatusRecovering {
+				r.cnpgLog("the cluster spec was changed but the cluster creation is still in progress, skipping update")
+				return fmt.Errorf("cluster creation is still in progress, skipping update")
 			}
 
 			r.cnpgLog("cluster spec is changed, updating cluster")
@@ -444,6 +445,7 @@ func (r *Reconciler) reconcileScheduledBackup() error {
 		scheduledBackup.Spec.Cluster.Name = r.CNPGCluster.Name
 		scheduledBackup.Spec.Method = cnpgv1.BackupMethodVolumeSnapshot
 		scheduledBackup.Spec.Online = &offlineBackup
+		scheduledBackup.Spec.Target = cnpgv1.BackupTargetStandby
 		if scheduledBackup.Status.LastScheduleTime != nil {
 			r.NooBaa.Status.DBStatus.BackupStatus.LastBackupTime = scheduledBackup.Status.LastScheduleTime
 		}

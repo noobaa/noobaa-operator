@@ -620,6 +620,7 @@ func GetCnpgBackupObj(namespace string, name string) *cnpgv1.Backup {
 			Name:      name,
 			Namespace: namespace,
 		},
+		Spec: cnpgv1.BackupSpec{},
 	}
 	return cnpgBackup
 }
