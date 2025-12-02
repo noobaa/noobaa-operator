@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
+	storagesnapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
 	"github.com/noobaa/noobaa-operator/v5/pkg/cnpg"
@@ -47,6 +49,7 @@ func Cmd() *cobra.Command {
 		CmdCreate(),
 		CmdDelete(),
 		CmdStatus(),
+		CmdDBBackup(),
 		CmdSetDebugLevel(),
 		CmdList(),
 		CmdReconcile(),
@@ -115,6 +118,18 @@ func CmdSetDebugLevel() *cobra.Command {
 		Run:   RunSetDebugLevel,
 		Args:  cobra.ExactArgs(1),
 	}
+	return cmd
+}
+
+// CmdDBBackup returns a CLI command
+func CmdDBBackup() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "db-backup",
+		Short: "Create a volume snapshot backup of the database",
+		Run:   RunDBBackup,
+		Args:  cobra.NoArgs,
+	}
+	cmd.Flags().String("name", "", "A custom name for the backup")
 	return cmd
 }
 
@@ -889,6 +904,85 @@ func RunSetDebugLevel(cmd *cobra.Command, args []string) {
 	fmt.Println("")
 	fmt.Printf("Debug level was set to %s successfully\n", args[0])
 	fmt.Println("Debug level is not persistent and is only effective for the currently running core and endpoints pods")
+}
+
+// RunDBBackup runs a CLI command
+func RunDBBackup(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	sys := &nbv1.NooBaa{
+		TypeMeta: metav1.TypeMeta{Kind: "NooBaa"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      options.SystemName,
+			Namespace: options.Namespace,
+		},
+	}
+
+	if !util.KubeCheck(sys) {
+		log.Fatalf("❌ System %q not found", options.SystemName)
+	}
+
+	if sys.Spec.DBSpec == nil {
+		log.Fatalf("❌ The system is not configured with a CNPG cluster")
+	}
+
+	if sys.Spec.DBSpec.DBBackup == nil || sys.Spec.DBSpec.DBBackup.VolumeSnapshot == nil {
+		log.Fatalf("❌ The system is not configured with a volume snapshot backup")
+	}
+
+	volumeSnapshotClass := sys.Spec.DBSpec.DBBackup.VolumeSnapshot.VolumeSnapshotClass
+	if volumeSnapshotClass == "" {
+		log.Fatalf("❌ The system is not configured with a volume snapshot class")
+	}
+
+	backupName, _ := cmd.Flags().GetString("name")
+	if backupName == "" {
+		backupName = sys.Name + pgClusterSuffix + "-backup-" + time.Now().Format("20060102150405")
+	}
+
+	offlineBackup := false
+	backup := cnpg.GetCnpgBackupObj(sys.Namespace, backupName)
+	backup.Spec.Cluster.Name = sys.Name + pgClusterSuffix
+	backup.Spec.Method = cnpgv1.BackupMethodVolumeSnapshot
+	backup.Spec.Online = &offlineBackup
+	backup.Spec.Target = cnpgv1.BackupTargetStandby
+
+	if !util.KubeCreateFailExisting(backup) {
+		log.Fatalf("❌ Backup %s failed to create", backupName)
+	}
+
+	log.Printf("✅ Backup object %s created successfully. Waiting for the volume snapshot to be created...\n", backupName)
+	log.Printf("You can monitor the backup status with the following command:\n")
+	log.Printf("kubectl -n %s get backups.postgresql.cnpg.noobaa.io %s", sys.Namespace, backupName)
+
+	// Create a context with timeout for polling
+	pollTimeout := 5 * time.Minute
+	pollCtx, cancel := context.WithTimeout(context.Background(), pollTimeout)
+	defer cancel()
+
+	// wait for the volume snapshot to be created
+	interval := time.Duration(3)
+	err := wait.PollUntilContextCancel(pollCtx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
+		volumeSnapshot := &storagesnapshotv1.VolumeSnapshot{}
+		volumeSnapshotErr := util.KubeClient().Get(util.Context(),
+			client.ObjectKey{Namespace: sys.Namespace, Name: backupName},
+			volumeSnapshot)
+		if errors.IsNotFound(volumeSnapshotErr) {
+			log.Printf("⏳ Volume snapshot %s not found yet", backupName)
+			return false, nil
+		}
+		if volumeSnapshotErr != nil {
+			return false, volumeSnapshotErr
+		}
+		return true, nil
+	})
+	if err != nil {
+		log.Fatalf("❌ Failed to wait for volume snapshot %s: %s", backupName, err)
+	}
+
+	log.Printf("✅ Volume snapshot %s created successfully\n", backupName)
+	log.Printf("You can view the volume snapshot with the following command:\n")
+	log.Printf("kubectl -n %s get volumesnapshots.snapshot.storage.k8s.io %s", sys.Namespace, backupName)
 }
 
 // RunReconcile runs a CLI command
