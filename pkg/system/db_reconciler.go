@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"time"
 
 	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	"github.com/go-test/deep"
@@ -17,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -74,24 +76,8 @@ func (r *Reconciler) ReconcileCNPGCluster() error {
 		r.NooBaa.Status.DBStatus.DBClusterStatus = nbv1.DBClusterStatusReady
 		r.NooBaa.Status.DBStatus.ActualVolumeSize = r.CNPGCluster.Spec.StorageConfiguration.Size
 
-		standaloneDBPod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      r.NooBaaPostgresDB.Name + "-0",
-				Namespace: r.NooBaaPostgresDB.Namespace,
-			},
-		}
-
-		if util.KubeCheckQuiet(standaloneDBPod) {
-			// stop the standalone DB pod. For now it is only scaled down to 0 replicas, to keep it around as backup
-			r.cnpgLog("Scaling down the standalone DB pod")
-			if err := r.ReconcileObject(r.NooBaaPostgresDB, func() error {
-				zeroReplicas := int32(0)
-				r.NooBaaPostgresDB.Spec.Replicas = &zeroReplicas
-				return nil
-			}); err != nil {
-				r.cnpgLogError("got error scaling down the standalone DB pod. error: %v", err)
-				return err
-			}
+		if r.NooBaa.Status.DBStatus.RecoveryStatus != nil {
+			r.NooBaa.Status.DBStatus.RecoveryStatus.Status = nbv1.DBRecoveryStatusCompleted
 		}
 
 	} else {
@@ -163,11 +149,25 @@ func (r *Reconciler) reconcileDBCluster() error {
 
 	// Apply changes to the cluster resources. create or update the modified cluster
 	if r.CNPGCluster.UID == "" {
-		// Cluster resource was not created yet. Create it and handle import if needed
 
-		if err := r.reconcileClusterCreateOrImport(); err != nil {
-			r.cnpgLogError("got error setting up cluster import. error: %v", err)
-			return err
+		// Cluster resource is missing. Check if noobaa CR has a recovery configuration.
+		if r.NooBaa.Spec.DBSpec.DBRecovery == nil {
+			// No recovery configuration found, set bootstrap configuration to init a new DB
+			if r.CNPGCluster.Spec.Bootstrap == nil {
+				r.CNPGCluster.Spec.Bootstrap = &cnpgv1.BootstrapConfiguration{
+					InitDB: &cnpgv1.BootstrapInitDB{
+						Database:      noobaaDBName,
+						Owner:         noobaaDBUser,
+						LocaleCollate: "C",
+					},
+				}
+			}
+		} else {
+			// Recovery configuration found, set bootstrap configuration to recover from the snapshot
+			if err := r.reconcileClusterRecovery(); err != nil {
+				r.cnpgLogError("got error setting up cluster recovery. error: %v", err)
+				return err
+			}
 		}
 
 		// create the cluster
@@ -179,12 +179,23 @@ func (r *Reconciler) reconcileDBCluster() error {
 		}
 
 		// update the DB status
-		if r.CNPGCluster.Spec.Bootstrap.InitDB.Import == nil {
+		if r.CNPGCluster.Spec.Bootstrap.Recovery == nil {
 			r.NooBaa.Status.DBStatus.DBClusterStatus = nbv1.DBClusterStatusCreating
 		} else {
-			r.NooBaa.Status.DBStatus.DBClusterStatus = nbv1.DBClusterStatusImporting
+			r.NooBaa.Status.DBStatus.DBClusterStatus = nbv1.DBClusterStatusRecovering
+			snapshotName := ""
+			if r.NooBaa.Spec.DBSpec.DBRecovery != nil {
+				snapshotName = r.NooBaa.Spec.DBSpec.DBRecovery.VolumeSnapshotName
+			} else if r.NooBaa.Status.DBStatus.RecoveryStatus != nil {
+				// fall back to previously recorded snapshot name, if any
+				snapshotName = r.NooBaa.Status.DBStatus.RecoveryStatus.SnapshotName
+			}
+			r.NooBaa.Status.DBStatus.RecoveryStatus = &nbv1.DBRecoveryStatus{
+				Status:       nbv1.DBRecoveryStatusRunning,
+				SnapshotName: snapshotName,
+				RecoveryTime: &metav1.Time{Time: time.Now()},
+			}
 		}
-
 	} else {
 		// Handle Cluster CRD changes
 
@@ -293,7 +304,11 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 				},
 			}
 		} else {
+			if r.CNPGCluster.Spec.Backup.VolumeSnapshot == nil {
+				r.CNPGCluster.Spec.Backup.VolumeSnapshot = &cnpgv1.VolumeSnapshotConfiguration{}
+			}
 			r.CNPGCluster.Spec.Backup.VolumeSnapshot.ClassName = backupSpec.VolumeSnapshot.VolumeSnapshotClass
+			r.CNPGCluster.Spec.Backup.VolumeSnapshot.Online = &offlineBackup
 		}
 	} else {
 		// Remove backup configuration if not specified
@@ -307,102 +322,67 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 
 }
 
-func (r *Reconciler) reconcileClusterCreateOrImport() error {
+// cleanupDBBackup removes the scheduled backup configuration if it exists
+func (r *Reconciler) cleanupDBBackup() error {
+	scheduledBackup := cnpg.GetCnpgScheduledBackupObj(r.CNPGCluster.Namespace, r.getBackupResourceName())
 
-	// The bootstrap configuration should only be set for the CR creation.
-
-	// set default bootstrap configuration
-	if r.CNPGCluster.Spec.Bootstrap == nil {
-		r.CNPGCluster.Spec.Bootstrap = &cnpgv1.BootstrapConfiguration{
-			InitDB: &cnpgv1.BootstrapInitDB{
-				Database:      noobaaDBName,
-				Owner:         noobaaDBUser,
-				LocaleCollate: "C",
-			},
-		}
-	}
-
-	// We first want to check if a standalone DB statefulset exists, and trigger import if so
-	util.KubeCheck(r.NooBaaPostgresDB)
-	if r.NooBaaPostgresDB.UID != "" {
-
-		r.cnpgLog("standalone DB statefulset found, setting up import")
-
-		// stop core and endpoints pods and wait for them to be terminated
-		numRunningPods, err := r.stopNoobaaPodsAndGetNumRunningPods()
-		if err != nil {
-			r.cnpgLogError("got error stopping noobaa-core and noobaa-endpoint pods. error: %v", err)
+	if util.KubeCheckQuiet(scheduledBackup) {
+		r.cnpgLog("removing ScheduledBackup %s", scheduledBackup.Name)
+		if err := r.Client.Delete(r.Ctx, scheduledBackup); err != nil && !errors.IsNotFound(err) {
 			return err
 		}
-		if numRunningPods != 0 {
-			r.cnpgLog("waiting for noobaa-core and noobaa-endpoint pods to be terminated")
-			return fmt.Errorf("waiting for noobaa-core and noobaa-endpoint pods to be terminated")
-		}
-
-		externalClusterName := r.NooBaaPostgresDB.Name
-		//setup once the pods are terminated, set import in the bootstrap configuration and continue to create the cluster
-		r.CNPGCluster.Spec.Bootstrap.InitDB.Import = &cnpgv1.Import{
-			Source: cnpgv1.ImportSource{
-				ExternalCluster: externalClusterName,
-			},
-			// microservice type - import only the nbcore database
-			Type: cnpgv1.MicroserviceSnapshotType,
-			Databases: []string{
-				noobaaDBName,
-			},
-		}
-
-		// provide the external cluster connection parameters
-		r.CNPGCluster.Spec.ExternalClusters = []cnpgv1.ExternalCluster{
-			{
-				Name: externalClusterName,
-				ConnectionParameters: map[string]string{
-					"host":   r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName + "." + r.NooBaaPostgresDB.Namespace + ".svc",
-					"user":   noobaaDBUser,
-					"dbname": noobaaDBName,
-				},
-				Password: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: r.SecretDB.Name,
-					},
-					Key: "password",
-				},
-			},
-		}
-
-		// cnpg will perform the import using the PV of the new DB instance. We need to make sure the PV is large enough.
-		// If the used percentage is over the threshold (currently 33%), double the size of the PV.
-		usedSpaceThreshold := 33
-		oldDbPodName := r.NooBaaPostgresDB.Name + "-0"
-		oldDbContainerName := r.NooBaaPostgresDB.Spec.Template.Spec.Containers[0].Name
-		oldDbMountPath := r.NooBaaPostgresDB.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath
-		percent, err := util.GetVolumeUsedPercent(options.Namespace, oldDbPodName, oldDbContainerName, oldDbMountPath)
-		if err != nil {
-			r.cnpgLogError("failed to get the existing DB volume used percentage. error: %v", err)
-			return err
-		}
-		if percent > usedSpaceThreshold {
-			// get the actual size of the PV from the PVC.
-			// Not using the requested size from noobaa CR, since it can be different from the actual due to manual resize that could have been done.
-			pvc := &corev1.PersistentVolumeClaim{}
-			pvc.Name = r.NooBaaPostgresDB.Spec.VolumeClaimTemplates[0].Name + "-" + oldDbPodName
-			pvc.Namespace = options.Namespace
-			if !util.KubeCheck(pvc) {
-				return fmt.Errorf("failed to get the existing DB PVC %s in namespace %s", pvc.Name, options.Namespace)
-			}
-			pvcSize := pvc.Status.Capacity[corev1.ResourceStorage]
-			existingPvcSize := pvcSize.String()
-			// set the cluster sorage size to double the size of the existing PVC
-			pvcSize.Mul(2)
-			r.cnpgLog("the existing DB PVC has %d%% used space, out of %s. setting the cluster storage size to %s to avoid import failure", percent, existingPvcSize, pvcSize.String())
-			r.CNPGCluster.Spec.StorageConfiguration.Size = pvcSize.String()
-		}
-		return nil
-	} else {
-		// No existing DB statefulset, set bootstrap to init with a new DB
-		r.cnpgLog("no existing DB statefulset found, configuring the cluster to bootstrap a new nbcore DB")
-		return nil
 	}
+	return nil
+}
+
+func (r *Reconciler) reconcileClusterRecovery() error {
+
+	r.cnpgLog("recovery configuration found, setting up cluster to recover from snapshot")
+
+	// set recovery status to pending
+	r.NooBaa.Status.DBStatus.RecoveryStatus = &nbv1.DBRecoveryStatus{
+		Status:       nbv1.DBRecoveryStatusPending,
+		SnapshotName: r.NooBaa.Spec.DBSpec.DBRecovery.VolumeSnapshotName,
+	}
+
+	// stop core and endpoints pods and wait for them to be terminated
+	numRunningPods, err := r.stopNoobaaPodsAndGetNumRunningPods()
+	if err != nil {
+		r.cnpgLogError("got error stopping noobaa-core and noobaa-endpoint pods. error: %v", err)
+		return err
+	}
+	if numRunningPods != 0 {
+		r.cnpgLog("waiting for noobaa-core and noobaa-endpoint pods to be terminated")
+		return fmt.Errorf("waiting for noobaa-core and noobaa-endpoint pods to be terminated")
+	}
+
+	r.cnpgLog("setting up cluster to recover from snapshot %q", r.NooBaa.Spec.DBSpec.DBRecovery.VolumeSnapshotName)
+
+	VolSnapshotAPIGroup := storagesnapshotv1.GroupName
+	//setup once the pods are terminated, set recovery in the bootstrap configuration and continue to create the cluster
+	r.CNPGCluster.Spec.Bootstrap = &cnpgv1.BootstrapConfiguration{
+		Recovery: &cnpgv1.BootstrapRecovery{
+			Database: noobaaDBName,
+			Owner:    noobaaDBUser,
+			VolumeSnapshots: &cnpgv1.DataSource{
+				Storage: corev1.TypedLocalObjectReference{
+					Kind:     "VolumeSnapshot",
+					Name:     r.NooBaa.Spec.DBSpec.DBRecovery.VolumeSnapshotName,
+					APIGroup: &VolSnapshotAPIGroup,
+				},
+			},
+		},
+	}
+
+	// delete the existing scheduled backup configuration to avoid a creation of a new snapshot while recovering
+	if err := r.cleanupDBBackup(); err != nil {
+		r.cnpgLogError("got error cleaning up existing backup resources. error: %v", err)
+		return err
+	}
+
+	r.cnpgLog("recovery configuration set, continuing to create the cluster")
+
+	return nil
 
 }
 
@@ -444,7 +424,7 @@ func (r *Reconciler) reconcileDBBackup() error {
 }
 
 func (r *Reconciler) getBackupResourceName() string {
-	return r.CNPGCluster.Name + "-backup"
+	return r.CNPGCluster.Name + "-scheduled-backup"
 }
 
 func (r *Reconciler) reconcileScheduledBackup() error {
@@ -481,52 +461,46 @@ func (r *Reconciler) reconcileBackupRetention() error {
 		return nil
 	}
 
-	// list all backupResources created as part of the scheduled backup
-	backups, err := r.listBackupResourcesOrderByCreate()
+	// list all snapshots created as part of the scheduled backup
+	snapshots, err := r.listVolumeSnapshotsOrderByCreate()
 	if err != nil {
 		r.cnpgLogError("got error listing cluster volume snapshots. error: %v", err)
 		return err
 	}
-	totalSnapshots := len(backups.Items)
-	avaialableItems := backups.Items
+	totalSnapshots := len(snapshots)
+	availableItems := snapshots
 	if totalSnapshots > maxSnapshots {
 		numToDelete := totalSnapshots - maxSnapshots
-		avaialableItems = avaialableItems[numToDelete:]
-		r.cnpgLog("found %d backups, maxSnapshots is %d, deleting the oldest %d backups", totalSnapshots, maxSnapshots, numToDelete)
+		availableItems = availableItems[numToDelete:]
+		r.cnpgLog("found %d snapshots, maxSnapshots is %d, deleting the oldest %d snapshots", totalSnapshots, maxSnapshots, numToDelete)
 		// delete the oldest backups
-		for _, backup := range backups.Items[:numToDelete] {
-			snapshotName := backup.Name
-			if len(backup.Status.BackupSnapshotStatus.Elements) > 0 {
-				// although the expected snapshot name is the same as the backup name, take it from the backup status to be on the safe side
-				snapshotName = backup.Status.BackupSnapshotStatus.Elements[0].Name
+		for _, snapshot := range snapshots[:numToDelete] {
+			if r.NooBaa.Spec.DBSpec.DBRecovery != nil && r.NooBaa.Spec.DBSpec.DBRecovery.VolumeSnapshotName == snapshot.Name {
+				r.cnpgLog("skipping deletion of recovery snapshot %s", snapshot.Name)
+				availableItems = append(availableItems, snapshot)
+				continue
 			}
-
-			r.cnpgLog("deleting snapshot %s", snapshotName)
-			// if encountering an error we only report it and continue with the reconciliation
-			if err := r.Client.Delete(r.Ctx, &storagesnapshotv1.VolumeSnapshot{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      snapshotName,
-					Namespace: r.CNPGCluster.Namespace,
-				},
-			}); err != nil {
-				r.cnpgLogError("got error deleting snapshot %s. error: %v", snapshotName, err)
+			// delete the snapshot
+			r.cnpgLog("deleting snapshot %s", snapshot.Name)
+			// if encountered an error we only report it and continue with the reconciliation
+			if err := r.Client.Delete(r.Ctx, &snapshot); err != nil && !errors.IsNotFound(err) {
+				r.cnpgLogError("got error deleting snapshot %s. error: %v", snapshot.Name, err)
 				// skipping the deletion of the backup so we can try to delete again next time
 				continue
 			}
-
-			r.cnpgLog("deleting backup %s", backup.Name)
-			if err := r.Client.Delete(r.Ctx, &backup); err != nil {
-				r.cnpgLogError("got error deleting backup %s. error: %v", backup.Name, err)
-				continue
-			}
 			totalSnapshots--
+			// delete the coresponding backup resource
+			backup := cnpg.GetCnpgBackupObj(r.CNPGCluster.Namespace, snapshot.Name)
+			if err := r.Client.Delete(r.Ctx, backup); err != nil && !errors.IsNotFound(err) {
+				r.cnpgLogError("got error deleting backup %s. error: %v", backup.Name, err)
+			}
 		}
 	}
 
 	// update the backup status
 	r.NooBaa.Status.DBStatus.BackupStatus.TotalSnapshots = totalSnapshots
 	avaiallableSnapshots := []string{}
-	for _, item := range avaialableItems {
+	for _, item := range availableItems {
 		avaiallableSnapshots = append(avaiallableSnapshots, item.Name)
 	}
 	r.NooBaa.Status.DBStatus.BackupStatus.AvailableSnapshots = avaiallableSnapshots
@@ -534,40 +508,38 @@ func (r *Reconciler) reconcileBackupRetention() error {
 	return nil
 }
 
-func (r *Reconciler) listBackupResourcesOrderByCreate() (*cnpgv1.BackupList, error) {
-	backupResources := cnpg.GetCnpgBackupListObj(r.CNPGCluster.Namespace)
-	// list all backup resources having the label cnpg.io/scheduled-backup: <scheduled-backup-name>
-	if err := r.Client.List(r.Ctx, backupResources, client.InNamespace(r.CNPGCluster.Namespace), client.MatchingLabels{
-		"cnpg.io/scheduled-backup": r.getBackupResourceName(),
+// listVolumeSnapshotsOrderByCreate lists all volume snapshots of the scheduled backup, ordered by creation timestamp
+func (r *Reconciler) listVolumeSnapshotsOrderByCreate() ([]storagesnapshotv1.VolumeSnapshot, error) {
+	volumeSnapshots := storagesnapshotv1.VolumeSnapshotList{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: storagesnapshotv1.GroupName,
+			Kind:       "VolumeSnapshotList",
+		},
+	}
+
+	// list all volume snapshots having the label cnpg.io/cluster: <cluster-name>
+	if err := r.Client.List(r.Ctx, &volumeSnapshots, &client.ListOptions{
+		Namespace: r.CNPGCluster.Namespace,
+		LabelSelector: labels.SelectorFromValidatedSet(map[string]string{
+			"cnpg.io/cluster": r.CNPGCluster.Name,
+		}),
 	}); err != nil {
-		r.cnpgLogError("got error listing backup resources. error: %v", err)
+		r.cnpgLogError("got error listing volume snapshots. error: %v", err)
 		return nil, err
 	}
-	// filter to only include completed backups (MatchingFields requires field index which isn't configured)
-	filteredItems := []cnpgv1.Backup{}
-	for _, backup := range backupResources.Items {
-		if backup.Status.Phase == cnpgv1.BackupPhaseCompleted {
-			filteredItems = append(filteredItems, backup)
+
+	// filter the list by name. include only snapshots starting with the scheduled backup name
+	filteredItems := []storagesnapshotv1.VolumeSnapshot{}
+	for _, snapshot := range volumeSnapshots.Items {
+		if strings.HasPrefix(snapshot.Name, r.getBackupResourceName()) {
+			filteredItems = append(filteredItems, snapshot)
 		}
 	}
 	// sort the list by creation timestamp
-	slices.SortFunc(filteredItems, func(a, b cnpgv1.Backup) int {
+	slices.SortFunc(filteredItems, func(a, b storagesnapshotv1.VolumeSnapshot) int {
 		return a.CreationTimestamp.Compare(b.CreationTimestamp.Time)
 	})
-	backupResources.Items = filteredItems
-	return backupResources, nil
-}
-
-func (r *Reconciler) cleanupDBBackup() error {
-	scheduledBackup := cnpg.GetCnpgScheduledBackupObj(r.CNPGCluster.Namespace, r.getBackupResourceName())
-
-	if util.KubeCheckQuiet(scheduledBackup) {
-		r.cnpgLog("removing ScheduledBackup %s", scheduledBackup.Name)
-		if err := r.Client.Delete(r.Ctx, scheduledBackup); err != nil && !errors.IsNotFound(err) {
-			return err
-		}
-	}
-	return nil
+	return filteredItems, nil
 }
 
 func (r *Reconciler) setPostgresConfig() {
