@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -2409,4 +2410,21 @@ func MakeAuthToken(payload map[string]any, secret []byte) (string, error) {
 	}
 
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, filtered).SignedString(secret)
+}
+
+func Map[T any, U any](slice []T, fn func(T) U) []U {
+	result := make([]U, len(slice))
+	for idx, item := range slice {
+		result[idx] = fn(item)
+	}
+
+	return result
+}
+
+func OnSignal(cb func(), signals ...os.Signal) {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, signals...)
+	<-signalChan
+
+	cb()
 }

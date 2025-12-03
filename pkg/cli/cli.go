@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/backingstore"
+	"github.com/noobaa/noobaa-operator/v5/pkg/bench"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucket"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/cnpg"
@@ -27,6 +28,8 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/pkg/version"
 	"github.com/sirupsen/logrus"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -59,6 +62,8 @@ const ASCIILogo2 = `
 
 // Run runs
 func Run() {
+	log.SetLogger(zap.New())
+
 	err := Cmd().Execute()
 	if err != nil {
 		os.Exit(1)
@@ -147,6 +152,7 @@ Load noobaa completion to bash:
 			pvstore.Cmd(),
 			crd.Cmd(),
 			olm.Cmd(),
+			bench.Cmd(),
 		},
 	}}
 
