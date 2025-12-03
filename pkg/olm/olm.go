@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -810,6 +811,15 @@ func addCnpgToCSV(csv *operv1.ClusterServiceVersion, csvParams *generateCSVParam
 		Name:  "WEBHOOK_CERT_DIR",
 		Value: "/apiserver.local.config/certificates",
 	})
+
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.Containers[0].Resources.Limits = corev1.ResourceList{
+		corev1.ResourceCPU:    resource.MustParse("100m"),
+		corev1.ResourceMemory: resource.MustParse("300Mi"),
+	}
+	resources.CnpgOperatorDeployment.Spec.Template.Spec.Containers[0].Resources.Requests = corev1.ResourceList{
+		corev1.ResourceCPU:    resource.MustParse("100m"),
+		corev1.ResourceMemory: resource.MustParse("300Mi"),
+	}
 
 	if csvParams.IsForODF {
 		// add tolerations to the cnpg operator deployment
