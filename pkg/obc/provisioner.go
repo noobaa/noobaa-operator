@@ -680,6 +680,7 @@ func (r *BucketRequest) CreateAccount() error {
 			SecretAccessKey: string(accessKeys.SecretKey),
 		},
 	}
+	r.OB.Spec.AdditionalState["arn"] = accountInfo.ARN
 
 	log.Infof("✅ Successfully created account %q with access to bucket %q", r.AccountName, r.BucketName)
 	return nil

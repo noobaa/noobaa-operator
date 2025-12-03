@@ -380,6 +380,7 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 			r.Secret.StringData["auth_token"] = token
 			r.Secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
 			r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
+			r.Secret.StringData["ARN"] = string(accountInfo.ARN)
 		}
 	} else {
 		var accessKeys nb.S3AccessKeys
@@ -398,6 +399,7 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 		r.Secret.StringData = map[string]string{}
 		r.Secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
 		r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
+		r.Secret.StringData["ARN"] = string(accountInfo.ARN)
 	}
 	r.Own(r.Secret)
 	err = r.Client.Create(r.Ctx, r.Secret)

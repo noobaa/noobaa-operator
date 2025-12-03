@@ -483,13 +483,16 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	for k, v := range secret.StringData {
 		if v != "" {
 			//In admin secret there is also the password, email and system that we do not want to print
-			if k == "AWS_ACCESS_KEY_ID" || k == "AWS_SECRET_ACCESS_KEY" {
+			switch k {
+			case "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY":
 				if options.ShowSecrets {
 					fmt.Printf("  %-22s : %s\n", k, v)
 				} else {
 					fmt.Printf("  %-22s : %s\n", k, nb.MaskedString(v))
 				}
 				credsEnv += k + "=" + v + " "
+			case "ARN":
+				fmt.Printf("  %-22s : %s\n", k, v)
 			}
 		}
 	}
