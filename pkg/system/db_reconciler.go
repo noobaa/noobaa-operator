@@ -572,9 +572,14 @@ func (r *Reconciler) setPostgresConfig() {
 	// a reasonable value for shared_buffers when mem>1GB is 25% of the total memory (https://www.postgresql.org/docs/9.1/runtime-config-resource.html)
 	// if resources are not specified, we will use the default value
 	if r.NooBaa.Spec.DBResources != nil {
-		requiredDBMemMB := r.NooBaa.Spec.DBSpec.DBResources.Requests.Memory().ScaledValue(resource.Mega)
-		sharedBuffersMB := requiredDBMemMB / 4
-		desiredParameters["shared_buffers"] = fmt.Sprintf("%dMB", sharedBuffersMB)
+		// if memory is not specified, set shared_buffers to 1GB
+		if r.NooBaa.Spec.DBSpec.DBResources.Requests == nil || r.NooBaa.Spec.DBSpec.DBResources.Requests.Memory() == nil {
+			desiredParameters["shared_buffers"] = "1GB"
+		} else {
+			requiredDBMemMB := r.NooBaa.Spec.DBSpec.DBResources.Requests.Memory().ScaledValue(resource.Mega)
+			sharedBuffersMB := requiredDBMemMB / 4
+			desiredParameters["shared_buffers"] = fmt.Sprintf("%dMB", sharedBuffersMB)
+		}
 	}
 
 	// set any parameters from DBSpec.DBConf in overrideParameters
