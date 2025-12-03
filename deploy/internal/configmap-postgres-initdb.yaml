@@ -45,7 +45,7 @@ data:
           set -e
           sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
           su postgres -c "bash -x /usr/bin/run-postgresql" &
-          THRESHOLD=33
+          THRESHOLD=25
           USE=$(df -h --output=pcent "/$HOME/data" | tail -n 1 | tr -d '[:space:]%')
           # Check if the used space is more than the threshold
           if [ "$USE" -gt "$THRESHOLD" ]; then
@@ -78,7 +78,7 @@ data:
           set -e
           PGDATA=$HOME/data/userdata
           PGDATA_12=$HOME/data/userdata-12
-          THRESHOLD=33
+          THRESHOLD=25
           USE=$(df -h --output=pcent "/$HOME/data" | tail -n 1 | tr -d '[:space:]%')
           # Check if the used space is more than the threshold
           if [ "$USE" -gt "$THRESHOLD" ]; then
