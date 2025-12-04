@@ -18,6 +18,34 @@ const (
 
 // ValidateBackingStore validates create validations on resource Backinstore
 func ValidateBackingStore(bs nbv1.BackingStore) error {
+	//Ensure that the Spec contains the expected sub-spec for the declared type
+	switch bs.Spec.Type {
+	case nbv1.StoreTypeAWSS3:
+		if bs.Spec.AWSS3 == nil {
+			return util.ValidationError{Msg: "AWSS3 spec must be provided for type aws-s3"}
+		}
+	case nbv1.StoreTypeS3Compatible:
+		if bs.Spec.S3Compatible == nil {
+			return util.ValidationError{Msg: "S3Compatible spec must be provided for type s3-compatible"}
+		}
+	case nbv1.StoreTypeIBMCos:
+		if bs.Spec.IBMCos == nil {
+			return util.ValidationError{Msg: "IBMCos spec must be provided for type ibm-cos"}
+		}
+	case nbv1.StoreTypeAzureBlob:
+		if bs.Spec.AzureBlob == nil {
+			return util.ValidationError{Msg: "AzureBlob spec must be provided for type azure-blob"}
+		}
+	case nbv1.StoreTypeGoogleCloudStorage:
+		if bs.Spec.GoogleCloudStorage == nil {
+			return util.ValidationError{Msg: "GoogleCloudStorage spec must be provided for type google-cloud-storage"}
+		}
+	case nbv1.StoreTypePVPool:
+		if bs.Spec.PVPool == nil {
+			return util.ValidationError{Msg: "PVPool spec must be provided for type pv-pool"}
+		}
+	}
+
 	if err := ValidateBSEmptySecretName(bs); err != nil {
 		return err
 	}
