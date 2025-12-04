@@ -19,6 +19,34 @@ const (
 
 // ValidateNamespaceStore validates namespacestore configuration
 func ValidateNamespaceStore(nsStore *nbv1.NamespaceStore) error {
+	// ensure that the Spec contains the expected sub-spec for the declared type
+	switch nsStore.Spec.Type {
+	case nbv1.NSStoreTypeAWSS3:
+		if nsStore.Spec.AWSS3 == nil {
+			return util.ValidationError{Msg: "AWSS3 spec must be provided for type aws-s3"}
+		}
+	case nbv1.NSStoreTypeS3Compatible:
+		if nsStore.Spec.S3Compatible == nil {
+			return util.ValidationError{Msg: "S3Compatible spec must be provided for type s3-compatible"}
+		}
+	case nbv1.NSStoreTypeIBMCos:
+		if nsStore.Spec.IBMCos == nil {
+			return util.ValidationError{Msg: "IBMCos spec must be provided for type ibm-cos"}
+		}
+	case nbv1.NSStoreTypeAzureBlob:
+		if nsStore.Spec.AzureBlob == nil {
+			return util.ValidationError{Msg: "AzureBlob spec must be provided for type azure-blob"}
+		}
+	case nbv1.NSStoreTypeGoogleCloudStorage:
+		if nsStore.Spec.GoogleCloudStorage == nil {
+			return util.ValidationError{Msg: "GoogleCloudStorage spec must be provided for type google-cloud-storage"}
+		}
+	case nbv1.NSStoreTypeNSFS:
+		if nsStore.Spec.NSFS == nil {
+			return util.ValidationError{Msg: "NSFS spec must be provided for type nsfs"}
+		}
+	}
+
 	if err := ValidateNSEmptySecretName(*nsStore); err != nil {
 		return err
 	}
