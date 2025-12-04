@@ -108,8 +108,8 @@ func (r *Reconciler) ensureHPAV1Cleanup(log *logrus.Entry) error {
 		autoscalersName := item.Name
 		log.Infof("Delete HPAV1 autoscaler Resources with name %s", autoscalersName)
 		if !util.KubeDelete(&item) {
-			log.Errorf("Falied to delete HPAV1 existing %q autoscaler", autoscalersName)
-			return fmt.Errorf("falied to delete HPAV1 existing %q autoscaler", autoscalersName)
+			log.Errorf("Failed to delete HPAV1 existing %q autoscaler", autoscalersName)
+			return fmt.Errorf("failed to delete HPAV1 existing %q autoscaler", autoscalersName)
 		}
 	}
 	return nil
@@ -119,7 +119,7 @@ func (r *Reconciler) ensureKedaCleanup(log *logrus.Entry) error {
 	noobaaHpaSelector, _ := labels.Parse("app=noobaa")
 	noobaaKedaFieldSelector, _ := fields.ParseSelector("metadata.name=keda-hpa-noobaa")
 	// List autoscalers based on the label and name for keda ,
-	// Added name beause autoscalingv2 KubeList will fetch autoscaler with version v1 and v2
+	// Added name because autoscalingv2 KubeList will fetch autoscaler with version v1 and v2
 	autoscalersv2 := &autoscalingv2.HorizontalPodAutoscalerList{}
 	util.KubeList(autoscalersv2, &client.ListOptions{Namespace: r.Request.Namespace, LabelSelector: noobaaHpaSelector,
 		FieldSelector: noobaaKedaFieldSelector})
@@ -130,8 +130,8 @@ func (r *Reconciler) ensureKedaCleanup(log *logrus.Entry) error {
 	log.Infof("Delete Keda autoscaler with name %s", autoscalersv2.Items[0].Name)
 	deleteKedaResources(r.Request.Namespace)
 	if !util.KubeDelete(&autoscalersv2.Items[0]) {
-		log.Errorf("Falied to delete Keda existing %q autoscaler", autoscalersv2.Items[0].Name)
-		return fmt.Errorf("Falied to delete Keda existing %q autoscaler", autoscalersv2.Items[0].Name)
+		log.Errorf("Failed to delete Keda existing %q autoscaler", autoscalersv2.Items[0].Name)
+		return fmt.Errorf("Failed to delete Keda existing %q autoscaler", autoscalersv2.Items[0].Name)
 	}
 	autoscalersv2 = &autoscalingv2.HorizontalPodAutoscalerList{}
 	util.KubeList(autoscalersv2, &client.ListOptions{Namespace: r.Request.Namespace, LabelSelector: noobaaHpaSelector,
@@ -162,8 +162,8 @@ func (r *Reconciler) ensureHPAV2Cleanup(log *logrus.Entry) error {
 			return err
 		}
 		if !util.KubeDelete(&item) {
-			log.Errorf("Falied to delete HPAV2 existing %q autoscaler", item.Name)
-			return fmt.Errorf("falied to delete HPAV2 existing %q autoscaler", item.Name)
+			log.Errorf("Failed to delete HPAV2 existing %q autoscaler", item.Name)
+			return fmt.Errorf("failed to delete HPAV2 existing %q autoscaler", item.Name)
 		}
 	}
 	return nil
@@ -256,7 +256,7 @@ func deleteHPAV2Resources(namespace string) error {
 func (r *Reconciler) autoscaleKeda(prometheus *monitoringv1.Prometheus) error {
 	log := r.Logger.WithField("func", "autoscaleKeda")
 	if !r.validateKeda() {
-		log.Errorf("❌  Keda deploymen not ready")
+		log.Errorf("❌  Keda deployment not ready")
 		return errors.New("Keda deployment not ready")
 	}
 	log.Infof("✅  Keda found")
@@ -272,7 +272,7 @@ func (r *Reconciler) autoscaleKeda(prometheus *monitoringv1.Prometheus) error {
 		}
 
 		//create ScaledObject
-		r.KedaScaled.Spec.Triggers[0].AuthenticationRef = &kedav1alpha1.ScaledObjectAuthRef{
+		r.KedaScaled.Spec.Triggers[0].AuthenticationRef = &kedav1alpha1.AuthenticationRef{
 			Name: r.KedaTriggerAuthentication.Name,
 		}
 		prometheusURL, err := getPrometheusURL(serviceAccountName, promethesNamespace)

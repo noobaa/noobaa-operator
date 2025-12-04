@@ -13,7 +13,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	semver "github.com/coreos/go-semver/semver"
-	dockerref "github.com/docker/distribution/reference"
+	dockerref "github.com/distribution/reference"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
