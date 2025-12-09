@@ -236,7 +236,7 @@ metadata:
 spec:
   image: noobaa/noobaa-core:5.9.0
   dbImage: centos/postgresql-12-centos7
-  dbConf: |+
+  dbConf: |
     max_connections = 1000
 ```
 ## Pod Topology Spread Constraints for Noobaa endpoint
