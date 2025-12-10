@@ -18,6 +18,11 @@ const (
 
 // ValidateBackingStore validates create validations on resource Backinstore
 func ValidateBackingStore(bs nbv1.BackingStore) error {
+	// Ensure that the Spec contains the expected sub-spec for the declared type
+	if err := ValidateBSInValidSpec(bs); err != nil {
+		return err
+	}
+
 	if err := ValidateBSEmptySecretName(bs); err != nil {
 		return err
 	}
@@ -44,6 +49,41 @@ func ValidateBackingStore(bs nbv1.BackingStore) error {
 		return ValidateSigVersion(bs.Spec.IBMCos.SignatureVersion)
 	case nbv1.StoreTypeAWSS3, nbv1.StoreTypeAzureBlob, nbv1.StoreTypeGoogleCloudStorage:
 		return nil
+	default:
+		return util.ValidationError{
+			Msg: "Invalid Backingstore type, please provide a valid Backingstore type",
+		}
+	}
+	return nil
+}
+
+// ValidateBSInValidSpec validates that the backingstore spec contains the expected sub-spec for the declared type
+func ValidateBSInValidSpec(bs nbv1.BackingStore) error {
+	switch bs.Spec.Type {
+	case nbv1.StoreTypeAWSS3:
+		if bs.Spec.AWSS3 == nil {
+			return util.ValidationError{Msg: "AWSS3 spec must be provided for aws-s3 type BackingStore"}
+		}
+	case nbv1.StoreTypeS3Compatible:
+		if bs.Spec.S3Compatible == nil {
+			return util.ValidationError{Msg: "S3Compatible spec must be provided for s3-compatible type BackingStore"}
+		}
+	case nbv1.StoreTypeIBMCos:
+		if bs.Spec.IBMCos == nil {
+			return util.ValidationError{Msg: "IBMCos spec must be provided for ibm-cos type BackingStore"}
+		}
+	case nbv1.StoreTypeAzureBlob:
+		if bs.Spec.AzureBlob == nil {
+			return util.ValidationError{Msg: "AzureBlob spec must be provided for azure-blob type BackingStore"}
+		}
+	case nbv1.StoreTypeGoogleCloudStorage:
+		if bs.Spec.GoogleCloudStorage == nil {
+			return util.ValidationError{Msg: "GoogleCloudStorage spec must be provided for google-cloud-storage type BackingStore"}
+		}
+	case nbv1.StoreTypePVPool:
+		if bs.Spec.PVPool == nil {
+			return util.ValidationError{Msg: "PVPool spec must be provided for pv-pool type BackingStore"}
+		}
 	default:
 		return util.ValidationError{
 			Msg: "Invalid Backingstore type, please provide a valid Backingstore type",

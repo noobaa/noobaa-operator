@@ -33,6 +33,31 @@ var _ = Describe("BackingStore admission unit tests", func() {
 
 	Describe("Validate create operations", func() {
 		Describe("General backingstore validations", func() {
+			Context("Invalid spec for declared type", func() {
+				It("Should Deny", func() {
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAWSS3,
+					}
+					err = validations.ValidateBSInValidSpec(*bs)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("AWSS3 spec must be provided for aws-s3 type BackingStore"))
+				})
+				It("Should Allow", func() {
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAWSS3,
+						AWSS3: &nbv1.AWSS3Spec{
+							TargetBucket: "some-target-bucket",
+							Secret: corev1.SecretReference{
+								Name:      "secret-name",
+								Namespace: "test",
+							},
+						},
+					}
+					err = validations.ValidateBSInValidSpec(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+
 			Context("Empty secret name", func() {
 				It("Should Deny", func() {
 					bs.Spec = nbv1.BackingStoreSpec{
@@ -384,6 +409,31 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 
 	Describe("Validate create operations", func() {
 		Describe("General namespacestore validations", func() {
+			Context("Invalid spec for declared type", func() {
+				It("Should Deny", func() {
+					ns.Spec = nbv1.NamespaceStoreSpec{
+						Type: nbv1.NSStoreTypeAWSS3,
+					}
+					err = validations.ValidateNSInValidSpec(*ns)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("AWSS3 spec must be provided for aws-s3 type Namespacestore"))
+				})
+				It("Should Allow", func() {
+					ns.Spec = nbv1.NamespaceStoreSpec{
+						Type: nbv1.NSStoreTypeAWSS3,
+						AWSS3: &nbv1.AWSS3Spec{
+							TargetBucket: "some-target-bucket",
+							Secret: corev1.SecretReference{
+								Name:      "secret-name",
+								Namespace: "test",
+							},
+						},
+					}
+					err = validations.ValidateNSInValidSpec(*ns)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+
 			Context("Empty secret name", func() {
 				It("Should Deny", func() {
 					ns.Spec = nbv1.NamespaceStoreSpec{
