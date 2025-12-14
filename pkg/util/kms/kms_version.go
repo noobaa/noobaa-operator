@@ -42,7 +42,7 @@ func (v *VersionSingleSecret) Get() error {
 	s, _, err := v.k.GetSecret(v.k.driver.Path(), v.k.driver.GetContext())
 	if err != nil {
 		// handle k8s get from non-existent secret
-		if strings.Contains(err.Error(), "not found") {
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "does not exist") {
 			return secrets.ErrInvalidSecretId
 		}
 		return err
@@ -105,7 +105,7 @@ func (v *VersionRotatingSecret) Get() error {
 	s, _, err := v.k.GetSecret(v.BackendSecretName(), v.k.driver.GetContext())
 	if err != nil {
 		// handle k8s get from non-existent secret
-		if strings.Contains(err.Error(), "not found") {
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "does not exist") {
 			return secrets.ErrInvalidSecretId
 		}
 		return err
@@ -115,7 +115,6 @@ func (v *VersionRotatingSecret) Get() error {
 	for k, v := range s {
 		rc[k] = v.(string)
 	}
-
 	v.data = rc
 	return nil
 }
