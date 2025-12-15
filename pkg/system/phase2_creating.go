@@ -549,6 +549,14 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			} else {
 				c.Env[j].Value = ""
 			}
+		case "BUCKET_LOW_CAPACITY_THRESHOLD":
+			if r.NooBaa.Spec.AlertThresholds != nil && r.NooBaa.Spec.AlertThresholds.BucketLowCapacityPercent != nil {
+				c.Env[j].Value = fmt.Sprintf("%d", *r.NooBaa.Spec.AlertThresholds.BucketLowCapacityPercent)
+			}
+		case "BUCKET_NO_CAPACITY_THRESHOLD":
+			if r.NooBaa.Spec.AlertThresholds != nil && r.NooBaa.Spec.AlertThresholds.BucketNoCapacityPercent != nil {
+				c.Env[j].Value = fmt.Sprintf("%d", *r.NooBaa.Spec.AlertThresholds.BucketNoCapacityPercent)
+			}
 		case "RESTRICT_RESOURCE_DELETION":
 			// check if provider mode is enabled and signal the core
 			annotationValue, annotationExists := util.GetAnnotationValue(r.NooBaa.Annotations, "MulticloudObjectGatewayProviderMode")

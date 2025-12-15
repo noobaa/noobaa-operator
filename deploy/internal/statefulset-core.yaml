@@ -133,6 +133,8 @@ spec:
             - name: POSTGRES_DBNAME_PATH
             - name: POSTGRES_PORT_PATH
             - name: GUARANTEED_LOGS_PATH
+            - name: BUCKET_LOW_CAPACITY_THRESHOLD
+            - name: BUCKET_NO_CAPACITY_THRESHOLD
             - name: DB_TYPE
               value: postgres
             - name: CONTAINER_PLATFORM
