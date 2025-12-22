@@ -166,7 +166,7 @@ spec:
         severity_level: warning
         storage_type: NooBaa
       expr: |
-        NooBaa_bucket_capacity{bucket_name=~".*"} > scalar(NooBaa_bucket_low_capacity_threshold)
+        NooBaa_bucket_capacity{bucket_name=~".*"} > 80
       for: 5m
       labels:
         severity: warning
@@ -178,7 +178,7 @@ spec:
         severity_level: warning
         storage_type: NooBaa
       expr: |
-        NooBaa_bucket_capacity{bucket_name=~".*"} > scalar(NooBaa_bucket_no_capacity_threshold)
+        NooBaa_bucket_capacity{bucket_name=~".*"} > 95
       for: 5m
       labels:
         severity: warning

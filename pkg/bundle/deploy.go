@@ -1425,7 +1425,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "f1a4b860a421f68197ad40dfa78bb41385061f60a2b19b9fa508b79b030204b1"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "c2e381b794a93ae27c9f685b0d5298fb2a7da46fcc7a54691484f8db657bc323"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -4722,7 +4722,7 @@ spec:
         secretName: AGENT_CONFIG_SECRET_NAME
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "7574f2061be1b119e2284107eafb4a2cc2af450586cf65bd6c8fbc286e626297"
+const Sha256_deploy_internal_prometheus_rules_yaml = "9dba8cfe7b655d3467b091531c95e6d34e8bd179f36ece6eaf3cff8ef73df23d"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -4892,7 +4892,7 @@ spec:
         severity_level: warning
         storage_type: NooBaa
       expr: |
-        NooBaa_bucket_capacity{bucket_name=~".*"} > scalar(NooBaa_bucket_low_capacity_threshold)
+        NooBaa_bucket_capacity{bucket_name=~".*"} > 80
       for: 5m
       labels:
         severity: warning
@@ -4904,7 +4904,7 @@ spec:
         severity_level: warning
         storage_type: NooBaa
       expr: |
-        NooBaa_bucket_capacity{bucket_name=~".*"} > scalar(NooBaa_bucket_no_capacity_threshold)
+        NooBaa_bucket_capacity{bucket_name=~".*"} > 95
       for: 5m
       labels:
         severity: warning
@@ -5320,7 +5320,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "8cfc554acaa5aa0559241d76bf64c53bf58560fd8c745ef839791114ffe0c09a"
+const Sha256_deploy_internal_statefulset_core_yaml = "3dba40ad6babb033832e999680f333849bf3f194a24aa1163587529315ebe8da"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5457,8 +5457,6 @@ spec:
             - name: POSTGRES_DBNAME_PATH
             - name: POSTGRES_PORT_PATH
             - name: GUARANTEED_LOGS_PATH
-            - name: BUCKET_LOW_CAPACITY_THRESHOLD
-            - name: BUCKET_NO_CAPACITY_THRESHOLD
             - name: DB_TYPE
               value: postgres
             - name: CONTAINER_PLATFORM
@@ -7276,3 +7274,4 @@ spec:
               containerPort: 7761
 
 `
+
