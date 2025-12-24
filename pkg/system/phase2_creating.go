@@ -438,6 +438,21 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 }
 
 func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
+	// Filter out NOOBAA_ROOT_SECRET from env vars to avoid exposing it in pod spec
+	// it is set via mounting the secret as files
+	// this will remove the leftover env var in case of an upgrade from older operator version (older than 4.21)
+	// as we preserve env vars on updates by merging the arrays and not replacing them.
+
+    if len(c.Env) > 0 {
+        filtered := c.Env[:0]
+        for _, env := range c.Env {
+            if env.Name != "NOOBAA_ROOT_SECRET" {
+                filtered = append(filtered, env)
+            }
+        }
+        c.Env = filtered
+    }
+
 	for j := range c.Env {
 		switch c.Env[j].Name {
 		case "AGENT_PROFILE":
