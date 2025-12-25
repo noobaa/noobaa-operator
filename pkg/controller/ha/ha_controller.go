@@ -71,6 +71,7 @@ func nodeNotReadyPredicate() predicate.Predicate {
 
 // Add creates a nodewatcher Controller and adds it to the Manager.
 func Add(mgr manager.Manager) error {
+	util.Logger().Info("Adding high availability controller (HAC)")
 
 	opts := controller.Options{
 		MaxConcurrentReconciles: 1,
