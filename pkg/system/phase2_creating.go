@@ -512,6 +512,10 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
 
 	podSpec := &r.CoreApp.Spec.Template.Spec
+	// set the termination grace period for noobaa-core pod.
+	// For now we set it to 1 second. A better approach should be to implement a graceful shutdown for the noobaa-core pod when SIGTERM is received.
+	terminationGracePeriodSeconds := int64(1)
+	podSpec.TerminationGracePeriodSeconds = &terminationGracePeriodSeconds
 	podSpec.ServiceAccountName = "noobaa-core"
 	coreImageChanged := false
 
