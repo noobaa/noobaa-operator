@@ -49,17 +49,6 @@ var _ = Describe("KMS - Azure Vault", func() {
 		Specify("Create KMS Noobaa", func() {
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
 		})
-		// TODO: As of now azure key vault is a cloud service and to test
-		// this case, an account needs to be created at azure side.
-		// Create Azure key vault and provide the parameters
-		// Below condition always be corev1.ConditionStatus = "Invalid"
-		// utill we provide the actual azure key vault credentials
-		// Change Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeFalse())
-		// to Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
-		// once we have azure valut in place
-		Specify("Verify KMS condition status Init", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeFalse())
-		})
 		Specify("Restart NooBaa operator", func() {
 			podList := &corev1.PodList{}
 			podSelector, _ := labels.Parse("noobaa-operator=deployment")

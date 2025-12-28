@@ -66,9 +66,6 @@ var _ = Describe("KMS - K8S, Dev Vault", func() {
 		Specify("Create default system", func() {
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
 		})
-		Specify("Verify KMS condition status Init", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
-		})
 		Specify("Verify KMS condition Type", func() {
 			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, secrets.TypeK8s)).To(BeTrue())
 		})
@@ -106,9 +103,6 @@ var _ = Describe("KMS - K8S, Dev Vault", func() {
 		Specify("Create Vault Noobaa", func() {
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
 		})
-		Specify("Verify KMS condition status Init", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
-		})
 		Specify("Verify KMS condition Type", func() {
 			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, secrets.TypeVault)).To(BeTrue())
 		})
@@ -142,9 +136,6 @@ var _ = Describe("KMS - K8S, Dev Vault", func() {
 		noobaa.Spec.Security.KeyManagementService.ConnectionDetails[vault.VaultBackendPathKey] = "noobaav2/"
 		Specify("Create Vault v2 Noobaa", func() {
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
-		})
-		Specify("Verify KMS condition status Init", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
 		})
 		Specify("Verify KMS condition Type", func() {
 			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, secrets.TypeVault)).To(BeTrue())

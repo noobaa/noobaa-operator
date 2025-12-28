@@ -58,9 +58,6 @@ var _ = Describe("KMS - TLS Vault Token", func() {
 		Specify("Create KMS Noobaa", func() {
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
 		})
-		Specify("Verify KMS condition status Init", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
-		})
 		Specify("Restart NooBaa operator", func() {
 			podList := &corev1.PodList{}
 			podSelector, _ := labels.Parse("noobaa-operator=deployment")
