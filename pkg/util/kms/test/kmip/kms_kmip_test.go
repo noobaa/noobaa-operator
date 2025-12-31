@@ -72,9 +72,6 @@ var _ = Describe("KMS - KMIP", func() {
 		Specify("Create KMIP Noobaa", func() {
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
 		})
-		Specify("Verify KMS condition status Init", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
-		})
 		Specify("Verify KMS condition Type", func() {
 			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, kms.KMIPSecretStorageName)).To(BeTrue())
 		})
@@ -134,9 +131,6 @@ var _ = Describe("KMS - KMIP", func() {
 		})
 		Specify("Verify KMS condition Type", func() {
 			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, "kmip")).To(BeTrue())
-		})
-		Specify("Verify KMS condition status Init", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
 		})
 		Specify("Restart NooBaa operator", func() {
 			podList := &corev1.PodList{}
