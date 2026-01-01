@@ -2166,7 +2166,7 @@ func CheckForIdenticalSecretsCreds(secret *corev1.Secret, storeTypeStr string) *
 				if usedSecret != nil && usedSecret.Name != secret.Name && string(bs.Spec.Type) == storeTypeStr {
 					found := true
 					for _, key := range mandatoryProp {
-						found = found && MapAlternateKeysValue(usedSecret.StringData, key) == secret.StringData[key]
+						found = found && MapAlternateKeysValue(usedSecret.StringData, key) == MapAlternateKeysValue(secret.StringData, key)
 					}
 					if found {
 						return usedSecret
@@ -2190,7 +2190,7 @@ func CheckForIdenticalSecretsCreds(secret *corev1.Secret, storeTypeStr string) *
 				if usedSecret != nil && usedSecret.Name != secret.Name && string(ns.Spec.Type) == storeTypeStr {
 					found := true
 					for _, key := range mandatoryProp {
-						found = found && MapAlternateKeysValue(usedSecret.StringData, key) == secret.StringData[key]
+						found = found && MapAlternateKeysValue(usedSecret.StringData, key) == MapAlternateKeysValue(secret.StringData, key)
 					}
 					if found {
 						return usedSecret
