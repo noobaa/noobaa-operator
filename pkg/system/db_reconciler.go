@@ -628,6 +628,10 @@ func setDesiredStorageConf(storageConfiguration *cnpgv1.StorageConfiguration, db
 	if storageConfiguration == nil {
 		return fmt.Errorf("storage configuration is nil")
 	}
+	if storageConfiguration.PersistentVolumeClaimTemplate == nil {
+		storageConfiguration.PersistentVolumeClaimTemplate = &corev1.PersistentVolumeClaimSpec{}
+	}
+	storageConfiguration.PersistentVolumeClaimTemplate.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOncePod}
 	if dbSpec.DBStorageClass != nil {
 		storageConfiguration.StorageClass = dbSpec.DBStorageClass
 	} else {
@@ -726,6 +730,7 @@ func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSp
 		!reflect.DeepEqual(existingClusterSpec.Resources, r.CNPGCluster.Spec.Resources) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.StorageClass, r.CNPGCluster.Spec.StorageConfiguration.StorageClass) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.Size, r.CNPGCluster.Spec.StorageConfiguration.Size) ||
+		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.PersistentVolumeClaimTemplate, r.CNPGCluster.Spec.StorageConfiguration.PersistentVolumeClaimTemplate) ||
 		!reflect.DeepEqual(existingClusterSpec.Monitoring, r.CNPGCluster.Spec.Monitoring) ||
 		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.Parameters, r.CNPGCluster.Spec.PostgresConfiguration.Parameters) ||
 		!reflect.DeepEqual(existingClusterSpec.Backup, r.CNPGCluster.Spec.Backup)
