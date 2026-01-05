@@ -5297,7 +5297,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "cd739b491f35e77972c55078e6b1ea1362f3897194ed9c89fcf962a1ad6a4c3c"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "53b628aaceffc1952efed5ed1131f16461fde6eb78c1a5f0f281f3efc30c30b4"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5376,7 +5376,7 @@ spec:
           app: noobaa
       spec:
         accessModes:
-          - ReadWriteOnce
+          - ReadWriteOncePod
         resources:
           requests:
             storage: 50Gi
@@ -6066,7 +6066,7 @@ s3 ls s3://first.bucket
 ` + "`" + `` + "`" + `` + "`" + `
 `
 
-const Sha256_deploy_olm_noobaa_operator_clusterserviceversion_yaml = "3b11ab7cce6a4dfc36ad13f75b37821c8e200aec4cf21007208948e74ce9cc44"
+const Sha256_deploy_olm_noobaa_operator_clusterserviceversion_yaml = "4316a5d3ea52ed0e82489ad380b596f41e3675737b5d5ad80e403759f39fc128"
 
 const File_deploy_olm_noobaa_operator_clusterserviceversion_yaml = `apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
@@ -6087,7 +6087,7 @@ metadata:
 spec:
   displayName: NooBaa Operator
   version: "999.999.999-placeholder"
-  minKubeVersion: 1.16.0
+  minKubeVersion: 1.22.0
   maturity: alpha
   provider:
     name: NooBaa
