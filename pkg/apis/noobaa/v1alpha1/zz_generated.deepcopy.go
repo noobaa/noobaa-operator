@@ -185,6 +185,21 @@ func (in *AutoscalerSpec) DeepCopy() *AutoscalerSpec {
 func (in *AzureBlobSpec) DeepCopyInto(out *AzureBlobSpec) {
 	*out = *in
 	out.Secret = in.Secret
+	if in.ClientId != nil {
+		in, out := &in.ClientId, &out.ClientId
+		*out = new(string)
+		**out = **in
+	}
+	if in.TenantId != nil {
+		in, out := &in.TenantId, &out.TenantId
+		*out = new(string)
+		**out = **in
+	}
+	if in.SubscriptionId != nil {
+		in, out := &in.SubscriptionId, &out.SubscriptionId
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
@@ -296,7 +311,7 @@ func (in *BackingStoreSpec) DeepCopyInto(out *BackingStoreSpec) {
 	if in.AzureBlob != nil {
 		in, out := &in.AzureBlob, &out.AzureBlob
 		*out = new(AzureBlobSpec)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.GoogleCloudStorage != nil {
 		in, out := &in.GoogleCloudStorage, &out.GoogleCloudStorage
@@ -1011,7 +1026,7 @@ func (in *NamespaceStoreSpec) DeepCopyInto(out *NamespaceStoreSpec) {
 	if in.AzureBlob != nil {
 		in, out := &in.AzureBlob, &out.AzureBlob
 		*out = new(AzureBlobSpec)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.GoogleCloudStorage != nil {
 		in, out := &in.GoogleCloudStorage, &out.GoogleCloudStorage
