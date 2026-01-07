@@ -4695,7 +4695,7 @@ spec:
         secretName: AGENT_CONFIG_SECRET_NAME
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "9dba8cfe7b655d3467b091531c95e6d34e8bd179f36ece6eaf3cff8ef73df23d"
+const Sha256_deploy_internal_prometheus_rules_yaml = "d98855ec6e97dc38b17ce7f8c25ab85b2c0572003c04ab042b7aa620bdb43f09"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -4857,27 +4857,14 @@ spec:
       for: 5m
       labels:
         severity: warning
-    - alert: NooBaaBucketLowCapacityState
+    - alert: NooBaaBackingStoreLowCapacityState
       annotations:
-        description: A NooBaa bucket {{ $labels.bucket_name }} is using {{ printf
-          "%0.0f" $value }}% of its capacity
-        message: A NooBaa Bucket Is In Low Capacity State
+        description: A NooBaa backing store {{ $labels.backing_store_name }} is in low capacity.
+        message: A NooBaa backing store is in low capacity state.
         severity_level: warning
         storage_type: NooBaa
       expr: |
-        NooBaa_bucket_capacity{bucket_name=~".*"} > 80
-      for: 5m
-      labels:
-        severity: warning
-    - alert: NooBaaBucketNoCapacityState
-      annotations:
-        description: A NooBaa bucket {{ $labels.bucket_name }} is using all of its
-          capacity
-        message: A NooBaa Bucket Is In No Capacity State
-        severity_level: warning
-        storage_type: NooBaa
-      expr: |
-        NooBaa_bucket_capacity{bucket_name=~".*"} > 95
+        NooBaa_backing_store_low_capacity{resource_name=~".*"} == 1
       for: 5m
       labels:
         severity: warning
