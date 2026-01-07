@@ -645,6 +645,8 @@ const (
 	EndpointTypeAwsSTS EndpointType = "AWSSTS"
 	// EndpointTypeAzure enum
 	EndpointTypeAzure EndpointType = "AZURE"
+	// EndpointTypeAzureSTS enum
+	EndpointTypeAzureSTS EndpointType = "AZURESTS"
 	// EndpointTypeGoogle enum
 	EndpointTypeGoogle EndpointType = "GOOGLE"
 	// EndpointTypeS3Compat enum
@@ -719,10 +721,10 @@ type CheckExternalConnectionParams struct {
 	Secret                 MaskedString              `json:"secret"`
 	AuthMethod             CloudAuthMethod           `json:"auth_method,omitempty"`
 	AWSSTSARN              string                    `json:"aws_sts_arn,omitempty"`
-	AzureSTSCredentials    *AzureSTSCredentials      `json:"azure_sts_credentials,omitempty"`
 	IgnoreNameAlreadyExist bool                      `json:"ignore_name_already_exist,omitempty"`
 	AzureLogAccessKeys     *AzureLogAccessKeysParams `json:"azure_log_access_keys,omitempty"`
 	Region                 string                    `json:"region,omitempty"`
+	AzureSTSCredentials    *AzureSTSCredentials      `json:"azure_sts_credentials,omitempty"`
 }
 
 // CheckExternalConnectionReply is the reply of account_api.check_external_connection()

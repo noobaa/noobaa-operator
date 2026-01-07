@@ -208,7 +208,24 @@ type AzureBlobSpec struct {
 
 	// Secret refers to a secret that provides the credentials
 	// The secret should define AccountName and AccountKey as provided by Azure Blob.
+	// +optional
 	Secret corev1.SecretReference `json:"secret"`
+
+	// Azure STS managed identity client id allows to get access token using NewWorkloadIdentityCredential
+	// +optional
+	ClientId *string `json:"clientId,omitempty"`
+
+	// Azure STS managed identity TenantId id allows to get access token using NewWorkloadIdentityCredential
+	// +optional
+	TenantId *string `json:"tenantId,omitempty"`
+
+	// Azure SubscriptionId is used to create storage account client.
+	// +optional
+	SubscriptionId *string `json:"subscriptionId,omitempty"`
+
+	// Azure storage account is created under this resource group
+	// +optional
+	ResourcegroupId *string `json:"resourcegroupId,omitempty"`
 }
 
 // GoogleCloudStorageSpec specifies a backing store of type google-cloud-storage
