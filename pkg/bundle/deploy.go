@@ -1425,7 +1425,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "38de565d60a559d52856d009eac5596b13fc2aa42ab12a4663c0a9a6ae2b5a5f"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "f1a4b860a421f68197ad40dfa78bb41385061f60a2b19b9fa508b79b030204b1"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2414,6 +2414,30 @@ spec:
                       TopologyKey (optional) the TopologyKey to pass as the domain for TopologySpreadConstraint and Affinity of noobaa components
                       It is used by the endpoints and the DB pods to control pods distribution between topology domains (host/zone)
                     type: string
+                type: object
+              alertThresholds:
+                description: |-
+                  AlertThresholds (optional) allows configuring thresholds for prometheus alerts
+                  these thresholds are exported as metrics and used by PrometheusRules to trigger alerts
+                properties:
+                  bucketLowCapacityPercent:
+                    description: |-
+                      BucketLowCapacityPercent is the threshold percentage for the bucket low capacity alert
+                      when bucket capacity usage exceeds this percentage, a warning alert is triggered
+                      default is 80 if not specified
+                    format: int32
+                    maximum: 100
+                    minimum: 0
+                    type: integer
+                  bucketNoCapacityPercent:
+                    description: |-
+                      BucketNoCapacityPercent is the threshold percentage for the bucket no capacity alert
+                      when bucket capacity usage exceeds this percentage, a warning alert is triggered
+                      default is 95 if not specified
+                    format: int32
+                    maximum: 100
+                    minimum: 0
+                    type: integer
                 type: object
               annotations:
                 additionalProperties:
