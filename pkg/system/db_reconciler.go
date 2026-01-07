@@ -402,9 +402,14 @@ func (r *Reconciler) setPostgresConfig() {
 	// a reasonable value for shared_buffers when mem>1GB is 25% of the total memory (https://www.postgresql.org/docs/9.1/runtime-config-resource.html)
 	// if resources are not specified, we will use the default value
 	if r.NooBaa.Spec.DBResources != nil {
-		requiredDBMemMB := r.NooBaa.Spec.DBSpec.DBResources.Requests.Memory().ScaledValue(resource.Mega)
-		sharedBuffersMB := requiredDBMemMB / 4
-		desiredParameters["shared_buffers"] = fmt.Sprintf("%dMB", sharedBuffersMB)
+		// if memory is not specified, set shared_buffers to 1GB
+		if r.NooBaa.Spec.DBSpec.DBResources.Requests == nil || r.NooBaa.Spec.DBSpec.DBResources.Requests.Memory() == nil {
+			desiredParameters["shared_buffers"] = "1GB"
+		} else {
+			requiredDBMemMB := r.NooBaa.Spec.DBSpec.DBResources.Requests.Memory().ScaledValue(resource.Mega)
+			sharedBuffersMB := requiredDBMemMB / 4
+			desiredParameters["shared_buffers"] = fmt.Sprintf("%dMB", sharedBuffersMB)
+		}
 	}
 
 	// set any parameters from DBSpec.DBConf in overrideParameters
@@ -453,6 +458,10 @@ func setDesiredStorageConf(storageConfiguration *cnpgv1.StorageConfiguration, db
 	if storageConfiguration == nil {
 		return fmt.Errorf("storage configuration is nil")
 	}
+	if storageConfiguration.PersistentVolumeClaimTemplate == nil {
+		storageConfiguration.PersistentVolumeClaimTemplate = &corev1.PersistentVolumeClaimSpec{}
+	}
+	storageConfiguration.PersistentVolumeClaimTemplate.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOncePod}
 	if dbSpec.DBStorageClass != nil {
 		storageConfiguration.StorageClass = dbSpec.DBStorageClass
 	} else {
@@ -527,6 +536,7 @@ func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSp
 		!reflect.DeepEqual(existingClusterSpec.Resources, r.CNPGCluster.Spec.Resources) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.StorageClass, r.CNPGCluster.Spec.StorageConfiguration.StorageClass) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.Size, r.CNPGCluster.Spec.StorageConfiguration.Size) ||
+		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.PersistentVolumeClaimTemplate, r.CNPGCluster.Spec.StorageConfiguration.PersistentVolumeClaimTemplate) ||
 		!reflect.DeepEqual(existingClusterSpec.Monitoring, r.CNPGCluster.Spec.Monitoring) ||
 		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.Parameters, r.CNPGCluster.Spec.PostgresConfiguration.Parameters)
 }
