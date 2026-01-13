@@ -383,6 +383,7 @@ type NooBaaDBSpec struct {
 type DBBackupSpec struct {
 	// Schedule the schedule for the database backup in cron format.
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$`
 	Schedule string `json:"schedule"`
 
 	// VolumeSnapshot the volume snapshot backup configuration.
