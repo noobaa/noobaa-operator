@@ -158,27 +158,14 @@ spec:
       for: 5m
       labels:
         severity: warning
-    - alert: NooBaaBucketLowCapacityState
+    - alert: NooBaaBackingStoreLowCapacityState
       annotations:
-        description: A NooBaa bucket {{ $labels.bucket_name }} is using {{ printf
-          "%0.0f" $value }}% of its capacity
-        message: A NooBaa Bucket Is In Low Capacity State
+        description: A NooBaa backing store {{ $labels.backing_store_name }} is in low capacity.
+        message: A NooBaa backing store is in low capacity state.
         severity_level: warning
         storage_type: NooBaa
       expr: |
-        NooBaa_bucket_capacity{bucket_name=~".*"} > 80
-      for: 5m
-      labels:
-        severity: warning
-    - alert: NooBaaBucketNoCapacityState
-      annotations:
-        description: A NooBaa bucket {{ $labels.bucket_name }} is using all of its
-          capacity
-        message: A NooBaa Bucket Is In No Capacity State
-        severity_level: warning
-        storage_type: NooBaa
-      expr: |
-        NooBaa_bucket_capacity{bucket_name=~".*"} > 95
+        NooBaa_backing_store_low_capacity{resource_name=~".*"} == 1
       for: 5m
       labels:
         severity: warning
