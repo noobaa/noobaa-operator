@@ -1425,7 +1425,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "38de565d60a559d52856d009eac5596b13fc2aa42ab12a4663c0a9a6ae2b5a5f"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "6cdd4f5aaa21ba8c450c5e00d6f8c38f43357b4dc2c22f786dedeaebf3c69618"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2644,6 +2644,9 @@ spec:
                       schedule:
                         description: Schedule the schedule for the database backup
                           in cron format.
+                        pattern: ^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?)
+                          ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every
+                          (\d+(ns|us|µs|ms|s|m|h))+)$
                         type: string
                       volumeSnapshot:
                         description: |-

@@ -1215,6 +1215,9 @@ spec:
                       schedule:
                         description: Schedule the schedule for the database backup
                           in cron format.
+                        pattern: ^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?)
+                          ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every
+                          (\d+(ns|us|µs|ms|s|m|h))+)$
                         type: string
                       volumeSnapshot:
                         description: |-
