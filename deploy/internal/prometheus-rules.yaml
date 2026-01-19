@@ -86,6 +86,20 @@ spec:
     - expr: |
         count_over_time(count by (replication_id) (NooBaa_replication_last_cycle_writes_size)[1y:6m])
       record: noobaa_replication_total_cycles
+  - name: replication-alert.rules
+    rules:
+    - alert: NooBaaReplicationTargetUnreachable
+      annotations:
+        description: A NooBaa replication from bucket {{ $labels.source_bucket }} to bucket
+          {{ $labels.target_bucket }} is failing for more than 5m
+        message: A NooBaa Replication Target Is Unreachable
+        severity_level: warning
+        storage_type: NooBaa
+      expr: |
+        NooBaa_replication_target_status{source_bucket=~".+", target_bucket=~".+"} == 0
+      for: 5m
+      labels:
+        severity: warning
   - name: bucket-state-alert.rules
     rules:
     - alert: NooBaaBucketErrorState
