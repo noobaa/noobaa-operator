@@ -222,6 +222,7 @@ spec:
       for: 5m
       labels:
         severity: warning
+      runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning85.md
     - alert: NooBaaSystemCapacityWarning95
       annotations:
         description: A NooBaa system is approaching its capacity, usage is more than
@@ -234,6 +235,7 @@ spec:
       for: 5m
       labels:
         severity: critical
+      runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning95.md
     - alert: NooBaaSystemCapacityWarning100
       annotations:
         description: A NooBaa system approached its capacity, usage is at 100%
@@ -245,6 +247,7 @@ spec:
       for: 5m
       labels:
         severity: critical
+      runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning100.md
   - name: noobaa-db-alert.rules
     rules:
     - alert: NooBaaDatabaseReachingCapacity
