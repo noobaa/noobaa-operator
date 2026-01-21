@@ -4698,7 +4698,7 @@ spec:
         secretName: AGENT_CONFIG_SECRET_NAME
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "210ffb4df1b6e6b0f205aceaefb29fe7ab6c70f88c5a1145f667ffe9e5329caf"
+const Sha256_deploy_internal_prometheus_rules_yaml = "ea541941e34e6b16e223a1471936c048f8e853f15a5fdc087496bb10efccc6c2"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -4806,9 +4806,10 @@ spec:
     rules:
     - alert: NooBaaBucketErrorState
       annotations:
-        description: A NooBaa bucket {{ $labels.bucket_name }} is in error state for
-          more than 5m
-        message: A NooBaa Bucket Is In Error State
+        description: A NooBaa bucket {{ $labels.bucket_name }} is in error state
+          (mode={{ $labels.bucket_mode }}) for more than 5m. Tier or resource modes
+          often indicate backingstore/bucketclass issues.
+        message: A NooBaa Bucket Is In Error State (mode={{ $labels.bucket_mode }})
         severity_level: warning
         storage_type: NooBaa
       expr: |
@@ -4819,8 +4820,9 @@ spec:
     - alert: NooBaaNamespaceBucketErrorState
       annotations:
         description: A NooBaa namespace bucket {{ $labels.bucket_name }} is in error
-          state for more than 5m
-        message: A NooBaa Namespace Bucket Is In Error State
+          state (mode={{ $labels.bucket_mode }}) for more than 5m. Tier or resource
+          modes often indicate namespacestore/bucketclass issues.
+        message: A NooBaa Namespace Bucket Is In Error State (mode={{ $labels.bucket_mode }})
         severity_level: warning
         storage_type: NooBaa
       expr: |
