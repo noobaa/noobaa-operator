@@ -4698,7 +4698,7 @@ spec:
         secretName: AGENT_CONFIG_SECRET_NAME
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "ea541941e34e6b16e223a1471936c048f8e853f15a5fdc087496bb10efccc6c2"
+const Sha256_deploy_internal_prometheus_rules_yaml = "823cf2562f9a0940bc054a85889f0a76e78552a25ed8e03afe53d0f60bc50bae"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -4927,6 +4927,7 @@ spec:
       for: 5m
       labels:
         severity: warning
+      runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning85.md
     - alert: NooBaaSystemCapacityWarning95
       annotations:
         description: A NooBaa system is approaching its capacity, usage is more than
@@ -4939,6 +4940,7 @@ spec:
       for: 5m
       labels:
         severity: critical
+      runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning95.md
     - alert: NooBaaSystemCapacityWarning100
       annotations:
         description: A NooBaa system approached its capacity, usage is at 100%
@@ -4950,6 +4952,7 @@ spec:
       for: 5m
       labels:
         severity: critical
+      runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning100.md
   - name: noobaa-db-alert.rules
     rules:
     - alert: NooBaaDatabaseReachingCapacity
