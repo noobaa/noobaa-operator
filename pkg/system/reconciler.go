@@ -66,7 +66,7 @@ type Reconciler struct {
 	OperatorVersion          string
 	OAuthEndpoints           *util.OAuth2Endpoints
 	PostgresConnectionString string
-	ApplyCAsToPods           string // the path that will be applied to the core and endpoint pods in NODE_EXTRA_CA_CERTS
+	ApplyCAsToPods           string
 
 	NooBaa                    *nbv1.NooBaa
 	ServiceAccount            *corev1.ServiceAccount
@@ -273,7 +273,7 @@ func NewReconciler(
 	r.RouteS3.Name = r.ServiceS3.Name
 	r.RouteSts.Name = r.ServiceSts.Name
 	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
-	r.CaBundleConf.Name = "ocp-injected-ca-bundle"
+	r.CaBundleConf.Name = r.Request.Name + "-ca-inject"
 	r.KedaScaled.Name = r.Request.Name
 	r.AdapterHPA.Name = r.Request.Name + "-hpav2"
 	r.BucketLoggingPVC.Name = r.Request.Name + "-bucket-logging-pvc"
@@ -394,30 +394,9 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		}
 	}
 
-	/*
-	This code is problematic due to the way other parts of the product work.
-	On the core side, get_unsecured_agent() relies on the presence of the NODE_EXTRA_CA_CERTS
-	environment variable to determine whether an HTTP or HTTPS client should be used.
-
-	At the time of writing this comment, if the environment variable is not set, an HTTP agent
-	will be used for *all* S3-compatible domains that aren't under amazonaws.com - including
-	domains that are already present by default in the system's certificate store.
-
-	Forcing the environment variable to always be set leads to a different problem where
-	some things might fail - e.g. the admission tests that rely on creating a namespacestore
-	that points towards NooBaa's (self-signed) S3 service. In that case, the HTTPS agent fails
-	due to the self-signed certificate.	
-
-	Also, note that the code that combines certificates only applies to the operator.
-	Based on whether the certificate bundling was successful, the operator will set the value of
-	NODE_EXTRA_CA_CERTS in endpoints and core pods to point to *the system generated service-serving certs*.
-
-	At the time of writing, user certs are not included at any point.
-	*/
-	
-	err = util.CombineCaBundle(util.ServiceServingCertCAFile)
+	err = util.AddToRootCAs(options.ServiceServingCertCAFile)
 	if err == nil {
-		r.ApplyCAsToPods = util.ServiceServingCertCAFile
+		r.ApplyCAsToPods = options.ServiceServingCertCAFile
 	} else if !os.IsNotExist(err) {
 		log.Errorf("❌ NooBaa %q failed to add root CAs to system default", r.NooBaa.Name)
 		res.RequeueAfter = 3 * time.Second
