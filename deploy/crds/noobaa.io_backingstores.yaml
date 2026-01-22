@@ -331,6 +331,13 @@ spec:
                 description: Phase is a simple, high-level summary of where the backing
                   store is in its lifecycle
                 type: string
+              readyPods:
+                description: |-
+                  ReadyPods is a list of pod names that have successfully become ready and attached to NooBaa
+                  This allows users to identify which pods can be safely kept when reducing NumVolumes
+                items:
+                  type: string
+                type: array
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:

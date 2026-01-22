@@ -105,6 +105,10 @@ type BackingStoreStatus struct {
 	// Mode specifies the updating mode of a BackingStore
 	// +optional
 	Mode BackingStoreMode `json:"mode,omitempty"`
+	// ReadyPods is a list of pod names that have successfully become ready and attached to NooBaa
+	// This allows users to identify which pods can be safely kept when reducing NumVolumes
+	// +optional
+	ReadyPods []string `json:"readyPods,omitempty"`
 }
 
 // BackingStoreMode defines the updated Mode of BackingStore

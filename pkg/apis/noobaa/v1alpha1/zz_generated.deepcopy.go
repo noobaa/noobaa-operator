@@ -357,6 +357,11 @@ func (in *BackingStoreStatus) DeepCopyInto(out *BackingStoreStatus) {
 		copy(*out, *in)
 	}
 	out.Mode = in.Mode
+	if in.ReadyPods != nil {
+		in, out := &in.ReadyPods, &out.ReadyPods
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
