@@ -1,5 +1,5 @@
 name: Upgrade Tests Workflow
-on: 
+on:
   workflow_call:
     inputs:
       source_version:
@@ -10,7 +10,7 @@ on:
         type: string
         description: "Version to upgrade to"
         required: false
-    
+
 jobs:
   upgrade-tests-workflow:
     runs-on: ubuntu-latest
@@ -28,6 +28,8 @@ jobs:
           cache: true
           cache-dependency-path: |
             **/go.sum
+      - name: Set up kind
+        uses: helm/kind-action@v1
 
       - name: Set environment variables
         run: |
