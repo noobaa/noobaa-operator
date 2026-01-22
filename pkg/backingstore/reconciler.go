@@ -593,7 +593,6 @@ func (r *Reconciler) ReadSystemInfo() error {
 			if err != nil {
 				return err
 			}
-
 			if len(hostsInfo.Hosts) > pvPool.NumVolumes { // scaling down - not supported
 				return util.NewPersistentError("InvalidBackingStore",
 					"Scaling down the number of nodes is not currently supported")
@@ -1080,6 +1079,12 @@ func (r *Reconciler) reconcilePvPool() error {
 		}
 		util.KubeList(pvcsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
 	}
+	// Delete pods in Pending state if user decide to scale down,
+	// - The pod will remain in this pending state until a running pod is deleted(manually of cluster side).
+	// - Upon deletion of a running pod, the pending pod will utilize the released resources and transition to a running state.
+	// - Skipping proper resource cleanup will result into orphaned entry within the pools schema.
+	r.reconcilePendingPods(podsList, pvcsList)
+
 	if len(podsList.Items) < len(pvcsList.Items) {
 		err := r.reconcileMissingPods(podsList, pvcsList)
 		if err != nil {
@@ -1087,6 +1092,38 @@ func (r *Reconciler) reconcilePvPool() error {
 		}
 	}
 	return r.reconcileExistingPods(podsList)
+}
+
+func (r *Reconciler) reconcilePendingPods(podsList *corev1.PodList, pvcsList *corev1.PersistentVolumeClaimList) {
+
+	pendingBackingsStorePod := []string{}
+	for _, pod := range podsList.Items {
+		if pod.Status.Phase == "Pending" {
+			pendingBackingsStorePod = append(pendingBackingsStorePod, pod.Name)
+		}
+	}
+	// Backingstore in scale. down phase and cluster have pending backingstore pods, then
+	// - delete pending pod
+	// - delete related PersistentVolumeClaim
+	if len(podsList.Items) > r.BackingStore.Spec.PVPool.NumVolumes && len(pendingBackingsStorePod) > 0 {
+		for _, pod := range podsList.Items {
+			if util.Contains(pendingBackingsStorePod, pod.Name) {
+				util.KubeDelete(&pod)
+				PersistentVolumeClaim := &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      pod.Spec.Volumes[1].PersistentVolumeClaim.ClaimName,
+						Namespace: options.Namespace,
+					},
+				}
+
+				if util.KubeCheck(PersistentVolumeClaim) {
+					r.Logger.Warnf("Could not find the PersistentVolumeClaim with name %s", PersistentVolumeClaim.Name)
+					return
+				}
+				util.KubeDelete(PersistentVolumeClaim)
+			}
+		}
+	}
 }
 
 func (r *Reconciler) reconcileMissingPods(podsList *corev1.PodList, pvcsList *corev1.PersistentVolumeClaimList) error {
