@@ -4698,7 +4698,7 @@ spec:
         secretName: AGENT_CONFIG_SECRET_NAME
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "9dba8cfe7b655d3467b091531c95e6d34e8bd179f36ece6eaf3cff8ef73df23d"
+const Sha256_deploy_internal_prometheus_rules_yaml = "0e1a0f98c403cfc5b6f0e6e1cc5513f18ff7cdfbc5581591869366a824a90b71"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -4748,13 +4748,13 @@ spec:
         system_vendor: Red Hat
       record: odf_system_raw_capacity_used_bytes
     - expr: |
-        sum by (namespace, managedBy, job, service) (rate(NooBaa_providers_ops_read_num[5m]) + rate(NooBaa_providers_ops_write_num[5m]))
+        sum by (namespace, managedBy, job, service) (rate(NooBaa_providers_ops_read_count[5m]) + rate(NooBaa_providers_ops_write_count[5m]))
       labels:
         system_type: OCS
         system_vendor: Red Hat
       record: odf_system_iops_total_bytes
     - expr: |
-        sum by (namespace, managedBy, job, service) (rate(NooBaa_providers_bandwidth_read_size[5m]) + rate(NooBaa_providers_bandwidth_write_size[5m]))
+        sum by (namespace, managedBy, job, service) (rate(NooBaa_providers_bandwidth_read_size_total[5m]) + rate(NooBaa_providers_bandwidth_write_size_total[5m]))
       labels:
         system_type: OCS
         system_vendor: Red Hat
