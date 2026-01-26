@@ -18,13 +18,15 @@ jobs:
           cache: true
           cache-dependency-path: |
             **/go.sum
+      - name: Set up kind
+        uses: helm/kind-action@v1
 
       - name: Set environment variables
         run: |
           echo PATH=$PATH:$HOME/go/bin                                          >> $GITHUB_ENV
           echo OPERATOR_IMAGE=localhost:5000/noobaa/noobaa-operator:integration >> $GITHUB_ENV
           echo PYKMIP_IMAGE=localhost:5000/noobaa/pykmip:integration >> $GITHUB_ENV
-      
+
       - name: Deploy Dependencies
         run: |
           set -x
@@ -32,7 +34,7 @@ jobs:
           go get -v github.com/onsi/ginkgo/v2
           go install -v github.com/onsi/ginkgo/v2/ginkgo
           ginkgo version
-          
+
       - name: Build NooBaa
         run: |
           make cli
