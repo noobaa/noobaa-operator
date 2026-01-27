@@ -46,13 +46,13 @@ spec:
         system_vendor: Red Hat
       record: odf_system_raw_capacity_used_bytes
     - expr: |
-        sum by (namespace, managedBy, job, service) (rate(NooBaa_providers_ops_read_num[5m]) + rate(NooBaa_providers_ops_write_num[5m]))
+        sum by (namespace, managedBy, job, service) (rate(NooBaa_providers_ops_read_count[5m]) + rate(NooBaa_providers_ops_write_count[5m]))
       labels:
         system_type: OCS
         system_vendor: Red Hat
       record: odf_system_iops_total_bytes
     - expr: |
-        sum by (namespace, managedBy, job, service) (rate(NooBaa_providers_bandwidth_read_size[5m]) + rate(NooBaa_providers_bandwidth_write_size[5m]))
+        sum by (namespace, managedBy, job, service) (rate(NooBaa_providers_bandwidth_read_size_total[5m]) + rate(NooBaa_providers_bandwidth_write_size_total[5m]))
       labels:
         system_type: OCS
         system_vendor: Red Hat
