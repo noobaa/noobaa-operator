@@ -4698,7 +4698,7 @@ spec:
         secretName: AGENT_CONFIG_SECRET_NAME
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "0e1a0f98c403cfc5b6f0e6e1cc5513f18ff7cdfbc5581591869366a824a90b71"
+const Sha256_deploy_internal_prometheus_rules_yaml = "800f793fa04b150c026febedfb4042d7919ac9a5c058a9f2a244fcbccc9bfcf9"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -4788,6 +4788,20 @@ spec:
     - expr: |
         count_over_time(count by (replication_id) (NooBaa_replication_last_cycle_writes_size)[1y:6m])
       record: noobaa_replication_total_cycles
+  - name: replication-alert.rules
+    rules:
+    - alert: NooBaaReplicationTargetUnreachable
+      annotations:
+        description: A NooBaa replication from bucket {{ $labels.source_bucket }} to bucket
+          {{ $labels.target_bucket }} is failing for more than 5m
+        message: A NooBaa Replication Target Is Unreachable
+        severity_level: warning
+        storage_type: NooBaa
+      expr: |
+        NooBaa_replication_target_status{source_bucket=~".+", target_bucket=~".+"} == 0
+      for: 5m
+      labels:
+        severity: warning
   - name: bucket-state-alert.rules
     rules:
     - alert: NooBaaBucketErrorState
