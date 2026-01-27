@@ -78,6 +78,8 @@ func CmdRegenerate() *cobra.Command {
 	}
 	cmd.Flags().String("app-namespace", "",
 		"Set the namespace of the application where the OBC should be regenerated")
+	cmd.Flags().Bool("remote-obc", false,
+		"Operate on remote OBC (created for client cluster)")
 	return cmd
 }
 
@@ -102,6 +104,8 @@ func CmdStatus() *cobra.Command {
 	}
 	cmd.Flags().String("app-namespace", "",
 		"Set the namespace of the application where the OBC should be created")
+	cmd.Flags().Bool("remote-obc", false,
+		"Operate on remote OBC (created for client cluster)")
 	return cmd
 }
 
@@ -280,6 +284,8 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 		appNamespace = options.Namespace
 	}
 
+	remoteObcFlag, _ := cmd.Flags().GetBool("remote-obc")
+
 	name := args[0]
 
 	obc := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml).(*nbv1.ObjectBucketClaim)
@@ -290,6 +296,12 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 	if !util.KubeCheck(obc) {
 		log.Fatalf(`❌ Could not find OBC %q in namespace %q`,
 			obc.Name, obc.Namespace)
+	}
+
+	// as we didn't want to allow regenerating credentials for remote OBCs (created for client clusters)
+	// if the admin must do it, he can use the --remote-obc flag to override this check
+	if util.IsRemoteObcAnnotation(obc.Annotations) && !remoteObcFlag {
+		log.Fatalf(`❌ Could not regenerate credentials for OBC. OBC %q in namespace %q is a remote OBC (created for client cluster)`, obc.Name, obc.Namespace)
 	}
 
 	if obc.Spec.ObjectBucketName != "" {
@@ -335,6 +347,10 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Could not delete. OBC %q in namespace %q does not exist`, obc.Name, obc.Namespace)
 	}
 
+	if util.IsRemoteObcAnnotation(obc.Annotations) {
+		log.Fatalf(`❌ Could not delete OBC. OBC %q in namespace %q is a remote OBC (created for client cluster)`, obc.Name, obc.Namespace)
+	}
+
 	if !util.KubeDelete(obc) {
 		log.Fatalf(`❌ Could not delete OBC %q in namespace %q`,
 			obc.Name, obc.Namespace)
@@ -354,6 +370,8 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		appNamespace = options.Namespace
 	}
 
+	remoteObcFlag, _ := cmd.Flags().GetBool("remote-obc")
+
 	obc := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml).(*nbv1.ObjectBucketClaim)
 	ob := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucket_cr_yaml).(*nbv1.ObjectBucket)
 	sc := util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass)
@@ -370,6 +388,10 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 	if !util.KubeCheck(obc) {
 		log.Fatalf(`❌ Could not find OBC %q in namespace %q`, obc.Name, obc.Namespace)
+	}
+
+	if util.IsRemoteObcAnnotation(obc.Annotations) && !remoteObcFlag {
+		log.Fatalf(`❌ Could not status OBC. OBC %q in namespace %q is a remote OBC (created for client cluster)`, obc.Name, obc.Namespace)
 	}
 
 	if obc.Spec.ObjectBucketName != "" {
@@ -494,8 +516,16 @@ func RunList(cmd *cobra.Command, args []string) {
 		"PHASE",
 	)
 	scMap := map[string]*storagev1.StorageClass{}
+	countRemoteOBCs := 0
 	for i := range list.Items {
 		obc := &list.Items[i]
+
+		// Do not show remote OBCs in the list (OBCs that were created for client clusters)
+		if util.IsRemoteObcAnnotation(obc.Annotations) {
+			countRemoteOBCs++
+			continue
+		}
+
 		bucketClass := obc.Spec.AdditionalConfig["bucketclass"]
 		if bucketClass == "" && obc.Spec.StorageClassName != "" {
 			sc := scMap[obc.Spec.StorageClassName]
@@ -517,7 +547,13 @@ func RunList(cmd *cobra.Command, args []string) {
 			string(obc.Status.Phase),
 		)
 	}
-	fmt.Print(table.String())
+	if len(list.Items) == countRemoteOBCs {
+		// to avoid printing only the titles when all OBCs are remote OBCs (created for client clusters)
+		fmt.Printf("No OBCs found (The OBCs are remote OBCs created for client clusters).\n")
+		return
+	} else {
+		fmt.Print(table.String())
+	}
 }
 
 // WaitReady waits until the obc phase changes to bound by the operator

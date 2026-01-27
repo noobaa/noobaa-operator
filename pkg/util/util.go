@@ -1592,6 +1592,18 @@ func IsRemoteClientNoobaa(annotations map[string]string) bool {
 	return annotationBoolVal
 }
 
+// IsRemoteObcAnnotation checks for the existance and value of the remote-obc-creation annotation
+// within an annotation map, if the annotation doesnt exist it's the same as if its value is false.
+// this annotation is added to OBC that were created for client clusters when using the setup of provider-client
+func IsRemoteObcAnnotation(annotations map[string]string) bool {
+	annotationValue, exists := GetAnnotationValue(annotations, "remote-obc-creation")
+	annotationBoolVal := false
+	if exists {
+		annotationBoolVal = strings.ToLower(annotationValue) == trueStr
+	}
+	return annotationBoolVal
+}
+
 // ReflectEnvVariable will add, update or remove an env variable base on the existence and value of an
 // env variable with the same name on the container running this function.
 func ReflectEnvVariable(env *[]corev1.EnvVar, name string) {
