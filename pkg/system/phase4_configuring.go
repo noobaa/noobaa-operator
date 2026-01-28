@@ -1624,7 +1624,34 @@ func (r *Reconciler) ReconcilePrometheusRule() error {
 		return nil
 	}
 
-	return r.ReconcileObjectOptional(r.PrometheusRule, nil)
+	return r.ReconcileObjectOptional(r.PrometheusRule, r.setDesiredPrometheusRule)
+}
+
+// setDesiredPrometheusRule sets the desired state for PrometheusRule
+func (r *Reconciler) setDesiredPrometheusRule() error {
+	// only update if thresholds are specified in the CR
+	if r.NooBaa.Spec.AlertThresholds == nil {
+		return nil
+	}
+
+	for i := range r.PrometheusRule.Spec.Groups {
+		for j := range r.PrometheusRule.Spec.Groups[i].Rules {
+			rule := &r.PrometheusRule.Spec.Groups[i].Rules[j]
+			switch rule.Alert {
+			case "NooBaaBucketLowCapacityState":
+				if r.NooBaa.Spec.AlertThresholds.BucketLowCapacityPercent != nil {
+					rule.Expr.StrVal = fmt.Sprintf(
+						"NooBaa_bucket_capacity{bucket_name=~\".*\"} > %d\n", *r.NooBaa.Spec.AlertThresholds.BucketLowCapacityPercent)
+				}
+			case "NooBaaBucketNoCapacityState":
+				if r.NooBaa.Spec.AlertThresholds.BucketNoCapacityPercent != nil {
+					rule.Expr.StrVal = fmt.Sprintf(
+						"NooBaa_bucket_capacity{bucket_name=~\".*\"} > %d\n", *r.NooBaa.Spec.AlertThresholds.BucketNoCapacityPercent)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // ApplyMonitoringLabels function adds the name of the resource that manages

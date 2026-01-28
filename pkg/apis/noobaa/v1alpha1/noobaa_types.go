@@ -241,6 +241,11 @@ type NooBaaSpec struct {
 	// BucketNotifications (optional) controls bucket notification options
 	// +optional
 	BucketNotifications BucketNotificationsSpec `json:"bucketNotifications,omitempty"`
+
+	// AlertThresholds (optional) allows configuring thresholds for prometheus alerts
+	// these thresholds are exported as metrics and used by PrometheusRules to trigger alerts
+	// +optional
+	AlertThresholds *AlertThresholdsSpec `json:"alertThresholds,omitempty"`
 }
 
 // Affinity is a group of affinity scheduling rules.
@@ -304,6 +309,25 @@ type BucketNotificationsSpec struct {
 	//Connections - A list of secrets' names that are used by the notifications configrations
 	//(in the TopicArn field).
 	Connections []corev1.SecretReference `json:"connections,omitempty"`
+}
+
+// AlertThresholdsSpec defines configurable alert thresholds
+type AlertThresholdsSpec struct {
+	// BucketLowCapacityPercent is the threshold percentage for the bucket low capacity alert
+	// when bucket capacity usage exceeds this percentage, a warning alert is triggered
+	// default is 80 if not specified
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
+	BucketLowCapacityPercent *int32 `json:"bucketLowCapacityPercent,omitempty"`
+
+	// BucketNoCapacityPercent is the threshold percentage for the bucket no capacity alert
+	// when bucket capacity usage exceeds this percentage, a warning alert is triggered
+	// default is 95 if not specified
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
+	BucketNoCapacityPercent *int32 `json:"bucketNoCapacityPercent,omitempty"`
 }
 
 // LoadBalancerSourceSubnetSpec defines the subnets that will be allowed to access the NooBaa services

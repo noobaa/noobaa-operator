@@ -986,6 +986,30 @@ spec:
                       It is used by the endpoints and the DB pods to control pods distribution between topology domains (host/zone)
                     type: string
                 type: object
+              alertThresholds:
+                description: |-
+                  AlertThresholds (optional) allows configuring thresholds for prometheus alerts
+                  these thresholds are exported as metrics and used by PrometheusRules to trigger alerts
+                properties:
+                  bucketLowCapacityPercent:
+                    description: |-
+                      BucketLowCapacityPercent is the threshold percentage for the bucket low capacity alert
+                      when bucket capacity usage exceeds this percentage, a warning alert is triggered
+                      default is 80 if not specified
+                    format: int32
+                    maximum: 100
+                    minimum: 0
+                    type: integer
+                  bucketNoCapacityPercent:
+                    description: |-
+                      BucketNoCapacityPercent is the threshold percentage for the bucket no capacity alert
+                      when bucket capacity usage exceeds this percentage, a warning alert is triggered
+                      default is 95 if not specified
+                    format: int32
+                    maximum: 100
+                    minimum: 0
+                    type: integer
+                type: object
               annotations:
                 additionalProperties:
                   additionalProperties:
