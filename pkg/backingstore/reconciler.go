@@ -594,10 +594,32 @@ func (r *Reconciler) ReadSystemInfo() error {
 				return err
 			}
 
+			podsList := &corev1.PodList{}
+			util.KubeList(podsList, client.InNamespace(options.Namespace), client.MatchingLabels{"pool": r.BackingStore.Name})
 			if len(hostsInfo.Hosts) > pvPool.NumVolumes { // scaling down - not supported
+				for _, pod := range podsList.Items {
+					if util.EnsureCommonMetaFields(&pod, nbv1.Finalizer) {
+						if !util.KubeUpdate(&pod) {
+							err := fmt.Errorf("❌ BackingStore %q failed to add mandatory meta fields", r.BackingStore.Name)
+							return err
+						}
+					}
+				}
 				return util.NewPersistentError("InvalidBackingStore",
 					"Scaling down the number of nodes is not currently supported")
 			}
+			if len(hostsInfo.Hosts) == pvPool.NumVolumes {
+				for _, pod := range podsList.Items {
+					if util.Contains(pod.Finalizers, nbv1.Finalizer) {
+						util.RemoveFinalizer(&pod, nbv1.Finalizer)
+						if !util.KubeUpdate(&pod) {
+							err := fmt.Errorf("❌ BackingStore %q failed to remove finalizer", r.BackingStore.Name)
+							return err
+						}
+					}
+				}
+			}
+
 			if pvPool.NumVolumes != int(pool.Hosts.ConfiguredCount) {
 				r.UpdateHostsPoolParams = &nb.UpdateHostsPoolParams{ // update core
 					Name: r.BackingStore.Name,
