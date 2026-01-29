@@ -276,6 +276,7 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 	csv.Annotations["operators.openshift.io/infrastructure-features"] = "ֿ'[\"disconnected\"]'"
 	// annotation for OpenShift AWS STS cluster
 	csv.Annotations["features.operators.openshift.io/token-auth-aws"] = "true"
+	csv.Annotations["features.operators.openshift.io/token-auth-azure"] = "true"
 	csv.Annotations["capabilities"] = "Seamless Upgrades"
 	csv.Spec.Version.Version = semver.MustParse(version.Version)
 	csv.Spec.Description = bundle.File_deploy_olm_description_md
