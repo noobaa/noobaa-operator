@@ -65,6 +65,7 @@ func CmdCreate() *cobra.Command {
 		CmdCreateAzureBlob(),
 		CmdCreateGoogleCloudStorage(),
 		CmdCreatePVPool(),
+		CmdCreateAzureSTS(),
 	)
 	return cmd
 }
@@ -87,6 +88,32 @@ func CmdCreateAWSSTSS3() *cobra.Command {
 	cmd.Flags().String(
 		"region", "",
 		"The AWS bucket region",
+	)
+	return cmd
+}
+
+// CmdCreateAzureSTS returns a CLI command
+func CmdCreateAzureSTS() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "azure-sts <backing-store-name>",
+		Short: "Create azure-blob backing store (using STS, short-lived credentials)",
+		Run:   RunCreateAzureSTS,
+	}
+	cmd.Flags().String(
+		"target-blob-container", "",
+		"The target container name on Azure storage account",
+	)
+	cmd.Flags().String(
+		"azure-sts-account-name", "",
+		`Account name for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
+	)
+	cmd.Flags().String(
+		"azure-sts-tenant-id", "",
+		"The Azure Tenant ID which will assume role",
+	)
+	cmd.Flags().String(
+		"azure-sts-client-id", "",
+		"The Azure Client ID which will assume role",
 	)
 	return cmd
 }
@@ -539,6 +566,60 @@ func RunCreateAWSS3(cmd *cobra.Command, args []string) {
 			},
 		}
 	})
+}
+
+// RunCreateAzureSTS runs a CLI command
+func RunCreateAzureSTS(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	if len(args) != 3 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
+	}
+	name := args[0]
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	sys := o.(*nbv1.NooBaa)
+	sys.Name = options.SystemName
+	sys.Namespace = options.Namespace
+
+	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml)
+	backStore := o.(*nbv1.BackingStore)
+	backStore.Name = name
+	backStore.Namespace = options.Namespace
+	backStore.Spec = nbv1.BackingStoreSpec{Type: nbv1.StoreTypeAzureBlob}
+
+	if !util.KubeCheck(sys) {
+		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
+	}
+
+	err := util.KubeClient().Get(util.Context(), util.ObjectKey(backStore), backStore)
+	if err == nil {
+		log.Fatalf(`❌ BackingStore %q already exists in namespace %q`, backStore.Name, backStore.Namespace)
+	}
+
+	targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
+	azureSTSAccountName := util.GetFlagStringOrPromptPassword(cmd, "azure-sts-account-name")
+	azureSTSTenantID := util.GetFlagStringOrPrompt(cmd, "azure-sts-tenant-id")
+	azureSTSClientID := util.GetFlagStringOrPrompt(cmd, "azure-sts-client-id")
+	backStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
+		TargetBlobContainer: targetBlobContainer,
+		TenantId:            azureSTSTenantID,
+		ClientId:            azureSTSClientID,
+		AccountName:         azureSTSAccountName,
+	}
+	// Create backing store CR
+	util.Panic(controllerutil.SetControllerReference(sys, backStore, scheme.Scheme))
+	if !util.KubeCreateFailExisting(backStore) {
+		log.Fatalf(`❌ Could not create BackingStore %q in Namespace %q (conflict)`, backStore.Name, backStore.Namespace)
+
+		log.Printf("")
+		util.PrintThisNoteWhenFinishedApplyingAndStartWaitLoop()
+		log.Printf("")
+		log.Printf("BackingStore Wait Ready:")
+		if WaitReady(backStore) {
+			log.Printf("")
+			log.Printf("")
+			RunStatus(cmd, args)
+		}
+	}
 }
 
 // RunCreateS3Compatible runs a CLI command
