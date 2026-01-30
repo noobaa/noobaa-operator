@@ -65,6 +65,7 @@ func CmdCreate() *cobra.Command {
 		CmdCreateAzureBlob(),
 		CmdCreateGoogleCloudStorage(),
 		CmdCreatePVPool(),
+		CmdCreateAzureSTS(),
 	)
 	return cmd
 }
@@ -87,6 +88,36 @@ func CmdCreateAWSSTSS3() *cobra.Command {
 	cmd.Flags().String(
 		"region", "",
 		"The AWS bucket region",
+	)
+	return cmd
+}
+
+// CmdCreateAzureSTS returns a CLI command
+func CmdCreateAzureSTS() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "azure-sts-blob <backing-store-name>",
+		Short: "Create azure-blob backing store (using STS, short-lived credentials)",
+		Run:   RunCreateAzureSTS,
+	}
+	cmd.Flags().String(
+		"target-blob-container", "",
+		"The target container name on Azure storage account",
+	)
+	cmd.Flags().String(
+		"account-name", "",
+		`Account name for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt to prompt and read it securely from the terminal to avoid leaking secrets in the shell history`,
+	)
+	cmd.Flags().String(
+		"tenant-id", "",
+		"The Azure Tenant ID which will assume role",
+	)
+	cmd.Flags().String(
+		"client-id", "",
+		"The Azure Client ID which will assume role",
+	)
+	cmd.Flags().String(
+		"secret-name", "",
+		"Optional name of an existing secret containing azure_tenant_id (and optionally AccountName); if omitted, a secret is created from flags",
 	)
 	return cmd
 }
@@ -453,7 +484,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <backing-store-type> %s`, cmd.UsageString())
 	}
 	if args[0] != "aws-s3" && args[0] != "aws-sts-s3" && args[0] != "google-cloud-storage" &&
-		args[0] != "azure-blob" && args[0] != "ibm-cos" && args[0] != "pv-pool" && args[0] != "s3-compatible" {
+		args[0] != "azure-blob" && args[0] != "ibm-cos" && args[0] != "pv-pool" && args[0] != "s3-compatible" && args[0] != "azure-sts-blob" {
 		log.Fatalf(`❌ Unsupported <backing-store-type> -> %s %s`, args[0], cmd.UsageString())
 	}
 }
@@ -533,6 +564,44 @@ func RunCreateAWSS3(cmd *cobra.Command, args []string) {
 		backStore.Spec.AWSS3 = &nbv1.AWSS3Spec{
 			TargetBucket: targetBucket,
 			Region:       region,
+			Secret: corev1.SecretReference{
+				Name:      secret.Name,
+				Namespace: secret.Namespace,
+			},
+		}
+	})
+}
+
+// RunCreateAzureSTS runs a CLI command
+func RunCreateAzureSTS(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
+	}
+	createCommon(cmd, args, nbv1.StoreTypeAzureBlob, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
+		targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
+		azureSTSAccountName := util.GetFlagStringOrPromptPassword(cmd, "account-name")
+		azureSTSTenantID := util.GetFlagStringOrPrompt(cmd, "tenant-id")
+		azureSTSClientID := util.GetFlagStringOrPrompt(cmd, "client-id")
+		if err := validations.ValidateAzureSTSCredsPresent(&targetBlobContainer, &azureSTSAccountName, &azureSTSTenantID, &azureSTSClientID); err != nil {
+			log.Fatalf(`❌ %v %s`, err, cmd.UsageString())
+		}
+		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"AccountName", "azure_tenant_id", "azure_client_id"}
+
+		if secretName == "" {
+			secret.StringData["AccountName"] = azureSTSAccountName
+			secret.StringData["azure_tenant_id"] = azureSTSTenantID
+			secret.StringData["azure_client_id"] = azureSTSClientID
+		} else {
+			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
+			secret.Name = secretName
+			secret.Namespace = options.Namespace
+		}
+
+		backStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
+			TargetBlobContainer: targetBlobContainer,
+			ClientId:            &azureSTSClientID,
 			Secret: corev1.SecretReference{
 				Name:      secret.Name,
 				Namespace: secret.Namespace,
