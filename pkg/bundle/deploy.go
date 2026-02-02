@@ -5103,7 +5103,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "34da89373b8398adb670d779a35f5c5a94365da99b5a2db65715fd62a7638d5c"
+const Sha256_deploy_internal_statefulset_core_yaml = "44e664b40a3ee292041ac2bceb26bc9a38f1116d4fe9c39d40eacdde74aa3f2f"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5270,6 +5270,9 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
+          envFrom:
+            - configMapRef:
+                name: noobaa-config
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
