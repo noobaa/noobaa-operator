@@ -75,8 +75,8 @@ jobs:
           echo "Checking PR status..."
           gh pr checks "${{ steps.create_pr.outputs.pr_url }}" --watch
 
-          echo "Rebasing and merging PR..."
-          gh pr merge "${{ steps.create_pr.outputs.pr_url }}" --rebase --admin --delete-branch
+          echo "Merging PR..."
+          gh pr merge "${{ steps.create_pr.outputs.pr_url }}" --admin --delete-branch
 
       - name: Cleanup branch on failure
         if: always()
