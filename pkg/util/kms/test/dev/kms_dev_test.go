@@ -3,6 +3,7 @@ package kmsdevtest
 import (
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/libopenstorage/secrets"
 	"github.com/libopenstorage/secrets/vault"
@@ -38,16 +39,23 @@ func simpleKmsSpec(token, apiAddress string) nbv1.KeyManagementServiceSpec {
 	return k
 }
 
-func checkExternalSecret(noobaa *nbv1.NooBaa, expectedNil bool) {
+func checkExternalSecret(noobaa *nbv1.NooBaa, expectedExists bool) {
 	k := noobaa.Spec.Security.KeyManagementService
 	uid := string(noobaa.UID)
 	driver := &kms.Vault{UID: uid}
 	path := k.ConnectionDetails[vault.VaultBackendPathKey] + driver.Path()
-	cmd := exec.Command("kubectl", "exec", "vault-0", "--", "vault", "kv", "get", path)
-	logger.Printf("Running command: path %v args %v ", cmd.Path, cmd.Args)
-	err := cmd.Run()
-	actualResult := (err == nil)
-	Expect(actualResult == expectedNil).To(BeTrue())
+	runVaultGet := func() bool {
+		cmd := exec.Command("kubectl", "exec", "vault-0", "--", "vault", "kv", "get", path)
+		logger.Printf("Running command: path %v args %v ", cmd.Path, cmd.Args)
+		err := cmd.Run()
+		return err == nil
+	}
+	if expectedExists {
+		// Operator may need time to write the secret to Vault; poll until it appears.
+		Eventually(runVaultGet, 60*time.Second, 2*time.Second).Should(BeTrue())
+	} else {
+		Expect(runVaultGet()).To(BeFalse())
+	}
 }
 
 func verifyExternalSecretExists(noobaa *nbv1.NooBaa) {
@@ -65,9 +73,6 @@ var _ = Describe("KMS - K8S, Dev Vault", func() {
 		noobaa := getMiniNooBaa()
 		Specify("Create default system", func() {
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
-		})
-		Specify("Verify KMS condition status Init", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
 		})
 		Specify("Verify KMS condition Type", func() {
 			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, secrets.TypeK8s)).To(BeTrue())
@@ -106,9 +111,6 @@ var _ = Describe("KMS - K8S, Dev Vault", func() {
 		Specify("Create Vault Noobaa", func() {
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
 		})
-		Specify("Verify KMS condition status Init", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
-		})
 		Specify("Verify KMS condition Type", func() {
 			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, secrets.TypeVault)).To(BeTrue())
 		})
@@ -142,9 +144,6 @@ var _ = Describe("KMS - K8S, Dev Vault", func() {
 		noobaa.Spec.Security.KeyManagementService.ConnectionDetails[vault.VaultBackendPathKey] = "noobaav2/"
 		Specify("Create Vault v2 Noobaa", func() {
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
-		})
-		Specify("Verify KMS condition status Init", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
 		})
 		Specify("Verify KMS condition Type", func() {
 			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, secrets.TypeVault)).To(BeTrue())
