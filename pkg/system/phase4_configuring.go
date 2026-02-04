@@ -371,6 +371,8 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					if r.JoinSecret == nil {
 						c.Env[j].Value = "true"
 					}
+				case "NOOBAA_ROOT_SECRET":
+					c.Env[j].Value = r.SecretRootMasterKey
 				case "VIRTUAL_HOSTS":
 					hosts := []string{}
 					for _, addr := range r.NooBaa.Status.Services.ServiceS3.InternalDNS {

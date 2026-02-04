@@ -115,6 +115,7 @@ spec:
               value: postgres
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
+            - name: NOOBAA_ROOT_SECRET
             - name: NODE_EXTRA_CA_CERTS
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
