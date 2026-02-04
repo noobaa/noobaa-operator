@@ -1,8 +1,6 @@
 package kms
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -44,7 +42,7 @@ func (v *VersionSingleSecret) Get() error {
 	s, _, err := v.k.GetSecret(v.k.driver.Path(), v.k.driver.GetContext())
 	if err != nil {
 		// handle k8s get from non-existent secret
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "does not exist") {
+		if strings.Contains(err.Error(), "not found") {
 			return secrets.ErrInvalidSecretId
 		}
 		return err
@@ -107,33 +105,17 @@ func (v *VersionRotatingSecret) Get() error {
 	s, _, err := v.k.GetSecret(v.backendSecretName(), v.k.driver.GetContext())
 	if err != nil {
 		// handle k8s get from non-existent secret
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "does not exist") {
+		if strings.Contains(err.Error(), "not found") {
 			return secrets.ErrInvalidSecretId
 		}
 		return err
 	}
 
-	if (v.k.driver.Name() == "KMIPSecret") {
-		encodedData, ok := s[v.BackendSecretName()]
-		if !ok {
-			return secrets.ErrInvalidSecretData
-		}
-		data := map[string]string{}
-		decodedString, err := base64.StdEncoding.DecodeString(encodedData.(string))
-		if err != nil {
-			return secrets.ErrInvalidSecretData
-		}
-		err = json.Unmarshal(decodedString, &data)
-		if err != nil {
-			return secrets.ErrInvalidSecretData
-		}
-		v.data = data
-		return nil
-	}
 	rc := map[string]string{}
 	for k, v := range s {
 		rc[k] = v.(string)
 	}
+
 	v.data = rc
 	return nil
 }
@@ -155,17 +137,7 @@ func (v *VersionRotatingSecret) Set(val string) error {
 	s[ActiveRootKey] = key
 	s[key] = val
 	v.data = s
-	var err error
-	if (v.k.driver.Name() == "KMIPSecret") {
-		jsonData, err := json.Marshal(s)
-		encodedString := base64.StdEncoding.EncodeToString(jsonData)
-		if err != nil {
-			return err
-		}
-		_, err = v.k.PutSecret(v.backendSecretName(), map[string]interface{}{v.backendSecretName(): encodedString}, v.k.driver.SetContext())
-		return err
-	}
-	_, err = v.k.PutSecret(v.backendSecretName(), toInterfaceMap(s), v.k.driver.SetContext())
+	_, err := v.k.PutSecret(v.backendSecretName(), toInterfaceMap(s), v.k.driver.SetContext())
 	return err
 }
 
