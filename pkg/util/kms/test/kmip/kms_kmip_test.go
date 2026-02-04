@@ -41,7 +41,7 @@ func checkExternalSecret(noobaa *nbv1.NooBaa, expectExists bool) {
 	secret.Namespace = noobaa.Namespace
 	secret.Name = k.TokenSecretName
 	Expect(util.KubeCheck(secret)).To(BeTrue())
-	_, exists := secret.StringData[kms.NewKMIPUniqueID]
+	_, exists := secret.StringData[kms.KMIPUniqueID]
 	Expect(exists == expectExists).To(BeTrue())
 }
 
@@ -116,44 +116,6 @@ var _ = Describe("KMS - KMIP", func() {
 			delete(noobaa.Spec.Security.KeyManagementService.ConnectionDetails, kms.KMIPEndpoint)
 			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
 			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInvalid)).To(BeTrue())
-			Expect(util.KubeDelete(noobaa)).To(BeTrue())
-		})
-	})
-
-	Context("Verify Rotate", func() {
-		noobaa := getMiniNooBaa()
-		noobaa.Spec.Security.KeyManagementService = simpleKmsSpec(tokenSecretName, apiAddress)
-		noobaa.Spec.Security.KeyManagementService.EnableKeyRotation = true
-		noobaa.Spec.Security.KeyManagementService.Schedule = "* * * * *" // every min
-
-		Specify("Verify API Address", func() {
-			Expect(apiAddressFound).To(BeTrue())
-		})
-		Specify("Create key rotate schedule system", func() {
-			Expect(util.KubeCreateFailExisting(noobaa)).To(BeTrue())
-		})
-		Specify("Verify KMS condition Type", func() {
-			Expect(util.NooBaaCondition(noobaa, nbv1.ConditionTypeKMSType, "kmip")).To(BeTrue())
-		})
-		Specify("Verify KMS condition status Init", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSInit)).To(BeTrue())
-		})
-		Specify("Restart NooBaa operator", func() {
-			podList := &corev1.PodList{}
-			podSelector, _ := labels.Parse("noobaa-operator=deployment")
-			listOptions := client.ListOptions{Namespace: options.Namespace, LabelSelector: podSelector}
-
-			Expect(util.KubeList(podList, &listOptions)).To(BeTrue())
-			Expect(len(podList.Items)).To(BeEquivalentTo(1))
-			Expect(util.KubeDelete(&podList.Items[0])).To(BeTrue())
-		})
-		Specify("Verify KMS condition status Sync", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSSync)).To(BeTrue())
-		})
-		Specify("Verify KMS condition status Key Rotate", func() {
-			Expect(util.NooBaaCondStatus(noobaa, nbv1.ConditionKMSKeyRotate)).To(BeTrue())
-		})
-		Specify("Delete NooBaa", func() {
 			Expect(util.KubeDelete(noobaa)).To(BeTrue())
 		})
 	})

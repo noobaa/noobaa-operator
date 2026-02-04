@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"strings"
 	"time"
 
 	"crypto/tls"
@@ -210,7 +209,7 @@ func (k *KMIPSecretStorage) response(respMsg *kmip.ResponseMessage, operation km
 		return nil, fmt.Errorf("Unexpected uniqueBatchItemID, real %v expected %v", bi.UniqueBatchItemID, uniqueBatchItemID)
 	}
 	if kmip14.ResultStatusSuccess != bi.ResultStatus {
-		return nil, fmt.Errorf("Unexpected result status %v: Reason: %v Message: %v", bi.ResultStatus, bi.ResultReason, bi.ResultMessage)
+		return nil, fmt.Errorf("Unexpected result status %v expected success %v", bi.ResultStatus, kmip14.ResultStatusSuccess)
 	}
 
 	return &bi, nil
@@ -262,23 +261,10 @@ func (k *KMIPSecretStorage) GetSecret(
 
 	log := util.Logger()
 
-	lookfor := KMIPUniqueID // Addition to upgrade
-	var activeKeyID string
-	util.KubeCheck(k.secret)
-	if strings.HasSuffix(secretID, "-root-master-key-backend") {
-		lookfor = NewKMIPUniqueID
-		exists := false
-		activeKeyID, exists = k.secret.StringData[NewActiveKeyID]
-		if !exists {
-			log.Errorf("KMIPSecretStorage.GetSecret() activeKeyID %v does not exist in secret %v", activeKeyID, k.secret.Name)
-			return nil, secrets.NoVersion, secrets.ErrInvalidSecretId
-		}
-	}
-
 	// KMIP key uniqueIdentifier
-	uniqueIdentifier, exists := k.secret.StringData[lookfor]
+	uniqueIdentifier, exists := k.secret.StringData[KMIPUniqueID]
 	if !exists {
-		log.Errorf("KMIPSecretStorage.GetSecret() uniqueIdentifier %v does not exist in secret %v", lookfor, k.secret.Name)
+		log.Errorf("KMIPSecretStorage.GetSecret() uniqueIdentifier %v does not exist in secret %v", KMIPUniqueID, k.secret)
 		return nil, secrets.NoVersion, secrets.ErrInvalidSecretId
 	}
 
@@ -316,11 +302,11 @@ func (k *KMIPSecretStorage) GetSecret(
 	if getRespPayload.SymmetricKey == nil {
 		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  get response SymmetricKey can not be nil")
 	}
-	if getRespPayload.SymmetricKey.KeyBlock.CryptographicLength != cryptographicLength {
-		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  KeyBlock crypto len actual %v, expected %v", getRespPayload.SymmetricKey.KeyBlock.CryptographicLength, cryptographicLength)
-	}
 	if getRespPayload.SymmetricKey.KeyBlock.KeyFormatType != kmip14.KeyFormatTypeRaw {
 		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  KeyBlock format type actual %v, expected KeyFormatTypeRaw %v", getRespPayload.SymmetricKey.KeyBlock.KeyFormatType, kmip14.KeyFormatTypeRaw)
+	}
+	if getRespPayload.SymmetricKey.KeyBlock.CryptographicLength != cryptographicLength {
+		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  KeyBlock crypto len actual %v, expected %v", getRespPayload.SymmetricKey.KeyBlock.CryptographicLength, cryptographicLength)
 	}
 	if getRespPayload.SymmetricKey.KeyBlock.CryptographicAlgorithm != kmip14.CryptographicAlgorithmAES {
 		return nil, secrets.NoVersion, fmt.Errorf("Unexpected  KeyBlock crypto algo actual %v, expected CryptographicAlgorithmAES %v", getRespPayload.SymmetricKey.KeyBlock.CryptographicAlgorithm, kmip14.CryptographicAlgorithmAES)
@@ -329,13 +315,10 @@ func (k *KMIPSecretStorage) GetSecret(
 	secretBytes := getRespPayload.SymmetricKey.KeyBlock.KeyValue.KeyMaterial.([]byte)
 	secretBase64 := base64.StdEncoding.EncodeToString(secretBytes)
 
-	if len(activeKeyID) > 0 {
-		r := map[string]interface{}{ActiveRootKey: activeKeyID, activeKeyID: secretBase64}
-		return r, secrets.NoVersion, nil
-	} else {
-		r := map[string]interface{}{secretID: secretBase64}
-		return r, secrets.NoVersion, nil
-	}
+	// Return the fetched key value
+	r := map[string]interface{}{secretID: secretBase64}
+
+	return r, secrets.NoVersion, nil
 }
 
 // PutSecret will associate an secretId to its secret data
@@ -346,10 +329,13 @@ func (k *KMIPSecretStorage) PutSecret(
 	keyContext map[string]string,
 ) (secrets.Version, error) {
 	log := util.Logger()
+	if _, exists := k.secret.StringData[KMIPUniqueID]; exists {
+		log.Errorf("KMIPSecretStorage.PutSecret() Key UniqueIdentifier %v was not found in the secret", KMIPUniqueID)
+		return secrets.NoVersion, secrets.ErrSecretExists
+	}
 
 	// Register the key value the KMIP endpoint
-	activeKey := plainText[ActiveRootKey].(string)
-	value := plainText[activeKey].(string)
+	value := plainText[secretID].(string)
 	valueBytes, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
 		return secrets.NoVersion, err
@@ -394,8 +380,7 @@ func (k *KMIPSecretStorage) PutSecret(
 		return secrets.NoVersion, err
 	}
 
-	k.secret.StringData[NewActiveKeyID] = activeKey
-	k.secret.StringData[NewKMIPUniqueID] = registerRespPayload.UniqueIdentifier
+	k.secret.StringData[KMIPUniqueID] = registerRespPayload.UniqueIdentifier
 	if !util.KubeUpdate(k.secret) {
 		log.Errorf("Failed to update KMS secret %v in ns %v", k.secret.Name, k.secret.Namespace)
 		return secrets.NoVersion, fmt.Errorf("Failed to update KMS secret %v in ns %v", k.secret.Name, k.secret.Namespace)
@@ -411,15 +396,10 @@ func (k *KMIPSecretStorage) DeleteSecret(
 ) error {
 	log := util.Logger()
 
-	lookfor := KMIPUniqueID // Addition to upgrade
-	if strings.HasSuffix(secretID, "-root-master-key-backend") {
-		lookfor = NewKMIPUniqueID
-	}
 	// Find the key ID
-	util.KubeCheck(k.secret)
-	uniqueIdentifier, exists := k.secret.StringData[lookfor]
+	uniqueIdentifier, exists := k.secret.StringData[KMIPUniqueID]
 	if !exists {
-		log.Errorf("KMIPSecretStorage.DeleteSecret() No uniqueIdentifier %v in the secret %v", lookfor, k.secret.Name)
+		log.Errorf("KMIPSecretStorage.DeleteSecret() No uniqueIdentifier in the secret")
 		return secrets.ErrInvalidSecretId
 	}
 
@@ -457,8 +437,8 @@ func (k *KMIPSecretStorage) DeleteSecret(
 		return fmt.Errorf("Unexpected uniqueIdentifier %v in destroy response , expected %v", destroyRespPayload.UniqueIdentifier, uniqueIdentifier)
 	}
 
-	delete(k.secret.Data, lookfor)
-	delete(k.secret.StringData, lookfor)
+	delete(k.secret.Data, KMIPUniqueID)
+	delete(k.secret.StringData, KMIPUniqueID)
 	if !util.KubeUpdate(k.secret) {
 		log.Errorf("Failed to update KMS secret %v in ns %v", k.secret.Name, k.secret.Namespace)
 		return fmt.Errorf("Failed to update KMS secret %v in ns %v", k.secret.Name, k.secret.Namespace)
