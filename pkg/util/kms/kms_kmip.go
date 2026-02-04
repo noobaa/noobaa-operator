@@ -15,7 +15,6 @@ const (
 	KMIPSecret        = "KMIP_CERTS_SECRET"
 	KMIPUniqueID      = "UniqueIdentifier"
 	NewKMIPUniqueID   = "UniqueIdentifierNew"
-	NewActiveKeyID    = "NewActiveKeyID"
 	KMIPTLSServerName = "TLS_SERVER_NAME"
 	KMIPReadTimeOut   = "READ_TIMEOUT"
 	KMIPWriteTimeOut  = "WRITE_TIMEOUT"
