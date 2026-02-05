@@ -90,6 +90,12 @@ spec:
               azureBlob:
                 description: AzureBlob specifies a namespace store of type azure-blob
                 properties:
+                  clientId:
+                    description: Azure client id
+                    type: string
+                  resourcegroupId:
+                    description: Azure resourcegroup id
+                    type: string
                   secret:
                     description: |-
                       Secret refers to a secret that provides the credentials
@@ -105,12 +111,17 @@ spec:
                         type: string
                     type: object
                     x-kubernetes-map-type: atomic
+                  subscriptionId:
+                    description: Azure subscription id
+                    type: string
                   targetBlobContainer:
                     description: TargetBlobContainer is the name of the target Azure
                       Blob container
                     type: string
+                  tenantId:
+                    description: Azure tenant id
+                    type: string
                 required:
-                - secret
                 - targetBlobContainer
                 type: object
               googleCloudStorage:

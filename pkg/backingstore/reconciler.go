@@ -804,11 +804,20 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		}
 
 	case nbv1.StoreTypeAzureBlob:
-		conn.EndpointType = nb.EndpointTypeAzure
 		conn.Endpoint = "https://blob.core.windows.net"
-		conn.Identity = nb.MaskedString(r.Secret.StringData["AccountName"])
-		conn.Secret = nb.MaskedString(r.Secret.StringData["AccountKey"])
 		tenantID := r.Secret.StringData["TenantID"]
+		conn.Identity = nb.MaskedString(r.Secret.StringData["AccountName"])
+		if util.IsAzureSTSClusterBS(r.BackingStore) {
+			conn.EndpointType = nb.EndpointTypeAzureSTS
+			conn.AzureSTSCredentials = &nb.AzureSTSCredentials{
+				ClientID: r.Secret.StringData["azure_client_id"],
+				TenantID: r.Secret.StringData["azure_tenant_id"],
+			}
+		} else {
+			conn.EndpointType = nb.EndpointTypeAzure
+			conn.Secret = nb.MaskedString(r.Secret.StringData["AccountKey"])
+		}
+
 		appID := r.Secret.StringData["ApplicationID"]
 		appSecret := r.Secret.StringData["ApplicationSecret"]
 		logsAnalyticsWorkspaceID := r.Secret.StringData["LogsAnalyticsWorkspaceID"]
@@ -878,15 +887,16 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	}
 
 	checkConnectionParams := &nb.CheckExternalConnectionParams{
-		Name:               r.AddExternalConnectionParams.Name,
-		EndpointType:       r.AddExternalConnectionParams.EndpointType,
-		Endpoint:           r.AddExternalConnectionParams.Endpoint,
-		Region:             r.AddExternalConnectionParams.Region,
-		Identity:           r.AddExternalConnectionParams.Identity,
-		Secret:             r.AddExternalConnectionParams.Secret,
-		AuthMethod:         r.AddExternalConnectionParams.AuthMethod,
-		AWSSTSARN:          r.AddExternalConnectionParams.AWSSTSARN,
-		AzureLogAccessKeys: r.AddExternalConnectionParams.AzureLogAccessKeys,
+		Name:                r.AddExternalConnectionParams.Name,
+		EndpointType:        r.AddExternalConnectionParams.EndpointType,
+		Endpoint:            r.AddExternalConnectionParams.Endpoint,
+		Region:              r.AddExternalConnectionParams.Region,
+		Identity:            r.AddExternalConnectionParams.Identity,
+		Secret:              r.AddExternalConnectionParams.Secret,
+		AuthMethod:          r.AddExternalConnectionParams.AuthMethod,
+		AWSSTSARN:           r.AddExternalConnectionParams.AWSSTSARN,
+		AzureLogAccessKeys:  r.AddExternalConnectionParams.AzureLogAccessKeys,
+		AzureSTSCredentials: r.AddExternalConnectionParams.AzureSTSCredentials,
 	}
 
 	if r.UpdateExternalConnectionParams != nil {

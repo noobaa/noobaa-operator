@@ -283,7 +283,7 @@ spec:
 
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "1b202cb74ba1bd0e54627bb55e14feea349c2f3d1604776ccaa040c37a932bef"
+const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "d4c876f0b291244cf487be116ac657e1bee52e3e5becdb019f6b2ea513c1ad38"
 
 const File_deploy_crds_noobaa_io_backingstores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -374,6 +374,12 @@ spec:
               azureBlob:
                 description: AzureBlob specifies a backing store of type azure-blob
                 properties:
+                  clientId:
+                    description: Azure client id
+                    type: string
+                  resourcegroupId:
+                    description: Azure resourcegroup id
+                    type: string
                   secret:
                     description: |-
                       Secret refers to a secret that provides the credentials
@@ -389,12 +395,17 @@ spec:
                         type: string
                     type: object
                     x-kubernetes-map-type: atomic
+                  subscriptionId:
+                    description: Azure subscription id
+                    type: string
                   targetBlobContainer:
                     description: TargetBlobContainer is the name of the target Azure
                       Blob container
                     type: string
+                  tenantId:
+                    description: Azure tenant id
+                    type: string
                 required:
-                - secret
                 - targetBlobContainer
                 type: object
               googleCloudStorage:
@@ -911,7 +922,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "dc1da64540920101bfb80e331920a3bc2b0b39ea27aacf148109b3fd91ed134e"
+const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "d42d68665c24f206aa40a8161adb1d12ce04235c07c25ec1c942184ab3af9fa4"
 
 const File_deploy_crds_noobaa_io_namespacestores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -1005,6 +1016,12 @@ spec:
               azureBlob:
                 description: AzureBlob specifies a namespace store of type azure-blob
                 properties:
+                  clientId:
+                    description: Azure client id
+                    type: string
+                  resourcegroupId:
+                    description: Azure resourcegroup id
+                    type: string
                   secret:
                     description: |-
                       Secret refers to a secret that provides the credentials
@@ -1020,12 +1037,17 @@ spec:
                         type: string
                     type: object
                     x-kubernetes-map-type: atomic
+                  subscriptionId:
+                    description: Azure subscription id
+                    type: string
                   targetBlobContainer:
                     description: TargetBlobContainer is the name of the target Azure
                       Blob container
                     type: string
+                  tenantId:
+                    description: Azure tenant id
+                    type: string
                 required:
-                - secret
                 - targetBlobContainer
                 type: object
               googleCloudStorage:
@@ -1425,7 +1447,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "6cdd4f5aaa21ba8c450c5e00d6f8c38f43357b4dc2c22f786dedeaebf3c69618"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "e9e2e90e5ca933e2670cbde250b3db8fcf9d8984108d0a8a698c8c9b26fd343b"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2868,6 +2890,12 @@ spec:
                   azureBlob:
                     description: AzureBlob specifies a backing store of type azure-blob
                     properties:
+                      clientId:
+                        description: Azure client id
+                        type: string
+                      resourcegroupId:
+                        description: Azure resourcegroup id
+                        type: string
                       secret:
                         description: |-
                           Secret refers to a secret that provides the credentials
@@ -2883,12 +2911,17 @@ spec:
                             type: string
                         type: object
                         x-kubernetes-map-type: atomic
+                      subscriptionId:
+                        description: Azure subscription id
+                        type: string
                       targetBlobContainer:
                         description: TargetBlobContainer is the name of the target
                           Azure Blob container
                         type: string
+                      tenantId:
+                        description: Azure tenant id
+                        type: string
                     required:
-                    - secret
                     - targetBlobContainer
                     type: object
                   googleCloudStorage:
@@ -4129,7 +4162,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "993fc53b16da6485abff75cf76a0d0d15f10e2319f0b519010808e2ea20df1c6"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "d3b8bcceeb3aebd32bf39ac68c256cebc614b4338ecfb18095a4799d40956ed0"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4175,7 +4208,8 @@ spec:
             secretName: noobaa-iam-serving-cert
             optional: true
         # This service account token can be used to provide identity outside the cluster.
-        # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+        # For example, this token can be used with AWS(AssumeRoleWithWebIdentity)/Azure(WorkloadIdentityCredential) 
+        # to authenticate with AWS/Azure using IAM OIDC provider and STS.
         - name: bound-sa-token
           projected:
             sources:
@@ -5302,7 +5336,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "3dba40ad6babb033832e999680f333849bf3f194a24aa1163587529315ebe8da"
+const Sha256_deploy_internal_statefulset_core_yaml = "905cfa44f994b83bb4a970114b64f5fbfe29d95fa84e50d4cc77310af4e839e1"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5341,7 +5375,8 @@ spec:
             secretName: noobaa-server
             optional: true
         # This service account token can be used to provide identity outside the cluster.
-        # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+        # For example, this token can be used with AWS(AssumeRoleWithWebIdentity)/Azure(WorkloadIdentityCredential) 
+        # to authenticate with AWS/Azure using IAM OIDC provider and STS.
         - name: bound-sa-token
           projected:
             sources:
@@ -6400,7 +6435,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "49b1f15cdda417e6cd5b99dd162ca666e24bf18184f5abc45eaaa690da6d3898"
+const Sha256_deploy_operator_yaml = "8f2d1b2d9b43ca5aa530bc6cf1f4d094a1fa04622b70e434af93afdfc75b65c9"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -6426,7 +6461,8 @@ spec:
           type: RuntimeDefault
       volumes:
       # This service account token can be used to provide identity outside the cluster.
-      # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+      # For example, this token can be used with AWS(AssumeRoleWithWebIdentity)/Azure(WorkloadIdentityCredential) 
+      # to authenticate with AWS/Azure using IAM OIDC provider and STS.
       - name: bound-sa-token
         projected:
           sources:

@@ -96,6 +96,7 @@ type Reconciler struct {
 	IsAWSSTSCluster           bool
 	AzureCloudCreds           *cloudcredsv1.CredentialsRequest
 	AzureContainerCreds       *corev1.Secret
+	IsAzureSTSCluster         bool
 	GCPBucketCreds            *corev1.Secret
 	GCPCloudCreds             *cloudcredsv1.CredentialsRequest
 	IBMCosBucketCreds         *corev1.Secret
@@ -128,10 +129,14 @@ type Reconciler struct {
 	ExternalPgSSLSecret       *corev1.Secret
 	BucketNotificationsPVC    *corev1.PersistentVolumeClaim
 	SecretMetricsAuth         *corev1.Secret
+	webIdentityTokenPath      string
 
 	// CNPG resources
 	CNPGImageCatalog *cnpgv1.ImageCatalog
 	CNPGCluster      *cnpgv1.Cluster
+
+	// Azure STS
+	AzureAssertion string
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -330,6 +335,7 @@ func NewReconciler(
 
 	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.DeepCopy()
 	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.DeepCopy()
+	r.webIdentityTokenPath = "/var/run/secrets/openshift/serviceaccount/token"
 
 	return r
 }
@@ -421,26 +427,26 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	/*
-	This code is problematic due to the way other parts of the product work.
-	On the core side, get_unsecured_agent() relies on the presence of the NODE_EXTRA_CA_CERTS
-	environment variable to determine whether an HTTP or HTTPS client should be used.
+		This code is problematic due to the way other parts of the product work.
+		On the core side, get_unsecured_agent() relies on the presence of the NODE_EXTRA_CA_CERTS
+		environment variable to determine whether an HTTP or HTTPS client should be used.
 
-	At the time of writing this comment, if the environment variable is not set, an HTTP agent
-	will be used for *all* S3-compatible domains that aren't under amazonaws.com - including
-	domains that are already present by default in the system's certificate store.
+		At the time of writing this comment, if the environment variable is not set, an HTTP agent
+		will be used for *all* S3-compatible domains that aren't under amazonaws.com - including
+		domains that are already present by default in the system's certificate store.
 
-	Forcing the environment variable to always be set leads to a different problem where
-	some things might fail - e.g. the admission tests that rely on creating a namespacestore
-	that points towards NooBaa's (self-signed) S3 service. In that case, the HTTPS agent fails
-	due to the self-signed certificate.	
+		Forcing the environment variable to always be set leads to a different problem where
+		some things might fail - e.g. the admission tests that rely on creating a namespacestore
+		that points towards NooBaa's (self-signed) S3 service. In that case, the HTTPS agent fails
+		due to the self-signed certificate.
 
-	Also, note that the code that combines certificates only applies to the operator.
-	Based on whether the certificate bundling was successful, the operator will set the value of
-	NODE_EXTRA_CA_CERTS in endpoints and core pods to point to *the system generated service-serving certs*.
+		Also, note that the code that combines certificates only applies to the operator.
+		Based on whether the certificate bundling was successful, the operator will set the value of
+		NODE_EXTRA_CA_CERTS in endpoints and core pods to point to *the system generated service-serving certs*.
 
-	At the time of writing, user certs are not included at any point.
+		At the time of writing, user certs are not included at any point.
 	*/
-	
+
 	err = util.CombineCaBundle(util.ServiceServingCertCAFile)
 	if err == nil {
 		r.ApplyCAsToPods = util.ServiceServingCertCAFile

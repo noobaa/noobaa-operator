@@ -1154,6 +1154,7 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		return fmt.Errorf("cloud credentials secret %q is not ready yet", secretName)
 	}
 	r.Logger.Infof("Secret %s was created successfully by cloud-credentials operator", secretName)
+	util.SecretResetStringDataFromData(r.AzureContainerCreds)
 
 	util.KubeCheck(r.AzureContainerCreds)
 	if r.AzureContainerCreds.UID == "" {
@@ -1161,6 +1162,13 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		r.Logger.Info("Creating AzureContainerCreds secret")
 		r.AzureContainerCreds.StringData = map[string]string{}
 		r.AzureContainerCreds.StringData = cloudCredsSecret.StringData
+		if r.IsAzureSTSCluster {
+			// Get User provided credential for creating a backingstore
+			r.AzureContainerCreds.StringData["azure_client_id"] = *r.DefaultBackingStore.Spec.AzureBlob.ClientId
+			r.AzureContainerCreds.StringData["azure_tenant_id"] = *r.DefaultBackingStore.Spec.AzureBlob.TenantId
+			r.AzureContainerCreds.StringData["azure_subscription_id"] = *r.DefaultBackingStore.Spec.AzureBlob.SubscriptionId
+			r.AzureContainerCreds.StringData["azure_resourcegroup"] = *r.DefaultBackingStore.Spec.AzureBlob.ResourcegroupId
+		}
 		r.Own(r.AzureContainerCreds)
 		if err := r.Client.Create(r.Ctx, r.AzureContainerCreds); err != nil {
 			return fmt.Errorf("got error on AzureContainerCreds creation. error: %v", err)
@@ -1176,6 +1184,7 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		if err != nil {
 			return err
 		}
+		r.Logger.Infof("Azure backingStore storage account %s was created successfully", nb.MaskedString(azureAccountName))
 		r.AzureContainerCreds.StringData["AccountName"] = azureAccountName
 	}
 
@@ -1184,14 +1193,14 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		key := r.getAccountPrimaryKey(azureAccountName, azureGroupName)
 		r.AzureContainerCreds.StringData["AccountKey"] = key
 	}
-
-	azureContainerName := ""
-	if r.AzureContainerCreds.StringData["targetBlobContainer"] == "" {
+	azureContainerName := r.AzureContainerCreds.StringData["targetBlobContainer"]
+	if azureContainerName == "" {
 		azureContainerName = strings.ToLower(randname.GenerateWithPrefix("noobaacontainer", 5))
 		_, err := r.CreateContainer(r.AzureContainerCreds.StringData["AccountName"], azureGroupName, azureContainerName)
 		if err != nil {
 			return err
 		}
+		r.Logger.Infof("Azure backingStore target BlobContainer %s was created successfully", azureContainerName)
 		r.AzureContainerCreds.StringData["targetBlobContainer"] = azureContainerName
 	}
 
@@ -1199,16 +1208,13 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		return fmt.Errorf("got error on AzureContainerCreds update. error: %v", errUpdate)
 	}
 
-	// create backing store
-	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeAzureBlob
-	r.DefaultBackingStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
-		TargetBlobContainer: azureContainerName,
-		Secret: corev1.SecretReference{
-			Name:      r.AzureContainerCreds.Name,
-			Namespace: r.AzureContainerCreds.Namespace,
-		},
+	// create common backingstore for Azure non STS and non STS deployments
+	r.DefaultBackingStore.Spec.AzureBlob.Secret = corev1.SecretReference{
+		Name:      r.AzureContainerCreds.Name,
+		Namespace: r.AzureContainerCreds.Namespace,
 	}
-
+	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypeAzureBlob
+	r.DefaultBackingStore.Spec.AzureBlob.TargetBlobContainer = azureContainerName
 	return nil
 }
 

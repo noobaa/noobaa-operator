@@ -151,6 +151,46 @@ func RunUpgrade(cmd *cobra.Command, args []string) {
 		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
 	}
 
+	AzureClientId, _ := cmd.Flags().GetString("azure-client-id")
+	if AzureClientId != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "CLIENTID",
+			Value: AzureClientId,
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	AzureTenantId, _ := cmd.Flags().GetString("azure-tenant-id")
+	if AzureTenantId != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "TENANTID",
+			Value: AzureTenantId,
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	AzureSubscriptionId, _ := cmd.Flags().GetString("azure-subscription-id")
+	if AzureSubscriptionId != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "SUBSCRIPTIONID",
+			Value: AzureSubscriptionId,
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	AzureResourcegroup, _ := cmd.Flags().GetString("azure-resourcegroup")
+	if AzureResourcegroup != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "RESOURCEGROUP",
+			Value: AzureResourcegroup,
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
 	if !noDeploy {
 		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
@@ -164,6 +204,7 @@ func RunUpgrade(cmd *cobra.Command, args []string) {
 		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
 		util.KubeApply(c.Deployment)
 	}
+
 }
 
 // RunInstall runs a CLI command
@@ -222,6 +263,46 @@ func RunInstall(cmd *cobra.Command, args []string) {
 		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
 			Name:  "ROLEARN",
 			Value: AWSSTSARNEnv,
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	AzureClientId, _ := cmd.Flags().GetString("azure-client-id")
+	if AzureClientId != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "CLIENTID",
+			Value: AzureClientId,
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	AzureTenantId, _ := cmd.Flags().GetString("azure-tenant-id")
+	if AzureTenantId != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "TENANTID",
+			Value: AzureTenantId,
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	AzureSubscriptionId, _ := cmd.Flags().GetString("azure-subscription-id")
+	if AzureSubscriptionId != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "SUBSCRIPTIONID",
+			Value: AzureSubscriptionId,
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	AzureResourcegroup, _ := cmd.Flags().GetString("azure-resourcegroup")
+	if AzureResourcegroup != "" {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  "RESOURCEGROUP",
+			Value: AzureResourcegroup,
 		})
 		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
 	}

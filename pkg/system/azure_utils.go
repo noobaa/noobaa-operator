@@ -5,23 +5,37 @@ import (
 	"log"
 	"net/url"
 
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-06-01/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/adal"
-	"github.com/Azure/go-autorest/autorest/azure"
 	"k8s.io/utils/ptr"
 )
 
-func (r *Reconciler) getStorageAccountsClient() storage.AccountsClient {
-	storageAccountsClient := storage.NewAccountsClient(r.AzureContainerCreds.StringData["azure_subscription_id"])
-	auth, _ := r.GetResourceManagementAuthorizer()
-	storageAccountsClient.Authorizer = auth
-	err := storageAccountsClient.AddToUserAgent("Go-http-client/1.1")
-	if err != nil {
-		log.Fatalf("got error on storageAccountsClient.AddToUserAgent %v", err)
+func (r *Reconciler) getStorageAccountsClient() (*armstorage.AccountsClient, error) {
+	if r.IsAzureSTSCluster {
+		workloadIdentitycred, err := r.getAuthorizerForWorkloadIdentity()
+		if err != nil {
+			return nil, err
+		}
+		return armstorage.NewAccountsClient(
+			r.AzureContainerCreds.StringData["azure_subscription_id"],
+			workloadIdentitycred,
+			&arm.ClientOptions{},
+		)
+	} else {
+		clientSecretCrede, err := r.getAuthorizerForSecretCredential()
+		if err != nil {
+			return nil, err
+		}
+		return armstorage.NewAccountsClient(
+			r.AzureContainerCreds.StringData["azure_subscription_id"],
+			clientSecretCrede,
+			&arm.ClientOptions{},
+		)
 	}
-	return storageAccountsClient
 }
 
 func (r *Reconciler) getAccountPrimaryKey(accountName, accountGroupName string) string {
@@ -29,78 +43,105 @@ func (r *Reconciler) getAccountPrimaryKey(accountName, accountGroupName string) 
 	if err != nil {
 		log.Fatalf("failed to list keys: %v", err)
 	}
-	return *(((*response.Keys)[0]).Value)
+	if len(response.Keys) == 0 || response.Keys[0].Value == nil {
+		log.Fatalf("no storage account keys returned for accountName:  %s", accountName)
+	}
+	return *response.Keys[0].Value
+}
+
+// Helper function to create pointers to values as required by Go SDK
+func toPtr[T any](v T) *T {
+	return &v
 }
 
 // CreateStorageAccount starts creation of a new storage account and waits for
 // the account to be created.
-func (r *Reconciler) CreateStorageAccount(accountName, accountGroupName string) (storage.Account, error) {
-	var s storage.Account
-	storageAccountsClient := r.getStorageAccountsClient()
-
+func (r *Reconciler) CreateStorageAccount(accountName, accountGroupName string) (armstorage.AccountsClientCreateResponse, error) {
+	var storageAccount armstorage.AccountsClientCreateResponse
+	accountsClient, err := r.getStorageAccountsClient()
+	if err != nil {
+		return storageAccount, err
+	}
 	// we used to call storage.AccountCheckNameAvailabilityParameters here to make sure the name is available
 	// removed it because when using a newer API version (2019-06-01), this call produced some irrelevant errors sometimes
 	// if the name is not available, CreateStorageAccount will return an error, and a different name will be used next time
-
 	enableHTTPSTrafficOnly := true
 	allowBlobPublicAccess := false
-	future, err := storageAccountsClient.Create(
+	future, err := accountsClient.BeginCreate(
 		r.Ctx,
 		accountGroupName,
 		accountName,
-		storage.AccountCreateParameters{
-			Sku: &storage.Sku{
-				Name: storage.StandardLRS},
-			Kind:     storage.StorageV2,
+		armstorage.AccountCreateParameters{
+			SKU: &armstorage.SKU{
+				Name: toPtr(armstorage.SKUNameStandardLRS),
+			},
+			Kind:     toPtr(armstorage.KindStorageV2),
 			Location: ptr.To(r.AzureContainerCreds.StringData["azure_region"]),
-			AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
+			Properties: &armstorage.AccountPropertiesCreateParameters{
 				EnableHTTPSTrafficOnly: &enableHTTPSTrafficOnly,
 				AllowBlobPublicAccess:  &allowBlobPublicAccess,
-				MinimumTLSVersion:      storage.TLS12,
+				MinimumTLSVersion:      toPtr(armstorage.MinimumTLSVersionTLS12),
 			},
-		})
+		},
+		&armstorage.AccountsClientBeginCreateOptions{},
+	)
 
 	if err != nil {
-		return s, fmt.Errorf("failed to start creating storage account: %+v", err)
+		return storageAccount, fmt.Errorf("failed to start creating storage account: %+v", err)
 	}
 
-	err = future.WaitForCompletionRef(r.Ctx, storageAccountsClient.Client)
+	storageAccount, err = future.PollUntilDone(r.Ctx, &runtime.PollUntilDoneOptions{})
 	if err != nil {
-		return s, fmt.Errorf("failed to finish creating storage account: %+v", err)
+		return storageAccount, fmt.Errorf("failed to finish creating storage account: %+v", err)
 	}
 
-	return future.Result(storageAccountsClient)
+	return storageAccount, err
 }
 
 // GetStorageAccount gets details on the specified storage account
-func (r *Reconciler) GetStorageAccount(accountName, accountGroupName string) (storage.Account, error) {
-	storageAccountsClient := r.getStorageAccountsClient()
-	return storageAccountsClient.GetProperties(r.Ctx, accountGroupName, accountName, storage.AccountExpandBlobRestoreStatus)
+func (r *Reconciler) GetStorageAccount(accountName, accountGroupName string) (armstorage.AccountsClientGetPropertiesResponse, error) {
+	storageAccountsClient, err := r.getStorageAccountsClient()
+	if err != nil {
+		return armstorage.AccountsClientGetPropertiesResponse{}, err
+	}
+	return storageAccountsClient.GetProperties(r.Ctx, accountGroupName, accountName, &armstorage.AccountsClientGetPropertiesOptions{})
 }
 
 // DeleteStorageAccount deletes an existing storate account
-func (r *Reconciler) DeleteStorageAccount(accountName, accountGroupName string) (autorest.Response, error) {
-	storageAccountsClient := r.getStorageAccountsClient()
-	return storageAccountsClient.Delete(r.Ctx, accountGroupName, accountName)
+func (r *Reconciler) DeleteStorageAccount(accountName, accountGroupName string) (armstorage.AccountsClientDeleteResponse, error) {
+	storageAccountsClient, err := r.getStorageAccountsClient()
+	if err != nil {
+		return armstorage.AccountsClientDeleteResponse{}, err
+	}
+	return storageAccountsClient.Delete(r.Ctx, accountGroupName, accountName, &armstorage.AccountsClientDeleteOptions{})
 }
 
 // CheckAccountNameAvailability checks if the storage account name is available.
 // Storage account names must be unique across Azure and meet other requirements.
-func (r *Reconciler) CheckAccountNameAvailability(accountName string) (storage.CheckNameAvailabilityResult, error) {
-	storageAccountsClient := r.getStorageAccountsClient()
+func (r *Reconciler) CheckAccountNameAvailability(accountName string) (armstorage.AccountsClientCheckNameAvailabilityResponse, error) {
+	storageAccountsClient, err := r.getStorageAccountsClient()
+	if err != nil {
+		return armstorage.AccountsClientCheckNameAvailabilityResponse{}, err
+	}
+	paramaccountName := armstorage.AccountCheckNameAvailabilityParameters{
+		Name: ptr.To(accountName),
+		Type: ptr.To("Microsoft.Storage/storageAccounts"),
+	}
+
 	result, err := storageAccountsClient.CheckNameAvailability(
 		r.Ctx,
-		storage.AccountCheckNameAvailabilityParameters{
-			Name: ptr.To(accountName),
-			Type: ptr.To("Microsoft.Storage/storageAccounts"),
-		})
+		paramaccountName,
+		&armstorage.AccountsClientCheckNameAvailabilityOptions{})
 	return result, err
 }
 
 // GetAccountKeys gets the storage account keys
-func (r *Reconciler) GetAccountKeys(accountName, accountGroupName string) (storage.AccountListKeysResult, error) {
-	accountsClient := r.getStorageAccountsClient()
-	return accountsClient.ListKeys(r.Ctx, accountGroupName, accountName, storage.Kerb)
+func (r *Reconciler) GetAccountKeys(accountName, accountGroupName string) (armstorage.AccountsClientListKeysResponse, error) {
+	accountsClient, err := r.getStorageAccountsClient()
+	if err != nil {
+		return armstorage.AccountsClientListKeysResponse{}, err
+	}
+	return accountsClient.ListKeys(r.Ctx, accountGroupName, accountName, &armstorage.AccountsClientListKeysOptions{})
 }
 
 func (r *Reconciler) getContainerURL(accountName, accountGroupName, containerName string) azblob.ContainerURL {
@@ -142,33 +183,37 @@ func (r *Reconciler) DeleteContainer(accountName, accountGroupName, containerNam
 	return err
 }
 
-// Environment returns an `azure.Environment{...}` for the current cloud.
-func (r *Reconciler) Environment() *azure.Environment {
-	env, _ := azure.EnvironmentFromName("AzurePublicCloud")
-	return &env
+// Get authorizer for the WorkloadIdentity Credential,
+// It will use the authorizer using federated we identity token
+func (r *Reconciler) getAuthorizerForWorkloadIdentity() (*azidentity.WorkloadIdentityCredential, error) {
+
+	// Workload Identity Federation
+	workloadIdentityCredential, err := azidentity.NewWorkloadIdentityCredential(&azidentity.WorkloadIdentityCredentialOptions{
+		ClientID:      r.AzureContainerCreds.StringData["azure_client_id"],
+		TenantID:      r.AzureContainerCreds.StringData["azure_tenant_id"],
+		TokenFilePath: r.webIdentityTokenPath,
+		ClientOptions: policy.ClientOptions{},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create WorkloadIdentityCredential: %+v", err)
+	}
+	return workloadIdentityCredential, nil
 }
 
-// GetResourceManagementAuthorizer gets an OAuthTokenAuthorizer for Azure Resource Manager
-func (r *Reconciler) GetResourceManagementAuthorizer() (autorest.Authorizer, error) {
-	return r.getAuthorizerForResource(r.Environment().ResourceManagerEndpoint)
-}
-
-func (r *Reconciler) getAuthorizerForResource(resource string) (autorest.Authorizer, error) {
-	var a autorest.Authorizer
-	var err error
-
-	oauthConfig, err := adal.NewOAuthConfig(
-		r.Environment().ActiveDirectoryEndpoint, r.AzureContainerCreds.StringData["azure_tenant_id"])
+// Get authorizer for the normal Credential,
+// It will use the authorizer using client id and secret
+func (r *Reconciler) getAuthorizerForSecretCredential() (*azidentity.ClientSecretCredential, error) {
+	// Service Principal with Secret
+	clientSecret := r.AzureContainerCreds.StringData["azure_client_secret"]
+	clientSecretCredential, err := azidentity.NewClientSecretCredential(
+		r.AzureContainerCreds.StringData["azure_tenant_id"],
+		r.AzureContainerCreds.StringData["azure_client_id"],
+		clientSecret,
+		&azidentity.ClientSecretCredentialOptions{},
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create Credential: %+v", err)
 	}
+	return clientSecretCredential, nil
 
-	token, err := adal.NewServicePrincipalToken(
-		*oauthConfig, r.AzureContainerCreds.StringData["azure_client_id"], r.AzureContainerCreds.StringData["azure_client_secret"], resource)
-	if err != nil {
-		return nil, err
-	}
-	a = autorest.NewBearerAuthorizer(token)
-
-	return a, err
 }
