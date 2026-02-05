@@ -208,7 +208,20 @@ type AzureBlobSpec struct {
 
 	// Secret refers to a secret that provides the credentials
 	// The secret should define AccountName and AccountKey as provided by Azure Blob.
+	// +optional
 	Secret corev1.SecretReference `json:"secret"`
+
+	//Azure Account Name
+	// +optional
+	AccountName string `json:"accountName"`
+
+	// Azure client id
+	// +optional
+	ClientId string `json:"clientId"`
+
+	// Azure tenant id
+	// +optional
+	TenantId string `json:"tenantId"`
 }
 
 // GoogleCloudStorageSpec specifies a backing store of type google-cloud-storage
