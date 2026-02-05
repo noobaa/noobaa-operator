@@ -5302,7 +5302,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "3dba40ad6babb033832e999680f333849bf3f194a24aa1163587529315ebe8da"
+const Sha256_deploy_internal_statefulset_core_yaml = "cb05754c22180dc9c1fd2636996d9d47568f36f3de5a33d75f712b2b4e9fa46a"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5470,6 +5470,9 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
+          envFrom:
+            - configMapRef:
+                name: noobaa-config
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
@@ -5509,8 +5512,7 @@ spec:
             - name: CONTAINER_MEM_LIMIT
               valueFrom:
                 resourceFieldRef:
-                  resource: limits.memory
-`
+                  resource: limits.memory`
 
 const Sha256_deploy_internal_statefulset_postgres_db_yaml = "53b628aaceffc1952efed5ed1131f16461fde6eb78c1a5f0f281f3efc30c30b4"
 

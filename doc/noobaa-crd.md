@@ -254,8 +254,48 @@ topologySpreadConstraints:
     nodeTaintsPolicy: Honor
 
 ```
-Users can make changes to `topologySpreadConstraints` configuration after the operator creates it and the changes will not override it. But once user remove the custome `topologySpreadConstraints` default value is resotored. 
+Users can make changes to `topologySpreadConstraints` configuration after the operator creates it and the changes will not override it. But once user remove the custom `topologySpreadConstraints` default value is restored. 
 
 ## Notes
 1. `dbConf` configuration is not validated.
-2. NooBaa uses `ConfigMap` to pass database configuration to the databases. Althought the ConfigMap is editable, it should not and cannot be used to pass custom database overrides. The reason being that NooBaa operator, as part of its reconcile process will overwrite the ConfigMap to the default values.
+2. NooBaa uses `ConfigMap` to pass database configuration to the databases. Although the ConfigMap is editable, it should not and cannot be used to pass custom database overrides. The reason being that NooBaa operator, as part of its reconcile process will overwrite the ConfigMap to the default values.
+
+# Configuring noobaa-core (CONFIG_JS_* and DB cleaner)
+
+noobaa-core reads numeric config overrides from environment variables with the `CONFIG_JS_` prefix (e.g. `CONFIG_JS_DB_CLEANER_CYCLE`, `CONFIG_JS_DB_CLEANER_DOCS_LIMIT`). These control the DB cleaner and object reclaimer.
+
+## How to set CONFIG_JS_* variables
+
+1. **Add keys to the noobaa-config ConfigMap**  
+   The noobaa-core container loads the entire `noobaa-config` ConfigMap as environment variables. Add your keys there (the operator does not remove user-added keys):
+
+   ```bash
+   kubectl edit configmap noobaa-config -n noobaa
+   ```
+
+   Add entries under `data:`, for example:
+
+   ```yaml
+   data:
+     CONFIG_JS_DB_CLEANER_CYCLE: "120000"           # run every 2 minutes (ms)
+     CONFIG_JS_DB_CLEANER_BACK_TIME: "1209600000"   # delete docs deleted > 14 days ago (ms)
+     CONFIG_JS_DB_CLEANER_DOCS_LIMIT: "50000"
+     CONFIG_JS_DB_CLEANER_MAX_TOTAL_DOCS: "10000"
+   ```
+
+2. **Restart the noobaa-core pod** so the new env vars are picked up:
+
+   ```bash
+   kubectl delete pod noobaa-core-0 -n noobaa
+   ```
+
+3. **Verify**  
+   - Check env in the pod: `kubectl exec noobaa-core-0 -n noobaa -c core -- env | grep CONFIG_JS`  
+   - Check core logs for overrides: `kubectl logs -n noobaa noobaa-core-0 -c core | grep "Overriding config"`  
+   - Check effective DB cleaner config: `kubectl logs -n noobaa noobaa-core-0 -c core | grep "DB_CLEANER: START config"`  
+   The printed config shows the values actually used (e.g. if `DB_CLEANER_DOCS_LIMIT` is 1000, overrides were not applied).
+
+## Common issues
+
+- **Config not reflected / only 2000 docs removed per run**  
+  If CONFIG_JS_* are not set as container env, noobaa-core uses defaults (e.g. `DB_CLEANER_DOCS_LIMIT=1000`). Then at most 1000 objects + 1000 blocks (+ chunks) can be removed per run (hence ~2000). Ensure variables are in `noobaa-config` and the core pod was restarted after editing the ConfigMap.
