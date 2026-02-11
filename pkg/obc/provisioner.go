@@ -35,6 +35,18 @@ const (
 	allNamespaces = ""
 )
 
+var excludeBucketTaggingLabelKeysSet = map[string]struct{}{
+	"app":                {},
+	"noobaa-domain":      {},
+	"bucket-provisioner": {},
+	// labels that are related to provider-consumer setup
+	"remote-obc-name":       {},
+	"remote-obc-namespace":  {},
+	"remote-obc-uid":        {},
+	"storage-consumer-name": {},
+	"storage-consumer-uuid": {},
+}
+
 // Provisioner implements lib-bucket-provisioner callbacks
 type Provisioner struct {
 	client    client.Client
@@ -271,12 +283,12 @@ func UpdateBucketTagging(sysClient *system.Client, obc *nbv1.ObjectBucketClaim) 
 	// convert labels to tagging array
 	taggingArray := []*s3.Tag{}
 	for key, value := range obc.Labels {
-		// no need to put tagging of these labels
-		if !util.Contains([]string{"app", "noobaa-domain", "bucket-provisioner"}, key) {
-			keyPointer := key
-			valuePointer := value
-			taggingArray = append(taggingArray, &s3.Tag{Key: &keyPointer, Value: &valuePointer})
+		if _, ok := excludeBucketTaggingLabelKeysSet[key]; ok {
+			continue
 		}
+		keyPointer := key
+		valuePointer := value
+		taggingArray = append(taggingArray, &s3.Tag{Key: &keyPointer, Value: &valuePointer})
 	}
 	logrus.Infof("put bucket tagging on bucket: %s tagging: %+v ", obc.Spec.BucketName, taggingArray)
 	if len(taggingArray) == 0 {
