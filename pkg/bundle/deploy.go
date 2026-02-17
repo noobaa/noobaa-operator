@@ -4698,7 +4698,7 @@ spec:
         secretName: AGENT_CONFIG_SECRET_NAME
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "743c9c99718885b929ac5bd6aa2e6064d75e13c5e2164389e8332a2444549536"
+const Sha256_deploy_internal_prometheus_rules_yaml = "dac4b932bd715af0ae7a5f833dec0cd168a67a699c6e83f0b38eb5f90ba44dd1"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -4917,6 +4917,7 @@ spec:
         description: A NooBaa system is approaching its capacity, usage is more than
           85%
         message: A NooBaa System Is Approaching Its Capacity
+        runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning85.md
         severity_level: warning
         storage_type: NooBaa
       expr: |
@@ -4924,12 +4925,12 @@ spec:
       for: 5m
       labels:
         severity: warning
-      runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning85.md
     - alert: NooBaaSystemCapacityWarning95
       annotations:
         description: A NooBaa system is approaching its capacity, usage is more than
           95%
         message: A NooBaa System Is Approaching Its Capacity
+        runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning95.md
         severity_level: critical
         storage_type: NooBaa
       expr: |
@@ -4937,11 +4938,11 @@ spec:
       for: 5m
       labels:
         severity: critical
-      runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning95.md
     - alert: NooBaaSystemCapacityWarning100
       annotations:
         description: A NooBaa system approached its capacity, usage is at 100%
         message: A NooBaa System Approached Its Capacity
+        runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning100.md
         severity_level: critical
         storage_type: NooBaa
       expr: |
@@ -4949,7 +4950,6 @@ spec:
       for: 5m
       labels:
         severity: critical
-      runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/openshift-container-storage-operator/NooBaaSystemCapacityWarning100.md
   - name: noobaa-db-alert.rules
     rules:
     - alert: NooBaaDatabaseReachingCapacity
