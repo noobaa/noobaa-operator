@@ -5,6 +5,8 @@ go 1.24.7
 replace (
 	// TODO: remove this replace once https://github.com/libopenstorage/secrets/pull/83 is merged
 	github.com/libopenstorage/secrets => github.com/rook/secrets v0.0.0-20240315053144-3195f6906937
+	// Use local API module so the root build uses ./pkg/apis/noobaa
+	github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa => ./pkg/apis/noobaa
 	github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 )
 
@@ -29,6 +31,7 @@ require (
 	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.4.0
 	github.com/libopenstorage/secrets v0.0.0-20240416031220-a17cf7f72c6c
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
+	github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa v0.0.0-00010101000000-000000000000
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
 	github.com/openshift/api v0.0.0-20251120040117-916c7003ed78
