@@ -12,6 +12,9 @@ build-releases/
 # visual studio code intellisense configuration
 .vscode/
 
+# Cursor IDE rules and config
+.cursor/
+
 # NooBaa config file
 noobaa.cfg.yaml
 
