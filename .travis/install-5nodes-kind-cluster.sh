@@ -1,6 +1,9 @@
 #!/bin/sh
 set -o errexit
 
+# Pin to 1.30 line (override with any v1.30.z via KIND_NODE_IMAGE)
+KIND_NODE_IMAGE="${KIND_NODE_IMAGE:-kindest/node:v1.30.13}"
+
 # create registry container unless it already exists
 reg_name='kind-registry'
 reg_port='5000'
@@ -11,7 +14,7 @@ if [ "${running}" != 'true' ]; then
     registry:2
 fi
 
-# create a cluster with the local registry enabled in containerd
+# create a cluster with the local registry enabled in containerd (node image: 1.30 line, overridable via KIND_NODE_IMAGE)
 cat <<EOF | kind create cluster --name 5nodes --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -21,10 +24,15 @@ containerdConfigPatches:
     endpoint = ["http://${reg_name}:${reg_port}"]
 nodes:
 - role: control-plane
+  image: ${KIND_NODE_IMAGE}
 - role: worker
+  image: ${KIND_NODE_IMAGE}
 - role: worker
+  image: ${KIND_NODE_IMAGE}
 - role: worker
+  image: ${KIND_NODE_IMAGE}
 - role: worker
+  image: ${KIND_NODE_IMAGE}
 EOF
 
 # connect the registry to the cluster network
