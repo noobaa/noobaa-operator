@@ -6,6 +6,7 @@ package v1alpha1
 
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
 var (
@@ -13,11 +14,11 @@ var (
 	SchemeGroupVersion = schema.GroupVersion{Group: "noobaa.io", Version: "v1alpha1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
-	SchemeBuilder = &Builder{GroupVersion: SchemeGroupVersion}
+	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion}
 
 	// GroupVersion is group version used to register these objects
 	CNPGGroupVersion = schema.GroupVersion{Group: "postgresql.cnpg.noobaa.io", Version: "v1"}
 
 	// CNPGSchemeBuilder is used to add go types to the GroupVersionKind scheme
-	CNPGSchemeBuilder = &Builder{GroupVersion: CNPGGroupVersion}
+	CNPGSchemeBuilder = &scheme.Builder{GroupVersion: CNPGGroupVersion}
 )
