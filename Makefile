@@ -77,16 +77,8 @@ dev-image: $(docker) gen
 	@echo "✅ dev image"
 .PHONY: dev-image
 
-deps-update:
-	@set -e; \
-	echo "Running go mod tidy on root module"; \
-	cd . && go mod tidy; \
-	echo "Running go mod tidy on api module"; \
-	cd pkg/apis/noobaa && go mod tidy; \
-	echo "✅ deps-update"
-.PHONY: deps-update
-
-vendor: deps-update
+vendor:
+	go mod tidy
 	go mod vendor
 	@echo "✅ vendor"
 .PHONY: vendor
@@ -136,8 +128,8 @@ pkg/bundle/deploy.go: pkg/bundler/bundler.go version/version.go $(shell find dep
 	go run pkg/bundler/bundler.go deploy/ pkg/bundle/deploy.go
 
 gen-api: controller-gen deepcopy-gen gen
-	cd pkg/apis/noobaa && $(TIME) $(DEEPCOPY_GEN) --go-header-file="$(MK_PATH)build/hack/boilerplate.go.txt" --input-dirs="./v1alpha1/..." --output-file-base="zz_generated.deepcopy"
-	$(TIME) $(CONTROLLER_GEN) paths={./...,./pkg/apis/noobaa/...} crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=deploy/crds/
+	$(TIME) $(DEEPCOPY_GEN) --go-header-file="build/hack/boilerplate.go.txt" --input-dirs="./pkg/apis/noobaa/v1alpha1/..." --output-file-base="zz_generated.deepcopy"
+	$(TIME) $(CONTROLLER_GEN) paths=./... crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=deploy/crds/
 	@echo "✅ gen-api"
 .PHONY: gen-api
 
