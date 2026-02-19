@@ -8,7 +8,7 @@ import (
 
 func init() {
 	hacEnabled := os.Getenv("HAC_ENABLED")
-	if hacEnabled == "true" {
+	if hacEnabled != "false" {
 		// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
 		AddToManagerFuncs = append(AddToManagerFuncs, hac.Add)
 	}
