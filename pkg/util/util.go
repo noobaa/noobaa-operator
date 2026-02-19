@@ -1250,6 +1250,9 @@ func GetAWSRegion() (string, error) {
 		"af-south-1":     "af-south-1",
 		"il-central-1":   "il-central-1",
 		"mx-central-1":   "mx-central-1",
+		// the following comes from https://docs.amazonaws.cn/en_us/aws/latest/userguide/ARNs.html
+		"cn-north-1":     "cn-north-1",
+		"cn-northwest-1": "cn-northwest-1",
 	}
 	var awsRegion string
 	infrastructure := &configv1.Infrastructure{
