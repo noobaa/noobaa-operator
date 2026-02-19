@@ -5,7 +5,7 @@ package hac
 
 import (
 	"context"
-	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -44,14 +44,16 @@ func (pd *PodDeleter) DeletePodsOnNode() error {
 		return errors.Errorf("failed to list noobaa pods on the node %v in namespace %v", pd.NodeName, options.Namespace)
 	}
 
-	// delete the found pods. by default using a 1 second grace period.
-	var gracePeriod int64 = 1
-	if os.Getenv("HAC_FORCE_DELETE") == "true" {
-		// if HAC_FORCE_DELETE is set to true, use a 0 second grace period.
-		gracePeriod = 0
-	}
+	// delete the found pods.
+	var gracePeriod int64 = 0
+
 	deleteOpts := client.DeleteOptions{GracePeriodSeconds: &gracePeriod}
 	for _, pod := range podList.Items {
+		// HAC must not touch DB pods - Forceful deletion of DB pods leads to corruption
+		if strings.HasPrefix(pod.Name, "noobaa-db-pg-") {
+			log.Infof("HAC skipping %q pod", pod.Name)
+			continue
+		}
 		if err := pd.Client.Delete(context.Background(), &pod, &deleteOpts); err != nil {
 			log.Warningf("❌ pod %v/%v, node %v: deletion failed: %v", pod.Namespace, pod.Name, pd.NodeName, err)
 			return err
