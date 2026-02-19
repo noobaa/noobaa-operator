@@ -33,6 +33,11 @@ import (
 
 const (
 	allNamespaces = ""
+	// labels that are related to provider-consumer setup
+	labelKeyRemoteObcOriginalName      = "remote-obc-original-name"
+	labelKeyRemoteObcOriginalNamespace = "remote-obc-original-namespace"
+	labelKeyRemoteObcConsumerName      = "storage-consumer-name"
+	labelKeyRemoteObcConsumerUUID      = "storage-consumer-uuid"
 )
 
 // Provisioner implements lib-bucket-provisioner callbacks
@@ -272,7 +277,9 @@ func UpdateBucketTagging(sysClient *system.Client, obc *nbv1.ObjectBucketClaim) 
 	taggingArray := []*s3.Tag{}
 	for key, value := range obc.Labels {
 		// no need to put tagging of these labels
-		if !util.Contains([]string{"app", "noobaa-domain", "bucket-provisioner"}, key) {
+		if !util.Contains([]string{"app", "noobaa-domain", "bucket-provisioner",
+			labelKeyRemoteObcOriginalName, labelKeyRemoteObcOriginalNamespace,
+			labelKeyRemoteObcConsumerName, labelKeyRemoteObcConsumerUUID}, key) {
 			keyPointer := key
 			valuePointer := value
 			taggingArray = append(taggingArray, &s3.Tag{Key: &keyPointer, Value: &valuePointer})
