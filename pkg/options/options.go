@@ -190,6 +190,22 @@ var UseCnpgApiGroup = false
 // CnpgApiGroup is the API group used for cloudnative-pg CRDs
 var CnpgApiGroup = "postgresql.cnpg.noobaa.io"
 
+// ClientId is used in an Azure STS cluster to validate federated web token
+// it can be overridden for testing.
+var ClientId = ""
+
+// TenantId is used in an Azure STS cluster to validate federated web token
+// it can be overridden for testing.
+var TenantId = ""
+
+// SubscriptionId is used in a creating storageaccount
+// it can be overridden for testing.
+var SubscriptionId = ""
+
+// ResourcegroupId is used in a creating storageaccount
+// it can be overridden for testing.
+var ResourcegroupId = ""
+
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
 	return Namespace + ".noobaa.io"
@@ -357,5 +373,21 @@ func init() {
 	FlagSet.BoolVar(
 		&UseCnpgApiGroup, "use-cnpg-api-group",
 		UseCnpgApiGroup, "Use the original CloudNativePG API group for the installation manifests. Should be used when using an original image of CloudNativePG.",
+	)
+	FlagSet.StringVar(
+		&TenantId, "azure-tenant-id",
+		TenantId, "The Azure STS tenant id",
+	)
+	FlagSet.StringVar(
+		&ClientId, "azure-client-id",
+		ClientId, "The Azure STS client id",
+	)
+	FlagSet.StringVar(
+		&SubscriptionId, "azure-subscription-id",
+		SubscriptionId, "The Azure STS subscription id",
+	)
+	FlagSet.StringVar(
+		&ResourcegroupId, "azure-resourcegroup",
+		ResourcegroupId, "The Azure STS resource group name",
 	)
 }

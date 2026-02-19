@@ -90,6 +90,14 @@ spec:
               azureBlob:
                 description: AzureBlob specifies a namespace store of type azure-blob
                 properties:
+                  clientId:
+                    description: Azure STS managed identity client id allows to get
+                      access token using NewWorkloadIdentityCredential
+                    type: string
+                  resourcegroupId:
+                    description: Azure storage account is created under this resource
+                      group
+                    type: string
                   secret:
                     description: |-
                       Secret refers to a secret that provides the credentials
@@ -105,12 +113,19 @@ spec:
                         type: string
                     type: object
                     x-kubernetes-map-type: atomic
+                  subscriptionId:
+                    description: Azure SubscriptionId is used to create storage account
+                      client.
+                    type: string
                   targetBlobContainer:
                     description: TargetBlobContainer is the name of the target Azure
                       Blob container
                     type: string
+                  tenantId:
+                    description: Azure STS managed identity TenantId id allows to
+                      get access token using NewWorkloadIdentityCredential
+                    type: string
                 required:
-                - secret
                 - targetBlobContainer
                 type: object
               googleCloudStorage:

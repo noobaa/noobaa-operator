@@ -42,7 +42,8 @@ spec:
             secretName: noobaa-iam-serving-cert
             optional: true
         # This service account token can be used to provide identity outside the cluster.
-        # For example, this token can be used with AssumeRoleWithWebIdentity to authenticate with AWS using IAM OIDC provider and STS.
+        # For example, this token can be used with AWS(AssumeRoleWithWebIdentity)/Azure(WorkloadIdentityCredential) 
+        # to authenticate with AWS/Azure using IAM OIDC provider and STS.
         - name: bound-sa-token
           projected:
             sources:
