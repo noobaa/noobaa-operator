@@ -1149,6 +1149,14 @@ func IsAzureSTSClusterBS(bs *nbv1.BackingStore) bool {
 	return false
 }
 
+// IsAzureSTSClusterNS returns true if it is running on an STS cluster
+func IsAzureSTSClusterNS(ns *nbv1.NamespaceStore) bool {
+	if ns.Spec.Type == nbv1.NSStoreTypeAzureBlob {
+		return ns.Spec.AzureBlob.ClientId != nil
+	}
+	return false
+}
+
 // IsAzurePlatformNonGovernment returns true if this cluster is running on Azure and also not on azure government\DOD cloud
 func IsAzurePlatformNonGovernment() bool {
 	nodesList := &corev1.NodeList{}
