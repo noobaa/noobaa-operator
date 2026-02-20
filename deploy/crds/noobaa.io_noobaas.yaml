@@ -1439,6 +1439,10 @@ spec:
                   azureBlob:
                     description: AzureBlob specifies a backing store of type azure-blob
                     properties:
+                      accountName:
+                        description: AccountName is the Azure storage account name.
+                          For namespace store STS, used with TenantId and ClientId.
+                        type: string
                       clientId:
                         description: Azure STS managed identity client id allows to
                           get access token using NewWorkloadIdentityCredential

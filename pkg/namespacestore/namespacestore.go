@@ -724,7 +724,7 @@ func RunCreateAzureSTSBlob(cmd *cobra.Command, args []string) {
 	}
 
 	targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
-	azureSTSAccountName := util.GetFlagStringOrPromptPassword(cmd, "azure-sts-account-name")
+	azureSTSAccountName, _ := cmd.Flags().GetString("azure-sts-account-name")
 	azureSTSTenantID := util.GetFlagStringOrPrompt(cmd, "azure-sts-tenant-id")
 	azureSTSClientID := util.GetFlagStringOrPrompt(cmd, "azure-sts-client-id")
 
