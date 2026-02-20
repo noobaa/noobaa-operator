@@ -62,6 +62,7 @@ func CmdCreate() *cobra.Command {
 		CmdCreateS3Compatible(),
 		CmdCreateIBMCos(),
 		CmdCreateAzureBlob(),
+		CmdCreateAzureSTSBlob(),
 		CmdCreateNSFS(),
 	)
 	return cmd
@@ -240,6 +241,36 @@ func CmdCreateAzureBlob() *cobra.Command {
 	cmd.Flags().String(
 		"secret-name", "",
 		`The name of a secret for authentication - should have AccountName and AccountKey properties`,
+	)
+	cmd.Flags().String(
+		"access-mode", "read-write",
+		`The resource access privileges read-write|read-only`,
+	)
+	return cmd
+}
+
+// CmdCreateAzureSTSBlob returns a CLI command for Azure Blob namespace store using STS (short-lived credentials)
+func CmdCreateAzureSTSBlob() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "azure-sts-blob <namespace-store-name>",
+		Short: "Create azure-blob namespace store (using STS, short-lived credentials)",
+		Run:   RunCreateAzureSTSBlob,
+	}
+	cmd.Flags().String(
+		"target-blob-container", "",
+		"The target container name on Azure storage account",
+	)
+	cmd.Flags().String(
+		"azure-sts-account-name", "",
+		`Account name for authentication - the best practice is to **omit this flag**, in that case the CLI will prompt and read it securely from the terminal`,
+	)
+	cmd.Flags().String(
+		"azure-sts-tenant-id", "",
+		"The Azure Tenant ID for workload identity / STS",
+	)
+	cmd.Flags().String(
+		"azure-sts-client-id", "",
+		"The Azure Client ID for workload identity / STS",
 	)
 	cmd.Flags().String(
 		"access-mode", "read-write",
@@ -432,7 +463,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <namespace-store-type> %s`, cmd.UsageString())
 	}
 	if args[0] != "aws-s3" && args[0] != "azure-blob" && args[0] != "ibm-cos" &&
-		args[0] != "nsfs" && args[0] != "s3-compatible" {
+		args[0] != "nsfs" && args[0] != "s3-compatible" && args[0] != "azure-sts-blob" {
 		log.Fatalf(`❌ Unsupported <namespace-store-type> -> %s %s`, args[0], cmd.UsageString())
 	}
 }
@@ -657,6 +688,71 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 			},
 		}
 	})
+}
+
+// RunCreateAzureSTSBlob runs a CLI command for Azure Blob namespace store with STS (short-lived credentials)
+func RunCreateAzureSTSBlob(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
+	}
+	name := args[0]
+	cmdAccessMode, _ := cmd.Flags().GetString("access-mode")
+	accessMode := nbv1.AccessModeReadWrite
+	if cmdAccessMode == "read-only" {
+		accessMode = nbv1.AccessModeReadOnly
+	}
+
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	sys := o.(*nbv1.NooBaa)
+	sys.Name = options.SystemName
+	sys.Namespace = options.Namespace
+
+	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml)
+	namespaceStore := o.(*nbv1.NamespaceStore)
+	namespaceStore.Name = name
+	namespaceStore.Namespace = options.Namespace
+	namespaceStore.Spec = nbv1.NamespaceStoreSpec{Type: nbv1.NSStoreTypeAzureBlob, AccessMode: accessMode}
+
+	if !util.KubeCheck(sys) {
+		log.Fatalf(`❌ Could not find NooBaa system %q in namespace %q`, sys.Name, sys.Namespace)
+	}
+
+	err := util.KubeClient().Get(util.Context(), util.ObjectKey(namespaceStore), namespaceStore)
+	if err == nil {
+		log.Fatalf(`❌ NamespaceStore %q already exists in namespace %q`, namespaceStore.Name, namespaceStore.Namespace)
+	}
+
+	targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
+	azureSTSAccountName, _ := cmd.Flags().GetString("azure-sts-account-name")
+	azureSTSTenantID := util.GetFlagStringOrPrompt(cmd, "azure-sts-tenant-id")
+	azureSTSClientID := util.GetFlagStringOrPrompt(cmd, "azure-sts-client-id")
+
+	namespaceStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
+		TargetBlobContainer: targetBlobContainer,
+		TenantId:            &azureSTSTenantID,
+		ClientId:            &azureSTSClientID,
+		AccountName:         azureSTSAccountName,
+	}
+
+	validationErr := validations.ValidateNamespaceStore(namespaceStore)
+	if validationErr != nil {
+		log.Fatalf(`❌ %s %s`, validationErr, cmd.UsageString())
+	}
+
+	util.Panic(controllerutil.SetControllerReference(sys, namespaceStore, scheme.Scheme))
+	if !util.KubeCreateFailExisting(namespaceStore) {
+		log.Fatalf(`❌ Could not create NamespaceStore %q in Namespace %q (conflict)`, namespaceStore.Name, namespaceStore.Namespace)
+	}
+	log.Printf("")
+	util.PrintThisNoteWhenFinishedApplyingAndStartWaitLoop()
+	log.Printf("")
+	log.Printf("NamespaceStore Wait Ready:")
+	if WaitReady(namespaceStore) {
+		log.Printf("")
+		log.Printf("")
+		RunStatus(cmd, args)
+	}
 }
 
 // RunCreateNSFS runs a CLI command

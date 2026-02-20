@@ -283,7 +283,7 @@ spec:
 
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "2cc6f739e53dfd80ddefe7c0bccd684f3e6a97ade1205a472308c07ae1460736"
+const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "245a1a4e30950430b69abf65e3ed8463dd6cbcf09a867c30c7e4c47951e8a663"
 
 const File_deploy_crds_noobaa_io_backingstores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -374,6 +374,10 @@ spec:
               azureBlob:
                 description: AzureBlob specifies a backing store of type azure-blob
                 properties:
+                  accountName:
+                    description: AccountName is the Azure storage account name. For
+                      namespace store STS, used with TenantId and ClientId.
+                    type: string
                   clientId:
                     description: Azure STS managed identity client id allows to get
                       access token using NewWorkloadIdentityCredential
@@ -926,7 +930,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "3918d4e2b31648e242af9bb3ee522b792083d6b942279d305fbcf18a9cc72dfa"
+const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "21446bd59fbfeca1cc085402ca3fff33bb57348b6fed5a58dc282c02c0136b32"
 
 const File_deploy_crds_noobaa_io_namespacestores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -1020,6 +1024,10 @@ spec:
               azureBlob:
                 description: AzureBlob specifies a namespace store of type azure-blob
                 properties:
+                  accountName:
+                    description: AccountName is the Azure storage account name. For
+                      namespace store STS, used with TenantId and ClientId.
+                    type: string
                   clientId:
                     description: Azure STS managed identity client id allows to get
                       access token using NewWorkloadIdentityCredential
@@ -1455,7 +1463,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "623db090807771aa74ee98dd27627e2133c2c489dd28b2d81c209b05bbc81718"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "59f819d0234a1b2e292341ff218159a0b32cf069992c06d6e548f2b4f24c033e"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2898,6 +2906,10 @@ spec:
                   azureBlob:
                     description: AzureBlob specifies a backing store of type azure-blob
                     properties:
+                      accountName:
+                        description: AccountName is the Azure storage account name.
+                          For namespace store STS, used with TenantId and ClientId.
+                        type: string
                       clientId:
                         description: Azure STS managed identity client id allows to
                           get access token using NewWorkloadIdentityCredential

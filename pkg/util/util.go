@@ -1133,10 +1133,14 @@ func IsSTSClusterBS(bs *nbv1.BackingStore) bool {
 	return false
 }
 
-// IsSTSClusterNS returns true if it is running on an STS cluster
+// IsSTSClusterNS returns true if the namespace store uses STS (short-lived credentials)
 func IsSTSClusterNS(ns *nbv1.NamespaceStore) bool {
 	if ns.Spec.Type == nbv1.NSStoreTypeAWSS3 {
 		return ns.Spec.AWSS3.AWSSTSRoleARN != nil
+	}
+	if ns.Spec.Type == nbv1.NSStoreTypeAzureBlob && ns.Spec.AzureBlob != nil {
+		return ns.Spec.AzureBlob.TenantId != nil && *ns.Spec.AzureBlob.TenantId != "" &&
+			ns.Spec.AzureBlob.ClientId != nil && *ns.Spec.AzureBlob.ClientId != ""
 	}
 	return false
 }
