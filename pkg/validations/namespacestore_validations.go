@@ -262,8 +262,12 @@ func ValidateNSEmptySecretName(ns nbv1.NamespaceStore) error {
 		}
 	case nbv1.NSStoreTypeAzureBlob:
 		if len(ns.Spec.AzureBlob.Secret.Name) == 0 {
-			return util.ValidationError{
-				Msg: "Failed creating the namespacestore, please provide secret name",
+			// Azure STS: TenantId and ClientId are required when no secret is provided
+			if ns.Spec.AzureBlob.TenantId == nil || *ns.Spec.AzureBlob.TenantId == "" ||
+				ns.Spec.AzureBlob.ClientId == nil || *ns.Spec.AzureBlob.ClientId == "" {
+				return util.ValidationError{
+					Msg: "Failed creating the namespacestore, please provide secret name or Azure STS credentials (azure-sts-tenant-id and azure-sts-client-id)",
+				}
 			}
 		}
 	case nbv1.NSStoreTypeGoogleCloudStorage:

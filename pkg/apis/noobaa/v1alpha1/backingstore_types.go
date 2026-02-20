@@ -226,6 +226,10 @@ type AzureBlobSpec struct {
 	// Azure storage account is created under this resource group
 	// +optional
 	ResourcegroupId *string `json:"resourcegroupId,omitempty"`
+
+	// AccountName is the Azure storage account name. For namespace store STS, used with TenantId and ClientId.
+	// +optional
+	AccountName string `json:"accountName,omitempty"`
 }
 
 // GoogleCloudStorageSpec specifies a backing store of type google-cloud-storage
