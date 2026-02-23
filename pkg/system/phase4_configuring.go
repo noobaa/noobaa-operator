@@ -476,10 +476,32 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 
 			r.DeploymentEndpoint.Spec.Template.Annotations["noobaa.io/configmap-hash"] = r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"]
 
+			r.addIamContainerPortIfNotExists(c)
+
 			return r.setDesiredEndpointMounts(podSpec, c)
 		}
 	}
 	return nil
+}
+
+// addIamContainerPortIfNotExists adds a container port to the container's ports list
+// only if a port with the same name doesn't already exist
+func (r *Reconciler) addIamContainerPortIfNotExists(container *corev1.Container) {
+	iamPorts := corev1.ContainerPort{
+		Name:          "iam-https",
+		ContainerPort: 13443,
+		Protocol:      corev1.ProtocolTCP,
+	}
+	// Check if the port already exists
+	for _, existingPort := range container.Ports {
+		if existingPort.Name == iamPorts.Name {
+			// Port already exists, don't add it
+			return
+		}
+	}
+
+	// Port doesn't exist, add it
+	container.Ports = append(container.Ports, iamPorts)
 }
 
 func (r *Reconciler) setDesiredRootMasterKeyMounts(podSpec *corev1.PodSpec, container *corev1.Container) {
