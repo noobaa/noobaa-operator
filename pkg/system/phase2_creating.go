@@ -1031,11 +1031,11 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 
 // ReconcileAzureCredentials creates a CredentialsRequest resource if cloud credentials operator is available
 func (r *Reconciler) ReconcileAzureCredentials() error {
-	resourcegroupID := os.Getenv(resourcegroupIDEnvVar)
-	if resourcegroupID != "" {
+	clientID := os.Getenv(clientIDEnvVar)
+	if clientID != "" {
 		r.IsAzureSTSCluster = true
 	}
-	clientID := os.Getenv(clientIDEnvVar)
+	resourcegroupID := os.Getenv(resourcegroupIDEnvVar)
 	tenantID := os.Getenv(tenantIDEnvVar)
 	subscriptionID := os.Getenv(subscriptionIDEnvVar)
 	r.Logger.Infof("Getting Azure : %s = %s", clientIDEnvVar, clientID)
