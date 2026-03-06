@@ -150,7 +150,7 @@ func checkIfBackingStoreTypeIsSupported(backingStore *nbv1.BackingStore) bool {
 }
 
 func checkIfNamespaceStoreTypeIsSupported(namespaceStore *nbv1.NamespaceStore) bool {
-	if util.IsSTSClusterNS(namespaceStore) || namespaceStore.Spec.Type == nbv1.NSStoreTypeNSFS {
+	if util.IsSTSClusterNS(namespaceStore) || util.IsAzureSTSClusterNS(namespaceStore) || namespaceStore.Spec.Type == nbv1.NSStoreTypeNSFS {
 		return false
 	}
 	return true

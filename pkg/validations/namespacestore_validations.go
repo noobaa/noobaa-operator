@@ -45,7 +45,7 @@ func ValidateNamespaceStore(nsStore *nbv1.NamespaceStore) error {
 		return ValidateNsStoreIBMCos(nsStore)
 
 	case nbv1.NSStoreTypeAzureBlob:
-		return nil
+		return ValidateNsStoreAzureBlob(nsStore)
 
 	case nbv1.NSStoreTypeGoogleCloudStorage:
 		return nil
@@ -184,6 +184,42 @@ func ValidateNsStoreIBMCos(nsStore *nbv1.NamespaceStore) error {
 	return nil
 }
 
+// ValidateNsStoreAzureBlob validates Azure Blob namespacestore. For STS (ClientId on spec + secret): require non-empty ClientId and targetBlobContainer; do not skip TenantId/ClientId validation.
+func ValidateNsStoreAzureBlob(nsStore *nbv1.NamespaceStore) error {
+	if !util.IsAzureSTSClusterNS(nsStore) {
+		return nil
+	}
+	az := nsStore.Spec.AzureBlob
+	// STS path: target blob container is required (not optional)
+	if strings.TrimSpace(az.TargetBlobContainer) == "" {
+		return util.ValidationError{
+			Msg: "Failed creating the namespacestore, please provide target blob container (required for Azure STS)",
+		}
+	}
+	// ClientId must be a non-empty string
+	if az.ClientId == nil || strings.TrimSpace(*az.ClientId) == "" {
+		return util.ValidationError{
+			Msg: "Azure STS requires a non-empty client-id on the namespacestore spec",
+		}
+	}
+	// Tenant ID must be non-empty in the referenced secret (key azure_tenant_id); enforced when secret is loaded in reconciler
+	return nil
+}
+
+// ValidateAzureSTSRequiredFlags validates that required Azure STS CLI/flag values are non-empty (target blob container, client ID, tenant ID).
+func ValidateAzureSTSRequiredFlags(targetBlobContainer, clientID, tenantID string) error {
+	if strings.TrimSpace(targetBlobContainer) == "" {
+		return util.ValidationError{Msg: "target-blob-container is required and must be non-empty"}
+	}
+	if strings.TrimSpace(clientID) == "" {
+		return util.ValidationError{Msg: "azure-sts-client-id is required and must be non-empty"}
+	}
+	if strings.TrimSpace(tenantID) == "" {
+		return util.ValidationError{Msg: "azure-sts-tenant-id is required and must be non-empty"}
+	}
+	return nil
+}
+
 // ValidateSignatureVersion validation, must be empty or v2 or v4
 func ValidateSignatureVersion(signature nbv1.S3SignatureVersion, nsStoreEndpoint string, nsStoreName string) error {
 	if signature != "" &&
@@ -262,8 +298,14 @@ func ValidateNSEmptySecretName(ns nbv1.NamespaceStore) error {
 		}
 	case nbv1.NSStoreTypeAzureBlob:
 		if len(ns.Spec.AzureBlob.Secret.Name) == 0 {
+			if util.IsAzureSTSClusterNS(&ns) {
+				return util.ValidationError{
+					Msg: "Azure STS requires a secret (containing azure_tenant_id and azure_client_id); provide --secret-name or omit it to create one from flags",
+				}
+			}
+			// Key-based Azure: secret (with AccountName and AccountKey) and target blob container are both required, not optional
 			return util.ValidationError{
-				Msg: "Failed creating the namespacestore, please provide secret name",
+				Msg: "Failed creating the namespacestore: secret name (secret must contain AccountName and AccountKey) and target blob container are both required",
 			}
 		}
 	case nbv1.NSStoreTypeGoogleCloudStorage:

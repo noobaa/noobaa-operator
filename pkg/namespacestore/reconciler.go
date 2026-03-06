@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -525,7 +526,11 @@ func (r *Reconciler) ReadSystemInfo() error {
 
 // LoadNamespaceStoreSecret loads the secret to the reconciler struct
 func (r *Reconciler) LoadNamespaceStoreSecret() error {
+	// Skip loading for AWS STS (no secret). For Azure STS use IsAzureSTSClusterNS(); load secret when it has a ref (TenantId/AccountName in secret).
 	if util.IsSTSClusterNS(r.NamespaceStore) {
+		return nil
+	}
+	if util.IsAzureSTSClusterNS(r.NamespaceStore) && (r.NamespaceStore.Spec.AzureBlob == nil || r.NamespaceStore.Spec.AzureBlob.Secret.Name == "") {
 		return nil
 	}
 	secretRef, err := util.GetNamespaceStoreSecret(r.NamespaceStore)
@@ -641,14 +646,26 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		conn.Endpoint = "https://blob.core.windows.net"
 		if util.IsAzureSTSClusterNS(r.NamespaceStore) {
 			conn.EndpointType = nb.EndpointTypeAzureSTS
+			clientID := ""
+			tenantID := ""
+			if r.Secret.StringData != nil {
+				clientID = r.Secret.StringData["azure_client_id"]
+				tenantID = r.Secret.StringData["azure_tenant_id"]
+			}
+			if strings.TrimSpace(tenantID) == "" {
+				return nil, util.NewPersistentError("InvalidAzureSTSSecret",
+					fmt.Sprintf("Azure STS requires non-empty azure_tenant_id in secret %q", r.Secret.Name))
+			}
 			conn.AzureSTSCredentials = &nb.AzureSTSCredentials{
-				ClientID: r.Secret.StringData["azure_client_id"],
-				TenantID: r.Secret.StringData["azure_tenant_id"],
+				ClientID: clientID,
+				TenantID: tenantID,
 			}
 		} else {
 			conn.EndpointType = nb.EndpointTypeAzure
-			conn.Identity = nb.MaskedString(r.Secret.StringData["AccountName"])
 			conn.Secret = nb.MaskedString(r.Secret.StringData["AccountKey"])
+		}
+		if r.Secret.StringData != nil {
+			conn.Identity = nb.MaskedString(r.Secret.StringData["AccountName"])
 		}
 
 		tenantID := r.Secret.StringData["TenantID"]
@@ -686,7 +703,7 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		return nil, util.NewPersistentError("InvalidType",
 			fmt.Sprintf("Invalid namespace store type %q", r.NamespaceStore.Spec.Type))
 	}
-	if util.IsSTSClusterNS(r.NamespaceStore) {
+	if util.IsSTSClusterNS(r.NamespaceStore) || util.IsAzureSTSClusterNS(r.NamespaceStore) {
 		if !util.IsStringGraphicOrSpacesCharsOnly(string(conn.Identity)) || !util.IsStringGraphicOrSpacesCharsOnly(string(conn.Secret)) {
 			return nil, util.NewPersistentError("InvalidSecret",
 				fmt.Sprintf("Invalid secret containing non graphic characters (perhaps not base64 encoded?) %q", r.Secret.Name))
