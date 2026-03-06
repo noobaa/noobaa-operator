@@ -62,6 +62,7 @@ func CmdCreate() *cobra.Command {
 		CmdCreateS3Compatible(),
 		CmdCreateIBMCos(),
 		CmdCreateAzureBlob(),
+		CmdCreateAzureSTSBlob(),
 		CmdCreateNSFS(),
 	)
 	return cmd
@@ -248,6 +249,40 @@ func CmdCreateAzureBlob() *cobra.Command {
 	return cmd
 }
 
+// CmdCreateAzureSTSBlob returns a CLI command for Azure Blob namespace store using STS (short-lived credentials)
+func CmdCreateAzureSTSBlob() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "azure-sts-blob <namespace-store-name>",
+		Short: "Create azure-blob namespace store (using STS, short-lived credentials)",
+		Run:   RunCreateAzureSTSBlob,
+	}
+	cmd.Flags().String(
+		"target-blob-container", "",
+		"The target container name on Azure storage account",
+	)
+	cmd.Flags().String(
+		"azure-sts-tenant-id", "",
+		"The Azure Tenant ID for workload identity / STS",
+	)
+	cmd.Flags().String(
+		"azure-sts-client-id", "",
+		"The Azure Client ID for workload identity / STS (stored on the namespacestore spec)",
+	)
+	cmd.Flags().String(
+		"azure-sts-account-name", "",
+		"Optional Azure storage account name (stored in the secret only)",
+	)
+	cmd.Flags().String(
+		"secret-name", "",
+		"Optional name of an existing secret containing azure_tenant_id (and optionally AccountName); if omitted, a secret is created from flags",
+	)
+	cmd.Flags().String(
+		"access-mode", "read-write",
+		`The resource access privileges read-write|read-only`,
+	)
+	return cmd
+}
+
 // CmdCreateNSFS returns a CLI command
 func CmdCreateNSFS() *cobra.Command {
 	cmd := &cobra.Command{
@@ -394,7 +429,7 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 		log.Fatalf(`❌ %s %s`, validationErr, cmd.UsageString())
 	}
 
-	// Create namespace store CR
+	// Create namespace store CR 
 	util.Panic(controllerutil.SetControllerReference(sys, namespaceStore, scheme.Scheme))
 	if !util.KubeCreateFailExisting(namespaceStore) {
 		log.Fatalf(`❌ Could not create NamespaceStore %q in Namespace %q (conflict)`, namespaceStore.Name, namespaceStore.Namespace)
@@ -432,7 +467,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <namespace-store-type> %s`, cmd.UsageString())
 	}
 	if args[0] != "aws-s3" && args[0] != "azure-blob" && args[0] != "ibm-cos" &&
-		args[0] != "nsfs" && args[0] != "s3-compatible" {
+		args[0] != "nsfs" && args[0] != "s3-compatible" && args[0] != "azure-sts-blob" {
 		log.Fatalf(`❌ Unsupported <namespace-store-type> -> %s %s`, args[0], cmd.UsageString())
 	}
 }
@@ -659,6 +694,53 @@ func RunCreateAzureBlob(cmd *cobra.Command, args []string) {
 	})
 }
 
+// RunCreateAzureSTSBlob runs a CLI command for Azure Blob namespace store with STS (short-lived credentials).
+// Uses createCommon(); only ClientId is stored on the namespacestore spec; TenantId and optional AccountName are stored in the secret (creds).
+// Created CR format: spec.accessMode, spec.azureBlob (secret, targetBlobContainer, clientId), spec.type. Finalizer is added by the operator on first reconcile.
+func RunCreateAzureSTSBlob(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
+	}
+	createCommon(cmd, args, nbv1.NSStoreTypeAzureBlob, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
+		targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
+		azureSTSClientID := util.GetFlagStringOrPrompt(cmd, "azure-sts-client-id")
+		azureSTSTenantID := util.GetFlagStringOrPrompt(cmd, "azure-sts-tenant-id")
+		if err := validations.ValidateAzureSTSRequiredFlags(targetBlobContainer, azureSTSClientID, azureSTSTenantID); err != nil {
+			log.Fatalf(`❌ %s %s`, err, cmd.UsageString())
+		}
+		secretName, _ := cmd.Flags().GetString("secret-name")
+		accountName, _ := cmd.Flags().GetString("azure-sts-account-name")
+
+		if secretName != "" {
+			util.VerifyCredsInSecret(secretName, options.Namespace, []string{"azure_tenant_id", "azure_client_id"})
+			secret.Name = secretName
+			secret.Namespace = options.Namespace
+		} else {
+			secret.StringData["azure_tenant_id"] = strings.TrimSpace(azureSTSTenantID)
+			secret.StringData["azure_client_id"] = strings.TrimSpace(azureSTSClientID)
+			if strings.TrimSpace(accountName) != "" {
+				secret.StringData["AccountName"] = strings.TrimSpace(accountName)
+			}
+		}
+
+		// Only ClientId on spec; rest (TenantId, AccountName) in secret. CR format: spec.azureBlob.secret (name+namespace), targetBlobContainer, clientId.
+		secretNamespace := secret.Namespace
+		if secretNamespace == "" {
+			secretNamespace = options.Namespace
+		}
+		clientIDTrimmed := strings.TrimSpace(azureSTSClientID)
+		namespaceStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{
+			TargetBlobContainer: strings.TrimSpace(targetBlobContainer),
+			ClientId:            &clientIDTrimmed,
+			Secret: corev1.SecretReference{
+				Name:      secret.Name,
+				Namespace: secretNamespace,
+			},
+		}
+	})
+}
+
 // RunCreateNSFS runs a CLI command
 func RunCreateNSFS(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.NSStoreTypeNSFS, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
@@ -723,7 +805,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
 	secretRef, _ := util.GetNamespaceStoreSecret(namespaceStore)
-	if !util.IsSTSClusterNS(namespaceStore) {
+	if !util.IsSTSClusterNS(namespaceStore) && !util.IsAzureSTSClusterNS(namespaceStore) {
 		if secretRef != nil {
 			secret.Name = secretRef.Name
 			secret.Namespace = secretRef.Namespace
