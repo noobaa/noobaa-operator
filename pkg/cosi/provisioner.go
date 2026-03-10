@@ -388,6 +388,10 @@ func (r *APIRequest) CreateBucket(
 		Quota: quotaConfig,
 	}
 
+	nb.WarnIfQuotaCappedByFree(r.BucketName, nil, r.SysClient.NBClient, quotaConfig, func(format string, args ...interface{}) {
+		log.Warnf("QUOTA_WARN: "+format, args...)
+	})
+
 	err = r.SysClient.NBClient.UpdateBucketAPI(*createBucketParams)
 	if err != nil {
 		return fmt.Errorf("failed to update bucket %q with error: %v", r.BucketName, err)
