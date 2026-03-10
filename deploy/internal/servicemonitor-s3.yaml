@@ -6,8 +6,9 @@ metadata:
     app: noobaa
 spec:
   endpoints:
-  - port: metrics
+  - port: metrics-https
     path: /
+    scheme: https
   namespaceSelector: {}
   selector:
     matchLabels:
