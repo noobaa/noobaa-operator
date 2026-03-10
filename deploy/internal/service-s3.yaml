@@ -23,4 +23,6 @@ spec:
       name: md-https
     - port: 7004
       name: metrics
+    - port: 9443
+      name: metrics-https
 
