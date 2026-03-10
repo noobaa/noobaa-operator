@@ -3,6 +3,7 @@ package nb
 import (
 	"encoding/json"
 	"math"
+	"math/big"
 	"reflect"
 	"strconv"
 
@@ -165,6 +166,11 @@ func (n *BigInt) UnmarshalJSON(data []byte) error {
 // ToString convert bigInt to string
 func (n *BigInt) ToString() string {
 	return strconv.FormatInt((n.N + (n.Peta * petaInBytes)), 10)
+}
+
+// ToBig converts bigInt to a math/big.Int for overflow-safe arithmetic
+func (n *BigInt) ToBig() *big.Int {
+	return new(big.Int).Add(big.NewInt(n.N), new(big.Int).Mul(big.NewInt(n.Peta), big.NewInt(petaInBytes)))
 }
 
 // PoolInfo is a struct of pool info returned by the API
@@ -814,6 +820,46 @@ func GetBytesAndUnits(bi int64, prec int) (float64, string) {
 	}
 
 	return f, units[u]
+}
+
+// QuotaSizeToBytes converts a NooBaa quota size config (value + unit like "G") to bytes using base-2 units
+// Returns ok=false if the input is invalid or out of int64 range
+func QuotaSizeToBytes(q *SizeQuotaConfig) (bytes int64, ok bool) {
+	if q == nil || q.Value <= 0 {
+		return 0, false
+	}
+
+	var pow int
+	switch q.Unit {
+	case "": // bytes, pow stays 0
+	case "K":
+		pow = 1
+	case "M":
+		pow = 2
+	case "G":
+		pow = 3
+	case "T":
+		pow = 4
+	case "P":
+		pow = 5
+	case "E":
+		pow = 6
+	case "Z":
+		pow = 7
+	case "Y":
+		pow = 8
+	default:
+		return 0, false
+	}
+
+	f := q.Value * math.Pow(1024, float64(pow))
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return 0, false
+	}
+	if f > math.MaxInt64 {
+		return 0, false
+	}
+	return int64(math.Round(f)), true
 }
 
 // UInt64ToBigInt convert uint64 based value to BigInt value
