@@ -18,7 +18,10 @@ jobs:
           cache: true
           cache-dependency-path: |
             **/go.sum
-
+      - name: Set up kind
+        uses: helm/kind-action@v1
+        with:
+          install_only: true
       - name: Set environment variables
         run: |
           echo PATH=$PATH:$HOME/go/bin                                          >> $GITHUB_ENV
