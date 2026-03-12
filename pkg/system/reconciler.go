@@ -99,6 +99,7 @@ type Reconciler struct {
 	IsAzureSTSCluster         bool
 	GCPBucketCreds            *corev1.Secret
 	GCPCloudCreds             *cloudcredsv1.CredentialsRequest
+	IsGCPCluster              bool
 	IBMCosBucketCreds         *corev1.Secret
 	DefaultBackingStore       *nbv1.BackingStore
 	DefaultBucketClass        *nbv1.BucketClass
@@ -134,7 +135,6 @@ type Reconciler struct {
 	// CNPG resources
 	CNPGImageCatalog *cnpgv1.ImageCatalog
 	CNPGCluster      *cnpgv1.Cluster
-
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system

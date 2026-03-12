@@ -972,7 +972,7 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		if err := r.prepareAzureBackingStore(); err != nil {
 			return err
 		}
-	} else if r.GCPCloudCreds.UID != "" {
+	} else if r.GCPCloudCreds.UID != "" && !r.IsGCPCluster {
 		log.Infof("CredentialsRequest %q created.  creating default backing store on GCP objectstore", r.GCPCloudCreds.Name)
 		if err := r.prepareGCPBackingStore(); err != nil {
 			return err
@@ -986,6 +986,11 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 		minutesSinceCreation := time.Since(r.NooBaa.CreationTimestamp.Time).Minutes()
 		if minutesSinceCreation < 2 {
 			return nil
+		}
+		// GCP lacks STS support - skip cloud credentials, use PVPool
+		// TODO: call prepareGCPBackingStore() once GCP STS is supported
+		if r.IsGCPCluster {
+			log.Info("Running on GCP, creating default backing store using PVPool")
 		}
 		if err := r.preparePVPoolBackingStore(); err != nil {
 			return err

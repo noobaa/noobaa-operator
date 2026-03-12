@@ -878,6 +878,7 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 		return r.ReconcileAzureCredentials()
 	}
 	if util.IsGCPPlatform() {
+		r.IsGCPCluster = true
 		return r.ReconcileGCPCredentials()
 	}
 	if util.IsIBMPlatform() {
@@ -1100,6 +1101,12 @@ func (r *Reconciler) ReconcileAzureCredentials() error {
 
 // ReconcileGCPCredentials creates a CredentialsRequest resource if cloud credentials operator is available
 func (r *Reconciler) ReconcileGCPCredentials() error {
+	// GCP lacks STS support - skip cloud credentials, use PVPool
+	// TODO: once GCP STS is supported, call this function instead of returning nil
+	if r.IsGCPCluster {
+		r.Logger.Info("Running on GCP, skipping cloud credentials - will use PVPool backing store")
+		return nil
+	}
 	r.Logger.Info("Running on GCP. will create a CredentialsRequest resource")
 	err := r.Client.Get(r.Ctx, util.ObjectKey(r.GCPCloudCreds), r.GCPCloudCreds)
 	if err == nil || meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
