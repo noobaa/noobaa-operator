@@ -64,6 +64,28 @@ var _ = Describe("CLI tests", func() {
 				`.*?`)).To(BeTrue())
 		})
 	})
+
+	Context("Noobaa backingstore create azure-blob CLI", func() {
+		It("backingstore create azure-blob --help shows target-blob-container and account options", func() {
+			out, err := RunCLI("backingstore", "create", "azure-blob", "--help")
+			Expect(err).To(BeNil())
+			Expect(out).To(ContainSubstring("target-blob-container"))
+			Expect(out).To(ContainSubstring("account-name"))
+			Expect(out).To(ContainSubstring("account-key"))
+			Expect(out).To(ContainSubstring("secret-name"))
+		})
+	})
+
+	Context("Noobaa namespacestore create azure-blob CLI", func() {
+		It("namespacestore create azure-blob --help shows target-blob-container and account options", func() {
+			out, err := RunCLI("namespacestore", "create", "azure-blob", "--help")
+			Expect(err).To(BeNil())
+			Expect(out).To(ContainSubstring("target-blob-container"))
+			Expect(out).To(ContainSubstring("account-name"))
+			Expect(out).To(ContainSubstring("account-key"))
+			Expect(out).To(ContainSubstring("secret-name"))
+		})
+	})
 })
 
 func RunCLI(args ...string) (string, error) {

@@ -122,6 +122,89 @@ var _ = Describe("Admission server integration tests", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
+		Context("Azure STS backing store with clientId and tenantId", func() {
+			clientID := "azure-sts-client-id"
+			tenantID := "azure-sts-tenant-id"
+			It("Should Allow create without secret when Azure STS credentials are provided", func() {
+				azureSTSBackingStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				azureSTSBackingStore.Name = "azure-sts-bs-name"
+				azureSTSBackingStore.Namespace = namespace
+
+				azureSTSBackingStore.Spec = nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "azure-sts-target-container",
+						Secret:              corev1.SecretReference{Name: "", Namespace: namespace},
+						ClientId:            &clientID,
+						TenantId:            &tenantID,
+					},
+				}
+
+				result, err = KubeCreate(azureSTSBackingStore)
+				Expect(result).To(BeTrue())
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+			It("Should Allow create without secret when Azure STS credentials including subscriptionId and resourcegroupId are provided", func() {
+				subscriptionID := "azure-sts-subscription-id"
+				resourceGroupID := "azure-sts-resource-group"
+				azureSTSBackingStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				azureSTSBackingStore.Name = "azure-sts-bs-full-name"
+				azureSTSBackingStore.Namespace = namespace
+
+				azureSTSBackingStore.Spec = nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "azure-sts-target-container-full",
+						Secret:              corev1.SecretReference{Name: "", Namespace: namespace},
+						ClientId:            &clientID,
+						TenantId:            &tenantID,
+						SubscriptionId:     &subscriptionID,
+						ResourcegroupId:    &resourceGroupID,
+					},
+				}
+
+				result, err = KubeCreate(azureSTSBackingStore)
+				Expect(result).To(BeTrue())
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+			It("Should Deny create when secret is empty and Azure STS credentials are missing", func() {
+				azureBSNoCreds := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				azureBSNoCreds.Name = "azure-bs-no-sts-creds"
+				azureBSNoCreds.Namespace = namespace
+
+				azureBSNoCreds.Spec = nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "some-container",
+						Secret:               corev1.SecretReference{Name: "", Namespace: namespace},
+					},
+				}
+
+				result, err = KubeCreate(azureBSNoCreds)
+				Expect(result).To(BeFalse())
+				Ω(err).Should(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("please provide secret name or Azure STS credentials"))
+			})
+		})
+		Context("Azure blob namespace store", func() {
+			It("Should Deny create when secret is empty (namespace store requires secret for Azure)", func() {
+				azureNSStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore)
+				azureNSStore.Name = "azure-ns-no-secret"
+				azureNSStore.Namespace = namespace
+				azureNSStore.Spec = nbv1.NamespaceStoreSpec{
+					Type: nbv1.NSStoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "some-container",
+						Secret:              corev1.SecretReference{Name: "", Namespace: namespace},
+					},
+				}
+
+				result, err = KubeCreate(azureNSStore)
+				Expect(result).To(BeFalse())
+				Ω(err).Should(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("secret"))
+			})
+		})
 		Context("Invalid store type", func() {
 			It("Should Deny", func() {
 				testBackingstore.Spec = nbv1.BackingStoreSpec{
