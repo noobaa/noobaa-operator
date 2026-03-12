@@ -178,6 +178,37 @@ spec:
   type: azure-blob
 ```
 
+## Azure STS
+Similarly to `Azure Blob Storage` this backingstore uses the Azure Blob API for storing encrypted chunks of data in Azure container.
+However, the difference between the two backingstore types lies in the authentication method:
+- Azure Blob Storage uses long-lived credentials - a pair of static, user-provided access keys.
+- Azure STS uses short-lived credentials . Applications will utilize client_id, tenant_id to create federated JWT token based backing store. The system will verify the Azure connection using the provided client_id, tenant_id, and federated token
+
+This type of backingstore is useful in cases where the user wishes to limit access to their Azure cloud for a specific amount of time, and for easier management of the cloud's security.
+
+```shell
+noobaa backingstore create azure-sts-blob <BACKINGSTORE NAME> --account-name <> --target-blob-container <> --client-id <> --tenant-id <>
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  name: <>
+  namespace: <>
+  labels:
+    app: noobaa
+spec:
+  azureBlob:
+    clientId: <>
+    secret:
+      name: <>
+      namespace: <>
+    targetBlobContainer: <>
+  type: azure-blob
+```
+
 ## Persistent Volume Pool
 A unique kind of backingstore that uses local storage resources instead of ones provided by cloud services.
 Creates a StatefulSet with a PVC mounted in each pod. Each resource will connect to the NooBaa core and provide the PV filesystem storage to be used for storing encrypted chunks of data. It is possible to configure the number of pods to be used and their PV size.
@@ -246,6 +277,30 @@ spec:
     targetBucket: personal-bucket
     secret: {}
   type: aws-s3
+```
+
+### AZURE STS
+```shell
+noobaa backingstore create azure-sts-blob azure-sts-backingstore --account-name azureSTSAccount --target-blob-container azure-sts-bs --client-id 8feb6304-7cee-40ea-b501-ef0d08520874 --tenant-id 486b6304-7cee-40qw-n507-hy7d520123
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  name: azure-sts-backingstore
+  namespace: app-namespace
+  labels:
+    app: noobaa
+spec:
+  azureBlob:
+    clientId: 8feb6304-7cee-40ea-b501-ef0d08520874
+    secret:
+      name: noobaa-azure-container-creds
+      namespace: noobaa
+      targetBlobContainer: azure-sts-bs
+type: azure-blob
 ```
 
 ### Persistent Volume Pool

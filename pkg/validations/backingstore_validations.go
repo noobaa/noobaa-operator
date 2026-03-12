@@ -2,6 +2,7 @@ package validations
 
 import (
 	"fmt"
+	"strings"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
@@ -315,5 +316,25 @@ func ValidateBackingstoreDeletion(bs nbv1.BackingStore, systemInfo nb.SystemInfo
 		}
 	}
 
+	return nil
+}
+
+// ValidateAzureSTSCredsPresent validates that target blob container, account name, tenant ID, and client ID are present (non-nil and non-empty).
+func ValidateAzureSTSCredsPresent(targetBlobContainer, accountName, tenantID, clientID *string) error {
+	isMissing := func(v *string) bool {
+		return v == nil || strings.TrimSpace(*v) == ""
+	}
+	if isMissing(targetBlobContainer) {
+		return util.ValidationError{Msg: "Target blob container is required"}
+	}
+	if isMissing(accountName) {
+		return util.ValidationError{Msg: "Azure storage account name is required"}
+	}
+	if isMissing(tenantID) {
+		return util.ValidationError{Msg: "Azure tenant ID is required"}
+	}
+	if isMissing(clientID) {
+		return util.ValidationError{Msg: "Azure client ID is required"}
+	}
 	return nil
 }
