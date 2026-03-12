@@ -816,6 +816,48 @@ func GetBytesAndUnits(bi int64, prec int) (float64, string) {
 	return f, units[u]
 }
 
+// SizeQuotaToBytes converts a NooBaa quota size config (value + unit like "G") to bytes using base-2 units
+// Returns ok=false if the input is invalid or out of int64 range
+func SizeQuotaToBytes(q *SizeQuotaConfig) (bytes int64, ok bool) {
+	if q == nil || q.Value <= 0 {
+		return 0, false
+	}
+
+	var pow int
+	switch q.Unit {
+	case "": // bytes, pow stays 0
+	case "K":
+		pow = 1
+	case "M":
+		pow = 2
+	case "G":
+		pow = 3
+	case "T":
+		pow = 4
+	case "P":
+		pow = 5
+	case "E":
+		pow = 6
+	case "Z":
+		pow = 7
+	case "Y":
+		pow = 8
+	default:
+		return 0, false
+	}
+
+	f := q.Value * math.Pow(1024, float64(pow))
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return 0, false
+	}
+	// Avoid overflow/underflow when converting float64 -> int64.
+	const maxInt64 = int64(^uint64(0) >> 1)
+	if f < 0 || f > float64(maxInt64) {
+		return 0, false
+	}
+	return int64(math.Round(f)), true
+}
+
 // UInt64ToBigInt convert uint64 based value to BigInt value
 func UInt64ToBigInt(value uint64) BigInt {
 	return BigInt{

@@ -535,6 +535,9 @@ func (r *BucketRequest) UpdateBucket() error {
 	if quotaConfig.IsEqual(bucket.Quota) {
 		r.Provisioner.Logger.Infof("UpdateBucket: no changes in quota config")
 	} else {
+		nb.WarnIfQuotaCappedByFree(r.BucketName, &bucket, nil, quotaConfig, func(format string, args ...interface{}) {
+			log.Warnf("QUOTA_WARN: "+format, args...)
+		})
 		createBucketParams := &nb.CreateBucketParams{
 			Name:  r.BucketName,
 			Quota: quotaConfig,
