@@ -123,8 +123,8 @@ var _ = Describe("Admission server integration tests", func() {
 			})
 		})
 		Context("Azure STS backing store with clientId and tenantId", func() {
-			clientID := "azure-sts-client-id"
-			tenantID := "azure-sts-tenant-id"
+			clientID := "client-id"
+			tenantID := "tenant-id"
 			It("Should Allow create without secret when Azure STS credentials are provided", func() {
 				azureSTSBackingStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
 				azureSTSBackingStore.Name = "azure-sts-bs-name"
