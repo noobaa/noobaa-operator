@@ -680,6 +680,9 @@ func (r *Reconciler) ReconcileAWSCredentials() error {
 		r.Logger.Errorf("Got error from util.GetAWSRegion(). will use arnPrefix=%q. error=%v", arnPrefix, err)
 	} else if awsRegion == "us-gov-east-1" || awsRegion == "us-gov-west-1" {
 		arnPrefix = "arn:aws-us-gov:s3:::"
+	} else if awsRegion == "cn-north-1" || awsRegion == "cn-northwest-1" {
+		// China regions use arn:aws-cn per https://docs.amazonaws.cn/en_us/aws/latest/userguide/ARNs.html
+		arnPrefix = "arn:aws-cn:s3:::"
 	}
 	r.Logger.Info("Running in AWS. will create a CredentialsRequest resource")
 	var bucketName string
