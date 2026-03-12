@@ -37,3 +37,13 @@ type ObjectBucketAuthentication = obv1.Authentication
 
 // ObjectBucketAccessKeys is the access keys inside ObjectBucketAuthentication
 type ObjectBucketAccessKeys = obv1.AccessKeys
+
+// ObjectBucketClaimStatus is the observed state of ObjectBucketClaim
+type ObjectBucketClaimStatus = obv1.ObjectBucketClaimStatus
+
+const (
+	ObjectBucketClaimStatusPhasePending  = obv1.ObjectBucketClaimStatusPhasePending
+	ObjectBucketClaimStatusPhaseBound    = obv1.ObjectBucketClaimStatusPhaseBound
+	ObjectBucketClaimStatusPhaseReleased = obv1.ObjectBucketClaimStatusPhaseReleased
+	ObjectBucketClaimStatusPhaseFailed   = obv1.ObjectBucketClaimStatusPhaseFailed
+)
