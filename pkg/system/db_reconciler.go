@@ -88,6 +88,13 @@ func (r *Reconciler) ReconcileCNPGCluster() error {
 		return err
 	}
 
+	// Reconcile PDB alert silencer to disable PodDisruptionBudgetAtLimit alert
+	if err := r.ReconcilePDBAlertSilencer(); err != nil {
+		r.cnpgLogError("got error reconciling PDB alert silencer. error: %v", err)
+		// log and ignore error on PDB alert silencer. Don't fail the reconciliation if it fails.
+		return nil
+	}
+
 	return nil
 }
 
