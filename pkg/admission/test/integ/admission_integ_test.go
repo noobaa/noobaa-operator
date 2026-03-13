@@ -304,8 +304,14 @@ var _ = Describe("Admission server integration tests", func() {
 				if !util.KubeList(bsList, &client.ListOptions{Namespace: options.Namespace}) {
 					return
 				}
-				bs := &bsList.Items[0]
-
+				var bs *nbv1.BackingStore
+				for i := range bsList.Items {
+					if bsList.Items[i].Spec.PVPool != nil {
+						bs = &bsList.Items[i]
+						break
+					}
+				}
+				Expect(bs).NotTo(BeNil(), "need at least one PVPool BackingStore in namespace for this test")
 				bs.Spec.PVPool.NumVolumes = 1
 
 				result, err = KubeUpdate(bs)
@@ -322,8 +328,14 @@ var _ = Describe("Admission server integration tests", func() {
 				if !util.KubeList(nsList, &client.ListOptions{Namespace: options.Namespace}) {
 					return
 				}
-				ns := &nsList.Items[0]
-
+				var ns *nbv1.NamespaceStore
+				for i := range nsList.Items {
+					if nsList.Items[i].Spec.S3Compatible != nil {
+						ns = &nsList.Items[i]
+						break
+					}
+				}
+				Expect(ns).NotTo(BeNil(), "need at least one S3Compatible NamespaceStore in namespace for this test")
 				ns.Spec.S3Compatible.TargetBucket = "some-other-bucket"
 
 				result, err = KubeUpdate(ns)

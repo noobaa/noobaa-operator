@@ -215,7 +215,7 @@ func ValidateAzureSTSRequiredFlags(targetBlobContainer, clientID, tenantID strin
 		return util.ValidationError{Msg: "client-id is required and must be non-empty"}
 	}
 	if strings.TrimSpace(tenantID) == "" {
-		return util.ValidationError{Msg: "atenant-id is required and must be non-empty"}
+		return util.ValidationError{Msg: "tenant-id is required and must be non-empty"}
 	}
 	return nil
 }

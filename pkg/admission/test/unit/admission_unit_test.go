@@ -704,8 +704,8 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 					}
 					err = validations.ValidateNSEmptySecretName(*ns)
 					Ω(err).Should(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("secret"))
-				})
+					Expect(err.Error()).To(Equal("Failed creating the namespacestore: secret name (secret must contain AccountName and AccountKey) and target blob container are both required"))
+ 			})
 				It("Should Allow when AzureBlob spec with secret is provided", func() {
 					ns.Spec = nbv1.NamespaceStoreSpec{
 						Type: nbv1.NSStoreTypeAzureBlob,

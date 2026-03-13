@@ -1143,7 +1143,7 @@ func IsSTSClusterNS(ns *nbv1.NamespaceStore) bool {
 
 // IsSTSClusterBS returns true if it is running on an STS cluster
 func IsAzureSTSClusterBS(bs *nbv1.BackingStore) bool {
-	if bs.Spec.Type == nbv1.StoreTypeAzureBlob {
+	if bs.Spec.Type == nbv1.StoreTypeAzureBlob && bs.Spec.AzureBlob != nil {
 		return bs.Spec.AzureBlob.ClientId != nil
 	}
 	return false
@@ -1151,7 +1151,7 @@ func IsAzureSTSClusterBS(bs *nbv1.BackingStore) bool {
 
 // IsAzureSTSClusterNS returns true if the namespace store uses Azure STS (short-lived credentials).
 func IsAzureSTSClusterNS(ns *nbv1.NamespaceStore) bool {
-	if ns.Spec.Type == nbv1.NSStoreTypeAzureBlob {
+	if ns.Spec.Type == nbv1.NSStoreTypeAzureBlob && ns.Spec.AzureBlob != nil {
 		return ns.Spec.AzureBlob.ClientId != nil
 	}
 	return false
