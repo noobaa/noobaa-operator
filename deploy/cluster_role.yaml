@@ -191,3 +191,18 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - alertmanagers
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - alertmanagers/api
+    verbs:
+      - get
+      - create
+      - update
