@@ -1040,6 +1040,12 @@ func (r *Reconciler) ReconcileAzureCredentials() error {
 	subscriptionID := os.Getenv(subscriptionIDEnvVar)
 	r.Logger.Infof("Getting Azure : %s = %s", clientIDEnvVar, clientID)
 
+	r.Logger.Infof("Reconcile Azure STS with clientID: %s ", clientID)
+	if !validateAzureSTSParams(clientID, resourcegroupID, tenantID, subscriptionID) {
+		r.Logger.Errorf("One or more required param missing for Azure STS, clientID : %q", clientID)
+		return fmt.Errorf("One or more required param missing for Azure STS, clientID: %q", clientID)
+	}
+
 	r.Logger.Info("Running in Azure. will create a CredentialsRequest resource")
 	err := r.Client.Get(r.Ctx, util.ObjectKey(r.AzureCloudCreds), r.AzureCloudCreds)
 	if err == nil {
@@ -1594,4 +1600,25 @@ func findLocalStorageClass() (string, error) {
 		return "", fmt.Errorf("Error: found more than one LSO storage class and none was marked as default")
 	}
 	return lsoStorageClassNames[0], nil
+}
+
+// validateAzureSTSParams validates Azure STS parameters.
+// If any one of the four parameters (clientID, resourcegroupID, tenantID, subscriptionID) is provided,
+// all four must have valid (non-empty) values. Otherwise, workload identity authentication will fail.
+// Returns true if either all parameters are provided or none are provided.
+func validateAzureSTSParams(clientID, resourcegroupID, tenantID, subscriptionID string) bool {
+	count := 0
+	if clientID != "" {
+		count++
+	}
+	if resourcegroupID != "" {
+		count++
+	}
+	if tenantID != "" {
+		count++
+	}
+	if subscriptionID != "" {
+		count++
+	}
+	return count == 0 || count == 4
 }
