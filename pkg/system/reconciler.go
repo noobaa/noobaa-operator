@@ -134,7 +134,6 @@ type Reconciler struct {
 	// CNPG resources
 	CNPGImageCatalog *cnpgv1.ImageCatalog
 	CNPGCluster      *cnpgv1.Cluster
-
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
