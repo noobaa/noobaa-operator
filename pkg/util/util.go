@@ -1141,7 +1141,7 @@ func IsSTSClusterNS(ns *nbv1.NamespaceStore) bool {
 	return false
 }
 
-// IsSTSClusterBS returns true if it is running on an STS cluster
+// IsAzureSTSClusterBS returns true if the backing store uses Azure STS (workload identity)
 func IsAzureSTSClusterBS(bs *nbv1.BackingStore) bool {
 	if bs.Spec.Type == nbv1.StoreTypeAzureBlob && bs.Spec.AzureBlob != nil {
 		return bs.Spec.AzureBlob.ClientId != nil
