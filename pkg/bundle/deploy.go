@@ -5189,7 +5189,7 @@ spec:
       name: iam-https
 `
 
-const Sha256_deploy_internal_service_mgmt_yaml = "fa5f052fb360e6893fc446a318413a6f494a8610706ae7e36ff985b3b3a5c070"
+const Sha256_deploy_internal_service_mgmt_yaml = "758174ba728febd71b5809671cb49a3a9e148f66637e59ff8aae905918bcd36a"
 
 const File_deploy_internal_service_mgmt_yaml = `apiVersion: v1
 kind: Service
@@ -5199,9 +5199,6 @@ metadata:
     app: noobaa
     noobaa-mgmt-svc: "true"
   annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/scheme: http
-    prometheus.io/port: "8080"
     service.beta.openshift.io/serving-cert-secret-name: noobaa-mgmt-serving-cert
     service.alpha.openshift.io/serving-cert-secret-name: noobaa-mgmt-serving-cert
 spec:
