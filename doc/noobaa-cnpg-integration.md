@@ -204,9 +204,10 @@ The operator tracks database status through `NooBaaDBStatus`:
 - `ActualVolumeSize`: Actual volume size
 
 #### Monitoring Configuration
-- **Default**: Prometheus monitoring enabled
+- **Default**: Prometheus monitoring enabled with TLS (`monitoring.tls.enabled: true`)
 - **Disable**: Set annotation `noobaa.io/disable_db_default_monitoring=true`
 - **Metrics**: Exported on port 9187
+- **TLS**: The metrics endpoint is served over TLS by default. The operator sets `monitoring.tls.enabled: true` on the CNPG Cluster resource, which forces all database instances to expose their metrics endpoint over HTTPS
 
 
 ### Security Considerations
@@ -219,7 +220,7 @@ The operator tracks database status through `NooBaaDBStatus`:
 #### Network Security
 - **Internal Communication**: Database pods communicate within cluster network
 - **Service Discovery**: Uses Kubernetes services for database access
-- **TLS Support**: Optional TLS encryption for database connections
+- **TLS Support**: Optional TLS encryption for database connections. TLS is enabled by default for monitoring endpoints
 
 ### Troubleshooting
 
