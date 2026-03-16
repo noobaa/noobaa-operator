@@ -823,3 +823,31 @@ func UInt64ToBigInt(value uint64) BigInt {
 		N:    int64(value % petaInBytes),
 	}
 }
+
+// CreateVectorBucketParams is the params for bucket_api.create_vector_bucket()
+type CreateVectorBucketParams struct {
+	Name           string            `json:"name"`
+	VectorDBType   nbv1.VectorDBType `json:"vector_db_type"`
+	VectorDBConfig *VectorDBConfig   `json:"vector_db_config"`
+	BucketClaim    *BucketClaimInfo  `json:"bucket_claim"`
+}
+
+// VectorDBConfig holds NamespaceResource configuration for a vector bucket.
+type VectorDBConfig struct {
+	// +optional
+	NamespaceResource *NamespaceResourceFullConfig `json:"namespace_resource,omitempty"`
+}
+
+// DeleteVectorBucketParams is the params for bucket_api.delete_vector_bucket()
+type DeleteVectorBucketParams struct {
+	Name string `json:"name"`
+}
+
+// VectorBucketInfo is the info returned for a vector bucket
+type VectorBucketInfo struct {
+	Name           string            `json:"name"`
+	VectorDBType   nbv1.VectorDBType `json:"vector_db_type,omitempty"`
+	VectorDBConfig *VectorDBConfig   `json:"vector_db_config,omitempty"`
+	CreationTime   int64             `json:"creation_time,omitempty"`
+	BucketClaim    *BucketClaimInfo  `json:"bucket_claim,omitempty"`
+}
