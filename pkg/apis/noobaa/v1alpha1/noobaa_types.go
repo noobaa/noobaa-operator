@@ -769,6 +769,9 @@ const (
 
 	// DisableDBDefaultMonitoring is Annotation name for disabling default db monitoring
 	DisableDBDefaultMonitoring = "noobaa.io/disable_db_default_monitoring"
+
+	// AlertmanagerHostOverride is Annotation name for overriding the alertmanager host, in the format https://<alertmanager-host>:<port>
+	AlertmanagerHostOverride = "noobaa.io/alertmanager_host_override"
 )
 
 // DBTypes is a string enum type for specify the types of DB that are supported.
