@@ -1924,6 +1924,64 @@ spec:
               security:
                 description: Security represents security settings
                 properties:
+                  apiServerSecurity:
+                    description: APIServerSecurity specifies the TLS configuration
+                      derived from the OpenShift API Server TLS profile, used for
+                      internal component-to-component or component-to-API-Server
+                      communication.
+                    properties:
+                      tlsCipherSuites:
+                        description: TLSCipherSuites is used to specify the cipher
+                          algorithms that are negotiated during the TLS handshake.
+                        items:
+                          type: string
+                        type: array
+                      tlsCurvePreferences:
+                        description: TLSCurvePreferences is used to specify the
+                          elliptic curves and key exchange groups for the TLS
+                          handshake (e.g., X25519, P-256, X25519MLKEM768).
+                        items:
+                          type: string
+                        type: array
+                      tlsVersion:
+                        description: TLSVersion is used to specify the minimal
+                          version of the TLS protocol that is negotiated during the
+                          TLS handshake.
+                        enum:
+                        - VersionTLS12
+                        - VersionTLS13
+                        nullable: true
+                        type: string
+                    type: object
+                  ingressControllerSecurity:
+                    description: IngressControllerSecurity specifies the TLS
+                      configuration derived from the OpenShift Ingress Controller
+                      TLS profile, used for endpoint HTTPS servers serving public
+                      ingress traffic.
+                    properties:
+                      tlsCipherSuites:
+                        description: TLSCipherSuites is used to specify the cipher
+                          algorithms that are negotiated during the TLS handshake.
+                        items:
+                          type: string
+                        type: array
+                      tlsCurvePreferences:
+                        description: TLSCurvePreferences is used to specify the
+                          elliptic curves and key exchange groups for the TLS
+                          handshake (e.g., X25519, P-256, X25519MLKEM768).
+                        items:
+                          type: string
+                        type: array
+                      tlsVersion:
+                        description: TLSVersion is used to specify the minimal
+                          version of the TLS protocol that is negotiated during the
+                          TLS handshake.
+                        enum:
+                        - VersionTLS12
+                        - VersionTLS13
+                        nullable: true
+                        type: string
+                    type: object
                   kms:
                     description: KeyManagementServiceSpec represent various details
                       of the KMS server

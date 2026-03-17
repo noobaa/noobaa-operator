@@ -321,9 +321,49 @@ type LoadBalancerSourceSubnetSpec struct {
 	IAM []string `json:"iam,omitempty"`
 }
 
+// TLSProtocolVersion is the minimum TLS version for endpoint HTTPS servers.
+// +kubebuilder:validation:Enum=VersionTLS12;VersionTLS13
+type TLSProtocolVersion string
+
+const (
+	// TLSVersionTLS12 is version 1.2 of the TLS security protocol.
+	TLSVersionTLS12 TLSProtocolVersion = "VersionTLS12"
+	// TLSVersionTLS13 is version 1.3 of the TLS security protocol.
+	TLSVersionTLS13 TLSProtocolVersion = "VersionTLS13"
+)
+
+// TLSSecuritySpec defines TLS configuration for HTTPS servers.
+type TLSSecuritySpec struct {
+	// TLSVersion is used to specify the minimal version of the TLS protocol
+	// that is negotiated during the TLS handshake.
+	// +optional
+	// +nullable
+	TLSVersion *TLSProtocolVersion `json:"tlsVersion,omitempty"`
+
+	// TLSCipherSuites is used to specify the cipher algorithms that are negotiated
+	// during the TLS handshake.
+	// +optional
+	TLSCipherSuites []string `json:"tlsCipherSuites,omitempty"`
+
+	// TLSCurvePreferences is used to specify the elliptic curves and key exchange
+	// groups for the TLS handshake (e.g., X25519, P-256, X25519MLKEM768).
+	// +optional
+	TLSCurvePreferences []string `json:"tlsCurvePreferences,omitempty"`
+}
+
 // SecuritySpec is security spec to include various security items such as kms
 type SecuritySpec struct {
 	KeyManagementService KeyManagementServiceSpec `json:"kms,omitempty"`
+	// IngressControllerSecurity specifies the TLS configuration derived from the
+	// OpenShift Ingress Controller TLS profile, used for endpoint HTTPS servers
+	// serving public ingress traffic.
+	// +optional
+	IngressControllerSecurity TLSSecuritySpec `json:"ingressControllerSecurity,omitempty"`
+	// APIServerSecurity specifies the TLS configuration derived from the
+	// OpenShift API Server TLS profile, used for internal component-to-component
+	// or component-to-API-Server communication.
+	// +optional
+	APIServerSecurity TLSSecuritySpec `json:"apiServerSecurity,omitempty"`
 }
 
 // KeyManagementServiceSpec represent various details of the KMS server
