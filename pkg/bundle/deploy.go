@@ -2,7 +2,7 @@ package bundle
 
 const Version = "5.21.0"
 
-const Sha256_deploy_cluster_role_yaml = "31fc622ff7fa66617be3895bddcb6cfdb97883b75b20bdb2bf04052bd14221a8"
+const Sha256_deploy_cluster_role_yaml = "6417dcd3e52c38e04ba6b70b7e22985f0f7ddf1edec96287fcc0cb5f42b30c04"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -197,6 +197,21 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - alertmanagers
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - alertmanagers/api
+    verbs:
+      - get
+      - create
+      - update
 `
 
 const Sha256_deploy_cluster_role_binding_yaml = "15c78355aefdceaf577bd96b4ae949ae424a3febdc8853be0917cf89a63941fc"
