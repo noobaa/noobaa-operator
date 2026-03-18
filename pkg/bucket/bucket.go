@@ -166,6 +166,9 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 		if err != nil {
 			log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %q`, bucketName, err)
 		}
+		if err := nb.ValidateQuotaAgainstBucketUsage(&bucketInfo, &quota); err != nil {
+			log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %v`, bucketName, err)
+		}
 		updateParams.Quota = &quota
 	}
 
@@ -296,8 +299,7 @@ func prepareQuotaConfig(bucketName string, maxSize string, maxObjects string) (n
 }
 
 // mergeQuotaForUpdate applies CLI quota flags on top of the quota returned by read_bucket.
-func mergeQuotaForUpdate(existing *nb.QuotaConfig, bucketName string, maxSize string, maxObjects string) (nb.QuotaConfig, error) {
-	var mergedQuota nb.QuotaConfig
+func mergeQuotaForUpdate(existing *nb.QuotaConfig, bucketName string, maxSize string, maxObjects string) (mergedQuota nb.QuotaConfig, err error) {
 	if err := util.ValidateQuotaConfig(bucketName, maxSize, maxObjects); err != nil {
 		return mergedQuota, err
 	}
@@ -315,17 +317,23 @@ func mergeQuotaForUpdate(existing *nb.QuotaConfig, bucketName string, maxSize st
 		}
 	}
 	if maxSize != "" {
-		quantity, _ := resource.ParseQuantity(maxSize)
-		bucketMaxSize := quantity.Value()
-		if bucketMaxSize > 0 {
-			f, u := nb.GetBytesAndUnits(bucketMaxSize, 2)
+		quantity, parseErr := resource.ParseQuantity(maxSize)
+		if parseErr != nil {
+			return mergedQuota, parseErr
+		}
+		sizeBytes := quantity.Value()
+		if sizeBytes > 0 {
+			f, u := nb.GetBytesAndUnits(sizeBytes, 2)
 			mergedQuota.Size = &nb.SizeQuotaConfig{Value: f, Unit: u}
 		} else {
 			mergedQuota.Size = nil
 		}
 	}
 	if maxObjects != "" {
-		bucketMaxObjects, _ := strconv.ParseInt(maxObjects, 10, 64)
+		bucketMaxObjects, parseErr := strconv.ParseInt(maxObjects, 10, 32)
+		if parseErr != nil {
+			return mergedQuota, parseErr
+		}
 		if bucketMaxObjects > 0 {
 			mergedQuota.Quantity = &nb.QuantityQuotaConfig{Value: int(bucketMaxObjects)}
 		} else {

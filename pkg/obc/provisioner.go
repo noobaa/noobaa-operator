@@ -538,6 +538,9 @@ func (r *BucketRequest) UpdateBucket() error {
 		nb.WarnIfQuotaCappedByFree(r.BucketName, &bucket, nil, quotaConfig, func(format string, args ...interface{}) {
 			log.Warnf("QUOTA_WARN: "+format, args...)
 		})
+		if err := nb.ValidateQuotaAgainstBucketUsage(&bucket, quotaConfig); err != nil {
+			return err
+		}
 		createBucketParams := &nb.CreateBucketParams{
 			Name:  r.BucketName,
 			Quota: quotaConfig,
@@ -553,7 +556,7 @@ func (r *BucketRequest) UpdateBucket() error {
 	return nil
 }
 
-// GetQuotaConfig Gets minimum QuotaConfig based on OBC config and BucketClass
+// GetQuotaConfig Gets minimum QuotaConfig based on OBC config and BucketClass.
 func GetQuotaConfig(bucketName string, BucketClassSpec *nbv1.BucketClassSpec, obAdditionalConfig map[string]string, log *logrus.Entry) (*nb.QuotaConfig, error) {
 	var obMaxSize, obMaxObjects, bcMaxSize, bcMaxObjects string
 	var minMaxSize, minMaxObjects int64
@@ -580,31 +583,37 @@ func GetQuotaConfig(bucketName string, BucketClassSpec *nbv1.BucketClassSpec, ob
 
 	//Parse bucketclass quota and transform to quotaConfig
 	if bcMaxSize != "" {
-		// Validator catchs parsing error
-		quantity, _ := resource.ParseQuantity(bcMaxSize)
+		quantity, err := resource.ParseQuantity(bcMaxSize)
+		if err != nil {
+			return nil, fmt.Errorf("bucket %q GetQuotaConfig: parse bucketClass maxSize %q: %w", bucketName, bcMaxSize, err)
+		}
 		minMaxSize = quantity.Value()
 	}
 	if bcMaxObjects != "" {
-		// Validator catchs parsing error
-		num, _ := strconv.ParseInt(bcMaxObjects, 10, 32)
-		minMaxObjects = num
+		n, err := strconv.ParseInt(bcMaxObjects, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("bucket %q GetQuotaConfig: parse bucketClass maxObjects %q: %w", bucketName, bcMaxObjects, err)
+		}
+		minMaxObjects = n
 	}
 
 	//Parse obc quota transform to quotaConfig
 	if obMaxSize != "" {
-		// Validator catchs parsing error
-		quantity, _ := resource.ParseQuantity(obMaxSize)
+		quantity, err := resource.ParseQuantity(obMaxSize)
+		if err != nil {
+			return nil, fmt.Errorf("bucket %q GetQuotaConfig: parse OBC maxSize %q: %w", bucketName, obMaxSize, err)
+		}
 		obcMaxSizeInt := quantity.Value()
-		//Calculate min maxSize
 		if minMaxSize == 0 || obcMaxSizeInt < minMaxSize {
 			minMaxSize = obcMaxSizeInt
 		}
 	}
 
 	if obMaxObjects != "" {
-		// Validator catchs parsing error
-		obcMaxObjectsInt, _ := strconv.ParseInt(obMaxObjects, 10, 32)
-		//Calculate min maxObjects
+		obcMaxObjectsInt, err := strconv.ParseInt(obMaxObjects, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("bucket %q GetQuotaConfig: parse OBC maxObjects %q: %w", bucketName, obMaxObjects, err)
+		}
 		if minMaxObjects == 0 || obcMaxObjectsInt < minMaxObjects {
 			minMaxObjects = obcMaxObjectsInt
 		}
