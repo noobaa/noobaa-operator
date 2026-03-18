@@ -154,6 +154,33 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	}
 
 	if maxSize != "" || maxObjects != "" {
+		// Validate that new quota is not lower than current usage to avoid negative "Num Objects Avail" / "Data Space Avail"
+		b, readErr := nbClient.ReadBucketAPI(nb.ReadBucketParams{Name: bucketName})
+		if readErr != nil {
+			log.Fatalf(`❌ Could not read bucket "%q" to validate quota: %v`, bucketName, readErr)
+		}
+		if b.BucketType != "NAMESPACE" {
+			var currentNumObjects, currentDataSizeBytes int64
+			if b.NumObjects != nil {
+				currentNumObjects = b.NumObjects.Value
+			}
+			if b.DataCapacity != nil && b.DataCapacity.Size != nil {
+				currentDataSizeBytes, _ = b.DataCapacity.Size.ToInt64()
+			}
+			var requestedMaxSize, requestedMaxObjects int64
+			if maxSize != "" {
+				quantity, parseErr := resource.ParseQuantity(maxSize)
+				if parseErr == nil {
+					requestedMaxSize = quantity.Value()
+				}
+			}
+			if maxObjects != "" {
+				requestedMaxObjects, _ = strconv.ParseInt(maxObjects, 10, 64)
+			}
+			if err := util.ValidateQuotaAgainstCurrentUsage(bucketName, requestedMaxSize, requestedMaxObjects, currentDataSizeBytes, currentNumObjects); err != nil {
+				log.Fatalf(`❌ Could not update bucket "%q": %v`, bucketName, err)
+			}
+		}
 		quota, err := prepareQuotaConfig(bucketName, maxSize, maxObjects)
 		if err != nil {
 			log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %q`, bucketName, err)

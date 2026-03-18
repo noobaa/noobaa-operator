@@ -535,6 +535,20 @@ func (r *BucketRequest) UpdateBucket() error {
 	if quotaConfig.IsEqual(bucket.Quota) {
 		r.Provisioner.Logger.Infof("UpdateBucket: no changes in quota config")
 	} else {
+		// Reject lowering quota below current usage to avoid negative "Num Objects Avail" / "Data Space Avail"
+		if bucket.BucketType != "NAMESPACE" {
+			requestedMaxSize, requestedMaxObjects := quotaConfig.QuotaConfigToMaxValues()
+			var currentNumObjects, currentDataSizeBytes int64
+			if bucket.NumObjects != nil {
+				currentNumObjects = bucket.NumObjects.Value
+			}
+			if bucket.DataCapacity != nil && bucket.DataCapacity.Size != nil {
+				currentDataSizeBytes, _ = bucket.DataCapacity.Size.ToInt64()
+			}
+			if err := util.ValidateQuotaAgainstCurrentUsage(r.BucketName, requestedMaxSize, requestedMaxObjects, currentDataSizeBytes, currentNumObjects); err != nil {
+				return err
+			}
+		}
 		createBucketParams := &nb.CreateBucketParams{
 			Name:  r.BucketName,
 			Quota: quotaConfig,

@@ -167,6 +167,19 @@ func (n *BigInt) ToString() string {
 	return strconv.FormatInt((n.N + (n.Peta * petaInBytes)), 10)
 }
 
+// ToInt64 converts BigInt to int64. The second return value is true if the value overflowed int64.
+func (n *BigInt) ToInt64() (int64, bool) {
+	if n == nil {
+		return 0, false
+	}
+	const maxInt64 = 1<<63 - 1
+	if n.Peta != 0 {
+		// Value is at least 1PB which exceeds int64 max
+		return maxInt64, true
+	}
+	return n.N, false
+}
+
 // PoolInfo is a struct of pool info returned by the API
 type PoolInfo struct {
 	Name         string `json:"name"`
@@ -369,6 +382,30 @@ func (q *QuotaConfig) IsEqual(q2 *QuotaConfig) bool {
 		return true
 	}
 	return reflect.DeepEqual(q, q2)
+}
+
+// QuotaConfigToMaxValues returns the quota limits as bytes and object count.
+// Returns 0 for unset limits. Used for validation against current bucket usage.
+func (q *QuotaConfig) QuotaConfigToMaxValues() (maxSizeBytes int64, maxObjects int64) {
+	if q == nil {
+		return 0, 0
+	}
+	if q.Size != nil && q.Size.Value > 0 {
+		multipliers := map[string]int64{
+			"":  1,
+			"K": 1024,
+			"M": 1024 * 1024,
+			"G": 1024 * 1024 * 1024,
+			"T": 1024 * 1024 * 1024 * 1024,
+			"P": 1024 * 1024 * 1024 * 1024 * 1024,
+		}
+		m := multipliers[q.Size.Unit] // Unit "" is valid (bytes)
+		maxSizeBytes = int64(q.Size.Value * float64(m))
+	}
+	if q.Quantity != nil && q.Quantity.Value > 0 {
+		maxObjects = int64(q.Quantity.Value)
+	}
+	return maxSizeBytes, maxObjects
 }
 
 // NamespaceBucketInfo is the information needed for creating namespace bucket
