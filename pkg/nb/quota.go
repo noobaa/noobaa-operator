@@ -1,8 +1,6 @@
 package nb
 
-import (
-	"strconv"
-)
+import "math/big"
 
 // WarnIfQuotaCappedByFree emits a best-effort warning when the configured size quota exceeds
 // the bucket's effective free capacity, meaning raising the quota will not increase Data Space Avail
@@ -10,7 +8,7 @@ func WarnIfQuotaCappedByFree(bucketName string, bucket *BucketInfo, nbClient Cli
 	if quota == nil || quota.Size == nil || warnf == nil {
 		return
 	}
-	requestedQuotaBytes, ok := SizeQuotaToBytes(quota.Size)
+	requestedQuotaBytes, ok := QuotaSizeToBytes(quota.Size)
 	if !ok {
 		return
 	}
@@ -26,23 +24,19 @@ func WarnIfQuotaCappedByFree(bucketName string, bucket *BucketInfo, nbClient Cli
 		bucket = &b
 	}
 
-	if bucket.BucketType == "NAMESPACE" || bucket.DataCapacity == nil || bucket.DataCapacity.Free == nil || bucket.DataCapacity.Size == nil {
-		return
-	}
-	freeBytes, err := strconv.ParseInt(bucket.DataCapacity.Free.ToString(), 10, 64)
-	if err != nil {
-		return
-	}
-	usedBytes, err := strconv.ParseInt(bucket.DataCapacity.Size.ToString(), 10, 64)
-	if err != nil {
+	cap := bucket.DataCapacity
+	if bucket.BucketType == "NAMESPACE" || cap == nil || cap.Free == nil || cap.Size == nil {
 		return
 	}
 
-	if requestedQuotaBytes-usedBytes > freeBytes {
+	// warn if (quota - used) > free, meaning free space is the binding constraint
+	// use big.Int to avoid int64 overflow for large capacity values
+	quotaMinusUsed := new(big.Int).Sub(big.NewInt(requestedQuotaBytes), cap.Size.ToBig())
+	if quotaMinusUsed.Cmp(cap.Free.ToBig()) > 0 {
 		warnf("bucket %q size quota (%s) exceeds current effective free capacity (%s); Data Space Avail will remain capped (min(free, quota-used))",
 			bucketName,
 			IntToHumanBytes(requestedQuotaBytes),
-			BigIntToHumanBytes(bucket.DataCapacity.Free),
+			BigIntToHumanBytes(cap.Free),
 		)
 	}
 }

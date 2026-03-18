@@ -3,6 +3,7 @@ package nb
 import (
 	"encoding/json"
 	"math"
+	"math/big"
 	"reflect"
 	"strconv"
 
@@ -165,6 +166,11 @@ func (n *BigInt) UnmarshalJSON(data []byte) error {
 // ToString convert bigInt to string
 func (n *BigInt) ToString() string {
 	return strconv.FormatInt((n.N + (n.Peta * petaInBytes)), 10)
+}
+
+// ToBig converts bigInt to a math/big.Int for overflow-safe arithmetic
+func (n *BigInt) ToBig() *big.Int {
+	return new(big.Int).Add(big.NewInt(n.N), new(big.Int).Mul(big.NewInt(n.Peta), big.NewInt(petaInBytes)))
 }
 
 // PoolInfo is a struct of pool info returned by the API
@@ -816,9 +822,9 @@ func GetBytesAndUnits(bi int64, prec int) (float64, string) {
 	return f, units[u]
 }
 
-// SizeQuotaToBytes converts a NooBaa quota size config (value + unit like "G") to bytes using base-2 units
+// QuotaSizeToBytes converts a NooBaa quota size config (value + unit like "G") to bytes using base-2 units
 // Returns ok=false if the input is invalid or out of int64 range
-func SizeQuotaToBytes(q *SizeQuotaConfig) (bytes int64, ok bool) {
+func QuotaSizeToBytes(q *SizeQuotaConfig) (bytes int64, ok bool) {
 	if q == nil || q.Value <= 0 {
 		return 0, false
 	}
