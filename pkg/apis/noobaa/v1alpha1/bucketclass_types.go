@@ -20,6 +20,7 @@ func init() {
 // +kubebuilder:printcolumn:name="Placement",type="string",JSONPath=".spec.placementPolicy",description="Placement"
 // +kubebuilder:printcolumn:name="NamespacePolicy",type="string",JSONPath=".spec.namespacePolicy",description="NamespacePolicy"
 // +kubebuilder:printcolumn:name="Quota",type="string",JSONPath=".spec.quota",description="Quota"
+// +kubebuilder:printcolumn:name="VectorPolicy",type="string",JSONPath=".spec.vectorPolicy",description="VectorPolicy"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type BucketClass struct {
@@ -73,6 +74,10 @@ type BucketClassSpec struct {
 	// ReplicationPolicy specifies a json of replication rules for the bucketclass
 	// +optional
 	ReplicationPolicy string `json:"replicationPolicy,omitempty"`
+
+	// VectorPolicy specifies the vector policy for the bucket class
+	// +optional
+	VectorPolicy *VectorPolicy `json:"vectorPolicy,omitempty"`
 }
 
 // BucketClassStatus defines the observed state of BucketClass
@@ -234,6 +239,25 @@ const (
 
 	// BucketClassPhaseDeleting means the operator is deleting the resources on the cluster
 	BucketClassPhaseDeleting BucketClassPhase = "Deleting"
+)
+
+// VectorPolicy specifies the vector policy for the bucket class
+type VectorPolicy struct {
+
+	// Resource is the namespace store name to use (NSFS type only)
+	Resource string `json:"resource,omitempty"`
+
+	// VectorDBType is the type of vector database to use
+	// +kubebuilder:validation:Enum=lance
+	VectorDBType VectorDBType `json:"vectorDBType,omitempty"`
+}
+
+// VectorDBType is a string enum type for supported vector database types
+type VectorDBType string
+
+const (
+	// VectorDBTypeLance is the LanceDB vector database type
+	VectorDBTypeLance VectorDBType = "lance"
 )
 
 // NSBucketClassType is the namespace bucketclass type enum

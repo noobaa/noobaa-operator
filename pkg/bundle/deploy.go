@@ -684,7 +684,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_yaml = "4397dc7ad11b72bc50f3744b5f9f66f22e76bc09ae2358dcf21c3aa376318d44"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_yaml = "99a680e6d2ad4b391758007186f24761f034b001bea6a976ae799588df3b1033"
 
 const File_deploy_crds_noobaa_io_bucketclasses_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -714,6 +714,10 @@ spec:
     - description: Quota
       jsonPath: .spec.quota
       name: Quota
+      type: string
+    - description: VectorPolicy
+      jsonPath: .spec.vectorPolicy
+      name: VectorPolicy
       type: string
     - description: Phase
       jsonPath: .status.phase
@@ -845,6 +849,20 @@ spec:
                 description: ReplicationPolicy specifies a json of replication rules
                   for the bucketclass
                 type: string
+              vectorPolicy:
+                description: VectorPolicy specifies the vector policy for the bucket
+                  class
+                properties:
+                  resource:
+                    description: Resource is the namespace store name to use (NSFS
+                      type only)
+                    type: string
+                  vectorDBType:
+                    description: VectorDBType is the type of vector database to use
+                    enum:
+                    - lance
+                    type: string
+                type: object
             type: object
           status:
             description: Most recently observed status of the noobaa BackingStore.

@@ -27,6 +27,10 @@ spec:
       jsonPath: .spec.quota
       name: Quota
       type: string
+    - description: VectorPolicy
+      jsonPath: .spec.vectorPolicy
+      name: VectorPolicy
+      type: string
     - description: Phase
       jsonPath: .status.phase
       name: Phase
@@ -157,6 +161,20 @@ spec:
                 description: ReplicationPolicy specifies a json of replication rules
                   for the bucketclass
                 type: string
+              vectorPolicy:
+                description: VectorPolicy specifies the vector policy for the bucket
+                  class
+                properties:
+                  resource:
+                    description: Resource is the namespace store name to use (NSFS
+                      type only)
+                    type: string
+                  vectorDBType:
+                    description: VectorDBType is the type of vector database to use
+                    enum:
+                    - lance
+                    type: string
+                type: object
             type: object
           status:
             description: Most recently observed status of the noobaa BackingStore.
