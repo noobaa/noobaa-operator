@@ -1867,6 +1867,30 @@ func ValidateQuotaConfig(name string, maxSize string, maxObjects string) error {
 	return nil
 }
 
+// ValidateQuotaAgainstCurrentUsage ensures that requested quota limits are not lower than current bucket usage.
+// requestedMaxSizeBytes and requestedMaxObjects are 0 when that limit is not being set.
+func ValidateQuotaAgainstCurrentUsage(
+	name string,
+	requestedMaxSizeBytes, requestedMaxObjects int64,
+	currentDataSizeBytes, currentNumObjects int64,
+) error {
+	if requestedMaxObjects > 0 && currentNumObjects > requestedMaxObjects {
+		return ValidationError{
+			Msg: fmt.Sprintf("bucket %q: cannot set max_objects quota to %d because bucket already contains %d objects. "+
+				"Either increase the quota to at least %d or delete objects before reducing the quota", name, requestedMaxObjects, currentNumObjects, currentNumObjects),
+		}
+	}
+	if requestedMaxSizeBytes > 0 && currentDataSizeBytes > requestedMaxSizeBytes {
+		return ValidationError{
+			Msg: fmt.Sprintf("bucket %q: cannot set max_size quota to %s because current data size is %s. "+
+				"Either increase the quota or remove data before reducing the quota", name,
+				resource.NewQuantity(requestedMaxSizeBytes, resource.BinarySI).String(),
+				resource.NewQuantity(currentDataSizeBytes, resource.BinarySI).String()),
+		}
+	}
+	return nil
+}
+
 //
 // Test shared utilities
 //
