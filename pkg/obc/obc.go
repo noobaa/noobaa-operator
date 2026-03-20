@@ -117,6 +117,8 @@ func CmdList() *cobra.Command {
 		Run:   RunList,
 		Args:  cobra.NoArgs,
 	}
+	cmd.Flags().Bool("local-obc-only", false,
+		"List only local OBCs (exclude remote OBCs created for client clusters)")
 	return cmd
 }
 
@@ -497,6 +499,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 // RunList runs a CLI command
 func RunList(cmd *cobra.Command, args []string) {
+	localObcOnly, _ := cmd.Flags().GetBool("local-obc-only")
 	list := &nbv1.ObjectBucketClaimList{
 		TypeMeta: metav1.TypeMeta{Kind: "ObjectBucketClaim"},
 	}
@@ -521,7 +524,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		obc := &list.Items[i]
 
 		// Do not show remote OBCs in the list (OBCs that were created for client clusters)
-		if util.IsRemoteObcAnnotation(obc.Annotations) {
+		if localObcOnly && util.IsRemoteObcAnnotation(obc.Annotations) {
 			countRemoteOBCs++
 			continue
 		}
