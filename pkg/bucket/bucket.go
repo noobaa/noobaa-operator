@@ -154,7 +154,11 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	}
 
 	if maxSize != "" || maxObjects != "" {
-		quota, err := prepareQuotaConfig(bucketName, maxSize, maxObjects)
+		bucketInfo, err := nbClient.ReadBucketAPI(nb.ReadBucketParams{Name: bucketName})
+		if err != nil {
+			log.Fatal(err)
+		}
+		quota, err := mergeQuotaForUpdate(bucketInfo.Quota, bucketName, maxSize, maxObjects)
 		if err != nil {
 			log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %q`, bucketName, err)
 		}
@@ -282,4 +286,43 @@ func prepareQuotaConfig(bucketName string, maxSize string, maxObjects string) (n
 	}
 
 	return quota, nil
+}
+
+// mergeQuotaForUpdate applies CLI quota flags on top of the quota returned by read_bucket.
+// update_bucket replaces the whole quota object; without merging, setting only --max-size or
+// only --max-objects would clear the other limit.
+func mergeQuotaForUpdate(existing *nb.QuotaConfig, bucketName string, maxSize string, maxObjects string) (nb.QuotaConfig, error) {
+	var merged nb.QuotaConfig
+	if err := util.ValidateQuotaConfig(bucketName, maxSize, maxObjects); err != nil {
+		return merged, err
+	}
+	if existing != nil {
+		if existing.Size != nil {
+			s := *existing.Size
+			merged.Size = &s
+		}
+		if existing.Quantity != nil {
+			q := *existing.Quantity
+			merged.Quantity = &q
+		}
+	}
+	if maxSize != "" {
+		quantity, _ := resource.ParseQuantity(maxSize)
+		bucketMaxSize := quantity.Value()
+		if bucketMaxSize > 0 {
+			f, u := nb.GetBytesAndUnits(bucketMaxSize, 2)
+			merged.Size = &nb.SizeQuotaConfig{Value: f, Unit: u}
+		} else {
+			merged.Size = nil
+		}
+	}
+	if maxObjects != "" {
+		bucketMaxObjects, _ := strconv.ParseInt(maxObjects, 10, 64)
+		if bucketMaxObjects > 0 {
+			merged.Quantity = &nb.QuantityQuotaConfig{Value: int(bucketMaxObjects)}
+		} else {
+			merged.Quantity = nil
+		}
+	}
+	return merged, nil
 }
