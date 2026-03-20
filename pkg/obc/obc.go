@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -491,6 +492,9 @@ func RunStatus(cmd *cobra.Command, args []string) {
 			fmt.Printf("  %-22s : %s\n", "Data Space Avail", nb.BigIntToHumanBytes(b.DataCapacity.AvailableSizeToUpload))
 			fmt.Printf("  %-22s : %s\n", "Num Objects Avail", b.DataCapacity.AvailableQuantityToUpload.ToString())
 		}
+		nb.WarnIfQuotaCappedByFree(b.Name, b, nil, b.Quota, func(format string, args ...interface{}) {
+			fmt.Fprintf(os.Stderr, "Warning: "+format+"\n", args...)
+		})
 		fmt.Printf("\n")
 	}
 }

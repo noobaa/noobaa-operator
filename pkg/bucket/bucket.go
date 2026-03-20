@@ -2,6 +2,7 @@ package bucket
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
@@ -131,6 +132,9 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	nb.WarnIfQuotaCappedByFree(bucketName, nil, nbClient, &quota, func(format string, args ...interface{}) {
+		fmt.Fprintf(os.Stderr, "Warning: "+format+"\n", args...)
+	})
 }
 
 // RunUpdate runs a CLI command
@@ -165,6 +169,9 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	nb.WarnIfQuotaCappedByFree(bucketName, nil, nbClient, updateParams.Quota, func(format string, args ...interface{}) {
+		fmt.Fprintf(os.Stderr, "Warning: "+format+"\n", args...)
+	})
 }
 
 // RunDelete runs a CLI command
