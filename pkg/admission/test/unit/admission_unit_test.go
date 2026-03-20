@@ -146,6 +146,201 @@ var _ = Describe("BackingStore admission unit tests", func() {
 				})
 			})
 		})
+		Describe("Azure Blob backingstore", func() {
+			Context("Invalid spec for declared type", func() {
+				It("Should Deny when AzureBlob spec is nil", func() {
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+					}
+					err = validations.ValidateBSInValidSpec(*bs)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("AzureBlob spec must be provided for azure-blob type BackingStore"))
+				})
+				It("Should Allow when AzureBlob spec is provided", func() {
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "my-container",
+							Secret: corev1.SecretReference{
+								Name:      "azure-secret",
+								Namespace: "test",
+							},
+						},
+					}
+					err = validations.ValidateBSInValidSpec(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+			Context("Empty secret name", func() {
+				It("Should Deny when secret is empty and no Azure STS credentials", func() {
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "my-container",
+							Secret: corev1.SecretReference{
+								Name:      "",
+								Namespace: "test",
+							},
+						},
+					}
+					err = validations.ValidateBSEmptySecretName(*bs)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Failed creating the Backingstore, please provide secret name or Azure STS clientId"))
+				})
+				It("Should Allow when secret is empty but Azure STS clientId is set (tenantId optional)", func() {
+					clientID := "azure-client-id"
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "my-container",
+							Secret:             corev1.SecretReference{Name: "", Namespace: "test"},
+							ClientId:           &clientID,
+						},
+					}
+					err = validations.ValidateBSEmptySecretName(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+				It("Should Allow when secret is empty with clientId and tenantId", func() {
+					clientID := "azure-client-id"
+					tenantID := "azure-tenant-id"
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "my-container",
+							Secret:             corev1.SecretReference{Name: "", Namespace: "test"},
+							ClientId:           &clientID,
+							TenantId:           &tenantID,
+						},
+					}
+					err = validations.ValidateBSEmptySecretName(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+				It("Should Allow when secret name is provided", func() {
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "my-container",
+							Secret: corev1.SecretReference{
+								Name:      "azure-secret",
+								Namespace: "test",
+							},
+						},
+					}
+					err = validations.ValidateBSEmptySecretName(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+			Context("ValidateAzureSTSCredsPresent (tenant, account name, clientID in secret/flags)", func() {
+				targetBlobContainer := "my-container"
+				accountName := "myaccount"
+				tenantID := "tenant-id"
+				clientID := "client-id"
+				It("Should Deny when target blob container is missing", func() {
+					err = validations.ValidateAzureSTSCredsPresent(nil, &accountName, &tenantID, &clientID)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("Target blob container is required"))
+				})
+				It("Should Deny when account name is missing", func() {
+					err = validations.ValidateAzureSTSCredsPresent(&targetBlobContainer, nil, &tenantID, &clientID)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("Azure storage account name is required"))
+				})
+				It("Should Deny when tenant ID is missing", func() {
+					err = validations.ValidateAzureSTSCredsPresent(&targetBlobContainer, &accountName, nil, &clientID)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("Azure tenant ID is required"))
+				})
+				It("Should Deny when client ID is missing", func() {
+					err = validations.ValidateAzureSTSCredsPresent(&targetBlobContainer, &accountName, &tenantID, nil)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("Azure client ID is required"))
+				})
+				It("Should Allow when targetBlobContainer, accountName, tenantID and clientID are present", func() {
+					err = validations.ValidateAzureSTSCredsPresent(&targetBlobContainer, &accountName, &tenantID, &clientID)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+			Context("Empty target blob container", func() {
+				It("Should Deny", func() {
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "",
+							Secret: corev1.SecretReference{
+								Name:      "azure-secret",
+								Namespace: "test",
+							},
+						},
+					}
+					err = validations.ValidateBSEmptyTargetBucket(*bs)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Failed creating the Backingstore, please provide target bucket"))
+				})
+				It("Should Allow", func() {
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "my-container",
+							Secret: corev1.SecretReference{
+								Name:      "azure-secret",
+								Namespace: "test",
+							},
+						},
+					}
+					err = validations.ValidateBSEmptyTargetBucket(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+			Context("Full Azure STS backingstore validation", func() {
+				It("Should Allow Azure STS with clientId only", func() {
+					clientID := "azure-client-id"
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "my-container",
+							Secret:             corev1.SecretReference{Name: "", Namespace: "test"},
+							ClientId:           &clientID,
+						},
+					}
+					err = validations.ValidateBackingStore(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+				It("Should Allow Azure STS with clientId and tenantId", func() {
+					clientID := "azure-client-id"
+					tenantID := "azure-tenant-id"
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "my-container",
+							Secret:             corev1.SecretReference{Name: "", Namespace: "test"},
+							ClientId:           &clientID,
+							TenantId:           &tenantID,
+						},
+					}
+					err = validations.ValidateBackingStore(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+				It("Should Allow Azure STS with clientId, tenantId, subscriptionId and resourcegroupId", func() {
+					clientID := "azure-client-id"
+					tenantID := "azure-tenant-id"
+					subscriptionID := "azure-subscription-id"
+					resourceGroupID := "azure-resource-group"
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "my-container",
+							Secret:              corev1.SecretReference{Name: "", Namespace: "test"},
+							ClientId:            &clientID,
+							TenantId:            &tenantID,
+							SubscriptionId:     &subscriptionID,
+							ResourcegroupId:    &resourceGroupID,
+						},
+					}
+					err = validations.ValidateBackingStore(*bs)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+		})
 		Describe("Pvpool backingstore", func() {
 			Context("Resource name too long", func() {
 				It("Should Deny", func() {
@@ -390,6 +585,51 @@ var _ = Describe("BackingStore admission unit tests", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
+			Context("Update Azure Blob target container", func() {
+				It("Should Deny when target blob container is changed", func() {
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "original-container",
+							Secret: corev1.SecretReference{Name: "azure-secret", Namespace: "test"},
+						},
+					}
+					updatedBS.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "different-container",
+							Secret: corev1.SecretReference{Name: "azure-secret", Namespace: "test"},
+						},
+					}
+					err = validations.ValidateTargetBSBucketChange(*bs, *updatedBS)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Changing a Backingstore target bucket is unsupported"))
+				})
+				It("Should Allow when target blob container is unchanged", func() {
+					clientID := "azure-client-id"
+					tenantID := "azure-tenant-id"
+					bs.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "same-container",
+							Secret:             corev1.SecretReference{Name: "", Namespace: "test"},
+							ClientId:           &clientID,
+							TenantId:           &tenantID,
+						},
+					}
+					updatedBS.Spec = nbv1.BackingStoreSpec{
+						Type: nbv1.StoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "same-container",
+							Secret:             corev1.SecretReference{Name: "", Namespace: "test"},
+							ClientId:           &clientID,
+							TenantId:           &tenantID,
+						},
+					}
+					err = validations.ValidateTargetBSBucketChange(*bs, *updatedBS)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
 		})
 	})
 })
@@ -485,6 +725,39 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 						},
 					}
 					err = validations.ValidateNSEmptyTargetBucket(*ns)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+			Context("Azure Blob namespacestore", func() {
+				It("Should Deny when AzureBlob spec is nil", func() {
+					ns.Spec = nbv1.NamespaceStoreSpec{
+						Type: nbv1.NSStoreTypeAzureBlob,
+					}
+					err = validations.ValidateNSInValidSpec(*ns)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("AzureBlob spec must be provided for azure-blob type Namespacestore"))
+				})
+				It("Should Deny when secret is empty (Azure namespacestore requires secret)", func() {
+					ns.Spec = nbv1.NamespaceStoreSpec{
+						Type: nbv1.NSStoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "my-container",
+							Secret:             corev1.SecretReference{Name: "", Namespace: "test"},
+						},
+					}
+					err = validations.ValidateNSEmptySecretName(*ns)
+					Ω(err).Should(HaveOccurred())
+					Expect(err.Error()).To(Equal("Failed creating the namespacestore: secret name (secret must contain AccountName and AccountKey) and target blob container are both required"))
+				})
+				It("Should Allow when AzureBlob spec with secret is provided", func() {
+					ns.Spec = nbv1.NamespaceStoreSpec{
+						Type: nbv1.NSStoreTypeAzureBlob,
+						AzureBlob: &nbv1.AzureBlobSpec{
+							TargetBlobContainer: "my-container",
+							Secret:              corev1.SecretReference{Name: "azure-secret", Namespace: "test"},
+						},
+					}
+					err = validations.ValidateNamespaceStore(ns)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})

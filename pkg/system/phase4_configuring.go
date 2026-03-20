@@ -1197,11 +1197,12 @@ func (r *Reconciler) prepareAzureBackingStore() error {
 		r.AzureContainerCreds.StringData = map[string]string{}
 		r.AzureContainerCreds.StringData = cloudCredsSecret.StringData
 		if r.IsAzureSTSCluster {
-			// Get User provided credential for creating a backingstore
-			r.AzureContainerCreds.StringData["azure_client_id"] = *r.DefaultBackingStore.Spec.AzureBlob.ClientId
-			r.AzureContainerCreds.StringData["azure_tenant_id"] = *r.DefaultBackingStore.Spec.AzureBlob.TenantId
-			r.AzureContainerCreds.StringData["azure_subscription_id"] = *r.DefaultBackingStore.Spec.AzureBlob.SubscriptionId
-			r.AzureContainerCreds.StringData["azure_resourcegroup"] = *r.DefaultBackingStore.Spec.AzureBlob.ResourcegroupId
+			// User-provided STS fields on default backing store; ClientId required, others optional on spec.
+			az := r.DefaultBackingStore.Spec.AzureBlob
+			r.AzureContainerCreds.StringData["azure_client_id"] = *az.ClientId
+			r.AzureContainerCreds.StringData["azure_tenant_id"] = derefAzureBlobString(az.TenantId)
+			r.AzureContainerCreds.StringData["azure_subscription_id"] = derefAzureBlobString(az.SubscriptionId)
+			r.AzureContainerCreds.StringData["azure_resourcegroup"] = derefAzureBlobString(az.ResourcegroupId)
 		}
 		r.Own(r.AzureContainerCreds)
 		if err := r.Client.Create(r.Ctx, r.AzureContainerCreds); err != nil {
@@ -2044,6 +2045,14 @@ func (r *Reconciler) ReconcileNamespaceStores(namespaceResources []nb.NamespaceR
 		}
 	}
 	return nil
+}
+
+// derefAzureBlobString returns *p, or "" when p is nil (optional AzureBlob STS fields on spec).
+func derefAzureBlobString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }
 
 // reconcileEndpointRBAC creates Endpoint scc, role, rolebinding and service account

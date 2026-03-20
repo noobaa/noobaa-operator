@@ -261,15 +261,15 @@ func CmdCreateAzureSTSBlob() *cobra.Command {
 		"The target container name on Azure storage account",
 	)
 	cmd.Flags().String(
-		"azure-sts-tenant-id", "",
+		"tenant-id", "",
 		"The Azure Tenant ID for workload identity / STS",
 	)
 	cmd.Flags().String(
-		"azure-sts-client-id", "",
+		"client-id", "",
 		"The Azure Client ID for workload identity / STS (stored on the namespacestore spec)",
 	)
 	cmd.Flags().String(
-		"azure-sts-account-name", "",
+		"account-name", "",
 		"Optional Azure storage account name (stored in the secret only)",
 	)
 	cmd.Flags().String(
@@ -704,13 +704,13 @@ func RunCreateAzureSTSBlob(cmd *cobra.Command, args []string) {
 	}
 	createCommon(cmd, args, nbv1.NSStoreTypeAzureBlob, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
 		targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
-		azureSTSClientID := util.GetFlagStringOrPrompt(cmd, "azure-sts-client-id")
-		azureSTSTenantID := util.GetFlagStringOrPrompt(cmd, "azure-sts-tenant-id")
+		azureSTSClientID := util.GetFlagStringOrPrompt(cmd, "client-id")
+		azureSTSTenantID := util.GetFlagStringOrPrompt(cmd, "tenant-id")
 		if err := validations.ValidateAzureSTSRequiredFlags(targetBlobContainer, azureSTSClientID, azureSTSTenantID); err != nil {
 			log.Fatalf(`❌ %s %s`, err, cmd.UsageString())
 		}
 		secretName, _ := cmd.Flags().GetString("secret-name")
-		accountName, _ := cmd.Flags().GetString("azure-sts-account-name")
+		accountName, _ := cmd.Flags().GetString("account-name")
 
 		if secretName != "" {
 			util.VerifyCredsInSecret(secretName, options.Namespace, []string{"azure_tenant_id", "azure_client_id"})

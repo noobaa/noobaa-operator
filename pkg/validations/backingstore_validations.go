@@ -115,9 +115,11 @@ func ValidateBSEmptySecretName(bs nbv1.BackingStore) error {
 			}
 		}
 	case nbv1.StoreTypeAzureBlob:
+		// When Secret.Name is set, credentials come from the secret (AccountName/AccountKey).
+		// When Secret.Name is empty (STS / workload identity), ClientId on spec is required; TenantId remains optional.
 		if len(bs.Spec.AzureBlob.Secret.Name) == 0 {
-			return util.ValidationError{
-				Msg: "Failed creating the Backingstore, please provide secret name",
+			if err := ValidateAzureSTSCredentials(bs); err != nil {
+				return err
 			}
 		}
 	case nbv1.StoreTypeGoogleCloudStorage:
@@ -185,6 +187,19 @@ func ValidateAWSSTSARN(bs nbv1.BackingStore) error {
 		if bs.Spec.AWSS3.AWSSTSRoleARN == nil {
 			return util.ValidationError{
 				Msg: "Failed creating the Backingstore, please provide a valid ARN or secret name",
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateAzureSTSCredentials validates that AzureBlob ClientId is set when Secret.Name is empty (Azure STS path).
+// TenantId and other STS-related fields are optional on the backing store spec.
+func ValidateAzureSTSCredentials(bs nbv1.BackingStore) error {
+	if bs.Spec.AzureBlob != nil {
+		if bs.Spec.AzureBlob.ClientId == nil {
+			return util.ValidationError{
+				Msg: "Failed creating the Backingstore, please provide secret name or Azure STS clientId",
 			}
 		}
 	}
