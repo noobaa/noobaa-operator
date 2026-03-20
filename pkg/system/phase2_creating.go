@@ -877,9 +877,10 @@ func (r *Reconciler) ReconcileBackingStoreCredentials() error {
 	if util.IsAzurePlatformNonGovernment() {
 		return r.ReconcileAzureCredentials()
 	}
-	if util.IsGCPPlatform() {
-		return r.ReconcileGCPCredentials()
-	}
+	// TODO: once we have STS handle it
+	// if util.IsGCPPlatform() {
+	// 	return r.ReconcileGCPCredentials()
+	// }
 	if util.IsIBMPlatform() {
 		return r.ReconcileIBMCredentials()
 	}
@@ -1098,26 +1099,27 @@ func (r *Reconciler) ReconcileAzureCredentials() error {
 	return err
 }
 
+// TODO: once we have STS handle it
 // ReconcileGCPCredentials creates a CredentialsRequest resource if cloud credentials operator is available
-func (r *Reconciler) ReconcileGCPCredentials() error {
-	r.Logger.Info("Running on GCP. will create a CredentialsRequest resource")
-	err := r.Client.Get(r.Ctx, util.ObjectKey(r.GCPCloudCreds), r.GCPCloudCreds)
-	if err == nil || meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
-		return nil
-	}
-	if errors.IsNotFound(err) {
-		// credential request does not exist. create one
-		r.Logger.Info("Creating CredentialsRequest resource")
-		r.Own(r.GCPCloudCreds)
-		err = r.Client.Create(r.Ctx, r.GCPCloudCreds)
-		if err != nil {
-			r.Logger.Errorf("got error when trying to create credentials request for GCP. %v", err)
-			return err
-		}
-		return nil
-	}
-	return err
-}
+// func (r *Reconciler) ReconcileGCPCredentials() error {
+// 	r.Logger.Info("Running on GCP. will create a CredentialsRequest resource")
+// 	err := r.Client.Get(r.Ctx, util.ObjectKey(r.GCPCloudCreds), r.GCPCloudCreds)
+// 	if err == nil || meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+// 		return nil
+// 	}
+// 	if errors.IsNotFound(err) {
+// 		// credential request does not exist. create one
+// 		r.Logger.Info("Creating CredentialsRequest resource")
+// 		r.Own(r.GCPCloudCreds)
+// 		err = r.Client.Create(r.Ctx, r.GCPCloudCreds)
+// 		if err != nil {
+// 			r.Logger.Errorf("got error when trying to create credentials request for GCP. %v", err)
+// 			return err
+// 		}
+// 		return nil
+// 	}
+// 	return err
+// }
 
 // ReconcileIBMCredentials sets IsIBMCloud to indicate operator is running in IBM Cloud
 func (r *Reconciler) ReconcileIBMCredentials() error {
