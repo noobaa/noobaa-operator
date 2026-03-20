@@ -5222,7 +5222,7 @@ spec:
       name: iam-https
 `
 
-const Sha256_deploy_internal_service_mgmt_yaml = "fa5f052fb360e6893fc446a318413a6f494a8610706ae7e36ff985b3b3a5c070"
+const Sha256_deploy_internal_service_mgmt_yaml = "758174ba728febd71b5809671cb49a3a9e148f66637e59ff8aae905918bcd36a"
 
 const File_deploy_internal_service_mgmt_yaml = `apiVersion: v1
 kind: Service
@@ -5232,9 +5232,6 @@ metadata:
     app: noobaa
     noobaa-mgmt-svc: "true"
   annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/scheme: http
-    prometheus.io/port: "8080"
     service.beta.openshift.io/serving-cert-secret-name: noobaa-mgmt-serving-cert
     service.alpha.openshift.io/serving-cert-secret-name: noobaa-mgmt-serving-cert
 spec:
@@ -5254,7 +5251,7 @@ spec:
       name: hosted-agents-https
 `
 
-const Sha256_deploy_internal_service_s3_yaml = "df7d8c8ee81b820678b7d8648b26c6cf86da6be00caedad052c3848db5480c37"
+const Sha256_deploy_internal_service_s3_yaml = "306ee1ce11ea43a5d73ba08aa64e6b3b71c44e06e6305d04328b72015bfcb85e"
 
 const File_deploy_internal_service_s3_yaml = `apiVersion: v1
 kind: Service
@@ -5281,6 +5278,8 @@ spec:
       name: md-https
     - port: 7004
       name: metrics
+    - port: 9443
+      name: metrics-https
 
 `
 
@@ -5341,7 +5340,7 @@ spec:
     noobaa-operator: deployment
 `
 
-const Sha256_deploy_internal_servicemonitor_mgmt_yaml = "172b25b71872e74fb32ecf32b9c68d41cc60d155cb469ed5ecf7ad282f3e597a"
+const Sha256_deploy_internal_servicemonitor_mgmt_yaml = "dd92e14c909a2b7605df90ae50647894f7aef63553e86d3a13d7edec6405f9e4"
 
 const File_deploy_internal_servicemonitor_mgmt_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -5351,19 +5350,22 @@ metadata:
     app: noobaa
 spec:
   endpoints:
-  - port: mgmt
+  - port: mgmt-https
     path: /metrics/web_server
-  - port: mgmt
+    scheme: https
+  - port: mgmt-https
     path: /metrics/bg_workers
-  - port: mgmt
+    scheme: https
+  - port: mgmt-https
     path: /metrics/hosted_agents
+    scheme: https
   namespaceSelector: {}
   selector:
     matchLabels:
       noobaa-mgmt-svc: "true"
 `
 
-const Sha256_deploy_internal_servicemonitor_s3_yaml = "e3940bdfdfbaf5cacefa51f92623ffb00e5360e58640c67558b5cf5135edd57f"
+const Sha256_deploy_internal_servicemonitor_s3_yaml = "cff9fc9a511cc8ae5c0b957e91ab91ed0b8e9ed9e4d50094592332cea7a2ddc1"
 
 const File_deploy_internal_servicemonitor_s3_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -5373,8 +5375,9 @@ metadata:
     app: noobaa
 spec:
   endpoints:
-  - port: metrics
+  - port: metrics-https
     path: /
+    scheme: https
   namespaceSelector: {}
   selector:
     matchLabels:

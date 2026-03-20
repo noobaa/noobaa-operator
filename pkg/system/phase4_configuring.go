@@ -47,6 +47,7 @@ const (
 	minutesToWaitForDefaultBSCreation = 10
 	credentialsKey                    = "credentials"
 	metricsAuthKey                    = "metrics_token"
+	serviceMonitorCAFile              = "/etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt"
 )
 
 type gcpAuthJSON struct {
@@ -1697,19 +1698,32 @@ func (r *Reconciler) ReconcileServiceMonitors() error {
 	return nil
 }
 
-// setDesiredServiceMonitorMgmt set authorization to managemnt ServiceMonitor
+// setDesiredServiceMonitorMgmt set authorization and TLS config for management ServiceMonitor
 func (r *Reconciler) setDesiredServiceMonitorMgmt() error {
+	r.setServiceMonitorEndpointsToHTTPS(r.ServiceMonitorMgmt.Spec.Endpoints, "mgmt-https")
 	r.setServiceMonitorAuthorization(r.ServiceMonitorMgmt.Spec.Endpoints)
+	r.setServiceMonitorTLSConfig(r.ServiceMonitorMgmt.Spec.Endpoints, r.ServiceMgmt.Name)
 	return nil
 }
 
-// setDesiredServiceMonitorS3 set authorization to s3 ServiceMonitor
+// setDesiredServiceMonitorS3 set authorization and TLS config for s3 ServiceMonitor
 func (r *Reconciler) setDesiredServiceMonitorS3() error {
+	r.setServiceMonitorEndpointsToHTTPS(r.ServiceMonitorS3.Spec.Endpoints, "metrics-https")
 	r.setServiceMonitorAuthorization(r.ServiceMonitorS3.Spec.Endpoints)
+	r.setServiceMonitorTLSConfig(r.ServiceMonitorS3.Spec.Endpoints, r.ServiceS3.Name)
 	return nil
 }
 
-// setServiceMonitorAuthorization set authorization to both managemnt and s3 ServiceMonitor
+// setServiceMonitorEndpointsToHTTPS updates all endpoints to use the given HTTPS
+// port name and sets the scheme to "https", ensuring upgrades from HTTP work correctly.
+func (r *Reconciler) setServiceMonitorEndpointsToHTTPS(endpoints []monitoringv1.Endpoint, portName string) {
+	for i := range endpoints {
+		endpoints[i].Port = portName
+		endpoints[i].Scheme = "https"
+	}
+}
+
+// setServiceMonitorAuthorization set authorization to both management and s3 ServiceMonitor
 func (r *Reconciler) setServiceMonitorAuthorization(endpoints []monitoringv1.Endpoint) {
 	for i := range endpoints {
 		endpoints[i].Authorization = &monitoringv1.SafeAuthorization{
@@ -1721,6 +1735,19 @@ func (r *Reconciler) setServiceMonitorAuthorization(endpoints []monitoringv1.End
 				Key: metricsAuthKey,
 			},
 		}
+	}
+}
+
+// setServiceMonitorTLSConfig sets the TLS config on each endpoint with the correct
+// serverName derived from the service name and namespace.
+func (r *Reconciler) setServiceMonitorTLSConfig(endpoints []monitoringv1.Endpoint, serviceName string) {
+	serverName := serviceName + "." + r.Request.Namespace + ".svc"
+	for i := range endpoints {
+		if endpoints[i].TLSConfig == nil {
+			endpoints[i].TLSConfig = &monitoringv1.TLSConfig{}
+		}
+		endpoints[i].TLSConfig.CAFile = serviceMonitorCAFile
+		endpoints[i].TLSConfig.ServerName = &serverName
 	}
 }
 

@@ -253,7 +253,22 @@ func (r *Reconciler) SetDesiredServiceS3() error {
 	}
 	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
 	r.ServiceS3.Labels["noobaa-s3-svc"] = "true"
+	r.addServicePortIfNotExists(r.ServiceS3, corev1.ServicePort{
+		Name: "metrics-https",
+		Port: 9443,
+	})
 	return nil
+}
+
+// addServicePortIfNotExists adds a port to the service's port list
+// only if a port with the same name doesn't already exist
+func (r *Reconciler) addServicePortIfNotExists(svc *corev1.Service, port corev1.ServicePort) {
+	for _, existing := range svc.Spec.Ports {
+		if existing.Name == port.Name {
+			return
+		}
+	}
+	svc.Spec.Ports = append(svc.Spec.Ports, port)
 }
 
 // SetDesiredRouteS3 updates the RouteS3 as desired for reconciling
