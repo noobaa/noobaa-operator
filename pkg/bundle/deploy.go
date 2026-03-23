@@ -5253,7 +5253,7 @@ spec:
       name: hosted-agents-https
 `
 
-const Sha256_deploy_internal_service_s3_yaml = "306ee1ce11ea43a5d73ba08aa64e6b3b71c44e06e6305d04328b72015bfcb85e"
+const Sha256_deploy_internal_service_s3_yaml = "55261b19002fbd3c780385fc8a357dc9eff691ebf52cfc0e0348af151ede5774"
 
 const File_deploy_internal_service_s3_yaml = `apiVersion: v1
 kind: Service
@@ -5278,8 +5278,6 @@ spec:
       name: s3-https
     - port: 8444
       name: md-https
-    - port: 7004
-      name: metrics
     - port: 9443
       name: metrics-https
 
