@@ -16,25 +16,25 @@ This document focuses on containerized deployments and highlights how to access 
 
 This section provides details about the metrics URL and port configuration used by the NooBaa Operator services.
 
-#### Prometheus Metrics HTTP URLs - </br>
-- **Core metrics (aggregated)** are exposed on the S3 service metrics port: </br> `http://<s3-service>:7004/`
-- **Web server metrics** are exposed on the management service: </br> `http://<mgmt-service>/metrics/web_server`
-- **Background workers metrics** are exposed on the management service: </br> `http://<mgmt-service>/metrics/bg_workers`
-- **Hosted agents metrics** are exposed on the management service: </br> `http://<mgmt-service>/metrics/hosted_agents`
+#### Prometheus Metrics HTTPS URLs - </br>
+- **Core metrics (aggregated)** are exposed on the S3 service metrics-https port: </br> `https://<s3-service>:9443/`
+- **Web server metrics** are exposed on the management service: </br> `https://<mgmt-service>:443/metrics/web_server`
+- **Background workers metrics** are exposed on the management service: </br> `https://<mgmt-service>:443/metrics/bg_workers`
+- **Hosted agents metrics** are exposed on the management service: </br> `https://<mgmt-service>:443/metrics/hosted_agents`
 
 #### Default services and ports - </br>
-- S3 service name: `s3`, metrics port: `7004` (metrics path is `/`)
-- Management service name: `<noobaa-name>-mgmt`, port: `80` (targets container port `8080`)
+- S3 service name: `s3`, metrics-https port: `9443` (metrics path is `/`)
+- Management service name: `<noobaa-name>-mgmt`, HTTPS port: `443` (targets container port `8443`)
 
-The operator creates ServiceMonitors for both services and injects Bearer token authorization automatically.
+The operator creates ServiceMonitors for both services, configures HTTPS scheme with TLS (`caFile` and `serverName`), and injects Bearer token authorization automatically. The `serverName` is set dynamically to `<service-name>.<namespace>.svc` during reconciliation.
 
 ## Metrics Description
 
 NooBaa exposes Prometheus metrics for multiple components.
 NooBaa core metrics are prefixed by `NooBaa_` and endpoint metrics by `NooBaa_Endpoint_` (default `PROMETHEUS_PREFIX`). </br>
-Core metrics are exposed at the S3 service metrics endpoint (`/` on port `7004`), while `/metrics/web_server`, `/metrics/bg_workers`, and `/metrics/hosted_agents` are exposed on the management service.
+Core metrics are exposed at the S3 service metrics-https endpoint (`/` on port `9443`), while `/metrics/web_server`, `/metrics/bg_workers`, and `/metrics/hosted_agents` are exposed on the management HTTPS service (port `443`/`8443`).
 
-### NooBaa Core Metrics (`/` on port `7004`)
+### NooBaa Core Metrics (`/` on port `9443`)
 
 | Metric | What it shows | Labels |
 |--------|----------------|--------|
@@ -100,7 +100,7 @@ Core metrics are exposed at the S3 service metrics endpoint (`/` on port `7004`)
 | NooBaa_bucket_used_bytes | Object Bucket Used Bytes | `bucket_name` |
 | NooBaa_replication_target_status | Replication target bucket reachability (1=reachable, 0=unreachable) | `source_bucket`, `target_bucket` |
 
-### NooBaa Endpoint Metrics (`/metrics/*` on port `8080`)
+### NooBaa Endpoint Metrics (`/metrics/*` on port `8443`)
 
 | Metric | What it shows | Labels |
 |--------|----------------|--------|
@@ -129,13 +129,13 @@ The web_server, bg_workers, and hosted_agents endpoints export a large and evolv
 
 ```sh
 # Web server metrics
-curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://127.0.0.1:8080/metrics/web_server | head
+curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/web_server | head
 
 # Background workers metrics
-curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://127.0.0.1:8080/metrics/bg_workers | head
+curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/bg_workers | head
 
 # Hosted agents metrics
-curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://127.0.0.1:8080/metrics/hosted_agents | head
+curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/hosted_agents | head
 ```
 
 
@@ -161,13 +161,13 @@ You can access metrics by port-forwarding the services and using local `curl`.
 
 ```sh
 # Keep these port-forward commands running in separate terminal windows or tabs.
-kubectl -n <namespace> port-forward svc/s3 7004:7004
-kubectl -n <namespace> port-forward svc/<noobaa-name>-mgmt 8080:80
+kubectl -n <namespace> port-forward svc/s3 9443:9443
+kubectl -n <namespace> port-forward svc/<noobaa-name>-mgmt 8443:443
 
-curl -s -H "Authorization: Bearer ${JWT_TOKEN}" http://127.0.0.1:7004/ | head
-curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://127.0.0.1:8080/metrics/web_server | head
-curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://127.0.0.1:8080/metrics/bg_workers | head
-curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://127.0.0.1:8080/metrics/hosted_agents | head
+curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:9443/ | head
+curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/web_server | head
+curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/bg_workers | head
+curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/hosted_agents | head
 ```
 
 #### 5. Fetch metrics from inside the core pod (no port-forward)
@@ -175,13 +175,13 @@ If you prefer not to use port-forward, you can query the metrics endpoints direc
 
 ```sh
 kubectl exec -it <noobaa-core-pod> -- \
-  curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://localhost:7004/ | head
+  curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://localhost:9443/ | head
 kubectl exec -it <noobaa-core-pod> -- \
-  curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://localhost:8080/metrics/web_server | head
+  curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://localhost:8443/metrics/web_server | head
 kubectl exec -it <noobaa-core-pod> -- \
-  curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://localhost:8080/metrics/bg_workers | head
+  curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://localhost:8443/metrics/bg_workers | head
 kubectl exec -it <noobaa-core-pod> -- \
-  curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://localhost:8080/metrics/hosted_agents | head
+  curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://localhost:8443/metrics/hosted_agents | head
 ```
 
 #### 6. Prometheus dashboard testing (local/minikube)
@@ -225,7 +225,7 @@ Values will vary based on runtime and workload.
 The following is an example of Prometheus text format output from the core metrics endpoint -
 
 ```shell
-> curl -s -H "Authorization: Bearer ${JWT_TOKEN}" http://127.0.0.1:7004/ | head -n 12
+> curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:9443/ | head -n 12
 # HELP NooBaa_Endpoint_process_cpu_user_seconds_total Total user CPU time spent in seconds.
 # TYPE NooBaa_Endpoint_process_cpu_user_seconds_total counter
 NooBaa_Endpoint_process_cpu_user_seconds_total 13.325259
@@ -244,7 +244,7 @@ NooBaa_Endpoint_process_cpu_seconds_total 16.47483
 The following is an example of querying the web server metrics endpoint -
 
 ```shell
-> curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://127.0.0.1:8080/metrics/web_server | head -n 12
+> curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/web_server | head -n 12
 # HELP NooBaa_WebServer_process_cpu_user_seconds_total Total user CPU time spent in seconds.
 # TYPE NooBaa_WebServer_process_cpu_user_seconds_total counter
 NooBaa_WebServer_process_cpu_user_seconds_total 39.02518
@@ -263,7 +263,7 @@ NooBaa_WebServer_process_cpu_seconds_total 43.522436000000006
 The following is an example of querying the background workers metrics endpoint -
 
 ```shell
-> curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://127.0.0.1:8080/metrics/bg_workers | head -n 12
+> curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/bg_workers | head -n 12
 # HELP NooBaa_BGWorkers_process_cpu_user_seconds_total Total user CPU time spent in seconds.
 # TYPE NooBaa_BGWorkers_process_cpu_user_seconds_total counter
 NooBaa_BGWorkers_process_cpu_user_seconds_total 20.725111999999996
@@ -282,7 +282,7 @@ NooBaa_BGWorkers_process_cpu_seconds_total 25.564351
 The following is an example of querying the hosted agents metrics endpoint -
 
 ```shell
-> curl -k -H "Authorization: Bearer ${JWT_TOKEN}" http://127.0.0.1:8080/metrics/hosted_agents | head -n 12
+> curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/hosted_agents | head -n 12
 # HELP NooBaa_HostedAgents_process_cpu_user_seconds_total Total user CPU time spent in seconds.
 # TYPE NooBaa_HostedAgents_process_cpu_user_seconds_total counter
 NooBaa_HostedAgents_process_cpu_user_seconds_total 13.149855
