@@ -21,8 +21,6 @@ spec:
       name: s3-https
     - port: 8444
       name: md-https
-    - port: 7004
-      name: metrics
     - port: 9443
       name: metrics-https
 
