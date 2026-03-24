@@ -122,6 +122,108 @@ var _ = Describe("Admission server integration tests", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
+		Context("Azure STS backing store with clientId and tenantId", func() {
+			clientID := "client-id"
+			tenantID := "tenant-id"
+			It("Should Allow create without secret when Azure STS credentials are provided", func() {
+				azureSTSBackingStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				azureSTSBackingStore.Name = "azure-sts-bs-name"
+				azureSTSBackingStore.Namespace = namespace
+
+				azureSTSBackingStore.Spec = nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "azure-sts-target-container",
+						Secret:              corev1.SecretReference{Name: "", Namespace: namespace},
+						ClientId:            &clientID,
+						TenantId:            &tenantID,
+					},
+				}
+
+				result, err = KubeCreate(azureSTSBackingStore)
+				Expect(result).To(BeTrue())
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+			It("Should Allow create without secret when Azure STS credentials including subscriptionId and resourcegroupId are provided", func() {
+				subscriptionID := "azure-sts-subscription-id"
+				resourceGroupID := "azure-sts-resource-group"
+				azureSTSBackingStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				azureSTSBackingStore.Name = "azure-sts-bs-full-name"
+				azureSTSBackingStore.Namespace = namespace
+
+				azureSTSBackingStore.Spec = nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "azure-sts-target-container-full",
+						Secret:              corev1.SecretReference{Name: "", Namespace: namespace},
+						ClientId:            &clientID,
+						TenantId:            &tenantID,
+						SubscriptionId:     &subscriptionID,
+						ResourcegroupId:    &resourceGroupID,
+					},
+				}
+
+				result, err = KubeCreate(azureSTSBackingStore)
+				Expect(result).To(BeTrue())
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+			It("Should Deny create when secret is empty and Azure STS credentials are missing", func() {
+				azureBSNoCreds := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				azureBSNoCreds.Name = "azure-bs-no-sts-creds"
+				azureBSNoCreds.Namespace = namespace
+
+				azureBSNoCreds.Spec = nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "some-container",
+						Secret:               corev1.SecretReference{Name: "", Namespace: namespace},
+					},
+				}
+
+				result, err = KubeCreate(azureBSNoCreds)
+				Expect(result).To(BeFalse())
+				Ω(err).Should(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("please provide secret name or Azure STS clientId"))
+			})
+			It("Should Allow create without secret when only clientId is set", func() {
+				azureSTSBackingStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				azureSTSBackingStore.Name = "azure-sts-bs-clientid-only"
+				azureSTSBackingStore.Namespace = namespace
+
+				clientOnly := "client-id-only"
+				azureSTSBackingStore.Spec = nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "azure-sts-target-clientid-only",
+						Secret:              corev1.SecretReference{Name: "", Namespace: namespace},
+						ClientId:            &clientOnly,
+					},
+				}
+
+				result, err = KubeCreate(azureSTSBackingStore)
+				Expect(result).To(BeTrue())
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+		})
+		Context("Azure blob namespace store", func() {
+			It("Should Deny create when secret is empty (namespace store requires secret for Azure)", func() {
+				azureNSStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore)
+				azureNSStore.Name = "azure-ns-no-secret"
+				azureNSStore.Namespace = namespace
+				azureNSStore.Spec = nbv1.NamespaceStoreSpec{
+					Type: nbv1.NSStoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "some-container",
+						Secret:              corev1.SecretReference{Name: "", Namespace: namespace},
+					},
+				}
+
+				result, err = KubeCreate(azureNSStore)
+				Expect(result).To(BeFalse())
+				Ω(err).Should(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("secret"))
+			})
+		})
 		Context("Invalid store type", func() {
 			It("Should Deny", func() {
 				testBackingstore.Spec = nbv1.BackingStoreSpec{
@@ -221,8 +323,14 @@ var _ = Describe("Admission server integration tests", func() {
 				if !util.KubeList(bsList, &client.ListOptions{Namespace: options.Namespace}) {
 					return
 				}
-				bs := &bsList.Items[0]
-
+				var bs *nbv1.BackingStore
+				for i := range bsList.Items {
+					if bsList.Items[i].Spec.PVPool != nil {
+						bs = &bsList.Items[i]
+						break
+					}
+				}
+				Expect(bs).NotTo(BeNil(), "need at least one PVPool BackingStore in namespace for this test")
 				bs.Spec.PVPool.NumVolumes = 1
 
 				result, err = KubeUpdate(bs)
@@ -239,8 +347,14 @@ var _ = Describe("Admission server integration tests", func() {
 				if !util.KubeList(nsList, &client.ListOptions{Namespace: options.Namespace}) {
 					return
 				}
-				ns := &nsList.Items[0]
-
+				var ns *nbv1.NamespaceStore
+				for i := range nsList.Items {
+					if nsList.Items[i].Spec.S3Compatible != nil {
+						ns = &nsList.Items[i]
+						break
+					}
+				}
+				Expect(ns).NotTo(BeNil(), "need at least one S3Compatible NamespaceStore in namespace for this test")
 				ns.Spec.S3Compatible.TargetBucket = "some-other-bucket"
 
 				result, err = KubeUpdate(ns)

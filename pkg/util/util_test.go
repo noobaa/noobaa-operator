@@ -2,6 +2,8 @@ package util
 
 import (
 	"testing"
+
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 )
 
 // TestMapAlternateKeysValue a tiny test for util.MapAlternateKeysValue()
@@ -66,4 +68,93 @@ func TestIsRemoteObcAnnotation(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestIsAzureSTSClusterBS verifies Azure STS backing store detection for backingstore
+func TestIsAzureSTSClusterBS(t *testing.T) {
+	clientID := "test-client-id"
+	tenantID := "test-tenant-id"
+
+	tests := []struct {
+		name        string
+		backingStore *nbv1.BackingStore
+		expected    bool
+	}{
+		{
+			name: "azure-blob with ClientId returns true",
+			backingStore: &nbv1.BackingStore{
+				Spec: nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "container",
+						ClientId:            &clientID,
+						TenantId:            &tenantID,
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "azure-blob without ClientId returns false",
+			backingStore: &nbv1.BackingStore{
+				Spec: nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "container",
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "aws-s3 type returns false",
+			backingStore: &nbv1.BackingStore{
+				Spec: nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAWSS3,
+					AWSS3: &nbv1.AWSS3Spec{
+						TargetBucket: "bucket",
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "nil AzureBlob spec returns false",
+			backingStore: &nbv1.BackingStore{
+				Spec: nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAzureBlob,
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "azure-blob with ClientId, TenantId, SubscriptionId and ResourcegroupId returns true",
+			backingStore: &nbv1.BackingStore{
+				Spec: nbv1.BackingStoreSpec{
+					Type: nbv1.StoreTypeAzureBlob,
+					AzureBlob: &nbv1.AzureBlobSpec{
+						TargetBlobContainer: "container",
+						ClientId:            &clientID,
+						TenantId:            &tenantID,
+						SubscriptionId:     ptrString("sub-id"),
+						ResourcegroupId:    ptrString("rg-id"),
+					},
+				},
+			},
+			expected: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := IsAzureSTSClusterBS(tc.backingStore)
+			if actual != tc.expected {
+				t.Fatalf("expected %v, got %v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+func ptrString(s string) *string {
+	return &s
 }

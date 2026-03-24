@@ -85,6 +85,35 @@ func TestNamespaceStoreS3Compatible(t *testing.T) {
 
 }
 
+func TestNamespaceStoreAzureBlob(t *testing.T) {
+	// Valid namespacestore with secret (Azure blob requires secret; no STS path for namespace store)
+	defaultNs := getDefaultAzureBlobNsStore()
+	err := validations.ValidateNamespaceStore(&defaultNs)
+	AssertNotError(t, err, "Valid Azure blob namespacestore validation failed")
+
+	// AzureBlob spec is nil
+	defaultNs = nbv1.NamespaceStore{
+		Spec: nbv1.NamespaceStoreSpec{
+			Type: nbv1.NSStoreTypeAzureBlob,
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-azure"},
+	}
+	err = validations.ValidateNamespaceStore(&defaultNs)
+	AssertError(t, err, "AzureBlob spec nil should be denied")
+
+	// Empty secret name (namespace store Azure requires secret)
+	defaultNs = getDefaultAzureBlobNsStore()
+	defaultNs.Spec.AzureBlob.Secret.Name = ""
+	err = validations.ValidateNamespaceStore(&defaultNs)
+	AssertError(t, err, "Empty secret name for Azure blob namespacestore should be denied")
+
+	// Empty target blob container
+	defaultNs = getDefaultAzureBlobNsStore()
+	defaultNs.Spec.AzureBlob.TargetBlobContainer = ""
+	err = validations.ValidateNamespaceStore(&defaultNs)
+	AssertError(t, err, "Empty target blob container should be denied")
+}
+
 func TestNamespaceStoreIBMCos(t *testing.T) {
 
 	//Valid namespacestore
@@ -198,5 +227,21 @@ func getDefaultNSFSNsStore() nbv1.NamespaceStore {
 			},
 		},
 		ObjectMeta: metav1.ObjectMeta{Name: "test1"},
+	}
+}
+
+func getDefaultAzureBlobNsStore() nbv1.NamespaceStore {
+	return nbv1.NamespaceStore{
+		Spec: nbv1.NamespaceStoreSpec{
+			Type: nbv1.NSStoreTypeAzureBlob,
+			AzureBlob: &nbv1.AzureBlobSpec{
+				TargetBlobContainer: "azure-container",
+				Secret: corev1.SecretReference{
+					Name:      "azure-secret",
+					Namespace: "namespace",
+				},
+			},
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-azure"},
 	}
 }
