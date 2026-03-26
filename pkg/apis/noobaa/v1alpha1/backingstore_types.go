@@ -251,6 +251,10 @@ type PVPoolSpec struct {
 	// VolumeResources represents the minimum resources each volume should have.
 	VolumeResources *corev1.VolumeResourceRequirements `json:"resources,omitempty"`
 
+	// PriorityClassName (optional) overrides the priority class for the pv-pool agent pods
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+
 	// Secret refers to a secret that provides the agent configuration
 	// The secret should define AGENT_CONFIG containing agent_configuration from noobaa-core.
 	// +optional

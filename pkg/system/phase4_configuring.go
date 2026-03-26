@@ -287,6 +287,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 	podSpec := &r.DeploymentEndpoint.Spec.Template.Spec
 	podSpec.Tolerations = r.NooBaa.Spec.Tolerations
 	podSpec.Affinity = r.GetAffinity()
+	podSpec.PriorityClassName = r.NooBaa.Spec.EndpointPriorityClassName
 	if r.NooBaa.Spec.ImagePullSecret == nil {
 		podSpec.ImagePullSecrets =
 			[]corev1.LocalObjectReference{}

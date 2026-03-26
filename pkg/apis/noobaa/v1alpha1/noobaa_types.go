@@ -100,6 +100,10 @@ type NooBaaSpec struct {
 	// +optional
 	CoreResources *corev1.ResourceRequirements `json:"coreResources,omitempty"`
 
+	// CorePriorityClassName (optional) overrides the priority class for the core pod
+	// +optional
+	CorePriorityClassName string `json:"corePriorityClassName,omitempty"`
+
 	// LogResources (optional) overrides the default resource requirements for the noobaa-log-processor container
 	// +optional
 	LogResources *corev1.ResourceRequirements `json:"logResources,omitempty"`
@@ -107,6 +111,10 @@ type NooBaaSpec struct {
 	// DBResources (optional) overrides the default resource requirements for the db container
 	// +optional
 	DBResources *corev1.ResourceRequirements `json:"dbResources,omitempty"`
+
+	// DBPriorityClassName (optional) overrides the priority class for the db pod
+	// +optional
+	DBPriorityClassName string `json:"dbPriorityClassName,omitempty"`
 
 	// DBVolumeResources (optional) overrides the default PVC resource requirements for the database volume.
 	// For the time being this field is immutable and can only be set on system creation.
@@ -168,6 +176,10 @@ type NooBaaSpec struct {
 	// of the endpoints in the endpoint deployment
 	// +optional
 	Region *string `json:"region,omitempty"`
+
+	// EndpointPriorityClassName (optional) overrides the priority class for the endpoint pods
+	// +optional
+	EndpointPriorityClassName string `json:"endpointPriorityClassName,omitempty"`
 
 	// Endpoints (optional) sets configuration info for the noobaa endpoint
 	// deployment.

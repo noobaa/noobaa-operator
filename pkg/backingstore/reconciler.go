@@ -1265,6 +1265,15 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 		}
 	}
 
+	desiredPriorityClassName := ""
+	if r.BackingStore.Spec.PVPool != nil {
+		desiredPriorityClassName = r.BackingStore.Spec.PVPool.PriorityClassName
+	}
+	if pod.Spec.PriorityClassName != desiredPriorityClassName {
+		r.Logger.Warnf("Change in PriorityClassName detected")
+		return true
+	}
+
 	return false
 }
 
@@ -1334,6 +1343,9 @@ func (r *Reconciler) updatePodTemplate() error {
 			PodAffinity:     r.NooBaa.Spec.Affinity.PodAffinity,
 			PodAntiAffinity: r.NooBaa.Spec.Affinity.PodAntiAffinity,
 		}
+	}
+	if r.BackingStore.Spec.PVPool != nil {
+		r.PodAgentTemplate.Spec.PriorityClassName = r.BackingStore.Spec.PVPool.PriorityClassName
 	}
 
 	if !util.HasNodeInclusionPolicyInPodTopologySpread() {

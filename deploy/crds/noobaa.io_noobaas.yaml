@@ -1076,6 +1076,10 @@ spec:
                       cleanup confirmation
                     type: string
                 type: object
+              corePriorityClassName:
+                description: CorePriorityClassName (optional) overrides the priority
+                  class for the core pod
+                type: string
               coreResources:
                 description: CoreResources (optional) overrides the default resource
                   requirements for the server container
@@ -1143,6 +1147,10 @@ spec:
               dbImage:
                 description: DBImage (optional) overrides the default image for the
                   db container
+                type: string
+              dbPriorityClassName:
+                description: DBPriorityClassName (optional) overrides the priority
+                  class for the db pod
                 type: string
               dbResources:
                 description: DBResources (optional) overrides the default resource
@@ -1544,6 +1552,10 @@ spec:
                       numVolumes:
                         description: NumVolumes is the number of volumes to allocate
                         type: integer
+                      priorityClassName:
+                        description: PriorityClassName (optional) overrides the priority
+                          class for the pv-pool agent pods
+                        type: string
                       resources:
                         description: VolumeResources represents the minimum resources
                           each volume should have.
@@ -1648,6 +1660,10 @@ spec:
                   of openshift route resources in the cluster
                 nullable: true
                 type: boolean
+              endpointPriorityClassName:
+                description: EndpointPriorityClassName (optional) overrides the priority
+                  class for the endpoint pods
+                type: string
               endpoints:
                 description: |-
                   Endpoints (optional) sets configuration info for the noobaa endpoint

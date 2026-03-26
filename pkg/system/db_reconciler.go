@@ -287,6 +287,7 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 	if r.NooBaa.Spec.Tolerations != nil {
 		r.CNPGCluster.Spec.Affinity.Tolerations = r.NooBaa.Spec.Tolerations
 	}
+	r.CNPGCluster.Spec.PriorityClassName = r.NooBaa.Spec.DBPriorityClassName
 
 	// by default enable monitoring of the DB instances. if the annotation is "true", disable monitoring
 	disableMonStr := r.NooBaa.Annotations[nbv1.DisableDBDefaultMonitoring]
@@ -743,5 +744,6 @@ func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSp
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.PersistentVolumeClaimTemplate, r.CNPGCluster.Spec.StorageConfiguration.PersistentVolumeClaimTemplate) ||
 		!reflect.DeepEqual(existingClusterSpec.Monitoring, r.CNPGCluster.Spec.Monitoring) ||
 		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.Parameters, r.CNPGCluster.Spec.PostgresConfiguration.Parameters) ||
-		!reflect.DeepEqual(existingClusterSpec.Backup, r.CNPGCluster.Spec.Backup)
+		!reflect.DeepEqual(existingClusterSpec.Backup, r.CNPGCluster.Spec.Backup) ||
+		existingClusterSpec.PriorityClassName != r.CNPGCluster.Spec.PriorityClassName
 }
