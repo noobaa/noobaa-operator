@@ -54,6 +54,7 @@ func CmdCreate() *cobra.Command {
 	cmd.AddCommand(
 		CmdCreateNamespaceBucketclass(),
 		CmdCreatePlacementBucketClass(),
+		CmdCreateVectorBucketClass(),
 	)
 
 	return cmd
@@ -159,6 +160,22 @@ func CmdCreateCacheNamespaceBucketclass() *cobra.Command {
 	return cmd
 }
 
+// CmdCreateVectorBucketClass returns a CLI command
+func CmdCreateVectorBucketClass() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "vector-bucketclass <bucket-class-name>",
+		Short: "Create vector policy bucket class",
+		Run:   RunCreateVectorBucketClass,
+	}
+
+	cmd.Flags().String("resource", "",
+		"Set the namespace store to use for vector storage (NSFS type)")
+	cmd.Flags().String("vector-db-type", "lance",
+		"Set the vector database type (default: lance)")
+
+	return cmd
+}
+
 // CmdDelete returns a CLI command
 func CmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
@@ -221,6 +238,11 @@ func RunCreatePlacementBucketClass(cmd *cobra.Command, args []string) {
 	createCommonBucketclass(cmd, args, "", PopulatePlacementBucketClass)
 }
 
+// RunCreateVectorBucketClass runs a CLI command
+func RunCreateVectorBucketClass(cmd *cobra.Command, args []string) {
+	createCommonBucketclass(cmd, args, "Vector", PopulateVectorBucketClass)
+}
+
 // createCommonBucketclass runs a CLI command
 func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType nbv1.NSBucketClassType, populate func(cmd *cobra.Command, bucketClassSpec *nbv1.BucketClassSpec) ([]string, []string)) {
 
@@ -241,7 +263,7 @@ func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType 
 	bucketClass.Name = name
 	bucketClass.Namespace = options.Namespace
 
-	if bucketClassType != "" {
+	if bucketClassType != "" && bucketClassType != "Vector" {
 		bucketClass.Spec.NamespacePolicy = &nbv1.NamespacePolicy{
 			Type: bucketClassType,
 		}
@@ -411,6 +433,21 @@ func PopulatePlacementBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1.Buck
 	return []string{}, backingStores
 }
 
+// PopulateVectorBucketClass populates vector bucketclass spec
+func PopulateVectorBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1.BucketClassSpec) ([]string, []string) {
+	log := util.Logger()
+	resource, _ := cmd.Flags().GetString("resource")
+	if resource == "" {
+		log.Fatalf(`❌ Must provide a namespace store resource`)
+	}
+	vectorDBType, _ := cmd.Flags().GetString("vector-db-type")
+	bucketClassSpec.VectorPolicy = &nbv1.VectorPolicy{
+		Resource:     resource,
+		VectorDBType: nbv1.VectorDBType(vectorDBType),
+	}
+	return []string{resource}, []string{}
+}
+
 // RunDelete runs a CLI command
 func RunDelete(cmd *cobra.Command, args []string) {
 
@@ -534,6 +571,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		"NAME",
 		"PLACEMENT",
 		"NAMESPACE-POLICY",
+		"VECTOR-POLICY",
 		"QUOTA",
 		"PHASE",
 		"AGE",
@@ -542,11 +580,13 @@ func RunList(cmd *cobra.Command, args []string) {
 		bc := &list.Items[i]
 		pp, _ := json.Marshal(bc.Spec.PlacementPolicy)
 		np, _ := json.Marshal(bc.Spec.NamespacePolicy)
+		vp, _ := json.Marshal(bc.Spec.VectorPolicy)
 		quota, _ := json.Marshal(bc.Spec.Quota)
 		table.AddRow(
 			bc.Name,
 			fmt.Sprintf("%+v", string(pp)),
 			fmt.Sprintf("%+v", string(np)),
+			fmt.Sprintf("%+v", string(vp)),
 			fmt.Sprintf("%+v", string(quota)),
 			string(bc.Status.Phase),
 			util.HumanizeDuration(time.Since(bc.CreationTimestamp.Time).Round(time.Second)),
@@ -639,7 +679,7 @@ func MapBackingstoreToBucketclasses(backingstore types.NamespacedName) []reconci
 	return reqs
 }
 
-// MapNamespacestoreToBucketclasses returns a list of bucketclasses that uses the namespacestore in their namespace policy
+// MapNamespacestoreToBucketclasses returns a list of bucketclasses that uses the namespacestore in their namespace policy or vector policy
 // used by bucketclass_contorller to watch namespacestores changes
 func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []reconcile.Request {
 	logrus.Infof("checking which bucketclasses to reconcile. mapping namespacestore %v to bucketclasses", namespacestore)
@@ -654,9 +694,22 @@ func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []rec
 	reqs := []reconcile.Request{}
 
 	for _, bc := range bucketclassList.Items {
-		if bc.Spec.NamespacePolicy == nil {
+		if bc.Spec.NamespacePolicy == nil && bc.Spec.VectorPolicy == nil {
 			continue
 		}
+
+		if bc.Spec.VectorPolicy != nil {
+			if bc.Spec.VectorPolicy.Resource == namespacestore.Name {
+				reqs = append(reqs, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      bc.Name,
+						Namespace: bc.Namespace,
+					},
+				})
+			}
+			continue
+		}
+
 		policyType := bc.Spec.NamespacePolicy.Type
 		switch policyType {
 		case nbv1.NSBucketClassTypeSingle:
