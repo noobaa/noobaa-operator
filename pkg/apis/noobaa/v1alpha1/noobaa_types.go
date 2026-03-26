@@ -333,9 +333,59 @@ type LoadBalancerSourceSubnetSpec struct {
 	IAM []string `json:"iam,omitempty"`
 }
 
+// TLSProtocolVersion is the minimum TLS version for endpoint HTTPS servers.
+// Follows the OpenShift API TLSProtocolVersion definition.
+// +kubebuilder:validation:Enum=VersionTLS12;VersionTLS13
+type TLSProtocolVersion string
+
+const (
+	// TLSVersionTLS12 is version 1.2 of the TLS security protocol.
+	TLSVersionTLS12 TLSProtocolVersion = "VersionTLS12"
+	// TLSVersionTLS13 is version 1.3 of the TLS security protocol.
+	TLSVersionTLS13 TLSProtocolVersion = "VersionTLS13"
+)
+
+// TLSGroup represents a supported TLS key exchange group.
+// Follows the OpenShift API TLSCurvePreferences definition (openshift/api#2583).
+// TODO: When openshift/api#2583 merges, replace with imported OpenShift types.
+// +kubebuilder:validation:Enum=X25519;secp256r1;secp384r1;secp521r1;X25519MLKEM768
+type TLSGroup string
+
+const (
+	TLSGroupX25519         TLSGroup = "X25519"
+	TLSGroupSecp256r1      TLSGroup = "secp256r1"
+	TLSGroupSecp384r1      TLSGroup = "secp384r1"
+	TLSGroupSecp521r1      TLSGroup = "secp521r1"
+	TLSGroupX25519MLKEM768 TLSGroup = "X25519MLKEM768"
+)
+
+// TLSSecuritySpec defines TLS configuration for HTTPS servers.
+type TLSSecuritySpec struct {
+	// TLSMinVersion is used to specify the minimal version of the TLS protocol
+	// that is negotiated during the TLS handshake.
+	// +optional
+	// +nullable
+	TLSMinVersion *TLSProtocolVersion `json:"tlsMinVersion,omitempty"`
+
+	// TLSCiphers is used to specify the cipher algorithms that are negotiated
+	// during the TLS handshake.
+	// +optional
+	TLSCiphers []string `json:"tlsCiphers,omitempty"`
+
+	// TLSGroups is used to specify the key exchange groups for the TLS
+	// handshake.
+	// +optional
+	TLSGroups []TLSGroup `json:"tlsGroups,omitempty"`
+}
+
 // SecuritySpec is security spec to include various security items such as kms
 type SecuritySpec struct {
 	KeyManagementService KeyManagementServiceSpec `json:"kms,omitempty"`
+	// APIServerSecurity specifies the TLS configuration derived from the
+	// OpenShift API Server TLS profile. The StorageCluster propagates the
+	// platform TLS profile here and NooBaa applies it to endpoint HTTPS servers.
+	// +optional
+	APIServerSecurity TLSSecuritySpec `json:"apiServerSecurity,omitempty"`
 }
 
 // KeyManagementServiceSpec represent various details of the KMS server
