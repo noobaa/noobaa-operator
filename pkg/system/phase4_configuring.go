@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -50,6 +51,12 @@ const (
 	serviceMonitorCAFile              = "/etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt"
 )
 
+// OnAdmissionTLSChanged is called by the reconciler when the NooBaa CR's
+// APIServerSecurity TLS settings may have changed. It is wired to
+// admission.ReloadTLSConfig at startup by the operator manager to avoid a
+// circular import between the system and admission packages.
+var OnAdmissionTLSChanged func() error
+
 type gcpAuthJSON struct {
 	ProjectID string `json:"project_id"`
 }
@@ -66,6 +73,10 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.ReconcileSystemSecrets(); err != nil {
 		return err
 	}
+
+	if err := r.reconcileAdmissionTLSConf(); err != nil {
+		return err
+	}
 	// No endpoint creation is required for remote noobaa client
 	if !util.IsRemoteClientNoobaa(r.NooBaa.GetAnnotations()) {
 		util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints))
@@ -76,6 +87,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 			return err
 		}
 	}
+
 	if err := r.RegisterToCluster(); err != nil {
 		return err
 	}
@@ -451,12 +463,12 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					} else {
 						c.Env[j].Value = ""
 					}
-			case "TLS_MIN_VERSION":
-				c.Env[j].Value = MapTLSVersion(tlsSec.TLSMinVersion)
-			case "TLS_CIPHERS":
-				c.Env[j].Value = strings.Join(tlsSec.TLSCiphers, ":")
-			case "TLS_GROUPS":
-				c.Env[j].Value = JoinTLSGroups(tlsSec.TLSGroups, ":")
+				case "TLS_MIN_VERSION":
+					c.Env[j].Value = MapTLSVersion(tlsSec.TLSMinVersion)
+				case "TLS_CIPHERS":
+					c.Env[j].Value = strings.Join(tlsSec.TLSCiphers, ":")
+				case "TLS_GROUPS":
+					c.Env[j].Value = JoinTLSGroups(tlsSec.TLSGroups, ":")
 				}
 			}
 
@@ -2077,6 +2089,33 @@ func JoinTLSGroups(groups []nbv1.TLSGroup, sep string) string {
 		s[i] = string(g)
 	}
 	return strings.Join(s, sep)
+}
+
+// lastAdmissionTLSSpec caches the most recently applied APIServerSecurity spec
+// so that we only trigger a TLS reload when the settings actually change.
+var lastAdmissionTLSSpec *nbv1.TLSSecuritySpec
+
+// reconcileAdmissionTLSConf signals the in-process admission webhook server to
+// reload its TLS configuration when the NooBaa CR's APIServerSecurity TLS
+// settings have changed.
+func (r *Reconciler) reconcileAdmissionTLSConf() error {
+	if v, ok := os.LookupEnv("ENABLE_NOOBAA_ADMISSION"); !ok || v != "true" {
+		return nil
+	}
+
+	spec := &r.NooBaa.Spec.Security.APIServerSecurity
+	if reflect.DeepEqual(spec, lastAdmissionTLSSpec) {
+		return nil
+	}
+
+	if OnAdmissionTLSChanged != nil {
+		if err := OnAdmissionTLSChanged(); err != nil {
+			return err
+		}
+	}
+
+	lastAdmissionTLSSpec = spec.DeepCopy()
+	return nil
 }
 
 // reconcileEndpointRBAC creates Endpoint scc, role, rolebinding and service account

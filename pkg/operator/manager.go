@@ -122,7 +122,7 @@ func RunOperator(cmd *cobra.Command, args []string) {
 
 	enableAdmission, ok := os.LookupEnv("ENABLE_NOOBAA_ADMISSION")
 	if ok && enableAdmission == "true" {
-		// start webhook server in new routine
+		system.OnAdmissionTLSChanged = admission.ReloadTLSConfig
 		go func() {
 			admission.RunAdmissionServer()
 		}()

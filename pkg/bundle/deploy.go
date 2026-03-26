@@ -5387,12 +5387,14 @@ spec:
       targetPort: 5140
 `
 
-const Sha256_deploy_internal_service_admission_webhook_yaml = "810a70b263d44621713864aa6e6e72e6079bbdc02f6e2b9143ba9ebf4ab52102"
+const Sha256_deploy_internal_service_admission_webhook_yaml = "913cdbbc67c5b0d7245cd3b799c7da00a1a1f3c7e7339c418d08a8e624d6365f"
 
 const File_deploy_internal_service_admission_webhook_yaml = `apiVersion: v1
 kind: Service
 metadata:
   name: admission-webhook-service
+  labels:
+    app: noobaa
 spec:
   ports:
   - name: webhook
