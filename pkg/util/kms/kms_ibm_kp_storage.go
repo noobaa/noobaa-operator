@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	ibm "github.com/IBM/keyprotect-go-client"
 	"github.com/libopenstorage/secrets"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -30,8 +33,16 @@ const (
 // using IBM KP secret storage - standard keys interface using
 // latest "github.com/IBM/keyprotect-go-client" version 0.7.0
 type ibmKpSecretStorage struct {
-	kp *ibm.API
+	kp     *ibm.API
+	secret *corev1.Secret
 }
+
+const (
+	// IBMKPActiveKeyID is the key in the secret that stores the active key ID
+	IBMKPActiveKeyID = "IBM_KP_ACTIVE_KEY_ID"
+	// IBMKPKeyPrefix is the prefix for key IDs stored in the secret
+	IBMKPKeyPrefix = "IBM_KP_KEY_"
+)
 
 func getIbmParam(secretConfig map[string]interface{}, name string) string {
 	if tokenIntf, exists := secretConfig[name]; exists {
@@ -78,8 +89,16 @@ func NewIBMKpSecretStorage(
 		return nil, err
 	}
 
+	secret, exists := secretConfig[IBMSecret]
+	if !exists {
+		return nil, fmt.Errorf("Missing IBM secret")
+	}
+
 	// returned instance
-	r := &ibmKpSecretStorage{kp: kp}
+	r := &ibmKpSecretStorage{
+		kp:     kp,
+		secret: secret.(*corev1.Secret),
+	}
 	return r, nil
 }
 
@@ -126,22 +145,60 @@ func (i *ibmKpSecretStorage) GetSecret(
 	secretID string,
 	keyContext map[string]string,
 ) (map[string]interface{}, secrets.Version, error) {
-	// Find the key ID
-	key, err := i.getKeyByName(secretID)
+	log := util.Logger()
+
+	// Check if this is a rotating secret (backend secret)
+	var activeKeyID string
+	util.KubeCheck(i.secret)
+	if strings.HasSuffix(secretID, "-root-master-key-backend") {
+		// Rotating secret format - get the active key ID from the tracking secret
+		exists := false
+		activeKeyID, exists = i.secret.StringData[IBMKPActiveKeyID]
+		if !exists {
+			log.Errorf("IBM KeyProtect GetSecret() activeKeyID does not exist in secret %v", i.secret.Name)
+			return nil, secrets.NoVersion, secrets.ErrInvalidSecretId
+		}
+	}
+
+	// Determine which key name to look for
+	var keyNameToFind string
+	if len(activeKeyID) > 0 {
+		// Rotating format: look for the IBM KP key ID stored in the secret
+		keyIDInKP, exists := i.secret.StringData[IBMKPKeyPrefix+activeKeyID]
+		if !exists {
+			log.Errorf("IBM KeyProtect GetSecret() key ID mapping not found for %v", activeKeyID)
+			return nil, secrets.NoVersion, secrets.ErrInvalidSecretId
+		}
+		keyNameToFind = keyIDInKP
+	} else {
+		// Single format (for backward compatibility during upgrade)
+		keyNameToFind = secretID
+	}
+
+	// Find the key by name in IBM KeyProtect
+	key, err := i.getKeyByName(keyNameToFind)
 	if err != nil {
+		log.Errorf("IBM KeyProtect GetSecret failed to find key by name %v: %v", keyNameToFind, err)
 		return nil, secrets.NoVersion, err
 	}
 
-	// Fetch the key payload ( key value ) by ID
+	// Fetch the key payload (key value) by ID
 	keyPayload, err := i.kp.GetKey(context.TODO(), key.ID)
 	if err != nil {
+		log.Errorf("IBM KeyProtect GetSecret failed to get key %v: %v", key.ID, err)
 		return nil, secrets.NoVersion, err
 	}
 
-	// Return the fetched key value
-	r := map[string]interface{}{secretID: keyPayload.Payload}
-
-	return r, secrets.NoVersion, nil
+	// Return in the appropriate format
+	if len(activeKeyID) > 0 {
+		// Rotating format: return active_root_key pointer and the key value
+		r := map[string]interface{}{ActiveRootKey: activeKeyID, activeKeyID: keyPayload.Payload}
+		return r, secrets.NoVersion, nil
+	} else {
+		// Single format: return just the key value, Might not need
+		r := map[string]interface{}{secretID: keyPayload.Payload}
+		return r, secrets.NoVersion, nil
+	}
 }
 
 // PutSecret will associate an secretId to its secret data
@@ -151,14 +208,65 @@ func (i *ibmKpSecretStorage) PutSecret(
 	plainText map[string]interface{},
 	keyContext map[string]string,
 ) (secrets.Version, error) {
-	// Import the key value into IBM KP storage
-	value := plainText[secretID].(string)
-	_, err := i.kp.CreateImportedStandardKey(context.TODO(), secretID, nil, value)
+	log := util.Logger()
 
+	// Check if this is a rotating secret format
+	var activeKey string
+	var value string
+	if strings.HasSuffix(secretID, "-root-master-key-backend") {
+		// Rotating secret format - extract active key and its value
+		activeKeyIntf, exists := plainText[ActiveRootKey]
+		if !exists {
+			log.Errorf("IBM KeyProtect PutSecret missing active_root_key in plainText")
+			return secrets.NoVersion, fmt.Errorf("missing active_root_key in rotating secret format")
+		}
+		activeKey = activeKeyIntf.(string)
+
+		valueIntf, exists := plainText[activeKey]
+		if !exists {
+			log.Errorf("IBM KeyProtect PutSecret missing value for active key %v", activeKey)
+			return secrets.NoVersion, fmt.Errorf("missing value for active key %v", activeKey)
+		}
+		value = valueIntf.(string)
+	} else {
+		// Single format (for backward compatibility)
+		valueIntf, ok := plainText[secretID]
+		if !ok {
+			log.Errorf("IBM KeyProtect PutSecret failed to get value for secretID %v", secretID)
+			return secrets.NoVersion, fmt.Errorf("invalid secret value format for secretID %v", secretID)
+		}
+		value = valueIntf.(string)
+	}
+
+	// Generate a unique key name in IBM KeyProtect
+	// For rotating keys, use the active key name; for single keys, use secretID
+	var keyNameInKP string
+	if len(activeKey) > 0 {
+		// Use the timestamp-based key name from the active key
+		keyNameInKP = activeKey
+	} else {
+		keyNameInKP = secretID
+	}
+
+	// Import the key value into IBM KP storage
+	key, err := i.kp.CreateImportedStandardKey(context.TODO(), keyNameInKP, nil, value)
 	if err != nil {
+		log.Errorf("IBM KeyProtect PutSecret failed to create key %v: %v", keyNameInKP, err)
 		return secrets.NoVersion, err
 	}
 
+	// For rotating format, store the mapping in the tracking secret
+	if len(activeKey) > 0 {
+		i.secret.StringData[IBMKPActiveKeyID] = activeKey
+		i.secret.StringData[IBMKPKeyPrefix+activeKey] = key.Name
+
+		if !util.KubeUpdate(i.secret) {
+			log.Errorf("Failed to update IBM KP tracking secret %v in ns %v", i.secret.Name, i.secret.Namespace)
+			return secrets.NoVersion, fmt.Errorf("failed to update IBM KP tracking secret %v in ns %v", i.secret.Name, i.secret.Namespace)
+		}
+	}
+
+	log.Infof("IBM KeyProtect PutSecret successfully created key %v (IBM KP name: %v)", activeKey, keyNameInKP)
 	return secrets.NoVersion, nil
 }
 
