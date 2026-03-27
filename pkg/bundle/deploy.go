@@ -4227,7 +4227,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "f8c8dbc75ac2b8001ecda2145e1ed423a6a42c635d50d103518e9457a45b161f"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "a67f11787f36028d86c794479a25321da979968cda86339d8761248198cd198c"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4367,6 +4367,7 @@ spec:
             - name: POSTGRES_PASSWORD_PATH
             - name: POSTGRES_DBNAME_PATH
             - name: POSTGRES_PORT_PATH
+            - name: POSTGRES_CONNECTION_STRING_PATH
             - name: VIRTUAL_HOSTS
             - name: REGION
             - name: ENDPOINT_GROUP_ID
@@ -5404,7 +5405,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "950eaab1e58069eec4df071a6020f75914586a5a2b25f56470059cc9c0b7f892"
+const Sha256_deploy_internal_statefulset_core_yaml = "eba784851e7b0b47a13e96d44b956da9025f14e9b51474a1dcc25a6c5995dedc"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5527,7 +5528,6 @@ spec:
                   name: noobaa-config
                   key: NOOBAA_VERSION_AUTH_ENABLED
             - name: POSTGRES_HOST
-              value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_HOST_RO
             - name: POSTGRES_PORT
             - name: POSTGRES_DBNAME
@@ -5541,6 +5541,7 @@ spec:
             - name: POSTGRES_PASSWORD_PATH
             - name: POSTGRES_DBNAME_PATH
             - name: POSTGRES_PORT_PATH
+            - name: POSTGRES_CONNECTION_STRING_PATH
             - name: GUARANTEED_LOGS_PATH
             - name: DB_TYPE
               value: postgres
