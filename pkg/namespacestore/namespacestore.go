@@ -429,7 +429,7 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 		log.Fatalf(`❌ %s %s`, validationErr, cmd.UsageString())
 	}
 
-	// Create namespace store CR 
+	// Create namespace store CR
 	util.Panic(controllerutil.SetControllerReference(sys, namespaceStore, scheme.Scheme))
 	if !util.KubeCreateFailExisting(namespaceStore) {
 		log.Fatalf(`❌ Could not create NamespaceStore %q in Namespace %q (conflict)`, namespaceStore.Name, namespaceStore.Namespace)
@@ -703,20 +703,22 @@ func RunCreateAzureSTSBlob(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
 	}
 	createCommon(cmd, args, nbv1.NSStoreTypeAzureBlob, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
-		targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
-		azureSTSClientID := util.GetFlagStringOrPrompt(cmd, "client-id")
-		azureSTSTenantID := util.GetFlagStringOrPrompt(cmd, "tenant-id")
-		if err := validations.ValidateAzureSTSRequiredFlags(targetBlobContainer, azureSTSClientID, azureSTSTenantID); err != nil {
-			log.Fatalf(`❌ %s %s`, err, cmd.UsageString())
-		}
 		secretName, _ := cmd.Flags().GetString("secret-name")
-		accountName, _ := cmd.Flags().GetString("account-name")
-
+		targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
+		azureSTSClientID := ""
 		if secretName != "" {
 			util.VerifyCredsInSecret(secretName, options.Namespace, []string{"azure_tenant_id", "azure_client_id"})
 			secret.Name = secretName
 			secret.Namespace = options.Namespace
+			util.KubeCheck(secret)
+			azureSTSClientID = secret.StringData["azure_client_id"]
 		} else {
+			azureSTSClientID = util.GetFlagStringOrPrompt(cmd, "client-id")
+			azureSTSTenantID := strings.TrimSpace(util.GetFlagStringOrPrompt(cmd, "tenant-id"))
+			accountName := util.GetFlagStringOrPrompt(cmd, "account-name")
+			if err := validations.ValidateAzureSTSRequiredFlags(targetBlobContainer, azureSTSClientID, azureSTSTenantID, accountName); err != nil {
+				log.Fatalf(`❌ %s %s`, err, cmd.UsageString())
+			}
 			secret.StringData["azure_tenant_id"] = strings.TrimSpace(azureSTSTenantID)
 			secret.StringData["azure_client_id"] = strings.TrimSpace(azureSTSClientID)
 			if strings.TrimSpace(accountName) != "" {

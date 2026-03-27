@@ -579,24 +579,27 @@ func RunCreateAzureSTS(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
 	}
 	createCommon(cmd, args, nbv1.StoreTypeAzureBlob, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
-		targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
-		azureSTSAccountName := util.GetFlagStringOrPromptPassword(cmd, "account-name")
-		azureSTSTenantID := util.GetFlagStringOrPrompt(cmd, "tenant-id")
-		azureSTSClientID := util.GetFlagStringOrPrompt(cmd, "client-id")
-		if err := validations.ValidateAzureSTSCredsPresent(&targetBlobContainer, &azureSTSAccountName, &azureSTSTenantID, &azureSTSClientID); err != nil {
-			log.Fatalf(`❌ %v %s`, err, cmd.UsageString())
-		}
-		secretName, _ := cmd.Flags().GetString("secret-name")
-		mandatoryProperties := []string{"AccountName", "azure_tenant_id", "azure_client_id"}
 
+		secretName, _ := cmd.Flags().GetString("secret-name")
+		targetBlobContainer := util.GetFlagStringOrPrompt(cmd, "target-blob-container")
+		azureSTSClientID := ""
 		if secretName == "" {
+			azureSTSAccountName := util.GetFlagStringOrPromptPassword(cmd, "account-name")
+			azureSTSTenantID := util.GetFlagStringOrPrompt(cmd, "tenant-id")
+			azureSTSClientID = util.GetFlagStringOrPrompt(cmd, "client-id")
+			if err := validations.ValidateAzureSTSCredsPresent(&targetBlobContainer, &azureSTSAccountName, &azureSTSTenantID, &azureSTSClientID); err != nil {
+				log.Fatalf(`❌ %v %s`, err, cmd.UsageString())
+			}
 			secret.StringData["AccountName"] = azureSTSAccountName
 			secret.StringData["azure_tenant_id"] = azureSTSTenantID
 			secret.StringData["azure_client_id"] = azureSTSClientID
 		} else {
+			mandatoryProperties := []string{"AccountName", "azure_tenant_id", "azure_client_id"}
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName
 			secret.Namespace = options.Namespace
+			util.KubeCheck(secret)
+			azureSTSClientID = secret.StringData["azure_client_id"]
 		}
 
 		backStore.Spec.AzureBlob = &nbv1.AzureBlobSpec{

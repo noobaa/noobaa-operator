@@ -207,7 +207,7 @@ func ValidateNsStoreAzureBlob(nsStore *nbv1.NamespaceStore) error {
 }
 
 // ValidateAzureSTSRequiredFlags validates that required Azure STS CLI/flag values are non-empty (target blob container, client ID, tenant ID).
-func ValidateAzureSTSRequiredFlags(targetBlobContainer, clientID, tenantID string) error {
+func ValidateAzureSTSRequiredFlags(targetBlobContainer, clientID, tenantID, accountName string) error {
 	if strings.TrimSpace(targetBlobContainer) == "" {
 		return util.ValidationError{Msg: "target-blob-container is required and must be non-empty"}
 	}
@@ -216,6 +216,9 @@ func ValidateAzureSTSRequiredFlags(targetBlobContainer, clientID, tenantID strin
 	}
 	if strings.TrimSpace(tenantID) == "" {
 		return util.ValidationError{Msg: "tenant-id is required and must be non-empty"}
+	}
+	if strings.TrimSpace(accountName) == "" {
+		return util.ValidationError{Msg: "account-name is required and must be non-empty"}
 	}
 	return nil
 }
