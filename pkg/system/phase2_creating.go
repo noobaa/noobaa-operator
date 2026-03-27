@@ -383,6 +383,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	}
 	podSpec.Tolerations = r.NooBaa.Spec.Tolerations
 	podSpec.Affinity = r.GetAffinity()
+	podSpec.PriorityClassName = r.NooBaa.Spec.DBPriorityClassName
 
 	if NooBaaDB.UID == "" {
 		for i := range NooBaaDB.Spec.VolumeClaimTemplates {
@@ -781,6 +782,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	}
 	podSpec.Tolerations = r.NooBaa.Spec.Tolerations
 	podSpec.Affinity = r.GetAffinity()
+	podSpec.PriorityClassName = r.NooBaa.Spec.CorePriorityClassName
 
 	if r.CoreApp.UID == "" {
 		// generate info event for the first creation of noobaa

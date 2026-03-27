@@ -190,6 +190,10 @@ spec:
                   numVolumes:
                     description: NumVolumes is the number of volumes to allocate
                     type: integer
+                  priorityClassName:
+                    description: PriorityClassName (optional) overrides the priority
+                      class for the pv-pool agent pods
+                    type: string
                   resources:
                     description: VolumeResources represents the minimum resources
                       each volume should have.

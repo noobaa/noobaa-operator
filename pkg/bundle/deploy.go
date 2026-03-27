@@ -298,7 +298,7 @@ spec:
 
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "2cc6f739e53dfd80ddefe7c0bccd684f3e6a97ade1205a472308c07ae1460736"
+const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "e6b5ca2577838c95674c0e36b673bde5816c8bf80d7edb240da7e6918cb346ab"
 
 const File_deploy_crds_noobaa_io_backingstores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -492,6 +492,10 @@ spec:
                   numVolumes:
                     description: NumVolumes is the number of volumes to allocate
                     type: integer
+                  priorityClassName:
+                    description: PriorityClassName (optional) overrides the priority
+                      class for the pv-pool agent pods
+                    type: string
                   resources:
                     description: VolumeResources represents the minimum resources
                       each volume should have.
@@ -1488,7 +1492,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "623db090807771aa74ee98dd27627e2133c2c489dd28b2d81c209b05bbc81718"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "db6cdcd254d4d85270c2ee1cf656c8b99d2fa0d5662ebcce849cb5fa60ebdd86"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2568,6 +2572,10 @@ spec:
                       cleanup confirmation
                     type: string
                 type: object
+              corePriorityClassName:
+                description: CorePriorityClassName (optional) overrides the priority
+                  class for the core pod
+                type: string
               coreResources:
                 description: CoreResources (optional) overrides the default resource
                   requirements for the server container
@@ -2635,6 +2643,10 @@ spec:
               dbImage:
                 description: DBImage (optional) overrides the default image for the
                   db container
+                type: string
+              dbPriorityClassName:
+                description: DBPriorityClassName (optional) overrides the priority
+                  class for the db pod
                 type: string
               dbResources:
                 description: DBResources (optional) overrides the default resource
@@ -3036,6 +3048,10 @@ spec:
                       numVolumes:
                         description: NumVolumes is the number of volumes to allocate
                         type: integer
+                      priorityClassName:
+                        description: PriorityClassName (optional) overrides the priority
+                          class for the pv-pool agent pods
+                        type: string
                       resources:
                         description: VolumeResources represents the minimum resources
                           each volume should have.
@@ -3140,6 +3156,10 @@ spec:
                   of openshift route resources in the cluster
                 nullable: true
                 type: boolean
+              endpointPriorityClassName:
+                description: EndpointPriorityClassName (optional) overrides the priority
+                  class for the endpoint pods
+                type: string
               endpoints:
                 description: |-
                   Endpoints (optional) sets configuration info for the noobaa endpoint
