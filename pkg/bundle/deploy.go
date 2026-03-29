@@ -1492,7 +1492,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "db6cdcd254d4d85270c2ee1cf656c8b99d2fa0d5662ebcce849cb5fa60ebdd86"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "0be3b8dac5033aa3b2baa67c33ab4013125799fc427f253071a4131b875b7065"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3436,6 +3436,45 @@ spec:
               security:
                 description: Security represents security settings
                 properties:
+                  apiServerSecurity:
+                    description: |-
+                      APIServerSecurity specifies the TLS configuration derived from the
+                      OpenShift API Server TLS profile. The StorageCluster propagates the
+                      platform TLS profile here and NooBaa applies it to endpoint HTTPS servers.
+                    properties:
+                      tlsCiphers:
+                        description: |-
+                          TLSCiphers is used to specify the cipher algorithms that are negotiated
+                          during the TLS handshake.
+                        items:
+                          type: string
+                        type: array
+                      tlsGroups:
+                        description: |-
+                          TLSGroups is used to specify the key exchange groups for the TLS
+                          handshake.
+                        items:
+                          description: |-
+                            TLSGroup represents a supported TLS key exchange group.
+                            Follows the OpenShift API TLSCurvePreferences definition (openshift/api#2583).
+                          enum:
+                          - X25519
+                          - secp256r1
+                          - secp384r1
+                          - secp521r1
+                          - X25519MLKEM768
+                          type: string
+                        type: array
+                      tlsMinVersion:
+                        description: |-
+                          TLSMinVersion is used to specify the minimal version of the TLS protocol
+                          that is negotiated during the TLS handshake.
+                        enum:
+                        - VersionTLS12
+                        - VersionTLS13
+                        nullable: true
+                        type: string
+                    type: object
                   kms:
                     description: KeyManagementServiceSpec represent various details
                       of the KMS server
@@ -4227,7 +4266,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "f8c8dbc75ac2b8001ecda2145e1ed423a6a42c635d50d103518e9457a45b161f"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "fa1c824cd918ebbaa7ce127c15e48f8d1bcd7bcf2e07962fce75e4aa4e0e8bd8"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4374,6 +4413,9 @@ spec:
             - name: LOCAL_N2N_AGENT
             - name: NODE_EXTRA_CA_CERTS
             - name: GUARANTEED_LOGS_PATH
+            - name: TLS_MIN_VERSION
+            - name: TLS_CIPHERS
+            - name: TLS_GROUPS
             - name: CONTAINER_CPU_REQUEST
               valueFrom:
                 resourceFieldRef:

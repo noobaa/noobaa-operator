@@ -143,6 +143,9 @@ spec:
             - name: LOCAL_N2N_AGENT
             - name: NODE_EXTRA_CA_CERTS
             - name: GUARANTEED_LOGS_PATH
+            - name: TLS_MIN_VERSION
+            - name: TLS_CIPHERS
+            - name: TLS_GROUPS
             - name: CONTAINER_CPU_REQUEST
               valueFrom:
                 resourceFieldRef:
