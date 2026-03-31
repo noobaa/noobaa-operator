@@ -142,9 +142,14 @@ func (p *Provisioner) Provision(bucketOptions *obAPI.BucketOptions) (*nbv1.Objec
 		return nil, err
 	}
 
-	err = UpdateBucketTagging(r.SysClient, r.OBC)
-	if err != nil {
-		logrus.Warnf("failed executing UpdateBucketTagging on bucket: %v, %v", r.BucketName, err)
+	// TODO: tagging is not yet supported for vector buckets
+	if r.BucketClass != nil && r.BucketClass.Spec.VectorPolicy != nil {
+		log.Infof("Provision: skipping UpdateBucketTagging for vector bucket %q — not yet supported", r.BucketName)
+	} else {
+		err = UpdateBucketTagging(r.SysClient, r.OBC)
+		if err != nil {
+			logrus.Warnf("failed executing UpdateBucketTagging on bucket: %v, %v", r.BucketName, err)
+		}
 	}
 	return r.OB, nil
 }
@@ -242,6 +247,12 @@ func (p *Provisioner) Update(ob *nbv1.ObjectBucket) error {
 	r, err := NewBucketRequest(p, ob, nil)
 	if err != nil {
 		return err
+	}
+
+	// TODO: add support for updating vector buckets (quota, tagging)
+	if r.BucketClass != nil && r.BucketClass.Spec.VectorPolicy != nil {
+		log.Infof("Update: vector bucket update is currently unsupported, skipping")
+		return nil
 	}
 
 	if err = r.updateReplicationPolicy(ob); err != nil {
@@ -430,8 +441,13 @@ func (r *BucketRequest) CreateAndUpdateBucket(
 ) error {
 
 	log := r.Provisioner.Logger
+	var err error
 
-	_, err := r.SysClient.NBClient.ReadBucketAPI(nb.ReadBucketParams{Name: r.BucketName})
+	if r.BucketClass != nil && r.BucketClass.Spec.VectorPolicy != nil {
+		_, err = r.SysClient.NBClient.GetVectorBucketAPI(nb.GetVectorBucketParams{VectorBucketName: r.BucketName})
+	} else {
+		_, err = r.SysClient.NBClient.ReadBucketAPI(nb.ReadBucketParams{Name: r.BucketName})
+	}
 	if err == nil {
 		msg := fmt.Sprintf("Bucket %q already exists", r.BucketName)
 		log.Error(msg)
@@ -443,6 +459,42 @@ func (r *BucketRequest) CreateAndUpdateBucket(
 
 	if r.BucketClass == nil {
 		return fmt.Errorf("BucketClass not loaded %#v", r)
+	}
+
+	if bucketType := r.OBC.Spec.AdditionalConfig["bucketType"]; bucketType == "vector" && r.BucketClass.Spec.VectorPolicy == nil {
+		return fmt.Errorf("OBC %q specifies bucketType %q but BucketClass %q does not have a VectorPolicy",
+			r.OBC.Name, bucketType, r.BucketClass.Name)
+	}
+
+	if r.BucketClass.Spec.VectorPolicy != nil {
+		vectorParams := nb.CreateVectorBucketParams{
+			VectorBucketName: r.BucketName,
+			VectorDBType:     r.BucketClass.Spec.VectorPolicy.VectorDBType,
+			NamespaceResource: &nb.NamespaceResourceFullConfig{
+				Resource: r.BucketClass.Spec.VectorPolicy.Resource,
+				Path:     r.OBC.Spec.AdditionalConfig["path"],
+			},
+			BucketClaim: &nb.BucketClaimInfo{
+				BucketClass: r.BucketClass.Name,
+				Namespace:   r.OBC.Namespace,
+			},
+		}
+		_, err := r.SysClient.NBClient.CreateVectorBucketAPI(vectorParams)
+		if err != nil {
+			if nbErr, ok := err.(*nb.RPCError); ok && nbErr.RPCCode == "BUCKET_ALREADY_EXISTS" {
+				msg := fmt.Sprintf("Vector bucket %q already exists", r.BucketName)
+				log.Error(msg)
+				return obErrors.NewBucketExistsError(msg)
+			}
+			return fmt.Errorf("Failed to create vector bucket %q with error: %v", r.BucketName, err)
+		}
+		log.Infof("✅ Successfully created vector bucket %q", r.BucketName)
+		_, err = r.SysClient.NBClient.GetVectorBucketAPI(nb.GetVectorBucketParams{VectorBucketName: r.BucketName})
+		if err != nil {
+			return fmt.Errorf("Failed to read vector bucket %q after creation: %v", r.BucketName, err)
+		}
+		// TODO: add support for updating vector buckets (quota, tagging)
+		return nil
 	}
 
 	log.Infof("Provisioner: replication policy %s", r.BucketClass.Spec.ReplicationPolicy)
@@ -737,7 +789,11 @@ func (r *BucketRequest) DeleteBucket() error {
 	var err error
 	log := r.Provisioner.Logger
 	log.Infof("deleting bucket %q", r.BucketName)
-	if r.BucketClass.Spec.NamespacePolicy != nil {
+	isVector := (r.BucketClass != nil && r.BucketClass.Spec.VectorPolicy != nil) ||
+		r.OB.Spec.Endpoint.AdditionalConfigData["bucketType"] == "vector"
+	if isVector {
+		err = r.SysClient.NBClient.DeleteVectorBucketAPI(nb.DeleteVectorBucketParams{VectorBucketName: r.BucketName})
+	} else if r.BucketClass != nil && r.BucketClass.Spec.NamespacePolicy != nil {
 		err = r.SysClient.NBClient.DeleteBucketAPI(nb.DeleteBucketParams{Name: r.BucketName})
 	} else {
 		err = r.SysClient.NBClient.DeleteBucketAndObjectsAPI(nb.DeleteBucketParams{Name: r.BucketName})

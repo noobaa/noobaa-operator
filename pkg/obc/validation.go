@@ -1,6 +1,8 @@
 package obc
 
 import (
+	"fmt"
+
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
@@ -44,6 +46,11 @@ func validateAdditionalConfig(objectName string, additionalConfig map[string]str
 
 	if err := validations.ValidateNSFSAccountConfig(NSFSAccountConfig, bucketclass); err != nil {
 		return err
+	}
+
+	if bucketType := additionalConfig["bucketType"]; bucketType != "" && bucketType != "vector" {
+		return fmt.Errorf("OBC %q specifies unsupported bucketType %q (valid values: vector)",
+			objectName, bucketType)
 	}
 
 	return nil

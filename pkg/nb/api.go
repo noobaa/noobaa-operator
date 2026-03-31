@@ -66,6 +66,7 @@ type Client interface {
 	UpdateAccountKeysAPI(UpdateAccountKeysParams) error
 
 	CreateVectorBucketAPI(CreateVectorBucketParams) (VectorBucketInfo, error)
+	GetVectorBucketAPI(GetVectorBucketParams) (VectorBucketInfo, error)
 	DeleteVectorBucketAPI(DeleteVectorBucketParams) error
 }
 
@@ -446,9 +447,19 @@ func (c *RPCClient) CreateVectorBucketAPI(params CreateVectorBucketParams) (Vect
 	return res.Reply, err
 }
 
+// GetVectorBucketAPI calls bucket_api.get_vector_bucket()
+func (c *RPCClient) GetVectorBucketAPI(params GetVectorBucketParams) (VectorBucketInfo, error) {
+	req := &RPCMessage{API: "bucket_api", Method: "get_vector_bucket", Params: params}
+	res := &struct {
+		RPCMessage `json:",inline"`
+		Reply      VectorBucketInfo `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
+}
+
 // DeleteVectorBucketAPI calls bucket_api.delete_vector_bucket()
 func (c *RPCClient) DeleteVectorBucketAPI(params DeleteVectorBucketParams) error {
 	req := &RPCMessage{API: "bucket_api", Method: "delete_vector_bucket", Params: params}
 	return c.Call(req, nil)
 }
-
