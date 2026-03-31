@@ -166,3 +166,47 @@ FS_KEMs: OK X25519MLKEM768
 ## TODO
 - Add PQC scanner info
 
+### Testing the admission webhook server
+
+Pre-requisites - make sure that `ENABLE_NOOBAA_ADMISSION == "true"` or on CLI installation `--admission` in order to start the admission webhook server.
+
+The admission webhook runs on port 8080 inside the operator pod.
+
+#### Using openssl (with port-forward)
+
+In one terminal, start a port-forward:
+
+```bash
+kubectl port-forward deploy/noobaa-operator -n openshift-storage 8080:8080
+```
+
+In another terminal, verify TLS 1.3 with PQC group negotiation:
+
+```bash
+echo Q | openssl s_client -connect localhost:8080 -tls1_3 -groups X25519MLKEM768 2>&1 | grep "Negotiated TLS1.3 group: X25519MLKEM768"
+```
+
+#### Using testssl.sh (from within the cluster)
+
+Run testssl.sh as a pod inside the cluster to connect directly to the operator service without port-forwarding:
+
+```bash
+kubectl run testssl-webhook -it --restart=Never \
+  --image=ghcr.io/testssl/testssl.sh -- \
+  --forward-secrecy --protocols --server-preference --client-simulation \
+  --quiet --wide \
+  https://noobaa-operator.openshift-storage.svc.cluster.local:8080
+```
+
+#### Using testssl.sh with JSON output (from within the cluster)
+
+```bash
+kubectl run testssl-webhook -it --restart=Never \
+  --image=ghcr.io/testssl/testssl.sh -- \
+  --forward-secrecy --protocols --server-preference --client-simulation \
+  --quiet --wide \
+  --jsonfile /tmp/testssl_webhook_output.json \
+  https://noobaa-operator.openshift-storage.svc.cluster.local:8080
+```
+
+To extract the JSON results, copy them from the pod before it terminates, or parse the console output directly.
