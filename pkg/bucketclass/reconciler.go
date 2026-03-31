@@ -218,6 +218,11 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			return err
 		}
 	}
+	if r.BucketClass.Spec.VectorPolicy != nil {
+		if err := validations.ValidateVectorPolicy(r.BucketClass.Spec.VectorPolicy, r.BucketClass.Spec.PlacementPolicy, r.BucketClass.Spec.NamespacePolicy, r.NooBaa.Namespace); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -327,6 +332,10 @@ func (r *Reconciler) UpdateBucketClass(bucketNames []string) error {
 
 	if r.BucketClass == nil {
 		return fmt.Errorf("BucketClass not loaded %#v", r)
+	}
+
+	if r.BucketClass.Spec.VectorPolicy != nil {
+		return fmt.Errorf("updating vector bucket class %q is not yet supported", r.BucketClass.Name)
 	}
 
 	if r.BucketClass.Spec.PlacementPolicy == nil &&

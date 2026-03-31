@@ -66,6 +66,12 @@ func (bcv *ResourceValidator) ValidateCreateBC() {
 		bcv.SetValidationResult(false, err.Error())
 		return
 	}
+	if bc.Spec.VectorPolicy != nil {
+		if err := validations.ValidateVectorPolicy(bc.Spec.VectorPolicy, bc.Spec.PlacementPolicy, bc.Spec.NamespacePolicy, bc.Namespace); err != nil {
+			bcv.SetValidationResult(false, err.Error())
+			return
+		}
+	}
 	if bc.Spec.NamespacePolicy != nil {
 		if err := validations.ValidateNSFSSingleBC(bc); err != nil && util.IsValidationError(err) {
 			bcv.SetValidationResult(false, err.Error())
@@ -87,6 +93,10 @@ func (bcv *ResourceValidator) ValidateUpdateBC() {
 
 	if err := validations.ValidateImmutLabelChange(newBC, oldBC, map[string]struct{}{"noobaa-operator": {}}); err != nil {
 		bcv.SetValidationResult(false, err.Error())
+		return
+	}
+	if newBC.Spec.VectorPolicy != nil {
+		bcv.SetValidationResult(false, "Updating a vector bucket class is not yet supported")
 		return
 	}
 }

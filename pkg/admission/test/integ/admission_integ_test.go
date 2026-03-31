@@ -158,8 +158,8 @@ var _ = Describe("Admission server integration tests", func() {
 						Secret:              corev1.SecretReference{Name: "", Namespace: namespace},
 						ClientId:            &clientID,
 						TenantId:            &tenantID,
-						SubscriptionId:     &subscriptionID,
-						ResourcegroupId:    &resourceGroupID,
+						SubscriptionId:      &subscriptionID,
+						ResourcegroupId:     &resourceGroupID,
 					},
 				}
 
@@ -176,7 +176,7 @@ var _ = Describe("Admission server integration tests", func() {
 					Type: nbv1.StoreTypeAzureBlob,
 					AzureBlob: &nbv1.AzureBlobSpec{
 						TargetBlobContainer: "some-container",
-						Secret:               corev1.SecretReference{Name: "", Namespace: namespace},
+						Secret:              corev1.SecretReference{Name: "", Namespace: namespace},
 					},
 				}
 
@@ -259,6 +259,41 @@ var _ = Describe("Admission server integration tests", func() {
 				Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: Invalid Namespacestore type, please provide a valid Namespacestore type"))
 			})
 		})
+		Context("VectorPolicy with PlacementPolicy", func() {
+			It("Should Deny", func() {
+				testBucketclass.Spec.VectorPolicy = &nbv1.VectorPolicy{
+					Resource:     "ns-store",
+					VectorDBType: nbv1.VectorDBTypeLance,
+				}
+				testBucketclass.Spec.PlacementPolicy = &nbv1.PlacementPolicy{
+					Tiers: []nbv1.Tier{{
+						BackingStores: []string{"bs-name"},
+					}},
+				}
+
+				result, err = KubeCreate(testBucketclass)
+				Expect(result).To(BeFalse())
+				Ω(err).Should(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("VectorPolicy cannot be used together with PlacementPolicy or NamespacePolicy"))
+			})
+		})
+		Context("VectorPolicy with NamespacePolicy", func() {
+			It("Should Deny", func() {
+				testBucketclass.Spec.VectorPolicy = &nbv1.VectorPolicy{
+					Resource:     "ns-store",
+					VectorDBType: nbv1.VectorDBTypeLance,
+				}
+				testBucketclass.Spec.NamespacePolicy = &nbv1.NamespacePolicy{
+					Type:   nbv1.NSBucketClassTypeSingle,
+					Single: &nbv1.SingleNamespacePolicy{Resource: "ns-store"},
+				}
+
+				result, err = KubeCreate(testBucketclass)
+				Expect(result).To(BeFalse())
+				Ω(err).Should(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("VectorPolicy cannot be used together with PlacementPolicy or NamespacePolicy"))
+			})
+		})
 		Context("Pass create validations", func() {
 			It("Should Allow", func() {
 				testBackingstore.Spec = nbv1.BackingStoreSpec{
@@ -339,6 +374,7 @@ var _ = Describe("Admission server integration tests", func() {
 				Expect(err.Error()).To(Equal("admission webhook \"admissionwebhook.noobaa.io\" denied the request: Scaling down the number of nodes is not currently supported"))
 			})
 		})
+
 		Context("Updated target bucket", func() {
 			It("Should Deny", func() {
 				nsList := &nbv1.NamespaceStoreList{

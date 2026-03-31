@@ -13,6 +13,9 @@ func ValidateBucketClass(bc *nbv1.BucketClass) error {
 	if bc == nil {
 		return nil
 	}
+	if err := ValidateVectorPolicy(bc.Spec.VectorPolicy, bc.Spec.PlacementPolicy, bc.Spec.NamespacePolicy, bc.Namespace); err != nil {
+		return err
+	}
 	if bc.Spec.NamespacePolicy != nil {
 		if err := ValidateNSFSSingleBC(bc); err != nil {
 			return err
@@ -154,6 +157,50 @@ func ValidateNamespacePolicy(namespacePolicy *nbv1.NamespacePolicy, namespace st
 		}
 	}
 	log.Infof("validated namespace policy successfully %+v", namespacePolicy)
+	return nil
+}
+
+// ValidateVectorPolicy validates that a vector policy does not coexist with
+// a PlacementPolicy or NamespacePolicy, and that the referenced namespace
+// store exists, is ready, and is of a supported type.
+func ValidateVectorPolicy(vectorPolicy *nbv1.VectorPolicy, placementPolicy *nbv1.PlacementPolicy, namespacePolicy *nbv1.NamespacePolicy, namespace string) error {
+	log := util.Logger()
+	log.Infof("validating vector policy %+v", vectorPolicy)
+	if vectorPolicy == nil {
+		return nil
+	}
+	if placementPolicy != nil || namespacePolicy != nil {
+		return util.ValidationError{
+			Msg: "VectorPolicy cannot be used together with PlacementPolicy or NamespacePolicy",
+		}
+	}
+	if vectorPolicy.Resource == "" {
+		return util.NewPersistentError("InvalidVectorPolicy",
+			"VectorPolicy resource must not be empty")
+	}
+	nsStore := &nbv1.NamespaceStore{
+		TypeMeta: metav1.TypeMeta{Kind: "NamespaceStore"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      vectorPolicy.Resource,
+			Namespace: namespace,
+		},
+	}
+	if !util.KubeCheck(nsStore) {
+		return util.NewPersistentError("MissingNamespaceStore",
+			fmt.Sprintf("NooBaa NamespaceStore %q not found or deleted", vectorPolicy.Resource))
+	}
+	if nsStore.Status.Phase == nbv1.NamespaceStorePhaseRejected {
+		return util.NewPersistentError("RejectedNamespaceStore",
+			fmt.Sprintf("NooBaa NamespaceStore %q is in rejected phase", vectorPolicy.Resource))
+	}
+	if nsStore.Status.Phase != nbv1.NamespaceStorePhaseReady {
+		return fmt.Errorf("NooBaa NamespaceStore %q is not yet ready", vectorPolicy.Resource)
+	}
+	if nsStore.Spec.Type != nbv1.NSStoreTypeNSFS {
+		return util.NewPersistentError("InvalidNamespaceStoreType",
+			fmt.Sprintf("NooBaa NamespaceStore %q must be of type NSFS for vector policy, got %q", vectorPolicy.Resource, nsStore.Spec.Type))
+	}
+	log.Infof("validated vector policy successfully %+v", vectorPolicy)
 	return nil
 }
 
