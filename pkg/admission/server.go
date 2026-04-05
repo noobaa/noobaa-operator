@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"sync/atomic"
 	"syscall"
 
@@ -107,80 +106,27 @@ func applyAPIServerTLS(tlsConfig *tls.Config, log *logrus.Entry) {
 	}
 
 	spec := noobaa.Spec.Security.APIServerSecurity
+	if spec == nil {
+		log.Info("APIServerSecurity not configured, using default TLS config for admission server")
+		return
+	}
 
 	if spec.TLSMinVersion != nil {
 		switch *spec.TLSMinVersion {
-		case nbv1.TLSVersionTLS12:
+		case nbv1.VersionTLS12:
 			tlsConfig.MinVersion = tls.VersionTLS12
 			log.Info("Admission server TLS min version set to TLSv1.2")
-		case nbv1.TLSVersionTLS13:
+		case nbv1.VersionTLS13:
 			tlsConfig.MinVersion = tls.VersionTLS13
 			log.Info("Admission server TLS min version set to TLSv1.3")
 		}
 	}
 
 	if len(spec.TLSCiphers) > 0 {
-		tlsConfig.CipherSuites = mapCipherSuites(spec.TLSCiphers, log)
+		tlsConfig.CipherSuites = util.MapCipherSuites(spec.TLSCiphers)
 	}
 
 	if len(spec.TLSGroups) > 0 {
-		tlsConfig.CurvePreferences = mapGroupPreferences(spec.TLSGroups, log)
+		tlsConfig.CurvePreferences = util.MapGroupPreferences(spec.TLSGroups)
 	}
-}
-
-// mapCipherSuites converts cipher suite names to uint16 IDs for tls.Config.CipherSuites.
-// Only Go/IANA names from tls.CipherSuites are accepted — insecure suites are rejected.
-// OpenSSL-format names (e.g. ECDHE-RSA-AES128-GCM-SHA256) are not supported.
-// Note: Go's crypto/tls does not allow configuring TLS 1.3 cipher suites — they are
-// always enabled and any TLS 1.3 suite names will be logged as unsupported.
-func mapCipherSuites(names []string, log *logrus.Entry) []uint16 {
-	lookup := make(map[string]uint16)
-	for _, cs := range tls.CipherSuites() {
-		lookup[cs.Name] = cs.ID
-	}
-	var ids []uint16
-	var applied []string
-	for _, name := range names {
-		if id, ok := lookup[name]; ok {
-			ids = append(ids, id)
-			applied = append(applied, name)
-		} else {
-			log.Warnf("mapCipherSuites: Ignoring unsupported TLS cipher suite %q (only Go/IANA names are accepted; TLS 1.3 suites are managed automatically)", name)
-		}
-	}
-	if len(applied) > 0 {
-		log.Infof("mapCipherSuites: TLS config supported cipher suites %s", strings.Join(applied, ":"))
-	}
-	return ids
-}
-
-// tlsGroupToID maps the NooBaa TLSGroup constants (following the OpenShift API
-// TLSCurvePreferences enum from openshift/api#2583) to Go tls.CurveID values.
-// TODO: When ODF is updated to include the new TLSGroups, we should switch to using the
-// ODF supported tls groups
-var tlsGroupToID = map[nbv1.TLSGroup]tls.CurveID{
-	nbv1.TLSGroupX25519:         tls.X25519,
-	nbv1.TLSGroupSecp256r1:      tls.CurveP256,
-	nbv1.TLSGroupSecp384r1:      tls.CurveP384,
-	nbv1.TLSGroupSecp521r1:      tls.CurveP521,
-	nbv1.TLSGroupX25519MLKEM768: tls.X25519MLKEM768,
-}
-
-// mapGroupPreferences converts a list of NooBaa TLSGroup values to the corresponding
-// tls.CurveID slice for use in tls.Config.CurvePreferences.
-func mapGroupPreferences(groups []nbv1.TLSGroup, log *logrus.Entry) []tls.CurveID {
-	var ids []tls.CurveID
-	var applied []string
-	for _, g := range groups {
-		if id, ok := tlsGroupToID[g]; ok {
-			ids = append(ids, id)
-			applied = append(applied, string(g))
-		} else {
-			log.Warnf("Ignoring unsupported TLS group %q", g)
-		}
-	}
-	if len(applied) > 0 {
-		log.Infof("Admission server TLS group preferences set to %s", strings.Join(applied, ":"))
-	}
-	return ids
 }

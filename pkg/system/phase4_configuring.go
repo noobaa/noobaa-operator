@@ -379,6 +379,9 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			}
 
 			tlsSec := r.NooBaa.Spec.Security.APIServerSecurity
+			if tlsSec == nil {
+				tlsSec = &nbv1.TLSSecuritySpec{}
+			}
 			for j := range c.Env {
 				switch c.Env[j].Name {
 				case "MGMT_ADDR":
@@ -464,11 +467,19 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 						c.Env[j].Value = ""
 					}
 				case "TLS_MIN_VERSION":
-					c.Env[j].Value = MapTLSVersion(tlsSec.TLSMinVersion)
+					if tlsSec.TLSMinVersion != nil {
+						c.Env[j].Value = string(*tlsSec.TLSMinVersion)
+					} else {
+						c.Env[j].Value = ""
+					}
 				case "TLS_CIPHERS":
-					c.Env[j].Value = strings.Join(tlsSec.TLSCiphers, ":")
+					c.Env[j].Value = util.MapCiphersToOpenSSL(tlsSec.TLSCiphers)
 				case "TLS_GROUPS":
-					c.Env[j].Value = JoinTLSGroups(tlsSec.TLSGroups, ":")
+					groupNames := make([]string, len(tlsSec.TLSGroups))
+					for i, g := range tlsSec.TLSGroups {
+						groupNames[i] = string(g)
+					}
+					c.Env[j].Value = strings.Join(groupNames, ":")
 				}
 			}
 
@@ -2067,29 +2078,6 @@ func derefAzureBlobString(p *string) string {
 	return *p
 }
 
-// MapTLSVersion converts a TLSProtocolVersion pointer to the Node.js minVersion string.
-func MapTLSVersion(v *nbv1.TLSProtocolVersion) string {
-	if v == nil {
-		return ""
-	}
-	switch *v {
-	case nbv1.TLSVersionTLS12:
-		return "TLSv1.2"
-	case nbv1.TLSVersionTLS13:
-		return "TLSv1.3"
-	default:
-		return ""
-	}
-}
-
-// JoinTLSGroups joins a slice of TLSGroup values into a separator-delimited string.
-func JoinTLSGroups(groups []nbv1.TLSGroup, sep string) string {
-	s := make([]string, len(groups))
-	for i, g := range groups {
-		s[i] = string(g)
-	}
-	return strings.Join(s, sep)
-}
 
 // lastAdmissionTLSSpec caches the most recently applied APIServerSecurity spec
 // so that we only trigger a TLS reload when the settings actually change.
@@ -2103,7 +2091,7 @@ func (r *Reconciler) reconcileAdmissionTLSConf() error {
 		return nil
 	}
 
-	spec := &r.NooBaa.Spec.Security.APIServerSecurity
+	spec := r.NooBaa.Spec.Security.APIServerSecurity
 	if reflect.DeepEqual(spec, lastAdmissionTLSSpec) {
 		return nil
 	}
