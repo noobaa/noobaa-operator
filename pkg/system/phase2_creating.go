@@ -89,6 +89,15 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 			return err
 		}
 	}
+	if err := r.ReconcileObject(r.ServiceVectors, r.SetDesiredServiceVectors); err != nil {
+		return err
+	}
+	// reconcile noobaa-vectors route only if routes are enabled
+	if !r.NooBaa.Spec.DisableRoutes {
+		if err := r.ReconcileObjectOptional(r.RouteVectors, r.SetDesiredRouteVectors); err != nil {
+			return err
+		}
+	}
 	// the credentials that are created by cloud-credentials-operator sometimes take time
 	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
 	// creating the credential request as early as possible to try and avoid it
@@ -260,6 +269,20 @@ func (r *Reconciler) SetDesiredServiceS3() error {
 	return nil
 }
 
+// SetDesiredServiceS3 updates the ServiceS3 as desired for reconciling
+func (r *Reconciler) SetDesiredServiceVectors() error {
+	if r.NooBaa.Spec.DisableLoadBalancerService {
+		r.ServiceVectors.Spec.Type = corev1.ServiceTypeClusterIP
+		r.ServiceVectors.Spec.LoadBalancerSourceRanges = []string{}
+	} else {
+		// It is here in case disableLoadBalancerService is removed from the crd or changed to false
+		r.ServiceVectors.Spec.Type = corev1.ServiceTypeLoadBalancer
+		r.ServiceVectors.Spec.LoadBalancerSourceRanges = r.NooBaa.Spec.LoadBalancerSourceSubnets.Vectors
+	}
+	r.ServiceVectors.Spec.Selector["noobaa-s3"] = r.Request.Name
+	return nil
+}
+
 // addServicePortIfNotExists adds a port to the service's port list
 // only if a port with the same name doesn't already exist
 func (r *Reconciler) addServicePortIfNotExists(svc *corev1.Service, port corev1.ServicePort) {
@@ -276,6 +299,15 @@ func (r *Reconciler) SetDesiredRouteS3() error {
 	r.RouteS3.Spec.TLS.InsecureEdgeTerminationPolicy = "Allow"
 	if r.NooBaa.Spec.DenyHTTP {
 		r.RouteS3.Spec.TLS.InsecureEdgeTerminationPolicy = "None"
+	}
+	return nil
+}
+
+// SetDesiredRouteVectors updates the RouteVectors as desired for reconciling
+func (r *Reconciler) SetDesiredRouteVectors() error {
+	r.RouteVectors.Spec.TLS.InsecureEdgeTerminationPolicy = "Allow"
+	if r.NooBaa.Spec.DenyHTTP {
+		r.RouteVectors.Spec.TLS.InsecureEdgeTerminationPolicy = "None"
 	}
 	return nil
 }

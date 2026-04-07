@@ -170,6 +170,7 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	sys.Spec.ManualDefaultBackingStore = options.ManualDefaultBackingStore
 	sys.Spec.LoadBalancerSourceSubnets.S3 = options.S3LoadBalancerSourceSubnets
 	sys.Spec.LoadBalancerSourceSubnets.STS = options.STSLoadBalancerSourceSubnets
+	sys.Spec.LoadBalancerSourceSubnets.Vectors = options.VectorsLoadBalancerSourceSubnets
 
 	LoadConfigMapFromFlags()
 
@@ -660,6 +661,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		"S3-ENDPOINTS",
 		"STS-ENDPOINTS",
 		"IAM-ENDPOINTS",
+		"VECTORS-ENDPOINTS",
 		"IMAGE",
 		"PHASE",
 		"AGE",
@@ -672,6 +674,7 @@ func RunList(cmd *cobra.Command, args []string) {
 			fmt.Sprint(s.Status.Services.ServiceS3.NodePorts),
 			fmt.Sprint(s.Status.Services.ServiceSts.NodePorts),
 			fmt.Sprint(s.Status.Services.ServiceIam.NodePorts),
+			fmt.Sprint(s.Status.Services.ServiceVectors.NodePorts),
 			s.Status.ActualImage,
 			string(s.Status.Phase),
 			util.HumanizeDuration(time.Since(s.CreationTimestamp.Time).Round(time.Second)),
@@ -858,6 +861,19 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	fmt.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceIam.InternalDNS)
 	fmt.Println("InternalIP  :", r.NooBaa.Status.Services.ServiceIam.InternalIP)
 	fmt.Println("PodPorts    :", r.NooBaa.Status.Services.ServiceIam.PodPorts)
+
+	fmt.Println("")
+	fmt.Println("#---------------------#")
+	fmt.Println("#- Vectors Addresses -#")
+	fmt.Println("#---------------------#")
+	fmt.Println("")
+
+	util.PrettyPrint("ExternalDNS", r.NooBaa.Status.Services.ServiceVectors.ExternalDNS)
+	fmt.Println("ExternalIP  :", r.NooBaa.Status.Services.ServiceVectors.ExternalIP)
+	fmt.Println("NodePorts   :", r.NooBaa.Status.Services.ServiceVectors.NodePorts)
+	fmt.Println("InternalDNS :", r.NooBaa.Status.Services.ServiceVectors.InternalDNS)
+	fmt.Println("InternalIP  :", r.NooBaa.Status.Services.ServiceVectors.InternalIP)
+	fmt.Println("PodPorts    :", r.NooBaa.Status.Services.ServiceVectors.PodPorts)
 
 	fmt.Println("")
 	fmt.Println("#------------------#")

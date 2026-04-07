@@ -53,6 +53,14 @@ func validateNoobaaLoadbalancerSourceSubnets(nb nbv1.NooBaa) error {
 		}
 	}
 
+	for _, subnet := range nb.Spec.LoadBalancerSourceSubnets.Vectors {
+		if err := validateCIDR(subnet); err != nil {
+			return util.ValidationError{
+				Msg: fmt.Sprintf("Invalid Vectors loadbalancer source subnet %s: %s", subnet, err),
+			}
+		}
+	}
+
 	return nil
 }
 
