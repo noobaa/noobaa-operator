@@ -12,3 +12,4 @@ rules:
     resources:
       - noobaas
       - bucketclasses
+      - namespacestores

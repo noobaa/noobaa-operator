@@ -7264,7 +7264,7 @@ rules:
     - delete
 `
 
-const Sha256_deploy_role_ui_yaml = "d1929d57d9d9bf021e83be275ea45ec17f83a700d9a74936742ba50c41d2c0bb"
+const Sha256_deploy_role_ui_yaml = "38249d9c79eb75c4d20201f640c020ced37ec0200f304977324941097d99bf2a"
 
 const File_deploy_role_ui_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -7280,6 +7280,7 @@ rules:
     resources:
       - noobaas
       - bucketclasses
+      - namespacestores
 `
 
 const Sha256_deploy_scc_yaml = "baa4d3a3def2d63a5d9e53bc4fc1ac961f9b4fe5172db7118d1529caa14e2191"
