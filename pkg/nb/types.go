@@ -170,6 +170,9 @@ func (n *BigInt) ToString() string {
 
 // ToBig converts bigInt to a math/big.Int for overflow-safe arithmetic
 func (n *BigInt) ToBig() *big.Int {
+	if n == nil {
+		return big.NewInt(0)
+	}
 	return new(big.Int).Add(big.NewInt(n.N), new(big.Int).Mul(big.NewInt(n.Peta), big.NewInt(petaInBytes)))
 }
 
