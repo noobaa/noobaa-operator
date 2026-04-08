@@ -154,6 +154,10 @@ var TestEnv = false
 // created for noobaa S3 service
 var S3LoadBalancerSourceSubnets = []string{}
 
+// VectorsLoadBalancerSourceSubnets is used for setting the source subnets for the load balancer
+// created for noobaa vectors service
+var VectorsLoadBalancerSourceSubnets = []string{}
+
 // STSLoadBalancerSourceSubnets is used for setting the source subnets for the load balancer
 // created for noobaa STS service
 var STSLoadBalancerSourceSubnets = []string{}
@@ -341,6 +345,10 @@ func init() {
 	FlagSet.StringArrayVar(
 		&S3LoadBalancerSourceSubnets, "s3-load-balancer-source-subnets",
 		[]string{}, "The source subnets for the S3 service load balancer",
+	)
+	FlagSet.StringArrayVar(
+		&VectorsLoadBalancerSourceSubnets, "vectors-load-balancer-source-subnets",
+		[]string{}, "The source subnets for the vectors service load balancer",
 	)
 	FlagSet.StringArrayVar(
 		&STSLoadBalancerSourceSubnets, "sts-load-balancer-source-subnets",

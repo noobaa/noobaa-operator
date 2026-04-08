@@ -41,6 +41,10 @@ spec:
           secret:
             secretName: noobaa-iam-serving-cert
             optional: true
+        - name: vectors-secret
+          secret:
+            secretName: noobaa-vectors-serving-cert
+            optional: true
         # This service account token can be used to provide identity outside the cluster.
         # For example, this token can be used with AWS(AssumeRoleWithWebIdentity)/Azure(WorkloadIdentityCredential) 
         # to authenticate with AWS/Azure using IAM OIDC provider and STS.
@@ -87,6 +91,8 @@ spec:
               name: iam-https
             - containerPort: 9443
               name: metrics-https
+            - containerPort: 14443
+              name: vectors-https
           env:
             - name: NODE_NAME
               valueFrom:
@@ -182,6 +188,9 @@ spec:
               readOnly: true
             - name: sts-secret
               mountPath: /etc/sts-secret
+              readOnly: true
+            - name: vectors-secret
+              mountPath: /etc/vector-secret
               readOnly: true
             # used for aws sts endpoint type
             - name: bound-sa-token

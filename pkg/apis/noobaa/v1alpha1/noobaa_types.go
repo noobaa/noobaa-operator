@@ -34,6 +34,7 @@ type AnnotationsSpec map[string]Annotations
 // +kubebuilder:printcolumn:name="S3-Endpoints",type="string",JSONPath=".status.services.serviceS3.nodePorts",description="S3 Endpoints"
 // +kubebuilder:printcolumn:name="Sts-Endpoints",type="string",JSONPath=".status.services.serviceSts.nodePorts",description="STS Endpoints"
 // +kubebuilder:printcolumn:name="Iam-Endpoints",type="string",JSONPath=".status.services.serviceIam.nodePorts",description="IAM Endpoints"
+// +kubebuilder:printcolumn:name="Vectors-Endpoints",type="string",JSONPath=".status.services.serviceVectors.nodePorts",description="Vectors Endpoints"
 // +kubebuilder:printcolumn:name="Syslog-Endpoints",type="string",JSONPath=".status.services.serviceSyslog.nodePorts",description="Syslog Endpoints"
 // +kubebuilder:printcolumn:name="Image",type="string",JSONPath=".status.actualImage",description="Actual Image"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase"
@@ -331,6 +332,10 @@ type LoadBalancerSourceSubnetSpec struct {
 	// IAM is a list of subnets that will be allowed to access the Noobaa IAM service
 	// +optional
 	IAM []string `json:"iam,omitempty"`
+
+	// Vectors is a list of subnets that will be allowed to access the Noobaa Vectors service
+	// +optional
+	Vectors []string `json:"vectors,omitempty"`
 }
 
 // TLSProtocolVersion is the minimum TLS version for endpoint HTTPS servers.
@@ -722,12 +727,13 @@ type AccountsStatus struct {
 
 // ServicesStatus is the status info of the system's services
 type ServicesStatus struct {
-	ServiceMgmt ServiceStatus `json:"serviceMgmt"`
-	ServiceS3   ServiceStatus `json:"serviceS3"`
+	ServiceMgmt    ServiceStatus `json:"serviceMgmt"`
+	ServiceS3      ServiceStatus `json:"serviceS3"`
 	// +optional
-	ServiceSts    ServiceStatus `json:"serviceSts,omitempty"`
-	ServiceIam    ServiceStatus `json:"serviceIam,omitempty"`
-	ServiceSyslog ServiceStatus `json:"serviceSyslog,omitempty"`
+	ServiceSts     ServiceStatus `json:"serviceSts,omitempty"`
+	ServiceIam     ServiceStatus `json:"serviceIam,omitempty"`
+	ServiceVectors ServiceStatus `json:"serviceVectors,omitempty"`
+	ServiceSyslog  ServiceStatus `json:"serviceSyslog,omitempty"`
 }
 
 // UserStatus is the status info of a user secret
