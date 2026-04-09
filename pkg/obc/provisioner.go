@@ -347,6 +347,12 @@ func NewBucketRequest(
 		return nil, fmt.Errorf("failed to parse s3 port %q. got error: %v", sysClient.S3URL, err)
 	}
 
+	vectorsHostname := sysClient.VectorsURL.Hostname()
+	vectorsPort, err := strconv.Atoi(sysClient.VectorsURL.Port())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse vectors port %q. got error: %v", sysClient.VectorsURL, err)
+	}
+
 	r := &BucketRequest{
 		Provisioner: p,
 		OB:          ob,
@@ -391,6 +397,14 @@ func NewBucketRequest(
 			p.recorder.Event(r.OBC, "Warning", "BucketClassNotReady", msg)
 			return nil, errors.New(msg)
 		}
+
+		endpointHostname := s3Hostname
+		endpointPort := s3Port
+		if r.BucketClass.Spec.VectorPolicy != nil {
+			endpointHostname = vectorsHostname
+			endpointPort = vectorsPort
+		}
+
 		additionalConfig := r.OBC.Spec.AdditionalConfig
 		if additionalConfig == nil {
 			additionalConfig = map[string]string{}
@@ -400,8 +414,8 @@ func NewBucketRequest(
 			Spec: nbv1.ObjectBucketSpec{
 				Connection: &nbv1.ObjectBucketConnection{
 					Endpoint: &nbv1.ObjectBucketEndpoint{
-						BucketHost:           s3Hostname,
-						BucketPort:           s3Port,
+						BucketHost:           endpointHostname,
+						BucketPort:           endpointPort,
 						BucketName:           r.BucketName,
 						AdditionalConfigData: additionalConfig,
 					},

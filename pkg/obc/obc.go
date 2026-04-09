@@ -496,7 +496,11 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	}
 	fmt.Printf("\n")
 	fmt.Printf("Shell commands:\n")
-	fmt.Printf("  %-22s : alias s3='%saws s3 --no-verify-ssl --endpoint-url %s'\n", "AWS S3 Alias", credsEnv, sysClient.S3URL.String())
+	if isVector {
+		fmt.Printf("  %-22s : alias s3vectors='%saws s3vectors --no-verify-ssl --endpoint-url %s'\n", "AWS S3 Vectors Alias", credsEnv, sysClient.VectorsURL.String())
+	} else {
+		fmt.Printf("  %-22s : alias s3='%saws s3 --no-verify-ssl --endpoint-url %s'\n", "AWS S3 Alias", credsEnv, sysClient.S3URL.String())
+	}
 	fmt.Printf("\n")
 	if b != nil {
 		fmt.Printf("Bucket status:\n")
