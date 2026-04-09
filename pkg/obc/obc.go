@@ -67,6 +67,9 @@ func CmdCreate() *cobra.Command {
 		"Set quota max objects quantity config to requested bucket")
 	cmd.Flags().String("max-size", "",
 		"Set quota max size config to requested bucket")
+	// vectors bucket configuration
+	cmd.Flags().String("bucket-type", "",
+		"Set bucket type: '' (default) or 'vector'")
 	return cmd
 }
 
@@ -145,6 +148,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	gid, _ := cmd.Flags().GetInt("gid")
 	uid, _ := cmd.Flags().GetInt("uid")
 	distinguishedName, _ := cmd.Flags().GetString("distinguished-name")
+	bucketType, _ := cmd.Flags().GetString("bucket-type")
 
 	if distinguishedName != "" && (gid > -1 || uid > -1) {
 		log.Fatalf(`❌ NSFS account config cannot include both distinguished name and UID/GID`)
@@ -193,15 +197,26 @@ func RunCreate(cmd *cobra.Command, args []string) {
 			log.Fatalf(`❌ Could not get BucketClass %q in namespace %q`,
 				bucketClass.Name, bucketClass.Namespace)
 		}
-		if bucketClass.Spec.NamespacePolicy == nil && path != "" {
-			log.Fatalf(`❌ Could not create OBC %q with inner path while missing namespace bucketclass`, obc.Name)
+		if bucketClass.Spec.NamespacePolicy == nil && bucketClass.Spec.VectorPolicy == nil && path != "" {
+			log.Fatalf(`❌ Could not create OBC %q with inner path while missing namespace/vector bucketclass`, obc.Name)
+		}
+		if bucketType == "vector" && bucketClass.Spec.VectorPolicy == nil {
+			log.Fatalf(`❌ Could not create vector OBC %q with non-vector bucketclass %q`, obc.Name, bucketClass.Name)
+		}
+		if bucketClass.Spec.VectorPolicy != nil && bucketType != "vector" {
+			log.Fatalf(`❌ Could not create vector OBC %q with vector bucketclass %q missing vector bucket type flag`, obc.Name, bucketClass.Name)
 		}
 		obc.Spec.AdditionalConfig["bucketclass"] = bucketClassName
 		obc.Spec.AdditionalConfig["path"] = path
 		obc.Spec.AdditionalConfig["replicationPolicy"] = bucketClass.Spec.ReplicationPolicy
-
-	} else if path != "" {
-		log.Fatalf(`❌ Could not create OBC %q with inner path while missing namespace bucketclass`, obc.Name)
+		obc.Spec.AdditionalConfig["bucketType"] = bucketType
+	} else {
+		if bucketType == "vector" {
+			log.Fatalf(`❌ Could not create vector OBC %q with missing vector bucketclass`, obc.Name)
+		}
+		if path != "" {
+			log.Fatalf(`❌ Could not create OBC %q with inner path while missing namespace/vector bucketclass`, obc.Name)
+		}
 	}
 
 	if replicationPolicy != "" {
@@ -433,11 +448,21 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		util.Logger().Fatalf("❌ %s", err)
 	}
 	var b *nb.BucketInfo
+	var vb *nb.VectorBucketInfo
+
+	isVector := obc.Spec.AdditionalConfig["bucketType"] == "vector"
 	if obc.Spec.BucketName != "" {
 		nbClient := sysClient.NBClient
-		bucket, err := nbClient.ReadBucketAPI(nb.ReadBucketParams{Name: obc.Spec.BucketName})
-		if err == nil {
-			b = &bucket
+		if isVector {
+			vectorBucket, err := nbClient.GetVectorBucketAPI(nb.GetVectorBucketParams{VectorBucketName: obc.Spec.BucketName})
+			if err == nil {
+				vb = &vectorBucket
+			}
+		} else {
+			bucket, err := nbClient.ReadBucketAPI(nb.ReadBucketParams{Name: obc.Spec.BucketName})
+			if err == nil {
+				b = &bucket
+			}
 		}
 	}
 
@@ -497,8 +522,14 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		nb.WarnIfQuotaCappedByFree(b.Name, b, nil, b.Quota, func(format string, args ...interface{}) {
 			fmt.Fprintf(os.Stderr, "Warning: "+format+"\n", args...)
 		})
-		fmt.Printf("\n")
 	}
+	if vb != nil {
+		fmt.Printf("Bucket status:\n")
+		fmt.Printf("  %-22s : %s\n", "Name", vb.Name)
+		fmt.Printf("  %-22s : %s\n", "Bucket Type", "vector")
+		fmt.Printf("  %-22s : %s\n", "VectorDBType", vb.VectorDBType)
+	}
+	fmt.Printf("\n")
 }
 
 // RunList runs a CLI command
@@ -520,6 +551,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		"BUCKET-NAME",
 		"STORAGE-CLASS",
 		"BUCKET-CLASS",
+		"BUCKET-TYPE",
 		"PHASE",
 	)
 	scMap := map[string]*storagev1.StorageClass{}
@@ -545,12 +577,17 @@ func RunList(cmd *cobra.Command, args []string) {
 			}
 			bucketClass = sc.Parameters["bucketclass"]
 		}
+		bucketType := "object"
+		if obc.Spec.AdditionalConfig["bucketType"] == "vector" {
+			bucketType = "vector"
+		}
 		table.AddRow(
 			obc.Namespace,
 			obc.Name,
 			obc.Spec.BucketName,
 			obc.Spec.StorageClassName,
 			bucketClass,
+			bucketType,
 			string(obc.Status.Phase),
 		)
 	}
