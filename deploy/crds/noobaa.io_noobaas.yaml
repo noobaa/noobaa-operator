@@ -1970,22 +1970,13 @@ spec:
                         items:
                           description: |-
                             TLSGroup represents a supported TLS key exchange group.
-                            Follows the OpenShift API TLSCurvePreferences definition (openshift/api#2583).
-                          enum:
-                          - X25519
-                          - secp256r1
-                          - secp384r1
-                          - secp521r1
-                          - X25519MLKEM768
+                            Follows the openshift storage API TLSGroup definition. see https://github.com/red-hat-storage/ocs-tls-profiles
                           type: string
                         type: array
                       tlsMinVersion:
                         description: |-
                           TLSMinVersion is used to specify the minimal version of the TLS protocol
                           that is negotiated during the TLS handshake.
-                        enum:
-                        - VersionTLS12
-                        - VersionTLS13
                         nullable: true
                         type: string
                     type: object

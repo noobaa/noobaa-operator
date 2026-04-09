@@ -1492,7 +1492,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "251ecf7de63886ab49041bb919ccb0f19341ec80ce55fb78e04c779d99ec8b5e"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "2036917b6e311569f1026eb39d3862d096d7a674dc97553a7f962f0172f40784"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3466,22 +3466,13 @@ spec:
                         items:
                           description: |-
                             TLSGroup represents a supported TLS key exchange group.
-                            Follows the OpenShift API TLSCurvePreferences definition (openshift/api#2583).
-                          enum:
-                          - X25519
-                          - secp256r1
-                          - secp384r1
-                          - secp521r1
-                          - X25519MLKEM768
+                            Follows the openshift storage API TLSGroup definition. see https://github.com/red-hat-storage/ocs-tls-profiles
                           type: string
                         type: array
                       tlsMinVersion:
                         description: |-
                           TLSMinVersion is used to specify the minimal version of the TLS protocol
                           that is negotiated during the TLS handshake.
-                        enum:
-                        - VersionTLS12
-                        - VersionTLS13
                         nullable: true
                         type: string
                     type: object

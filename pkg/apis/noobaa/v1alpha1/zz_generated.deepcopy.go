@@ -1644,7 +1644,11 @@ func (in *S3CompatibleSpec) DeepCopy() *S3CompatibleSpec {
 func (in *SecuritySpec) DeepCopyInto(out *SecuritySpec) {
 	*out = *in
 	in.KeyManagementService.DeepCopyInto(&out.KeyManagementService)
-	in.APIServerSecurity.DeepCopyInto(&out.APIServerSecurity)
+	if in.APIServerSecurity != nil {
+		in, out := &in.APIServerSecurity, &out.APIServerSecurity
+		*out = new(TLSSecuritySpec)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
