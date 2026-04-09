@@ -1224,6 +1224,7 @@ type Client struct {
 	NBClient    nb.Client
 	MgmtURL     *url.URL
 	S3URL       *url.URL
+	VectorsURL  *url.URL
 }
 
 // GetNBClient returns an api client
@@ -1262,6 +1263,7 @@ func Connect(isExternal bool) (*Client, error) {
 	authToken := r.SecretOp.StringData["auth_token"]
 	mgmtStatus := &r.NooBaa.Status.Services.ServiceMgmt
 	s3Status := &r.NooBaa.Status.Services.ServiceS3
+	vectorsStatus := &r.NooBaa.Status.Services.ServiceVectors
 
 	if authToken == "" {
 		return nil, fmt.Errorf("Connect(): Operator secret with auth token is not ready")
@@ -1272,9 +1274,14 @@ func Connect(isExternal bool) (*Client, error) {
 	if len(s3Status.InternalDNS) == 0 {
 		return nil, fmt.Errorf("Connect(): System s3 service (InternalDNS) is not ready")
 	}
+	if len(vectorsStatus.InternalDNS) == 0 {
+		return nil, fmt.Errorf("Connect(): System vectors service (InternalDNS) is not ready")
+	}
 
 	mgmtEndpoint := mgmtStatus.NodePorts[0]
 	s3Endpoint := s3Status.InternalDNS[0]
+	vectorsEndpoint := vectorsStatus.InternalDNS[0]
+
 	var nbClient nb.Client
 
 	if isExternal {
@@ -1299,6 +1306,12 @@ func Connect(isExternal bool) (*Client, error) {
 			s3Endpoint = s3Status.NodePorts[0]
 		}
 
+		if len(vectorsStatus.ExternalIP) > 0 {
+			vectorsEndpoint = vectorsStatus.ExternalIP[0]
+		} else if len(vectorsStatus.NodePorts) > 0 {
+			vectorsEndpoint = vectorsStatus.NodePorts[0]
+		}
+
 	} else {
 		nbClient = nb.NewClient(&nb.APIRouterServicePort{
 			ServiceMgmt: r.ServiceMgmt,
@@ -1315,6 +1328,10 @@ func Connect(isExternal bool) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Connect(): Failed to parse s3 url %q. got error: %v", s3Endpoint, err)
 	}
+	vectorsURL, err := url.Parse(vectorsEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("Connect(): Failed to parse vectors url %q. got error: %v", vectorsEndpoint, err)
+	}
 
 	return &Client{
 		NooBaa:      r.NooBaa,
@@ -1324,6 +1341,7 @@ func Connect(isExternal bool) (*Client, error) {
 		NBClient:    nbClient,
 		MgmtURL:     mgmtURL,
 		S3URL:       s3URL,
+		VectorsURL:  vectorsURL,
 	}, nil
 }
 
