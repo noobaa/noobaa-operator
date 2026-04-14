@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -23,10 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-)
-
-const (
-	strTrue string = "true"
 )
 
 // Reconciler is the context for loading or reconciling a noobaa system
@@ -357,50 +352,24 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 			fmt.Sprintf("%v", err.Error()))
 	}
 
-	annotationValue, exists := util.GetAnnotationValue(r.NooBaaAccount.Annotations, "remote-operator")
-	if exists {
-		if strings.ToLower(annotationValue) == strTrue {
-			// create join secret conatining auth token for remote noobaa account
-			secretServer := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
-			secretServer.Namespace = r.Request.Namespace
-			secretServer.Name = options.SystemName
-			if !util.KubeCheck(secretServer) {
-				return fmt.Errorf("cannot create an auth token for remote operator - server secret not found")
-			}
-
-			token, err := util.MakeAuthToken(map[string]any{
-				"system": r.NooBaa.Name,
-				"role":   "operator",
-				"email":  options.OperatorAccountEmail,
-			}, []byte(secretServer.StringData["jwt"]))
-			if err != nil {
-				return fmt.Errorf("cannot create an auth token for remote operator, error: %v", err)
-			}
-			accessKeys := accountInfo.AccessKeys[0]
-			r.Secret.StringData["auth_token"] = token
-			r.Secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
-			r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
-			r.Secret.StringData["ARN"] = string(accountInfo.ARN)
+	var accessKeys nb.S3AccessKeys
+	// if we didn't get the access keys in the create_account reply we might be talking to an older noobaa version (prior to 5.1)
+	// in that case try to get it using read account
+	if len(accountInfo.AccessKeys) == 0 {
+		log.Info("CreateAccountAPI did not return access keys. calling ReadAccountAPI to get keys..")
+		readAccountReply, err := r.NBClient.ReadAccountAPI(nb.ReadAccountParams{Email: r.NooBaaAccount.Name})
+		if err != nil {
+			return err
 		}
+		accessKeys = readAccountReply.AccessKeys[0]
 	} else {
-		var accessKeys nb.S3AccessKeys
-		// if we didn't get the access keys in the create_account reply we might be talking to an older noobaa version (prior to 5.1)
-		// in that case try to get it using read account
-		if len(accountInfo.AccessKeys) == 0 {
-			log.Info("CreateAccountAPI did not return access keys. calling ReadAccountAPI to get keys..")
-			readAccountReply, err := r.NBClient.ReadAccountAPI(nb.ReadAccountParams{Email: r.NooBaaAccount.Name})
-			if err != nil {
-				return err
-			}
-			accessKeys = readAccountReply.AccessKeys[0]
-		} else {
-			accessKeys = accountInfo.AccessKeys[0]
-		}
-		r.Secret.StringData = map[string]string{}
-		r.Secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
-		r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
-		r.Secret.StringData["ARN"] = string(accountInfo.ARN)
+		accessKeys = accountInfo.AccessKeys[0]
 	}
+	r.Secret.StringData = map[string]string{}
+	r.Secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
+	r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
+	r.Secret.StringData["ARN"] = string(accountInfo.ARN)
+
 	r.Own(r.Secret)
 	err = r.Client.Create(r.Ctx, r.Secret)
 	if err != nil {

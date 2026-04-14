@@ -77,15 +77,12 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.reconcileAdmissionTLSConf(); err != nil {
 		return err
 	}
-	// No endpoint creation is required for remote noobaa client
-	if !util.IsRemoteClientNoobaa(r.NooBaa.GetAnnotations()) {
-		util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints))
-		if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
-			return err
-		}
-		if err := r.ReconcileHPAEndpoint(); err != nil {
-			return err
-		}
+	util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints))
+	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
+		return err
+	}
+	if err := r.ReconcileHPAEndpoint(); err != nil {
+		return err
 	}
 
 	if err := r.RegisterToCluster(); err != nil {
@@ -1908,9 +1905,6 @@ func (r *Reconciler) UpdateBucketClassesPhase(Buckets []nb.BucketInfo) {
 
 // ReconcileDeploymentEndpointStatus creates/updates the endpoints deployment
 func (r *Reconciler) ReconcileDeploymentEndpointStatus() error {
-	if util.IsRemoteClientNoobaa(r.NooBaa.GetAnnotations()) {
-		return nil
-	}
 	if !util.KubeCheck(r.DeploymentEndpoint) {
 		return fmt.Errorf("Could not load endpoint deployment")
 	}
@@ -2077,7 +2071,6 @@ func derefAzureBlobString(p *string) string {
 	}
 	return *p
 }
-
 
 // lastAdmissionTLSSpec caches the most recently applied APIServerSecurity spec
 // so that we only trigger a TLS reload when the settings actually change.
