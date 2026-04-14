@@ -4322,7 +4322,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "0b27c64555dcf8b21934c3b58419ca0d40a69868fe0764028edf07f0217195e0"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "558ec22578b22c3ac3a6d6b72fa95a7122739014ded0a73adbac319aa4457aed"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4372,7 +4372,7 @@ spec:
             secretName: noobaa-vectors-serving-cert
             optional: true
         # This service account token can be used to provide identity outside the cluster.
-        # For example, this token can be used with AWS(AssumeRoleWithWebIdentity)/Azure(WorkloadIdentityCredential) 
+        # For example, this token can be used with AWS(AssumeRoleWithWebIdentity)/Azure(WorkloadIdentityCredential)
         # to authenticate with AWS/Azure using IAM OIDC provider and STS.
         - name: bound-sa-token
           projected:
@@ -4449,6 +4449,11 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_VERSION_AUTH_ENABLED
+            - name: SYSTEM_STORE_SOURCE
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: ENDPOINT_SYSTEM_STORE_SOURCE
             - name: MGMT_ADDR
             - name: SYSLOG_ADDR
             - name: BG_ADDR
