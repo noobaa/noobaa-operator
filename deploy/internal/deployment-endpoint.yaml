@@ -46,7 +46,7 @@ spec:
             secretName: noobaa-vectors-serving-cert
             optional: true
         # This service account token can be used to provide identity outside the cluster.
-        # For example, this token can be used with AWS(AssumeRoleWithWebIdentity)/Azure(WorkloadIdentityCredential) 
+        # For example, this token can be used with AWS(AssumeRoleWithWebIdentity)/Azure(WorkloadIdentityCredential)
         # to authenticate with AWS/Azure using IAM OIDC provider and STS.
         - name: bound-sa-token
           projected:
@@ -123,6 +123,11 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_VERSION_AUTH_ENABLED
+            - name: SYSTEM_STORE_SOURCE
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: ENDPOINT_SYSTEM_STORE_SOURCE
             - name: MGMT_ADDR
             - name: SYSLOG_ADDR
             - name: BG_ADDR
