@@ -1492,7 +1492,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "2036917b6e311569f1026eb39d3862d096d7a674dc97553a7f962f0172f40784"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "e49d45bfee6697fb025e759584262d04791477979fb9d572fed2c1a80a3e7d90"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3512,9 +3512,10 @@ spec:
                     operator:
                       description: |-
                         Operator represents a key's relationship to the value.
-                        Valid operators are Exists and Equal. Defaults to Equal.
+                        Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
                         Exists is equivalent to wildcard for value, so that a pod can
                         tolerate all taints of a particular category.
+                        Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
                       type: string
                     tolerationSeconds:
                       description: |-
