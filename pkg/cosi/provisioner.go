@@ -19,7 +19,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/container-object-storage-interface-provisioner-sidecar/pkg/provisioner"
 	cosi "sigs.k8s.io/container-object-storage-interface-spec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,13 +34,13 @@ import (
 type Provisioner struct {
 	client    client.Client
 	scheme    *runtime.Scheme
-	recorder  record.EventRecorder
+	recorder  events.EventRecorder
 	Logger    *logrus.Entry
 	Namespace string
 }
 
 // RunProvisioner will run the COSI provisioner
-func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder record.EventRecorder) error {
+func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder events.EventRecorder) error {
 
 	driverName := options.COSIDriverName()
 	log := logrus.WithField("provisioner", driverName)

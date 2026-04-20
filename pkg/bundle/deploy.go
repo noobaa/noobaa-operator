@@ -6785,7 +6785,7 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "22c739e1b81a9d3c1b167b89c0e8e6757b2981b1434071aa4441332ec4c68d64"
+const Sha256_deploy_role_yaml = "074639a33687392f9d7d914133672af3f532d5f36bee61f9422f019f5aee394c"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6819,6 +6819,14 @@ rules:
   - serviceaccounts
   verbs:
   - '*'
+- apiGroups:
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+  - update
 - apiGroups:
   - ""
   resources:
@@ -7089,7 +7097,7 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_core_yaml = "1ec420603dcec64b247852d106535a85a1a866129f78f790c2e5c9285f029ae7"
+const Sha256_deploy_role_core_yaml = "91d9a513baeb2a06fa389b7c62cec8b415c43e925ef0496e47d880fe27832030"
 
 const File_deploy_role_core_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -7121,6 +7129,14 @@ rules:
   - serviceaccounts
   verbs:
   - '*'
+- apiGroups:
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+  - update
 - apiGroups:
   - apps
   resources:
@@ -7167,7 +7183,7 @@ rules:
       - use
 `
 
-const Sha256_deploy_role_endpoint_yaml = "27ace6cdcae4d87add5ae79265c4eee9d247e5910fc8a74368139d31add6dac2"
+const Sha256_deploy_role_endpoint_yaml = "bf6f1e8a4cc2fc348d56ff7dbbe4af7628694bf81aed9a2ffa8bf290a042bb1b"
 
 const File_deploy_role_endpoint_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -7199,6 +7215,14 @@ rules:
   - serviceaccounts
   verbs:
   - '*'
+- apiGroups:
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+  - update
 - apiGroups:
   - apps
   resources:

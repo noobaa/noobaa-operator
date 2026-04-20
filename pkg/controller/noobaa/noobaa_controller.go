@@ -49,7 +49,7 @@ func Add(mgr manager.Manager) error {
 					req.NamespacedName,
 					mgr.GetClient(),
 					mgr.GetScheme(),
-					mgr.GetEventRecorderFor("noobaa-operator"),
+					mgr.GetEventRecorder("noobaa-operator"),
 				).Reconcile()
 			}),
 		SkipNameValidation: &[]bool{true}[0],

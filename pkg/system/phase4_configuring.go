@@ -1073,7 +1073,7 @@ func (r *Reconciler) fallbackToPVPoolWithEvent(backingStoreType nbv1.StoreType, 
 		backingStoreType, minutesToWaitForDefaultBSCreation, nbv1.StoreTypePVPool)
 	additionalInfoForLogs := fmt.Sprintf(" (could not get Secret %s).", secretName)
 	r.Logger.Info(message + additionalInfoForLogs)
-	r.Recorder.Event(r.NooBaa, corev1.EventTypeWarning, "DefaultBackingStoreFailure", message)
+	r.Recorder.Eventf(r.NooBaa, nil, corev1.EventTypeWarning, "DefaultBackingStoreFailure", "Report", "%s", message)
 	if err := r.preparePVPoolBackingStore(); err != nil {
 		return err
 	}
@@ -1107,7 +1107,7 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 	// create the actual S3 bucket
 	region, err := util.GetAWSRegion()
 	if err != nil {
-		r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DefaultBackingStoreFailure",
+		r.Recorder.Eventf(r.NooBaa, nil, corev1.EventTypeWarning, "DefaultBackingStoreFailure", "Report",
 			"Failed to get AWSRegion. using	 us-east-1 as the default region. %q", err)
 		region = "us-east-1"
 	}
@@ -1326,7 +1326,7 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 	}
 	r.GCPBucketCreds.StringData["GoogleServiceAccountPrivateKeyJson"] = cloudCredsSecret.StringData["service_account.json"]
 	ctx := context.Background()
-	gcpclient, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(cloudCredsSecret.StringData["service_account.json"])))
+	gcpclient, err := storage.NewClient(ctx, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(cloudCredsSecret.StringData["service_account.json"])))
 	if err != nil {
 		r.Logger.Info(err)
 		return err
