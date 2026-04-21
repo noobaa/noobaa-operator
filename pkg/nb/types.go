@@ -792,6 +792,30 @@ func BigIntToHumanBytes(bi *BigInt) string {
 	return IntToHumanBytes(bi.N + (bi.Peta * petaInBytes))
 }
 
+// BigIntToNonNegativeHumanBytes is like BigIntToHumanBytes, but clamps negative values to 0.
+// This is intended for user-facing "available to upload" reporting where negative values are not meaningful.
+func BigIntToNonNegativeHumanBytes(bi *BigInt) string {
+	if bi == nil {
+		return IntToHumanBytes(0)
+	}
+	if bi.ToBig().Sign() < 0 {
+		return IntToHumanBytes(0)
+	}
+	return BigIntToHumanBytes(bi)
+}
+
+// BigIntToNonNegativeString is like (*BigInt).ToString(), but clamps negative values to "0".
+// This is intended for user-facing "available quantity" reporting where negative values are not meaningful.
+func BigIntToNonNegativeString(bi *BigInt) string {
+	if bi == nil {
+		return "0"
+	}
+	if bi.ToBig().Sign() < 0 {
+		return "0"
+	}
+	return bi.ToString()
+}
+
 // IntToHumanBytes returns a human readable bytes string
 func IntToHumanBytes(bi int64) string {
 	f, u := GetBytesAndUnits(bi, -1)

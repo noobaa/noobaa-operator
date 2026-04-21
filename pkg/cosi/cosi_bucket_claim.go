@@ -246,8 +246,8 @@ func RunStatusBucketClaim(cmd *cobra.Command, args []string) {
 		if b.DataCapacity != nil {
 			fmt.Printf("  %-22s : %s\n", "Data Size", nb.BigIntToHumanBytes(b.DataCapacity.Size))
 			fmt.Printf("  %-22s : %s\n", "Data Size Reduced", nb.BigIntToHumanBytes(b.DataCapacity.SizeReduced))
-			fmt.Printf("  %-22s : %s\n", "Data Space Avail", nb.BigIntToHumanBytes(b.DataCapacity.AvailableSizeToUpload))
-			fmt.Printf("  %-22s : %s\n", "Num Objects Avail", b.DataCapacity.AvailableQuantityToUpload.ToString())
+			fmt.Printf("  %-22s : %s\n", "Data Space Avail", nb.BigIntToNonNegativeHumanBytes(b.DataCapacity.AvailableSizeToUpload))
+			fmt.Printf("  %-22s : %s\n", "Num Objects Avail", nb.BigIntToNonNegativeString(b.DataCapacity.AvailableQuantityToUpload))
 		}
 		fmt.Printf("\n")
 	}
