@@ -25,7 +25,7 @@ require (
 	github.com/go-test/deep v1.1.1
 	github.com/google/uuid v1.6.0
 	github.com/kedacore/keda/v2 v2.18.3
-	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20221122204822-d1a8c34382f1
+	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20260420161730-5164e3746489
 	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.4.0
 	github.com/libopenstorage/secrets v0.0.0-20240416031220-a17cf7f72c6c
 	github.com/marstr/randname v0.0.0-20200428202425-99aca53a2176
@@ -269,4 +269,4 @@ exclude (
 	k8s.io/client-go v12.0.0+incompatible
 )
 
-replace github.com/kube-object-storage/lib-bucket-provisioner => github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20220811192603-abc54caa34ac
+replace github.com/kube-object-storage/lib-bucket-provisioner => github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20260420161730-5164e3746489
