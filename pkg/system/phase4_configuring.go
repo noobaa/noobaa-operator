@@ -480,7 +480,8 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 	podSpec.Volumes = r.DefaultDeploymentEndpoint.Volumes
 	container.VolumeMounts = r.DefaultDeploymentEndpoint.Containers[0].VolumeMounts
 
-	if util.KubeCheckQuiet(r.CaBundleConf) {
+	// we want to check that the cm exists and also that it has data in it
+	if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
 		configMapVolumes := []corev1.Volume{{
 			Name: r.CaBundleConf.Name,
 			VolumeSource: corev1.VolumeSource{
@@ -498,7 +499,7 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 		util.MergeVolumeList(&podSpec.Volumes, &configMapVolumes)
 		configMapVolumeMounts := []corev1.VolumeMount{{
 			Name:      r.CaBundleConf.Name,
-			MountPath: "/etc/ocp-injected-ca-bundle.crt",
+			MountPath: "/etc/ocp-injected-ca-bundle",
 			ReadOnly:  true,
 		}}
 		util.MergeVolumeMountList(&container.VolumeMounts, &configMapVolumeMounts)
@@ -1011,6 +1012,10 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 				*result.Credentials.SecretAccessKey,
 				*result.Credentials.SessionToken,
 			),
+			HTTPClient: &http.Client{
+				Transport: util.GlobalCARefreshingTransport,
+				Timeout:   10 * time.Second,
+			},
 			Region: &region,
 		}
 	} else { // handle AWS long-lived credentials (not STS)
@@ -1020,6 +1025,10 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 				cloudCredsSecret.StringData["aws_secret_access_key"],
 				"",
 			),
+			HTTPClient: &http.Client{
+				Transport: util.GlobalCARefreshingTransport,
+				Timeout:   10 * time.Second,
+			},
 			Region: &region,
 		}
 	}
