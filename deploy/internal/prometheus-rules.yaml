@@ -90,8 +90,10 @@ spec:
     rules:
     - alert: NooBaaReplicationTargetUnreachable
       annotations:
-        description: A NooBaa replication from bucket {{ $labels.source_bucket }} to bucket
-          {{ $labels.target_bucket }} is failing for more than 5m
+        description: >-
+          A NooBaa replication from bucket {{ $labels.source_bucket }} to bucket {{ $labels.target_bucket }}
+          is failing for more than 5m.
+          {{ if match "^[0-9a-fA-F]{24}$" $labels.target_bucket }} If the target bucket appears as a hash rather than a name, the target bucket has likely been deleted and is no longer resolvable.{{ end }}
         message: A NooBaa Replication Target Is Unreachable
         severity_level: warning
         storage_type: NooBaa

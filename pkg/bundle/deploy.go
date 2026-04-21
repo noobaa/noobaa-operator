@@ -4912,7 +4912,7 @@ spec:
         secretName: AGENT_CONFIG_SECRET_NAME
 `
 
-const Sha256_deploy_internal_prometheus_rules_yaml = "e9459a8324df510af74b253ed24c155c5bacaf7b4d4ac4912b6c7863e965089e"
+const Sha256_deploy_internal_prometheus_rules_yaml = "3b9a7ef49b4b136643c22673863fc3be08cca0ca1365d026d7f38a3d76c3e5b8"
 
 const File_deploy_internal_prometheus_rules_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -5006,8 +5006,10 @@ spec:
     rules:
     - alert: NooBaaReplicationTargetUnreachable
       annotations:
-        description: A NooBaa replication from bucket {{ $labels.source_bucket }} to bucket
-          {{ $labels.target_bucket }} is failing for more than 5m
+        description: >-
+          A NooBaa replication from bucket {{ $labels.source_bucket }} to bucket {{ $labels.target_bucket }}
+          is failing for more than 5m.
+          {{ if match "^[0-9a-fA-F]{24}$" $labels.target_bucket }} If the target bucket appears as a hash rather than a name, the target bucket has likely been deleted and is no longer resolvable.{{ end }}
         message: A NooBaa Replication Target Is Unreachable
         severity_level: warning
         storage_type: NooBaa
