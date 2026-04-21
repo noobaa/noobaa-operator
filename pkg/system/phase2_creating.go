@@ -41,10 +41,10 @@ const (
 	falseStr                string = "false"
 	notificationsVolume     string = "notif-vol"
 	postgresSecretMountPath string = "/etc/postgres-secret"
-	clientIDEnvVar          string = "ClientId"
-	tenantIDEnvVar          string = "TenantId"
-	subscriptionIDEnvVar    string = "SubscriptionId"
-	resourcegroupIDEnvVar   string = "ResourcegroupId"
+	clientIDEnvVar          string = "CLIENTID"
+	tenantIDEnvVar          string = "TENANTID"
+	subscriptionIDEnvVar    string = "SUBSCRIPTIONID"
+	resourcegroupIDEnvVar   string = "RESOURCEGROUP"
 )
 
 // ReconcilePhaseCreating runs the reconcile phase
