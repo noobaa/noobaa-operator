@@ -159,3 +159,93 @@ var _ = Describe("OBC referenced BucketClass", func() {
 		})
 	})
 })
+
+var _ = Describe("getExternalDNSDetails", func() {
+	noobaaWithExternalDNS := func(s3URLs, vectorsURLs []string) *nbv1.NooBaa {
+		return &nbv1.NooBaa{
+			Status: nbv1.NooBaaStatus{
+				Services: &nbv1.ServicesStatus{
+					ServiceS3:      nbv1.ServiceStatus{ExternalDNS: s3URLs},
+					ServiceVectors: nbv1.ServiceStatus{ExternalDNS: vectorsURLs},
+				},
+			},
+		}
+	}
+
+	It("returns host and port from the first S3 ExternalDNS entry", func() {
+		host, port, err := getExternalDNSDetails(
+			noobaaWithExternalDNS([]string{"https://s3.route.example.com:443"}, nil),
+			externalDNSServiceS3,
+		)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(host).To(Equal("s3.route.example.com"))
+		Expect(port).To(Equal(443))
+	})
+
+	It("returns host and port from the first Vectors ExternalDNS entry", func() {
+		host, port, err := getExternalDNSDetails(
+			noobaaWithExternalDNS(nil, []string{"https://vectors.apps.example.com:8443"}),
+			externalDNSServiceVectors,
+		)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(host).To(Equal("vectors.apps.example.com"))
+		Expect(port).To(Equal(8443))
+	})
+
+	It("uses the first URL when S3 ExternalDNS lists multiple entries", func() {
+		host, port, err := getExternalDNSDetails(
+			noobaaWithExternalDNS([]string{"https://first.route.test:443", "https://second.route.test:443"}, nil),
+			externalDNSServiceS3,
+		)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(host).To(Equal("first.route.test"))
+		Expect(port).To(Equal(443))
+	})
+
+	It("returns an error when the selected service has no ExternalDNS", func() {
+		_, _, err := getExternalDNSDetails(
+			noobaaWithExternalDNS(nil, []string{"https://vectors-only:443"}),
+			externalDNSServiceS3,
+		)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("no external"))
+		Expect(err.Error()).To(ContainSubstring("s3"))
+	})
+
+	It("returns an error for an unknown externalDNSService value", func() {
+		_, _, err := getExternalDNSDetails(
+			noobaaWithExternalDNS([]string{"https://x:443"}, nil),
+			externalDNSService("other"),
+		)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("unknown external DNS service"))
+	})
+
+	It("returns a parse error when the primary URL is invalid", func() {
+		_, _, err := getExternalDNSDetails(
+			noobaaWithExternalDNS([]string{"not-a-valid-request-uri"}, nil),
+			externalDNSServiceS3,
+		)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns an error when the URL omits a numeric port", func() {
+		_, _, err := getExternalDNSDetails(
+			noobaaWithExternalDNS([]string{"https://s3.example.com"}, nil),
+			externalDNSServiceS3,
+		)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("failed to parse external DNS"))
+	})
+
+	It("getExternalDNSDetails returns an error when NooBaa Status.Services is nil", func() {
+		for _, nb := range []*nbv1.NooBaa{
+			{},
+			{Status: nbv1.NooBaaStatus{Services: nil}},
+		} {
+			_, _, err := getExternalDNSDetails(nb, externalDNSServiceS3)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("no services found"))
+		}
+	})
+})

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -31,8 +32,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type externalDNSService string
+
 const (
-	allNamespaces = ""
+	allNamespaces                                = ""
+	externalDNSServiceS3      externalDNSService = "s3"
+	externalDNSServiceVectors externalDNSService = "vectors"
 )
 
 var excludeBucketTaggingLabelKeysSet = map[string]struct{}{
@@ -403,6 +408,20 @@ func NewBucketRequest(
 		if r.BucketClass.Spec.VectorPolicy != nil {
 			endpointHostname = vectorsHostname
 			endpointPort = vectorsPort
+		}
+		if util.IsRemoteObcAnnotation(r.OBC.Annotations) {
+			extSvc := externalDNSServiceS3
+			if r.BucketClass.Spec.VectorPolicy != nil {
+				extSvc = externalDNSServiceVectors
+			}
+			extHost, extPort, externalErr := getExternalDNSDetails(sysClient.NooBaa, extSvc)
+			if externalErr != nil {
+				p.recorder.Event(r.OBC, "Warning", "RemoteOBCExternalDNSUnavailable",
+					fmt.Sprintf("using internal DNS details: %v", externalErr))
+			} else {
+				endpointHostname = extHost
+				endpointPort = extPort
+			}
 		}
 
 		additionalConfig := r.OBC.Spec.AdditionalConfig
@@ -935,4 +954,38 @@ func getBucketClass(
 	}
 
 	return bucketClass, false
+}
+
+// getExternalDNSDetails returns hostname and port for the ObjectBucket ConfigMap from NooBaa status ExternalDNS
+func getExternalDNSDetails(nb *nbv1.NooBaa, svc externalDNSService) (string, int, error) {
+	if nb == nil || nb.Status.Services == nil {
+		return "", 0, fmt.Errorf("no services found in status")
+	}
+	var externalDNS []string
+	switch svc {
+	case externalDNSServiceS3:
+		externalDNS = nb.Status.Services.ServiceS3.ExternalDNS
+	case externalDNSServiceVectors:
+		externalDNS = nb.Status.Services.ServiceVectors.ExternalDNS
+	default:
+		return "", 0, fmt.Errorf("unknown external DNS service %q", svc)
+	}
+	if len(externalDNS) == 0 {
+		return "", 0, fmt.Errorf("no external %q service endpoint in status (Route or LoadBalancer)", svc)
+	}
+	// ExternalDNS order is defined in CheckServiceStatus:
+	// append Route URL when route.Spec.Host is set, then append each LoadBalancer ingress hostname.
+	// For status produced by that code, when both exist index 0 is always the Route URL;
+	primaryExternalDNS := externalDNS[0]
+	uri, err := url.ParseRequestURI(primaryExternalDNS)
+	if err != nil {
+		return "", 0, err
+	}
+	hostname := uri.Hostname()
+	portStr := uri.Port()
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to parse external DNS in %q service: port %q. got error: %v", svc, portStr, err)
+	}
+	return hostname, port, nil
 }
