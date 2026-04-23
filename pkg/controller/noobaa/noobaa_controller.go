@@ -8,6 +8,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	ocstlsv1 "github.com/red-hat-storage/ocs-tls-profiles/api/v1"
 	"github.com/sirupsen/logrus"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -67,12 +68,14 @@ func Add(mgr manager.Manager) error {
 		Scheme:    mgr.GetScheme(),
 	}
 
-	// Predicate that allows events that only change spec, labels or finalizers will log any allowed events
-	// This will stop infinite reconciles that triggered by status or irrelevant metadata changes
+	// Predicate that allows events that only change spec, labels, finalizers, or the
+	// TLS profile annotation. This stops infinite reconciles triggered by status or
+	// other irrelevant metadata changes.
 	noobaaPredicate := util.ComposePredicates(
 		predicate.GenerationChangedPredicate{},
 		util.LabelsChangedPredicate{},
 		util.FinalizersChangedPredicate{},
+		util.TLSProfileAnnotationChangedPredicate{},
 	)
 
 	// Watch for changes on resources to trigger reconcile
@@ -107,6 +110,24 @@ func Add(mgr manager.Manager) error {
 	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.ConfigMap{}, ownerHandler, &filterForOwnerPredicate, &logEventsPredicate))
 	if err != nil {
 		return err
+	}
+
+	// TLSProfile CRD is only installed on OpenShift/ODF clusters. c.Watch succeeds at
+	// setup time even when the CRD is absent, but the manager will fail to sync the
+	// informer cache at startup. Use KubeList to probe availability first and skip the
+	// watch entirely on environments where the CRD is not installed.
+	if util.KubeList(&ocstlsv1.TLSProfileList{}, client.InNamespace(options.Namespace)) {
+		tlsProfileHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+			return []reconcile.Request{{
+				NamespacedName: types.NamespacedName{
+					Name:      options.SystemName,
+					Namespace: obj.GetNamespace(),
+				},
+			}}
+		})
+		if err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &ocstlsv1.TLSProfile{}, tlsProfileHandler, &logEventsPredicate)); err != nil {
+			return err
+		}
 	}
 
 	storageClassHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, mo client.Object) []reconcile.Request {

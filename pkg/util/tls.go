@@ -2,99 +2,135 @@ package util
 
 import (
 	"crypto/tls"
+	"fmt"
 	"strings"
 
-	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	ocstlsv1 "github.com/red-hat-storage/ocs-tls-profiles/api/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// IanaCipherEntry holds the Go numeric ID and OpenSSL-format name for a single
-// IANA/Go cipher suite. Node.js endpoints need the OpenSSL name while Go's
-// tls.Config.CipherSuites needs the numeric ID.
-type IanaCipherEntry struct {
-	CipherGoID        uint16
-	CipherOpenSSLName string
+// TLSProfileAnnotation is the NooBaa CR annotation that holds the name of the
+// TLSProfile CR to use for TLS configuration.
+const TLSProfileAnnotation = "noobaa.io/tls-profile-name"
+
+// TLSProfileDomain is the domain used to resolve the TLSConfig from a TLSProfile.
+const TLSProfileDomain = "noobaa.io"
+
+// LoadTLSProfile reads the TLSProfileAnnotation from annotations and fetches the
+// referenced TLSProfile CR from namespace. Returns nil, nil when the annotation is absent.
+// Returns an error when the annotation is present but the CR cannot be fetched.
+func LoadTLSProfile(annotations map[string]string, namespace string) (*ocstlsv1.TLSProfile, error) {
+	profileName, ok := annotations[TLSProfileAnnotation]
+	if !ok || profileName == "" {
+		return nil, nil
+	}
+	profile := &ocstlsv1.TLSProfile{}
+	profile.Name = profileName
+	profile.Namespace = namespace
+	if _, _, err := KubeGet(profile); err != nil {
+		if meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
+			// TLSProfile CRD is not installed on this cluster - skip silently.
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to fetch TLSProfile %q referenced by annotation %s: %w",
+			profileName, TLSProfileAnnotation, err)
+	}
+	return profile, nil
 }
 
-// IanaCipherMap maps supported IANA/Go cipher suite names to their Go ID and
-// OpenSSL equivalents. ODF propagates IANA-format names in the NooBaa CR
-// APIServerSecurity TLS settings — see ODF's supported ciphers at
-// https://github.com/red-hat-storage/ocs-tls-profiles/
-var IanaCipherMap = map[string]IanaCipherEntry{
-	"TLS_AES_128_GCM_SHA256":                        {CipherGoID: 4865, CipherOpenSSLName: "TLS_AES_128_GCM_SHA256"},
-	"TLS_AES_256_GCM_SHA384":                        {CipherGoID: 4866, CipherOpenSSLName: "TLS_AES_256_GCM_SHA384"},
-	"TLS_CHACHA20_POLY1305_SHA256":                  {CipherGoID: 4867, CipherOpenSSLName: "TLS_CHACHA20_POLY1305_SHA256"},
-	"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256":       {CipherGoID: 49195, CipherOpenSSLName: "ECDHE-ECDSA-AES128-GCM-SHA256"},
-	"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384":       {CipherGoID: 49196, CipherOpenSSLName: "ECDHE-ECDSA-AES256-GCM-SHA384"},
-	"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256": {CipherGoID: 52393, CipherOpenSSLName: "ECDHE-ECDSA-CHACHA20-POLY1305"},
-	"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256":         {CipherGoID: 49199, CipherOpenSSLName: "ECDHE-RSA-AES128-GCM-SHA256"},
-	"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384":         {CipherGoID: 49200, CipherOpenSSLName: "ECDHE-RSA-AES256-GCM-SHA384"},
-	"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256":   {CipherGoID: 52392, CipherOpenSSLName: "ECDHE-RSA-CHACHA20-POLY1305"},
+// ApplyTLSConfigToGoTLS validates tlsCfg and copies the resulting version, cipher suites,
+// and curve preferences into dst. It is a no-op when tlsCfg is nil.
+func ApplyTLSConfigToGoTLS(tlsCfg *ocstlsv1.TLSConfig, dst *tls.Config) error {
+	if tlsCfg == nil {
+		return nil
+	}
+	src, err := ocstlsv1.ValidateAndGetGoTLSConfig(tlsCfg)
+	if err != nil {
+		return err
+	}
+	dst.MinVersion = src.MinVersion
+	dst.CipherSuites = src.CipherSuites
+	dst.CurvePreferences = src.CurvePreferences
+	return nil
 }
 
-// TLSGroupToID maps NooBaa TLSGroup constants to Go tls.CurveID values.
-// TODO: When ODF is updated to include the new TLSGroups, we should switch to using the
-// ODF supported tls groups
-var TLSGroupToID = map[nbv1.TLSGroup]tls.CurveID{
-	nbv1.TLSGroupX25519:             tls.X25519,
-	nbv1.TLSGroupSecp256r1:          tls.CurveP256,
-	nbv1.TLSGroupSecp384r1:          tls.CurveP384,
-	nbv1.TLSGroupSecp521r1:          tls.CurveP521,
-	nbv1.TLSGroupX25519MLKEM768:     tls.X25519MLKEM768,
-	nbv1.TLSGroupSecP256r1MLKEM768:  4587, // tls.SecP256r1MLKEM768 in Go 1.26+
-	nbv1.TLSGroupSecP384r1MLKEM1024: 4589, // tls.SecP384r1MLKEM1024 in Go 1.26+
+// TLSConfigFromProfile resolves the TLSConfig for "noobaa.io" from a TLSProfile CR.
+// Returns nil when profile is nil or no rule matches.
+func TLSConfigFromProfile(profile *ocstlsv1.TLSProfile) *ocstlsv1.TLSConfig {
+	if profile == nil {
+		return nil
+	}
+	cfg, ok := ocstlsv1.GetConfigForServer(profile, TLSProfileDomain, "")
+	if !ok {
+		return nil
+	}
+	return cfg
 }
 
-// MapCiphersToOpenSSL converts IANA cipher suite names to OpenSSL format for
-// Node.js endpoints. Unrecognized/unsupported IANA names are skipped with a warning.
-func MapCiphersToOpenSSL(names []string) string {
-	var result []string
-	for _, name := range names {
-		if entry, ok := IanaCipherMap[name]; ok {
-			result = append(result, entry.CipherOpenSSLName)
-		} else {
-			log.Warnf("MapCiphersToOpenSSL: skipping unrecognized/unsupported IANA cipher suite %q", name)
+// GoCiphersAndCurvesFromTLSConfig maps a TLSConfig using ValidateAndGetGoTLSConfig.
+// It returns nil slices when cfg is nil or both cipher and group lists are empty.
+func GoCiphersAndCurvesFromTLSConfig(cfg *ocstlsv1.TLSConfig) ([]uint16, []tls.CurveID, error) {
+	if cfg == nil || (len(cfg.Ciphers) == 0 && len(cfg.Groups) == 0) {
+		return nil, nil, nil
+	}
+	goCfg, err := ocstlsv1.ValidateAndGetGoTLSConfig(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	return goCfg.CipherSuites, goCfg.CurvePreferences, nil
+}
+
+// OpenSSLCipherAndGroupStringsFromTLSConfig returns colon-separated OpenSSL cipher and group
+// strings for TLS_CIPHERS and TLS_GROUPS. It runs ValidateAndGetGoTLSConfig and OpenSSLConfigFrom once.
+func OpenSSLCipherAndGroupStringsFromTLSConfig(cfg *ocstlsv1.TLSConfig) (ciphers, groups string, err error) {
+	if cfg == nil {
+		return "", "", nil
+	}
+	if len(cfg.Ciphers) == 0 && len(cfg.Groups) == 0 {
+		return "", "", nil
+	}
+	goCfg, err := ocstlsv1.ValidateAndGetGoTLSConfig(cfg)
+	if err != nil {
+		return "", "", err
+	}
+	ssl := ocstlsv1.OpenSSLConfigFrom(goCfg)
+	if ssl == nil {
+		return "", "", fmt.Errorf("OpenSSLConfigFrom returned nil after successful TLS validation")
+	}
+	if len(ssl.Ciphers) > 0 {
+		ciphers = strings.Join(ssl.Ciphers, ":")
+	}
+	if len(ssl.Groups) > 0 {
+		groups = strings.Join(ssl.Groups, ":")
+	}
+	return ciphers, groups, nil
+}
+
+// ApplyTLSEnvVars resolves the TLS configuration from profile and sets TLS_MIN_VERSION,
+// TLS_CIPHERS, and TLS_GROUPS on matching entries already present in env.
+// It is a no-op for containers that do not declare those variable names.
+// When profile is nil (or no rule matches "noobaa.io"), the env vars are cleared to "".
+func ApplyTLSEnvVars(env *[]corev1.EnvVar, profile *ocstlsv1.TLSProfile) error {
+	tlsCfg := TLSConfigFromProfile(profile)
+	ciphers, groups, err := OpenSSLCipherAndGroupStringsFromTLSConfig(tlsCfg)
+	if err != nil {
+		return err
+	}
+	minVer := ""
+	if tlsCfg != nil && tlsCfg.Version != "" {
+		minVer = string(tlsCfg.Version)
+	}
+	for i := range *env {
+		switch (*env)[i].Name {
+		case "TLS_MIN_VERSION":
+			(*env)[i].Value = minVer
+		case "TLS_CIPHERS":
+			(*env)[i].Value = ciphers
+		case "TLS_GROUPS":
+			(*env)[i].Value = groups
 		}
 	}
-	return strings.Join(result, ":")
-}
-
-// MapCipherSuites converts IANA cipher suite names to uint16 IDs for tls.Config.CipherSuites.
-//
-// Note: TLS 1.3 cipher suites (e.g. TLS_AES_128_GCM_SHA256) are present in IanaCipherMap and
-// their IDs will be included in the returned slice, but Go always enables TLS 1.3 suites
-// unconditionally — tls.Config.CipherSuites only affects TLS 1.2 and below.
-func MapCipherSuites(names []string) []uint16 {
-	var ids []uint16
-	var applied []string
-	for _, name := range names {
-		if entry, ok := IanaCipherMap[name]; ok {
-			ids = append(ids, entry.CipherGoID)
-			applied = append(applied, name)
-		} else {
-			log.Warnf("MapCipherSuites: ignoring unrecognized/unsupported cipher suite %q", name)
-		}
-	}
-	if len(applied) > 0 {
-		log.Infof("MapCipherSuites: TLS config cipher suites %s", strings.Join(applied, ":"))
-	}
-	return ids
-}
-
-// MapGroupPreferences converts a list of NooBaa TLSGroup values to the corresponding
-// tls.CurveID slice for use in tls.Config.CurvePreferences.
-func MapGroupPreferences(groups []nbv1.TLSGroup) []tls.CurveID {
-	var ids []tls.CurveID
-	var applied []string
-	for _, g := range groups {
-		if id, ok := TLSGroupToID[g]; ok {
-			ids = append(ids, id)
-			applied = append(applied, string(g))
-		} else {
-			log.Warnf("MapGroupPreferences: ignoring unsupported TLS group %q", g)
-		}
-	}
-	if len(applied) > 0 {
-		log.Infof("MapGroupPreferences: TLS group preferences set to %s", strings.Join(applied, ":"))
-	}
-	return ids
+	return nil
 }

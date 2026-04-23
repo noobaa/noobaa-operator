@@ -338,58 +338,9 @@ type LoadBalancerSourceSubnetSpec struct {
 	Vectors []string `json:"vectors,omitempty"`
 }
 
-// TLSProtocolVersion is the minimum TLS version for endpoint HTTPS servers.
-// Follows the ODF TLSProtocolVersion definition.
-type TLSProtocolVersion string
-
-const (
-	// VersionTLS12 is version 1.2 of the TLS security protocol.
-	VersionTLS12 TLSProtocolVersion = "TLSv1.2"
-	// VersionTLS13 is version 1.3 of the TLS security protocol.
-	VersionTLS13 TLSProtocolVersion = "TLSv1.3"
-)
-
-// TLSGroup represents a supported TLS key exchange group.
-// Follows the openshift storage API TLSGroup definition. see https://github.com/red-hat-storage/ocs-tls-profiles
-type TLSGroup string
-
-const (
-	TLSGroupX25519             TLSGroup = "X25519"
-	TLSGroupSecp256r1          TLSGroup = "secp256r1"
-	TLSGroupSecp384r1          TLSGroup = "secp384r1"
-	TLSGroupSecp521r1          TLSGroup = "secp521r1"
-	TLSGroupX25519MLKEM768     TLSGroup = "X25519MLKEM768"
-	TLSGroupSecP256r1MLKEM768  TLSGroup = "SecP256r1MLKEM768"
-	TLSGroupSecP384r1MLKEM1024 TLSGroup = "SecP384r1MLKEM1024"
-)
-
-// TLSSecuritySpec defines TLS configuration for HTTPS servers.
-type TLSSecuritySpec struct {
-	// TLSMinVersion is used to specify the minimal version of the TLS protocol
-	// that is negotiated during the TLS handshake.
-	// +optional
-	// +nullable
-	TLSMinVersion *TLSProtocolVersion `json:"tlsMinVersion,omitempty"`
-
-	// TLSCiphers is used to specify the cipher algorithms that are negotiated
-	// during the TLS handshake.
-	// +optional
-	TLSCiphers []string `json:"tlsCiphers,omitempty"`
-
-	// TLSGroups is used to specify the key exchange groups for the TLS
-	// handshake.
-	// +optional
-	TLSGroups []TLSGroup `json:"tlsGroups,omitempty"`
-}
-
 // SecuritySpec is security spec to include various security items such as kms
 type SecuritySpec struct {
 	KeyManagementService KeyManagementServiceSpec `json:"kms,omitempty"`
-	// APIServerSecurity specifies the TLS configuration derived from the
-	// OpenShift API Server TLS profile. The StorageCluster propagates the
-	// platform TLS profile here and NooBaa applies it to endpoint HTTPS servers.
-	// +optional
-	APIServerSecurity *TLSSecuritySpec `json:"apiServerSecurity,omitempty"`
 }
 
 // KeyManagementServiceSpec represent various details of the KMS server
@@ -726,8 +677,8 @@ type AccountsStatus struct {
 
 // ServicesStatus is the status info of the system's services
 type ServicesStatus struct {
-	ServiceMgmt    ServiceStatus `json:"serviceMgmt"`
-	ServiceS3      ServiceStatus `json:"serviceS3"`
+	ServiceMgmt ServiceStatus `json:"serviceMgmt"`
+	ServiceS3   ServiceStatus `json:"serviceS3"`
 	// +optional
 	ServiceSts     ServiceStatus `json:"serviceSts,omitempty"`
 	ServiceIam     ServiceStatus `json:"serviceIam,omitempty"`
