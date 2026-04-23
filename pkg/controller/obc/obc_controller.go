@@ -2,6 +2,7 @@ package obc
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -28,6 +29,20 @@ func Add(mgr manager.Manager) error {
 			newOBC, okNew := newObj.(*nbv1.ObjectBucketClaim)
 			if !okOld || !okNew {
 				return
+			}
+
+			// Restore missing objectBucketName if OBC is bound
+			if newOBC.Status.Phase == "Bound" && newOBC.Spec.ObjectBucketName == "" {
+				// Find the corresponding ObjectBucket
+				obName := fmt.Sprintf("obc-%s-%s", newOBC.Namespace, newOBC.Name)
+				ob := &nbv1.ObjectBucket{}
+				ob.Name = obName
+				if util.KubeCheck(ob) {
+					newOBC.Spec.ObjectBucketName = obName
+					if !util.KubeUpdate(newOBC) {
+						util.Logger().Errorf("Failed to restore objectBucketName for OBC %s: %v", newOBC.Name, err)
+					}
+				}
 			}
 
 			// supports only updating of bucket tagging with OBC labels
