@@ -467,7 +467,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 					if desiredClass != currentClass {
 						r.Logger.Infof("No match between desired DB storage class in noobaa %s and current class in pvc %s",
 							desiredClass, currentClass)
-						r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBStorageClassIsImmutable",
+						r.Recorder.Eventf(r.NooBaa, nil, corev1.EventTypeWarning, "DBStorageClassIsImmutable", "Report",
 							"spec.dbStorageClass is immutable and cannot be updated for volume %q in existing %s %q"+
 								" since it requires volume recreate and migrate which is unsupported by the operator",
 							pvc.Name, r.CoreApp.Kind, r.CoreApp.Name)
@@ -476,7 +476,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 				if r.NooBaa.Spec.DBVolumeResources != nil &&
 					!reflect.DeepEqual(pvc.Spec.Resources, *r.NooBaa.Spec.DBVolumeResources) {
 					r.Logger.Infof("No match between DB volume resources")
-					r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DBVolumeResourcesIsImmutable",
+					r.Recorder.Eventf(r.NooBaa, nil, corev1.EventTypeWarning, "DBVolumeResourcesIsImmutable", "Report",
 						"spec.dbVolumeResources is immutable and cannot be updated for volume %q in existing %s %q"+
 							" since it requires volume recreate and migrate which is unsupported by the operator",
 						pvc.Name, r.CoreApp.Kind, r.CoreApp.Name)
@@ -819,15 +819,15 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	if r.CoreApp.UID == "" {
 		// generate info event for the first creation of noobaa
 		if r.Recorder != nil {
-			r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
-				"NooBaaImage", `Using NooBaa image %q for the creation of %q`, r.NooBaa.Status.ActualImage, r.NooBaa.Name)
+			r.Recorder.Eventf(r.NooBaa, nil, corev1.EventTypeNormal,
+				"NooBaaImage", "Report", `Using NooBaa image %q for the creation of %q`, r.NooBaa.Status.ActualImage, r.NooBaa.Name)
 		}
 	} else {
 		if coreImageChanged {
 			// generate info event for the first creation of noobaa
 			if r.Recorder != nil {
-				r.Recorder.Eventf(r.NooBaa, corev1.EventTypeNormal,
-					"NooBaaImage", `Updating NooBaa image to %q for %q`, r.NooBaa.Status.ActualImage, r.NooBaa.Name)
+				r.Recorder.Eventf(r.NooBaa, nil, corev1.EventTypeNormal,
+					"NooBaaImage", "Report", `Updating NooBaa image to %q for %q`, r.NooBaa.Status.ActualImage, r.NooBaa.Name)
 			}
 		}
 

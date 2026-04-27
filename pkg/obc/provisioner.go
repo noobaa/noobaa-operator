@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -51,13 +51,13 @@ var excludeBucketTaggingLabelKeysSet = map[string]struct{}{
 type Provisioner struct {
 	client    client.Client
 	scheme    *runtime.Scheme
-	recorder  record.EventRecorder
+	recorder  events.EventRecorder
 	Logger    *logrus.Entry
 	Namespace string
 }
 
 // RunProvisioner will run OBC provisioner
-func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder record.EventRecorder) error {
+func RunProvisioner(client client.Client, scheme *runtime.Scheme, recorder events.EventRecorder) error {
 
 	provisionerName := options.ObjectBucketProvisionerName()
 	log := logrus.WithField("provisioner", provisionerName)
@@ -389,12 +389,12 @@ func NewBucketRequest(
 				msg = fmt.Sprintf("BucketClass %q not found in namespace %q", bucketClassName, p.Namespace)
 			}
 
-			p.recorder.Event(r.OBC, "Warning", "MissingBucketClass", msg)
+			p.recorder.Eventf(r.OBC, nil, corev1.EventTypeWarning, "MissingBucketClass", "Report", "%s", msg)
 			return nil, errors.New(msg)
 		}
 		if r.BucketClass.Status.Phase != nbv1.BucketClassPhaseReady {
 			msg := fmt.Sprintf("BucketClass %q is not ready", bucketClassName)
-			p.recorder.Event(r.OBC, "Warning", "BucketClassNotReady", msg)
+			p.recorder.Eventf(r.OBC, nil, corev1.EventTypeWarning, "BucketClassNotReady", "Report", "%s", msg)
 			return nil, errors.New(msg)
 		}
 

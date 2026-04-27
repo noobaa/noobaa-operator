@@ -19,7 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -36,7 +36,7 @@ type Reconciler struct {
 	Scheme   *runtime.Scheme
 	Ctx      context.Context
 	Logger   *logrus.Entry
-	Recorder record.EventRecorder
+	Recorder events.EventRecorder
 
 	NBClient          nb.Client
 	SystemInfo        *nb.SystemInfo
@@ -53,7 +53,7 @@ func NewReconciler(
 	req types.NamespacedName,
 	client client.Client,
 	scheme *runtime.Scheme,
-	recorder record.EventRecorder,
+	recorder events.EventRecorder,
 ) *Reconciler {
 
 	r := &Reconciler{
@@ -120,7 +120,7 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 			r.SetPhase(nbv1.NooBaaAccountPhaseRejected, perr.Reason, perr.Message)
 			log.Errorf("❌ Persistent Error: %s", err)
 			if r.Recorder != nil {
-				r.Recorder.Eventf(r.NooBaaAccount, corev1.EventTypeWarning, perr.Reason, perr.Message)
+				r.Recorder.Eventf(r.NooBaaAccount, nil, corev1.EventTypeWarning, perr.Reason, "Report", "%s", perr.Message)
 			}
 		} else {
 			res.RequeueAfter = 3 * time.Second

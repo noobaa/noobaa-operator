@@ -10,6 +10,6 @@ func Add(mgr manager.Manager) error {
 	return cosi.RunProvisioner(
 		mgr.GetClient(),
 		mgr.GetScheme(),
-		mgr.GetEventRecorderFor("noobaa-operator"),
+		mgr.GetEventRecorder("noobaa-operator"),
 	)
 }
