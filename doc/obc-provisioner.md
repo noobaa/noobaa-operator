@@ -273,5 +273,5 @@ Going forward we would like to have an option to create a single account per app
 # OBC in Hub Spoke Model
 
 As part of [RHSTOR-6230](https://redhat.atlassian.net/browse/RHSTOR-6230) in 4.22 version - the setup is of provider cluster that is connected to storage including NooBaa (storage hub) and client cluster that can consume the storage (spoke).  
-The OBC is created on client cluster that does not have NooBaa installed on it and the OBC object is marshaled from the client cluster to the provider cluster, where it is unmarshaled, created and provisioned.  
+The OBC is created on the client cluster, which does not have NooBaa installed, and propagated to the provider cluster, where it is created and provisioned.  
 As part of this effort the OB and OBC CRDs are installed manually using ODF-CLI (see [CRDs files](https://github.com/red-hat-storage/odf-cli/tree/release-4.22/pkg/noobaa/crds) in 4.22 version [OB](https://github.com/red-hat-storage/odf-cli/blob/release-4.22/pkg/noobaa/crds/objectbucket.io_objectbuckets_crd.yaml) and [OBC](https://github.com/red-hat-storage/odf-cli/blob/release-4.22/pkg/noobaa/crds/objectbucket.io_objectbucketclaims_crd.yaml)). If those CRDs change in this repo, update the ODF-CLI copy to match.
