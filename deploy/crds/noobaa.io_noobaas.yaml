@@ -1153,8 +1153,11 @@ spec:
                   db container
                 type: string
               dbPriorityClassName:
-                description: DBPriorityClassName (optional) overrides the priority
-                  class for the db pod
+                description: |-
+                  DBPriorityClassName (optional) overrides the priority class for the db pod.
+                  Takes effect on next pod restart (e.g. upgrade, node drain, crash); does not trigger a rolling restart of CNPG-managed pods.
+                  To apply immediately, restart the DB pods manually after reviewing CNPG documentation.
+                  https://cloudnative-pg.io/docs
                 type: string
               dbResources:
                 description: DBResources (optional) overrides the default resource
