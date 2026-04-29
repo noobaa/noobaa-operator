@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+
 const (
 	port       = "8080"
 	tlscert    = "/etc/certs/tls.cert"
@@ -26,9 +27,10 @@ const (
 
 var currentTLSConfig atomic.Pointer[tls.Config]
 
-// ReloadTLSConfig rebuilds the TLS configuration by loading certificates
-// from disk and reading the NooBaa CR's APIServerSecurity settings, then
-// swaps it atomically. New TLS connections will use the updated config.
+// ReloadTLSConfig rebuilds the TLS configuration by loading certificates from
+// disk and applying TLS settings from the TLSProfile referenced by the
+// noobaa.io/tls-profile-name annotation on the NooBaa CR, then swaps it
+// atomically so new connections use the updated config.
 func ReloadTLSConfig() error {
 	log := logrus.WithField("admission server", options.Namespace)
 
@@ -46,7 +48,10 @@ func ReloadTLSConfig() error {
 	}
 
 	cfg := &tls.Config{Certificates: []tls.Certificate{certs}}
-	applyAPIServerTLS(cfg, log)
+	if err := applyTLSPConfig(cfg, log); err != nil {
+		log.Errorf("TLS config not reloaded: %v", err)
+		return err
+	}
 	currentTLSConfig.Store(cfg)
 	log.Info("Admission server TLS configuration reloaded")
 	return nil
@@ -91,9 +96,10 @@ func RunAdmissionServer() {
 	}, syscall.SIGINT, syscall.SIGTERM)
 }
 
-// applyAPIServerTLS fetches the NooBaa CR and applies APIServerSecurity TLS
-// properties to the given tls.Config when they are set.
-func applyAPIServerTLS(tlsConfig *tls.Config, log *logrus.Entry) {
+// applyTLSPConfig fetches the NooBaa CR, reads the noobaa.io/tls-profile-name
+// annotation, fetches the referenced TLSProfile CR, and applies its TLS settings
+// for "noobaa.io" to the given tls.Config.
+func applyTLSPConfig(tlsConfig *tls.Config, log *logrus.Entry) error {
 	noobaa := &nbv1.NooBaa{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "noobaa",
@@ -102,31 +108,29 @@ func applyAPIServerTLS(tlsConfig *tls.Config, log *logrus.Entry) {
 	}
 	if !util.KubeCheckQuiet(noobaa) {
 		log.Info("NooBaa CR not found, using default TLS config for admission server")
-		return
+		return nil
 	}
 
-	spec := noobaa.Spec.Security.APIServerSecurity
-	if spec == nil {
-		log.Info("APIServerSecurity not configured, using default TLS config for admission server")
-		return
+	profile, err := util.LoadTLSProfile(noobaa.GetAnnotations(), options.Namespace)
+	if err != nil {
+		return err
+	}
+	if profile == nil {
+		log.Info("noobaa.io/tls-profile-name annotation not set, using default TLS config for admission server")
+		return nil
 	}
 
-	if spec.TLSMinVersion != nil {
-		switch *spec.TLSMinVersion {
-		case nbv1.VersionTLS12:
-			tlsConfig.MinVersion = tls.VersionTLS12
-			log.Info("Admission server TLS min version set to TLSv1.2")
-		case nbv1.VersionTLS13:
-			tlsConfig.MinVersion = tls.VersionTLS13
-			log.Info("Admission server TLS min version set to TLSv1.3")
-		}
+	tlsCfg := util.TLSConfigFromProfile(profile)
+	if tlsCfg == nil {
+		log.Infof("TLSProfile %q has no rule matching %s, using default TLS config for admission server",
+			profile.Name, util.TLSProfileDomain)
+		return nil
 	}
 
-	if len(spec.TLSCiphers) > 0 {
-		tlsConfig.CipherSuites = util.MapCipherSuites(spec.TLSCiphers)
+	if err := util.ApplyTLSConfigToGoTLS(tlsCfg, tlsConfig); err != nil {
+		return fmt.Errorf("TLSProfile %q: %w", profile.Name, err)
 	}
-
-	if len(spec.TLSGroups) > 0 {
-		tlsConfig.CurvePreferences = util.MapGroupPreferences(spec.TLSGroups)
-	}
+	log.Infof("Admission server TLS configured from TLSProfile %q (version=%s, ciphers=%v, groups=%v)",
+		profile.Name, tlsCfg.Version, tlsCfg.Ciphers, tlsCfg.Groups)
+	return nil
 }

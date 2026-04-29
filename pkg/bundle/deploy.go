@@ -1492,7 +1492,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "e49d45bfee6697fb025e759584262d04791477979fb9d572fed2c1a80a3e7d90"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "b75beb766015d0cde7f52f3fdf0f5d0add921da0e2d54847fec0b25e034d4c32"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3446,36 +3446,6 @@ spec:
               security:
                 description: Security represents security settings
                 properties:
-                  apiServerSecurity:
-                    description: |-
-                      APIServerSecurity specifies the TLS configuration derived from the
-                      OpenShift API Server TLS profile. The StorageCluster propagates the
-                      platform TLS profile here and NooBaa applies it to endpoint HTTPS servers.
-                    properties:
-                      tlsCiphers:
-                        description: |-
-                          TLSCiphers is used to specify the cipher algorithms that are negotiated
-                          during the TLS handshake.
-                        items:
-                          type: string
-                        type: array
-                      tlsGroups:
-                        description: |-
-                          TLSGroups is used to specify the key exchange groups for the TLS
-                          handshake.
-                        items:
-                          description: |-
-                            TLSGroup represents a supported TLS key exchange group.
-                            Follows the openshift storage API TLSGroup definition. see https://github.com/red-hat-storage/ocs-tls-profiles
-                          type: string
-                        type: array
-                      tlsMinVersion:
-                        description: |-
-                          TLSMinVersion is used to specify the minimal version of the TLS protocol
-                          that is negotiated during the TLS handshake.
-                        nullable: true
-                        type: string
-                    type: object
                   kms:
                     description: KeyManagementServiceSpec represent various details
                       of the KMS server
@@ -5561,7 +5531,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "950eaab1e58069eec4df071a6020f75914586a5a2b25f56470059cc9c0b7f892"
+const Sha256_deploy_internal_statefulset_core_yaml = "4ef493f94d8f81746f9d8904085de093b4ed37ee15d0767cc563f7aa89c86de8"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5704,6 +5674,9 @@ spec:
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
             - name: NODE_EXTRA_CA_CERTS
+            - name: TLS_MIN_VERSION
+            - name: TLS_CIPHERS
+            - name: TLS_GROUPS
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
             - name: OAUTH_AUTHORIZATION_ENDPOINT
@@ -6785,7 +6758,7 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "22c739e1b81a9d3c1b167b89c0e8e6757b2981b1434071aa4441332ec4c68d64"
+const Sha256_deploy_role_yaml = "4e6637beceebee5631f00d03e0e8a2928625d8a6ff5da85d645c491fdadf9530"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6949,6 +6922,14 @@ rules:
   - '*'
   verbs: 
   - '*'
+- apiGroups:
+  - ocs.openshift.io
+  resources:
+  - tlsprofiles
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - snapshot.storage.k8s.io
   resources:

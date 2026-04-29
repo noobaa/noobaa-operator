@@ -627,6 +627,11 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
 func (r *Reconciler) SetDesiredCoreApp() error {
+	tlsProfile, err := util.LoadTLSProfile(r.NooBaa.GetAnnotations(), r.Request.Namespace)
+	if err != nil {
+		return err
+	}
+
 	if coreLabels, ok := r.NooBaa.Spec.Labels["core"]; ok {
 		r.CoreApp.Spec.Template.Labels = coreLabels
 	}
@@ -664,6 +669,10 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 		// adding the missing Env variable from default container
 		util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Containers[i].Env)
 		r.setDesiredCoreEnv(c)
+
+		if err := util.ApplyTLSEnvVars(&c.Env, tlsProfile); err != nil {
+			return fmt.Errorf("ApplyTLSEnvVars failed with the following error: %w", err)
+		}
 
 		switch c.Name {
 		case "core":

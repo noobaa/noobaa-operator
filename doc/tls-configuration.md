@@ -1,10 +1,10 @@
-# TLS Configuration for NooBaa Endpoints
+# TLS Configuration for NooBaa
 
-NooBaa supports configuring TLS version, cipher suites, and key exchange group preferences for endpoint HTTPS servers. This enables TLS 1.3 enforcement and prepares the platform for Post-Quantum Cryptography (PQC) readiness.
+NooBaa supports configuring TLS version, cipher suites, and key exchange group preferences for endpoint and core HTTPS servers. This enables TLS 1.3 enforcement and prepares the platform for Post-Quantum Cryptography (PQC) readiness.
 
-## NooBaa CR Interface
+## Interface: TLSProfile Annotation
 
-TLS configuration is set under `spec.security.apiServerSecurity` on the NooBaa custom resource. The StorageCluster propagates the platform API Server TLS profile here and NooBaa applies it to endpoint HTTPS servers.
+TLS configuration is injected into NooBaa by annotating the NooBaa CR with the name of a `TLSProfile` CR (from `github.com/red-hat-storage/ocs-tls-profiles/api/v1`) in the same namespace:
 
 ```yaml
 apiVersion: noobaa.io/v1alpha1
@@ -12,90 +12,111 @@ kind: NooBaa
 metadata:
   name: noobaa
   namespace: openshift-storage
+  annotations:
+    noobaa.io/tls-profile-name: odf-tls-profile
+```
+
+The operator fetches the referenced `TLSProfile` CR, resolves the `TLSConfig` rule that best matches `noobaa.io` (via `GetConfigForServer`), and applies the resulting TLS settings to the NooBaa endpoint and core pods, as well as to the in-process admission webhook server (when enabled).
+
+If the annotation is absent or empty, NooBaa uses Node.js / OpenSSL defaults.
+
+### Example TLSProfile
+
+```yaml
+apiVersion: ocs.openshift.io/v1
+kind: TLSProfile
+metadata:
+  name: odf-tls-profile
+  namespace: openshift-storage
 spec:
-  security:
-    apiServerSecurity:
-      tlsMinVersion: "VersionTLS13"
-      tlsCiphers:
-        - "TLS_AES_128_GCM_SHA256"
-        - "TLS_AES_256_GCM_SHA384"
-      tlsGroups:
-        - "X25519MLKEM768"
-        - "X25519"
-        - "secp256r1"
+  rules:
+    - selectors:
+        - "noobaa.io"
+      config:
+        version: "TLSv1.3"
+        ciphers:
+          - "TLS_AES_128_GCM_SHA256"
+          - "TLS_AES_256_GCM_SHA384"
+        groups:
+          - "X25519MLKEM768"
+          - "X25519"
+          - "secp256r1"
+```
+
+The following is a minimal profile enabling TLS 1.3 with PQC key exchange:
+
+```yaml
+apiVersion: ocs.openshift.io/v1
+kind: TLSProfile
+metadata:
+  name: cluster-tls
+spec:
+  rules:
+    - selectors:
+        - "noobaa.io"
+      config:
+        version: TLSv1.3
+        ciphers:
+          - TLS_AES_128_GCM_SHA256
+          - TLS_AES_256_GCM_SHA384
+        groups:
+          - X25519MLKEM768
+          - secp256r1
 ```
 
 ### Field Reference
 
 | Field | Type | Values | Description |
 |---|---|---|---|
-| `tlsMinVersion` | string (optional, nullable) | `VersionTLS12`, `VersionTLS13` | Minimum TLS protocol version negotiated during handshake. |
-| `tlsCiphers` | []string (optional) | OpenSSL cipher names | Cipher algorithms negotiated during the TLS handshake. |
-| `tlsGroups` | []TLSGroup (optional) | `X25519`, `secp256r1`, `secp384r1`, `secp521r1`, `X25519MLKEM768` | Key exchange group preferences WIP - waiting for final list from DF |
+| `version` | string **(required)** | `TLSv1.2`, `TLSv1.3` | TLS protocol version; propagated as `TLS_MIN_VERSION`. |
+| `ciphers` | []string **(required, min 1)** | IANA TLS cipher suite names | Cipher algorithms; mapped to OpenSSL names for `TLS_CIPHERS`. |
+| `groups` | []string **(required, min 1)** | `X25519`, `secp256r1`, `secp384r1`, `secp521r1`, `X25519MLKEM768`, `SecP256r1MLKEM768`, `SecP384r1MLKEM1024` | Key exchange groups; mapped to OpenSSL curve names for `TLS_GROUPS`. |
 
 ### Defaults
 
-When no fields are set, NooBaa uses Node.js / OpenSSL defaults:
+When the annotation is absent, NooBaa uses Node.js / OpenSSL defaults:
 - TLS 1.2 minimum (Node.js default)
 - All OpenSSL-supported ciphers
 - OpenSSL default group negotiation (includes ML-KEM on OpenSSL 3.5+)
 
 ### PQC Readiness Out of the Box
 
-Since Node.js v24.7.0, TLS 1.3 and X25519MLKEM768 are negotiated by default when the underlying OpenSSL supports them (see [release notes](https://github.com/nodejs/node/releases/tag/v24.7.0)). NooBaa has upgraded to Node.js v24.13.0 (see [PR #9458](https://github.com/noobaa/noobaa-core/pull/9458)), which includes this behavior. This means that even without setting any custom TLS properties on the NooBaa CR, NooBaa is PQC-ready — clients that support post-quantum key exchange will automatically negotiate X25519MLKEM768 with the endpoint.
+Since Node.js v24.7.0, TLS 1.3 and X25519MLKEM768 are negotiated by default when the underlying OpenSSL supports them. NooBaa has upgraded to Node.js v24.13.0, so even without a custom TLS profile, NooBaa is PQC-ready — clients that support post-quantum key exchange will automatically negotiate X25519MLKEM768 with the endpoint.
 
 ## Applying Configuration
 
-### Set TLS 1.3 with PQC groups
+### Point the NooBaa CR at a TLSProfile
 
 ```bash
-kubectl patch noobaa noobaa -n openshift-storage --type merge -p '{
-  "spec": {
-    "security": {
-      "apiServerSecurity": {
-        "tlsMinVersion": "VersionTLS13",
-        "tlsGroups": ["X25519MLKEM768", "X25519", "secp256r1"]
-      }
-    }
-  }
-}'
+kubectl annotate noobaa noobaa -n openshift-storage \
+  noobaa.io/tls-profile-name=odf-tls-profile
 ```
 
-### Set cipher suites only
+### Revert to defaults (remove annotation)
 
 ```bash
-kubectl patch noobaa noobaa -n openshift-storage --type merge -p '{
-  "spec": {
-    "security": {
-      "apiServerSecurity": {
-        "tlsCiphers": ["TLS_AES_256_GCM_SHA384", "TLS_AES_128_GCM_SHA256"]
-      }
-    }
-  }
-}'
+kubectl annotate noobaa noobaa -n openshift-storage \
+  noobaa.io/tls-profile-name-
 ```
 
-### Revert to defaults (remove TLS configuration)
-
-```bash
-kubectl patch noobaa noobaa -n openshift-storage --type json -p '[
-  {"op": "remove", "path": "/spec/security/apiServerSecurity"}
-]'
-```
-
-When the configuration is removed, the operator sets the corresponding environment variables to empty strings on the next reconciliation, reverting the endpoint to Node.js defaults.
+When the annotation is removed, the operator clears the TLS environment variables to empty strings on the next reconciliation, reverting to Node.js defaults.
 
 ## How It Works
 
-The operator reconciler (`SetDesiredDeploymentEndpoint`) maps the CR fields to endpoint pod environment variables:
+On each reconciliation cycle the operator:
 
-| CR Field | Environment Variable | Example Value |
+1. Reads the `noobaa.io/tls-profile-name` annotation from the NooBaa CR.
+2. Fetches the referenced `TLSProfile` CR.
+3. Calls `ocstlsv1.GetConfigForServer(profile, "noobaa.io", "")` to resolve the best-matching `TLSConfig`.
+4. Maps the resolved config to pod environment variables on the endpoint deployment (phase 4) and core StatefulSet (phase 2):
+
+| TLSConfig field | Environment Variable | Example value |
 |---|---|---|
-| `tlsMinVersion: VersionTLS13` | `TLS_MIN_VERSION` | `TLSv1.3` |
-| `tlsCiphers: [...]` | `TLS_CIPHERS` | `TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256` |
-| `tlsGroups: [...]` | `TLS_GROUPS` | `X25519MLKEM768:X25519:secp256r1` |
+| `version: TLSv1.3` | `TLS_MIN_VERSION` | `TLSv1.3` |
+| `ciphers: [...]` | `TLS_CIPHERS` | `TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256` |
+| `groups: [...]` | `TLS_GROUPS` | `X25519MLKEM768:x25519:prime256v1` |
 
-These env vars are defined in the endpoint deployment template and updated in-place on every reconciliation cycle. Updating the CR triggers a deployment rollout with the new TLS settings.
+The admission webhook server (`ReloadTLSConfig`) independently reads the same annotation and fetches the same profile to configure its own Go `tls.Config`.
 
 ## Verification
 
@@ -105,15 +126,19 @@ These env vars are defined in the endpoint deployment template and updated in-pl
 kubectl exec -it noobaa-endpoint-<suffix> -n openshift-storage -- bash -c 'env | grep TLS'
 ```
 
-Expected output when TLS is configured:
+### Check environment variables in the core pod
+
+```bash
+kubectl exec -it noobaa-core-0 -n openshift-storage -c core -- bash -c 'env | grep TLS'
+```
+
+Expected output when a TLS 1.3 profile is applied:
 
 ```
 TLS_MIN_VERSION=TLSv1.3
 TLS_CIPHERS=TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384
-TLS_GROUPS=X25519MLKEM768:X25519:secp256r1
+TLS_GROUPS=X25519MLKEM768:x25519:prime256v1
 ```
-
-When TLS configuration is removed from the CR, the variables will be present but empty.
 
 ## Manual Testing
 
@@ -127,11 +152,9 @@ echo Q | openssl s_client -connect <endpoint-address>:6443 -tls1_3 -groups X2551
 
 A successful match confirms the endpoint is negotiating TLS 1.3 with the X25519MLKEM768 key exchange group.
 
-> **Note:** The `echo Q |` pipes a quit command so `s_client` terminates cleanly after the handshake. Without it, the server may close the connection causing an `unexpected eof` error.
+> **Note:** The `echo Q |` pipes a quit command so `s_client` terminates cleanly after the handshake.
 
 ### Using testssl.sh
-
-Run a TLS scan against the endpoint using the `testssl.sh` Docker image:
 
 ```bash
 docker run --rm -it \
@@ -142,12 +165,6 @@ docker run --rm -it \
   --jsonfile <path-in-container>/testssl_output.json \
   <endpoint-address>
 ```
-
-Key things to look for in the output:
-- **Protocols**: Only TLS 1.3 should be listed as offered when `VersionTLS13` is set
-- **Forward secrecy / key exchange groups**: Should reflect `tlsGroups` (e.g., `X25519MLKEM768`)
-- **Server preference / ciphers**: Should match the configured `tlsCiphers`
-- **Client simulation**: Shows how various clients negotiate with the server
 
 Parse the JSON output to verify TLS 1.3 and PQC key exchange:
 
@@ -162,25 +179,17 @@ TLS1_3: OK offered
 FS_KEMs: OK X25519MLKEM768
 ```
 
-
-## TODO
-- Add PQC scanner info
-
 ### Testing the admission webhook server
 
-Pre-requisites - make sure that `ENABLE_NOOBAA_ADMISSION == "true"` or on CLI installation `--admission` in order to start the admission webhook server.
+Pre-requisites — make sure `ENABLE_NOOBAA_ADMISSION == "true"` or pass `--admission` on CLI installation.
 
 The admission webhook runs on port 8080 inside the operator pod.
 
 #### Using openssl (with port-forward)
 
-In one terminal, start a port-forward:
-
 ```bash
 kubectl port-forward deploy/noobaa-operator -n openshift-storage 8080:8080
 ```
-
-In another terminal, verify TLS 1.3 with PQC group negotiation:
 
 ```bash
 echo Q | openssl s_client -connect localhost:8080 -tls1_3 -groups X25519MLKEM768 2>&1 | grep "Negotiated TLS1.3 group: X25519MLKEM768"
@@ -188,8 +197,6 @@ echo Q | openssl s_client -connect localhost:8080 -tls1_3 -groups X25519MLKEM768
 
 #### Using testssl.sh (from within the cluster)
 
-Run testssl.sh as a pod inside the cluster to connect directly to the operator service without port-forwarding:
-
 ```bash
 kubectl run testssl-webhook -it --restart=Never \
   --image=ghcr.io/testssl/testssl.sh -- \
@@ -197,16 +204,3 @@ kubectl run testssl-webhook -it --restart=Never \
   --quiet --wide \
   https://noobaa-operator.openshift-storage.svc.cluster.local:8080
 ```
-
-#### Using testssl.sh with JSON output (from within the cluster)
-
-```bash
-kubectl run testssl-webhook -it --restart=Never \
-  --image=ghcr.io/testssl/testssl.sh -- \
-  --forward-secrecy --protocols --server-preference --client-simulation \
-  --quiet --wide \
-  --jsonfile /tmp/testssl_webhook_output.json \
-  https://noobaa-operator.openshift-storage.svc.cluster.local:8080
-```
-
-To extract the JSON results, copy them from the pod before it terminates, or parse the console output directly.

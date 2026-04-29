@@ -43,6 +43,7 @@ import (
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	operv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	ocstlsv1 "github.com/red-hat-storage/ocs-tls-profiles/api/v1"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -200,6 +201,7 @@ func init() {
 	Panic(apiregistration.AddToScheme(scheme.Scheme))
 	Panic(configv1.AddToScheme(scheme.Scheme))
 	Panic(storagesnapshotv1.AddToScheme(scheme.Scheme))
+	Panic(ocstlsv1.AddToScheme(scheme.Scheme))
 	if os.Getenv("USE_CNPG_API_GROUP") == "true" {
 		// add vanilla cnpg scheme
 		Panic(cnpgv1.AddToScheme(scheme.Scheme))
@@ -255,9 +257,10 @@ func MapperProvider(config *rest.Config, httpClient *http.Client) (meta.RESTMapp
 				g.Name == "autoscaling" ||
 				g.Name == "batch" ||
 				g.Name == "keda.sh" ||
-				g.Name == "config.openshift.io" ||
-				g.Name == "postgresql.cnpg.noobaa.io" ||
-				g.Name == "postgresql.cnpg.io" ||
+			g.Name == "config.openshift.io" ||
+			g.Name == "ocs.openshift.io" ||
+			g.Name == "postgresql.cnpg.noobaa.io" ||
+			g.Name == "postgresql.cnpg.io" ||
 				strings.HasSuffix(g.Name, ".k8s.io") {
 				return true
 			}

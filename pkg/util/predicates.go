@@ -73,6 +73,22 @@ func (p FinalizersChangedPredicate) Update(e event.UpdateEvent) bool {
 		!reflect.DeepEqual(e.ObjectOld.GetFinalizers(), e.ObjectNew.GetFinalizers())
 }
 
+// TLSProfileAnnotationChangedPredicate allows events where the noobaa.io/tls-profile-name
+// annotation was added, removed, or changed. Annotation changes do not bump the
+// resource generation, so without this predicate they would be silently ignored by
+// GenerationChangedPredicate.
+type TLSProfileAnnotationChangedPredicate struct {
+	predicate.Funcs
+}
+
+// Update implements the update event trap for TLSProfileAnnotationChangedPredicate
+func (p TLSProfileAnnotationChangedPredicate) Update(e event.UpdateEvent) bool {
+	if e.ObjectOld == nil || e.ObjectNew == nil {
+		return false
+	}
+	return e.ObjectOld.GetAnnotations()[TLSProfileAnnotation] != e.ObjectNew.GetAnnotations()[TLSProfileAnnotation]
+}
+
 // FilterForOwner will only allow events that owned by noobaa
 type FilterForOwner struct {
 	OwnerType runtime.Object
