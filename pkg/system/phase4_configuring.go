@@ -375,10 +375,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 				r.setDesiredCoreEnv(c)
 			}
 
-			tlsSec := r.NooBaa.Spec.Security.APIServerSecurity
-			if tlsSec == nil {
-				tlsSec = &nbv1.TLSSecuritySpec{}
-			}
 			for j := range c.Env {
 				switch c.Env[j].Name {
 				case "MGMT_ADDR":
@@ -463,22 +459,10 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					} else {
 						c.Env[j].Value = ""
 					}
-				case "TLS_MIN_VERSION":
-					if tlsSec.TLSMinVersion != nil {
-						c.Env[j].Value = string(*tlsSec.TLSMinVersion)
-					} else {
-						c.Env[j].Value = ""
-					}
-				case "TLS_CIPHERS":
-					c.Env[j].Value = util.MapCiphersToOpenSSL(tlsSec.TLSCiphers)
-				case "TLS_GROUPS":
-					groupNames := make([]string, len(tlsSec.TLSGroups))
-					for i, g := range tlsSec.TLSGroups {
-						groupNames[i] = string(g)
-					}
-					c.Env[j].Value = strings.Join(groupNames, ":")
 				}
 			}
+
+			util.ApplyTLSEnvVars(&c.Env, r.NooBaa.Spec.Security.APIServerSecurity)
 
 			if r.NooBaa.Spec.BucketNotifications.Enabled {
 				envVar := corev1.EnvVar{
