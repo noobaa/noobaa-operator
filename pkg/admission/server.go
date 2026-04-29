@@ -93,7 +93,12 @@ func RunAdmissionServer() {
 
 // applyAPIServerTLS fetches the NooBaa CR and applies APIServerSecurity TLS
 // properties to the given tls.Config when they are set.
+// Has no effect when DISABLE_TLS_SECURITY_CONFIG=true.
 func applyAPIServerTLS(tlsConfig *tls.Config, log *logrus.Entry) {
+	if util.IsTLSConfigDisabled() {
+		log.Infof("TLS security config disabled via %s, using default TLS config for admission server", util.DisableTLSSecurityConfigEnv)
+		return
+	}
 	noobaa := &nbv1.NooBaa{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "noobaa",

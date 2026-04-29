@@ -117,6 +117,191 @@ When TLS configuration is removed from the CR, the variables will be present but
 
 ## Manual Testing
 
+### Applying TLS config and verifying via pod logs
+
+#### 1. Patch the NooBaa CR
+
+```bash
+kubectl patch noobaa noobaa -n <namespace> --type=merge -p '{
+  "spec": {
+    "security": {
+      "apiServerSecurity": {
+        "tlsMinVersion": "TLSv1.3",
+        "tlsCiphers": [
+          "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+          "BLALALA",
+          "TLS_CHACHA20_POLY1305_SHA256"
+        ],
+        "tlsGroups": ["X25519"]
+      }
+    }
+  }
+}'
+```
+
+> **Note:** Unrecognised cipher names (e.g. `BLALALA`) are skipped with a warning and do not cause an error.
+
+#### 2. Verify endpoint pod logs
+
+```bash
+kubectl logs noobaa-endpoint-<suffix> -n <namespace> | grep "Updating TLS config for service"
+```
+
+Expected output:
+
+```
+Apr-30 12:42:23.447 [Endpoint/13]    [L0] core.util.ssl_utils:: Updating TLS config for service S3 config.TLS_MIN_VERSION=TLSv1.3, config.TLS_CIPHERS=ECDHE-RSA-AES128-GCM-SHA256:TLS_CHACHA20_POLY1305_SHA256 config.TLS_GROUPS=X25519
+Apr-30 12:42:23.544 [Endpoint/13]    [L0] core.util.ssl_utils:: Updating TLS config for service STS config.TLS_MIN_VERSION=TLSv1.3, config.TLS_CIPHERS=ECDHE-RSA-AES128-GCM-SHA256:TLS_CHACHA20_POLY1305_SHA256 config.TLS_GROUPS=X25519
+Apr-30 12:42:23.723 [Endpoint/13]    [L0] core.util.ssl_utils:: Updating TLS config for service IAM config.TLS_MIN_VERSION=TLSv1.3, config.TLS_CIPHERS=ECDHE-RSA-AES128-GCM-SHA256:TLS_CHACHA20_POLY1305_SHA256 config.TLS_GROUPS=X25519
+Apr-30 12:42:23.855 [Endpoint/13]    [L0] core.util.ssl_utils:: Updating TLS config for service VECTOR config.TLS_MIN_VERSION=TLSv1.3, config.TLS_CIPHERS=ECDHE-RSA-AES128-GCM-SHA256:TLS_CHACHA20_POLY1305_SHA256 config.TLS_GROUPS=X25519
+Apr-30 12:42:24.007 [Endpoint/13]    [L0] core.util.ssl_utils:: Updating TLS config for service METRICS config.TLS_MIN_VERSION=TLSv1.3, config.TLS_CIPHERS=ECDHE-RSA-AES128-GCM-SHA256:TLS_CHACHA20_POLY1305_SHA256 config.TLS_GROUPS=X25519
+```
+
+#### 3. Verify core pod logs
+
+```bash
+kubectl logs noobaa-core-0 -n <namespace> | grep "Updating TLS config for service"
+```
+
+Expected output:
+
+```
+Apr-30 12:42:39.418 [WebServer/34]    [L0] core.util.ssl_utils:: Updating TLS config for service MGMT config.TLS_MIN_VERSION=TLSv1.3, config.TLS_CIPHERS=ECDHE-RSA-AES128-GCM-SHA256:TLS_CHACHA20_POLY1305_SHA256 config.TLS_GROUPS=X25519
+```
+
+#### 4. Verify operator logs (admission server)
+
+```bash
+kubectl logs deploy/noobaa-operator -n <namespace> | grep TLS
+```
+
+Expected output:
+
+```
+time="..." level=info msg="Admission server TLS min version set to TLSv1.3"
+time="..." level=info msg="MapCipherSuites: TLS config cipher suites TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256"
+time="..." level=info msg="MapGroupPreferences: TLS group preferences set to X25519"
+time="..." level=info msg="Admission server TLS configuration reloaded"
+```
+
+---
+
+### Disabling TLS security config
+
+Setting `DISABLE_TLS_SECURITY_CONFIG=true` on the operator deployment causes the operator to clear all TLS environment variables on the next reconciliation, reverting every configurable server to Node.js defaults. The operator pod, core pod, and endpoint pods all restart.
+
+#### 1. Set the flag
+
+```bash
+kubectl set env deployment/noobaa-operator \
+  DISABLE_TLS_SECURITY_CONFIG=true \
+  -n <namespace>
+```
+
+#### 2. Watch pods restart
+
+```
+NAME                                READY   STATUS              RESTARTS   AGE
+noobaa-core-0                       1/2     Running             0          11s
+noobaa-operator-<suffix>            1/1     Running             0          17s
+noobaa-core-0                       2/2     Running             0          22s
+noobaa-endpoint-<new-suffix>        0/1     ContainerCreating   0          0s
+noobaa-endpoint-<new-suffix>        1/1     Running             0          1s
+```
+
+#### 3. Verify core pod logs show empty TLS config
+
+```bash
+kubectl logs noobaa-core-0 -n <namespace> | grep "Updating TLS config for service"
+```
+
+Expected output (all values empty — Node.js defaults):
+
+```
+core.util.ssl_utils:: Updating TLS config for service MGMT config.TLS_MIN_VERSION=, config.TLS_CIPHERS= config.TLS_GROUPS=
+```
+
+#### 4. Verify endpoint pod logs show empty TLS config
+
+```bash
+kubectl logs noobaa-endpoint-<suffix> -n <namespace> | grep "Updating TLS config for service"
+```
+
+Expected output:
+
+```
+core.util.ssl_utils:: Updating TLS config for service S3 config.TLS_MIN_VERSION=, config.TLS_CIPHERS= config.TLS_GROUPS=
+core.util.ssl_utils:: Updating TLS config for service STS config.TLS_MIN_VERSION=, config.TLS_CIPHERS= config.TLS_GROUPS=
+core.util.ssl_utils:: Updating TLS config for service IAM config.TLS_MIN_VERSION=, config.TLS_CIPHERS= config.TLS_GROUPS=
+core.util.ssl_utils:: Updating TLS config for service VECTOR config.TLS_MIN_VERSION=, config.TLS_CIPHERS= config.TLS_GROUPS=
+core.util.ssl_utils:: Updating TLS config for service METRICS config.TLS_MIN_VERSION=, config.TLS_CIPHERS= config.TLS_GROUPS=
+```
+
+#### 5. Verify operator logs show the flag is active
+
+```bash
+kubectl logs deploy/noobaa-operator -n <namespace> | grep TLS
+```
+
+Expected output:
+
+```
+time="..." level=info msg="TLS security config disabled via DISABLE_TLS_SECURITY_CONFIG, using default TLS config for admission server"
+time="..." level=info msg="Admission server TLS configuration reloaded"
+```
+
+---
+
+### Re-enabling TLS security config
+
+Remove the env var override to restore normal operator behaviour. On the next reconciliation the operator re-applies `apiServerSecurity` from the NooBaa CR to all pods.
+
+```bash
+kubectl set env deployment/noobaa-operator \
+  DISABLE_TLS_SECURITY_CONFIG- \
+  -n <namespace>
+```
+
+The operator, core, and endpoint pods restart and log the configured TLS values as shown in [Applying TLS config and verifying via pod logs](#applying-tls-config-and-verifying-via-pod-logs).
+
+---
+
+## NooBaa TLS Security Summary
+
+The table below shows the TLS posture for all NooBaa endpoints as reported by a PQC readiness scan. Ports that carry HTTPS support configurable TLS via `spec.security.apiServerSecurity`.
+
+```
+================================================================
+                 NooBaa TLS Security Summary
+================================================================
+ENDPOINT                         TLS 1.3      HYBRID KEY EXCHANGE
+----------------------------------------------------------------
+admission-webhook-service:443    YES          NO
+iam:443                          YES          NO
+noobaa-mgmt:443                  YES          NO
+noobaa-mgmt:8445                 YES          YES
+noobaa-mgmt:8446                 YES          YES
+s3:443                           YES          NO
+s3:8444                          YES          YES
+s3:9443                          YES          NO
+sts:443                          YES          NO
+vectors:443                      YES          NO
+noobaa-db-pg-cluster-r:5432      HTTP         N/A (plaintext)
+noobaa-db-pg-cluster-ro:5432     HTTP         N/A (plaintext)
+noobaa-db-pg-cluster-rw:5432     HTTP         N/A (plaintext)
+noobaa-mgmt:80                   HTTP         N/A (plaintext)
+noobaa-syslog:514                HTTP         N/A (plaintext)
+s3:80                            HTTP         N/A (plaintext)
+================================================================
+Full results saved to noobaa_pqc_readiness_report.json
+```
+
+**Configurable endpoints** — all ports listed as `YES` for TLS 1.3 above honour the `tlsMinVersion`, `tlsCiphers`, and `tlsGroups` fields from the NooBaa CR. This includes `noobaa-mgmt:443`, which is externally accessible and was added to the configurable set alongside the other HTTPS ports.
+
+**Hybrid key exchange** — ports marked `YES` in the HYBRID KEY EXCHANGE column already negotiate X25519MLKEM768 with supporting clients out of the box (Node.js v24 + OpenSSL 3.5+). Explicitly setting `tlsGroups: [X25519MLKEM768, ...]` in the CR forces this preference even on clusters that do not default to it.
+
+---
+
 ### Using openssl
 
 Verify TLS 1.3 with PQC group negotiation (requires OpenSSL 3.5+ with ML-KEM support):

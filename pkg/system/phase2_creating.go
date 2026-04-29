@@ -623,6 +623,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 		util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar})
 	}
 
+	util.ApplyTLSEnvVars(&c.Env, r.NooBaa.Spec.Security.APIServerSecurity)
 }
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
