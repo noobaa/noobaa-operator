@@ -1600,17 +1600,6 @@ func GetAnnotationValue(annotations map[string]string, name string) (string, boo
 	return "", false
 }
 
-// IsRemoteClientNoobaa checks for the existance and value of the remote-client-noobaa annotation
-// within an annotation map, if the annotation doesnt exist it's the same as if its value is false.
-func IsRemoteClientNoobaa(annotations map[string]string) bool {
-	annotationValue, exists := GetAnnotationValue(annotations, "remote-client-noobaa")
-	annotationBoolVal := false
-	if exists {
-		annotationBoolVal = strings.ToLower(annotationValue) == trueStr
-	}
-	return annotationBoolVal
-}
-
 // IsRemoteObcAnnotation checks for the existance and value of the remote-obc-creation annotation
 // within an annotation map, if the annotation doesnt exist it's the same as if its value is false.
 // this annotation is added to OBC that were created for client clusters when using the setup of provider-client

@@ -113,7 +113,10 @@ type NooBaaSpec struct {
 	// +optional
 	DBResources *corev1.ResourceRequirements `json:"dbResources,omitempty"`
 
-	// DBPriorityClassName (optional) overrides the priority class for the db pod
+	// DBPriorityClassName (optional) overrides the priority class for the db pod.
+	// Takes effect on next pod restart (e.g. upgrade, node drain, crash); does not trigger a rolling restart of CNPG-managed pods.
+	// To apply immediately, restart the DB pods manually after reviewing CNPG documentation.
+	// https://cloudnative-pg.io/docs
 	// +optional
 	DBPriorityClassName string `json:"dbPriorityClassName,omitempty"`
 

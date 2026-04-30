@@ -1492,7 +1492,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "e49d45bfee6697fb025e759584262d04791477979fb9d572fed2c1a80a3e7d90"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "c94929c02dc22efe29d4317da49bc6111d6ba26430e00b0cc5325189324372f9"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2649,8 +2649,11 @@ spec:
                   db container
                 type: string
               dbPriorityClassName:
-                description: DBPriorityClassName (optional) overrides the priority
-                  class for the db pod
+                description: |-
+                  DBPriorityClassName (optional) overrides the priority class for the db pod.
+                  Takes effect on next pod restart (e.g. upgrade, node drain, crash); does not trigger a rolling restart of CNPG-managed pods.
+                  To apply immediately, restart the DB pods manually after reviewing CNPG documentation.
+                  https://cloudnative-pg.io/docs
                 type: string
               dbResources:
                 description: DBResources (optional) overrides the default resource

@@ -200,20 +200,17 @@ func (r *Reconciler) CheckJoinSecret() error {
 		return util.NewPersistentError("InvalidJoinSecert",
 			"JoinSecret is missing auth_token")
 	}
-
-	if !util.IsRemoteClientNoobaa(r.NooBaa.GetAnnotations()) {
-		if r.JoinSecret.StringData["bg_addr"] == "" {
-			return util.NewPersistentError("InvalidJoinSecert",
-				"JoinSecret is missing bg_addr")
-		}
-		if r.JoinSecret.StringData["md_addr"] == "" {
-			return util.NewPersistentError("InvalidJoinSecert",
-				"JoinSecret is missing md_addr")
-		}
-		if r.JoinSecret.StringData["hosted_agents_addr"] == "" {
-			return util.NewPersistentError("InvalidJoinSecert",
-				"JoinSecret is missing hosted_agents_addr")
-		}
+	if r.JoinSecret.StringData["bg_addr"] == "" {
+		return util.NewPersistentError("InvalidJoinSecert",
+			"JoinSecret is missing bg_addr")
+	}
+	if r.JoinSecret.StringData["md_addr"] == "" {
+		return util.NewPersistentError("InvalidJoinSecert",
+			"JoinSecret is missing md_addr")
+	}
+	if r.JoinSecret.StringData["hosted_agents_addr"] == "" {
+		return util.NewPersistentError("InvalidJoinSecert",
+			"JoinSecret is missing hosted_agents_addr")
 	}
 	return nil
 }
