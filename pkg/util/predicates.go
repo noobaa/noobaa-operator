@@ -151,7 +151,7 @@ func (p LogEventsPredicate) Delete(e event.DeleteEvent) bool {
 // Update implements the update event trap for LogEventsPredicate
 func (p LogEventsPredicate) Update(e event.UpdateEvent) bool {
 	if e.ObjectOld != nil {
-		logrus.Infof("Update event detected for %s (%s), queuing Reconcile",
+		logrus.Debugf("Update event detected for %s (%s), queuing Reconcile",
 			e.ObjectOld.GetName(), e.ObjectOld.GetNamespace())
 	}
 	return true
@@ -160,7 +160,7 @@ func (p LogEventsPredicate) Update(e event.UpdateEvent) bool {
 // Generic implements the generic event trap for LogEventsPredicate
 func (p LogEventsPredicate) Generic(e event.GenericEvent) bool {
 	if e.Object != nil {
-		logrus.Infof("Generic event detected for %s (%s), queuing Reconcile",
+		logrus.Debugf("Generic event detected for %s (%s), queuing Reconcile",
 			e.Object.GetName(), e.Object.GetNamespace())
 	}
 	return true

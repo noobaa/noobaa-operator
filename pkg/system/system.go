@@ -1427,8 +1427,19 @@ func LoadConfigMapFromFlags() {
 		cm.Namespace = options.Namespace
 		cm.Name = "noobaa-config"
 
+		operatorLevel := options.DebugLevel
+		switch operatorLevel {
+		case "warn", "info", "debug":
+			// valid operator levels, keep as-is
+		case "all", "nsfs":
+			operatorLevel = "debug"
+		default:
+			operatorLevel = "info"
+		}
+
 		DefaultConfigMapData := map[string]string{
-			"NOOBAA_LOG_LEVEL": options.DebugLevel,
+			"NOOBAA_LOG_LEVEL":   options.DebugLevel,
+			"OPERATOR_LOG_LEVEL": operatorLevel,
 		}
 
 		cm.Data = DefaultConfigMapData

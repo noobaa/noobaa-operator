@@ -10,7 +10,6 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/version"
-	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 
@@ -39,11 +38,7 @@ var (
 
 // RunOperator is the main function of the operator but it is called from a cobra.Command
 func RunOperator(cmd *cobra.Command, args []string) {
-	if options.DebugLevel == "warn" {
-		util.InitLogger(logrus.WarnLevel)
-	} else {
-		util.InitLogger(logrus.DebugLevel)
-	}
+	util.InitLogger(util.OperatorLogLevel(options.DebugLevel))
 	version.RunVersion(cmd, args)
 	// Probe address from CLI flag (defaults to :8081)
 	probeAddr := os.Getenv("HEALTH_PROBE_BIND_ADDRESS")

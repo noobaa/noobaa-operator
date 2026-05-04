@@ -902,6 +902,20 @@ func InitLogger(lvl logrus.Level) {
 	})
 }
 
+// OperatorLogLevel maps a string log level name to a logrus.Level.
+// Accepted values: "warn", "info", "debug". Anything else (including
+// "default_level") maps to InfoLevel.
+func OperatorLogLevel(level string) logrus.Level {
+	switch level {
+	case "warn":
+		return logrus.WarnLevel
+	case "debug":
+		return logrus.DebugLevel
+	default:
+		return logrus.InfoLevel
+	}
+}
+
 // Logger returns a default logger
 func Logger() *logrus.Entry {
 	return log
