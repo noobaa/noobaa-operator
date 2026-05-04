@@ -133,12 +133,11 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 
-	if r.CoreAppConfig.Data["NOOBAA_LOG_LEVEL"] == "warn" {
-		r.Logger.Infof("Setting operator log level to Warn")
-		util.InitLogger(logrus.WarnLevel)
-	} else {
-		util.InitLogger(logrus.DebugLevel)
+	newLevel := util.OperatorLogLevel(r.CoreAppConfig.Data["OPERATOR_LOG_LEVEL"])
+	if logrus.GetLevel() != newLevel {
+		r.Logger.Infof("Setting operator log level to %s", newLevel)
 	}
+	util.InitLogger(newLevel)
 
 	// A failure to discover OAuth endpoints should not fail the entire reconcile phase.
 	oAuthEndpoints, err := util.DiscoverOAuthEndpoints()
@@ -1623,6 +1622,7 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 		"NOOBAA_METRICS_AUTH_ENABLED":  "true",
 		"NOOBAA_VERSION_AUTH_ENABLED":  "true",
 		"ENDPOINT_SYSTEM_STORE_SOURCE": "core", // by default, load the system store in the endpoint from the core instead of the DB
+		"OPERATOR_LOG_LEVEL":           "info",
 	}
 	for key, value := range DefaultConfigMapData {
 		if _, ok := r.CoreAppConfig.Data[key]; !ok {
@@ -1633,7 +1633,14 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 	if r.CoreAppConfig.Annotations == nil {
 		r.CoreAppConfig.Annotations = make(map[string]string)
 	}
-	r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"] = util.GetCmDataHash(r.CoreAppConfig.Data)
+	operatorOnlyKeys := map[string]bool{"OPERATOR_LOG_LEVEL": true}
+	coreData := make(map[string]string, len(r.CoreAppConfig.Data))
+	for k, v := range r.CoreAppConfig.Data {
+		if !operatorOnlyKeys[k] {
+			coreData[k] = v
+		}
+	}
+	r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"] = util.GetCmDataHash(coreData)
 
 	return nil
 }

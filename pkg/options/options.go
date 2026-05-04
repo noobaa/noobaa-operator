@@ -300,7 +300,7 @@ func init() {
 	)
 	FlagSet.StringVar(
 		&DebugLevel, "debug-level",
-		DebugLevel, "The type of debug sets that the system prints (all, nsfs, warn, default_level)",
+		DebugLevel, "The type of debug sets that the system prints (all, nsfs, warn, info, debug, default_level). Also sets the initial operator log level.",
 	)
 	FlagSet.StringVar(
 		&PVPoolDefaultStorageClass, "pv-pool-default-storage-class",
