@@ -1422,13 +1422,14 @@ func CheckPostgresURL(postgresDbURL string) error {
 
 // LoadConfigMapFromFlags loads a config-map with values from the cli flags, if provided.
 func LoadConfigMapFromFlags() {
-	if options.DebugLevel != "default_level" {
+	if options.DebugLevel != "default_level" || options.OperatorLogLevel != "info" {
 		cm := util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap)
 		cm.Namespace = options.Namespace
 		cm.Name = "noobaa-config"
 
 		DefaultConfigMapData := map[string]string{
-			"NOOBAA_LOG_LEVEL": options.DebugLevel,
+			"NOOBAA_LOG_LEVEL":   options.DebugLevel,
+			"OPERATOR_LOG_LEVEL": options.OperatorLogLevel,
 		}
 
 		cm.Data = DefaultConfigMapData
