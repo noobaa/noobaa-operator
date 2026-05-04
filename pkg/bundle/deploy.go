@@ -5564,7 +5564,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "950eaab1e58069eec4df071a6020f75914586a5a2b25f56470059cc9c0b7f892"
+const Sha256_deploy_internal_statefulset_core_yaml = "4ef493f94d8f81746f9d8904085de093b4ed37ee15d0767cc563f7aa89c86de8"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5707,6 +5707,9 @@ spec:
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
             - name: NODE_EXTRA_CA_CERTS
+            - name: TLS_MIN_VERSION
+            - name: TLS_CIPHERS
+            - name: TLS_GROUPS
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
             - name: OAUTH_AUTHORIZATION_ENDPOINT

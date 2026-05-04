@@ -2,10 +2,23 @@ package util
 
 import (
 	"crypto/tls"
+	"os"
 	"strings"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
+
+// DisableTLSSecurityConfigEnv is the name of the environment variable that disables
+// applying TLS security configuration (min version, ciphers, groups) from the NooBaa
+// CR to endpoint, core, and admission server. Set to "true" to disable. Default: enabled.
+const DisableTLSSecurityConfigEnv = "DISABLE_TLS_SECURITY_CONFIG"
+
+// IsTLSConfigDisabled returns true when the DISABLE_TLS_SECURITY_CONFIG env var is set
+// to "true", allowing operators to opt out of the TLS security configuration feature.
+func IsTLSConfigDisabled() bool {
+	return os.Getenv(DisableTLSSecurityConfigEnv) == "true"
+}
 
 // IanaCipherEntry holds the Go numeric ID and OpenSSL-format name for a single
 // IANA/Go cipher suite. Node.js endpoints need the OpenSSL name while Go's
@@ -31,10 +44,12 @@ var IanaCipherMap = map[string]IanaCipherEntry{
 	"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256":   {CipherGoID: 52392, CipherOpenSSLName: "ECDHE-RSA-CHACHA20-POLY1305"},
 }
 
-// TLSGroupToID maps NooBaa TLSGroup constants to Go tls.CurveID values.
+// TLSGroupMap maps NooBaa TLSGroup constants to Go tls.CurveID values for use in
+// tls.Config.CurvePreferences (Go admission server). The TLSGroup string values are
+// already valid Node.js/OpenSSL ecdhCurve names and can be used as-is for TLS_GROUPS.
 // TODO: When ODF is updated to include the new TLSGroups, we should switch to using the
 // ODF supported tls groups
-var TLSGroupToID = map[nbv1.TLSGroup]tls.CurveID{
+var TLSGroupMap = map[nbv1.TLSGroup]tls.CurveID{
 	nbv1.TLSGroupX25519:             tls.X25519,
 	nbv1.TLSGroupSecp256r1:          tls.CurveP256,
 	nbv1.TLSGroupSecp384r1:          tls.CurveP384,
@@ -80,13 +95,51 @@ func MapCipherSuites(names []string) []uint16 {
 	return ids
 }
 
+// ApplyTLSEnvVars sets TLS_MIN_VERSION, TLS_CIPHERS, and TLS_GROUPS on entries already
+// present in env based on the given TLSSecuritySpec. It is a no-op for containers that
+// do not declare those variable names. When tlsSec is nil, or when DISABLE_TLS_SECURITY_CONFIG=true,
+// all three are cleared to "" so any previously applied values are removed.
+func ApplyTLSEnvVars(env *[]corev1.EnvVar, tlsSec *nbv1.TLSSecuritySpec) {
+	if IsTLSConfigDisabled() {
+		tlsSec = nil
+	}
+	if tlsSec == nil {
+		tlsSec = &nbv1.TLSSecuritySpec{}
+	}
+	// TLSGroup string values (e.g. "X25519", "secp256r1") are already valid
+	// Node.js/OpenSSL ecdhCurve names, so no translation is needed.
+	// TLSGroupMap is used only to validate that the group is known/supported.
+	var groupNames []string
+	for _, g := range tlsSec.TLSGroups {
+		if _, ok := TLSGroupMap[g]; ok {
+			groupNames = append(groupNames, string(g))
+		} else {
+			log.Warnf("ApplyTLSEnvVars: skipping unknown TLS group %q", g)
+		}
+	}
+	for i := range *env {
+		switch (*env)[i].Name {
+		case "TLS_MIN_VERSION":
+			if tlsSec.TLSMinVersion != nil {
+				(*env)[i].Value = string(*tlsSec.TLSMinVersion)
+			} else {
+				(*env)[i].Value = ""
+			}
+		case "TLS_CIPHERS":
+			(*env)[i].Value = MapCiphersToOpenSSL(tlsSec.TLSCiphers)
+		case "TLS_GROUPS":
+			(*env)[i].Value = strings.Join(groupNames, ":")
+		}
+	}
+}
+
 // MapGroupPreferences converts a list of NooBaa TLSGroup values to the corresponding
 // tls.CurveID slice for use in tls.Config.CurvePreferences.
 func MapGroupPreferences(groups []nbv1.TLSGroup) []tls.CurveID {
 	var ids []tls.CurveID
 	var applied []string
 	for _, g := range groups {
-		if id, ok := TLSGroupToID[g]; ok {
+		if id, ok := TLSGroupMap[g]; ok {
 			ids = append(ids, id)
 			applied = append(applied, string(g))
 		} else {
