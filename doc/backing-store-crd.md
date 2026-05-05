@@ -32,6 +32,11 @@ Also note that, if possible and applicable, omitting the `access-key` and `secre
 If the user opts to use the CLI's `--secret-name` option, or to apply a YAML, please see [Store Secret Creation](store-connection-secrets.md).
 In case of YAML application, the value under `secret.namespace` needs to point to the secret's namespace.
 
+# Cloud Storage Permissions
+To successfully initialize a BackingStore, the provided cloud credentials must have sufficient permissions to manage the target bucket and list all buckets within the account. This listing is required for NooBaa’s external connection validation.
+
+If permissions are insufficient, the BackingStore will remain in the `Creating` phase with a `TemporaryError`. After several retry attempts, it will ultimately transition to the `Rejected` phase.
+
 ## AWS S3
 Uses the S3 API for storing encrypted chunks of data in AWS buckets
 ```shell
@@ -53,6 +58,10 @@ spec:
     targetBucket: <>
   type: aws-s3
 ```
+
+Permissions: the user need to have permissions in AWS account for AWS S3 service:
+1. Account level: `s3:ListAllMyBuckets`
+2. Bucket level: grant access on both `arn:aws:s3:::<target-bucket>` and `arn:aws:s3:::<target-bucket>/*` (bucket and object ARNs are both required).
 
 ## AWS-S3 Security Token Service (STS)
 Similarly to `AWS-S3` this backingstore uses the S3 API for storing encrypted chunks of data in AWS buckets.
@@ -155,6 +164,14 @@ spec:
     targetBucket: <>
   type: google-cloud-storage
 ```
+
+The `credentials.json` is an example path to the Google Cloud service account JSON key. Service account keys are used to authenticate a service account to Google Cloud APIs. When you create a key, you download the private key, which you can then use to authenticate your application.  
+
+Permissions: the service account should have the `storage.buckets.list` permission. You can grant it by assigning project-level roles, for example:
+- Combination of the Browser and Storage Admin roles.
+  - `Browser` role: provides the `storage.buckets.list` permission.
+  - `Storage Admin` role: provides full control over buckets and objects.
+- The `Owner` role (for development; not recommended for production environments).
 
 ## Azure Blob Storage
 Uses the Azure Blob API for storing encrypted chunks of data in an Azure container
