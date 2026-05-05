@@ -45,6 +45,7 @@ const (
 	tenantIDEnvVar          string = "TENANTID"
 	subscriptionIDEnvVar    string = "SUBSCRIPTIONID"
 	resourcegroupIDEnvVar   string = "RESOURCEGROUP"
+	azureRegionEnvVar       string = "AZUREREGION"
 )
 
 // ReconcilePhaseCreating runs the reconcile phase
@@ -1087,6 +1088,11 @@ func (r *Reconciler) ReconcileAzureCredentials() error {
 	resourcegroupID := os.Getenv(resourcegroupIDEnvVar)
 	tenantID := os.Getenv(tenantIDEnvVar)
 	subscriptionID := os.Getenv(subscriptionIDEnvVar)
+	azureRegion := os.Getenv(azureRegionEnvVar)
+	// The OCP console does not prompt for a region, and the Azure CCO documentation hardcoded region
+	if azureRegion == "" {
+		azureRegion = "centralus"
+	}
 	r.Logger.Infof("Getting Azure : %s = %s", clientIDEnvVar, clientID)
 
 	r.Logger.Infof("Reconcile Azure STS with clientID: %s ", clientID)
@@ -1130,6 +1136,7 @@ func (r *Reconciler) ReconcileAzureCredentials() error {
 			azureProviderSpec.AzureClientID = clientID
 			azureProviderSpec.AzureTenantID = tenantID
 			azureProviderSpec.AzureSubscriptionID = subscriptionID
+			azureProviderSpec.AzureRegion = azureRegion
 		}
 		updatedProviderSpec, err := codec.EncodeProviderSpec(azureProviderSpec)
 		if err != nil {
