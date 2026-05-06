@@ -290,13 +290,7 @@ func (r *Reconciler) autoscaleKeda(prometheus *monitoringv1.Prometheus) error {
 }
 
 func (r *Reconciler) reconcileKedaReplicaCount() error {
-	endpointsSpec := r.NooBaa.Spec.Endpoints
-	var minReplicas int32 = 1
-	var maxReplicas int32 = 2
-	if endpointsSpec != nil {
-		minReplicas = endpointsSpec.MinCount
-		maxReplicas = endpointsSpec.MaxCount
-	}
+	minReplicas, maxReplicas := r.getEndpointMinMaxCount()
 	r.KedaScaled.Spec.MinReplicaCount = &minReplicas
 	r.KedaScaled.Spec.MaxReplicaCount = &maxReplicas
 	return nil
@@ -514,13 +508,7 @@ func (r *Reconciler) reconcilePrometheusAdapterResources(prometheus *monitoringv
 func (r *Reconciler) reconcileAdapterHPA() error {
 	// this method will update the noobaa endpoint HPA min and max replicas count with respect to
 	// noobaa CR endpoint min and max values
-	endpointsSpec := r.NooBaa.Spec.Endpoints
-	var minReplicas int32 = 1
-	var maxReplicas int32 = 2
-	if endpointsSpec != nil {
-		minReplicas = endpointsSpec.MinCount
-		maxReplicas = endpointsSpec.MaxCount
-	}
+	minReplicas, maxReplicas := r.getEndpointMinMaxCount()
 	r.AdapterHPA.Spec.MinReplicas = &minReplicas
 	r.AdapterHPA.Spec.MaxReplicas = maxReplicas
 	// target value should be nil otherwise Kubernetes HPA reconciler tries to validate the value,

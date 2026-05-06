@@ -306,12 +306,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 	}
 
 	if r.DeploymentEndpoint.Spec.Replicas != nil && *r.DeploymentEndpoint.Spec.Replicas == 0 {
-		// replicas can be set to 0 if the cluster went through data import to DB cluster
-		// restore back to the minimum number of replicas
-		minReplicas := int32(1)
-		if endpointsSpec != nil {
-			minReplicas = max(minReplicas, endpointsSpec.MinCount)
-		}
+		minReplicas, _ := r.getEndpointMinMaxCount()
 		r.DeploymentEndpoint.Spec.Replicas = &minReplicas
 	}
 
@@ -375,10 +370,6 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 				r.setDesiredCoreEnv(c)
 			}
 
-			tlsSec := r.NooBaa.Spec.Security.APIServerSecurity
-			if tlsSec == nil {
-				tlsSec = &nbv1.TLSSecuritySpec{}
-			}
 			for j := range c.Env {
 				switch c.Env[j].Name {
 				case "MGMT_ADDR":
@@ -463,22 +454,10 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					} else {
 						c.Env[j].Value = ""
 					}
-				case "TLS_MIN_VERSION":
-					if tlsSec.TLSMinVersion != nil {
-						c.Env[j].Value = string(*tlsSec.TLSMinVersion)
-					} else {
-						c.Env[j].Value = ""
-					}
-				case "TLS_CIPHERS":
-					c.Env[j].Value = util.MapCiphersToOpenSSL(tlsSec.TLSCiphers)
-				case "TLS_GROUPS":
-					groupNames := make([]string, len(tlsSec.TLSGroups))
-					for i, g := range tlsSec.TLSGroups {
-						groupNames[i] = string(g)
-					}
-					c.Env[j].Value = strings.Join(groupNames, ":")
 				}
 			}
+
+			util.ApplyTLSEnvVars(&c.Env, r.NooBaa.Spec.Security.APIServerSecurity)
 
 			if r.NooBaa.Spec.BucketNotifications.Enabled {
 				envVar := corev1.EnvVar{
@@ -849,12 +828,7 @@ func (r *Reconciler) ReconcileHPAEndpoint() error {
 
 func (r *Reconciler) updateNoobaaEndpoint() error {
 
-	endpointsSpec := r.NooBaa.Spec.Endpoints
-	var max, min int32 = 1, 2
-	if endpointsSpec != nil {
-		min = endpointsSpec.MinCount
-		max = endpointsSpec.MaxCount
-	}
+	min, max := r.getEndpointMinMaxCount()
 
 	region := ""
 	if r.NooBaa.Spec.Region != nil {

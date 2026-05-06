@@ -78,6 +78,10 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		}
 	}
 
+	if err := util.ValidateTLSSpec(r.NooBaa.Spec.Security.APIServerSecurity); err != nil {
+		return util.NewPersistentError("InvalidTLSConfiguration", err.Error())
+	}
+
 	return nil
 }
 
