@@ -139,6 +139,9 @@ spec:
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
             - name: NODE_EXTRA_CA_CERTS
+            - name: TLS_MIN_VERSION
+            - name: TLS_CIPHERS
+            - name: TLS_GROUPS
             - name: AGENT_PROFILE
               value: VALUE_AGENT_PROFILE
             - name: OAUTH_AUTHORIZATION_ENDPOINT

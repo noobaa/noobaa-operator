@@ -23,7 +23,10 @@ func ValidateNoobaaUpdate(nb nbv1.NooBaa) error {
 	if err := validateNoobaaAutoscalerConfig(nb); err != nil {
 		return err
 	}
-	return validateNoobaaLoadbalancerSourceSubnets(nb)
+	if err := validateNoobaaLoadbalancerSourceSubnets(nb); err != nil {
+		return err
+	}
+	return validateTLSSecurity(nb)
 }
 
 // ValidateNoobaaCreation validates that the created Noobaa CR is valid
@@ -31,7 +34,20 @@ func ValidateNoobaaCreation(nb nbv1.NooBaa) error {
 	if err := validateNoobaaAutoscalerConfig(nb); err != nil {
 		return err
 	}
-	return validateNoobaaLoadbalancerSourceSubnets(nb)
+	if err := validateNoobaaLoadbalancerSourceSubnets(nb); err != nil {
+		return err
+	}
+	return validateTLSSecurity(nb)
+}
+
+func validateTLSSecurity(nb nbv1.NooBaa) error {
+	if nb.Spec.Security.APIServerSecurity == nil {
+		return nil
+	}
+	if err := util.ValidateTLSSpec(nb.Spec.Security.APIServerSecurity); err != nil {
+		return util.ValidationError{Msg: err.Error()}
+	}
+	return nil
 }
 
 // validateNoobaaLoadbalancerSourceSubnets validates that the Noobaa CR has
