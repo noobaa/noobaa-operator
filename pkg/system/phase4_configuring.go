@@ -306,12 +306,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 	}
 
 	if r.DeploymentEndpoint.Spec.Replicas != nil && *r.DeploymentEndpoint.Spec.Replicas == 0 {
-		// replicas can be set to 0 if the cluster went through data import to DB cluster
-		// restore back to the minimum number of replicas
-		minReplicas := int32(1)
-		if endpointsSpec != nil {
-			minReplicas = max(minReplicas, endpointsSpec.MinCount)
-		}
+		minReplicas, _ := r.getEndpointMinMaxCount()
 		r.DeploymentEndpoint.Spec.Replicas = &minReplicas
 	}
 
@@ -833,12 +828,7 @@ func (r *Reconciler) ReconcileHPAEndpoint() error {
 
 func (r *Reconciler) updateNoobaaEndpoint() error {
 
-	endpointsSpec := r.NooBaa.Spec.Endpoints
-	var max, min int32 = 1, 2
-	if endpointsSpec != nil {
-		min = endpointsSpec.MinCount
-		max = endpointsSpec.MaxCount
-	}
+	min, max := r.getEndpointMinMaxCount()
 
 	region := ""
 	if r.NooBaa.Spec.Region != nil {

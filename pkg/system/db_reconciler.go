@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -556,51 +557,64 @@ func (r *Reconciler) listVolumeSnapshotsOrderByCreate() ([]storagesnapshotv1.Vol
 }
 
 func (r *Reconciler) setPostgresConfig() {
-
-	// set postgresql configuration
-	// initially using the same as in configmap-postgres-db.yaml. we should reavaluate these values
 	desiredParameters := r.CNPGCluster.Spec.PostgresConfiguration.Parameters
 	if desiredParameters == nil {
 		desiredParameters = map[string]string{}
 	}
-	overrideParameters := map[string]string{
-		"huge_pages":                   "off",
-		"max_connections":              "600",
-		"effective_cache_size":         "3GB",
-		"maintenance_work_mem":         "256MB",
-		"checkpoint_completion_target": "0.9",
-		"wal_buffers":                  "16MB",
-		"default_statistics_target":    "100",
-		"random_page_cost":             "1.1",
-		"effective_io_concurrency":     "300",
-		"work_mem":                     "1747kB",
-		"min_wal_size":                 "2GB",
-		"max_wal_size":                 "8GB",
-		// setting pg_stat_statements config
-		// cnpg operator will automatically add the extension to the DB (https://cloudnative-pg.io/documentation/1.25/postgresql_conf/#enabling-pg_stat_statements)
-		"pg_stat_statements.track": "all",
-	}
-	// a reasonable value for shared_buffers when mem>1GB is 25% of the total memory (https://www.postgresql.org/docs/9.1/runtime-config-resource.html)
-	// if resources are not specified, we will use the default value
-	if r.NooBaa.Spec.DBResources != nil {
-		// if memory is not specified, set shared_buffers to 1GB
-		if r.NooBaa.Spec.DBSpec.DBResources.Requests == nil || r.NooBaa.Spec.DBSpec.DBResources.Requests.Memory() == nil {
-			desiredParameters["shared_buffers"] = "1GB"
-		} else {
-			requiredDBMemMB := r.NooBaa.Spec.DBSpec.DBResources.Requests.Memory().ScaledValue(resource.Mega)
-			sharedBuffersMB := requiredDBMemMB / 4
-			desiredParameters["shared_buffers"] = fmt.Sprintf("%dMB", sharedBuffersMB)
+
+	var overrideParameters map[string]string
+	_, endpointMaxCount := r.getEndpointMinMaxCount()
+	dbResources := r.NooBaa.Spec.DBSpec.DBResources
+	if dbResources != nil && !dbResources.Requests.Memory().IsZero() {
+		totalMemoryKB := dbResources.Requests.Memory().Value() / 1024
+
+		var cpuNum int64
+		if !dbResources.Requests.Cpu().IsZero() {
+			cpuNum = dbResources.Requests.Cpu().MilliValue() / 1000
+			if cpuNum < 1 {
+				cpuNum = 1
+			}
+		}
+
+		// calculate max_connections from DBConf if specified, otherwise derive from endpoint count
+		maxConnections := calculateMaxConnections(int(endpointMaxCount))
+		if r.NooBaa.Spec.DBSpec.DBConf != nil {
+			if val, ok := r.NooBaa.Spec.DBSpec.DBConf["max_connections"]; ok {
+				if parsed, err := strconv.Atoi(val); err == nil && parsed > 0 {
+					maxConnections = parsed
+				}
+			}
+		}
+
+		overrideParameters = calculatePGConfig(totalMemoryKB, cpuNum, maxConnections)
+		r.cnpgLog("calculated PGTune config: memory=%dKB, cpu=%d, max_connections=%d", totalMemoryKB, cpuNum, maxConnections)
+	} else {
+		// fallback to static defaults when DB resources are not specified
+		overrideParameters = map[string]string{
+			"huge_pages":                   "off",
+			"max_connections":              fmt.Sprintf("%d", calculateMaxConnections(int(endpointMaxCount))),
+			"shared_buffers":               "1GB",
+			"effective_cache_size":         "3GB",
+			"maintenance_work_mem":         "256MB",
+			"checkpoint_completion_target": "0.9",
+			"wal_buffers":                  "16MB",
+			"default_statistics_target":    "100",
+			"random_page_cost":             "1.1",
+			"effective_io_concurrency":     "300",
+			"work_mem":                     "1747kB",
+			"min_wal_size":                 "2GB",
+			"max_wal_size":                 "8GB",
+			"pg_stat_statements.track":     "all",
 		}
 	}
 
-	// set any parameters from DBSpec.DBConf in overrideParameters
+	// apply any user-specified DBConf overrides on top of the calculated/default values
 	if r.NooBaa.Spec.DBSpec.DBConf != nil {
 		for k, v := range r.NooBaa.Spec.DBSpec.DBConf {
 			overrideParameters[k] = v
 		}
 	}
 
-	// override the desired parameters with the override parameters
 	for param, overrideVal := range overrideParameters {
 		if desiredParameters[param] != overrideVal {
 			r.cnpgLog("overriding postgres config parameter %q with value %q", param, overrideVal)
@@ -609,6 +623,127 @@ func (r *Reconciler) setPostgresConfig() {
 	}
 
 	r.CNPGCluster.Spec.PostgresConfiguration.Parameters = desiredParameters
+}
+
+// calculatePGConfig computes PostgreSQL configuration parameters using PGTune logic.
+// Calculations are based on the source code: https://github.com/le0pard/pgtune/blob/master/src/features/configuration/configurationSlice.js
+// Web UI: https://pgtune.leopard.in.ua/
+// Fixed assumptions: DB Version: 16, OS: Linux, DB Type: OLTP, Storage: SAN.
+// totalMemoryKB is the total DB memory in kilobytes, cpuNum is the number of CPU
+// cores (0 means unknown), and maxConnections is the desired max_connections value.
+func calculatePGConfig(totalMemoryKB int64, cpuNum int64, maxConnections int) map[string]string {
+	params := map[string]string{}
+
+	// shared_buffers = 25% of total memory
+	sharedBuffersKB := totalMemoryKB / 4
+	params["shared_buffers"] = formatBytesKB(sharedBuffersKB)
+
+	// huge_pages: "try" when shared_buffers >= 2GB (Linux only)
+	if sharedBuffersKB >= 2*1024*1024 {
+		params["huge_pages"] = "try"
+	} else {
+		params["huge_pages"] = "off"
+	}
+
+	// effective_cache_size = 75% of total memory
+	params["effective_cache_size"] = formatBytesKB((totalMemoryKB * 3) / 4)
+
+	// maintenance_work_mem = totalMem / 16, capped at 8GB
+	maintenanceWorkMemKB := totalMemoryKB / 16
+	if maintenanceWorkMemKB > 8*1024*1024 {
+		maintenanceWorkMemKB = 8 * 1024 * 1024
+	}
+	params["maintenance_work_mem"] = formatBytesKB(maintenanceWorkMemKB)
+
+	params["checkpoint_completion_target"] = "0.9"
+
+	// wal_buffers = 3% of shared_buffers, clamped to [32kB, 16MB], rounded up near 14MB
+	walBuffersKB := (3 * sharedBuffersKB) / 100
+	const maxWalBuf = 16 * 1024
+	if walBuffersKB > maxWalBuf {
+		walBuffersKB = maxWalBuf
+	} else if walBuffersKB > 14*1024 {
+		walBuffersKB = maxWalBuf
+	}
+	if walBuffersKB < 32 {
+		walBuffersKB = 32
+	}
+	params["wal_buffers"] = formatBytesKB(walBuffersKB)
+
+	params["default_statistics_target"] = "100"
+	params["random_page_cost"] = "1.1"
+	params["effective_io_concurrency"] = "300"
+	params["max_connections"] = fmt.Sprintf("%d", maxConnections)
+	params["min_wal_size"] = "2GB"
+	params["max_wal_size"] = "8GB"
+
+	// parallel query settings (only beneficial with >= 4 cores)
+	parallelForWorkMem := int64(8) // PG default max_worker_processes
+	if cpuNum >= 4 {
+		params["max_worker_processes"] = fmt.Sprintf("%d", cpuNum)
+		params["max_parallel_workers"] = fmt.Sprintf("%d", cpuNum)
+
+		workersPerGather := (cpuNum + 1) / 2
+		if workersPerGather > 4 {
+			workersPerGather = 4
+		}
+		params["max_parallel_workers_per_gather"] = fmt.Sprintf("%d", workersPerGather)
+
+		parallelMaintenanceWorkers := (cpuNum + 1) / 2
+		if parallelMaintenanceWorkers > 4 {
+			parallelMaintenanceWorkers = 4
+		}
+		params["max_parallel_maintenance_workers"] = fmt.Sprintf("%d", parallelMaintenanceWorkers)
+
+		parallelForWorkMem = cpuNum
+	}
+
+	// work_mem = (totalMem - shared_buffers) / ((max_connections + max_worker_processes) * 3)
+	// minimum 4MB to prevent disk-spill for simple queries
+	workMemKB := (totalMemoryKB - sharedBuffersKB) / ((int64(maxConnections) + parallelForWorkMem) * 3)
+	if workMemKB < 4*1024 {
+		workMemKB = 4 * 1024
+	}
+	params["work_mem"] = formatBytesKB(workMemKB)
+
+	params["jit"] = "off"
+	params["wal_compression"] = "lz4"
+	// cnpg operator automatically adds the extension to the DB
+	params["pg_stat_statements.track"] = "all"
+
+	return params
+}
+
+// formatBytesKB formats a value in kilobytes to a PostgreSQL memory parameter string,
+// choosing the largest whole unit (GB > MB > kB).
+func formatBytesKB(kb int64) string {
+	const (
+		gbInKB = 1024 * 1024
+		mbInKB = 1024
+	)
+	if kb >= gbInKB && kb%gbInKB == 0 {
+		return fmt.Sprintf("%dGB", kb/gbInKB)
+	}
+	if kb >= mbInKB && kb%mbInKB == 0 {
+		return fmt.Sprintf("%dMB", kb/mbInKB)
+	}
+	return fmt.Sprintf("%dkB", kb)
+}
+
+// calculateMaxConnections computes the PostgreSQL max_connections based on the
+// number of endpoint pods. Each noobaa-core process (web_server, bg_worker,
+// hosted_agents) uses up to 20 DB connections (default + md pools). Each
+// endpoint process uses up to 80 connections (default + md pools, excluding
+// the read_only pool which targets the standby replica).
+// 3 additional connections are reserved for superuser access.
+func calculateMaxConnections(numEndpoints int) int {
+	const (
+		coreProcesses          = 3
+		connectionsPerCore     = 20
+		connectionsPerEndpoint = 80
+		superuserReserved      = 3
+	)
+	return coreProcesses*connectionsPerCore + numEndpoints*connectionsPerEndpoint + superuserReserved
 }
 
 func getDesiredMajorVersion(dbSpec *nbv1.NooBaaDBSpec) int {
