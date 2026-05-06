@@ -135,6 +135,17 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 
+	secretsHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+		return system.MapSecretToNooBaa(types.NamespacedName{
+			Name:      obj.GetName(),
+			Namespace: obj.GetNamespace(),
+		})
+	})
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.Secret{}, secretsHandler, logEventsPredicate))
+	if err != nil {
+		return err
+	}
+
 	// handler for global RPC message and ,simply trigger a reconcile on every message
 	nb.GlobalRPC.Handler = func(req *nb.RPCMessage) (interface{}, error) {
 		logrus.Infof("RPC Handle: {Op: %s, API: %s, Method: %s, Error: %s, Params: %+v}", req.Op, req.API, req.Method, req.Error, req.Params)
