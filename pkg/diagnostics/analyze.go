@@ -172,16 +172,45 @@ func analyzeNamespaceStore(cmd *cobra.Command, namespaceStore *nbv1.NamespaceSto
 	setJobAnalyzeResource(cmd, analyzeResourceJob, collector)
 }
 
+// RunAnalyzeNetwork runs a CLI command
+func RunAnalyzeNetwork(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	log.Printf("⏳ Running this command will run the network diagnostic\n")
+	collector := collectorInstance(cmd)
+	makeDirForLogs(collector.folderName)
+	analyzeNetwork(cmd, collector)
+	destDir, _ := cmd.Flags().GetString("dir")
+	err := printTestsSummary(collector.folderName)
+	if err != nil {
+		log.Errorln("❌ Could not print tests summary")
+	}
+	collector.ExportDiagnostics(destDir)
+}
+
+func analyzeNetwork(cmd *cobra.Command, collector *Collector) {
+	analyzeResourceJob := loadAnalyzeNetworkJob()
+	setImageInJob(analyzeResourceJob)
+	setJobAnalyzeResource(cmd, analyzeResourceJob, collector)
+}
+
+
 func loadAnalyzeResourceJob() *batchv1.Job {
 	analyzeResourceJob := util.KubeObject(bundle.File_deploy_job_analyze_resource_yml).(*batchv1.Job)
 	analyzeResourceJob.Namespace = options.Namespace
 	return analyzeResourceJob
 }
 
+func loadAnalyzeNetworkJob() *batchv1.Job {
+	analyzeNetworkJob := util.KubeObject(bundle.File_deploy_job_analyze_network_yml).(*batchv1.Job)
+	analyzeNetworkJob.Namespace = options.Namespace
+	return analyzeNetworkJob
+}
+
 func collectorInstance(cmd *cobra.Command) *Collector {
 	kubeconfig, _ := cmd.Flags().GetString("kubeconfig")
 	collector := &Collector{
-		folderName:  fmt.Sprintf("%s_%d", "noobaa_analyze_resource", time.Now().Unix()),
+		folderName:  fmt.Sprintf("%s_%d", "noobaa_analyze_result", time.Now().Unix()),
 		log:         util.Logger(),
 		kubeconfig:  kubeconfig,
 		kubeCommand: util.GetAvailabeKubeCli(),
@@ -479,8 +508,8 @@ func printTestsSummary(folderName string) error {
 			scanner := bufio.NewScanner(file)
 			shouldPrint := false
 			// this is a printing that appears if it fails configuring or after the tests run (in the core repo)
-			prefixToSearchFailed := "Test Diagnose Resource Failed"
-			prefixToSearchSummary := "Analyze Resource Tests Result"
+			prefixToSearchFailed := "Test Diagnose Network Failed"
+			prefixToSearchSummary := "Analyze Network Tests Result"
 			var indexToExtractLine int
 			for scanner.Scan() {
 				line := scanner.Text()
