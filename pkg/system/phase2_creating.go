@@ -517,6 +517,10 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 				// clear env. it will be passed by mounting the secret
 				c.Env[j].Value = ""
 				c.Env[j].ValueFrom = nil
+			} else if r.NooBaa.Spec.ExternalPgSecret != nil {
+				// clear env. host will be read from POSTGRES_HOST_PATH mounted from the external secret
+				c.Env[j].Value = ""
+				c.Env[j].ValueFrom = nil
 			}
 
 		case "POSTGRES_HOST_RO":
