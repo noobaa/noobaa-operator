@@ -25,6 +25,7 @@ func Cmd() *cobra.Command {
 		CmdDbDump(),
 		CmdAnalyze(),
 		CmdReport(),
+		CmdLogAnalysis(),
 	)
 	return cmd
 }
@@ -120,6 +121,25 @@ func CmdAnalyzeResources() *cobra.Command {
 	}
 	cmd.Flags().String("job-resources", "", "Analyze job resources JSON")
 	cmd.Flags().String("dir", "", "collect analyze resource tar file into destination directory")
+	return cmd
+}
+
+// CmdLogAnalysis returns a CLI command
+func CmdLogAnalysis() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "log-analysis",
+		Short: "Run the log analyzer on all NooBaa pods",
+		Run:   RunLogAnalysis,
+	}
+	cmd.Flags().BoolP("verbose", "v", false, "Print every matching log line")
+	cmd.Flags().Bool("fuzzy", false, "(Experimental) Toggle fuzzy matching for the search string")
+	cmd.Flags().Int64("tail", 1000, "Number of lines to tail from the logs, minimum 1, default 1000")
+	cmd.Flags().BoolP("case-insensitive", "i", false, "Toggle search-string case insensitivity (similar to grep's -i flag)")
+	cmd.Flags().BoolP("whole-string", "w", false, "Match the whole search string as a single word (similar to grep's -w flag)")
+	cmd.Flags().Bool("prefer-line", false, "Prefer to print the line containing the search string when it doesn't contain a timestamp")
+	cmd.Flags().Bool("noobaa-time", false, "Use NooBaa-provided timestamps instead of the Kubernetes ones (~10ms earlier than Kubernetes)")
+
+
 	return cmd
 }
 
