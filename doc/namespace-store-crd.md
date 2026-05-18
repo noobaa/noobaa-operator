@@ -10,6 +10,7 @@ Supported NamespaceStore types:
 - ibm-cos
 - google-cloud-storage
 - azure-blob
+- azure-sts-blob
 
 # Definitions
 - CRD: [noobaa.io_NamespaceStores_crd.yaml](../deploy/crds/noobaa.io_namespacestores_crd.yaml)
@@ -168,6 +169,35 @@ spec:
   type: azure-blob
 ```
 
+## Azure Blob Security Token Service (STS)
+Similarly to `Azure Blob`, this namespacestore uses the Azure Blob API for storing plain data in Azure containers.
+However, the difference between the two namespacestore types lies in the authentication method. Azure Blob uses a pair of static, user-provided account keys, while Azure Blob STS uses Azure Workload Identity with a Client ID and Tenant ID to obtain short-lived access tokens for every interaction with Azure by utilizing [Azure Workload Identity](https://azure.github.io/azure-workload-identity/).
+This type of namespacestore is useful in cases where the user wishes to use short-lived credentials instead of long-lived storage account keys, and for easier management of the cloud's security.
+
+Prior to using this namespacestore, Azure Workload Identity needs to be set up on the AKS cluster, which is outside the scope of these docs.
+
+```shell
+noobaa namespacestore create azure-sts-blob <NAMESPACESTORE NAME> --account-name <> --target-blob-container <> --tenant-id <> --client-id <>
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: NamespaceStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  name: <>
+  namespace: <>
+spec:
+  azureBlob:
+    clientId: <>
+    targetBlobContainer: <>
+    secret:
+      name: <>
+      namespace: <>
+  type: azure-blob
+```
+The secret must contain the following keys: `AccountName`, `azure_tenant_id`, and `azure_client_id`.
+
 ## Examples
 ### AWS S3
 Note that the keys below are example keys from the AWS documentation, and will not work.
@@ -189,6 +219,42 @@ spec:
       namespace: secret-namespace
     targetBucket: personal-bucket
   type: aws-s3
+```
+
+### Azure STS Blob
+Note that the secret referenced below must contain `AccountName`, `azure_tenant_id`, and `azure_client_id`. When using the CLI, these are populated automatically from the provided flags.
+```shell
+noobaa namespacestore create azure-sts-blob azure-sts-namespacestore --account-name azureSTSAccount --target-blob-container azure-sts-ns --client-id 8feb6304-7cee-40ea-b501-ef0d08520874 --tenant-id 486b6304-7cee-40qw-n507-hy7d520123
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: NamespaceStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  name: azure-sts-namespacestore
+  namespace: app-namespace
+spec:
+  azureBlob:
+    clientId: 8feb6304-7cee-40ea-b501-ef0d08520874
+    targetBlobContainer: azure-sts-ns
+    secret:
+      name: noobaa-azure-container-creds
+      namespace: noobaa
+  type: azure-blob
+```
+The secret `noobaa-azure-container-creds` should look like:
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: noobaa-azure-container-creds
+  namespace: noobaa
+type: Opaque
+stringData:
+  AccountName: azureSTSAccount
+  azure_tenant_id: 486b6304-7cee-40qw-n507-hy7d520123
+  azure_client_id: 8feb6304-7cee-40ea-b501-ef0d08520874
 ```
 
 ## Modifying a Namespace Store's Credentials
