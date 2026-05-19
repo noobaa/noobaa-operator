@@ -92,6 +92,10 @@ func (nsv *ResourceValidator) ValidateUpdateNS() {
 			nsv.SetValidationResult(false, err.Error())
 			return
 		}
+		if err := validations.ValidateNSEndpointChange(*ns, *oldNS); err != nil && util.IsValidationError(err) {
+			nsv.SetValidationResult(false, err.Error())
+			return
+		}
 	}
 }
 
