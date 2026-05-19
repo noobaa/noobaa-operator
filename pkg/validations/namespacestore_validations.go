@@ -432,6 +432,28 @@ func ValidateNSArchiveSpec(nsStore nbv1.NamespaceStore) error {
 	return nil
 }
 
+// ValidateNSEndpointChange validates the user is not trying to update the namespacestore endpoint.
+// The NooBaa Core update_external_connection API cannot change the endpoint; a delete+recreate is required.
+func ValidateNSEndpointChange(ns nbv1.NamespaceStore, oldNs nbv1.NamespaceStore) error {
+	switch ns.Spec.Type {
+	case nbv1.NSStoreTypeS3Compatible:
+		if oldNs.Spec.S3Compatible != nil && ns.Spec.S3Compatible != nil &&
+			oldNs.Spec.S3Compatible.Endpoint != ns.Spec.S3Compatible.Endpoint {
+			return util.ValidationError{
+				Msg: "Changing a NamespaceStore endpoint is unsupported; delete and re-create the NamespaceStore",
+			}
+		}
+	case nbv1.NSStoreTypeIBMCos:
+		if oldNs.Spec.IBMCos != nil && ns.Spec.IBMCos != nil &&
+			oldNs.Spec.IBMCos.Endpoint != ns.Spec.IBMCos.Endpoint {
+			return util.ValidationError{
+				Msg: "Changing a NamespaceStore endpoint is unsupported; delete and re-create the NamespaceStore",
+			}
+		}
+	}
+	return nil
+}
+
 // ValidateNSEmptyAWSARN validates if ARN is present in the NamespaceStore Spec
 func ValidateNSEmptyAWSARN(ns nbv1.NamespaceStore) error {
 	if ns.Spec.AWSS3 != nil {
