@@ -1,5 +1,5 @@
 # Deploy NooBaa on Minikube / Rancher Desktop
-There are many ways to deploy NooBaa on k8s on you local machine, this guide refers to 2 options (the difference is in the configurations):
+There are many ways to deploy NooBaa on k8s on a local machine, this guide refers to 2 options (the difference is in the configurations):
 1. Docker Desktop + Minikube
 2. Rancher Desktop
 
@@ -12,7 +12,7 @@ The guide includes the steps:
 
 ### Docker Desktop + Minikube
 #### Change Your Docker Resource Preferences
-Click on docker logo -> preference… -> Resource (left choice in the menu): CPU: 6, Memory: 10 GB, SWAP: 1 GB, Disk: 80 GB
+Click on docker logo $\rightarrow$ preference $\rightarrow$ Resource (left choice in the menu): CPU: 6, Memory: 10 GB, SWAP: 1 GB, Disk: 80 GB
 
 #### Setting Your Minikube Configurations
 a. Start your cluster:
@@ -34,7 +34,14 @@ d. Optional - before starting you cluster (not talking about first time installa
 minikube delete --all
 ```
 ### Rancher Desktop
-Inside the application -> preferences -> Virtual Machine (left tab) -> Memory: 10 GB, CPU: 6
+Inside the Rancher Desktop main window $\rightarrow$ preferences $\rightarrow$ Virtual Machine (left sidebar) $\rightarrow$ Hardware (top tab) $\rightarrow$ Memory: 10 GB, CPU: 6
+
+#### Apple Silicon (arm64) Macs:
+On Apple Silicon machines, you can choose between building images natively (arm64) or using Intel emulation (x86_64) via Rosetta. To configure this, open Rancher Desktop and navigate to Preferences $\rightarrow$ Virtual Machine (left sidebar) $\rightarrow$ Emulation (top tab)
+1. Native (arm64): Select QEMU.  
+Images will be built using the machine's native architecture (would need to use flags that were defined in the Makefile of each repository).
+2. Emulated (x86_64): Select VZ and enable "Rosetta support" (if supported). This allows the machine to translate and run Intel-based apps and builds.  
+Note: Rosetta was designed to ease this transition by translating Intel-based (x86_64) apps for Apple Silicon (arm64). Availability can vary by macOS version, so use it only where supported.
 
 ## General Comment on Working in the Terminal
 We will run the commands in the terminal, you may work with at least two tabs:
@@ -67,16 +74,17 @@ Notes:
 1) Minikube only: the file `devenv.sh` contains the command `eval $(minikube docker-env)`. We run the command `eval $(minikube docker-env)` prior to an image build (whether from noobaa-core repository or noobaa-operator repository).
 2) When using Rancher Desktop you'll see: `WARNING: minikube is not started - cannot change docker-env` since the we don't use minikube. The `devenv.sh` script is setting an alias `nb` to run the local build of the CLI, so we will run it anyway.
 
-### 4) Build Operator Images (Noobaa-Operator Tab)
+## 4) Build Operator Images (Noobaa-Operator Tab)
 ```bash
 make all
 ```
 This will build the following:
 * noobaa-operator image with tag `noobaa/noobaa-operator:<major.minor.patch>` (for example: `noobaa/noobaa-operator:5.13.0`). this tag is used by default when installing with the CLI.
 * noobaa CLI. The `devenv.sh` script is setting an alias `nb` to run the local build of the CLI.
+* If you chose to build on arm64 arch then you would need to run: `make all DOCKER_DEFAULT_PLATFORM=linux/arm64 GOARCH=arm64`
 
-### 5) Push Operator Images (Noobaa-Operator Tab) - Optional
-If we would like to save the image we can push it to a remote repository Docker Hub or Quay, you'll need an account, login to it in the terminal and create repositories noobaa-core and noobaa-operator. It is useful if you don't have any changes an the code.
+## 5) Push Operator Images (Noobaa-Operator Tab) - Optional
+If we would like to save the image we can push it to a remote repository Docker Hub or Quay, you'll need an account, login to it in the terminal and create repositories noobaa-core and noobaa-operator. It is useful if you don't have any changes in the code.
 
 Using Quay (your user in Quay):
 ```bash
@@ -86,11 +94,11 @@ docker push quay.io/<your-user>/noobaa-operator:<tag-name>
 
 Using Docker Hub (your user in Docker Hub):
 ```bash
-docker tag noobaa-core:<tag-name> <your-user>/noobaa-core:<tag-name>
-docker push <your-user>/noobaa-core:<tag-name>
+docker tag noobaa-operator:<tag-name> <your-user>/noobaa-operator:<tag-name>
+docker push <your-user>/noobaa-operator:<tag-name>
 ```
 
-### 6) Build Core Images (Noobaa-Core Tab)
+## 6) Build Core Images (Noobaa-Core Tab)
 Run the following to build noobaa-core image with the desired tag to build the image:
 ```bash
 make noobaa
@@ -103,15 +111,17 @@ Tip: You can use this option instead of running the two commands:
 ```bash
 make noobaa NOOBAA_TAG=noobaa-core:<tag-name>
 ```
-### 7) Push Core Images (Noobaa-Core Tab) - Optional
+* If you chose to build on arm64 arch then you would need to run: `make noobaa CONTAINER_PLATFORM=linux/arm64 NOOBAA_TAG=noobaa-core:<tag-name>`
+
+## 7) Push Core Images (Noobaa-Core Tab) - Optional
 Please refer to [Push Operator Images (Noobaa-Operator Tab) - Optional](#5-push-operator-images-noobaa-operator-tab---optional), the only change is instead of `noobaa-operator` use `noobaa-core`.
 
 Tip: You can use this option instead of running the two commands (using Quay, your user in Quay):
 ```bash
 make noobaa NOOBAA_TAG=quay.io/<your-user>/noobaa-core:<tag-name>
 ```
-### 8) Deploy Noobaa (Noobaa-Operator Tab)
-Deploy noobaa and you the image you created and tagged:
+## 8) Deploy Noobaa (Noobaa-Operator Tab)
+Deploy noobaa and use the image you created and tagged:
 ```bash
 nb install --dev --noobaa-image='noobaa-core:my-deploy'
 ```
@@ -119,7 +129,7 @@ _Note: We have the alias to `nb` from the step 'Build Operator'._
 
 In case you chose to use remote images (images that were pushed), for example using Quay:
 ```bash
-nb install --dev --noobaa-image='quay.io/<your-user>/noobaa-core:<tag-name>' --operator-image='quay.io/<your-user>/noobaa-operator:<tag-name> -n noobaa
+nb install --dev --noobaa-image='quay.io/<your-user>/noobaa-core:<tag-name>' --operator-image='quay.io/<your-user>/noobaa-operator:<tag-name>' -n noobaa
 ```
 
 The installation should take 5-10 minutes.
@@ -128,7 +138,20 @@ Once noobaa is installed please notice that the phase is Ready, you will see it 
 ✅ System Phase is "Ready".
 
 You can see something similar to this when getting the pods:
+```bash
+> kubectl get pods
+NAME                                               READY   STATUS    RESTARTS        AGE
+noobaa-operator-ccb78496b-kf4rs                    1/1     Running   0               5m
+cnpg-controller-manager-69b76d949c-w4c8n           1/1     Running   0               5m
+noobaa-db-pg-cluster-1                             1/1     Running   0               3m36s
+noobaa-db-pg-cluster-2                             1/1     Running   0               2m55s
+noobaa-core-0                                      2/2     Running   0               2m43s
+noobaa-endpoint-577466dd97-6r9sd                   1/1     Running   0               95s
+noobaa-default-backing-store-noobaa-pod-6a58d8de   1/1     Running   0               73s
 ```
+
+* Note if you would run the install with the flag `--use-standalone-db` then you can see something similar to this when getting the pods (single db pod instead of 3):
+```bash
 > kubectl get pods
 NAME                                               READY   STATUS    RESTARTS   AGE
 noobaa-core-0                                      1/1     Running   0          51m

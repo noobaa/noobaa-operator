@@ -117,6 +117,9 @@ var PostgresSSLCert = ""
 // DebugLevel can be used to override the default debug level
 var DebugLevel = "default_level"
 
+// OperatorLogLevel controls the operator process log verbosity (warn/info/debug)
+var OperatorLogLevel = "info"
+
 // PVPoolDefaultStorageClass is used for PVC's allocation for the noobaa server data
 // it can be overridden for testing or different PV providers.
 var PVPoolDefaultStorageClass = ""
@@ -301,6 +304,10 @@ func init() {
 	FlagSet.StringVar(
 		&DebugLevel, "debug-level",
 		DebugLevel, "The type of debug sets that the system prints (all, nsfs, warn, default_level)",
+	)
+	FlagSet.StringVar(
+		&OperatorLogLevel, "operator-log-level",
+		OperatorLogLevel, "The operator process log verbosity (warn, info, debug)",
 	)
 	FlagSet.StringVar(
 		&PVPoolDefaultStorageClass, "pv-pool-default-storage-class",

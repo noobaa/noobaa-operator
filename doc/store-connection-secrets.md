@@ -35,6 +35,14 @@ data:
   GoogleServiceAccountPrivateKeyJson: <>
 ```
 
+To create the secret using `kubectl` command from `credentials.json` path:
+
+```bash
+kubectl create secret generic <SECRET NAME> \
+  --from-file=GoogleServiceAccountPrivateKeyJson=<PATH TO credentials.json> \
+  -n <NAMESPACE>
+```
+
 ## Azure
 ```yaml
 apiVersion: v1
