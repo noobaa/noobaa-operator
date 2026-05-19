@@ -126,6 +126,52 @@ func TestNamespaceStoreIBMCos(t *testing.T) {
 
 }
 
+func TestValidateNSEndpointChange(t *testing.T) {
+	// S3Compatible: endpoint change should be denied
+	oldNS := getDefaultS3CompatibleNsStore()
+	newNS := getDefaultS3CompatibleNsStore()
+	newNS.Spec.S3Compatible.Endpoint = "https://different-endpoint.example.com"
+	err := validations.ValidateNSEndpointChange(newNS, oldNS)
+	AssertError(t, err, "S3Compatible endpoint change should be denied")
+
+	// S3Compatible: only secret changed, endpoint same — should be allowed
+	oldNS = getDefaultS3CompatibleNsStore()
+	newNS = getDefaultS3CompatibleNsStore()
+	newNS.Spec.S3Compatible.Secret.Name = "new-secret"
+	err = validations.ValidateNSEndpointChange(newNS, oldNS)
+	AssertNotError(t, err, "S3Compatible secret-only change should be allowed")
+
+	// S3Compatible: canonical vs non-canonical endpoint with secret rotation — should be allowed
+	oldNS = getDefaultS3CompatibleNsStore()
+	oldNS.Spec.S3Compatible.Endpoint = "minio.s3-a.svc:9000"
+	newNS = getDefaultS3CompatibleNsStore()
+	newNS.Spec.S3Compatible.Endpoint = "https://minio.s3-a.svc:9000"
+	newNS.Spec.S3Compatible.Secret.Name = "new-secret"
+	err = validations.ValidateNSEndpointChange(newNS, oldNS)
+	AssertNotError(t, err, "S3Compatible secret rotation with equivalent endpoints should be allowed")
+
+	// S3Compatible: nil spec on either side — should not panic and should be allowed
+	oldNS = getDefaultS3CompatibleNsStore()
+	oldNS.Spec.S3Compatible = nil
+	newNS = getDefaultS3CompatibleNsStore()
+	err = validations.ValidateNSEndpointChange(newNS, oldNS)
+	AssertNotError(t, err, "nil old S3Compatible spec should not cause error or panic")
+
+	// IBMCos: endpoint change should be denied
+	oldIBM := getDefaultIBMCosNsStore()
+	newIBM := getDefaultIBMCosNsStore()
+	newIBM.Spec.IBMCos.Endpoint = "https://different-ibm-endpoint.example.com"
+	err = validations.ValidateNSEndpointChange(newIBM, oldIBM)
+	AssertError(t, err, "IBMCos endpoint change should be denied")
+
+	// IBMCos: only secret changed, endpoint same — should be allowed
+	oldIBM = getDefaultIBMCosNsStore()
+	newIBM = getDefaultIBMCosNsStore()
+	newIBM.Spec.IBMCos.Secret.Name = "new-secret"
+	err = validations.ValidateNSEndpointChange(newIBM, oldIBM)
+	AssertNotError(t, err, "IBMCos secret-only change should be allowed")
+}
+
 func AssertNotError(t *testing.T, err error, format string, a ...interface{}) {
 	if err != nil {
 		msg := fmt.Sprintf(format, a...)
