@@ -441,8 +441,6 @@ func (r *Reconciler) ReadSystemInfo() error {
 		}
 	}
 
-	nsr := r.NamespaceResourceinfo
-
 	accessMode := nb.APIAccessModeReadWrite
 	if r.NamespaceStore.Spec.AccessMode == nbv1.AccessModeReadOnly {
 		accessMode = nb.APIAccessModeReadOnly
@@ -471,34 +469,39 @@ func (r *Reconciler) ReadSystemInfo() error {
 		return err
 	}
 
-	// Check that noobaa-core uses the same connection as the namespace store
-	// Due to noobaa/noobaa-core#5750 the identity (access-key) is not returned in the api call so just warn for now
-	// TODO Improve handling of this condition
-	if nsr != nil {
-		if nsr.EndpointType != conn.EndpointType ||
-			nsr.Endpoint != conn.Endpoint ||
-			nsr.Identity != string(conn.Identity) {
-			r.Logger.Warnf("using existing namespace resource but connection mismatch %+v namespace store %+v", conn, nsr)
+	// Look up the existing connection by name (connections are always named after the NamespaceStore).
+	// Name-based lookup ensures the connection is found even if the endpoint or credentials drifted,
+	// which is critical for the deletion path to correctly clean up the internal connection.
+	for i := range r.SystemInfo.Accounts {
+		for j := range r.SystemInfo.Accounts[i].ExternalConnections.Connections {
+			c := &r.SystemInfo.Accounts[i].ExternalConnections.Connections[j]
+			if c.Name == r.NamespaceStore.Name {
+				r.ExternalConnectionInfo = c
+				conn.Name = c.Name
+				break
+			}
+		}
+		if r.ExternalConnectionInfo != nil {
+			break
+		}
+	}
+
+	// If an existing connection was found, detect what changed
+	if r.ExternalConnectionInfo != nil {
+		existing := r.ExternalConnectionInfo
+		if existing.EndpointType != conn.EndpointType || existing.Endpoint != conn.Endpoint {
+			// update_external_connection cannot change the endpoint; the connection must be
+			// deleted and re-created. Direct the user to delete and re-create the NamespaceStore.
+			return util.NewPersistentError("EndpointChanged",
+				fmt.Sprintf("NamespaceStore %q endpoint was changed; delete and re-create the NamespaceStore to use a new endpoint", r.NamespaceStore.Name))
+		}
+		if existing.Identity != string(conn.Identity) {
 			r.UpdateExternalConnectionParams = &nb.UpdateExternalConnectionParams{
-				Name:               conn.Name,
+				Name:               existing.Name,
 				Identity:           conn.Identity,
 				Secret:             conn.Secret,
 				AzureLogAccessKeys: conn.AzureLogAccessKeys,
 				Region:             conn.Region,
-			}
-		}
-	}
-
-	// Reuse an existing connection if match is found
-	for i := range r.SystemInfo.Accounts {
-		account := &r.SystemInfo.Accounts[i]
-		for j := range account.ExternalConnections.Connections {
-			c := &account.ExternalConnections.Connections[j]
-			if c.EndpointType == conn.EndpointType &&
-				c.Endpoint == conn.Endpoint &&
-				c.Identity == string(conn.Identity) {
-				r.ExternalConnectionInfo = c
-				conn.Name = c.Name
 			}
 		}
 	}
