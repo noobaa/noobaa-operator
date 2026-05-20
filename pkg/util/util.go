@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -93,6 +94,9 @@ const (
 
 	// InjectedBundleCertCAFile points to OCP root CA to be added to the default root CA list
 	InjectedBundleCertCAFile = "/etc/ocp-injected-ca-bundle/ca-bundle.crt"
+
+	// platformCheckInterval is how often platform-detection API calls are re-evaluated.
+	platformCheckInterval = 6 * time.Hour
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -112,6 +116,25 @@ var AccessKeyRegexp, _ = regexp.Compile(`^[a-zA-Z0-9]{20}$`)
 // SecretKeyRegexp validates secret keys, which are 40 characters long and may include alphanumeric characters '+' and '/'
 var SecretKeyRegexp, _ = regexp.Compile(`^[a-zA-Z0-9+/]{40}$`)
 
+// cachedBool holds a boolean result with a timestamp so it can be re-evaluated
+// periodically rather than on every reconcile call.
+type cachedBool struct {
+	mu          sync.Mutex
+	value       bool
+	lastChecked time.Time
+}
+
+func (c *cachedBool) get(check func() bool) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if time.Since(c.lastChecked) < platformCheckInterval {
+		return c.value
+	}
+	c.value = check()
+	c.lastChecked = time.Now()
+	return c.value
+}
+
 // IsValidationError check if err is of type ValidationError
 func IsValidationError(err error) bool {
 	_, ok := err.(ValidationError)
@@ -128,6 +151,12 @@ var (
 	log        = logrus.WithContext(ctx)
 	lazyConfig *rest.Config
 	lazyClient client.Client
+
+	awsPlatformCache   cachedBool
+	azurePlatformCache cachedBool
+	gcpPlatformCache   cachedBool
+	ibmPlatformCache   cachedBool
+	fusionHCICache     cachedBool
 
 	// InsecureHTTPTransport is a global insecure http transport
 	InsecureHTTPTransport = &http.Transport{
@@ -1119,24 +1148,29 @@ func SetErrorCondition(conditions *[]conditionsv1.Condition, reason string, mess
 	})
 }
 
-// IsAWSPlatform returns true if this cluster is running on AWS
+// IsAWSPlatform returns true if this cluster is running on AWS.
+// The result is cached and re-evaluated at most once every platformCheckInterval.
 func IsAWSPlatform() bool {
-	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
-		Panic(fmt.Errorf("failed to list kubernetes nodes"))
-	}
-	isAWS := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "aws")
-	return isAWS
+	return awsPlatformCache.get(func() bool {
+		nodesList := &corev1.NodeList{}
+		if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+			Panic(fmt.Errorf("failed to list kubernetes nodes"))
+		}
+		return strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "aws")
+	})
 }
 
 // IsFusionHCIWithScale checks if the noobaa is deployed on HCI platform and
 // using Spectrum Scale storage.
+// The result is cached and re-evaluated at most once every platformCheckInterval.
 func IsFusionHCIWithScale() bool {
-	sc := &storagev1.StorageClass{
-		TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
-		ObjectMeta: metav1.ObjectMeta{Name: "ibm-spectrum-scale-csi-storageclass-version2"},
-	}
-	return KubeCheck(sc)
+	return fusionHCICache.get(func() bool {
+		sc := &storagev1.StorageClass{
+			TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
+			ObjectMeta: metav1.ObjectMeta{Name: "ibm-spectrum-scale-csi-storageclass-version2"},
+		}
+		return KubeCheckQuiet(sc)
+	})
 }
 
 // IsSTSClusterBS returns true if it is running on an STS cluster
@@ -1171,52 +1205,60 @@ func IsAzureSTSClusterNS(ns *nbv1.NamespaceStore) bool {
 	return false
 }
 
-// IsAzurePlatformNonGovernment returns true if this cluster is running on Azure and also not on azure government\DOD cloud
+// IsAzurePlatformNonGovernment returns true if this cluster is running on Azure and also not on azure government\DOD cloud.
+// The result is cached and re-evaluated at most once every platformCheckInterval.
 func IsAzurePlatformNonGovernment() bool {
-	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
-		Panic(fmt.Errorf("failed to list kubernetes nodes"))
-	}
-	const regionLabel string = "topology.kubernetes.io/region"
-	node := nodesList.Items[0]
-	isAzure := strings.HasPrefix(node.Spec.ProviderID, "azure")
-	if isAzure {
-		nodeLabels := node.GetLabels()
-		region, ok := nodeLabels[regionLabel]
-		if !ok {
-			log.Warnf("did not find the expected label %q on node %q to determine azure region", regionLabel, node.Name)
-		} else if strings.HasPrefix(region, "usgov") || strings.HasPrefix(region, "usdod") {
-			log.Infof("identified the region [%q] as an Azure gov/DOD region", region)
-			return false
+	return azurePlatformCache.get(func() bool {
+		nodesList := &corev1.NodeList{}
+		if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+			Panic(fmt.Errorf("failed to list kubernetes nodes"))
 		}
-	}
-	return isAzure
+		const regionLabel string = "topology.kubernetes.io/region"
+		node := nodesList.Items[0]
+		isAzure := strings.HasPrefix(node.Spec.ProviderID, "azure")
+		if isAzure {
+			nodeLabels := node.GetLabels()
+			region, ok := nodeLabels[regionLabel]
+			if !ok {
+				log.Warnf("did not find the expected label %q on node %q to determine azure region", regionLabel, node.Name)
+			} else if strings.HasPrefix(region, "usgov") || strings.HasPrefix(region, "usdod") {
+				log.Infof("identified the region [%q] as an Azure gov/DOD region", region)
+				return false
+			}
+		}
+		return isAzure
+	})
 }
 
-// IsGCPPlatform returns true if this cluster is running on GCP
+// IsGCPPlatform returns true if this cluster is running on GCP.
+// The result is cached and re-evaluated at most once every platformCheckInterval.
 func IsGCPPlatform() bool {
-	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
-		Panic(fmt.Errorf("failed to list kubernetes nodes"))
-	}
-	isGCP := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "gce")
-	return isGCP
+	return gcpPlatformCache.get(func() bool {
+		nodesList := &corev1.NodeList{}
+		if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+			Panic(fmt.Errorf("failed to list kubernetes nodes"))
+		}
+		return strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "gce")
+	})
 }
 
-// IsIBMPlatform returns true if this cluster is running on IBM Cloud
+// IsIBMPlatform returns true if this cluster is running on IBM Cloud.
+// The result is cached and re-evaluated at most once every platformCheckInterval.
 func IsIBMPlatform() bool {
-	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
-		Panic(fmt.Errorf("failed to list kubernetes nodes"))
-	}
-	isIBM := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "ibm")
-	if isIBM {
-		// In case of Satellite cluster is deployed in user provided infrastructure
-		if strings.Contains(nodesList.Items[0].Spec.ProviderID, "/sat-") {
-			isIBM = false
+	return ibmPlatformCache.get(func() bool {
+		nodesList := &corev1.NodeList{}
+		if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+			Panic(fmt.Errorf("failed to list kubernetes nodes"))
 		}
-	}
-	return isIBM
+		isIBM := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "ibm")
+		if isIBM {
+			// In case of Satellite cluster is deployed in user provided infrastructure
+			if strings.Contains(nodesList.Items[0].Spec.ProviderID, "/sat-") {
+				isIBM = false
+			}
+		}
+		return isIBM
+	})
 }
 
 // GetIBMRegion returns the cluster's region in IBM Cloud
