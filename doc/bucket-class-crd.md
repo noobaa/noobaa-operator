@@ -28,6 +28,37 @@ Cache bucketclasses work by saving read objects in a chosen backingstore, which 
 - Zero (`0`) - the cache will always compare the object's ETag before returning it. This option has a performance cost of getting the ETag from the remote target on each object read. This is the least performant option.
 - Positive (denoted in milliseconds, e.g. `3600000` equals to an hour) - once an object was read and saved in the cache, the chosen amount of time will have to pass prior to the object's ETag being compared again.
 
+## Archive Policy
+An archive policy attaches an S3compatible NamespaceStore having `archive: true` to a placement bucket class, enabling writing objects directly to cold-storage and lifecycle transitions of objects from standard storage class to deep-archive. When a bucket's S3 lifecycle rules trigger an archive transition, NooBaa moves objects to the referenced deep-archive endpoint.
+
+### Constraints:
+- `archivePolicy` requires `placementPolicy` to also be set on the same bucket class.
+- NamespaceStores having archive: true cannot be used inside a `namespacePolicy`; use `archivePolicy` instead.
+- Archive policy can be added to an existing placement bucket class by updating the CR (or patching it); the operator will propagate the change to all buckets in the class. (TODO)
+
+### CLI example
+```shell
+noobaa bucketclass create placement-bucketclass my-bc \
+  --backingstores=bs1 \
+  --deep-archive-resource=my-da-ns
+```
+
+### YAML example
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BucketClass
+metadata:
+  name: my-bc
+  namespace: noobaa
+spec:
+  placementPolicy:
+    tiers:
+      - backingstores:
+          - bs1
+  archivePolicy:
+    deepArchiveResource: my-da-ns
+```
+
 ## Constraints:
 - A backing store name may appear in more than one bucket class but may not appear more than once in a certain bucket class.
 - The operator CLI currently only supports a single tier placement policy for a bucket class.

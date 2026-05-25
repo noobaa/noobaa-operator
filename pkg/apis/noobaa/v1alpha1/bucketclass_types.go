@@ -78,6 +78,12 @@ type BucketClassSpec struct {
 	// VectorPolicy specifies the vector policy for the bucket class
 	// +optional
 	VectorPolicy *VectorPolicy `json:"vectorPolicy,omitempty"`
+
+	// ArchivePolicy specifies the Archive policy for the bucket class.
+	// When set, the bucket class supports archiving objects to Deep Archive.
+	// Requires PlacementPolicy to also be set.
+	// +optional
+	ArchivePolicy *ArchivePolicy `json:"archivePolicy,omitempty"`
 }
 
 // BucketClassStatus defines the observed state of BucketClass
@@ -240,6 +246,15 @@ const (
 	// BucketClassPhaseDeleting means the operator is deleting the resources on the cluster
 	BucketClassPhaseDeleting BucketClassPhase = "Deleting"
 )
+
+// ArchivePolicy specifies the archive policy for a bucket class.
+type ArchivePolicy struct {
+
+	// DeepArchiveResource is the name of an s3-compatible NamespaceStore that has spec.archive=true.
+	// currently only supports IBM Deep Archive as the archive target
+	// +optional
+	DeepArchiveResource string `json:"deepArchiveResource,omitempty"`
+}
 
 // VectorPolicy specifies the vector policy for the bucket class
 type VectorPolicy struct {

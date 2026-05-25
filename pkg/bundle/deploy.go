@@ -688,7 +688,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_yaml = "99a680e6d2ad4b391758007186f24761f034b001bea6a976ae799588df3b1033"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_yaml = "d31ffd534863d5fec56bbac39cf4f956fb613f5547b4402c36f19e9bc344df49"
 
 const File_deploy_crds_noobaa_io_bucketclasses_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -755,6 +755,18 @@ spec:
           spec:
             description: Specification of the desired behavior of the noobaa BucketClass.
             properties:
+              archivePolicy:
+                description: |-
+                  ArchivePolicy specifies the Archive policy for the bucket class.
+                  When set, the bucket class supports archiving objects to Deep Archive.
+                  Requires PlacementPolicy to also be set.
+                properties:
+                  deepArchiveResource:
+                    description: |-
+                      DeepArchiveResource is the name of an s3-compatible NamespaceStore that has spec.archive=true.
+                      currently only supports IBM Deep Archive as the archive target
+                    type: string
+                type: object
               namespacePolicy:
                 description: NamespacePolicy specifies the namespace policy for the
                   bucket class

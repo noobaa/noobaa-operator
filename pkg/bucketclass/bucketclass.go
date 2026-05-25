@@ -79,6 +79,8 @@ func CmdCreatePlacementBucketClass() *cobra.Command {
 		"Set quota max objects quantity config to requested bucket")
 	cmd.Flags().String("max-size", "",
 		"Set quota max size config to requested bucket")
+	cmd.Flags().String("deep-archive-resource", "",
+		"Set an s3-compatible ibm-deep-archive NamespaceStore for the archive policy (IBM Deep Archive cold-storage)")
 
 	return cmd
 }
@@ -290,7 +292,7 @@ func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType 
 		log.Fatalf(`❌ Bucket class validation failed %q`, err)
 	}
 
-	// check that namespace stores exists
+	// check that namespace stores exists and are not archive (for namespace buckets)
 	for _, name := range namespaceStoresArr {
 		nsStore := &nbv1.NamespaceStore{
 			TypeMeta: metav1.TypeMeta{Kind: "NamespaceStore"},
@@ -302,6 +304,10 @@ func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType 
 		if !util.KubeCheck(nsStore) {
 			log.Fatalf(`❌ Could not get NamespaceStore %q in namespace %q`,
 				nsStore.Name, nsStore.Namespace)
+		}
+		if bucketClass.Spec.NamespacePolicy != nil && nsStore.Spec.Archive {
+			log.Fatalf(`❌ NamespaceStore %q is an archive store and cannot be used in a namespace policy; use archivePolicy instead`,
+				nsStore.Name)
 		}
 	}
 
@@ -407,7 +413,7 @@ func PopulateCacheNamespaceBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1
 	return append(namespaceStoresArr, hubResource), backingStores
 }
 
-// PopulatePlacementBucketClass populates namespace cache bucketclass spec
+// PopulatePlacementBucketClass populates placement bucketclass spec
 func PopulatePlacementBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1.BucketClassSpec) ([]string, []string) {
 	log := util.Logger()
 	placement, _ := cmd.Flags().GetString("placement")
@@ -430,7 +436,16 @@ func PopulatePlacementBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1.Buck
 		}
 	}
 
-	return []string{}, backingStores
+	var namespaceStoresArr []string
+	deepArchiveResource, _ := cmd.Flags().GetString("deep-archive-resource")
+	if deepArchiveResource != "" {
+		bucketClassSpec.ArchivePolicy = &nbv1.ArchivePolicy{
+			DeepArchiveResource: deepArchiveResource,
+		}
+		namespaceStoresArr = append(namespaceStoresArr, deepArchiveResource)
+	}
+
+	return namespaceStoresArr, backingStores
 }
 
 // PopulateVectorBucketClass populates vector bucketclass spec
@@ -571,6 +586,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		"NAME",
 		"PLACEMENT",
 		"NAMESPACE-POLICY",
+		"ARCHIVE-POLICY",
 		"VECTOR-POLICY",
 		"QUOTA",
 		"PHASE",
@@ -580,12 +596,14 @@ func RunList(cmd *cobra.Command, args []string) {
 		bc := &list.Items[i]
 		pp, _ := json.Marshal(bc.Spec.PlacementPolicy)
 		np, _ := json.Marshal(bc.Spec.NamespacePolicy)
+		ap, _ := json.Marshal(bc.Spec.ArchivePolicy)
 		vp, _ := json.Marshal(bc.Spec.VectorPolicy)
 		quota, _ := json.Marshal(bc.Spec.Quota)
 		table.AddRow(
 			bc.Name,
 			fmt.Sprintf("%+v", string(pp)),
 			fmt.Sprintf("%+v", string(np)),
+			fmt.Sprintf("%+v", string(ap)),
 			fmt.Sprintf("%+v", string(vp)),
 			fmt.Sprintf("%+v", string(quota)),
 			string(bc.Status.Phase),
@@ -679,8 +697,9 @@ func MapBackingstoreToBucketclasses(backingstore types.NamespacedName) []reconci
 	return reqs
 }
 
-// MapNamespacestoreToBucketclasses returns a list of bucketclasses that uses the namespacestore in their namespace policy or vector policy
-// used by bucketclass_contorller to watch namespacestores changes
+// MapNamespacestoreToBucketclasses returns a list of bucketclasses that uses the namespacestore
+// in their namespace policy, vector policy, or archive policy.
+// Used by the bucketclass controller to watch namespacestore changes.
 func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []reconcile.Request {
 	logrus.Infof("checking which bucketclasses to reconcile. mapping namespacestore %v to bucketclasses", namespacestore)
 	bucketclassList := &nbv1.BucketClassList{
@@ -694,7 +713,18 @@ func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []rec
 	reqs := []reconcile.Request{}
 
 	for _, bc := range bucketclassList.Items {
-		if bc.Spec.NamespacePolicy == nil && bc.Spec.VectorPolicy == nil {
+		if bc.Spec.NamespacePolicy == nil && bc.Spec.VectorPolicy == nil && bc.Spec.ArchivePolicy == nil {
+			continue
+		}
+
+		if bc.Spec.ArchivePolicy != nil &&
+			bc.Spec.ArchivePolicy.DeepArchiveResource == namespacestore.Name {
+			reqs = append(reqs, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      bc.Name,
+					Namespace: bc.Namespace,
+				},
+			})
 			continue
 		}
 
@@ -710,39 +740,11 @@ func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []rec
 			continue
 		}
 
-		policyType := bc.Spec.NamespacePolicy.Type
-		switch policyType {
-		case nbv1.NSBucketClassTypeSingle:
-			nsr := bc.Spec.NamespacePolicy.Single.Resource
-			if nsr == namespacestore.Name {
-				reqs = append(reqs, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      bc.Name,
-						Namespace: bc.Namespace,
-					},
-				})
-			}
-		case nbv1.NSBucketClassTypeCache:
-			nsr := bc.Spec.NamespacePolicy.Cache.HubResource
-			if nsr == namespacestore.Name {
-				reqs = append(reqs, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      bc.Name,
-						Namespace: bc.Namespace,
-					},
-				})
-			}
-		case nbv1.NSBucketClassTypeMulti:
-			nsr := bc.Spec.NamespacePolicy.Multi.WriteResource
-			if nsr == namespacestore.Name {
-				reqs = append(reqs, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      bc.Name,
-						Namespace: bc.Namespace,
-					},
-				})
-			}
-			for _, nsr := range bc.Spec.NamespacePolicy.Multi.ReadResources {
+		if bc.Spec.NamespacePolicy != nil {
+			policyType := bc.Spec.NamespacePolicy.Type
+			switch policyType {
+			case nbv1.NSBucketClassTypeSingle:
+				nsr := bc.Spec.NamespacePolicy.Single.Resource
 				if nsr == namespacestore.Name {
 					reqs = append(reqs, reconcile.Request{
 						NamespacedName: types.NamespacedName{
@@ -750,6 +752,36 @@ func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []rec
 							Namespace: bc.Namespace,
 						},
 					})
+				}
+			case nbv1.NSBucketClassTypeCache:
+				nsr := bc.Spec.NamespacePolicy.Cache.HubResource
+				if nsr == namespacestore.Name {
+					reqs = append(reqs, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name:      bc.Name,
+							Namespace: bc.Namespace,
+						},
+					})
+				}
+			case nbv1.NSBucketClassTypeMulti:
+				nsr := bc.Spec.NamespacePolicy.Multi.WriteResource
+				if nsr == namespacestore.Name {
+					reqs = append(reqs, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name:      bc.Name,
+							Namespace: bc.Namespace,
+						},
+					})
+				}
+				for _, nsr := range bc.Spec.NamespacePolicy.Multi.ReadResources {
+					if nsr == namespacestore.Name {
+						reqs = append(reqs, reconcile.Request{
+							NamespacedName: types.NamespacedName{
+								Name:      bc.Name,
+								Namespace: bc.Namespace,
+							},
+						})
+					}
 				}
 			}
 		}
