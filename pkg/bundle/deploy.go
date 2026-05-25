@@ -963,7 +963,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "3918d4e2b31648e242af9bb3ee522b792083d6b942279d305fbcf18a9cc72dfa"
+const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "771b9b6a9da4a926d8f22e3d129c339eea0edff563f4d7494a278179aae86fca"
 
 const File_deploy_crds_noobaa_io_namespacestores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -1021,6 +1021,11 @@ spec:
               accessMode:
                 description: AccessMode is an enum of supported access modes
                 type: string
+              archive:
+                description: |-
+                  Archive marks the namespace store for cold-storage archive use (e.g. IBM Deep Archive).
+                  Only valid with type s3-compatible.
+                type: boolean
               awsS3:
                 description: AWSS3Spec specifies a namespace store of type aws-s3
                 properties:
