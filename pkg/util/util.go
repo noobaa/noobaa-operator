@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -1119,24 +1120,42 @@ func SetErrorCondition(conditions *[]conditionsv1.Condition, reason string, mess
 	})
 }
 
+var (
+	awsPlatformOnce         sync.Once
+	awsPlatform             bool
+	azurePlatformNonGovOnce sync.Once
+	azurePlatformNonGov     bool
+	gcpPlatformOnce         sync.Once
+	gcpPlatform             bool
+	ibmPlatformOnce         sync.Once
+	ibmPlatform             bool
+	fusionHCIWithScaleOnce  sync.Once
+	fusionHCIWithScale      bool
+)
+
 // IsAWSPlatform returns true if this cluster is running on AWS
 func IsAWSPlatform() bool {
-	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
-		Panic(fmt.Errorf("failed to list kubernetes nodes"))
-	}
-	isAWS := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "aws")
-	return isAWS
+	awsPlatformOnce.Do(func() {
+		nodesList := &corev1.NodeList{}
+		if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+			Panic(fmt.Errorf("failed to list kubernetes nodes"))
+		}
+		awsPlatform = strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "aws")
+	})
+	return awsPlatform
 }
 
 // IsFusionHCIWithScale checks if the noobaa is deployed on HCI platform and
 // using Spectrum Scale storage.
 func IsFusionHCIWithScale() bool {
-	sc := &storagev1.StorageClass{
-		TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
-		ObjectMeta: metav1.ObjectMeta{Name: "ibm-spectrum-scale-csi-storageclass-version2"},
-	}
-	return KubeCheck(sc)
+	fusionHCIWithScaleOnce.Do(func() {
+		sc := &storagev1.StorageClass{
+			TypeMeta:   metav1.TypeMeta{Kind: "StorageClass"},
+			ObjectMeta: metav1.ObjectMeta{Name: "ibm-spectrum-scale-csi-storageclass-version2"},
+		}
+		fusionHCIWithScale = KubeCheckQuiet(sc)
+	})
+	return fusionHCIWithScale
 }
 
 // IsSTSClusterBS returns true if it is running on an STS cluster
@@ -1173,50 +1192,58 @@ func IsAzureSTSClusterNS(ns *nbv1.NamespaceStore) bool {
 
 // IsAzurePlatformNonGovernment returns true if this cluster is running on Azure and also not on azure government\DOD cloud
 func IsAzurePlatformNonGovernment() bool {
-	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
-		Panic(fmt.Errorf("failed to list kubernetes nodes"))
-	}
-	const regionLabel string = "topology.kubernetes.io/region"
-	node := nodesList.Items[0]
-	isAzure := strings.HasPrefix(node.Spec.ProviderID, "azure")
-	if isAzure {
-		nodeLabels := node.GetLabels()
-		region, ok := nodeLabels[regionLabel]
-		if !ok {
-			log.Warnf("did not find the expected label %q on node %q to determine azure region", regionLabel, node.Name)
-		} else if strings.HasPrefix(region, "usgov") || strings.HasPrefix(region, "usdod") {
-			log.Infof("identified the region [%q] as an Azure gov/DOD region", region)
-			return false
+	azurePlatformNonGovOnce.Do(func() {
+		nodesList := &corev1.NodeList{}
+		if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+			Panic(fmt.Errorf("failed to list kubernetes nodes"))
 		}
-	}
-	return isAzure
+		const regionLabel string = "topology.kubernetes.io/region"
+		node := nodesList.Items[0]
+		isAzure := strings.HasPrefix(node.Spec.ProviderID, "azure")
+		if isAzure {
+			nodeLabels := node.GetLabels()
+			region, ok := nodeLabels[regionLabel]
+			if !ok {
+				log.Warnf("did not find the expected label %q on node %q to determine azure region", regionLabel, node.Name)
+			} else if strings.HasPrefix(region, "usgov") || strings.HasPrefix(region, "usdod") {
+				log.Infof("identified the region [%q] as an Azure gov/DOD region", region)
+				isAzure = false
+			}
+		}
+		azurePlatformNonGov = isAzure
+	})
+	return azurePlatformNonGov
 }
 
 // IsGCPPlatform returns true if this cluster is running on GCP
 func IsGCPPlatform() bool {
-	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
-		Panic(fmt.Errorf("failed to list kubernetes nodes"))
-	}
-	isGCP := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "gce")
-	return isGCP
+	gcpPlatformOnce.Do(func() {
+		nodesList := &corev1.NodeList{}
+		if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+			Panic(fmt.Errorf("failed to list kubernetes nodes"))
+		}
+		gcpPlatform = strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "gce")
+	})
+	return gcpPlatform
 }
 
 // IsIBMPlatform returns true if this cluster is running on IBM Cloud
 func IsIBMPlatform() bool {
-	nodesList := &corev1.NodeList{}
-	if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
-		Panic(fmt.Errorf("failed to list kubernetes nodes"))
-	}
-	isIBM := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "ibm")
-	if isIBM {
-		// In case of Satellite cluster is deployed in user provided infrastructure
-		if strings.Contains(nodesList.Items[0].Spec.ProviderID, "/sat-") {
-			isIBM = false
+	ibmPlatformOnce.Do(func() {
+		nodesList := &corev1.NodeList{}
+		if ok := KubeList(nodesList); !ok || len(nodesList.Items) == 0 {
+			Panic(fmt.Errorf("failed to list kubernetes nodes"))
 		}
-	}
-	return isIBM
+		isIBM := strings.HasPrefix(nodesList.Items[0].Spec.ProviderID, "ibm")
+		if isIBM {
+			// In case of Satellite cluster is deployed in user provided infrastructure
+			if strings.Contains(nodesList.Items[0].Spec.ProviderID, "/sat-") {
+				isIBM = false
+			}
+		}
+		ibmPlatform = isIBM
+	})
+	return ibmPlatform
 }
 
 // GetIBMRegion returns the cluster's region in IBM Cloud
