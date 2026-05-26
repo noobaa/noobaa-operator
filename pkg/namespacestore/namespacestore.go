@@ -924,7 +924,7 @@ func CheckPhase(namespaceStore *nbv1.NamespaceStore) {
 // providerStorageClass returns the provider storage-class label for a NamespaceStore row.
 // Only s3-compatible stores carry the archive distinction; all other types return "-".
 func providerStorageClass(ns *nbv1.NamespaceStore) string {
-	if nbv1.IsArchiveNamespaceStore(ns) {
+	if util.IsArchiveNamespaceStore(ns) {
 		return "archive"
 	}
 	return "standard"

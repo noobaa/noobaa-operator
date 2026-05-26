@@ -11,6 +11,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -207,15 +208,8 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		defaultResource = sys.Name + "-default-backing-store"
 	}
 
-	isResourceBackingStore := checkResourceBackingStore(defaultResource)
-	isResourceNamespaceStore := checkResourceNamespaceStore(defaultResource)
-
-	if isResourceBackingStore && isResourceNamespaceStore {
-		log.Fatalf(`❌  got BackingStore and NamespaceStore %q in namespace %q`,
-			defaultResource, options.Namespace)
-	} else if !isResourceBackingStore && !isResourceNamespaceStore {
-		log.Fatalf(`❌ Could not get BackingStore or NamespaceStore %q in namespace %q`,
-			defaultResource, options.Namespace)
+	if err := validations.ValidateAccountDefaultResource(*noobaaAccount); err != nil {
+		log.Fatalf(`❌ %s`, err.Error())
 	}
 
 	noobaaAccount.Spec.DefaultResource = defaultResource
@@ -816,32 +810,4 @@ func ValidateAccessKeys(accessKeys nb.S3AccessKeys) {
 	if !util.SecretKeyRegexp.MatchString(string(accessKeys.SecretKey)) {
 		log.Fatalf(`❌ Account secret length must be 40, and must contain only alpha-numeric chars, "+", "/"`)
 	}
-}
-
-// checkResourceBackingStore checks if a resourceName exists and if BackingStore
-func checkResourceBackingStore(resourceName string) bool {
-	// check that a backing store exists
-	resourceBackingStore := &nbv1.BackingStore{
-		TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      resourceName,
-			Namespace: options.Namespace,
-		},
-	}
-
-	return util.KubeCheckQuiet(resourceBackingStore)
-}
-
-// checkResourceNamespaceStore checks if a resourceName exists and if NamespaceStore
-func checkResourceNamespaceStore(resourceName string) bool {
-	// check that a namespace store exists
-	resourceNamespaceStore := &nbv1.NamespaceStore{
-		TypeMeta: metav1.TypeMeta{Kind: "NamespaceStore"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      resourceName,
-			Namespace: options.Namespace,
-		},
-	}
-
-	return util.KubeCheckQuiet(resourceNamespaceStore)
 }

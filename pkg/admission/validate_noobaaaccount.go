@@ -68,6 +68,11 @@ func (nav *ResourceValidator) ValidateCreateNA() {
 		nav.SetValidationResult(false, err.Error())
 		return
 	}
+
+	if err := validations.ValidateAccountDefaultResource(*na); err != nil {
+		nav.SetValidationResult(false, err.Error())
+		return
+	}
 }
 
 // ValidateUpdateNA runs all the validations tests for UPDATE operations
@@ -89,5 +94,5 @@ func (nav *ResourceValidator) ValidateUpdateNA() {
 			nav.SetValidationResult(false, err.Error())
 			return
 		}
-	}	
+	}
 }

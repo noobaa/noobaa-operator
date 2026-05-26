@@ -203,7 +203,7 @@ func ValidateNamespacePolicy(namespacePolicy *nbv1.NamespacePolicy, namespace st
 			return util.NewPersistentError("MissingNamespaceStore",
 				fmt.Sprintf("NooBaa NamespaceStore %q not found or deleted", name))
 		}
-		if nbv1.IsArchiveNamespaceStore(nsStore) {
+		if util.IsArchiveNamespaceStore(nsStore) {
 			return util.NewPersistentError("InvalidNamespaceStore",
 				fmt.Sprintf("NamespaceStore %q is an archive store and cannot be referenced in a namespacePolicy; use archivePolicy instead",
 					name))
