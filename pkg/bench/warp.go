@@ -55,12 +55,25 @@ func CmdWarp() *cobra.Command {
 		"bucket", "first.bucket",
 		"Bucket to use for benchmark data. ALL DATA WILL BE DELETED IN BUCKET!",
 	)
+	cmd.Flags().String(
+		"keys-secret", "noobaa-admin",
+		"Secret containing the access key and secret key for the S3 bucket",
+	)
+	cmd.Flags().String(
+		"obc", "",
+		"OBC to use for benchmark. The bucket name and credentials will be fetched from the OBC secret and configmap",
+	)
+	cmd.Flags().String(
+		"obc-namespace", "",
+		"Namespace of the OBC to use for benchmark",
+	)
+	// warp flags
 	cmd.Flags().Bool(
 		"use-https", false,
 		"Use HTTPS endpoints for benchmark",
 	)
 	cmd.Flags().Int32(
-		"clients", 0,
+		"clients", 1,
 		"Number of warp instances",
 	)
 	cmd.Flags().String(
@@ -87,6 +100,10 @@ func CmdWarp() *cobra.Command {
 		"warp-args", "",
 		"Arguments to be passed directly to warp CLI",
 	)
+	cmd.Flags().Bool(
+		"no-cleanup", false,
+		"Do not cleanup the benchmark resources after the benchmark is finished",
+	)
 
 	return cmd
 }
@@ -96,9 +113,10 @@ func RunBenchWarp(cmd *cobra.Command, args []string) {
 	log.Info("Starting warp benchmark")
 
 	bench := args[0]
-	bucket := util.GetFlagStringOrPrompt(cmd, "bucket")
+	bucket, _ := cmd.Flags().GetString("bucket")
 	image := util.GetFlagStringOrPrompt(cmd, "image")
 	endpointType := util.GetFlagStringOrPrompt(cmd, "endpoint-type")
+	keysSecret, _ := cmd.Flags().GetString("keys-secret")
 
 	useHTTPs, _ := cmd.Flags().GetBool("use-https")
 	clients, _ := cmd.Flags().GetInt32("clients")
@@ -106,21 +124,42 @@ func RunBenchWarp(cmd *cobra.Command, args []string) {
 	secretKey, _ := cmd.Flags().GetString("secret-key")
 	warpArgs, _ := cmd.Flags().GetString("warp-args")
 
+	noCleanup, _ := cmd.Flags().GetBool("no-cleanup")
+
+	keysSecretNamespace := options.Namespace
+
+	obc, _ := cmd.Flags().GetString("obc")
+	if obc != "" {
+		obcNamespace, _ := cmd.Flags().GetString("obc-namespace")
+		if obcNamespace == "" {
+			obcNamespace = options.Namespace
+		}
+		// use the OBC secret as the keys secret
+		keysSecret = obc
+		// read the configmap and get data.BUCKET_NAME
+		configMap := util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap)
+		configMap.Name = obc
+		configMap.Namespace = obcNamespace
+		keysSecretNamespace = obcNamespace
+		if !util.KubeCheck(configMap) {
+			log.Fatal("❌ Failed to find configmap")
+		}
+		bucket = configMap.Data["BUCKET_NAME"]
+		if bucket == "" {
+			log.Fatal("❌ Failed to find bucket name in configmap")
+		}
+	}
+
+	// if access keys are not provided, use the keys secret
 	if accessKey == "" || secretKey == "" {
-		noobaaAdminSecret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
-		noobaaAdminSecret.Name = "noobaa-admin"
-		noobaaAdminSecret.Namespace = options.Namespace
-
-		if !util.KubeCheck(noobaaAdminSecret) {
-			log.Fatal("❌ Access Key and/or Secret Key not provided and failed to fetch \"noobaa-admin\" secret")
+		keysSecretObj := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+		keysSecretObj.Name = keysSecret
+		keysSecretObj.Namespace = keysSecretNamespace
+		if !util.KubeCheck(keysSecretObj) {
+			log.Fatal("❌ Failed to find keys secret")
 		}
-
-		accessKey = noobaaAdminSecret.StringData["AWS_ACCESS_KEY_ID"]
-		secretKey = noobaaAdminSecret.StringData["AWS_SECRET_ACCESS_KEY"]
-
-		if accessKey == "" || secretKey == "" {
-			log.Fatal("❌ Access Key and/or Secret Key not provided and failed to find credentials in \"noobaa-admin\" secret")
-		}
+		accessKey = keysSecretObj.StringData["AWS_ACCESS_KEY_ID"]
+		secretKey = keysSecretObj.StringData["AWS_SECRET_ACCESS_KEY"]
 	}
 
 	clients = getClientNums(clients)
@@ -149,7 +188,7 @@ func RunBenchWarp(cmd *cobra.Command, args []string) {
 	}
 
 	go util.OnSignal(func() {
-		cleanupWarp()
+		cleanupWarpAndExit(noCleanup)
 	}, syscall.SIGINT, syscall.SIGTERM)
 
 	provisionWarp(clients, image)
@@ -159,7 +198,7 @@ func RunBenchWarp(cmd *cobra.Command, args []string) {
 		endpointType, useHTTPs, warpArgs,
 	)
 	pollWarp()
-	cleanupWarp()
+	cleanupWarpAndExit(noCleanup)
 }
 
 func provisionWarp(clients int32, image string) {
@@ -234,7 +273,7 @@ func startWarpJob(
 			} else {
 				args = append(
 					args,
-					"--warp-client", fmt.Sprintf("warp-{0..%d}.warp.%s.svc.cluster.local:7761", clients-1, options.Namespace),
+					"--warp-client", fmt.Sprintf("warp-{0...%d}.warp.%s.svc.cluster.local:7761", clients-1, options.Namespace),
 				)
 			}
 
@@ -303,7 +342,12 @@ func pollWarp() {
 	}
 }
 
-func cleanupWarp() {
+func cleanupWarpAndExit(noCleanup bool) {
+	if noCleanup {
+		// exit the process without cleanup
+		os.Exit(0)
+	}
+
 	util.Logger().Info("Cleaning up Warp")
 
 	warpJob := util.KubeObject(bundle.File_deploy_warp_warp_job_yaml).(*batchv1.Job)
@@ -436,11 +480,9 @@ func getClientNums(clients int32) int32 {
 		log.Fatal("❌ No nodes found to run warp clients")
 	}
 
-	if clients > int32(nodeCount) || clients == 0 {
+	if clients > int32(nodeCount) {
+		log.Warnf("Number of clients cannot exceed number of nodes - setting to %d", nodeCount)
 		clients = int32(nodeCount)
-		if clients > int32(nodeCount) {
-			log.Warn("Number of clients cannot exceed number of nodes")
-		}
 	}
 
 	return clients
