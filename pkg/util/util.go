@@ -94,6 +94,10 @@ const (
 
 	// InjectedBundleCertCAFile points to OCP root CA to be added to the default root CA list
 	InjectedBundleCertCAFile = "/etc/ocp-injected-ca-bundle/ca-bundle.crt"
+
+	// Google impersonation URL constants
+	GoogleImpersonationURLPrefix = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/"
+	GoogleImpersonationURLSuffix = ":generateAccessToken"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -105,6 +109,13 @@ type OAuth2Endpoints struct {
 // ValidationError is a custom error if the validation failed
 type ValidationError struct {
 	Msg string
+}
+
+// googleCredentialsJSON is a minimal view of Google credential JSON (service_account or external_account).
+type googleCredentialsJSON struct {
+	Type                           string `json:"type"`
+	PrivateKeyID                   string `json:"private_key_id,omitempty"`
+	ServiceAccountImpersonationURL string `json:"service_account_impersonation_url,omitempty"`
 }
 
 // AccessKeyRegexp validates access keys, which are 20 characters long and may include alphanumeric characters
@@ -1188,6 +1199,58 @@ func IsAzureSTSClusterNS(ns *nbv1.NamespaceStore) bool {
 		return ns.Spec.AzureBlob.ClientId != nil
 	}
 	return false
+}
+
+// ParseGoogleCredentials parses credential JSON and returns whether it is GCP WIF (STS) and the identity
+func ParseGoogleCredentials(credentialsJSON string) (bool, string, error) {
+	creds := &googleCredentialsJSON{}
+	if err := json.Unmarshal([]byte(credentialsJSON), creds); err != nil {
+		return false, "", fmt.Errorf("invalid google credentials json: %w", err)
+	}
+	identity, err := googleIdentityFromCredentials(creds)
+	if err != nil {
+		return false, "", err
+	}
+	return creds.Type == "external_account", identity, nil
+}
+
+// googleIdentityFromCredentials returns the identity.
+// - For GCP (service_account type in JSON) - it uses private_key_id
+// - For GCP STS (external_account type in JSON) it uses the email from service_account_impersonation_url.
+// Unknown or missing type fails immediately.
+func googleIdentityFromCredentials(creds *googleCredentialsJSON) (string, error) {
+	switch creds.Type {
+	case "external_account":
+		return googleIdentityFromImpersonationURL(creds.ServiceAccountImpersonationURL)
+	case "service_account":
+		if creds.PrivateKeyID == "" {
+			return "", fmt.Errorf("invalid google service account json: missing private_key_id")
+		}
+		return creds.PrivateKeyID, nil
+	case "":
+		return "", fmt.Errorf("invalid google credentials json: missing type")
+	default:
+		return "", fmt.Errorf("invalid google credentials json: unsupported type %q", creds.Type)
+	}
+}
+
+// googleIdentityFromImpersonationURL returns the email from the impersonation URL
+func googleIdentityFromImpersonationURL(impersonationURL string) (string, error) {
+	if !strings.HasPrefix(impersonationURL, GoogleImpersonationURLPrefix) ||
+		!strings.HasSuffix(impersonationURL, GoogleImpersonationURLSuffix) {
+		return "", fmt.Errorf("invalid service_account_impersonation_url: %q", impersonationURL)
+	}
+	email := strings.TrimSuffix(
+		strings.TrimPrefix(impersonationURL, GoogleImpersonationURLPrefix),
+		GoogleImpersonationURLSuffix,
+	)
+	if email == "" {
+		return "", fmt.Errorf("invalid service_account_impersonation_url: empty service account email in %q", impersonationURL)
+	}
+	if !strings.Contains(email, "@") {
+		return "", fmt.Errorf("invalid service_account_impersonation_url: malformed service account email %q in %q", email, impersonationURL)
+	}
+	return email, nil
 }
 
 // IsAzurePlatformNonGovernment returns true if this cluster is running on Azure and also not on azure government\DOD cloud
