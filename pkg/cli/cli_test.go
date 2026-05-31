@@ -110,6 +110,32 @@ var _ = Describe("CLI tests", func() {
 			Expect(out).To(ContainSubstring("secret-name"))
 		})
 	})
+
+	Context("Noobaa CLI commands related to GCP", func() {
+		It("backingstore create google-cloud-storage --help shows GCP options", func() {
+			out, err := RunCLI("backingstore", "create", "google-cloud-storage", "--help")
+			Expect(err).To(BeNil())
+			Expect(out).To(ContainSubstring("target-bucket"))
+			Expect(out).To(ContainSubstring("private-key-json-file"))
+			Expect(out).To(ContainSubstring("secret-name"))
+			Expect(out).NotTo(ContainSubstring("service-account-email"))
+			Expect(out).NotTo(ContainSubstring("project-number"))
+			Expect(out).NotTo(ContainSubstring("pool-id"))
+			Expect(out).NotTo(ContainSubstring("provider-id"))
+		})
+
+		It("backingstore create google-cloud-storage-sts --help shows GCP WIF (STS) options", func() {
+			out, err := RunCLI("backingstore", "create", "google-cloud-storage-sts", "--help")
+			Expect(err).To(BeNil())
+			Expect(out).To(ContainSubstring("target-bucket"))
+			Expect(out).To(ContainSubstring("service-account-email"))
+			Expect(out).To(ContainSubstring("project-number"))
+			Expect(out).To(ContainSubstring("pool-id"))
+			Expect(out).To(ContainSubstring("provider-id"))
+			Expect(out).To(ContainSubstring("secret-name"))
+			Expect(out).NotTo(ContainSubstring("private-key-json-file"))
+		})
+	})
 })
 
 func RunCLI(args ...string) (string, error) {

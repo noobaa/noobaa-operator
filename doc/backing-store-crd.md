@@ -71,7 +71,7 @@ However, the difference between the two backingstore types lies in the authentic
 
 This type of backingstore is useful in cases where the user wishes to limit access to their AWS cloud for a specific amount of time, and for easier management of the cloud's security.
 
-Prior to using this backingstore, an OpenIDConnect provider needs to be set up, which is outside the scope of these docs.
+Before using this backingstore, an OpenIDConnect provider needs to be set up, which is outside the scope of these docs.
 
 ```shell
 noobaa backingstore create aws-sts-s3 <BACKINGSTORE NAME> --target-bucket <> --aws-sts-arn <>
@@ -143,7 +143,7 @@ spec:
   type: ibm-cos
 ```
 
-## Google Cloud Storage
+## Google Cloud Storage (GCP)
 Uses the Google Cloud Storage API for storing encrypted chunks of data in Google Cloud buckets
 ```shell
 noobaa backingstore create google-cloud-storage <BACKINGSTORE NAME> --private-key-json-file <PATH TO credentials.json> --target-bucket <>
@@ -172,6 +172,36 @@ Permissions: the service account should have the `storage.buckets.list` permissi
   - `Browser` role: provides the `storage.buckets.list` permission.
   - `Storage Admin` role: provides full control over buckets and objects.
 - The `Owner` role (for development; not recommended for production environments).
+
+## Google Cloud Storage Workload Identity Federation (GCP WIF, STS)
+Similarly to `Google Cloud Storage` this backing store uses the Google Cloud Storage API for storing encrypted chunks of data in GCP buckets.
+However, the difference between the two backingstore types lies in the authentication method:
+- `google-cloud-storage` uses long-lived `service_account` JSON keys.
+- `google-cloud-storage-sts` uses a short-lived token via GCP Workload Identity Federation: the JSON type is `external_account`, which is built from parameters (`PROJECT_NUMBER`, `POOL_ID`, `PROVIDER_ID`, `SERVICE_ACCOUNT_EMAIL`).
+
+This type of backingstore is useful in cases where the user wishes to limit access to their GCP cloud for a specific amount of time, and for easier management of the cloud's security.
+
+Before using this backingstore, there are configurations that need to be done on the GCP account and on the cluster (for example, an OpenIDConnect provider needs to be set up) which is outside the scope of these docs.
+
+```shell
+noobaa backingstore create google-cloud-storage-sts <BACKINGSTORE NAME> --target-bucket <> --project-number <> --pool-id <> --provider-id <> --service-account-email <>
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  name: <>
+  namespace: <>
+spec:
+  googleCloudStorage:
+    secret:
+      name: <>
+      namespace: <>
+    targetBucket: <>
+  type: google-cloud-storage
+```
 
 ## Azure Blob Storage
 Uses the Azure Blob API for storing encrypted chunks of data in an Azure container

@@ -95,6 +95,9 @@ const (
 	// InjectedBundleCertCAFile points to OCP root CA to be added to the default root CA list
 	InjectedBundleCertCAFile = "/etc/ocp-injected-ca-bundle/ca-bundle.crt"
 
+	// WebIdentityTokenPath is the projected service account token path used for AWS/Azure/GCP STS.
+	WebIdentityTokenPath = "/var/run/secrets/openshift/serviceaccount/token"
+
 	// Google impersonation URL constants
 	GoogleImpersonationURLPrefix = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/"
 	GoogleImpersonationURLSuffix = ":generateAccessToken"
@@ -116,6 +119,21 @@ type googleCredentialsJSON struct {
 	Type                           string `json:"type"`
 	PrivateKeyID                   string `json:"private_key_id,omitempty"`
 	ServiceAccountImpersonationURL string `json:"service_account_impersonation_url,omitempty"`
+}
+
+// googleCredentialsJSONFullSTS represents the complete structure of GCP Workload Identity Federation credentials
+type googleCredentialsJSONFullSTS struct {
+	Type                           string                    `json:"type"`
+	Audience                       string                    `json:"audience"`
+	SubjectTokenType               string                    `json:"subject_token_type"`
+	TokenURL                       string                    `json:"token_url"`
+	ServiceAccountImpersonationURL string                    `json:"service_account_impersonation_url"`
+	CredentialSource               googleWIFCredentialSource `json:"credential_source"`
+}
+
+type googleWIFCredentialSource struct {
+	File   string            `json:"file"`
+	Format map[string]string `json:"format"`
 }
 
 // AccessKeyRegexp validates access keys, which are 20 characters long and may include alphanumeric characters
@@ -1251,6 +1269,49 @@ func googleIdentityFromImpersonationURL(impersonationURL string) (string, error)
 		return "", fmt.Errorf("invalid service_account_impersonation_url: malformed service account email %q in %q", email, impersonationURL)
 	}
 	return email, nil
+}
+
+// GoogleWIFAudience returns the WIF audience URL for the given pool and provider for GCP WIF (STS)..
+func GoogleWIFAudience(projectNumber, poolID, providerID string) string {
+	return fmt.Sprintf("//iam.googleapis.com/projects/%s/locations/global/workloadIdentityPools/%s/providers/%s",
+		projectNumber, poolID, providerID)
+}
+
+// BuildGoogleWIFCredentialsJSON builds external_account credentials JSON for GCP WIF (STS).
+func BuildGoogleWIFCredentialsJSON(projectNumber, poolID, providerID, serviceAccountEmail string) (string, error) {
+	projectNumber = strings.TrimSpace(projectNumber)
+	poolID = strings.TrimSpace(poolID)
+	providerID = strings.TrimSpace(providerID)
+	serviceAccountEmail = strings.TrimSpace(serviceAccountEmail)
+
+	if projectNumber == "" || poolID == "" || providerID == "" || serviceAccountEmail == "" {
+		return "", fmt.Errorf("project number, pool id, provider id, and service account email are required")
+	}
+	if !strings.Contains(serviceAccountEmail, "@") {
+		return "", fmt.Errorf("invalid service_account_impersonation_url: malformed service account email %q", serviceAccountEmail)
+	}
+
+	googleExternalAccountCredentialType := "external_account"
+	audience := GoogleWIFAudience(projectNumber, poolID, providerID)
+
+	credentials := googleCredentialsJSONFullSTS{
+		Type:                           googleExternalAccountCredentialType,
+		Audience:                       audience,
+		SubjectTokenType:               "urn:ietf:params:oauth:token-type:jwt",
+		TokenURL:                       "https://sts.googleapis.com/v1/token",
+		ServiceAccountImpersonationURL: GoogleImpersonationURLPrefix + serviceAccountEmail + GoogleImpersonationURLSuffix,
+		CredentialSource: googleWIFCredentialSource{
+			File:   WebIdentityTokenPath,
+			Format: map[string]string{"type": "text"},
+		},
+	}
+
+	credentialsBytes, err := json.Marshal(credentials)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal credentials: %w", err)
+	}
+
+	return string(credentialsBytes), nil
 }
 
 // IsAzurePlatformNonGovernment returns true if this cluster is running on Azure and also not on azure government\DOD cloud
