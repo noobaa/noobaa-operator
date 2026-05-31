@@ -60,6 +60,11 @@ type NamespaceStoreSpec struct {
 	// Type is an enum of supported types
 	Type NSType `json:"type"`
 
+	// Archive marks the namespace store for cold-storage archive use (e.g. IBM Deep Archive).
+	// Only valid with type s3-compatible.
+	// +optional
+	Archive bool `json:"archive,omitempty"`
+
 	//AccessMode is an enum of supported access modes
 	// +optional
 	AccessMode AccessModeType `json:"accessMode,omitempty"`
@@ -87,6 +92,11 @@ type NamespaceStoreSpec struct {
 	// NSFS specifies a namespace store of type nsfs
 	// +optional
 	NSFS *NSFSSpec `json:"nsfs,omitempty"`
+}
+
+// IsArchiveNamespaceStore returns true when the store is configured for archive (cold storage) use.
+func IsArchiveNamespaceStore(ns *NamespaceStore) bool {
+	return ns != nil && ns.Spec.Archive
 }
 
 // NamespaceStoreStatus defines the observed state of NamespaceStore

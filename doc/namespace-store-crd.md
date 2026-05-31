@@ -100,6 +100,37 @@ spec:
   type: s3-compatible
 ```
 
+### S3 Compatible - Deep Archive
+Uses an S3-compatible API to write objects directly to a tape-based cold storage endpoint (e.g. IBM Deep Archive).
+This store type is intended for S3-compatible long-term archive where data is written once and read infrequently.
+
+`archive: true` - A flag that indicates the endpoint is a tape-based or cold-storage target (e.g. IBM Deep Archive).
+Archive stores can only be referenced via `archivePolicy` in a BucketClass; they cannot be used inside a `namespacePolicy`.
+
+```shell
+noobaa namespacestore create s3-compatible <NAMESPACESTORE NAME> --archive \
+  --endpoint <> --target-bucket <> --access-key <> --secret-key <> 
+```
+
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: NamespaceStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  name: <>
+  namespace: <>
+spec:
+  archive: true
+  s3Compatible:
+    endpoint: <>
+    secret:
+      name: <>
+      namespace: <>
+    targetBucket: <>
+  type: s3-compatible
+```
+
 ## IBM COS
 Uses the IBM COS API for IO operations on plain data in IBM COS buckets
 ```shell

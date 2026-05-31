@@ -182,6 +182,10 @@ func CmdCreateS3Compatible() *cobra.Command {
 		"access-mode", "read-write",
 		`The resource access privileges read-write|read-only`,
 	)
+	cmd.Flags().Bool(
+		"archive", false,
+		"Mark the namespace store for cold-storage archive use (IBM Deep Archive)",
+	)
 	return cmd
 }
 
@@ -595,6 +599,7 @@ func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.NSStoreTypeS3Compatible, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
 		log := util.Logger()
+		archive, _ := cmd.Flags().GetBool("archive")
 		endpoint := util.GetFlagStringOrPrompt(cmd, "endpoint")
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 		sigVer, _ := cmd.Flags().GetString("signature-version")
@@ -631,6 +636,7 @@ func RunCreateS3Compatible(cmd *cobra.Command, args []string) {
 				Namespace: secret.Namespace,
 			},
 		}
+		namespaceStore.Spec.Archive = archive
 	})
 }
 
@@ -915,6 +921,15 @@ func CheckPhase(namespaceStore *nbv1.NamespaceStore) {
 	}
 }
 
+// providerStorageClass returns the provider storage-class label for a NamespaceStore row.
+// Only s3-compatible stores carry the archive distinction; all other types return "-".
+func providerStorageClass(ns *nbv1.NamespaceStore) string {
+	if nbv1.IsArchiveNamespaceStore(ns) {
+		return "archive"
+	}
+	return "standard"
+}
+
 // RunList runs a CLI command
 func RunList(cmd *cobra.Command, args []string) {
 	list := &nbv1.NamespaceStoreList{
@@ -931,6 +946,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		"NAME",
 		"TYPE",
 		"TARGET-BUCKET",
+		"PROVIDER-STORAGE-CLASS",
 		"PHASE",
 		"AGE",
 	)
@@ -942,6 +958,7 @@ func RunList(cmd *cobra.Command, args []string) {
 				bs.Name,
 				string(bs.Spec.Type),
 				tb,
+				providerStorageClass(bs),
 				string(bs.Status.Phase),
 				util.HumanizeDuration(time.Since(bs.CreationTimestamp.Time).Round(time.Second)),
 			)

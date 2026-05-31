@@ -30,6 +30,9 @@ func ValidateNamespaceStore(nsStore *nbv1.NamespaceStore) error {
 	if err := ValidateNSEmptyTargetBucket(*nsStore); err != nil {
 		return err
 	}
+	if err := ValidateNSArchiveSpec(*nsStore); err != nil {
+		return err
+	}
 	switch nsStore.Spec.Type {
 
 	case nbv1.NSStoreTypeNSFS:
@@ -406,6 +409,24 @@ func ValidateTargetNSBucketChange(ns nbv1.NamespaceStore, oldNs nbv1.NamespaceSt
 	default:
 		return util.ValidationError{
 			Msg: "Failed to identify NamespaceStore type",
+		}
+	}
+	return nil
+}
+
+// ValidateNSArchiveSpec validates archive flag usage on a NamespaceStore.
+func ValidateNSArchiveSpec(nsStore nbv1.NamespaceStore) error {
+	if !nsStore.Spec.Archive {
+		return nil
+	}
+	if nsStore.Spec.Type != nbv1.NSStoreTypeS3Compatible {
+		return util.ValidationError{
+			Msg: "archive can only be set on s3-compatible type NamespaceStore",
+		}
+	}
+	if nsStore.Spec.S3Compatible == nil {
+		return util.ValidationError{
+			Msg: "S3Compatible spec must be provided when archive is enabled",
 		}
 	}
 	return nil
