@@ -94,11 +94,6 @@ type NamespaceStoreSpec struct {
 	NSFS *NSFSSpec `json:"nsfs,omitempty"`
 }
 
-// IsArchiveNamespaceStore returns true when the store is configured for archive (cold storage) use.
-func IsArchiveNamespaceStore(ns *NamespaceStore) bool {
-	return ns != nil && ns.Spec.Archive
-}
-
 // NamespaceStoreStatus defines the observed state of NamespaceStore
 // +k8s:openapi-gen=true
 type NamespaceStoreStatus struct {

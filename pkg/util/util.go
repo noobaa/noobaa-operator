@@ -1345,6 +1345,11 @@ func GetAWSRegion() (string, error) {
 	return awsRegion, nil
 }
 
+// IsArchiveNamespaceStore returns true when the store is configured for archive (cold storage) use.
+func IsArchiveNamespaceStore(ns *nbv1.NamespaceStore) bool {
+	return ns != nil && ns.Spec.Archive
+}
+
 // IsValidS3BucketName checks the name according to
 // https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-s3-bucket-naming-requirements.html
 func IsValidS3BucketName(name string) bool {

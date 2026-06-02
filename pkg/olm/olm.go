@@ -415,6 +415,7 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 		uiFieldGroupIBMCos             = uiFieldGroup + "ibmCos"
 		uiFieldGroupPlacementPolicy    = uiFieldGroup + "placementPolicy"
 		uiFieldGroupNamespacePolicy    = uiFieldGroup + "namespacePolicy"
+		uiFieldGroupArchivePolicy      = uiFieldGroup + "archivePolicy"
 	)
 
 	crdSpecDescriptors := map[string][]operv1.SpecDescriptor{
@@ -655,6 +656,12 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 				DisplayName:  "Target Bucket",
 			},
 			{
+				Description:  "Archive specifies if the namespace store should be used for archiving. If true, the namespace store will be used for archiving and not for regular data storage.",
+				Path:         "archive",
+				XDescriptors: []string{uiBooleanSwitch},
+				DisplayName:  "Archive",
+			},
+			{
 				Description:  "Endpoint is the IBM COS endpoint: http(s)://host:port.",
 				Path:         "IBMCos.endpoint",
 				XDescriptors: []string{uiFieldGroupIBMCos, uiText},
@@ -722,6 +729,12 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 				Path:         "namespacePolicy.Cache.hubResource",
 				XDescriptors: []string{uiFieldGroupNamespacePolicy, uiText},
 				DisplayName:  "Hub Resource",
+			},
+			{
+				Description:  "DeepArchiveResource specifies the namespace store configured by the archivePolicy.",
+				Path:         "archivePolicy.deepArchiveResource",
+				XDescriptors: []string{uiFieldGroupArchivePolicy, uiText},
+				DisplayName:  "Deep Archive Resource",
 			},
 		},
 

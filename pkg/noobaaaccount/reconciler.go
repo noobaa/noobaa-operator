@@ -12,6 +12,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/sirupsen/logrus"
@@ -210,17 +211,9 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		return util.NewPersistentError("MissingDefaultResource",
 			fmt.Sprintf("Account %q is allowed to create buckets, but no resource is provided", r.NooBaaAccount.Name))
 	}
-
 	if r.NooBaaAccount.Spec.DefaultResource != "" {
-		isResourceBackingStore := checkResourceBackingStore(r.NooBaaAccount.Spec.DefaultResource)
-		isResourceNamespaceStore := checkResourceNamespaceStore(r.NooBaaAccount.Spec.DefaultResource)
-		if !isResourceBackingStore && !isResourceNamespaceStore {
-			return util.NewPersistentError("MissingDefaultResource",
-				fmt.Sprintf("Account %q is allowed to create buckets, but resource %q was not found",
-					r.NooBaaAccount.Name, r.NooBaaAccount.Spec.DefaultResource))
-		} else if isResourceBackingStore && isResourceNamespaceStore {
-			return util.NewPersistentError("MissingDefaultResource",
-				fmt.Sprintf("BackingStore and NamespaceStore should not have the same name: %q, ", r.NooBaaAccount.Spec.DefaultResource))
+		if err := validations.ValidateAccountDefaultResource(*r.NooBaaAccount); err != nil {
+			return util.NewPersistentError("InvalidDefaultResource", err.Error())
 		}
 	}
 
