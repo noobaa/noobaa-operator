@@ -73,6 +73,10 @@ func (bcv *ResourceValidator) ValidateCreateBC() {
 		}
 	}
 	if bc.Spec.NamespacePolicy != nil {
+		if err := validations.ValidateNamespacePolicy(bc.Spec.NamespacePolicy, bc.Namespace); err != nil {
+			bcv.SetValidationResult(false, err.Error())
+			return
+		}
 		if err := validations.ValidateNSFSSingleBC(bc); err != nil && util.IsValidationError(err) {
 			bcv.SetValidationResult(false, err.Error())
 			return
@@ -83,6 +87,10 @@ func (bcv *ResourceValidator) ValidateCreateBC() {
 			bcv.SetValidationResult(false, err.Error())
 			return
 		}
+	}
+	if err := validations.ValidateArchivePolicy(bc); err != nil {
+		bcv.SetValidationResult(false, err.Error())
+		return
 	}
 }
 
@@ -97,6 +105,10 @@ func (bcv *ResourceValidator) ValidateUpdateBC() {
 	}
 	if newBC.Spec.VectorPolicy != nil {
 		bcv.SetValidationResult(false, "Updating a vector bucket class is not yet supported")
+		return
+	}
+	if err := validations.ValidateArchivePolicy(newBC); err != nil {
+		bcv.SetValidationResult(false, err.Error())
 		return
 	}
 }

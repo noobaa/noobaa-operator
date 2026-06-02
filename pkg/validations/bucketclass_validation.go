@@ -26,8 +26,63 @@ func ValidateBucketClass(bc *nbv1.BucketClass) error {
 			return err
 		}
 	}
+	if err := ValidateArchivePolicy(bc); err != nil {
+		return err
+	}
 
 	return ValidateQuotaConfig(bc.Name, bc.Spec.Quota)
+}
+
+// ValidateArchivePolicy validates the archivePolicy field of a BucketClass.
+// It checks that placementPolicy is present, that the referenced
+// NamespaceStore exists, is of type s3-compatible, has spec.archive=true, and is Ready.
+func ValidateArchivePolicy(bc *nbv1.BucketClass) error {
+	if bc.Spec.ArchivePolicy == nil {
+		return nil
+	}
+	if bc.Spec.PlacementPolicy == nil {
+		return util.ValidationError{
+			Msg: fmt.Sprintf("BucketClass %q has archivePolicy but no placementPolicy; placementPolicy is required when archivePolicy is set", bc.Name),
+		}
+	}
+	return ValidateArchivePolicyNS(bc)
+}
+
+// ValidateArchivePolicyNS verifies that the NamespaceStore referenced by archivePolicy
+// exists, is of type s3-compatible, has spec.archive=true, and is in the Ready phase.
+func ValidateArchivePolicyNS(bc *nbv1.BucketClass) error {
+	if bc.Spec.ArchivePolicy == nil {
+		return nil
+	}
+
+	nsName := bc.Spec.ArchivePolicy.DeepArchiveResource
+	if nsName == "" {
+		return util.ValidationError{
+			Msg: fmt.Sprintf("BucketClass %q has archivePolicy but empty DeepArchiveResource; DeepArchiveResource must reference an s3-compatible NamespaceStore with spec.archive=true", bc.Name),
+		}
+	}
+	ns := &nbv1.NamespaceStore{
+		TypeMeta: metav1.TypeMeta{Kind: "NamespaceStore"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      nsName,
+			Namespace: bc.Namespace,
+		},
+	}
+	if !util.KubeCheck(ns) {
+		return util.NewPersistentError("InvalidArchivePolicy",
+			fmt.Sprintf("BucketClass %q archivePolicy references NamespaceStore %q which does not exist in namespace %q",
+				bc.Name, nsName, bc.Namespace))
+	}
+	if ns.Spec.Type != nbv1.NSStoreTypeS3Compatible || !ns.Spec.Archive {
+		return util.NewPersistentError("InvalidArchivePolicy",
+			fmt.Sprintf("BucketClass %q archivePolicy references NamespaceStore %q of type %q; must be %q with archive=true",
+				bc.Name, nsName, ns.Spec.Type, nbv1.NSStoreTypeS3Compatible))
+	}
+	if ns.Status.Phase != nbv1.NamespaceStorePhaseReady {
+		return fmt.Errorf("BucketClass %q archivePolicy NamespaceStore %q is not Ready (phase: %q); will retry",
+			bc.Name, nsName, ns.Status.Phase)
+	}
+	return nil
 }
 
 // ValidateImmutLabelChange validates that immutable labels are not changed
@@ -147,6 +202,11 @@ func ValidateNamespacePolicy(namespacePolicy *nbv1.NamespacePolicy, namespace st
 		if !util.KubeCheck(nsStore) {
 			return util.NewPersistentError("MissingNamespaceStore",
 				fmt.Sprintf("NooBaa NamespaceStore %q not found or deleted", name))
+		}
+		if nbv1.IsArchiveNamespaceStore(nsStore) {
+			return util.NewPersistentError("InvalidNamespaceStore",
+				fmt.Sprintf("NamespaceStore %q is an archive store and cannot be referenced in a namespacePolicy; use archivePolicy instead",
+					name))
 		}
 		if nsStore.Status.Phase == nbv1.NamespaceStorePhaseRejected {
 			return util.NewPersistentError("RejectedNamespaceStore",

@@ -63,6 +63,18 @@ spec:
           spec:
             description: Specification of the desired behavior of the noobaa BucketClass.
             properties:
+              archivePolicy:
+                description: |-
+                  ArchivePolicy specifies the Archive policy for the bucket class.
+                  When set, the bucket class supports archiving objects to Deep Archive.
+                  Requires PlacementPolicy to also be set.
+                properties:
+                  deepArchiveResource:
+                    description: |-
+                      DeepArchiveResource is the name of an s3-compatible NamespaceStore that has spec.archive=true.
+                      currently only supports IBM Deep Archive as the archive target
+                    type: string
+                type: object
               namespacePolicy:
                 description: NamespacePolicy specifies the namespace policy for the
                   bucket class
