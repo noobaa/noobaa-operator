@@ -1,9 +1,15 @@
 package util
 
 import (
+	"fmt"
 	"testing"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+)
+
+const (
+	googleWIFServiceAccountEmail = "noobaa-wif-sa@my-project.iam.gserviceaccount.com"
+	googleServiceAccountKeyID    = "key-id-123"
 )
 
 // TestMapAlternateKeysValue a tiny test for util.MapAlternateKeysValue()
@@ -76,9 +82,9 @@ func TestIsAzureSTSClusterBS(t *testing.T) {
 	tenantID := "test-tenant-id"
 
 	tests := []struct {
-		name        string
+		name         string
 		backingStore *nbv1.BackingStore
-		expected    bool
+		expected     bool
 	}{
 		{
 			name: "azure-blob with ClientId returns true",
@@ -136,8 +142,8 @@ func TestIsAzureSTSClusterBS(t *testing.T) {
 						TargetBlobContainer: "container",
 						ClientId:            &clientID,
 						TenantId:            &tenantID,
-						SubscriptionId:     ptrString("sub-id"),
-						ResourcegroupId:    ptrString("rg-id"),
+						SubscriptionId:      ptrString("sub-id"),
+						ResourcegroupId:     ptrString("rg-id"),
 					},
 				},
 			},
@@ -157,4 +163,189 @@ func TestIsAzureSTSClusterBS(t *testing.T) {
 
 func ptrString(s string) *string {
 	return &s
+}
+
+// googleImpersonationURL returns the impersonation URL for the given email
+func googleImpersonationURL(email string) string {
+	return GoogleImpersonationURLPrefix + email + GoogleImpersonationURLSuffix
+}
+
+// TestParseGoogleCredentials tests ParseGoogleCredentials function
+func TestParseGoogleCredentials(t *testing.T) {
+	validExternalAccountJSON := fmt.Sprintf(
+		`{"type":"external_account","service_account_impersonation_url":%q}`,
+		googleImpersonationURL(googleWIFServiceAccountEmail),
+	)
+
+	tests := []struct {
+		name                    string
+		json                    string
+		expectedExternalAccount bool
+		expectedIdentity        string
+		expectedErr             bool
+	}{
+		{
+			name:                    "external_account",
+			json:                    validExternalAccountJSON,
+			expectedExternalAccount: true,
+			expectedIdentity:        googleWIFServiceAccountEmail,
+		},
+		{
+			name:                    "service_account",
+			json:                    fmt.Sprintf(`{"type":"service_account","private_key_id":%q}`, googleServiceAccountKeyID),
+			expectedExternalAccount: false,
+			expectedIdentity:        googleServiceAccountKeyID,
+		},
+		{
+			name:        "invalid JSON",
+			json:        `{`,
+			expectedErr: true,
+		},
+		{
+			name:        "propagates identity error",
+			json:        `{"type":"service_account"}`,
+			expectedErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			isExternalAccount, identity, err := ParseGoogleCredentials(tc.json)
+			if tc.expectedErr {
+				if err == nil {
+					t.Fatalf("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if isExternalAccount != tc.expectedExternalAccount {
+				t.Fatalf("expected isExternalAccount=%v, got %v", tc.expectedExternalAccount, isExternalAccount)
+			}
+			if identity != tc.expectedIdentity {
+				t.Fatalf("expected identity %q, got %q", tc.expectedIdentity, identity)
+			}
+		})
+	}
+}
+
+// TestGoogleIdentityFromCredentials tests googleIdentityFromCredentials function
+func TestGoogleIdentityFromCredentials(t *testing.T) {
+	tests := []struct {
+		name             string
+		creds            *googleCredentialsJSON
+		expectedIdentity string
+		expectedErr      bool
+	}{
+		{
+			name: "external_account",
+			creds: &googleCredentialsJSON{
+				Type:                           "external_account",
+				ServiceAccountImpersonationURL: googleImpersonationURL(googleWIFServiceAccountEmail),
+			},
+			expectedIdentity: googleWIFServiceAccountEmail,
+		},
+		{
+			name: "service_account",
+			creds: &googleCredentialsJSON{
+				Type:         "service_account",
+				PrivateKeyID: googleServiceAccountKeyID,
+			},
+			expectedIdentity: googleServiceAccountKeyID,
+		},
+		{
+			name: "service_account missing private_key_id",
+			creds: &googleCredentialsJSON{
+				Type: "service_account",
+			},
+			expectedErr: true,
+		},
+		{
+			name: "missing type",
+			creds: &googleCredentialsJSON{
+				PrivateKeyID: googleServiceAccountKeyID,
+			},
+			expectedErr: true,
+		},
+		{
+			name: "unsupported type",
+			creds: &googleCredentialsJSON{
+				Type: "authorized_user",
+			},
+			expectedErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			identity, err := googleIdentityFromCredentials(tc.creds)
+			if tc.expectedErr {
+				if err == nil {
+					t.Fatalf("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if identity != tc.expectedIdentity {
+				t.Fatalf("expected identity %q, got %q", tc.expectedIdentity, identity)
+			}
+		})
+	}
+}
+
+// TestGoogleIdentityFromImpersonationURL tests googleIdentityFromImpersonationURL function
+func TestGoogleIdentityFromImpersonationURL(t *testing.T) {
+	tests := []struct {
+		name             string
+		impersonationURL string
+		expectedIdentity string
+		expectedErr      bool
+	}{
+		{
+			name:             "valid url",
+			impersonationURL: googleImpersonationURL(googleWIFServiceAccountEmail),
+			expectedIdentity: googleWIFServiceAccountEmail,
+		},
+		{
+			name:             "invalid prefix or suffix",
+			impersonationURL: "https://example.com",
+			expectedErr:      true,
+		},
+		{
+			name:             "empty url",
+			impersonationURL: "",
+			expectedErr:      true,
+		},
+		{
+			name:             "empty email",
+			impersonationURL: GoogleImpersonationURLPrefix + GoogleImpersonationURLSuffix,
+			expectedErr:      true,
+		},
+		{
+			name:             "malformed email",
+			impersonationURL: googleImpersonationURL("not-an-email"),
+			expectedErr:      true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			identity, err := googleIdentityFromImpersonationURL(tc.impersonationURL)
+			if tc.expectedErr {
+				if err == nil {
+					t.Fatalf("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if identity != tc.expectedIdentity {
+				t.Fatalf("expected identity %q, got %q", tc.expectedIdentity, identity)
+			}
+		})
+	}
 }

@@ -658,6 +658,8 @@ const (
 	EndpointTypeAzureSTS EndpointType = "AZURESTS"
 	// EndpointTypeGoogle enum
 	EndpointTypeGoogle EndpointType = "GOOGLE"
+	// EndpointTypeGoogleSTS enum
+	EndpointTypeGoogleSTS EndpointType = "GOOGLE_STS"
 	// EndpointTypeS3Compat enum
 	EndpointTypeS3Compat EndpointType = "S3_COMPATIBLE"
 	// EndpointTypeIBMCos enum
