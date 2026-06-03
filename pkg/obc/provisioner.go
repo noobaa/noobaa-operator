@@ -560,6 +560,13 @@ func (r *BucketRequest) CreateAndUpdateBucket(
 			return fmt.Errorf("CreateTieringStructure for PlacementPolicy failed to create policy %q with error: %v", tierName, err)
 		}
 		createBucketParams.Tiering = tierName
+		if r.BucketClass.Spec.ArchivePolicy != nil {
+			createBucketParams.ArchivePolicy = &nb.ArchivePolicyConfig{
+				DeepArchiveResource: &nb.NamespaceResourceFullConfig{
+					Resource: r.BucketClass.Spec.ArchivePolicy.DeepArchiveResource,
+				},
+			}
+		}
 	}
 
 	// create NS bucket
