@@ -512,8 +512,9 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 		case "POSTGRES_HOST":
 			if r.shouldReconcileStandaloneDB() {
 				c.Env[j].Value = r.NooBaaPostgresDB.Name + "-0." + r.NooBaaPostgresDB.Spec.ServiceName + "." + r.NooBaaPostgresDB.Namespace + ".svc"
-			} else if r.shouldReconcileCNPGCluster() {
-				// clear env. it will be passed by mounting the secret
+			} else {
+				// CNPG and external-pg both ship the host via mounted secret;
+				// clear the default so noobaa-core reads POSTGRES_HOST_PATH
 				c.Env[j].Value = ""
 				c.Env[j].ValueFrom = nil
 			}
