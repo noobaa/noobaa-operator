@@ -747,6 +747,28 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 		util.MergeVolumeList(&podSpec.Volumes, &externalPgVolumes)
 	}
 
+	// Mount OIDC configuration secret if it exists
+	if util.KubeCheckQuiet(r.SecretOIDCKeyCloakConfig) {
+		optionalTrue := true
+		oidcConfigVolumes := []corev1.Volume{{
+			Name: r.SecretOIDCKeyCloakConfig.Name,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: r.SecretOIDCKeyCloakConfig.Name,
+					Optional:   &optionalTrue,
+				},
+			},
+		}}
+		util.MergeVolumeList(&podSpec.Volumes, &oidcConfigVolumes)
+
+		oidcConfigVolumeMounts := []corev1.VolumeMount{{
+			Name:      r.SecretOIDCKeyCloakConfig.Name,
+			MountPath: "/etc/noobaa-server/oidc/keycloak_config",
+			ReadOnly:  true,
+		}}
+		util.MergeVolumeMountList(&container.VolumeMounts, &oidcConfigVolumeMounts)
+	}
+
 	return nil
 }
 

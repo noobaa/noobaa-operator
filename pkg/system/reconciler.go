@@ -136,6 +136,7 @@ type Reconciler struct {
 	ExternalPgSSLSecret       *corev1.Secret
 	BucketNotificationsPVC    *corev1.PersistentVolumeClaim
 	SecretMetricsAuth         *corev1.Secret
+	SecretOIDCKeyCloakConfig  *corev1.Secret
 	webIdentityTokenPath      string
 
 	// CNPG resources
@@ -211,7 +212,8 @@ func NewReconciler(
 		CNPGImageCatalog: cnpg.GetCnpgImageCatalogObj(req.Namespace, req.Name+pgImageCatalogSuffix),
 		CNPGCluster:      cnpg.GetCnpgClusterObj(req.Namespace, req.Name+pgClusterSuffix),
 
-		SecretMetricsAuth: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretMetricsAuth:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
+		SecretOIDCKeyCloakConfig: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 	}
 
 	// Set Namespace
@@ -265,6 +267,7 @@ func NewReconciler(
 	r.BucketLoggingPVC.Namespace = r.Request.Namespace
 	r.BucketNotificationsPVC.Namespace = r.Request.Namespace
 	r.SecretMetricsAuth.Namespace = r.Request.Namespace
+	r.SecretOIDCKeyCloakConfig.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -315,6 +318,7 @@ func NewReconciler(
 	r.BucketLoggingPVC.Name = r.Request.Name + "-bucket-logging-pvc"
 	r.BucketNotificationsPVC.Name = r.Request.Name + "-bucket-notifications-pvc"
 	r.SecretMetricsAuth.Name = r.Request.Name + "-metrics-auth-secret"
+	r.SecretOIDCKeyCloakConfig.Name = r.Request.Name + "-oidc-keycloak-config"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name
