@@ -350,7 +350,7 @@ func NewReconciler(
 
 	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.DeepCopy()
 	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.DeepCopy()
-	r.webIdentityTokenPath = "/var/run/secrets/openshift/serviceaccount/token"
+	r.webIdentityTokenPath = util.WebIdentityTokenPath
 
 	return r
 }

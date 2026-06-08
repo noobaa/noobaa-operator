@@ -64,6 +64,7 @@ func CmdCreate() *cobra.Command {
 		CmdCreateIBMCos(),
 		CmdCreateAzureBlob(),
 		CmdCreateGoogleCloudStorage(),
+		CmdCreateGoogleCloudStorageSTS(),
 		CmdCreatePVPool(),
 		CmdCreateAzureSTS(),
 	)
@@ -246,7 +247,7 @@ func CmdCreateAzureBlob() *cobra.Command {
 func CmdCreateGoogleCloudStorage() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "google-cloud-storage <backing-store-name>",
-		Short: "Create google-cloud-storage backing store",
+		Short: "Create google-cloud-storage backing store (using long-lived credentials)",
 		Run:   RunCreateGoogleCloudStorage,
 	}
 	cmd.Flags().String(
@@ -260,6 +261,40 @@ func CmdCreateGoogleCloudStorage() *cobra.Command {
 	cmd.Flags().String(
 		"secret-name", "",
 		`The name of a secret for authentication - should have GoogleServiceAccountPrivateKeyJson property`,
+	)
+	return cmd
+}
+
+// CmdCreateGoogleCloudStorageSTS returns a CLI command
+func CmdCreateGoogleCloudStorageSTS() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "google-cloud-storage-sts <backing-store-name>",
+		Short: "Create google-cloud-storage backing store using GCP WIF (STS, short-lived credentials)",
+		Run:   RunCreateGoogleCloudStorageSTS,
+	}
+	cmd.Flags().String(
+		"target-bucket", "",
+		"The target bucket name on Google cloud storage",
+	)
+	cmd.Flags().String(
+		"service-account-email", "",
+		"The GCP service account email to impersonate",
+	)
+	cmd.Flags().String(
+		"project-number", "",
+		"The GCP project number (numeric string, e.g. 123456789; not the project ID)",
+	)
+	cmd.Flags().String(
+		"pool-id", "",
+		"The GCP workload identity pool ID",
+	)
+	cmd.Flags().String(
+		"provider-id", "",
+		"The GCP workload identity provider ID",
+	)
+	cmd.Flags().String(
+		"secret-name", "",
+		`The name of a secret for authentication - should have GoogleServiceAccountPrivateKeyJson property (with type of external_account)`,
 	)
 	return cmd
 }
@@ -483,7 +518,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if len(args) != 1 || args[0] == "" {
 		log.Fatalf(`❌ Missing expected arguments: <backing-store-type> %s`, cmd.UsageString())
 	}
-	if args[0] != "aws-s3" && args[0] != "aws-sts-s3" && args[0] != "google-cloud-storage" &&
+	if args[0] != "aws-s3" && args[0] != "aws-sts-s3" && args[0] != "google-cloud-storage" && args[0] != "google-cloud-storage-sts" &&
 		args[0] != "azure-blob" && args[0] != "ibm-cos" && args[0] != "pv-pool" && args[0] != "s3-compatible" && args[0] != "azure-sts-blob" {
 		log.Fatalf(`❌ Unsupported <backing-store-type> -> %s %s`, args[0], cmd.UsageString())
 	}
@@ -725,6 +760,41 @@ func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 				log.Fatalf("Failed to parse json file %q: %v", privateKeyJSONFile, err)
 			}
 			secret.StringData["GoogleServiceAccountPrivateKeyJson"] = string(bytes)
+		} else {
+			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
+			secret.Name = secretName
+			secret.Namespace = options.Namespace
+		}
+
+		backStore.Spec.GoogleCloudStorage = &nbv1.GoogleCloudStorageSpec{
+			TargetBucket: targetBucket,
+			Secret: corev1.SecretReference{
+				Name:      secret.Name,
+				Namespace: secret.Namespace,
+			},
+		}
+	})
+}
+
+// RunCreateGoogleCloudStorageSTS runs a CLI command
+func RunCreateGoogleCloudStorageSTS(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	createCommon(cmd, args, nbv1.StoreTypeGoogleCloudStorage, func(backStore *nbv1.BackingStore, secret *corev1.Secret) {
+		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
+		secretName, _ := cmd.Flags().GetString("secret-name")
+		mandatoryProperties := []string{"GoogleServiceAccountPrivateKeyJson"}
+
+		if secretName == "" {
+			projectNumber := util.GetFlagStringOrPrompt(cmd, "project-number")
+			poolID := util.GetFlagStringOrPrompt(cmd, "pool-id")
+			providerID := util.GetFlagStringOrPrompt(cmd, "provider-id")
+			serviceAccountEmail := util.GetFlagStringOrPrompt(cmd, "service-account-email")
+			credentialsJSON, err := util.BuildGoogleWIFCredentialsJSON(projectNumber,
+				poolID, providerID, serviceAccountEmail)
+			if err != nil {
+				log.Fatalf("Failed to build GCP WIF credentials: %v", err)
+			}
+			secret.StringData["GoogleServiceAccountPrivateKeyJson"] = credentialsJSON
 		} else {
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName

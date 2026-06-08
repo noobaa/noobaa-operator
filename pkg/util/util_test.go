@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -348,4 +349,82 @@ func TestGoogleIdentityFromImpersonationURL(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGoogleWIFAudience(t *testing.T) {
+	got := GoogleWIFAudience("123456789", "my-pool", "my-provider")
+	want := "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider"
+	if got != want {
+		t.Fatalf("expected audience %q, got %q", want, got)
+	}
+}
+
+func TestBuildGoogleWIFCredentialsJSON(t *testing.T) {
+	const (
+		projectNumber       = "123456789"
+		poolID              = "my-pool"
+		providerID          = "my-provider"
+		serviceAccountEmail = "noobaa-wif-sa@my-project.iam.gserviceaccount.com"
+	)
+
+	t.Run("valid parameters", func(t *testing.T) {
+		credentialsJSON, err := BuildGoogleWIFCredentialsJSON(
+			projectNumber, poolID, providerID, serviceAccountEmail,
+		)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		isExternalAccount, identity, err := ParseGoogleCredentials(credentialsJSON)
+		if err != nil {
+			t.Fatalf("unexpected parse error: %v", err)
+		}
+		if !isExternalAccount {
+			t.Fatal("expected external_account credentials")
+		}
+		if identity != serviceAccountEmail {
+			t.Fatalf("expected identity %q, got %q", serviceAccountEmail, identity)
+		}
+		if !strings.Contains(credentialsJSON, GoogleWIFAudience(projectNumber, poolID, providerID)) {
+			t.Fatalf("expected audience in credentials json: %s", credentialsJSON)
+		}
+		if !strings.Contains(credentialsJSON, WebIdentityTokenPath) {
+			t.Fatalf("expected token path in credentials json: %s", credentialsJSON)
+		}
+	})
+
+	t.Run("ignores surrounding whitespace on parameters", func(t *testing.T) {
+		credentialsJSON, err := BuildGoogleWIFCredentialsJSON(
+			" "+projectNumber+" ",
+			" "+poolID+" ",
+			" "+providerID+" ",
+			" "+serviceAccountEmail+" ",
+		)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		expectedAudience := GoogleWIFAudience(projectNumber, poolID, providerID)
+		if !strings.Contains(credentialsJSON, expectedAudience) {
+			t.Fatalf("expected audience %q in json, got: %s", expectedAudience, credentialsJSON)
+		}
+		if strings.Contains(credentialsJSON, " "+projectNumber+" ") {
+			t.Fatalf("json must not contain untrimmed project number with spaces")
+		}
+
+		_, identity, err := ParseGoogleCredentials(credentialsJSON)
+		if err != nil {
+			t.Fatalf("unexpected parse error: %v", err)
+		}
+		if identity != serviceAccountEmail {
+			t.Fatalf("expected trimmed identity %q, got %q", serviceAccountEmail, identity)
+		}
+	})
+
+	t.Run("missing required parameters", func(t *testing.T) {
+		_, err := BuildGoogleWIFCredentialsJSON("", "", "", "")
+		if err == nil {
+			t.Fatal("expected error when required params are missing")
+		}
+	})
 }
