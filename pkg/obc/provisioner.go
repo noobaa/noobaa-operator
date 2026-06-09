@@ -454,7 +454,11 @@ func NewBucketRequest(
 		r.AccountName = ob.Spec.AdditionalState["account"]
 		bucketClassName := ob.Spec.AdditionalState["bucketclass"]
 
-		bucketClass, exists := getBucketClass(r.OBC, bucketOptions, p.Namespace, util.KubeCheck)
+		obcNamespace := ""
+		if ob.Spec.ClaimRef != nil {
+			obcNamespace = ob.Spec.ClaimRef.Namespace
+		}
+		bucketClass, exists := getBucketClassByName(bucketClassName, obcNamespace, p.Namespace, util.KubeCheck)
 		if !exists {
 			p.Logger.Warnf("BucketClass %q not found in namespace %q", bucketClassName, p.Namespace)
 		}
@@ -903,16 +907,10 @@ func (r *BucketRequest) updateReplicationPolicy(ob *nbv1.ObjectBucket) error {
 	return nil
 }
 
-// getBucketClass takes an OBC, bucketoptions and provisioner namespace and returns the bucketClass
-//
-// If BucketClass name is not specified in the OBC, then the empty string is returned with exists=false
-// If BucketClass name is specified in the OBC, then:
-// - if the bucketclass is found in the obc namespace, then that bucketclass is returned
-// with exists=true
-// - if the bucketclass is found in the provisioner namespace, then that buckeclass is
-// returned with exists=true
-// - if the bucketclass is not found in the obc namespace or the provisioner namespace, then the
-// bucketclass with namespace set to provisioner namespace is returned with exists=false
+// getBucketClass extracts the bucket class name from an OBC (or StorageClass parameters)
+// and delegates to getBucketClassByName. Used by the create/provision path where a full
+// ObjectBucketClaim is available. On the update path (ObjectBucket only), callers should
+// use getBucketClassByName directly with values from AdditionalState and ClaimRef.
 func getBucketClass(
 	obc *nbv1.ObjectBucketClaim,
 	bucketOptions *obAPI.BucketOptions,
@@ -935,16 +933,40 @@ func getBucketClass(
 	if bucketclassName == "" && bucketOptions != nil {
 		bucketclassName = bucketOptions.Parameters["bucketclass"]
 	}
-	if bucketclassName == "" {
+	return getBucketClassByName(bucketclassName, obc.Namespace, provisionerNS, checkExists)
+}
+
+// getBucketClassByName looks up a BucketClass by name in the OBC namespace first,
+// then in the provisioner (NooBaa system) namespace.
+//
+// If bucketClassName is empty, returns exists=false.
+// If found in obcNamespace, returns that BucketClass with exists=true.
+// If found in provisionerNS, returns that BucketClass with exists=true.
+// If not found, returns a BucketClass with namespace set to provisionerNS and exists=false.
+func getBucketClassByName(
+	bucketClassName, obcNamespace, provisionerNS string,
+	checkExists func(client.Object) bool,
+) (bc *nbv1.BucketClass, exists bool) {
+	bucketClass := &nbv1.BucketClass{
+		TypeMeta: metav1.TypeMeta{Kind: "BucketClass"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "",
+			Namespace: "",
+		},
+	}
+
+	if bucketClassName == "" {
 		return bucketClass, false
 	}
 
-	bucketClass.SetName(bucketclassName)
+	bucketClass.SetName(bucketClassName)
 
 	// Find the bucketclass in the same namespace as the OBC
-	bucketClass.SetNamespace(obc.Namespace)
-	if checkExists(bucketClass) {
-		return bucketClass, true
+	if obcNamespace != "" {
+		bucketClass.SetNamespace(obcNamespace)
+		if checkExists(bucketClass) {
+			return bucketClass, true
+		}
 	}
 
 	// Find the bucketclass in the provisioner namespace
