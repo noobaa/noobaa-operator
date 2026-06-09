@@ -4,6 +4,7 @@ import (
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -160,6 +161,103 @@ var _ = Describe("OBC referenced BucketClass", func() {
 	})
 })
 
+var _ = Describe("getBucketClassByName", func() {
+	Context("When a bucketclass exists in the same namespace that of OBC", func() {
+		It("should return the BucketClass with namespace to be the same as that of OBC", func() {
+			obcNS := "obc-ns"
+			systemNS := "test"
+
+			bc, ok := getBucketClassByName(
+				"bc1",
+				obcNS,
+				systemNS,
+				func(o client.Object) bool {
+					return o.GetNamespace() == obcNS
+				},
+			)
+
+			Expect(ok).To(BeTrue())
+			Expect(bc.GetNamespace()).To(Equal(obcNS))
+		})
+	})
+
+	Context("When a bucketclass exists in the system namespace", func() {
+		It("should return the BucketClass's namespace to be the same as that of system", func() {
+			obcNS := "obc-ns"
+			systemNS := "test"
+
+			bc, ok := getBucketClassByName(
+				"bc1",
+				obcNS,
+				systemNS,
+				func(o client.Object) bool {
+					return o.GetNamespace() == systemNS
+				},
+			)
+
+			Expect(ok).To(BeTrue())
+			Expect(bc.GetNamespace()).To(Equal(systemNS))
+		})
+	})
+
+	Context("When a bucketclass exists in the system namespace as well as OBC namespace", func() {
+		It("should return the BucketClass's namespace to be the same as that of OBC", func() {
+			obcNS := "obc-ns"
+			systemNS := "test"
+
+			bc, ok := getBucketClassByName(
+				"bc1",
+				obcNS,
+				systemNS,
+				func(o client.Object) bool {
+					return o.GetNamespace() == systemNS || o.GetNamespace() == obcNS
+				},
+			)
+
+			Expect(ok).To(BeTrue())
+			Expect(bc.GetNamespace()).To(Equal(obcNS))
+		})
+	})
+
+	Context("When a bucketclass does not exists in system namespace or OBC namespace", func() {
+		It("should return the BucketClass's namespace to be the same as that of system namespace with \"ok\" set to false", func() {
+			obcNS := "obc-ns"
+			systemNS := "test"
+
+			bc, ok := getBucketClassByName(
+				"bc1",
+				obcNS,
+				systemNS,
+				func(o client.Object) bool {
+					return false
+				},
+			)
+
+			Expect(ok).To(BeFalse())
+			Expect(bc.GetNamespace()).To(Equal(systemNS))
+		})
+	})
+
+	Context("When a bucketclass name is empty", func() {
+		It("should return empty string for namespace and \"exists\" set to false", func() {
+			obcNS := "obc-ns"
+			systemNS := "test"
+
+			bc, ok := getBucketClassByName(
+				"",
+				obcNS,
+				systemNS,
+				func(o client.Object) bool {
+					return false
+				},
+			)
+
+			Expect(ok).To(BeFalse())
+			Expect(bc.GetNamespace()).To(Equal(""))
+		})
+	})
+})
+
 var _ = Describe("getExternalDNSDetails", func() {
 	noobaaWithExternalDNS := func(s3URLs, vectorsURLs []string) *nbv1.NooBaa {
 		return &nbv1.NooBaa{
@@ -247,5 +345,25 @@ var _ = Describe("getExternalDNSDetails", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("no services found"))
 		}
+	})
+})
+
+var _ = Describe("GetQuotaConfig", func() {
+	It("uses the minimum maxObjects when BucketClass and OBC both specify a limit", func() {
+		bcSpec := &nbv1.BucketClassSpec{
+			Quota: &nbv1.Quota{
+				MaxObjects: "1000",
+			},
+		}
+		obConfig := map[string]string{
+			"maxObjects": "2000",
+		}
+		log := logrus.NewEntry(logrus.New())
+
+		quota, err := GetQuotaConfig("test-bucket", bcSpec, obConfig, log)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(quota.Quantity).NotTo(BeNil())
+		Expect(quota.Quantity.Value).To(Equal(1000))
 	})
 })
