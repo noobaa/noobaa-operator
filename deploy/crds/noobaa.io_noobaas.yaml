@@ -1080,6 +1080,11 @@ spec:
                       cleanup confirmation
                     type: string
                 type: object
+              coreHA:
+                description: |-
+                  CoreHA (optional) enables noobaa-core high availability (2 replicas with Kubernetes lease leader election).
+                  When true, two core pods are used with lease leader election. When false or omitted, a single core pod is used.
+                type: boolean
               corePriorityClassName:
                 description: CorePriorityClassName (optional) overrides the priority
                   class for the core pod

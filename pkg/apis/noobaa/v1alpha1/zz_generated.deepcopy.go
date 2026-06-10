@@ -1404,6 +1404,11 @@ func (in *NooBaaSpec) DeepCopyInto(out *NooBaaSpec) {
 		*out = new(v1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.CoreHA != nil {
+		in, out := &in.CoreHA, &out.CoreHA
+		*out = new(bool)
+		**out = **in
+	}
 	if in.LogResources != nil {
 		in, out := &in.LogResources, &out.LogResources
 		*out = new(v1.ResourceRequirements)

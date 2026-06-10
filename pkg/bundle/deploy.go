@@ -1511,7 +1511,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "ad028fe4d9fedbfb0fb4d4369e605e1cf6b56d69f6b5bb6d760341c5673509e5"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "2c9a7049e4ab48103350e4be0cc47d31d29e1eaf95de128d988e04e8b02fbf23"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2595,6 +2595,11 @@ spec:
                       cleanup confirmation
                     type: string
                 type: object
+              coreHA:
+                description: |-
+                  CoreHA (optional) enables noobaa-core high availability (2 replicas with Kubernetes lease leader election).
+                  When true, two core pods are used with lease leader election. When false or omitted, a single core pod is used.
+                type: boolean
               corePriorityClassName:
                 description: CorePriorityClassName (optional) overrides the priority
                   class for the core pod
@@ -4869,6 +4874,18 @@ metadata:
 data: {}
 `
 
+const Sha256_deploy_internal_lease_core_yaml = "827119b06080bda366eae9423f3fe39b7317c67cdd176af06f1acf2c7cd4d3a9"
+
+const File_deploy_internal_lease_core_yaml = `apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: noobaa-core-lease
+  labels:
+    app: noobaa
+spec:
+  leaseDurationSeconds: 20
+`
+
 const Sha256_deploy_internal_nsfs_pvc_cr_yaml = "6dd65ca7d324991b813f209ec6a8a6bcf6c2c9a9f45c519ad3fba51e25042f07"
 
 const File_deploy_internal_nsfs_pvc_cr_yaml = `apiVersion: v1
@@ -5594,7 +5611,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "4ef493f94d8f81746f9d8904085de093b4ed37ee15d0767cc563f7aa89c86de8"
+const Sha256_deploy_internal_statefulset_core_yaml = "6f033e808d7efbacce6063b6f4b8cc9748d0ab42d7e4a4a290ac059af501d262"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5623,6 +5640,8 @@ spec:
       serviceAccountName: noobaa-core
       volumes:
         - name: logs
+          emptyDir: {}
+        - name: core-run
           emptyDir: {}
         - name: mgmt-secret
           secret:
@@ -5660,6 +5679,8 @@ spec:
           volumeMounts:
             - name: logs
               mountPath: /log
+            - name: core-run
+              mountPath: /var/run/noobaa
             - name: mgmt-secret
               mountPath: /etc/mgmt-secret
               readOnly: true
@@ -5736,6 +5757,8 @@ spec:
               value: postgres
             - name: CONTAINER_PLATFORM
               value: KUBERNETES
+            - name: NOOBAA_CORE_LEASE_NAME
+              value: ""
             - name: NODE_EXTRA_CA_CERTS
             - name: TLS_MIN_VERSION
             - name: TLS_CIPHERS
@@ -7125,7 +7148,7 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_core_yaml = "1ec420603dcec64b247852d106535a85a1a866129f78f790c2e5c9285f029ae7"
+const Sha256_deploy_role_core_yaml = "61e993aa27c5064894ff6ce897331135370118b19219ba07dc720992749d8130"
 
 const File_deploy_role_core_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -7184,6 +7207,16 @@ rules:
   - update
   - list
   - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
 `
 
 const Sha256_deploy_role_db_yaml = "bc7eeca1125dfcdb491ab8eb69e3dcbce9f004a467b88489f85678b3c6872cce"
