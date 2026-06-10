@@ -255,12 +255,12 @@ func createCommonBucketclass(cmd *cobra.Command, args []string, bucketClassType 
 	name := args[0]
 
 	// Check and get system
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml"))
 	sys := o.(*nbv1.NooBaa)
 	sys.Name = options.SystemName
 	sys.Namespace = options.Namespace
 
-	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml)
+	o = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_bucketclass_cr.yaml"))
 	bucketClass := o.(*nbv1.BucketClass)
 	bucketClass.Name = name
 	bucketClass.Namespace = options.Namespace
@@ -472,7 +472,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <bucket-class-name> %s`, cmd.UsageString())
 	}
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_bucketclass_cr.yaml"))
 	bucketClass := o.(*nbv1.BucketClass)
 	bucketClass.Name = args[0]
 	bucketClass.Namespace = options.Namespace
@@ -496,7 +496,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <bucket-class-name> %s`, cmd.UsageString())
 	}
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_bucketclass_cr.yaml"))
 	bucketClass := o.(*nbv1.BucketClass)
 
 	bucketClass.Name = args[0]

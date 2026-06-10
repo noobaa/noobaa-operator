@@ -26,7 +26,7 @@ func RunReport(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 
 	// Fetching coreApp configurations
-	coreApp := util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet)
+	coreApp := util.KubeObject(bundle.MustRead("internal/statefulset-core.yaml")).(*appsv1.StatefulSet)
 	coreApp.Namespace = options.Namespace
 	if !util.KubeCheck(coreApp) {
 		log.Fatalf(`❌ Could not get core StatefulSet %q in Namespace %q`,
@@ -34,7 +34,7 @@ func RunReport(cmd *cobra.Command, args []string) {
 	}
 
 	// Fetching endpoint configurations
-	endpointApp := util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment)
+	endpointApp := util.KubeObject(bundle.MustRead("internal/deployment-endpoint.yaml")).(*appsv1.Deployment)
 	endpointApp.Namespace = options.Namespace
 	if !util.KubeCheck(endpointApp) {
 		log.Fatalf(`❌ Could not get endpoint Deployment %q in Namespace %q`,

@@ -370,18 +370,18 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.NSType, popu
 		accessMode = nbv1.AccessModeReadOnly
 	}
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml"))
 	sys := o.(*nbv1.NooBaa)
 	sys.Name = options.SystemName
 	sys.Namespace = options.Namespace
 
-	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml)
+	o = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_namespacestore_cr.yaml"))
 	namespaceStore := o.(*nbv1.NamespaceStore)
 	namespaceStore.Name = name
 	namespaceStore.Namespace = options.Namespace
 	namespaceStore.Spec = nbv1.NamespaceStoreSpec{Type: storeType, AccessMode: accessMode}
 
-	o = util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+	o = util.KubeObject(bundle.MustRead("internal/secret-empty.yaml"))
 	secret := o.(*corev1.Secret)
 	secret.Name = fmt.Sprintf("namespace-store-%s-%s", storeType, name)
 	secret.Namespace = options.Namespace
@@ -513,12 +513,12 @@ func RunCreateAWSSTSS3(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
 	}
 	name := args[0]
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml"))
 	sys := o.(*nbv1.NooBaa)
 	sys.Name = options.SystemName
 	sys.Namespace = options.Namespace
 
-	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml)
+	o = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_namespacestore_cr.yaml"))
 	namespaceStore := o.(*nbv1.NamespaceStore)
 	namespaceStore.Name = name
 	namespaceStore.Namespace = options.Namespace
@@ -773,7 +773,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
 	}
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_namespacestore_cr.yaml"))
 	namespaceStore := o.(*nbv1.NamespaceStore)
 	namespaceStore.Name = args[0]
 	namespaceStore.Namespace = options.Namespace
@@ -811,7 +811,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 	namespaceStore := GetNamespaceStoreFromArgs(cmd, args)
 
-	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret := util.KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret)
 	secretRef, _ := util.GetNamespaceStoreSecret(namespaceStore)
 	if !util.IsSTSClusterNS(namespaceStore) && !util.IsAzureSTSClusterNS(namespaceStore) {
 		if secretRef != nil {
@@ -850,7 +850,7 @@ func GetNamespaceStoreFromArgs(cmd *cobra.Command, args []string) *nbv1.Namespac
 		log.Fatalf(`❌ Missing expected arguments: <namespace-store-name> %s`, cmd.UsageString())
 	}
 
-	namespaceStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore)
+	namespaceStore := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_namespacestore_cr.yaml")).(*nbv1.NamespaceStore)
 	namespaceStore.Name = args[0]
 	namespaceStore.Namespace = options.Namespace
 	namespaceStore.Spec = nbv1.NamespaceStoreSpec{}

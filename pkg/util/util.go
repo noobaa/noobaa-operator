@@ -1639,7 +1639,7 @@ func IsStringGraphicOrSpacesCharsOnly(s string) bool {
 
 // VerifyCredsInSecret throws fatal error when a given secret doesn't contain the mandatory properties
 func VerifyCredsInSecret(secretName string, namespace string, mandatoryProperties []string) {
-	secret := KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret := KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret)
 	secret.Name = secretName
 	secret.Namespace = namespace
 	if !KubeCheck(secret) {
@@ -2325,7 +2325,7 @@ func GetSecretFromSecretReference(secretRef *corev1.SecretReference) (*corev1.Se
 		return nil, nil
 	}
 
-	o := KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+	o := KubeObject(bundle.MustRead("internal/secret-empty.yaml"))
 	secret := o.(*corev1.Secret)
 
 	secret.Name = secretRef.Name

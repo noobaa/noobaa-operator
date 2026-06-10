@@ -4,7 +4,6 @@ linters:
   exclusions:
     paths:
       - pkg/apis/noobaa/v1alpha1
-      - pkg/bundle
       - zz_generated\.go
     rules:
       - linters:

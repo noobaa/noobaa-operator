@@ -119,13 +119,9 @@ release: release-docker release-cli
 #- Generate -#
 #------------#
 
-gen: install-hooks vendor pkg/bundle/deploy.go
+gen: install-hooks vendor
 	@echo "✅ gen"
 .PHONY: gen
-
-pkg/bundle/deploy.go: pkg/bundler/bundler.go version/version.go $(shell find deploy/ -type f)
-	mkdir -p pkg/bundle
-	go run pkg/bundler/bundler.go deploy/ pkg/bundle/deploy.go
 
 gen-api: controller-gen deepcopy-gen gen
 	$(TIME) $(DEEPCOPY_GEN) --go-header-file="build/hack/boilerplate.go.txt" --input-dirs="./pkg/apis/noobaa/v1alpha1/..." --output-file-base="zz_generated.deepcopy"

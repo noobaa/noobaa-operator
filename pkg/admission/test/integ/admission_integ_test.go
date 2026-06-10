@@ -57,13 +57,13 @@ var _ = Describe("Admission server integration tests", func() {
 
 	Describe("Create operations", func() {
 		BeforeEach(func() {
-			testBackingstore = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+			testBackingstore = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_backingstore_cr.yaml")).(*nbv1.BackingStore)
 			testBackingstore.Name = "bs-name"
 			testBackingstore.Namespace = namespace
-			testNamespacestore = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore)
+			testNamespacestore = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_namespacestore_cr.yaml")).(*nbv1.NamespaceStore)
 			testNamespacestore.Name = "ns-name"
 			testNamespacestore.Namespace = namespace
-			testBucketclass = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass)
+			testBucketclass = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_bucketclass_cr.yaml")).(*nbv1.BucketClass)
 			testBucketclass.Name = "bc-name"
 			testBucketclass.Namespace = namespace
 		})
@@ -105,7 +105,7 @@ var _ = Describe("Admission server integration tests", func() {
 		Context("Non Empty AWS STS ARN", func() {
 			arnString := "some-aws-arn"
 			It("Should Allow", func() {
-				stsBackingStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				stsBackingStore := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_backingstore_cr.yaml")).(*nbv1.BackingStore)
 				stsBackingStore.Name = "sts-bs-name"
 				stsBackingStore.Namespace = namespace
 
@@ -126,7 +126,7 @@ var _ = Describe("Admission server integration tests", func() {
 			clientID := "client-id"
 			tenantID := "tenant-id"
 			It("Should Allow create without secret when Azure STS credentials are provided", func() {
-				azureSTSBackingStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				azureSTSBackingStore := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_backingstore_cr.yaml")).(*nbv1.BackingStore)
 				azureSTSBackingStore.Name = "azure-sts-bs-name"
 				azureSTSBackingStore.Namespace = namespace
 
@@ -147,7 +147,7 @@ var _ = Describe("Admission server integration tests", func() {
 			It("Should Allow create without secret when Azure STS credentials including subscriptionId and resourcegroupId are provided", func() {
 				subscriptionID := "azure-sts-subscription-id"
 				resourceGroupID := "azure-sts-resource-group"
-				azureSTSBackingStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				azureSTSBackingStore := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_backingstore_cr.yaml")).(*nbv1.BackingStore)
 				azureSTSBackingStore.Name = "azure-sts-bs-full-name"
 				azureSTSBackingStore.Namespace = namespace
 
@@ -168,7 +168,7 @@ var _ = Describe("Admission server integration tests", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 			It("Should Deny create when secret is empty and Azure STS credentials are missing", func() {
-				azureBSNoCreds := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				azureBSNoCreds := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_backingstore_cr.yaml")).(*nbv1.BackingStore)
 				azureBSNoCreds.Name = "azure-bs-no-sts-creds"
 				azureBSNoCreds.Namespace = namespace
 
@@ -186,7 +186,7 @@ var _ = Describe("Admission server integration tests", func() {
 				Expect(err.Error()).To(ContainSubstring("please provide secret name or Azure STS clientId"))
 			})
 			It("Should Allow create without secret when only clientId is set", func() {
-				azureSTSBackingStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+				azureSTSBackingStore := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_backingstore_cr.yaml")).(*nbv1.BackingStore)
 				azureSTSBackingStore.Name = "azure-sts-bs-clientid-only"
 				azureSTSBackingStore.Namespace = namespace
 
@@ -207,7 +207,7 @@ var _ = Describe("Admission server integration tests", func() {
 		})
 		Context("Azure blob namespace store", func() {
 			It("Should Deny create when secret is empty (namespace store requires secret for Azure)", func() {
-				azureNSStore := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore)
+				azureNSStore := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_namespacestore_cr.yaml")).(*nbv1.NamespaceStore)
 				azureNSStore.Name = "azure-ns-no-secret"
 				azureNSStore.Namespace = namespace
 				azureNSStore.Spec = nbv1.NamespaceStoreSpec{
