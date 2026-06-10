@@ -278,6 +278,8 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 	csv.Annotations["features.operators.openshift.io/token-auth-aws"] = "true"
 	// annotation for Azure managed identity STS cluster
 	csv.Annotations["features.operators.openshift.io/token-auth-azure"] = "true"
+	// annotation for OpenShift GCP WIF (STS) cluster
+	csv.Annotations["features.operators.openshift.io/token-auth-gcp"] = "true"
 	csv.Annotations["capabilities"] = "Seamless Upgrades"
 	csv.Spec.Version.Version = semver.MustParse(version.Version)
 	csv.Spec.Description = bundle.File_deploy_olm_description_md

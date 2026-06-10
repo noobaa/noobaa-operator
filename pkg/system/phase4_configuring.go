@@ -1306,29 +1306,40 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 			return fmt.Errorf("got error on GCPBucketCreds creation. error: %v", err)
 		}
 	}
-	authJSON := &gcpAuthJSON{}
-	err := json.Unmarshal([]byte(cloudCredsSecret.StringData["service_account.json"]), authJSON)
-	if err != nil {
-		fmt.Println("Failed to parse secret", err)
-		return err
+	credsJSON := cloudCredsSecret.StringData["service_account.json"]
+	if credsJSON == "" {
+		return fmt.Errorf("cloud credentials secret %q is missing service_account.json", secretName)
 	}
-	projectID := authJSON.ProjectID
+	isExternalAccount, serviceAccountEmail, err := util.ParseGoogleCredentials(credsJSON)
+	if err != nil {
+		return fmt.Errorf("failed to parse GCP credentials from secret %q: %w", secretName, err)
+	}
 	if r.GCPBucketCreds.StringData == nil {
 		r.Logger.Infof("Secret %q does not contain a map of StringData yet. retry on next reconcile...", secretName)
 		return fmt.Errorf("cloud credentials secret %q is not ready yet (does not contain a map of StringData yet)", secretName)
 	}
-	r.GCPBucketCreds.StringData["GoogleServiceAccountPrivateKeyJson"] = cloudCredsSecret.StringData["service_account.json"]
-	ctx := context.Background()
-	gcpclient, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(cloudCredsSecret.StringData["service_account.json"])))
-	if err != nil {
-		r.Logger.Info(err)
-		return err
-	}
+	r.GCPBucketCreds.StringData["GoogleServiceAccountPrivateKeyJson"] = credsJSON
 
-	var bucketName = strings.ToLower(randname.GenerateWithPrefix("noobaabucket", 5))
-	if err := r.createGCPBucketForBackingStore(gcpclient, projectID, bucketName); err != nil {
-		r.Logger.Info(err)
-		return err
+	var bucketName string
+	if isExternalAccount {
+		projectID, err := util.GcpProjectIDFromServiceAccountEmail(serviceAccountEmail)
+		if err != nil {
+			return err
+		}
+		bucketName, err = r.createGCPBucketWithCredentialsJSON(credsJSON, projectID)
+		if err != nil {
+			return err
+		}
+	} else {
+		authJSON := &gcpAuthJSON{}
+		err := json.Unmarshal([]byte(credsJSON), authJSON)
+		if err != nil {
+			return fmt.Errorf("failed to parse service_account credentials: %w", err)
+		}
+		bucketName, err = r.createGCPBucketWithCredentialsJSON(credsJSON, authJSON.ProjectID)
+		if err != nil {
+			return err
+		}
 	}
 
 	if errUpdate := r.Client.Update(r.Ctx, r.GCPBucketCreds); errUpdate != nil {
@@ -1447,6 +1458,20 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 	return nil
 }
 
+func (r *Reconciler) createGCPBucketWithCredentialsJSON(credentialsJSON, projectID string) (string, error) {
+	bucketName := strings.ToLower(randname.GenerateWithPrefix("noobaabucket", 5))
+	ctx := context.Background()
+	gcpclient, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(credentialsJSON)))
+	if err != nil {
+		r.Logger.Errorf("got error creating GCP storage client. error: %v", err)
+		return "", err
+	}
+	if err := r.createGCPBucketForBackingStore(gcpclient, projectID, bucketName); err != nil {
+		return "", err
+	}
+	return bucketName, nil
+}
+
 func (r *Reconciler) createGCPBucketForBackingStore(client *storage.Client, projectID, bucketName string) error {
 	// [START create_bucket]
 	ctx := context.Background()
@@ -1454,6 +1479,7 @@ func (r *Reconciler) createGCPBucketForBackingStore(client *storage.Client, proj
 	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 	if err := client.Bucket(bucketName).Create(ctx, projectID, nil); err != nil {
+		r.Logger.Errorf("got error when trying to create bucket %s. error: %v", bucketName, err)
 		return err
 	}
 	// [END create_bucket]

@@ -213,6 +213,22 @@ var SubscriptionId = ""
 // it can be overridden for testing.
 var ResourcegroupId = ""
 
+// GoogleCloudProjectNumber is used on a GCP WIF (STS) cluster.
+// it can be overridden for testing.
+var GoogleCloudProjectNumber = ""
+
+// GoogleCloudPoolId is used on a GCP WIF (STS) cluster.
+// it can be overridden for testing.
+var GoogleCloudPoolId = ""
+
+// GoogleCloudProviderId is used on a GCP WIF (STS) cluster.
+// it can be overridden for testing.
+var GoogleCloudProviderId = ""
+
+// GoogleCloudServiceAccountEmail is used on a GCP WIF (STS) cluster.
+// it can be overridden for testing.
+var GoogleCloudServiceAccountEmail = ""
+
 // SubDomainNS returns a unique subdomain for the namespace
 func SubDomainNS() string {
 	return Namespace + ".noobaa.io"
@@ -404,5 +420,21 @@ func init() {
 	FlagSet.StringVar(
 		&ResourcegroupId, "azure-resourcegroup",
 		ResourcegroupId, "The Azure STS resource group name",
+	)
+	FlagSet.StringVar(
+		&GoogleCloudProjectNumber, "google-cloud-project-number",
+		GoogleCloudProjectNumber, "The GCP WIF (STS) project number",
+	)
+	FlagSet.StringVar(
+		&GoogleCloudPoolId, "google-cloud-pool-id",
+		GoogleCloudPoolId, "The GCP WIF (STS) pool ID",
+	)
+	FlagSet.StringVar(
+		&GoogleCloudProviderId, "google-cloud-provider-id",
+		GoogleCloudProviderId, "The GCP WIF (STS) provider ID",
+	)
+	FlagSet.StringVar(
+		&GoogleCloudServiceAccountEmail, "google-cloud-service-account-email",
+		GoogleCloudServiceAccountEmail, "The GCP WIF (STS) service account email",
 	)
 }

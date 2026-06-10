@@ -428,3 +428,53 @@ func TestBuildGoogleWIFCredentialsJSON(t *testing.T) {
 		}
 	})
 }
+
+func TestGcpProjectIDFromServiceAccountEmail(t *testing.T) {
+	tests := []struct {
+		name          string
+		email         string
+		expectedProjectID string
+		expectedErr       bool
+	}{
+		{
+			name:          "valid GCP service account email",
+			email:         "noobaa-wif-sa@my-project.iam.gserviceaccount.com",
+			expectedProjectID: "my-project",
+		},
+		{
+			name:    "missing at sign",
+			email:   "invalid-email",
+			expectedErr: true,
+		},
+		// GcpProjectIDFromServiceAccountEmail only strips .iam.gserviceaccount.com;
+		// other domains pass through the part after @ unchanged (no format validation).
+		{
+			name:          "non-GCP domain",
+			email:         "sa@other-domain.com",
+			expectedProjectID: "other-domain.com",
+		},
+		{
+			name:    "empty domain after at sign",
+			email:   "sa@",
+			expectedErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := GcpProjectIDFromServiceAccountEmail(tc.email)
+			if tc.expectedErr {
+				if err == nil {
+					t.Fatal("GcpProjectIDFromServiceAccountEmail expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("GcpProjectIDFromServiceAccountEmail unexpected error: %v", err)
+			}
+			if got != tc.expectedProjectID {
+				t.Fatalf("GcpProjectIDFromServiceAccountEmail expected project ID %q, got %q", tc.expectedProjectID, got)
+			}
+		})
+	}
+}

@@ -1314,6 +1314,21 @@ func BuildGoogleWIFCredentialsJSON(projectNumber, poolID, providerID, serviceAcc
 	return string(credentialsBytes), nil
 }
 
+// GcpProjectIDFromServiceAccountEmail returns the GCP project ID from a service account email
+// (e.g. "noobaa-wif-sa@my-project.iam.gserviceaccount.com" -> "my-project").
+func GcpProjectIDFromServiceAccountEmail(email string) (string, error) {
+	const suffix = ".iam.gserviceaccount.com"
+	at := strings.LastIndex(email, "@")
+	if at < 0 {
+		return "", fmt.Errorf("invalid GCP service account email %q", email)
+	}
+	projectID := strings.TrimSuffix(email[at+1:], suffix)
+	if projectID == "" {
+		return "", fmt.Errorf("invalid GCP service account email %q", email)
+	}
+	return projectID, nil
+}
+
 // IsAzurePlatformNonGovernment returns true if this cluster is running on Azure and also not on azure government\DOD cloud
 func IsAzurePlatformNonGovernment() bool {
 	azurePlatformNonGovOnce.Do(func() {

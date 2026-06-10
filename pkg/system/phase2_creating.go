@@ -46,6 +46,11 @@ const (
 	subscriptionIDEnvVar    string = "SUBSCRIPTIONID"
 	resourcegroupIDEnvVar   string = "RESOURCEGROUP"
 	azureRegionEnvVar       string = "AZUREREGION"
+	// GCP WIF (STS)
+	gcpProjectNumberEnvVar       string = "PROJECT_NUMBER"
+	gcpPoolIdEnvVar              string = "POOL_ID"
+	gcpProviderIdEnvVar          string = "PROVIDER_ID"
+	gcpServiceAccountEmailEnvVar string = "SERVICE_ACCOUNT_EMAIL"
 )
 
 // ReconcilePhaseCreating runs the reconcile phase
@@ -1163,6 +1168,28 @@ func (r *Reconciler) ReconcileAzureCredentials() error {
 
 // ReconcileGCPCredentials creates a CredentialsRequest resource if cloud credentials operator is available
 func (r *Reconciler) ReconcileGCPCredentials() error {
+	// check if we have the envs that indicates that this is an OpenShift GCP WIF (STS) cluster:
+	// PROJECT_NUMBER, POOL_ID, PROVIDER_ID (all 3 of them create the AUDIENCE), and SERVICE_ACCOUNT_EMAIL
+	// cluster admin set this env (either in the UI or via Subscription yaml) and set the mode to manual
+	// olm will then copy the env from the subscription to the operator deployment (which is where your operator can pick it up from)
+	projectNumber := os.Getenv(gcpProjectNumberEnvVar)
+	poolId := os.Getenv(gcpPoolIdEnvVar)
+	providerId := os.Getenv(gcpProviderIdEnvVar)
+	serviceAccountEmail := os.Getenv(gcpServiceAccountEmailEnvVar)
+
+	if projectNumber != "" || poolId != "" || providerId != "" || serviceAccountEmail != "" {
+		r.Logger.Infof("GCP WIF (STS) cluster: %s=%s %s=%s %s=%s %s=%s",
+			gcpProjectNumberEnvVar, projectNumber, gcpPoolIdEnvVar, poolId,
+			gcpProviderIdEnvVar, providerId, gcpServiceAccountEmailEnvVar, serviceAccountEmail,
+		)
+		if projectNumber != "" && poolId != "" && providerId != "" && serviceAccountEmail != "" {
+			r.IsGCPSTSCluster = true
+		} else {
+			r.Logger.Errorf("One or more required param missing for GCP WIF (STS)")
+			return fmt.Errorf("One or more required param missing for GCP WIF (STS)")
+		}
+	}
+
 	r.Logger.Info("Running on GCP. will create a CredentialsRequest resource")
 	err := r.Client.Get(r.Ctx, util.ObjectKey(r.GCPCloudCreds), r.GCPCloudCreds)
 	if err == nil || meta.IsNoMatchError(err) || runtime.IsNotRegisteredError(err) {
@@ -1171,6 +1198,24 @@ func (r *Reconciler) ReconcileGCPCredentials() error {
 	if errors.IsNotFound(err) {
 		// credential request does not exist. create one
 		r.Logger.Info("Creating CredentialsRequest resource")
+		if r.IsGCPSTSCluster {
+			codec := cloudcredsv1.Codec
+			gcpProviderSpec := &cloudcredsv1.GCPProviderSpec{}
+			err = codec.DecodeProviderSpec(r.GCPCloudCreds.Spec.ProviderSpec, gcpProviderSpec)
+			if err != nil {
+				r.Logger.Error("error decoding providerSpec from cloud credentials request")
+				return err
+			}
+			gcpProviderSpec.Audience = util.GoogleWIFAudience(projectNumber, poolId, providerId)
+			gcpProviderSpec.ServiceAccountEmail = serviceAccountEmail
+			updatedProviderSpec, err := codec.EncodeProviderSpec(gcpProviderSpec)
+			if err != nil {
+				r.Logger.Error("error encoding providerSpec for cloud credentials request")
+				return err
+			}
+			r.GCPCloudCreds.Spec.ProviderSpec = updatedProviderSpec
+			r.GCPCloudCreds.Spec.CloudTokenPath = r.webIdentityTokenPath
+		}
 		r.Own(r.GCPCloudCreds)
 		err = r.Client.Create(r.Ctx, r.GCPCloudCreds)
 		if err != nil {
