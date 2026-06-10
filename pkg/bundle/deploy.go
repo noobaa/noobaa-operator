@@ -5581,7 +5581,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "4ef493f94d8f81746f9d8904085de093b4ed37ee15d0767cc563f7aa89c86de8"
+const Sha256_deploy_internal_statefulset_core_yaml = "d801f303e997a9267f59d4fd80c3fe7586c8a62948db2324b6ac9afaca27064e"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5644,6 +5644,9 @@ spec:
             timeoutSeconds: 2
           image: NOOBAA_CORE_IMAGE
           terminationMessagePolicy: FallbackToLogsOnError
+          command:
+            - /usr/local/bin/node
+            - /root/node_modules/noobaa-core/src/cmd/core_init.js
           volumeMounts:
             - name: logs
               mountPath: /log
