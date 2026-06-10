@@ -139,13 +139,13 @@ func RunYaml(cmd *cobra.Command, args []string) {
 
 // LoadCrds loads the CRDs structures from the bundled yamls
 func LoadCrds() *Crds {
-	o1 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_noobaas_yaml)
-	o2 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_backingstores_yaml)
-	o3 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_namespacestores_yaml)
-	o4 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_bucketclasses_yaml)
-	o5 := util.KubeObject(bundle.File_deploy_crds_noobaa_io_noobaaaccounts_yaml)
-	o6 := util.KubeObject(bundle.File_deploy_obc_objectbucket_io_objectbucketclaims_crd_yaml)
-	o7 := util.KubeObject(bundle.File_deploy_obc_objectbucket_io_objectbuckets_crd_yaml)
+	o1 := util.KubeObject(bundle.MustRead("crds/noobaa.io_noobaas.yaml"))
+	o2 := util.KubeObject(bundle.MustRead("crds/noobaa.io_backingstores.yaml"))
+	o3 := util.KubeObject(bundle.MustRead("crds/noobaa.io_namespacestores.yaml"))
+	o4 := util.KubeObject(bundle.MustRead("crds/noobaa.io_bucketclasses.yaml"))
+	o5 := util.KubeObject(bundle.MustRead("crds/noobaa.io_noobaaaccounts.yaml"))
+	o6 := util.KubeObject(bundle.MustRead("obc/objectbucket.io_objectbucketclaims_crd.yaml"))
+	o7 := util.KubeObject(bundle.MustRead("obc/objectbucket.io_objectbuckets_crd.yaml"))
 	crds := &Crds{
 		NooBaa:            o1.(*CRD),
 		BackingStore:      o2.(*CRD),

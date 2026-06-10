@@ -465,21 +465,21 @@ type Conf struct {
 func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c := &Conf{}
 
-	c.NS = util.KubeObject(bundle.File_deploy_namespace_yaml).(*corev1.Namespace)
-	c.SA = util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount)
-	c.SACore = util.KubeObject(bundle.File_deploy_service_account_core_yaml).(*corev1.ServiceAccount)
-	c.SAEndpoint = util.KubeObject(bundle.File_deploy_service_account_endpoint_yaml).(*corev1.ServiceAccount)
-	c.SAUI = util.KubeObject(bundle.File_deploy_service_account_ui_yaml).(*corev1.ServiceAccount)
-	c.Role = util.KubeObject(bundle.File_deploy_role_yaml).(*rbacv1.Role)
-	c.RoleCore = util.KubeObject(bundle.File_deploy_role_core_yaml).(*rbacv1.Role)
-	c.RoleEndpoint = util.KubeObject(bundle.File_deploy_role_endpoint_yaml).(*rbacv1.Role)
-	c.RoleUI = util.KubeObject(bundle.File_deploy_role_ui_yaml).(*rbacv1.ClusterRole)
-	c.RoleBinding = util.KubeObject(bundle.File_deploy_role_binding_yaml).(*rbacv1.RoleBinding)
-	c.RoleBindingCore = util.KubeObject(bundle.File_deploy_role_binding_core_yaml).(*rbacv1.RoleBinding)
-	c.RoleBindingEndpoint = util.KubeObject(bundle.File_deploy_role_binding_endpoint_yaml).(*rbacv1.RoleBinding)
-	c.ClusterRole = util.KubeObject(bundle.File_deploy_cluster_role_yaml).(*rbacv1.ClusterRole)
-	c.ClusterRoleBinding = util.KubeObject(bundle.File_deploy_cluster_role_binding_yaml).(*rbacv1.ClusterRoleBinding)
-	c.Deployment = util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
+	c.NS = util.KubeObject(bundle.MustRead("namespace.yaml")).(*corev1.Namespace)
+	c.SA = util.KubeObject(bundle.MustRead("service_account.yaml")).(*corev1.ServiceAccount)
+	c.SACore = util.KubeObject(bundle.MustRead("service_account_core.yaml")).(*corev1.ServiceAccount)
+	c.SAEndpoint = util.KubeObject(bundle.MustRead("service_account_endpoint.yaml")).(*corev1.ServiceAccount)
+	c.SAUI = util.KubeObject(bundle.MustRead("service_account_ui.yaml")).(*corev1.ServiceAccount)
+	c.Role = util.KubeObject(bundle.MustRead("role.yaml")).(*rbacv1.Role)
+	c.RoleCore = util.KubeObject(bundle.MustRead("role_core.yaml")).(*rbacv1.Role)
+	c.RoleEndpoint = util.KubeObject(bundle.MustRead("role_endpoint.yaml")).(*rbacv1.Role)
+	c.RoleUI = util.KubeObject(bundle.MustRead("role_ui.yaml")).(*rbacv1.ClusterRole)
+	c.RoleBinding = util.KubeObject(bundle.MustRead("role_binding.yaml")).(*rbacv1.RoleBinding)
+	c.RoleBindingCore = util.KubeObject(bundle.MustRead("role_binding_core.yaml")).(*rbacv1.RoleBinding)
+	c.RoleBindingEndpoint = util.KubeObject(bundle.MustRead("role_binding_endpoint.yaml")).(*rbacv1.RoleBinding)
+	c.ClusterRole = util.KubeObject(bundle.MustRead("cluster_role.yaml")).(*rbacv1.ClusterRole)
+	c.ClusterRoleBinding = util.KubeObject(bundle.MustRead("cluster_role_binding.yaml")).(*rbacv1.ClusterRoleBinding)
+	c.Deployment = util.KubeObject(bundle.MustRead("operator.yaml")).(*appsv1.Deployment)
 
 	c.NS.Name = options.Namespace
 	c.SA.Namespace = options.Namespace
@@ -577,9 +577,9 @@ func DetectClusterRole(c *Conf) {
 // LoadAdmissionConf loads and initializes all the objects needed to install the admission resources
 func LoadAdmissionConf(c *Conf) {
 	// Load admission resources yaml files
-	c.WebhookConfiguration = util.KubeObject(bundle.File_deploy_internal_admission_webhook_yaml).(*admissionv1.ValidatingWebhookConfiguration)
-	c.WebhookSecret = util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
-	c.WebhookService = util.KubeObject(bundle.File_deploy_internal_service_admission_webhook_yaml).(*corev1.Service)
+	c.WebhookConfiguration = util.KubeObject(bundle.MustRead("internal/admission-webhook.yaml")).(*admissionv1.ValidatingWebhookConfiguration)
+	c.WebhookSecret = util.KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret)
+	c.WebhookService = util.KubeObject(bundle.MustRead("internal/service_admission_webhook.yaml")).(*corev1.Service)
 
 	// Set resources Name and Namespace
 	c.WebhookConfiguration.Namespace = options.Namespace

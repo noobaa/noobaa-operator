@@ -81,7 +81,7 @@ func RunCreateAccessClass(cmd *cobra.Command, args []string) {
 	}
 	name := args[0]
 
-	cosiAccessClass := util.KubeObject(bundle.File_deploy_cosi_bucket_access_class_yaml).(*nbv1.COSIBucketAccessClass)
+	cosiAccessClass := util.KubeObject(bundle.MustRead("cosi/bucket_access_class.yaml")).(*nbv1.COSIBucketAccessClass)
 	cosiAccessClass.Name = name
 	cosiAccessClass.DriverName = options.COSIDriverName()
 	cosiAccessClass.AuthenticationType = nbv1.COSIKEYAuthenticationType
@@ -104,7 +104,7 @@ func RunDeleteAccessClass(cmd *cobra.Command, args []string) {
 		log.Fatalf(`Missing expected arguments: <access-class-name> %s`, cmd.UsageString())
 	}
 
-	cosiAccessClass := util.KubeObject(bundle.File_deploy_cosi_bucket_access_class_yaml).(*nbv1.COSIBucketAccessClass)
+	cosiAccessClass := util.KubeObject(bundle.MustRead("cosi/bucket_access_class.yaml")).(*nbv1.COSIBucketAccessClass)
 	cosiAccessClass.Name = args[0]
 
 	if !util.KubeDelete(cosiAccessClass) {
@@ -120,7 +120,7 @@ func RunStatusAccessClass(cmd *cobra.Command, args []string) {
 		log.Fatalf(`Missing expected arguments: <access-class-name> %s`, cmd.UsageString())
 	}
 
-	cosiAccessClass := util.KubeObject(bundle.File_deploy_cosi_bucket_access_class_yaml).(*nbv1.COSIBucketAccessClass)
+	cosiAccessClass := util.KubeObject(bundle.MustRead("cosi/bucket_access_class.yaml")).(*nbv1.COSIBucketAccessClass)
 	cosiAccessClass.Name = args[0]
 
 	if !util.KubeCheck(cosiAccessClass) {

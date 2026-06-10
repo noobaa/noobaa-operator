@@ -114,13 +114,13 @@ func NewReconciler(
 		Recorder:         recorder,
 		Ctx:              context.TODO(),
 		Logger:           logrus.WithField("backingstore", req.Namespace+"/"+req.Name),
-		BackingStore:     util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore),
-		NooBaa:           util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
-		Secret:           util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		ServiceAccount:   util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
-		CoreAppConfig:    util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap),
-		PodAgentTemplate: util.KubeObject(bundle.File_deploy_internal_pod_agent_yaml).(*corev1.Pod),
-		PvcAgentTemplate: util.KubeObject(bundle.File_deploy_internal_pvc_agent_yaml).(*corev1.PersistentVolumeClaim),
+		BackingStore:     util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_backingstore_cr.yaml")).(*nbv1.BackingStore),
+		NooBaa:           util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml")).(*nbv1.NooBaa),
+		Secret:           util.KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret),
+		ServiceAccount:   util.KubeObject(bundle.MustRead("service_account.yaml")).(*corev1.ServiceAccount),
+		CoreAppConfig:    util.KubeObject(bundle.MustRead("internal/configmap-empty.yaml")).(*corev1.ConfigMap),
+		PodAgentTemplate: util.KubeObject(bundle.MustRead("internal/pod-agent.yaml")).(*corev1.Pod),
+		PvcAgentTemplate: util.KubeObject(bundle.MustRead("internal/pvc-agent.yaml")).(*corev1.PersistentVolumeClaim),
 	}
 
 	// Set Namespace
@@ -1216,7 +1216,7 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 	podSecrets := pod.Spec.ImagePullSecrets
 	noobaaSecret := r.NooBaa.Spec.ImagePullSecret
 	if noobaaSecret == nil {
-		sa := util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount)
+		sa := util.KubeObject(bundle.MustRead("service_account.yaml")).(*corev1.ServiceAccount)
 		sa.Name = pod.Spec.ServiceAccountName
 		sa.Namespace = options.Namespace
 		if util.KubeCheck(sa) && !reflect.DeepEqual(sa.ImagePullSecrets, podSecrets) {

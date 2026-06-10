@@ -169,12 +169,12 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	nsfsOnly, _ := cmd.Flags().GetBool("nsfs_only")
 
 	// Check and get system
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml"))
 	sys := o.(*nbv1.NooBaa)
 	sys.Name = options.SystemName
 	sys.Namespace = options.Namespace
 
-	o = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
+	o = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaaaccount_cr.yaml"))
 	noobaaAccount := o.(*nbv1.NooBaaAccount)
 	noobaaAccount.Name = name
 	noobaaAccount.Namespace = options.Namespace
@@ -251,7 +251,7 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaaaccount_cr.yaml"))
 	noobaaAccount := o.(*nbv1.NooBaaAccount)
 	noobaaAccount.Name = name
 	noobaaAccount.Namespace = options.Namespace
@@ -355,7 +355,7 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 
 	name := args[0]
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaaaccount_cr.yaml"))
 	noobaaAccount := o.(*nbv1.NooBaaAccount)
 	noobaaAccount.Name = name
 	noobaaAccount.Namespace = options.Namespace
@@ -395,7 +395,7 @@ func RunCredentials(cmd *cobra.Command, args []string) {
 	ValidateAccessKeys(accessKeys)
 
 	name := args[0]
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaaaccount_cr.yaml"))
 	noobaaAccount := o.(*nbv1.NooBaaAccount)
 	noobaaAccount.Name = name
 	noobaaAccount.Namespace = options.Namespace
@@ -424,7 +424,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Missing expected arguments: <bucket-class-name> %s`, cmd.UsageString())
 	}
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaaaccount_cr.yaml"))
 	noobaaAccount := o.(*nbv1.NooBaaAccount)
 	noobaaAccount.Name = args[0]
 	noobaaAccount.Namespace = options.Namespace
@@ -445,9 +445,9 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 	name := args[0]
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaaaccount_cr.yaml"))
 	noobaaAccount := o.(*nbv1.NooBaaAccount)
-	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret := util.KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret)
 
 	noobaaAccount.Name = name
 	secret.Name = fmt.Sprintf("noobaa-account-%s", name)
@@ -620,7 +620,7 @@ func GenerateAccountKeys(name string) error {
 	}
 
 	// Checking that we can find the secret before we are calling the RPC to change the credentials.
-	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret := util.KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret)
 	secret.Namespace = options.Namespace
 	// Handling a special case when the account is "admin@noobaa.io" we don't have CRD but have a secret
 	if name == "admin@noobaa.io" {
@@ -714,7 +714,7 @@ func UpdateAccountKeys(name string, accessKeys nb.S3AccessKeys) error {
 	}
 
 	// Checking that we can find the secret before we are calling the RPC to update the credentials.
-	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret := util.KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret)
 	secret.Namespace = options.Namespace
 	// Handling a special case when the account is "admin@noobaa.io" we don't have CRD but have a secret
 	if name == "admin@noobaa.io" {

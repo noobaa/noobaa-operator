@@ -218,12 +218,12 @@ func createCommonCOSIBucketclass(cmd *cobra.Command, args []string, bucketClassT
 	name := args[0]
 
 	// Check and get system
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml"))
 	sys := o.(*nbv1.NooBaa)
 	sys.Name = options.SystemName
 	sys.Namespace = options.Namespace
 
-	o = util.KubeObject(bundle.File_deploy_cosi_bucket_class_yaml)
+	o = util.KubeObject(bundle.MustRead("cosi/bucket_class.yaml"))
 	bucketClass := o.(*nbv1.COSIBucketClass)
 	bucketClass.Name = name
 	bucketClass.DriverName = options.COSIDriverName()
@@ -364,7 +364,7 @@ func RunDeleteBucketClass(cmd *cobra.Command, args []string) {
 		log.Fatalf(`Missing expected arguments: <bucket-class-name> %s`, cmd.UsageString())
 	}
 
-	cosiBucketClass := util.KubeObject(bundle.File_deploy_cosi_bucket_class_yaml).(*nbv1.COSIBucketClass)
+	cosiBucketClass := util.KubeObject(bundle.MustRead("cosi/bucket_class.yaml")).(*nbv1.COSIBucketClass)
 	cosiBucketClass.Name = args[0]
 
 	if !util.KubeDelete(cosiBucketClass) {
@@ -380,7 +380,7 @@ func RunStatusBucketClass(cmd *cobra.Command, args []string) {
 		log.Fatalf(`Missing expected arguments: <bucket-class-name> %s`, cmd.UsageString())
 	}
 
-	cosiBucketClass := util.KubeObject(bundle.File_deploy_cosi_bucket_class_yaml).(*nbv1.COSIBucketClass)
+	cosiBucketClass := util.KubeObject(bundle.MustRead("cosi/bucket_class.yaml")).(*nbv1.COSIBucketClass)
 	cosiBucketClass.Name = args[0]
 
 	if !util.KubeCheck(cosiBucketClass) {

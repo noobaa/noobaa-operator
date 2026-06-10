@@ -322,7 +322,7 @@ func (r *Reconciler) createAuthSecretTargetRef(serviceAccountName, promethesName
 }
 
 func (r *Reconciler) creatBasicSecretTargetRef(log *logrus.Entry) []kedav1alpha1.AuthSecretTargetRef {
-	kedaSecretObject := util.KubeObject(bundle.File_deploy_internal_hpa_keda_secret_yaml).(*corev1.Secret)
+	kedaSecretObject := util.KubeObject(bundle.MustRead("internal/hpa-keda-secret.yaml")).(*corev1.Secret)
 	kedaSecretObject.Namespace = r.Request.Namespace
 	kedaSecretObject.Data = map[string][]byte{
 		"username": []byte("username"),
@@ -369,7 +369,7 @@ func (r *Reconciler) checkAndCreatePrometheusSecret(serviceAccountName string, p
 	kedaSecretObject := &corev1.Secret{}
 	for _, secret := range secrets.Items {
 		if strings.Contains(secret.Name, serviceAccountName+"-token") {
-			kedaSecretObject = util.KubeObject(bundle.File_deploy_internal_hpa_keda_secret_yaml).(*corev1.Secret)
+			kedaSecretObject = util.KubeObject(bundle.MustRead("internal/hpa-keda-secret.yaml")).(*corev1.Secret)
 			kedaSecretObject.Namespace = r.Request.Namespace
 			kedaSecretObject.Data = secret.Data
 		}
@@ -453,13 +453,13 @@ func (r *Reconciler) reconcilePrometheusAdapterResources(prometheus *monitoringv
 	if err != nil {
 		return err
 	}
-	adapterServingCertsConfigMap := util.KubeObject(bundle.File_deploy_internal_hpav2_serving_certs_ca_bundle_yaml).(*corev1.ConfigMap)
+	adapterServingCertsConfigMap := util.KubeObject(bundle.MustRead("internal/hpav2-serving-certs-ca-bundle.yaml")).(*corev1.ConfigMap)
 	adapterServingCertsConfigMap.Namespace = r.Request.Namespace
 	if err := r.ReconcileObject(adapterServingCertsConfigMap, nil); err != nil {
 		return err
 	}
 
-	adapterAuthConfigMap := util.KubeObject(bundle.File_deploy_internal_hpav2_prometheus_auth_config_yaml).(*corev1.ConfigMap)
+	adapterAuthConfigMap := util.KubeObject(bundle.MustRead("internal/hpav2-prometheus-auth-config.yaml")).(*corev1.ConfigMap)
 	adapterAuthConfigMap.Namespace = r.Request.Namespace
 	prometheusConfig := adapterAuthConfigMap.Data["prometheus-config.yaml"]
 	adapterAuthConfigMap.Data["prometheus-config.yaml"] = strings.Replace(prometheusConfig, "prometheus-url-placeholder", prometheusURL, 1)
@@ -467,14 +467,14 @@ func (r *Reconciler) reconcilePrometheusAdapterResources(prometheus *monitoringv
 		return err
 	}
 
-	adapterConfigMap := util.KubeObject(bundle.File_deploy_internal_hpav2_configmap_adapter_yaml).(*corev1.ConfigMap)
+	adapterConfigMap := util.KubeObject(bundle.MustRead("internal/hpav2-configmap-adapter.yaml")).(*corev1.ConfigMap)
 	adapterConfigMap.Namespace = r.Request.Namespace
 	config := adapterConfigMap.Data["config.yaml"]
 	adapterConfigMap.Data["config.yaml"] = strings.Replace(config, "placeholder", r.Request.Namespace, 1)
 	if err := r.ReconcileObject(adapterConfigMap, nil); err != nil {
 		return err
 	}
-	adapterDeployment := util.KubeObject(bundle.File_deploy_internal_hpav2_deployment_adapter_yaml).(*appsv1.Deployment)
+	adapterDeployment := util.KubeObject(bundle.MustRead("internal/hpav2-deployment-adapter.yaml")).(*appsv1.Deployment)
 	adapterDeployment.Namespace = r.Request.Namespace
 	if waitForCertificateReady(adapterServingCertsConfigMap) && adapterServingCertsConfigMap.Data["service-ca.crt"] != "" {
 		adapterDeployment.Spec.Template.Spec.Containers[0].Args = append(adapterDeployment.Spec.Template.Spec.Containers[0].Args, "--prometheus-url="+prometheusURL,
@@ -489,12 +489,12 @@ func (r *Reconciler) reconcilePrometheusAdapterResources(prometheus *monitoringv
 	if err := r.ReconcileObject(adapterDeployment, nil); err != nil {
 		return err
 	}
-	adapterService := util.KubeObject(bundle.File_deploy_internal_hpav2_service_adapter_yaml).(*corev1.Service)
+	adapterService := util.KubeObject(bundle.MustRead("internal/hpav2-service-adapter.yaml")).(*corev1.Service)
 	adapterService.Namespace = r.Request.Namespace
 	if err := r.ReconcileObject(adapterService, nil); err != nil {
 		return err
 	}
-	adapterAPIService := util.KubeObject(bundle.File_deploy_internal_hpav2_apiservice_yaml).(*apiregistration.APIService)
+	adapterAPIService := util.KubeObject(bundle.MustRead("internal/hpav2-apiservice.yaml")).(*apiregistration.APIService)
 	adapterAPIService.Spec.Service.Namespace = r.Request.Namespace
 	if !util.KubeCreateSkipExisting(adapterAPIService) {
 		return fmt.Errorf("Error while crateiing APIService prometheus-adapter")
@@ -520,36 +520,36 @@ func (r *Reconciler) reconcileAdapterHPA() error {
 }
 
 func (r *Reconciler) reconcileHPAV2RBAC() error {
-	serviceAccount := util.KubeObject(bundle.File_deploy_service_acount_hpav2_yaml).(*corev1.ServiceAccount)
+	serviceAccount := util.KubeObject(bundle.MustRead("service_acount_hpav2.yaml")).(*corev1.ServiceAccount)
 	serviceAccount.Namespace = r.Request.Namespace
 	if err := r.ReconcileObject(serviceAccount, nil); err != nil {
 		return err
 	}
-	roleResourceReader := util.KubeObject(bundle.File_deploy_role_resource_reader_hpav2_yaml).(*rbacv1.ClusterRole)
+	roleResourceReader := util.KubeObject(bundle.MustRead("role_resource_reader_hpav2.yaml")).(*rbacv1.ClusterRole)
 	if !util.KubeCreateSkipExisting(roleResourceReader) {
 		return fmt.Errorf("Error while crateiing ClusterRole prometheus-adapter-resource-reader")
 	}
-	roleServerResources := util.KubeObject(bundle.File_deploy_role_server_resources_hpav2_yaml).(*rbacv1.Role)
+	roleServerResources := util.KubeObject(bundle.MustRead("role_server_resources_hpav2.yaml")).(*rbacv1.Role)
 	roleServerResources.Namespace = r.Request.Namespace
 	if err := r.ReconcileObject(roleServerResources, nil); err != nil {
 		return err
 	}
-	roleBindingAuthDelegator := util.KubeObject(bundle.File_deploy_role_binding_auth_delegator_hpav2_yaml).(*rbacv1.ClusterRoleBinding)
+	roleBindingAuthDelegator := util.KubeObject(bundle.MustRead("role_binding_auth_delegator_hpav2.yaml")).(*rbacv1.ClusterRoleBinding)
 	roleBindingAuthDelegator.Subjects[0].Namespace = r.Request.Namespace
 	if !util.KubeCreateSkipExisting(roleBindingAuthDelegator) {
 		return fmt.Errorf("Error while crateiing ClusterRoleBinding prometheus-adapter-system-auth-delegator")
 	}
-	roleBindingAuthReader := util.KubeObject(bundle.File_deploy_role_binding_auth_reader_hpav2_yaml).(*rbacv1.RoleBinding)
+	roleBindingAuthReader := util.KubeObject(bundle.MustRead("role_binding_auth_reader_hpav2.yaml")).(*rbacv1.RoleBinding)
 	roleBindingAuthReader.Subjects[0].Namespace = r.Request.Namespace
 	if !util.KubeCreateSkipExisting(roleBindingAuthReader) {
 		return fmt.Errorf("Error while crateiing RoleBinding prometheus-adapter-auth-reader")
 	}
-	roleBindingResourceReader := util.KubeObject(bundle.File_deploy_role_binding_resource_reader_hpav2_yaml).(*rbacv1.ClusterRoleBinding)
+	roleBindingResourceReader := util.KubeObject(bundle.MustRead("role_binding_resource_reader_hpav2.yaml")).(*rbacv1.ClusterRoleBinding)
 	roleBindingResourceReader.Subjects[0].Namespace = r.Request.Namespace
 	if !util.KubeCreateSkipExisting(roleBindingResourceReader) {
 		return fmt.Errorf("Error while crateiing ClusterRoleBinding prometheus-adapter-resource-reader")
 	}
-	roleBindingServerResources := util.KubeObject(bundle.File_deploy_role_binding_server_resources_hpav2_yaml).(*rbacv1.RoleBinding)
+	roleBindingServerResources := util.KubeObject(bundle.MustRead("role_binding_server_resources_hpav2.yaml")).(*rbacv1.RoleBinding)
 	roleBindingServerResources.Namespace = r.Request.Namespace
 	roleBindingServerResources.Subjects[0].Namespace = r.Request.Namespace
 	if err := r.ReconcileObject(roleBindingServerResources, nil); err != nil {

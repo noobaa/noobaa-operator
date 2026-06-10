@@ -224,7 +224,7 @@ func RunCatalog(cmd *cobra.Command, args []string) {
 	// The CA configmap is needed prior to the operator startup to prevent a certificate injection race condition
 	util.Panic(util.WriteYamlFile(
 		versionDir+"noobaa-operator.ca-bundle-configmap.yaml",
-		util.KubeObject(bundle.File_deploy_internal_configmap_ca_inject_yaml)))
+		util.KubeObject(bundle.MustRead("internal/configmap-ca-inject.yaml"))))
 	crd.ForEachCRD(func(c *crd.CRD) {
 		if c.Spec.Group == nbv1.SchemeGroupVersion.Group || (csvParams.OBCMode == OBCOwned && c.Spec.Group == obAPI.Domain) {
 			util.Panic(util.WriteYamlFile(versionDir+c.Name+".crd.yaml", c))
@@ -257,15 +257,15 @@ func RunCSV(cmd *cobra.Command, args []string) {
 // GenerateCSV creates the CSV
 func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.ClusterServiceVersion {
 	almExamples, err := json.Marshal([]runtime.Object{
-		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml),
-		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml),
-		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml),
-		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml),
-		util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml),
+		util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml")),
+		util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_backingstore_cr.yaml")),
+		util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_namespacestore_cr.yaml")),
+		util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_bucketclass_cr.yaml")),
+		util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaaaccount_cr.yaml")),
 	})
 	util.Panic(err)
 
-	o := util.KubeObject(bundle.File_deploy_olm_noobaa_operator_clusterserviceversion_yaml)
+	o := util.KubeObject(bundle.MustRead("olm/noobaa-operator.clusterserviceversion.yaml"))
 	csv := o.(*operv1.ClusterServiceVersion)
 	csv.Name = "noobaa-operator.v" + version.Version
 	csv.Namespace = options.Namespace
@@ -280,8 +280,8 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 	csv.Annotations["features.operators.openshift.io/token-auth-azure"] = "true"
 	csv.Annotations["capabilities"] = "Seamless Upgrades"
 	csv.Spec.Version.Version = semver.MustParse(version.Version)
-	csv.Spec.Description = bundle.File_deploy_olm_description_md
-	csv.Spec.Icon[0].Data = bundle.File_deploy_olm_noobaa_icon_base64
+	csv.Spec.Description = bundle.MustRead("olm/description.md")
+	csv.Spec.Icon[0].Data = bundle.MustRead("olm/noobaa_icon.base64")
 	csv.Spec.InstallStrategy.StrategySpec.ClusterPermissions = []operv1.StrategyDeploymentPermissions{}
 	csv.Spec.InstallStrategy.StrategySpec.ClusterPermissions = append(csv.Spec.InstallStrategy.StrategySpec.ClusterPermissions,
 		operv1.StrategyDeploymentPermissions{
@@ -772,7 +772,7 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 		}
 	})
 
-	aw := util.KubeObject(bundle.File_deploy_internal_admission_webhook_yaml).(*admissionv1.ValidatingWebhookConfiguration)
+	aw := util.KubeObject(bundle.MustRead("internal/admission-webhook.yaml")).(*admissionv1.ValidatingWebhookConfiguration)
 	vaw := aw.Webhooks[0]
 
 	webhookDefinition := operv1.WebhookDescription{
