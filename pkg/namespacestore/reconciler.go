@@ -21,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -55,7 +55,7 @@ type Reconciler struct {
 	Scheme   *runtime.Scheme
 	Ctx      context.Context
 	Logger   *logrus.Entry
-	Recorder record.EventRecorder
+	Recorder events.EventRecorder
 	NBClient nb.Client
 
 	NamespaceStore *nbv1.NamespaceStore
@@ -82,7 +82,7 @@ func NewReconciler(
 	req types.NamespacedName,
 	client client.Client,
 	scheme *runtime.Scheme,
-	recorder record.EventRecorder,
+	recorder events.EventRecorder,
 ) *Reconciler {
 
 	r := &Reconciler{
@@ -166,7 +166,7 @@ func (r *Reconciler) completeReconcile(err error) (reconcile.Result, error) {
 			r.SetPhase(nbv1.NamespaceStorePhaseRejected, perr.Reason, perr.Message)
 			log.Errorf("❌ Persistent Error: %s", err)
 			if r.Recorder != nil {
-				r.Recorder.Eventf(r.NamespaceStore, corev1.EventTypeWarning, perr.Reason, perr.Message)
+				r.Recorder.Eventf(r.NamespaceStore, nil, corev1.EventTypeWarning, perr.Reason, "Report", "%s", perr.Message)
 			}
 		} else {
 			res.RequeueAfter = 3 * time.Second
@@ -183,7 +183,7 @@ func (r *Reconciler) completeReconcile(err error) (reconcile.Result, error) {
 			desc := fmt.Sprintf("Namespace store mode: %s", mode)
 			r.SetPhase(phaseInfo.Phase, desc, phaseName)
 			if r.Recorder != nil {
-				r.Recorder.Eventf(r.NamespaceStore, phaseInfo.Severity, phaseName, desc)
+				r.Recorder.Eventf(r.NamespaceStore, nil, phaseInfo.Severity, phaseName, "Report", "%s", desc)
 			}
 		} else {
 			r.SetPhase(
