@@ -298,7 +298,7 @@ spec:
 
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "e6b5ca2577838c95674c0e36b673bde5816c8bf80d7edb240da7e6918cb346ab"
+const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "29b892148c320ee21fd82abdb3a289ac3633f6081bb968472bb106d9024fc7dc"
 
 const File_deploy_crds_noobaa_io_backingstores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -633,6 +633,13 @@ spec:
                 description: Phase is a simple, high-level summary of where the backing
                   store is in its lifecycle
                 type: string
+              readyPods:
+                description: |-
+                  ReadyPods is a list of pod names that have successfully become ready and attached to NooBaa
+                  This allows users to identify which pods can be safely kept when reducing NumVolumes
+                items:
+                  type: string
+                type: array
               relatedObjects:
                 description: RelatedObjects is a list of objects related to this operator.
                 items:
