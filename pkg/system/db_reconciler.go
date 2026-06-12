@@ -23,6 +23,8 @@ const (
 
 	noobaaDBUser = "noobaa"
 	noobaaDBName = "nbcore"
+
+	defaultFailoverDelaySec = int32(30)
 )
 
 // ReconcileCNPGCluster reconciles the CNPG cluster
@@ -268,6 +270,8 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 	}
 	r.CNPGCluster.Spec.Monitoring.EnablePodMonitor = disableMonStr != "true" //nolint:staticcheck // SA1019 ignore
 
+	r.CNPGCluster.Spec.FailoverDelay = defaultFailoverDelaySec
+
 	r.setPostgresConfig()
 
 	// TODO: consider specifying a separate WAL storage configuration in Spec.WalStorage
@@ -397,6 +401,9 @@ func (r *Reconciler) setPostgresConfig() {
 		"work_mem":                     "1747kB",
 		"min_wal_size":                 "2GB",
 		"max_wal_size":                 "8GB",
+		"wal_level":                    "replica",
+		"wal_sender_timeout":           "60s",
+		"wal_receiver_timeout":         "60s",
 		// setting pg_stat_statements config
 		// cnpg operator will automatically add the extension to the DB (https://cloudnative-pg.io/documentation/1.25/postgresql_conf/#enabling-pg_stat_statements)
 		"pg_stat_statements.track": "all",
@@ -408,6 +415,9 @@ func (r *Reconciler) setPostgresConfig() {
 		sharedBuffersMB := requiredDBMemMB / 4
 		desiredParameters["shared_buffers"] = fmt.Sprintf("%dMB", sharedBuffersMB)
 	}
+
+	// wal_keep_size = 12% of data volume, capped at 16GB (min 1GB)
+	overrideParameters["wal_keep_size"] = calculateWalKeepSize(r.CNPGCluster.Spec.StorageConfiguration.Size)
 
 	// set any parameters from DBSpec.DBConf in overrideParameters
 	if r.NooBaa.Spec.DBSpec.DBConf != nil {
@@ -453,6 +463,45 @@ func (r *Reconciler) stopNoobaaPodsAndGetNumRunningPods() (int, error) {
 		return -1, fmt.Errorf("got error listing noobaa-endpoints pods")
 	}
 	return len(corePodsList.Items) + len(endpointPodsList.Items), nil
+}
+
+// formatBytesKB formats a value in kilobytes to a human-readable string,
+// choosing the largest whole unit (GB, MB, or kB).
+func formatBytesKB(kb int64) string {
+	const (
+		mbInKB = int64(1024)
+		gbInKB = int64(1024 * 1024)
+	)
+	if kb >= gbInKB && kb%gbInKB == 0 {
+		return fmt.Sprintf("%dGB", kb/gbInKB)
+	}
+	if kb >= mbInKB && kb%mbInKB == 0 {
+		return fmt.Sprintf("%dMB", kb/mbInKB)
+	}
+	return fmt.Sprintf("%dkB", kb)
+}
+
+// calculateWalKeepSize computes wal_keep_size as 12% of the data PVC size,
+// capped at 16GB. Falls back to "6GB" if the volume size cannot be parsed.
+func calculateWalKeepSize(dataVolumeSize string) string {
+	const (
+		walKeepFractionPercent = 12
+		maxWalKeepSizeMB       = int64(16 * 1024) // 16GB in MB
+		minWalKeepSizeMB       = int64(1024)      // 1GB minimum
+	)
+	qty, err := resource.ParseQuantity(dataVolumeSize)
+	if err != nil {
+		return "6GB"
+	}
+	volMB := qty.Value() / (1024 * 1024)
+	walKeepMB := volMB * int64(walKeepFractionPercent) / 100
+	if walKeepMB > maxWalKeepSizeMB {
+		walKeepMB = maxWalKeepSizeMB
+	}
+	if walKeepMB < minWalKeepSizeMB {
+		walKeepMB = minWalKeepSizeMB
+	}
+	return formatBytesKB(walKeepMB * 1024)
 }
 
 func getDesiredMajorVersion(dbSpec *nbv1.NooBaaDBSpec) int {
@@ -563,5 +612,6 @@ func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSp
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.Size, r.CNPGCluster.Spec.StorageConfiguration.Size) ||
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.PersistentVolumeClaimTemplate, r.CNPGCluster.Spec.StorageConfiguration.PersistentVolumeClaimTemplate) ||
 		!reflect.DeepEqual(existingClusterSpec.Monitoring, r.CNPGCluster.Spec.Monitoring) ||
-		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.Parameters, r.CNPGCluster.Spec.PostgresConfiguration.Parameters)
+		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.Parameters, r.CNPGCluster.Spec.PostgresConfiguration.Parameters) ||
+		existingClusterSpec.FailoverDelay != r.CNPGCluster.Spec.FailoverDelay
 }
