@@ -92,10 +92,10 @@ func NewReconciler(
 		Recorder:       recorder,
 		Ctx:            context.TODO(),
 		Logger:         logrus.WithField("namespace", req.Namespace+"/"+req.Name),
-		NamespaceStore: util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore),
-		NooBaa:         util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
-		Secret:         util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
-		ServiceAccount: util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
+		NamespaceStore: util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_namespacestore_cr.yaml")).(*nbv1.NamespaceStore),
+		NooBaa:         util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml")).(*nbv1.NooBaa),
+		Secret:         util.KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret),
+		ServiceAccount: util.KubeObject(bundle.MustRead("service_account.yaml")).(*corev1.ServiceAccount),
 	}
 
 	// Set Namespace

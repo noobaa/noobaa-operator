@@ -197,7 +197,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		}
 	}
 
-	util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_core_yaml).(*secv1.SecurityContextConstraints))
+	util.KubeCreateOptional(util.KubeObject(bundle.MustRead("scc_core.yaml")).(*secv1.SecurityContextConstraints))
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
 		return err
 	}
@@ -376,7 +376,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	NooBaaDB.Spec.Template.Labels["noobaa-db"] = "postgres"
 	NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
 	NooBaaDB.Spec.ServiceName = r.ServiceDbPg.Name
-	NooBaaDBTemplate = util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
+	NooBaaDBTemplate = util.KubeObject(bundle.MustRead("internal/statefulset-postgres-db.yaml")).(*appsv1.StatefulSet)
 
 	podSpec := &NooBaaDB.Spec.Template.Spec
 	podSpec.ServiceAccountName = "noobaa-db"
@@ -1512,10 +1512,10 @@ func (r *Reconciler) reconcileRbac(scc, sa, role, binding string) error {
 // reconcileDBRBAC creates DB scc, role, rolebinding and service account
 func (r *Reconciler) reconcileDBRBAC() error {
 	return r.reconcileRbac(
-		bundle.File_deploy_scc_db_yaml,
-		bundle.File_deploy_service_account_db_yaml,
-		bundle.File_deploy_role_db_yaml,
-		bundle.File_deploy_role_binding_db_yaml)
+		bundle.MustRead("scc_db.yaml"),
+		bundle.MustRead("service_account_db.yaml"),
+		bundle.MustRead("role_db.yaml"),
+		bundle.MustRead("role_binding_db.yaml"))
 }
 
 // ReconcileDB choose between different types of DB
@@ -1623,7 +1623,7 @@ func (r *Reconciler) preparePersistentLoggingPVC(pvc *corev1.PersistentVolumeCla
 
 // SetDesiredPostgresDBConf fill desired postgres db config map
 func (r *Reconciler) SetDesiredPostgresDBConf() error {
-	dbConfigYaml := util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap)
+	dbConfigYaml := util.KubeObject(bundle.MustRead("internal/configmap-postgres-db.yaml")).(*corev1.ConfigMap)
 	r.PostgresDBConf.Data = dbConfigYaml.Data
 
 	overrideField := "noobaa-postgres.conf"

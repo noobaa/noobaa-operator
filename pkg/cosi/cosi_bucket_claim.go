@@ -98,7 +98,7 @@ func RunCreateBucketClaim(cmd *cobra.Command, args []string) {
 	appNamespace, _ := cmd.Flags().GetString("app-namespace")
 	path, _ := cmd.Flags().GetString("path")
 
-	cosiBucketClaim := util.KubeObject(bundle.File_deploy_cosi_bucket_claim_yaml).(*nbv1.COSIBucketClaim)
+	cosiBucketClaim := util.KubeObject(bundle.MustRead("cosi/bucket_claim.yaml")).(*nbv1.COSIBucketClaim)
 	cosiBucketClaim.Name = name
 	cosiBucketClaim.Namespace = options.Namespace
 	if appNamespace != "" {
@@ -109,7 +109,7 @@ func RunCreateBucketClaim(cmd *cobra.Command, args []string) {
 	}
 	cosiBucketClaim.Spec.Protocols = []nbv1.COSIProtocol{nbv1.COSIS3Protocol}
 
-	bucketClass := util.KubeObject(bundle.File_deploy_cosi_bucket_class_yaml).(*nbv1.COSIBucketClass)
+	bucketClass := util.KubeObject(bundle.MustRead("cosi/bucket_class.yaml")).(*nbv1.COSIBucketClass)
 	bucketClass.Name = bucketClassName
 	if !util.KubeCheck(bucketClass) {
 		log.Fatalf(`❌ Could not get BucketClass %q in namespace %q`,
@@ -150,7 +150,7 @@ func RunDeleteBucketClaim(cmd *cobra.Command, args []string) {
 	}
 	appNamespace, _ := cmd.Flags().GetString("app-namespace")
 
-	cosiBucketClaim := util.KubeObject(bundle.File_deploy_cosi_bucket_claim_yaml).(*nbv1.COSIBucketClaim)
+	cosiBucketClaim := util.KubeObject(bundle.MustRead("cosi/bucket_claim.yaml")).(*nbv1.COSIBucketClaim)
 	cosiBucketClaim.Name = args[0]
 	cosiBucketClaim.Namespace = options.Namespace
 	if appNamespace != "" {
@@ -173,8 +173,8 @@ func RunStatusBucketClaim(cmd *cobra.Command, args []string) {
 
 	appNamespace, _ := cmd.Flags().GetString("app-namespace")
 
-	cosiBucketClaim := util.KubeObject(bundle.File_deploy_cosi_bucket_claim_yaml).(*nbv1.COSIBucketClaim)
-	cosiBucket := util.KubeObject(bundle.File_deploy_cosi_cosi_bucket_yaml).(*nbv1.COSIBucket)
+	cosiBucketClaim := util.KubeObject(bundle.MustRead("cosi/bucket_claim.yaml")).(*nbv1.COSIBucketClaim)
+	cosiBucket := util.KubeObject(bundle.MustRead("cosi/cosi_bucket.yaml")).(*nbv1.COSIBucket)
 
 	cosiBucketClaim.Name = args[0]
 	cosiBucketClaim.Namespace = options.Namespace

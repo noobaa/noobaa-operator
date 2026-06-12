@@ -104,7 +104,7 @@ func RunCreateBucketAccessClaim(cmd *cobra.Command, args []string) {
 	bucketAccessClassName := util.GetFlagStringOrPrompt(cmd, "bucket-access-class")
 	credsSecretName := util.GetFlagStringOrPrompt(cmd, "creds-secret-name")
 
-	cosiBucketAccessClaim := util.KubeObject(bundle.File_deploy_cosi_bucket_access_claim_yaml).(*nbv1.COSIBucketAccessClaim)
+	cosiBucketAccessClaim := util.KubeObject(bundle.MustRead("cosi/bucket_access_claim.yaml")).(*nbv1.COSIBucketAccessClaim)
 	cosiBucketAccessClaim.Name = name
 	cosiBucketAccessClaim.Namespace = options.Namespace
 	if appNamespace != "" {
@@ -115,13 +115,13 @@ func RunCreateBucketAccessClaim(cmd *cobra.Command, args []string) {
 	cosiBucketAccessClaim.Spec.CredentialsSecretName = credsSecretName
 	cosiBucketAccessClaim.Spec.BucketAccessClassName = bucketAccessClassName
 
-	bucketAccessClass := util.KubeObject(bundle.File_deploy_cosi_bucket_access_class_yaml).(*nbv1.COSIBucketAccessClass)
+	bucketAccessClass := util.KubeObject(bundle.MustRead("cosi/bucket_access_class.yaml")).(*nbv1.COSIBucketAccessClass)
 	bucketAccessClass.Name = bucketAccessClassName
 	if !util.KubeCheck(bucketAccessClass) {
 		log.Fatalf(`❌ Could not get bucketAccessClass %q`, bucketAccessClass.Name)
 	}
 
-	bucketClaim := util.KubeObject(bundle.File_deploy_cosi_bucket_claim_yaml).(*nbv1.COSIBucketClaim)
+	bucketClaim := util.KubeObject(bundle.MustRead("cosi/bucket_claim.yaml")).(*nbv1.COSIBucketClaim)
 	bucketClaim.Name = bucketClaimName
 	bucketClaim.Namespace = cosiBucketAccessClaim.Namespace
 	if !util.KubeCheck(bucketClaim) {
@@ -154,7 +154,7 @@ func RunDeleteBucketAccessClaim(cmd *cobra.Command, args []string) {
 	}
 	appNamespace, _ := cmd.Flags().GetString("app-namespace")
 
-	cosiBucketAccessClaim := util.KubeObject(bundle.File_deploy_cosi_bucket_access_claim_yaml).(*nbv1.COSIBucketAccessClaim)
+	cosiBucketAccessClaim := util.KubeObject(bundle.MustRead("cosi/bucket_access_claim.yaml")).(*nbv1.COSIBucketAccessClaim)
 	cosiBucketAccessClaim.Name = args[0]
 	cosiBucketAccessClaim.Namespace = options.Namespace
 	if appNamespace != "" {
@@ -177,8 +177,8 @@ func RunStatusBucketAccessClaim(cmd *cobra.Command, args []string) {
 
 	appNamespace, _ := cmd.Flags().GetString("app-namespace")
 
-	cosiBucketAccessClaim := util.KubeObject(bundle.File_deploy_cosi_bucket_access_claim_yaml).(*nbv1.COSIBucketAccessClaim)
-	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	cosiBucketAccessClaim := util.KubeObject(bundle.MustRead("cosi/bucket_access_claim.yaml")).(*nbv1.COSIBucketAccessClaim)
+	secret := util.KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret)
 
 	cosiBucketAccessClaim.Name = args[0]
 	cosiBucketAccessClaim.Namespace = options.Namespace

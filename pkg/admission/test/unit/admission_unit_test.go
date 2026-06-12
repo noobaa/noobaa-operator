@@ -25,7 +25,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 	)
 
 	BeforeEach(func() {
-		bs = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+		bs = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_backingstore_cr.yaml")).(*nbv1.BackingStore)
 		bs.Name = "bs-name"
 		bs.Namespace = "test"
 
@@ -497,7 +497,7 @@ var _ = Describe("BackingStore admission unit tests", func() {
 		)
 
 		BeforeEach(func() {
-			updatedBS = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+			updatedBS = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_backingstore_cr.yaml")).(*nbv1.BackingStore)
 			updatedBS.Name = "bs-name"
 			updatedBS.Namespace = "test"
 		})
@@ -642,7 +642,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 	)
 
 	BeforeEach(func() {
-		ns = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore)
+		ns = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_namespacestore_cr.yaml")).(*nbv1.NamespaceStore)
 		ns.Name = "ns-name"
 		ns.Namespace = "test"
 	})
@@ -952,7 +952,7 @@ var _ = Describe("NamespaceStore admission unit tests", func() {
 		)
 
 		BeforeEach(func() {
-			updatedNS = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_namespacestore_cr_yaml).(*nbv1.NamespaceStore)
+			updatedNS = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_namespacestore_cr.yaml")).(*nbv1.NamespaceStore)
 			updatedNS.Name = "ns-name"
 			updatedNS.Namespace = "test"
 		})
@@ -1009,7 +1009,7 @@ var _ = Describe("BucketClass admission unit tests", func() {
 	)
 
 	BeforeEach(func() {
-		bc = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_bucketclass_cr_yaml).(*nbv1.BucketClass)
+		bc = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_bucketclass_cr.yaml")).(*nbv1.BucketClass)
 		bc.Name = "bc-name"
 		bc.Namespace = "test"
 	})
@@ -1086,7 +1086,7 @@ var _ = Describe("NooBaaAccount admission unit tests", func() {
 	)
 
 	BeforeEach(func() {
-		na = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml).(*nbv1.NooBaaAccount)
+		na = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaaaccount_cr.yaml")).(*nbv1.NooBaaAccount)
 		na.Name = "na-name"
 		na.Namespace = "test"
 	})
@@ -1142,7 +1142,7 @@ var _ = Describe("NooBaaAccount admission unit tests", func() {
 		)
 
 		BeforeEach(func() {
-			updatedNA = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaaaccount_cr_yaml).(*nbv1.NooBaaAccount)
+			updatedNA = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaaaccount_cr.yaml")).(*nbv1.NooBaaAccount)
 			updatedNA.Name = "na-name"
 			updatedNA.Namespace = "test"
 		})
@@ -1203,7 +1203,7 @@ var _ = Describe("Noobaa admission unit tests", func() {
 	)
 
 	BeforeEach(func() {
-		nb = util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa)
+		nb = util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml")).(*nbv1.NooBaa)
 		nb.Name = "noobaa"
 		nb.Namespace = "test"
 

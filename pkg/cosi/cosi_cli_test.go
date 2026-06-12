@@ -218,7 +218,7 @@ var _ = Describe("COSI CLI tests", func() {
 			Expect(err).To(BeNil())
 			Expect(strings.Contains(string(out), "✅ Created: BucketAccess")).To(BeTrue())
 
-			cosiBucketAccessClaim := util.KubeObject(bundle.File_deploy_cosi_bucket_access_claim_yaml).(*nbv1.COSIBucketAccessClaim)
+			cosiBucketAccessClaim := util.KubeObject(bundle.MustRead("cosi/bucket_access_claim.yaml")).(*nbv1.COSIBucketAccessClaim)
 			cosiBucketAccessClaim.Name = aclaim
 			cosiBucketAccessClaim.Namespace = options.Namespace
 			Expect(util.KubeCheck(cosiBucketAccessClaim)).To(BeTrue())
@@ -244,7 +244,7 @@ var _ = Describe("COSI CLI tests", func() {
 			out, err := cmd.CombinedOutput()
 			log.Printf("Running command: access claim status out %s ", string(out))
 			Expect(err).To(BeNil())
-			cosiBucketAccessClaim := util.KubeObject(bundle.File_deploy_cosi_bucket_access_claim_yaml).(*nbv1.COSIBucketAccessClaim)
+			cosiBucketAccessClaim := util.KubeObject(bundle.MustRead("cosi/bucket_access_claim.yaml")).(*nbv1.COSIBucketAccessClaim)
 			cosiBucketAccessClaim.Name = aclaim
 			cosiBucketAccessClaim.Namespace = options.Namespace
 			Expect(util.KubeCheck(cosiBucketAccessClaim)).To(BeTrue())

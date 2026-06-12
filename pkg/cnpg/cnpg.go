@@ -580,7 +580,7 @@ func GetCnpgImageCatalogObj(namespace string, name string) *cnpgv1.ImageCatalog 
 
 // GetCnpgCluster returns a new CNPG cluster resource
 func GetCnpgClusterObj(namespace string, name string) *cnpgv1.Cluster {
-	// cnpgCluster := util.KubeObject(bundle.File_deploy_internal_cnpg_cluster_yaml).(*cnpgv1.Cluster)
+	// cnpgCluster := util.KubeObject(bundle.MustRead("internal/cnpg-cluster.yaml")).(*cnpgv1.Cluster)
 	cnpgCluster := &cnpgv1.Cluster{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: CnpgAPIVersion,

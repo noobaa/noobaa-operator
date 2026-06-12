@@ -176,7 +176,7 @@ func analyzeNamespaceStore(cmd *cobra.Command, namespaceStore *nbv1.NamespaceSto
 }
 
 func loadAnalyzeResourceJob() *batchv1.Job {
-	analyzeResourceJob := util.KubeObject(bundle.File_deploy_job_analyze_resource_yml).(*batchv1.Job)
+	analyzeResourceJob := util.KubeObject(bundle.MustRead("job_analyze_resource.yml")).(*batchv1.Job)
 	analyzeResourceJob.Namespace = options.Namespace
 	return analyzeResourceJob
 }
@@ -200,7 +200,7 @@ func makeDirForLogs(folderName string) {
 }
 
 func setImageInJob(analyzeResourceJob *batchv1.Job) {
-	noobaa := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa)
+	noobaa := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml")).(*nbv1.NooBaa)
 	noobaa.Namespace = options.Namespace
 	if !util.KubeCheck(noobaa) {
 		util.Logger().Fatalf(`❌ Could not get noobaa %q in Namespace %q`,
@@ -212,7 +212,7 @@ func setImageInJob(analyzeResourceJob *batchv1.Job) {
 func setNetworkEnvsInJob(analyzeResourceJob *batchv1.Job) {
 	log := util.Logger()
 
-	coreApp := util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet)
+	coreApp := util.KubeObject(bundle.MustRead("internal/statefulset-core.yaml")).(*appsv1.StatefulSet)
 	coreApp.Namespace = options.Namespace
 	if !util.KubeCheck(coreApp) {
 		util.Logger().Fatalf(`❌ Could not get core StatefulSet %q in Namespace %q`,

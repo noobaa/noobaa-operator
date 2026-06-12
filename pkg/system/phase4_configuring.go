@@ -77,7 +77,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.reconcileAdmissionTLSConf(); err != nil {
 		return err
 	}
-	util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints))
+	util.KubeCreateOptional(util.KubeObject(bundle.MustRead("scc_endpoint.yaml")).(*secv1.SecurityContextConstraints))
 	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
 		return err
 	}
@@ -1979,7 +1979,7 @@ func (r *Reconciler) ReconcileNamespaceStores(namespaceResources []nb.NamespaceR
 				continue
 			}
 
-			o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+			o := util.KubeObject(bundle.MustRead("internal/secret-empty.yaml"))
 			secret := o.(*corev1.Secret)
 			secret.Namespace = options.Namespace
 			secret.Data = nil
@@ -2125,9 +2125,9 @@ func (r *Reconciler) reconcileAdmissionTLSConf() error {
 /*
 func (r *Reconciler) reconcileEndpointRBAC() error {
 	return r.reconcileRbac(
-		bundle.File_deploy_scc_endpoint_yaml,
-		bundle.File_deploy_service_account_endpoint_yaml,
-		bundle.File_deploy_role_endpoint_yaml,
-		bundle.File_deploy_role_binding_endpoint_yaml)
+		bundle.MustRead("scc_endpoint.yaml"),
+		bundle.MustRead("service_account_endpoint.yaml"),
+		bundle.MustRead("role_endpoint.yaml"),
+		bundle.MustRead("role_binding_endpoint.yaml"))
 }
 */

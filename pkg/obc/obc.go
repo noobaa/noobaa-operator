@@ -162,7 +162,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ NSFS account config cannot be set without an NSFS bucketclass`)
 	}
 
-	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("obc/objectbucket_v1alpha1_objectbucketclaim_cr.yaml"))
 	obc := o.(*nbv1.ObjectBucketClaim)
 	obc.Name = name
 	obc.Namespace = appNamespace
@@ -306,8 +306,8 @@ func RunRegenerate(cmd *cobra.Command, args []string) {
 
 	name := args[0]
 
-	obc := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml).(*nbv1.ObjectBucketClaim)
-	ob := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucket_cr_yaml).(*nbv1.ObjectBucket)
+	obc := util.KubeObject(bundle.MustRead("obc/objectbucket_v1alpha1_objectbucketclaim_cr.yaml")).(*nbv1.ObjectBucketClaim)
+	ob := util.KubeObject(bundle.MustRead("obc/objectbucket_v1alpha1_objectbucket_cr.yaml")).(*nbv1.ObjectBucket)
 	obc.Name = name
 	obc.Namespace = appNamespace
 
@@ -356,7 +356,7 @@ func RunDelete(cmd *cobra.Command, args []string) {
 		appNamespace = options.Namespace
 	}
 
-	o := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("obc/objectbucket_v1alpha1_objectbucketclaim_cr.yaml"))
 	obc := o.(*nbv1.ObjectBucketClaim)
 	obc.Name = args[0]
 	obc.Namespace = appNamespace
@@ -390,11 +390,11 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 	remoteObcFlag, _ := cmd.Flags().GetBool("remote-obc")
 
-	obc := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucketclaim_cr_yaml).(*nbv1.ObjectBucketClaim)
-	ob := util.KubeObject(bundle.File_deploy_obc_objectbucket_v1alpha1_objectbucket_cr_yaml).(*nbv1.ObjectBucket)
-	sc := util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass)
-	cm := util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap)
-	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	obc := util.KubeObject(bundle.MustRead("obc/objectbucket_v1alpha1_objectbucketclaim_cr.yaml")).(*nbv1.ObjectBucketClaim)
+	ob := util.KubeObject(bundle.MustRead("obc/objectbucket_v1alpha1_objectbucket_cr.yaml")).(*nbv1.ObjectBucket)
+	sc := util.KubeObject(bundle.MustRead("obc/storage_class.yaml")).(*storagev1.StorageClass)
+	cm := util.KubeObject(bundle.MustRead("internal/configmap-empty.yaml")).(*corev1.ConfigMap)
+	secret := util.KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret)
 
 	obc.Namespace = appNamespace
 	cm.Namespace = appNamespace
@@ -573,7 +573,7 @@ func RunList(cmd *cobra.Command, args []string) {
 		if bucketClass == "" && obc.Spec.StorageClassName != "" {
 			sc := scMap[obc.Spec.StorageClassName]
 			if sc == nil {
-				sc = util.KubeObject(bundle.File_deploy_obc_storage_class_yaml).(*storagev1.StorageClass)
+				sc = util.KubeObject(bundle.MustRead("obc/storage_class.yaml")).(*storagev1.StorageClass)
 				sc.Name = obc.Spec.StorageClassName
 				if util.KubeClient().Get(util.Context(), util.ObjectKey(sc), sc) != nil {
 					scMap[obc.Spec.StorageClassName] = sc
@@ -664,7 +664,7 @@ func GenerateAccountKeys(name, accountName, appNamespace string) error {
 	}
 
 	// Checking that we can find the secret before we are calling the RPC to change the credentials.
-	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret := util.KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret)
 	secret.Namespace = appNamespace
 	secret.Name = name
 	if !util.KubeCheckQuiet(secret) {

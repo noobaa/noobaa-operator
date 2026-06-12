@@ -159,7 +159,7 @@ func CmdYaml() *cobra.Command {
 // LoadSystemDefaults loads a noobaa system CR from bundled yamls
 // and apply's changes from CLI flags to the defaults.
 func LoadSystemDefaults() *nbv1.NooBaa {
-	sys := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa)
+	sys := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml")).(*nbv1.NooBaa)
 	sys.Namespace = options.Namespace
 	sys.Name = options.SystemName
 	sys.Finalizers = []string{nbv1.GracefulFinalizer}
@@ -374,7 +374,7 @@ func RunOperatorCreate(cmd *cobra.Command, args []string) {
 func RunCreate(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 	sys := LoadSystemDefaults()
-	ns := util.KubeObject(bundle.File_deploy_namespace_yaml).(*corev1.Namespace)
+	ns := util.KubeObject(bundle.MustRead("namespace.yaml")).(*corev1.Namespace)
 	ns.Name = sys.Namespace
 
 	coreResourcesJSON, _ := cmd.Flags().GetString("core-resources")
@@ -412,7 +412,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		if err != nil {
 			log.Fatalf(`❌ %s`, err)
 		}
-		o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+		o := util.KubeObject(bundle.MustRead("internal/secret-empty.yaml"))
 		secret := o.(*corev1.Secret)
 		secret.Namespace = sys.Spec.ExternalPgSecret.Namespace
 		secret.Name = sys.Spec.ExternalPgSecret.Name
@@ -433,7 +433,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 				log.Fatalf("❌ Can't open cert file %q please try again, error: %s", options.PostgresSSLKey, err)
 			}
 			secretData["tls.crt"] = data
-			o := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml)
+			o := util.KubeObject(bundle.MustRead("internal/secret-empty.yaml"))
 			secret := o.(*corev1.Secret)
 			secret.Namespace = sys.Spec.ExternalPgSSLSecret.Namespace
 			secret.Name = sys.Spec.ExternalPgSSLSecret.Name
@@ -701,7 +701,7 @@ func CheckNooBaaImages(cmd *cobra.Command, sys *nbv1.NooBaa, args []string) stri
 	} else if sys.Spec.Image != nil {
 		desiredImage = *sys.Spec.DBImage
 	}
-	sts := util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet)
+	sts := util.KubeObject(bundle.MustRead("internal/statefulset-core.yaml")).(*appsv1.StatefulSet)
 	sts.Namespace = options.Namespace
 	if util.KubeCheckQuiet(sts) {
 		runningImage = sts.Spec.Template.Spec.Containers[0].Image
@@ -721,7 +721,7 @@ func CheckNooBaaDBImages(cmd *cobra.Command, sys *nbv1.NooBaa, args []string) st
 	if sys.Spec.DBImage != nil {
 		desiredImage = *sys.Spec.DBImage
 	}
-	sts := util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet)
+	sts := util.KubeObject(bundle.MustRead("internal/statefulset-postgres-db.yaml")).(*appsv1.StatefulSet)
 	sts.Name = "noobaa-db-pg"
 	sts.Namespace = options.Namespace
 	if util.KubeCheckQuiet(sts) {
@@ -736,7 +736,7 @@ func CheckNooBaaDBImages(cmd *cobra.Command, sys *nbv1.NooBaa, args []string) st
 // CheckOperatorImage runs a CLI command
 func CheckOperatorImage(cmd *cobra.Command, args []string) string {
 	runningImage := ""
-	deployment := util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
+	deployment := util.KubeObject(bundle.MustRead("operator.yaml")).(*appsv1.Deployment)
 	deployment.Namespace = options.Namespace
 	if util.KubeCheckQuiet(deployment) {
 		runningImage = deployment.Spec.Template.Spec.Containers[0].Image
@@ -748,7 +748,7 @@ func CheckOperatorImage(cmd *cobra.Command, args []string) string {
 func RunSystemVersionsStatus(cmd *cobra.Command, args []string) {
 	log := util.Logger()
 
-	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml)
+	o := util.KubeObject(bundle.MustRead("crds/noobaa.io_v1alpha1_noobaa_cr.yaml"))
 	sys := o.(*nbv1.NooBaa)
 	sys.Name = options.SystemName
 	sys.Namespace = options.Namespace
@@ -1423,7 +1423,7 @@ func CheckPostgresURL(postgresDbURL string) error {
 // LoadConfigMapFromFlags loads a config-map with values from the cli flags, if provided.
 func LoadConfigMapFromFlags() {
 	if options.DebugLevel != "default_level" || options.OperatorLogLevel != "info" {
-		cm := util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap)
+		cm := util.KubeObject(bundle.MustRead("internal/configmap-empty.yaml")).(*corev1.ConfigMap)
 		cm.Namespace = options.Namespace
 		cm.Name = "noobaa-config"
 

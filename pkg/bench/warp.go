@@ -137,7 +137,7 @@ func RunBenchWarp(cmd *cobra.Command, args []string) {
 		// use the OBC secret as the keys secret
 		keysSecret = obc
 		// read the configmap and get data.BUCKET_NAME
-		configMap := util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap)
+		configMap := util.KubeObject(bundle.MustRead("internal/configmap-empty.yaml")).(*corev1.ConfigMap)
 		configMap.Name = obc
 		configMap.Namespace = obcNamespace
 		keysSecretNamespace = obcNamespace
@@ -152,7 +152,7 @@ func RunBenchWarp(cmd *cobra.Command, args []string) {
 
 	// if access keys are not provided, use the keys secret
 	if accessKey == "" || secretKey == "" {
-		keysSecretObj := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+		keysSecretObj := util.KubeObject(bundle.MustRead("internal/secret-empty.yaml")).(*corev1.Secret)
 		keysSecretObj.Name = keysSecret
 		keysSecretObj.Namespace = keysSecretNamespace
 		if !util.KubeCheck(keysSecretObj) {
@@ -204,7 +204,7 @@ func RunBenchWarp(cmd *cobra.Command, args []string) {
 func provisionWarp(clients int32, image string) {
 	log := util.Logger()
 
-	warpSts := util.KubeObject(bundle.File_deploy_warp_warp_yaml).(*appsv1.StatefulSet)
+	warpSts := util.KubeObject(bundle.MustRead("warp/warp.yaml")).(*appsv1.StatefulSet)
 	containers := warpSts.Spec.Template.Spec.Containers
 	if len(containers) != 1 {
 		log.Fatal("❌ Unexepected number of containers in the Warp STS")
@@ -226,7 +226,7 @@ func provisionWarp(clients int32, image string) {
 		log.Fatalf("❌ error while waiting for warp sts to be ready: %s", err)
 	}
 
-	warpSvc := util.KubeObject(bundle.File_deploy_warp_warp_svc_yaml).(*corev1.Service)
+	warpSvc := util.KubeObject(bundle.MustRead("warp/warp-svc.yaml")).(*corev1.Service)
 	warpSvc.Namespace = options.Namespace
 	util.KubeApply(warpSvc)
 }
@@ -238,7 +238,7 @@ func startWarpJob(
 	useHttps bool,
 	warpArgs string,
 ) {
-	warpJob := util.KubeObject(bundle.File_deploy_warp_warp_job_yaml).(*batchv1.Job)
+	warpJob := util.KubeObject(bundle.MustRead("warp/warp-job.yaml")).(*batchv1.Job)
 	warpJob.Namespace = options.Namespace
 
 	for idx, container := range warpJob.Spec.Template.Spec.Containers {
@@ -301,7 +301,7 @@ func pollWarp() {
 		options.Namespace,
 	)
 
-	warpJob := util.KubeObject(bundle.File_deploy_warp_warp_job_yaml).(*batchv1.Job)
+	warpJob := util.KubeObject(bundle.MustRead("warp/warp-job.yaml")).(*batchv1.Job)
 	warpJob.Namespace = options.Namespace
 	for {
 		if !util.KubeCheckQuiet(warpJob) {
@@ -350,18 +350,18 @@ func cleanupWarpAndExit(noCleanup bool) {
 
 	util.Logger().Info("Cleaning up Warp")
 
-	warpJob := util.KubeObject(bundle.File_deploy_warp_warp_job_yaml).(*batchv1.Job)
+	warpJob := util.KubeObject(bundle.MustRead("warp/warp-job.yaml")).(*batchv1.Job)
 	warpJob.Namespace = options.Namespace
 	deletePolicy := metav1.DeletePropagationForeground
 	util.KubeDelete(warpJob, &client.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	})
 
-	warpSvc := util.KubeObject(bundle.File_deploy_warp_warp_svc_yaml).(*corev1.Service)
+	warpSvc := util.KubeObject(bundle.MustRead("warp/warp-svc.yaml")).(*corev1.Service)
 	warpSvc.Namespace = options.Namespace
 	util.KubeDelete(warpSvc)
 
-	warpSts := util.KubeObject(bundle.File_deploy_warp_warp_yaml).(*appsv1.StatefulSet)
+	warpSts := util.KubeObject(bundle.MustRead("warp/warp.yaml")).(*appsv1.StatefulSet)
 	warpSts.Namespace = options.Namespace
 	util.KubeDelete(warpSts)
 }
@@ -386,7 +386,7 @@ func prepareWarpHostList(endpointType EndpointType, https bool) string {
 		return 0
 	}
 
-	s3svc := util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service)
+	s3svc := util.KubeObject(bundle.MustRead("internal/service-s3.yaml")).(*corev1.Service)
 	s3svc.Namespace = options.Namespace
 	s3svc.Spec = corev1.ServiceSpec{}
 	if !util.KubeCheck(s3svc) {
