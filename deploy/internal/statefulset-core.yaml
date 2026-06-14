@@ -59,6 +59,9 @@ spec:
             timeoutSeconds: 2
           image: NOOBAA_CORE_IMAGE
           terminationMessagePolicy: FallbackToLogsOnError
+          command:
+            - /usr/local/bin/node
+            - /root/node_modules/noobaa-core/src/cmd/core_init.js
           volumeMounts:
             - name: logs
               mountPath: /log
