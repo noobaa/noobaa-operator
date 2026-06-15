@@ -1,4 +1,4 @@
-package obc_test
+package obc
 
 import (
 	"testing"
