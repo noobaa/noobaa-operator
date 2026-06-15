@@ -1320,7 +1320,13 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 		r.Logger.Infof("Secret %q does not contain a map of StringData yet. retry on next reconcile...", secretName)
 		return fmt.Errorf("cloud credentials secret %q is not ready yet (does not contain a map of StringData yet)", secretName)
 	}
-	r.GCPBucketCreds.StringData["GoogleServiceAccountPrivateKeyJson"] = credsJSON
+	if isExternalAccount {
+		delete(r.GCPBucketCreds.StringData, util.GoogleServiceAccountPrivateKeyJson)
+		r.GCPBucketCreds.StringData[util.GoogleCredentialsJson] = credsJSON
+	} else {
+		delete(r.GCPBucketCreds.StringData, util.GoogleCredentialsJson)
+		r.GCPBucketCreds.StringData[util.GoogleServiceAccountPrivateKeyJson] = credsJSON
+	}
 
 	var bucketName string
 	if isExternalAccount {

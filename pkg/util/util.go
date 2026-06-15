@@ -101,6 +101,11 @@ const (
 	// Google impersonation URL constants
 	GoogleImpersonationURLPrefix = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/"
 	GoogleImpersonationURLSuffix = ":generateAccessToken"
+
+	// GoogleServiceAccountPrivateKeyJson is the secret data key for classic GCP (service_account) credentials.
+	GoogleServiceAccountPrivateKeyJson = "GoogleServiceAccountPrivateKeyJson"
+	// GoogleCredentialsJson is the secret data key for GCP WIF (external_account) credentials.
+	GoogleCredentialsJson = "GoogleCredentialsJson"
 )
 
 // OAuth2Endpoints holds OAuth2 endpoints information.
@@ -172,13 +177,13 @@ var (
 	// MapStorTypeToMandatoryProperties holds a map of store type -> credentials mandatory properties
 	// note that this map holds the mandatory properties for both backingstores and namespacestores
 	MapStorTypeToMandatoryProperties = map[string][]string{
-		"aws-s3":               {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},         // backingstores and namespacestores
-		"s3-compatible":        {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},         // backingstores and namespacestores
-		"ibm-cos":              {"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"}, // backingstores and namespacestores
-		"google-cloud-storage": {"GoogleServiceAccountPrivateKeyJson"},                 // backingstores and namespacestores
-		"azure-blob":           {"AccountName", "AccountKey"},                          // backingstores and namespacestores
-		"pv-pool":              {},                                                     // backingstores
-		"nsfs":                 {},                                                     // namespacestores
+		"aws-s3":        {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},         // backingstores and namespacestores
+		"s3-compatible": {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},         // backingstores and namespacestores
+		"ibm-cos":       {"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"}, // backingstores and namespacestores
+		"google-cloud-storage": {GoogleCredentialsJson, GoogleServiceAccountPrivateKeyJson}, // backingstores and namespacestores
+		"azure-blob": {"AccountName", "AccountKey"}, // backingstores and namespacestores
+		"pv-pool":    {},                            // backingstores
+		"nsfs":       {},                            // namespacestores
 	}
 )
 
@@ -2371,7 +2376,11 @@ func CheckForIdenticalSecretsCreds(secret *corev1.Secret, storeTypeStr string) *
 				if usedSecret != nil && usedSecret.Name != secret.Name && string(bs.Spec.Type) == storeTypeStr {
 					found := true
 					for _, key := range mandatoryProp {
-						found = found && MapAlternateKeysValue(usedSecret.StringData, key) == MapAlternateKeysValue(secret.StringData, key)
+						usedValue := MapAlternateKeysValue(usedSecret.StringData, key)
+						secretValue := MapAlternateKeysValue(secret.StringData, key)
+						if usedValue != "" || secretValue != "" {
+							found = found && usedValue == secretValue
+						}
 					}
 					if found {
 						return usedSecret
@@ -2395,7 +2404,11 @@ func CheckForIdenticalSecretsCreds(secret *corev1.Secret, storeTypeStr string) *
 				if usedSecret != nil && usedSecret.Name != secret.Name && string(ns.Spec.Type) == storeTypeStr {
 					found := true
 					for _, key := range mandatoryProp {
-						found = found && MapAlternateKeysValue(usedSecret.StringData, key) == MapAlternateKeysValue(secret.StringData, key)
+						usedValue := MapAlternateKeysValue(usedSecret.StringData, key)
+						secretValue := MapAlternateKeysValue(secret.StringData, key)
+						if usedValue != "" || secretValue != "" {
+							found = found && usedValue == secretValue
+						}
 					}
 					if found {
 						return usedSecret

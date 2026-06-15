@@ -517,7 +517,10 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 				DisplayName:  "Target Blob Container",
 			},
 			{
-				Description:  "Secret refers to a secret that provides the credentials. The secret should define GoogleServiceAccountPrivateKeyJson containing\nthe entire json string as provided by Google.",
+				Description: "Secret refers to a secret that provides the credentials. " +
+					"For classic google-cloud-storage, define GoogleServiceAccountPrivateKeyJson " +
+					"containing service_account JSON as provided by Google. " +
+					"For GCP WIF (STS), define GoogleCredentialsJson containing external_account JSON.",
 				Path:         "googleCloudStorage.secret.name",
 				XDescriptors: []string{uiFieldGroupGoogleCloudStorage, uiK8sSecret},
 				DisplayName:  "Secret",

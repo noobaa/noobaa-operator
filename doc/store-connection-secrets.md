@@ -43,6 +43,28 @@ kubectl create secret generic <SECRET NAME> \
   -n <NAMESPACE>
 ```
 
+## Google Cloud Platform WIF (STS)
+For GCP Workload Identity Federation (`google-cloud-storage-sts`), the secret uses `GoogleCredentialsJson` (not the classic `GoogleServiceAccountPrivateKeyJson` key). The value is the full `external_account` credentials JSON, encoded in Base64.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: <>
+  namespace: <>
+type: Opaque
+data:
+  GoogleCredentialsJson: <>
+```
+
+To create the secret using `kubectl` from a WIF `credentials.json` path:
+
+```bash
+kubectl create secret generic <SECRET NAME> \
+  --from-file=GoogleCredentialsJson=<PATH TO credentials.json> \
+  -n <NAMESPACE>
+```
+
 ## Azure
 ```yaml
 apiVersion: v1
