@@ -443,7 +443,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	sysClient, err := system.Connect(true)
+	sysClient, err := system.ConnectAuto()
 	if err != nil {
 		util.Logger().Fatalf("❌ %s", err)
 	}
@@ -658,7 +658,7 @@ func GenerateAccountKeys(name, accountName, appNamespace string) error {
 
 	var accessKeys nb.S3AccessKeys
 
-	sysClient, err := system.Connect(true)
+	sysClient, err := system.ConnectAuto()
 	if err != nil {
 		return err
 	}
