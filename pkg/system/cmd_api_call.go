@@ -35,7 +35,7 @@ func RunAPICall(cmd *cobra.Command, args []string) {
 		apiName += "_api"
 	}
 
-	sysClient, err := Connect(true)
+	sysClient, err := ConnectAuto()
 	if err != nil {
 		log.Fatalf("❌ %s", err)
 	}

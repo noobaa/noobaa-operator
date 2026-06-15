@@ -206,7 +206,7 @@ func RunStatusBucketClaim(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	sysClient, err := system.Connect(true)
+	sysClient, err := system.ConnectAuto()
 	if err != nil {
 		util.Logger().Fatalf("❌ %s", err)
 	}
