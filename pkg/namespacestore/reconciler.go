@@ -2,7 +2,6 @@ package namespacestore
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -683,21 +682,23 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		}
 
 	case nbv1.NSStoreTypeGoogleCloudStorage:
-		conn.EndpointType = nb.EndpointTypeGoogle
 		conn.Endpoint = "https://www.googleapis.com"
-		privateKeyJSON := r.Secret.StringData["GoogleServiceAccountPrivateKeyJson"]
-		privateKey := &struct {
-			ID string `json:"private_key_id"`
-		}{}
-		err := json.Unmarshal([]byte(privateKeyJSON), privateKey)
+		googleCredentialsJSON := r.Secret.StringData["GoogleServiceAccountPrivateKeyJson"]
+
+		isGoogleExternalAccountJSON, identity, err := util.ParseGoogleCredentials(googleCredentialsJSON)
 		if err != nil {
 			return nil, util.NewPersistentError("InvalidGoogleSecret", fmt.Sprintf(
-				"Invalid secret for google type %q expected JSON in data.GoogleServiceAccountPrivateKeyJson",
-				r.Secret.Name,
+				"Invalid secret for google type %q expected JSON in data.GoogleServiceAccountPrivateKeyJson: %v",
+				r.Secret.Name, err,
 			))
 		}
-		conn.Identity = nb.MaskedString(privateKey.ID)
-		conn.Secret = nb.MaskedString(privateKeyJSON)
+		if isGoogleExternalAccountJSON {
+			conn.EndpointType = nb.EndpointTypeGoogleSTS
+		} else {
+			conn.EndpointType = nb.EndpointTypeGoogle
+		}
+		conn.Identity = nb.MaskedString(identity)
+		conn.Secret = nb.MaskedString(googleCredentialsJSON)
 
 	default:
 		return nil, util.NewPersistentError("InvalidType",

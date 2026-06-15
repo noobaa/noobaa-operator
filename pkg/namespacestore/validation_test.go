@@ -152,7 +152,36 @@ func TestNamespaceStoreIBMCos(t *testing.T) {
 	defaultNs.Spec.IBMCos.Endpoint = "hostname:port"
 	err = validations.ValidateNamespaceStore(&defaultNs)
 	AssertError(t, err, "Invalid endPoint %s validation is failed", defaultNs.Spec.IBMCos.Endpoint)
+}
 
+func TestNamespaceStoreGoogleCloudStorage(t *testing.T) {
+
+	//Valid namespacestore
+	defaultNs := getDefaultGoogleCloudStorageNsStore()
+	err := validations.ValidateNamespaceStore(&defaultNs)
+	AssertNotError(t, err, "Valid Google Cloud Storage namespacestore validation failed")
+
+	// GoogleCloudStorage spec is nil
+	defaultNs = nbv1.NamespaceStore{
+		Spec: nbv1.NamespaceStoreSpec{
+			Type: nbv1.NSStoreTypeGoogleCloudStorage,
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-gcp"},
+	}
+	err = validations.ValidateNamespaceStore(&defaultNs)
+	AssertError(t, err, "GoogleCloudStorage spec nil should be denied")
+
+	// Empty secret name
+	defaultNs = getDefaultGoogleCloudStorageNsStore()
+	defaultNs.Spec.GoogleCloudStorage.Secret.Name = ""
+	err = validations.ValidateNamespaceStore(&defaultNs)
+	AssertError(t, err, "Empty secret name for Google Cloud Storage namespacestore should be denied")
+
+	// Empty target bucket
+	defaultNs = getDefaultGoogleCloudStorageNsStore()
+	defaultNs.Spec.GoogleCloudStorage.TargetBucket = ""
+	err = validations.ValidateNamespaceStore(&defaultNs)
+	AssertError(t, err, "Empty target bucket should be denied")
 }
 
 func AssertNotError(t *testing.T, err error, format string, a ...interface{}) {
@@ -243,5 +272,21 @@ func getDefaultAzureBlobNsStore() nbv1.NamespaceStore {
 			},
 		},
 		ObjectMeta: metav1.ObjectMeta{Name: "test-azure"},
+	}
+}
+
+func getDefaultGoogleCloudStorageNsStore() nbv1.NamespaceStore {
+	return nbv1.NamespaceStore{
+		Spec: nbv1.NamespaceStoreSpec{
+			Type: nbv1.NSStoreTypeGoogleCloudStorage,
+			GoogleCloudStorage: &nbv1.GoogleCloudStorageSpec{
+				TargetBucket: "gcp-target-bucket",
+				Secret: corev1.SecretReference{
+					Name:      "gcp-secret",
+					Namespace: "namespace",
+				},
+			},
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-gcp"},
 	}
 }
