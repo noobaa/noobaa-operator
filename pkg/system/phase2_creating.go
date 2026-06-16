@@ -577,14 +577,13 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			c.Env[j].Value = ""
 			c.Env[j].ValueFrom = nil
 		case "POSTGRES_SSL_REQUIRED":
-			if r.NooBaa.Spec.ExternalPgSSLRequired {
+			if r.NooBaa.Spec.ExternalPgSSLRequired || r.shouldReconcileCNPGCluster() {
 				c.Env[j].Value = "true"
 			}
 		case "POSTGRES_SSL_UNAUTHORIZED":
-			if r.NooBaa.Spec.ExternalPgSSLUnauthorized {
+			if r.NooBaa.Spec.ExternalPgSSLUnauthorized || r.shouldReconcileCNPGCluster() {
 				c.Env[j].Value = "true"
 			}
-
 		case "POSTGRES_DBNAME_PATH":
 			c.Env[j].Value = postgresSecretMountPath + "/dbname"
 		case "POSTGRES_PASSWORD_PATH":
