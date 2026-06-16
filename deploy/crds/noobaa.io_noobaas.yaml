@@ -1938,6 +1938,16 @@ spec:
                   update the admin account with new BackingStore/NamespaceStore in order to delete the DefaultBackingStore/DefaultNamespaceStore
                 nullable: true
                 type: boolean
+              performanceProfile:
+                description: |-
+                  PerformanceProfile (optional) selects a bundle of resource and count
+                  settings for the core, db and endpoint components.
+                  Explicit per-component resource/count fields take precedence over the profile.
+                enum:
+                - default
+                - mixed-workload
+                - small-objects
+                type: string
               pvPoolDefaultStorageClass:
                 description: |-
                   PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes.

@@ -697,9 +697,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
 			util.ReflectEnvVariable(&c.Env, "NO_PROXY")
 
-			if r.NooBaa.Spec.CoreResources != nil {
-				c.Resources = *r.NooBaa.Spec.CoreResources
-			}
+			c.Resources = getCoreResources(r.NooBaa)
 
 			if r.shouldReconcileCNPGCluster() {
 				dbSecretVolumeMounts := []corev1.VolumeMount{{

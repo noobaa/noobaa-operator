@@ -1509,7 +1509,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "c94929c02dc22efe29d4317da49bc6111d6ba26430e00b0cc5325189324372f9"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "7abaa6838d2c6b96fe7f2c337447bfbbcb0109ec12f84048c1026b54d57c0528"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3451,6 +3451,16 @@ spec:
                   update the admin account with new BackingStore/NamespaceStore in order to delete the DefaultBackingStore/DefaultNamespaceStore
                 nullable: true
                 type: boolean
+              performanceProfile:
+                description: |-
+                  PerformanceProfile (optional) selects a bundle of resource and count
+                  settings for the core, db and endpoint components.
+                  Explicit per-component resource/count fields take precedence over the profile.
+                enum:
+                - default
+                - mixed-workload
+                - small-objects
+                type: string
               pvPoolDefaultStorageClass:
                 description: |-
                   PVPoolDefaultStorageClass (optional) overrides the default cluster StorageClass for the pv-pool volumes.

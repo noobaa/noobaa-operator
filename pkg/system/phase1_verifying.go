@@ -158,12 +158,12 @@ func (r *Reconciler) CheckSystemCR() error {
 	// Verify the endpoints spec
 	endpointsSpec := r.NooBaa.Spec.Endpoints
 	if endpointsSpec != nil {
-		if endpointsSpec.MinCount <= 0 {
+		minCount, maxCount := getEndpointMinMax(r.NooBaa)
+		if minCount <= 0 {
 			return util.NewPersistentError("InvalidEndpointsConfiguration",
 				"Invalid endpoint min count (must be greater than 0)")
 		}
-		// Validate bounds on endpoint counts
-		if endpointsSpec.MinCount > endpointsSpec.MaxCount {
+		if minCount > maxCount {
 			return util.NewPersistentError("InvalidEndpointsConfiguration",
 				"Invalid endpoint maximum count (must be higher than or equal to minimum count)")
 		}

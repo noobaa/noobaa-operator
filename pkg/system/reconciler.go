@@ -41,11 +41,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const (
-	defaultEndpointMinCount int32 = 1
-	defaultEndpointMaxCount int32 = 2
-)
-
 var (
 	// ReadmeReady is a template for system.status.readme
 	ReadmeReady = template.Must(template.New("system_status_readme_ready").
@@ -807,8 +802,5 @@ func (r *Reconciler) GetAffinity() *corev1.Affinity {
 }
 
 func (r *Reconciler) getEndpointMinMaxCount() (int32, int32) {
-	if r.NooBaa.Spec.Endpoints != nil {
-		return r.NooBaa.Spec.Endpoints.MinCount, r.NooBaa.Spec.Endpoints.MaxCount
-	}
-	return defaultEndpointMinCount, defaultEndpointMaxCount
+	return getEndpointMinMax(r.NooBaa)
 }
