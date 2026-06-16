@@ -296,7 +296,7 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 	if r.CNPGCluster.Spec.Monitoring == nil {
 		r.CNPGCluster.Spec.Monitoring = &cnpgv1.MonitoringConfiguration{}
 	}
-	r.CNPGCluster.Spec.Monitoring.EnablePodMonitor = disableMonStr != "true"
+	r.CNPGCluster.Spec.Monitoring.EnablePodMonitor = disableMonStr != "true" //nolint:staticcheck // TODO: migrate to manually managed PodMonitor
 	r.CNPGCluster.Spec.Monitoring.TLSConfig = &cnpgv1.ClusterMonitoringTLSConfiguration{
 		Enabled: true,
 	}
