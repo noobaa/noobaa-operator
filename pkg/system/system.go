@@ -55,6 +55,7 @@ func Cmd() *cobra.Command {
 		CmdList(),
 		CmdReconcile(),
 		CmdYaml(),
+		CmdOidc(),
 	)
 	return cmd
 }
@@ -154,6 +155,45 @@ func CmdYaml() *cobra.Command {
 		Run:   RunYaml,
 		Args:  cobra.NoArgs,
 	}
+	return cmd
+}
+
+const keycloakOIDCConfigKey = "config.json"
+
+// KeycloakOIDCProvider represents a single Keycloak OIDC provider configuration.
+type KeycloakOIDCProvider struct {
+	Issuer                     string `json:"issuer"`
+	ClientID                   string `json:"client_id"`
+	ClientSecret               string `json:"client_secret"`
+	JWKSURI                    string `json:"jwks_uri"`
+	TokenIntrospectionEndpoint string `json:"token_introspection_endpoint"`
+}
+
+// KeycloakOIDCConfig represents the Keycloak OIDC configuration stored in the secret.
+type KeycloakOIDCConfig struct {
+	Providers []KeycloakOIDCProvider `json:"providers"`
+}
+
+// CmdOidc returns a CLI command for managing OIDC configuration.
+func CmdOidc() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "oidc",
+		Short: "Manage OIDC configuration",
+		Long: "Configure OIDC providers for NooBaa STS.\n" +
+			"The configuration is stored in a Kubernetes secret and mounted into endpoint pods.",
+		Run: RunOidc,
+	}
+	cmd.Flags().String("type", "", "OIDC provider type (keycloak)")
+	cmd.Flags().String(
+		"configure",
+		"",
+		"OIDC configuration in JSON format, or a path to a JSON/txt file prefixed with file:// (e.g. file://keycloak_config.json).\n"+
+			"For Keycloak, the expected structure is:\n"+
+			`{"providers":[{"issuer":"<kc-server>:<kc-port>/realms/<realm-name>",`+
+			`"client_id":"<client-id>","client_secret":"<client-secret>",`+
+			`"jwks_uri":"http://<kc-server>:<kc-port>/realms/<realm-name>/protocol/openid-connect/certs",`+
+			`"token_introspection_endpoint":"http://<kc-server>:<kc-port>/realms/<realm-name>/protocol/openid-connect/token/introspect"}]}`,
+	)
 	return cmd
 }
 
@@ -689,6 +729,121 @@ func RunYaml(cmd *cobra.Command, args []string) {
 	sys := LoadSystemDefaults()
 	p := printers.YAMLPrinter{}
 	util.Panic(p.PrintObj(sys, os.Stdout))
+}
+
+// RunOidc runs the OIDC CLI command.
+func RunOidc(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	providerType, _ := cmd.Flags().GetString("type")
+	configure, _ := cmd.Flags().GetString("configure")
+
+	if providerType == "" {
+		log.Fatalf(`❌ Missing required flag: --type %s`, cmd.UsageString())
+	}
+	if configure == "" {
+		log.Fatalf(`❌ Missing required flag: --configure %s`, cmd.UsageString())
+	}
+
+	switch providerType {
+	case "keycloak":
+		configJSON, err := readOIDCConfigInput(configure)
+		if err != nil {
+			log.Fatalf(`❌ %v`, err)
+		}
+		if err := configureKeycloakOIDC(configJSON); err != nil {
+			log.Fatalf(`❌ %v`, err)
+		}
+	default:
+		log.Fatalf(`❌ Unsupported OIDC provider type %q`, providerType)
+	}
+}
+
+func readOIDCConfigInput(configure string) (string, error) {
+	if strings.HasPrefix(configure, "file://") {
+		filePath := strings.TrimPrefix(configure, "file://")
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to read configuration file %q: %w", filePath, err)
+		}
+		return string(content), nil
+	}
+	return configure, nil
+}
+
+func validateKeycloakOIDCConfig(configJSON string) (*KeycloakOIDCConfig, error) {
+	if !json.Valid([]byte(configJSON)) {
+		return nil, fmt.Errorf("the provided configuration is not valid JSON")
+	}
+
+	var config KeycloakOIDCConfig
+	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
+		return nil, fmt.Errorf("failed to parse configuration: %w", err)
+	}
+
+	if len(config.Providers) == 0 {
+		return nil, fmt.Errorf("configuration must contain at least one provider")
+	}
+
+	for i, provider := range config.Providers {
+		var missing []string
+		if provider.Issuer == "" {
+			missing = append(missing, "issuer")
+		}
+		if provider.ClientID == "" {
+			missing = append(missing, "client_id")
+		}
+		if provider.ClientSecret == "" {
+			missing = append(missing, "client_secret")
+		}
+		if provider.JWKSURI == "" {
+			missing = append(missing, "jwks_uri")
+		}
+		if provider.TokenIntrospectionEndpoint == "" {
+			missing = append(missing, "token_introspection_endpoint")
+		}
+		if len(missing) == 0 {
+			continue
+		}
+		if len(missing) == 5 {
+			return nil, fmt.Errorf("provider[%d] is empty", i)
+		}
+		return nil, fmt.Errorf("provider[%d] is missing required fields: %s", i, strings.Join(missing, ", "))
+	}
+
+	return &config, nil
+}
+
+func configureKeycloakOIDC(configJSON string) error {
+	log := util.Logger()
+
+	sys := LoadSystemDefaults()
+	if !util.KubeCheck(sys) {
+		return fmt.Errorf("NooBaa system %q not found in namespace %q", sys.Name, sys.Namespace)
+	}
+
+	config, err := validateKeycloakOIDCConfig(configJSON)
+	if err != nil {
+		return err
+	}
+
+	normalizedJSON, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal configuration: %w", err)
+	}
+
+	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret.Name = options.SystemName + "-oidc-keycloak-config"
+	secret.Namespace = options.Namespace
+	secret.StringData = map[string]string{
+		keycloakOIDCConfigKey: string(normalizedJSON),
+	}
+	secret.Data = nil
+
+	util.KubeApply(secret)
+
+	log.Printf("✅ Keycloak OIDC configuration saved to secret %q", secret.Name)
+	return nil
 }
 
 // CheckNooBaaImages runs a CLI command
