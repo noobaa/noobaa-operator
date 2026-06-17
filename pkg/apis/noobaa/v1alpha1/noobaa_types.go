@@ -257,6 +257,13 @@ type NooBaaSpec struct {
 	// BucketNotifications (optional) controls bucket notification options
 	// +optional
 	BucketNotifications BucketNotificationsSpec `json:"bucketNotifications,omitempty"`
+
+	// PerformanceProfile (optional) selects a bundle of resource and count
+	// settings for the core, db and endpoint components.
+	// Explicit per-component resource/count fields take precedence over the profile.
+	// +optional
+	// +kubebuilder:validation:Enum=default;mixed-workload;small-objects
+	PerformanceProfile PerformanceProfileType `json:"performanceProfile,omitempty"`
 }
 
 // Affinity is a group of affinity scheduling rules.
@@ -874,4 +881,17 @@ const (
 
 	// BucketLoggingTypeGuaranteed is guaranteed
 	BucketLoggingTypeGuaranteed BucketLoggingTypes = "guaranteed"
+)
+
+// PerformanceProfileType is a string enum type for selecting a performance profile.
+type PerformanceProfileType string
+
+// These are the valid PerformanceProfileType values:
+const (
+	// PerformanceProfileDefault is the default profile
+	PerformanceProfileDefault PerformanceProfileType = "default"
+	// PerformanceProfileMixedWorkload is for mixed workload
+	PerformanceProfileMixedWorkload PerformanceProfileType = "mixed-workload"
+	// PerformanceProfileSmallObjects is for small objects workload
+	PerformanceProfileSmallObjects PerformanceProfileType = "small-objects"
 )

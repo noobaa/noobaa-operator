@@ -263,12 +263,10 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 	}
 
 	// update number of instances
-	r.CNPGCluster.Spec.Instances = getDesiredInstances(dbSpec)
+	r.CNPGCluster.Spec.Instances = getDBInstances(r.NooBaa)
 
 	// update db resources
-	if dbSpec.DBResources != nil {
-		r.CNPGCluster.Spec.Resources = *dbSpec.DBResources
-	}
+	r.CNPGCluster.Spec.Resources = getDBResources(r.NooBaa)
 
 	// update db volume resources
 	// update the storage configuration
@@ -588,21 +586,19 @@ func (r *Reconciler) setPostgresConfig() {
 
 	totalMemoryKB := defaultCalcMemoryKB
 	cpuNum := defaultCalcCPU
-	dbResources := r.NooBaa.Spec.DBSpec.DBResources
-	if dbResources != nil {
-		if !dbResources.Limits.Memory().IsZero() {
-			totalMemoryKB = dbResources.Limits.Memory().Value() / 1024
-		} else if !dbResources.Requests.Memory().IsZero() {
-			totalMemoryKB = dbResources.Requests.Memory().Value() / 1024
-		}
-		if !dbResources.Limits.Cpu().IsZero() {
-			cpuNum = dbResources.Limits.Cpu().MilliValue() / 1000
-		} else if !dbResources.Requests.Cpu().IsZero() {
-			cpuNum = dbResources.Requests.Cpu().MilliValue() / 1000
-		}
-		if cpuNum < 1 {
-			cpuNum = 1
-		}
+	dbResources := getDBResources(r.NooBaa)
+	if !dbResources.Limits.Memory().IsZero() {
+		totalMemoryKB = dbResources.Limits.Memory().Value() / 1024
+	} else if !dbResources.Requests.Memory().IsZero() {
+		totalMemoryKB = dbResources.Requests.Memory().Value() / 1024
+	}
+	if !dbResources.Limits.Cpu().IsZero() {
+		cpuNum = dbResources.Limits.Cpu().MilliValue() / 1000
+	} else if !dbResources.Requests.Cpu().IsZero() {
+		cpuNum = dbResources.Requests.Cpu().MilliValue() / 1000
+	}
+	if cpuNum < 1 {
+		cpuNum = 1
 	}
 
 	for k, v := range calculatePGConfig(totalMemoryKB, cpuNum, int(endpointMaxCount), r.CNPGCluster.Spec.StorageConfiguration.Size) {
@@ -771,14 +767,6 @@ func getDesiredDbImage(dbSpec *nbv1.NooBaaDBSpec) string {
 		desiredDbImage = *dbSpec.DBImage
 	}
 	return desiredDbImage
-}
-
-func getDesiredInstances(dbSpec *nbv1.NooBaaDBSpec) int {
-	desiredInstances := options.PostgresInstances
-	if dbSpec.Instances != nil {
-		desiredInstances = *dbSpec.Instances
-	}
-	return desiredInstances
 }
 
 func setDesiredStorageConf(storageConfiguration *cnpgv1.StorageConfiguration, dbSpec *nbv1.NooBaaDBSpec) error {

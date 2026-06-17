@@ -356,9 +356,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 		switch c.Name {
 		case "endpoint":
 			c.Image = r.NooBaa.Status.ActualImage
-			if endpointsSpec != nil && endpointsSpec.Resources != nil {
-				c.Resources = *endpointsSpec.Resources
-			}
+			c.Resources = getEndpointResources(r.NooBaa)
 			mgmtBaseAddr := ""
 			s3BaseAddr := ""
 			syslogBaseAddr := ""
@@ -1034,9 +1032,13 @@ func (r *Reconciler) preparePVPoolBackingStore() error {
 
 	// create backing store
 	defaultPVSize := int64(50) * 1024 * 1024 * 1024 // 50GB
+	existingVolumes := 0
+	if r.DefaultBackingStore.Spec.PVPool != nil {
+		existingVolumes = r.DefaultBackingStore.Spec.PVPool.NumVolumes
+	}
 	r.DefaultBackingStore.Spec.Type = nbv1.StoreTypePVPool
 	r.DefaultBackingStore.Spec.PVPool = &nbv1.PVPoolSpec{}
-	r.DefaultBackingStore.Spec.PVPool.NumVolumes = 1
+	r.DefaultBackingStore.Spec.PVPool.NumVolumes = getPVPoolNumVolumes(r.NooBaa, existingVolumes)
 	r.DefaultBackingStore.Spec.PVPool.VolumeResources = &corev1.VolumeResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceStorage: *resource.NewQuantity(defaultPVSize, resource.BinarySI),
