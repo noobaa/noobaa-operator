@@ -142,17 +142,23 @@ func analyzeAllNamespaceStores(cmd *cobra.Command, collector *Collector) bool {
 	return foundNamespaceStore
 }
 
+// STS BackingStore types are not supported because the job does not have the projected tokens for the STS cluster
 func checkIfBackingStoreTypeIsSupported(backingStore *nbv1.BackingStore) bool {
-	if util.IsAWSSTSClusterBS(backingStore) || backingStore.Spec.Type == nbv1.StoreTypePVPool {
+	if backingStore.Spec.Type == nbv1.StoreTypePVPool ||
+		util.IsAWSSTSClusterBS(backingStore) ||
+		util.IsAzureSTSClusterBS(backingStore) ||
+		util.IsGoogleSTSClusterBS(backingStore) {
 		return false
 	}
 	return true
 }
 
+// STS NamespaceStore types are not supported because the job does not have the projected tokens for the STS cluster
 func checkIfNamespaceStoreTypeIsSupported(namespaceStore *nbv1.NamespaceStore) bool {
-	if util.IsAWSSTSClusterNS(namespaceStore) ||
+	if namespaceStore.Spec.Type == nbv1.NSStoreTypeNSFS ||
+		util.IsAWSSTSClusterNS(namespaceStore) ||
 		util.IsAzureSTSClusterNS(namespaceStore) ||
-		namespaceStore.Spec.Type == nbv1.NSStoreTypeNSFS ||
+		util.IsGoogleSTSClusterNS(namespaceStore) ||
 		util.IsArchiveNamespaceStore(namespaceStore) {
 		return false
 	}
@@ -303,9 +309,13 @@ func setBackingStoreDetailsInJob(backingStore *nbv1.BackingStore, cmd *cobra.Com
 
 	// SecretName in the job yaml
 	secretRef, err := util.GetBackingStoreSecret(backingStore)
-	if err != nil {
-		log.Fatalf("❌ Could not get backing store secret in %s %q in Namespace %q",
-			analyzeResourceJob.Kind, analyzeResourceJob.Name, analyzeResourceJob.Namespace)
+	if err != nil || secretRef == nil || secretRef.Name == "" {
+		log.Fatalf("❌ Could not get backing store secret for %s %q in Namespace %q",
+			backingStore.Kind, backingStore.Name, backingStore.Namespace)
+	}
+	if secret, err := util.GetSecretFromSecretReference(secretRef); err != nil || secret == nil {
+		log.Fatalf("❌ Could not get Secret %q for %s %q in Namespace %q",
+			secretRef.Name, backingStore.Kind, backingStore.Name, backingStore.Namespace)
 	}
 	analyzeResourceJob.Spec.Template.Spec.Volumes[0].Secret.SecretName = secretRef.Name
 }
@@ -381,9 +391,13 @@ func setNamespacetoreDetailsInJob(namespaceStore *nbv1.NamespaceStore, cmd *cobr
 
 	// SecretName in the job yaml
 	secretRef, err := util.GetNamespaceStoreSecret(namespaceStore)
-	if err != nil {
-		log.Fatalf("❌ Could not get namespace store secret  in %s %q in Namespace %q",
-			analyzeResourceJob.Kind, analyzeResourceJob.Name, analyzeResourceJob.Namespace)
+	if err != nil || secretRef == nil || secretRef.Name == "" {
+		log.Fatalf("❌ Could not get namespace store secret for %s %q in Namespace %q",
+			namespaceStore.Kind, namespaceStore.Name, namespaceStore.Namespace)
+	}
+	if secret, err := util.GetSecretFromSecretReference(secretRef); err != nil || secret == nil {
+		log.Fatalf("❌ Could not get Secret %q for %s %q in Namespace %q",
+			secretRef.Name, namespaceStore.Kind, namespaceStore.Name, namespaceStore.Namespace)
 	}
 	analyzeResourceJob.Spec.Template.Spec.Volumes[0].Secret.SecretName = secretRef.Name
 }
