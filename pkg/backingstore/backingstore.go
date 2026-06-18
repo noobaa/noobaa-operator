@@ -1036,7 +1036,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 	backStore := GetBackingStoreFromArgs(cmd, args)
 	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
 	secretRef, _ := util.GetBackingStoreSecret(backStore)
-	if !util.IsSTSClusterBS(backStore) {
+	if !util.IsAWSSTSClusterBS(backStore) {
 		if secretRef != nil {
 			secret.Name = secretRef.Name
 			secret.Namespace = secretRef.Namespace

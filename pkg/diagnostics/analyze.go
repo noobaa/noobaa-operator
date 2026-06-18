@@ -143,14 +143,14 @@ func analyzeAllNamespaceStores(cmd *cobra.Command, collector *Collector) bool {
 }
 
 func checkIfBackingStoreTypeIsSupported(backingStore *nbv1.BackingStore) bool {
-	if util.IsSTSClusterBS(backingStore) || backingStore.Spec.Type == nbv1.StoreTypePVPool {
+	if util.IsAWSSTSClusterBS(backingStore) || backingStore.Spec.Type == nbv1.StoreTypePVPool {
 		return false
 	}
 	return true
 }
 
 func checkIfNamespaceStoreTypeIsSupported(namespaceStore *nbv1.NamespaceStore) bool {
-	if util.IsSTSClusterNS(namespaceStore) ||
+	if util.IsAWSSTSClusterNS(namespaceStore) ||
 		util.IsAzureSTSClusterNS(namespaceStore) ||
 		namespaceStore.Spec.Type == nbv1.NSStoreTypeNSFS ||
 		util.IsArchiveNamespaceStore(namespaceStore) {

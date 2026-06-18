@@ -1192,16 +1192,16 @@ func IsFusionHCIWithScale() bool {
 	return fusionHCIWithScale
 }
 
-// IsSTSClusterBS returns true if it is running on an STS cluster
-func IsSTSClusterBS(bs *nbv1.BackingStore) bool {
+// IsAWSSTSClusterBS returns true if it is running on an STS cluster
+func IsAWSSTSClusterBS(bs *nbv1.BackingStore) bool {
 	if bs.Spec.Type == nbv1.StoreTypeAWSS3 {
 		return bs.Spec.AWSS3.AWSSTSRoleARN != nil
 	}
 	return false
 }
 
-// IsSTSClusterNS returns true if the namespace store uses AWS STS (short-lived credentials). For Azure STS use IsAzureSTSClusterNS().
-func IsSTSClusterNS(ns *nbv1.NamespaceStore) bool {
+// IsAWSSTSClusterNS returns true if the namespace store uses AWS STS (short-lived credentials). For Azure STS use IsAzureSTSClusterNS().
+func IsAWSSTSClusterNS(ns *nbv1.NamespaceStore) bool {
 	if ns.Spec.Type == nbv1.NSStoreTypeAWSS3 {
 		return ns.Spec.AWSS3.AWSSTSRoleARN != nil
 	}

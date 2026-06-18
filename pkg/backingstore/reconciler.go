@@ -253,7 +253,7 @@ func (r *Reconciler) ReconcilePhases() error {
 
 // LoadBackingStoreSecret loads the secret to the reconciler struct
 func (r *Reconciler) LoadBackingStoreSecret() error {
-	if util.IsSTSClusterBS(r.BackingStore) {
+	if util.IsAWSSTSClusterBS(r.BackingStore) {
 		return nil
 	}
 
@@ -686,7 +686,7 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 	switch r.BackingStore.Spec.Type {
 
 	case nbv1.StoreTypeAWSS3:
-		if util.IsSTSClusterBS(r.BackingStore) {
+		if util.IsAWSSTSClusterBS(r.BackingStore) {
 			conn.EndpointType = nb.EndpointTypeAwsSTS
 			conn.AWSSTSARN = *r.BackingStore.Spec.AWSS3.AWSSTSRoleARN
 		} else {
@@ -868,7 +868,7 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		return nil, util.NewPersistentError("InvalidType",
 			fmt.Sprintf("Invalid backing store type %q", r.BackingStore.Spec.Type))
 	}
-	if !util.IsSTSClusterBS(r.BackingStore) {
+	if !util.IsAWSSTSClusterBS(r.BackingStore) {
 		if !util.IsStringGraphicOrSpacesCharsOnly(string(conn.Identity)) || !util.IsStringGraphicOrSpacesCharsOnly(string(conn.Secret)) {
 			return nil, util.NewPersistentError("InvalidSecret",
 				fmt.Sprintf("Invalid secret containing non graphic characters (perhaps not base64 encoded?) %q", r.Secret.Name))

@@ -813,7 +813,7 @@ func RunStatus(cmd *cobra.Command, args []string) {
 
 	secret := util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
 	secretRef, _ := util.GetNamespaceStoreSecret(namespaceStore)
-	if !util.IsSTSClusterNS(namespaceStore) && !util.IsAzureSTSClusterNS(namespaceStore) {
+	if !util.IsAWSSTSClusterNS(namespaceStore) && !util.IsAzureSTSClusterNS(namespaceStore) {
 		if secretRef != nil {
 			secret.Name = secretRef.Name
 			secret.Namespace = secretRef.Namespace
