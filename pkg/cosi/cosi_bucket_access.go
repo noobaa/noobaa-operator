@@ -209,7 +209,7 @@ func RunStatusBucketAccessClaim(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ Could not find COSI bucket access claim secret %q in namespace %q`, secret.Name, cosiBucketAccessClaim.Namespace)
 	}
 
-	sysClient, err := system.Connect(true)
+	sysClient, err := system.ConnectAuto()
 	if err != nil {
 		util.Logger().Fatalf("❌ %s", err)
 	}

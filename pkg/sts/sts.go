@@ -71,7 +71,7 @@ func RunAssign(cmd *cobra.Command, args []string) {
 		log.Fatalf(`❌ The provided role configuration is not valid JSON`)
 	}
 
-	sysClient, err := system.Connect(true)
+	sysClient, err := system.ConnectAuto()
 	if err != nil {
 		log.Fatalf(`❌ Failed to create RPC client %s`, err)
 	}
@@ -100,7 +100,7 @@ func RunAssign(cmd *cobra.Command, args []string) {
 func RunRemove(cmd *cobra.Command, args []string) {
 	email, _ := cmd.Flags().GetString("email")
 
-	sysClient, err := system.Connect(true)
+	sysClient, err := system.ConnectAuto()
 	if err != nil {
 		log.Fatalf(`❌ Failed to create RPC client %s`, err)
 	}

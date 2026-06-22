@@ -82,9 +82,13 @@ func ValidateReplicationPolicy(bucketName string, replicationPolicy string, upda
 	}
 
 	log.Infof("ValidateReplicationPolicy: validating replication: replicationParams: %+v", replicationParams)
-	IsExternalRPCConnection := util.IsTestEnv() || isCLI
 
-	sysClient, err := system.Connect(IsExternalRPCConnection)
+	var sysClient *system.Client
+	if isCLI {
+		sysClient, err = system.ConnectAuto()
+	} else {
+		sysClient, err = system.Connect(util.IsTestEnv())
+	}
 	if err != nil {
 		return fmt.Errorf("Provisioner Failed to validate replication of bucket %q with error: %v", bucketName, err)
 	}

@@ -36,7 +36,7 @@ var _ = Describe("COSI driver/provisioner tests", func() {
 
 	log := util.Logger()
 	nbClient := system.GetNBClient()
-	sysClient, err := system.Connect(true)
+	sysClient, err := system.ConnectAuto()
 	if err != nil {
 		log.Infof("COSI bucket creation tests, can't create sysclient: err= %q", err)
 	}
