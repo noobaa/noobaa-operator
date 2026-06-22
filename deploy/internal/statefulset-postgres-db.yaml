@@ -17,6 +17,8 @@ spec:
       labels:
         app: noobaa
         noobaa-db: postgres
+      annotations:
+        openshift.io/required-scc: noobaa-db
     spec:
       serviceAccountName: noobaa-db
       containers:

@@ -20,6 +20,7 @@ spec:
         noobaa-mgmt: noobaa
       annotations:
         noobaa.io/configmap-hash: ""
+        openshift.io/required-scc: noobaa-core
     spec:
       # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa-core
