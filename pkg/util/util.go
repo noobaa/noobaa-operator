@@ -95,6 +95,9 @@ const (
 	// InjectedBundleCertCAFile points to OCP root CA to be added to the default root CA list
 	InjectedBundleCertCAFile = "/etc/ocp-injected-ca-bundle/ca-bundle.crt"
 
+	// the annotation key for the OpenShift SCC (Security Context Constraints)
+	OpenShiftRequiredSCCAnnotation = "openshift.io/required-scc"
+
 	// WebIdentityTokenPath is the projected service account token path used for AWS/Azure/GCP STS.
 	WebIdentityTokenPath = "/var/run/secrets/openshift/serviceaccount/token"
 

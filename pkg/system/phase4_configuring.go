@@ -481,6 +481,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 			}
 
 			r.DeploymentEndpoint.Spec.Template.Annotations["noobaa.io/configmap-hash"] = r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"]
+			r.DeploymentEndpoint.Spec.Template.Annotations[util.OpenShiftRequiredSCCAnnotation] = "noobaa-endpoint"
 
 			r.addContainerPortsIfNotExist(c, []corev1.ContainerPort{
 				{

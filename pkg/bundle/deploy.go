@@ -4358,7 +4358,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "558ec22578b22c3ac3a6d6b72fa95a7122739014ded0a73adbac319aa4457aed"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "e028fd7874ebec9b0b63f84ed2f9b3648a8785c7f0cd99b49d8de4a28b7d1910"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4383,6 +4383,7 @@ spec:
         app: noobaa
       annotations:
         noobaa.io/configmap-hash: ""
+        openshift.io/required-scc: noobaa-endpoint
     spec:
       # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa-endpoint
@@ -4684,7 +4685,7 @@ data:
       metricsQuery: (sum(irate(<<.Series>>{<<.LabelMatchers>>}[5m])) by (<<.GroupBy>>))
 `
 
-const Sha256_deploy_internal_hpav2_deployment_adapter_yaml = "097a81580b56da76caee3022d682d7eee1fd58acd46fed383039188026102429"
+const Sha256_deploy_internal_hpav2_deployment_adapter_yaml = "9dc6739a1050a400b236cf6981f8f87950a9f8c72cef21a121f5107b69dfada4"
 
 const File_deploy_internal_hpav2_deployment_adapter_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4711,6 +4712,8 @@ spec:
         app.kubernetes.io/component: metrics-adapter
         app.kubernetes.io/name: prometheus-adapter
         app.kubernetes.io/version: 0.10.0
+      annotations:
+        openshift.io/required-scc: restricted-v2
     spec:
       automountServiceAccountToken: true
       containers:
@@ -4885,13 +4888,15 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "74237f435120c893cd8e349e9ac685dd1c884e121c018f46e48228f845a51093"
+const Sha256_deploy_internal_pod_agent_yaml = "b54b9a4060ab66ef17fd561791027540bda91737b406e51c59973e9b3ed0696c"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
 metadata:
   labels:
     app: noobaa
+  annotations:
+    openshift.io/required-scc: noobaa-core
   name: noobaa-agent
 spec:
   containers:
@@ -5596,7 +5601,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "4ef493f94d8f81746f9d8904085de093b4ed37ee15d0767cc563f7aa89c86de8"
+const Sha256_deploy_internal_statefulset_core_yaml = "cc38a4b3cd26c43156962823645c43be26e39ed57a7205d6b390c7849c39651b"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5620,6 +5625,7 @@ spec:
         noobaa-mgmt: noobaa
       annotations:
         noobaa.io/configmap-hash: ""
+        openshift.io/required-scc: noobaa-core
     spec:
       # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa-core
@@ -5813,7 +5819,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "53b628aaceffc1952efed5ed1131f16461fde6eb78c1a5f0f281f3efc30c30b4"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "3ab0a066e8ee5fea8309edf7fda07d6700a05bbfeaccc3861fdd2512b8c4f75b"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5834,6 +5840,8 @@ spec:
       labels:
         app: noobaa
         noobaa-db: postgres
+      annotations:
+        openshift.io/required-scc: noobaa-db
     spec:
       serviceAccountName: noobaa-db
       containers:
@@ -6701,7 +6709,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "8f2d1b2d9b43ca5aa530bc6cf1f4d094a1fa04622b70e434af93afdfc75b65c9"
+const Sha256_deploy_operator_yaml = "a9fbb951abf1417b6518fc4a75949f69647145cf3dfa9710ed49678875cf0b93"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -6719,6 +6727,8 @@ spec:
       labels:
         app: noobaa
         noobaa-operator: deployment
+      annotations:
+        openshift.io/required-scc: noobaa
     spec:
         # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa
