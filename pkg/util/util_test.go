@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -231,6 +233,161 @@ func TestParseGoogleCredentials(t *testing.T) {
 	}
 }
 
+func TestGoogleCredentialsFromStoreSecret(t *testing.T) {
+	validExternalAccountJSON := fmt.Sprintf(
+		`{"type":"external_account","service_account_impersonation_url":%q}`,
+		googleImpersonationURL(googleWIFServiceAccountEmail),
+	)
+	validServiceAccountJSON := fmt.Sprintf(`{"type":"service_account","private_key_id":%q}`, googleServiceAccountKeyID)
+
+	tests := []struct {
+		name          string
+		secret        *corev1.Secret
+		expectedJSON  string
+		expectedErr   bool
+	}{
+		{
+			name: "only WIF key",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "gcp-wif"},
+				StringData: map[string]string{GoogleCredentialsJson: validExternalAccountJSON},
+			},
+			expectedJSON: validExternalAccountJSON,
+		},
+		{
+			name: "only classic key",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "gcp-classic"},
+				StringData: map[string]string{GoogleServiceAccountPrivateKeyJson: validServiceAccountJSON},
+			},
+			expectedJSON: validServiceAccountJSON,
+		},
+		{
+			name: "both keys",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "gcp-both"},
+				StringData: map[string]string{
+					GoogleCredentialsJson:              validExternalAccountJSON,
+					GoogleServiceAccountPrivateKeyJson: validServiceAccountJSON,
+				},
+			},
+			expectedErr: true,
+		},
+		{
+			name: "CCO service_account.json with WIF key",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "noobaa-gcp-bucket-creds", Namespace: "openshift-storage"},
+				StringData: map[string]string{
+					"service_account.json":  validExternalAccountJSON,
+					GoogleCredentialsJson: validExternalAccountJSON,
+				},
+			},
+			expectedJSON: validExternalAccountJSON,
+		},
+		{
+			name: "CCO service_account.json with classic key",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "noobaa-gcp-bucket-creds", Namespace: "openshift-storage"},
+				StringData: map[string]string{
+					"service_account.json":             validServiceAccountJSON,
+					GoogleServiceAccountPrivateKeyJson: validServiceAccountJSON,
+				},
+			},
+			expectedJSON: validServiceAccountJSON,
+		},
+		{
+			name:        "nil secret",
+			secret:      nil,
+			expectedErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gotJSON, err := GoogleCredentialsFromStoreSecret(tc.secret)
+			if tc.expectedErr {
+				if err == nil {
+					t.Fatal("GoogleCredentialsFromStoreSecret expected error")
+				}
+				if !IsValidationError(err) {
+					t.Fatalf("GoogleCredentialsFromStoreSecret expected ValidationError, got %T", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("GoogleCredentialsFromStoreSecret unexpected error: %v", err)
+			}
+			if gotJSON != tc.expectedJSON {
+				t.Fatalf("expected JSON %q, got %q", tc.expectedJSON, gotJSON)
+			}
+		})
+	}
+}
+
+func TestValidateGoogleCredentialsJSONType(t *testing.T) {
+	validExternalAccountJSON := fmt.Sprintf(
+		`{"type":"external_account","service_account_impersonation_url":%q}`,
+		googleImpersonationURL(googleWIFServiceAccountEmail),
+	)
+	validServiceAccountJSON := fmt.Sprintf(`{"type":"service_account","private_key_id":%q}`, googleServiceAccountKeyID)
+
+	tests := []struct {
+		name        string
+		json        string
+		expectSTS   bool
+		expectedErr bool
+		errContains string
+	}{
+		{
+			name:      "service_account for GCP long-lived",
+			json:      validServiceAccountJSON,
+			expectSTS: false,
+		},
+		{
+			name:      "external_account for GCP WIF (STS)",
+			json:      validExternalAccountJSON,
+			expectSTS: true,
+		},
+		{
+			name:        "GCP WIF (STS) secret used with GCP long-lived command",
+			json:        validExternalAccountJSON,
+			expectSTS:   false,
+			expectedErr: true,
+			errContains: "service_account",
+		},
+		{
+			name:        "GCP long-lived secret used with GCP WIF (STS) command",
+			json:        validServiceAccountJSON,
+			expectSTS:   true,
+			expectedErr: true,
+			errContains: "external_account",
+		},
+		{
+			name:        "invalid JSON",
+			json:        `{`,
+			expectSTS:   false,
+			expectedErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateGoogleCredentialsJSONType(tt.json, tt.expectSTS)
+			if tt.expectedErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Fatalf("expected error containing %q, got %v", tt.errContains, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
 // TestGoogleIdentityFromCredentials tests googleIdentityFromCredentials function
 func TestGoogleIdentityFromCredentials(t *testing.T) {
 	tests := []struct {
@@ -431,31 +588,31 @@ func TestBuildGoogleWIFCredentialsJSON(t *testing.T) {
 
 func TestGcpProjectIDFromServiceAccountEmail(t *testing.T) {
 	tests := []struct {
-		name          string
-		email         string
+		name              string
+		email             string
 		expectedProjectID string
 		expectedErr       bool
 	}{
 		{
-			name:          "valid GCP service account email",
-			email:         "noobaa-wif-sa@my-project.iam.gserviceaccount.com",
+			name:              "valid GCP service account email",
+			email:             "noobaa-wif-sa@my-project.iam.gserviceaccount.com",
 			expectedProjectID: "my-project",
 		},
 		{
-			name:    "missing at sign",
-			email:   "invalid-email",
+			name:        "missing at sign",
+			email:       "invalid-email",
 			expectedErr: true,
 		},
 		// GcpProjectIDFromServiceAccountEmail only strips .iam.gserviceaccount.com;
 		// other domains pass through the part after @ unchanged (no format validation).
 		{
-			name:          "non-GCP domain",
-			email:         "sa@other-domain.com",
+			name:              "non-GCP domain",
+			email:             "sa@other-domain.com",
 			expectedProjectID: "other-domain.com",
 		},
 		{
-			name:    "empty domain after at sign",
-			email:   "sa@",
+			name:        "empty domain after at sign",
+			email:       "sa@",
 			expectedErr: true,
 		},
 	}
@@ -474,6 +631,143 @@ func TestGcpProjectIDFromServiceAccountEmail(t *testing.T) {
 			}
 			if got != tc.expectedProjectID {
 				t.Fatalf("GcpProjectIDFromServiceAccountEmail expected project ID %q, got %q", tc.expectedProjectID, got)
+			}
+		})
+	}
+}
+
+func TestValidateGCPWIFParams(t *testing.T) {
+	valid := struct {
+		projectNumber       string
+		poolID              string
+		providerID          string
+		serviceAccountEmail string
+	}{
+		projectNumber:       "123456789",
+		poolID:              "my-pool",
+		providerID:          "my-provider",
+		serviceAccountEmail: "noobaa-wif-sa@my-project.iam.gserviceaccount.com",
+	}
+
+	tests := []struct {
+		name                string
+		projectNumber       string
+		poolID              string
+		providerID          string
+		serviceAccountEmail string
+		expectedErr         bool
+		errContains         string
+	}{
+		{
+			name: "none set",
+		},
+		{
+			name:                "all four valid",
+			projectNumber:       valid.projectNumber,
+			poolID:              valid.poolID,
+			providerID:          valid.providerID,
+			serviceAccountEmail: valid.serviceAccountEmail,
+		},
+		{
+			name:          "only project-number",
+			projectNumber: valid.projectNumber,
+			expectedErr:   true,
+			errContains:   "all four are required",
+		},
+		{
+			name:          "three of four",
+			projectNumber: valid.projectNumber,
+			poolID:        valid.poolID,
+			providerID:    valid.providerID,
+			expectedErr:   true,
+			errContains:   "all four are required",
+		},
+		{
+			name:                "non-numeric project number",
+			projectNumber:       "my-project",
+			poolID:              valid.poolID,
+			providerID:          valid.providerID,
+			serviceAccountEmail: valid.serviceAccountEmail,
+			expectedErr:         true,
+			errContains:         "numeric GCP project number",
+		},
+		{
+			name:                "pool-id too short",
+			projectNumber:       valid.projectNumber,
+			poolID:              "abc",
+			providerID:          valid.providerID,
+			serviceAccountEmail: valid.serviceAccountEmail,
+			expectedErr:         true,
+			errContains:         "pool-id must be 4-32",
+		},
+		{
+			name:                "pool-id reserved gcp- prefix",
+			projectNumber:       valid.projectNumber,
+			poolID:              "gcp-pool",
+			providerID:          valid.providerID,
+			serviceAccountEmail: valid.serviceAccountEmail,
+			expectedErr:         true,
+			errContains:         "gcp-",
+		},
+		{
+			name:                "provider-id invalid characters",
+			projectNumber:       valid.projectNumber,
+			poolID:              valid.poolID,
+			providerID:          "My_Provider",
+			serviceAccountEmail: valid.serviceAccountEmail,
+			expectedErr:         true,
+			errContains:         "provider-id must contain only lowercase letters, digits, and hyphens",
+		},
+		{
+			name:                "invalid service account email suffix",
+			projectNumber:       valid.projectNumber,
+			poolID:              valid.poolID,
+			providerID:          valid.providerID,
+			serviceAccountEmail: "noobaa-wif-sa@my-project.example.com",
+			expectedErr:         true,
+			errContains:         ".iam.gserviceaccount.com",
+		},
+		{
+			name:                "service account email missing project ID",
+			projectNumber:       valid.projectNumber,
+			poolID:              valid.poolID,
+			providerID:          valid.providerID,
+			serviceAccountEmail: "noobaa-wif-sa@.iam.gserviceaccount.com",
+			expectedErr:         true,
+			errContains:         "missing project ID",
+		},
+		{
+			name:                "service account email extra at-sign in domain",
+			projectNumber:       valid.projectNumber,
+			poolID:              valid.poolID,
+			providerID:          valid.providerID,
+			serviceAccountEmail: "noobaa-wif-sa@my@project.iam.gserviceaccount.com",
+			expectedErr:         true,
+			errContains:         "exactly one @",
+		},
+		{
+			name:                "whitespace-only counts as set — all four required",
+			projectNumber:       " ",
+			poolID:              " ",
+			providerID:          " ",
+			serviceAccountEmail: " ",
+			expectedErr:         true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateGCPWIFParams(tt.projectNumber, tt.poolID, tt.providerID, tt.serviceAccountEmail)
+			if tt.expectedErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Fatalf("expected error containing %q, got %v", tt.errContains, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
 			}
 		})
 	}
