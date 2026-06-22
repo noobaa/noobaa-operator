@@ -7,6 +7,7 @@ metadata:
     openshift.io/required-scc: noobaa-core
   name: noobaa-agent
 spec:
+  serviceAccountName: noobaa-core
   containers:
     - name: noobaa-agent
       image: NOOBAA_CORE_IMAGE

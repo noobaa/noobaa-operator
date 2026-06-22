@@ -4888,7 +4888,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "b54b9a4060ab66ef17fd561791027540bda91737b406e51c59973e9b3ed0696c"
+const Sha256_deploy_internal_pod_agent_yaml = "4195344f0c1e4dbbc1b6227499eea591f639d849a4d2e31a892fa55ba7f8aa57"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -4899,6 +4899,7 @@ metadata:
     openshift.io/required-scc: noobaa-core
   name: noobaa-agent
 spec:
+  serviceAccountName: noobaa-core
   containers:
     - name: noobaa-agent
       image: NOOBAA_CORE_IMAGE
