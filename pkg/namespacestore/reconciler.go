@@ -62,9 +62,9 @@ type Reconciler struct {
 	Secret         *corev1.Secret
 	ServiceAccount *corev1.ServiceAccount
 
-	SystemInfo             *nb.SystemInfo
-	ExternalConnectionInfo *nb.ExternalConnectionInfo
-	NamespaceResourceinfo  *nb.NamespaceResourceInfo
+	SystemInfo              *nb.SystemInfo
+	ExternalConnectionInfo  *nb.ExternalConnectionInfo
+	NamespaceResourceinfo   *nb.NamespaceResourceInfo
 
 	AddExternalConnectionParams    *nb.AddExternalConnectionParams
 	CreateNamespaceResourceParams  *nb.CreateNamespaceResourceParams
@@ -384,17 +384,22 @@ func (r *Reconciler) ReconcileDeletion(systemFound bool) error {
 			}
 		}
 
-		if r.ExternalConnectionInfo != nil {
-			// TODO we cannot assume we are the only one using this connection...
-			err := r.NBClient.DeleteExternalConnectionAPI(nb.DeleteExternalConnectionParams{Name: r.ExternalConnectionInfo.Name})
+		if r.NBClient != nil && r.NamespaceStore.Spec.Type != nbv1.NSStoreTypeNSFS {
+			hasOwned, err := r.hasOwnedExternalConnection()
 			if err != nil {
-				if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
-					if rpcErr.RPCCode != "IN_USE" {
+				return err
+			}
+			if hasOwned {
+				err := r.NBClient.DeleteExternalConnectionAPI(nb.DeleteExternalConnectionParams{Name: r.NamespaceStore.Name})
+				if err != nil {
+					if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
+						if rpcErr.RPCCode != "IN_USE" {
+							return err
+						}
+						r.Logger.Warnf("DeleteExternalConnection cannot complete because it is IN_USE %q", r.NamespaceStore.Name)
+					} else {
 						return err
 					}
-					r.Logger.Warnf("DeleteExternalConnection cannot complete because it is IN_USE %q", r.ExternalConnectionInfo.Name)
-				} else {
-					return err
 				}
 			}
 		}
@@ -402,6 +407,22 @@ func (r *Reconciler) ReconcileDeletion(systemFound bool) error {
 
 	r.Logger.Infof("NamepsaceStore %q remove finalizer", r.NamespaceStore.Name)
 	return r.FinalizeDeletion()
+}
+
+// hasOwnedExternalConnection checks list_accounts for an external connection named like this NamespaceStore
+func (r *Reconciler) hasOwnedExternalConnection() (bool, error) {
+	accountsList, err := r.NBClient.ListAccountsAPI(nb.ListAccountsParams{})
+	if err != nil {
+		return false, err
+	}
+	for _, account := range accountsList.Accounts {
+		for i := range account.ExternalConnections.Connections {
+			if account.ExternalConnections.Connections[i].Name == r.NamespaceStore.Name {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 // FinalizeDeletion removed the finalizer and updates in order to let the namespace-store get reclaimed by kubernetes
@@ -438,6 +459,10 @@ func (r *Reconciler) ReadSystemInfo() error {
 			r.NamespaceResourceinfo = nsr
 			break
 		}
+	}
+
+	if r.NamespaceStore.DeletionTimestamp != nil {
+		return nil
 	}
 
 	nsr := r.NamespaceResourceinfo
@@ -493,8 +518,12 @@ func (r *Reconciler) ReadSystemInfo() error {
 		account := &r.SystemInfo.Accounts[i]
 		for j := range account.ExternalConnections.Connections {
 			c := &account.ExternalConnections.Connections[j]
+			endpointsEqual, epErr := validations.EndpointsEquivalent(c.Endpoint, conn.Endpoint)
+			if epErr != nil {
+				return epErr
+			}
 			if c.EndpointType == conn.EndpointType &&
-				c.Endpoint == conn.Endpoint &&
+				endpointsEqual &&
 				c.Identity == string(conn.Identity) {
 				r.ExternalConnectionInfo = c
 				conn.Name = c.Name
@@ -752,7 +781,7 @@ func (r *Reconciler) fixAlternateKeysNames() {
 // ReconcileExternalConnection handles the external connection using noobaa api
 func (r *Reconciler) ReconcileExternalConnection() error {
 
-	if r.ExternalConnectionInfo != nil {
+	if r.ExternalConnectionInfo != nil && r.UpdateExternalConnectionParams == nil {
 		return nil
 	}
 
