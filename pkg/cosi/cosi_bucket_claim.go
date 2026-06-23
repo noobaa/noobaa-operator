@@ -295,7 +295,7 @@ func WaitReady(cosiBucketClaim *nbv1.COSIBucketClaim) bool {
 	retries := 0
 	err := wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		if retries == maxRetries {
-			return false, fmt.Errorf("COSI bucket claim is not ready after max retries - %q", maxRetries)
+			return false, fmt.Errorf("COSI bucket claim is not ready after max retries - %d", maxRetries)
 		}
 		retries++
 		err := klient.Get(util.Context(), util.ObjectKey(cosiBucketClaim), cosiBucketClaim)
