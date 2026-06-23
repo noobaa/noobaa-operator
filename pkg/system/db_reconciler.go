@@ -298,8 +298,10 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 	if r.CNPGCluster.Spec.Monitoring == nil {
 		r.CNPGCluster.Spec.Monitoring = &cnpgv1.MonitoringConfiguration{}
 	}
-	r.CNPGCluster.Spec.Monitoring.EnablePodMonitor = disableMonStr != "true"
-	r.CNPGCluster.Spec.Monitoring.TLSConfig = &cnpgv1.ClusterMonitoringTLSConfiguration{
+
+	// TODO: This is deprecated and will be ignored in future versions. migrate to manually managed PodMonitor
+	r.CNPGCluster.Spec.Monitoring.EnablePodMonitor = disableMonStr != "true"             //nolint:staticcheck // SA1019 ignore deprecation
+	r.CNPGCluster.Spec.Monitoring.TLSConfig = &cnpgv1.ClusterMonitoringTLSConfiguration{ //nolint:staticcheck // SA1019 ignore deprecation
 		Enabled: true,
 	}
 
