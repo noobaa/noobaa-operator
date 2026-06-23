@@ -1948,6 +1948,8 @@ spec:
                 - default
                 - mixed-workload
                 - small-objects
+                - dev-env
+                - mini-env
                 type: string
               pvPoolDefaultStorageClass:
                 description: |-

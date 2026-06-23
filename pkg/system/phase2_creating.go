@@ -783,8 +783,8 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				c.Image = r.NooBaa.Status.ActualImage
 			}
 
-			if r.NooBaa.Spec.LogResources != nil {
-				c.Resources = *r.NooBaa.Spec.LogResources
+			if logResources := getLogResources(r.NooBaa); logResources != nil {
+				c.Resources = *logResources
 			} else {
 				var reqCPU, reqMem resource.Quantity
 				reqCPU, _ = resource.ParseQuantity("200m")

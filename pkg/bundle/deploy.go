@@ -1511,7 +1511,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "ad028fe4d9fedbfb0fb4d4369e605e1cf6b56d69f6b5bb6d760341c5673509e5"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "88be0872b57677c437aeb656eac747cd13871d9b2733d41b0b2ec5b2d4ea7603"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3463,6 +3463,8 @@ spec:
                 - default
                 - mixed-workload
                 - small-objects
+                - dev-env
+                - mini-env
                 type: string
               pvPoolDefaultStorageClass:
                 description: |-
