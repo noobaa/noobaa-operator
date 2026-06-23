@@ -111,6 +111,50 @@ var _ = Describe("CLI tests", func() {
 		})
 	})
 
+	Context("Noobaa system oidc CLI", func() {
+		It("system oidc --help shows keycloak configuration options", func() {
+			out, err := RunCLI("system", "oidc", "--help")
+			Expect(err).To(BeNil())
+			Expect(out).To(ContainSubstring("--type"))
+			Expect(out).To(ContainSubstring("--configure"))
+			Expect(out).To(ContainSubstring("keycloak"))
+			Expect(out).To(ContainSubstring("file://"))
+		})
+
+		It("system oidc rejects unsupported provider type", func() {
+			out, err := RunCLI("system", "oidc", "--type", "unsupported", "--configure", `{}`)
+			Expect(err).NotTo(BeNil())
+			Expect(out).To(ContainSubstring("Unsupported OIDC provider type"))
+		})
+
+		It("system oidc rejects invalid JSON configuration", func() {
+			out, err := RunCLI("system", "oidc", "--type", "keycloak", "--configure", `{invalid`)
+			Expect(err).NotTo(BeNil())
+			Expect(out).To(ContainSubstring("not valid JSON"))
+		})
+
+		It("system oidc rejects empty provider in configuration", func() {
+			out, err := RunCLI("system", "oidc", "--type", "keycloak", "--configure", `{"providers":[{}]}`)
+			Expect(err).NotTo(BeNil())
+			Expect(out).To(ContainSubstring("provider[0] is empty"))
+		})
+
+		It("system oidc rejects provider with multiple missing fields", func() {
+			out, err := RunCLI("system", "oidc", "--type", "keycloak", "--configure",
+				`{"providers":[{"issuer":"example.com/realms/r"}]}`)
+			Expect(err).NotTo(BeNil())
+			Expect(out).To(ContainSubstring("provider[0] is missing required fields:"))
+			Expect(out).To(ContainSubstring("client_id"))
+			Expect(out).To(ContainSubstring("client_secret"))
+		})
+
+		It("system oidc rejects missing configuration file", func() {
+			out, err := RunCLI("system", "oidc", "--type", "keycloak", "--configure", "file:///tmp/noobaa-missing-keycloak-config.json")
+			Expect(err).NotTo(BeNil())
+			Expect(out).To(ContainSubstring("failed to read configuration file"))
+		})
+	})
+
 	Context("Noobaa CLI commands related to GCP", func() {
 		It("backingstore create google-cloud-storage --help shows GCP options", func() {
 			out, err := RunCLI("backingstore", "create", "google-cloud-storage", "--help")
