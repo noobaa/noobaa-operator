@@ -234,8 +234,9 @@ type GoogleCloudStorageSpec struct {
 	// TargetBucket is the name of the target S3 bucket
 	TargetBucket string `json:"targetBucket"`
 
-	// Secret refers to a secret that provides the credentials
-	// The secret should define GoogleServiceAccountPrivateKeyJson containing the entire json string as provided by Google.
+	// Secret refers to a secret that provides the credentials.
+	// For classic google-cloud-storage, define GoogleServiceAccountPrivateKeyJson (service_account JSON).
+	// For GCP WIF (STS), define GoogleCredentialsJson (external_account JSON).
 	Secret corev1.SecretReference `json:"secret"`
 }
 

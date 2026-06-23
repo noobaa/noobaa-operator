@@ -298,7 +298,7 @@ spec:
 
 `
 
-const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "e6b5ca2577838c95674c0e36b673bde5816c8bf80d7edb240da7e6918cb346ab"
+const Sha256_deploy_crds_noobaa_io_backingstores_yaml = "86a2cc60a53782e3eaab5ecc236f4219c9f32d36c713949c53b43fd6c932833b"
 
 const File_deploy_crds_noobaa_io_backingstores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -433,8 +433,9 @@ spec:
                 properties:
                   secret:
                     description: |-
-                      Secret refers to a secret that provides the credentials
-                      The secret should define GoogleServiceAccountPrivateKeyJson containing the entire json string as provided by Google.
+                      Secret refers to a secret that provides the credentials.
+                      For classic google-cloud-storage, define GoogleServiceAccountPrivateKeyJson (service_account JSON).
+                      For GCP WIF (STS), define GoogleCredentialsJson (external_account JSON).
                     properties:
                       name:
                         description: name is unique within a namespace to reference
@@ -975,7 +976,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "771b9b6a9da4a926d8f22e3d129c339eea0edff563f4d7494a278179aae86fca"
+const Sha256_deploy_crds_noobaa_io_namespacestores_yaml = "25ae97238bab92188947130a2d883af7ea6fba1b0e209c8c2b6105b0d39f5152"
 
 const File_deploy_crds_noobaa_io_namespacestores_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -1118,8 +1119,9 @@ spec:
                 properties:
                   secret:
                     description: |-
-                      Secret refers to a secret that provides the credentials
-                      The secret should define GoogleServiceAccountPrivateKeyJson containing the entire json string as provided by Google.
+                      Secret refers to a secret that provides the credentials.
+                      For classic google-cloud-storage, define GoogleServiceAccountPrivateKeyJson (service_account JSON).
+                      For GCP WIF (STS), define GoogleCredentialsJson (external_account JSON).
                     properties:
                       name:
                         description: name is unique within a namespace to reference
@@ -1509,7 +1511,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "7abaa6838d2c6b96fe7f2c337447bfbbcb0109ec12f84048c1026b54d57c0528"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "ad028fe4d9fedbfb0fb4d4369e605e1cf6b56d69f6b5bb6d760341c5673509e5"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3011,8 +3013,9 @@ spec:
                     properties:
                       secret:
                         description: |-
-                          Secret refers to a secret that provides the credentials
-                          The secret should define GoogleServiceAccountPrivateKeyJson containing the entire json string as provided by Google.
+                          Secret refers to a secret that provides the credentials.
+                          For classic google-cloud-storage, define GoogleServiceAccountPrivateKeyJson (service_account JSON).
+                          For GCP WIF (STS), define GoogleCredentialsJson (external_account JSON).
                         properties:
                           name:
                             description: name is unique within a namespace to reference

@@ -142,7 +142,7 @@ func CmdCreateGoogleCloudStorage() *cobra.Command {
 	)
 	cmd.Flags().String(
 		"secret-name", "",
-		`The name of a secret for authentication - should have GoogleServiceAccountPrivateKeyJson property`,
+		`The name of a secret for authentication - should have `+util.GoogleServiceAccountPrivateKeyJson+` property`,
 	)
 	return cmd
 }
@@ -565,7 +565,7 @@ func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 	createCommon(cmd, args, nbv1.NSStoreTypeGoogleCloudStorage, func(namespaceStore *nbv1.NamespaceStore, secret *corev1.Secret) {
 		targetBucket := util.GetFlagStringOrPrompt(cmd, "target-bucket")
 		secretName, _ := cmd.Flags().GetString("secret-name")
-		mandatoryProperties := []string{"GoogleServiceAccountPrivateKeyJson"}
+		mandatoryProperties := []string{util.GoogleServiceAccountPrivateKeyJson}
 
 		if secretName == "" {
 			privateKeyJSONFile := util.GetFlagStringOrPrompt(cmd, "private-key-json-file")
@@ -578,7 +578,7 @@ func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 			if err != nil {
 				log.Fatalf("Failed to parse json file %q: %v", privateKeyJSONFile, err)
 			}
-			secret.StringData["GoogleServiceAccountPrivateKeyJson"] = string(bytes)
+			secret.StringData[util.GoogleServiceAccountPrivateKeyJson] = string(bytes)
 		} else {
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
 			secret.Name = secretName
