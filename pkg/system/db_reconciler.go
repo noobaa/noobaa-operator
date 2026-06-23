@@ -295,7 +295,7 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 	if r.CNPGCluster.Spec.Monitoring == nil {
 		r.CNPGCluster.Spec.Monitoring = &cnpgv1.MonitoringConfiguration{}
 	}
-	r.CNPGCluster.Spec.Monitoring.EnablePodMonitor = disableMonStr != "true"
+	r.CNPGCluster.Spec.Monitoring.EnablePodMonitor = disableMonStr != "true" //nolint:staticcheck // SA1019 ignore
 
 	r.CNPGCluster.Spec.FailoverDelay = defaultFailoverDelaySec
 
