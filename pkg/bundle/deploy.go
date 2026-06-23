@@ -7329,7 +7329,7 @@ rules:
       - namespacestores
 `
 
-const Sha256_deploy_scc_yaml = "baa4d3a3def2d63a5d9e53bc4fc1ac961f9b4fe5172db7118d1529caa14e2191"
+const Sha256_deploy_scc_yaml = "c8fe9f46a54e07bb16d263047689d956a3b3d1d3988dbc09dd0d51d60913cc16"
 
 const File_deploy_scc_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -7344,6 +7344,8 @@ seLinuxContext:
 supplementalGroups:
   type: RunAsAny
 readOnlyRootFilesystem: true
+seccompProfiles:
+  - runtime/default
 `
 
 const Sha256_deploy_scc_core_yaml = "dd3fb26a323dddbbb9f399b8ff86c41dbbfe63b3bbb0cfe79b785c68948063a8"
