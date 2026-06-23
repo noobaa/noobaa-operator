@@ -555,7 +555,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 // LoadNamespaceStoreSecret loads the secret to the reconciler struct
 func (r *Reconciler) LoadNamespaceStoreSecret() error {
 	// Skip loading for AWS STS (no secret). For Azure STS use IsAzureSTSClusterNS(); load secret when it has a ref (TenantId/AccountName in secret).
-	if util.IsSTSClusterNS(r.NamespaceStore) {
+	if util.IsAWSSTSClusterNS(r.NamespaceStore) {
 		return nil
 	}
 	if util.IsAzureSTSClusterNS(r.NamespaceStore) && (r.NamespaceStore.Spec.AzureBlob == nil || r.NamespaceStore.Spec.AzureBlob.Secret.Name == "") {
@@ -624,7 +624,7 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 	switch r.NamespaceStore.Spec.Type {
 
 	case nbv1.NSStoreTypeAWSS3:
-		if util.IsSTSClusterNS(r.NamespaceStore) {
+		if util.IsAWSSTSClusterNS(r.NamespaceStore) {
 			conn.EndpointType = nb.EndpointTypeAwsSTS
 			conn.AWSSTSARN = *r.NamespaceStore.Spec.AWSS3.AWSSTSRoleARN
 		} else {
@@ -744,7 +744,7 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		return nil, util.NewPersistentError("InvalidType",
 			fmt.Sprintf("Invalid namespace store type %q", r.NamespaceStore.Spec.Type))
 	}
-	if util.IsSTSClusterNS(r.NamespaceStore) || util.IsAzureSTSClusterNS(r.NamespaceStore) {
+	if util.IsAWSSTSClusterNS(r.NamespaceStore) || util.IsAzureSTSClusterNS(r.NamespaceStore) {
 		if !util.IsStringGraphicOrSpacesCharsOnly(string(conn.Identity)) || !util.IsStringGraphicOrSpacesCharsOnly(string(conn.Secret)) {
 			return nil, util.NewPersistentError("InvalidSecret",
 				fmt.Sprintf("Invalid secret containing non graphic characters (perhaps not base64 encoded?) %q", r.Secret.Name))

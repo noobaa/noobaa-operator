@@ -86,10 +86,6 @@ func CmdAnalyzeBackingStore() *cobra.Command {
 		Short: "Analyze backingstore",
 		Run:   RunAnalyzeBackingStore,
 	}
-	cmd.Flags().String(
-		"bucket", "",
-		"The bucket name on the cloud",
-	)
 	cmd.Flags().String("job-resources", "", "Analyze job resources JSON")
 	cmd.Flags().String("dir", "", "collect analyze resource tar file into destination directory")
 	return cmd
@@ -102,10 +98,6 @@ func CmdAnalyzeNamespaceStore() *cobra.Command {
 		Short: "Analyze namespacestore",
 		Run:   RunAnalyzeNamespaceStore,
 	}
-	cmd.Flags().String(
-		"bucket", "",
-		"The bucket name on the cloud",
-	)
 	cmd.Flags().String("job-resources", "", "Analyze job resources JSON")
 	cmd.Flags().String("dir", "", "collect analyze resource tar file into destination directory")
 	return cmd

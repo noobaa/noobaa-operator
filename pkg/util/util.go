@@ -1192,16 +1192,16 @@ func IsFusionHCIWithScale() bool {
 	return fusionHCIWithScale
 }
 
-// IsSTSClusterBS returns true if it is running on an STS cluster
-func IsSTSClusterBS(bs *nbv1.BackingStore) bool {
+// IsAWSSTSClusterBS returns true if it is running on an STS cluster
+func IsAWSSTSClusterBS(bs *nbv1.BackingStore) bool {
 	if bs.Spec.Type == nbv1.StoreTypeAWSS3 {
 		return bs.Spec.AWSS3.AWSSTSRoleARN != nil
 	}
 	return false
 }
 
-// IsSTSClusterNS returns true if the namespace store uses AWS STS (short-lived credentials). For Azure STS use IsAzureSTSClusterNS().
-func IsSTSClusterNS(ns *nbv1.NamespaceStore) bool {
+// IsAWSSTSClusterNS returns true if the namespace store uses AWS STS (short-lived credentials). For Azure STS use IsAzureSTSClusterNS().
+func IsAWSSTSClusterNS(ns *nbv1.NamespaceStore) bool {
 	if ns.Spec.Type == nbv1.NSStoreTypeAWSS3 {
 		return ns.Spec.AWSS3.AWSSTSRoleARN != nil
 	}
@@ -1220,6 +1220,55 @@ func IsAzureSTSClusterBS(bs *nbv1.BackingStore) bool {
 func IsAzureSTSClusterNS(ns *nbv1.NamespaceStore) bool {
 	if ns.Spec.Type == nbv1.NSStoreTypeAzureBlob && ns.Spec.AzureBlob != nil {
 		return ns.Spec.AzureBlob.ClientId != nil
+	}
+	return false
+}
+
+// isGoogleSTSClusterStore is a helper function that checks if a store uses GCP WIF (STS) (short-lived credentials).
+func isGoogleSTSClusterStore(isGoogleCloudStorage bool, secretRef *corev1.SecretReference, err error) bool {
+	if !isGoogleCloudStorage {
+		return false
+	}
+	if err != nil || secretRef == nil || secretRef.Name == "" {
+		return false
+	}
+	secret, err := GetSecretFromSecretReference(secretRef)
+	if err != nil {
+		return false
+	}
+	return isGoogleSTSSecret(secret)
+}
+
+// IsGoogleSTSClusterBS returns true if the backing store uses GCP WIF (STS) (short-lived credentials).
+func IsGoogleSTSClusterBS(bs *nbv1.BackingStore) bool {
+	isGoogleCloudStorage := bs.Spec.Type == nbv1.StoreTypeGoogleCloudStorage && bs.Spec.GoogleCloudStorage != nil
+	secretRef, err := GetBackingStoreSecret(bs)
+	return isGoogleSTSClusterStore(isGoogleCloudStorage, secretRef, err)
+}
+
+// IsGoogleSTSClusterNS returns true if the namespace store uses GCP WIF (STS) (short-lived credentials).
+func IsGoogleSTSClusterNS(ns *nbv1.NamespaceStore) bool {
+	isGoogleCloudStorage := ns.Spec.Type == nbv1.NSStoreTypeGoogleCloudStorage && ns.Spec.GoogleCloudStorage != nil
+	secretRef, err := GetNamespaceStoreSecret(ns)
+	return isGoogleSTSClusterStore(isGoogleCloudStorage, secretRef, err)
+}
+
+// isGoogleSTSSecret returns true if the secret contains a GCP WIF (STS) (short-lived credentials).
+func isGoogleSTSSecret(secret *corev1.Secret) bool {
+	if secret == nil {
+		return false
+	}
+	if wifJSON := secretDataString(secret, GoogleCredentialsJson); wifJSON != "" {
+		isExternalAccount, _, err := ParseGoogleCredentials(wifJSON)
+		if err == nil && isExternalAccount {
+			return true
+		}
+	}
+	if keyJSON := secretDataString(secret, GoogleServiceAccountPrivateKeyJson); keyJSON != "" {
+		isExternalAccount, _, err := ParseGoogleCredentials(keyJSON)
+		if err == nil && isExternalAccount {
+			return true
+		}
 	}
 	return false
 }
@@ -2645,4 +2694,19 @@ func OnSignal(cb func(), signals ...os.Signal) {
 	<-signalChan
 
 	cb()
+}
+
+// secretDataString returns a secret data value by key from StringData or Data.
+// Kubernetes API reads populate Data only; callers that use KubeCheck also populate StringData.
+func secretDataString(secret *corev1.Secret, key string) string {
+	if secret == nil {
+		return ""
+	}
+	if v := secret.StringData[key]; v != "" {
+		return v
+	}
+	if v, ok := secret.Data[key]; ok {
+		return string(v)
+	}
+	return ""
 }
