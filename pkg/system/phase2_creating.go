@@ -214,9 +214,25 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 			if numRunningPods != 0 {
 				return fmt.Errorf("waiting for noobaa-core and noobaa-endpoint pods to be terminated before upgrade. %d pods are still running", numRunningPods)
 			}
+		// when enabling core HA on a running system, stop core pods before creating the lease.
+		} else if needsCoreStoppedBeforeHAEnable(r) {
+			numRunningPods, err := r.stopCorePodsAndGetNumRunning()
+			if err != nil {
+				return fmt.Errorf("got error stopping noobaa-core pods before enabling HA. error: %v", err)
+			}
+			if numRunningPods != 0 {
+				return fmt.Errorf("waiting for noobaa-core pods to be terminated before enabling HA. %d pods are still running", numRunningPods)
+			}
 		}
 	}
 
+	if isCoreHAEnabled(r.NooBaa) {
+		if err := r.ReconcileObject(r.CoreLease, r.SetDesiredCoreLease); err != nil {
+			return err
+		}
+	} else if util.KubeCheckQuiet(r.CoreLease) {
+		util.KubeDelete(r.CoreLease)
+	}
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}
@@ -597,7 +613,12 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			c.Env[j].Value = postgresSecretMountPath + "/host"
 		case "POSTGRES_CONNECTION_STRING_PATH":
 			c.Env[j].Value = postgresSecretMountPath + "/db_url"
-
+		case "NOOBAA_CORE_LEASE_NAME":
+			if isCoreHAEnabled(r.NooBaa) {
+				c.Env[j].Value = r.CoreLease.Name
+			} else {
+				c.Env[j].Value = ""
+			}
 		case "NODE_EXTRA_CA_CERTS":
 			c.Env[j].Value = r.ApplyCAsToPods
 		case "GUARANTEED_LOGS_PATH":
@@ -659,6 +680,8 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 		oneReplica := int32(1)
 		r.CoreApp.Spec.Replicas = &oneReplica
 	}
+	desiredCoreReplicas := getDesiredCoreReplicas(r.NooBaa)
+	r.CoreApp.Spec.Replicas = &desiredCoreReplicas
 
 	// adding the missing Volumes from default podSpec
 	podSpec.Volumes = r.DefaultCoreApp.Volumes
@@ -1649,6 +1672,45 @@ func (r *Reconciler) RestartDbPods() error {
 			util.KubeDeleteNoPolling(&pod)
 		}
 	}
+	return nil
+}
+
+func isCoreHAEnabled(nooBaa *nbv1.NooBaa) bool {
+	return nooBaa.Spec.CoreHA != nil && *nooBaa.Spec.CoreHA
+}
+
+func isCoreLeaseConfiguredOnDeployed(r *Reconciler) bool {
+	for i := range r.CoreApp.Spec.Template.Spec.Containers {
+		c := &r.CoreApp.Spec.Template.Spec.Containers[i]
+		if c.Name != "core" {
+			continue
+		}
+		env := util.GetEnvVariable(&c.Env, "NOOBAA_CORE_LEASE_NAME")
+		return env != nil && env.Value != ""
+	}
+	return false
+}
+
+// needsCoreStoppedBeforeHAEnable reports whether the deployed core StatefulSet must be
+// scaled down before creating the lease and applying the HA pod template.
+func needsCoreStoppedBeforeHAEnable(r *Reconciler) bool {
+	return isCoreHAEnabled(r.NooBaa) && !isCoreLeaseConfiguredOnDeployed(r)
+}
+
+func getDesiredCoreReplicas(nooBaa *nbv1.NooBaa) int32 {
+	if isCoreHAEnabled(nooBaa) {
+		return options.CoreHAReplicaCount
+	}
+	return 1
+}
+
+// SetDesiredCoreLease updates the core Lease as desired for reconciling
+func (r *Reconciler) SetDesiredCoreLease() error {
+	if r.CoreLease.Labels == nil {
+		r.CoreLease.Labels = map[string]string{}
+	}
+	r.CoreLease.Labels["app"] = "noobaa"
+	r.CoreLease.Labels["noobaa-core-lease"] = r.Request.Name
 	return nil
 }
 

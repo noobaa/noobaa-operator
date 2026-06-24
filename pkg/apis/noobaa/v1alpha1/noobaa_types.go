@@ -101,6 +101,11 @@ type NooBaaSpec struct {
 	// +optional
 	CoreResources *corev1.ResourceRequirements `json:"coreResources,omitempty"`
 
+	// CoreHA (optional) enables noobaa-core high availability (2 replicas with Kubernetes lease leader election).
+	// When true, two core pods are used with lease leader election. When false or omitted, a single core pod is used.
+	// +optional
+	CoreHA *bool `json:"coreHA,omitempty"`
+
 	// CorePriorityClassName (optional) overrides the priority class for the core pod
 	// +optional
 	CorePriorityClassName string `json:"corePriorityClassName,omitempty"`

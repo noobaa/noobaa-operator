@@ -28,6 +28,7 @@ import (
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -73,6 +74,7 @@ type Reconciler struct {
 	NooBaa                    *nbv1.NooBaa
 	ServiceAccount            *corev1.ServiceAccount
 	CoreApp                   *appsv1.StatefulSet
+	CoreLease                 *coordinationv1.Lease
 	CoreAppConfig             *corev1.ConfigMap
 	DefaultCoreApp            *corev1.PodSpec
 	PostgresDBConf            *corev1.ConfigMap
@@ -160,6 +162,7 @@ func NewReconciler(
 		NooBaa:                    util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		ServiceAccount:            util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
 		CoreApp:                   util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
+		CoreLease:                 util.KubeObject(bundle.File_deploy_internal_lease_core_yaml).(*coordinationv1.Lease),
 		CoreAppConfig:             util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap),
 		PostgresDBConf:            util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap),
 		NooBaaPostgresDB:          util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet),
@@ -216,6 +219,7 @@ func NewReconciler(
 	r.NooBaa.Namespace = r.Request.Namespace
 	r.ServiceAccount.Namespace = r.Request.Namespace
 	r.CoreApp.Namespace = r.Request.Namespace
+	r.CoreLease.Namespace = r.Request.Namespace
 	r.CoreAppConfig.Namespace = r.Request.Namespace
 	r.PostgresDBConf.Namespace = r.Request.Namespace
 	r.NooBaaPostgresDB.Namespace = r.Request.Namespace
@@ -269,6 +273,7 @@ func NewReconciler(
 	r.NooBaa.Name = r.Request.Name
 	r.ServiceAccount.Name = r.Request.Name
 	r.CoreApp.Name = r.Request.Name + "-core"
+	r.CoreLease.Name = r.Request.Name + "-core-lease"
 	r.CoreAppConfig.Name = "noobaa-config"
 	r.NooBaaPostgresDB.Name = r.Request.Name + "-db-pg"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
@@ -756,6 +761,23 @@ func (r *Reconciler) isObjectUpdated(result controllerutil.OperationResult) bool
 // Own sets the object owner references to the noobaa system
 func (r *Reconciler) Own(obj metav1.Object) {
 	util.Panic(controllerutil.SetControllerReference(r.NooBaa, obj, r.Scheme))
+}
+
+// stopCorePodsAndGetNumRunning scales the core StatefulSet to 0 and returns the number of still-running core pods.
+func (r *Reconciler) stopCorePodsAndGetNumRunning() (int, error) {
+	zeroReplicas := int32(0)
+	if err := r.ReconcileObject(r.CoreApp, func() error {
+		r.CoreApp.Spec.Replicas = &zeroReplicas
+		return nil
+	}); err != nil {
+		r.Logger.Errorf("got error stopping noobaa-core pods. error: %v", err)
+		return -1, err
+	}
+	corePodsList := &corev1.PodList{}
+	if !util.KubeList(corePodsList, client.InNamespace(r.Request.Namespace), client.MatchingLabels{"noobaa-core": r.Request.Name}) {
+		return -1, fmt.Errorf("got error listing noobaa-core pods")
+	}
+	return len(corePodsList.Items), nil
 }
 
 // stopNoobaaPodsAndGetNumRunningPods stops the noobaa pods and returns the number of running pods

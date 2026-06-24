@@ -27,11 +27,11 @@ func (r *Reconciler) ReconcilePhaseConnecting() error {
 		r.CheckServiceStatus(r.ServiceMgmt, r.RouteMgmt, &r.NooBaa.Status.Services.ServiceMgmt, "mgmt-https")
 	}
 
-	// wait for noobaa core statefulset to be ready before proceeding
+	// wait for at least one ready core pod (HA: only the primary becomes Ready; standbys stay not Ready)
 	if r.CoreApp.Spec.Replicas == nil {
 		return fmt.Errorf("noobaa core statefulset replicas is nil, cannot proceed")
-	} else if r.CoreApp.Status.ReadyReplicas < *r.CoreApp.Spec.Replicas {
-		return fmt.Errorf("waiting for noobaa core pod to be ready, currently ready replicas: %d, expected: %d",
+	} else if r.CoreApp.Status.ReadyReplicas < 1 {
+		return fmt.Errorf("waiting for noobaa core pod to be ready, currently ready replicas: %d, expected: at least 1 (%d configured)",
 			r.CoreApp.Status.ReadyReplicas, *r.CoreApp.Spec.Replicas)
 	}
 

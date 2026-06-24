@@ -326,11 +326,28 @@ function check_core_config_map {
     check_change_debug_level_in_config_map
 }
 
+function get_running_core_pod {
+    ${kubectl} get pod -l noobaa-core=noobaa \
+        --field-selector=status.phase=Running \
+        -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+}
+
+function get_core_noobaa_log_level {
+    local core_pod
+    core_pod=$(get_running_core_pod)
+    if [ -z "${core_pod}" ]; then
+        return 1
+    fi
+    ${kubectl} exec "${core_pod}" -c core -- printenv NOOBAA_LOG_LEVEL 2>/dev/null
+}
+
 function check_change_debug_level_in_config_map {
     local cm_debug_level="all"
     local patch='{"data":{"NOOBAA_LOG_LEVEL":"all"}}'
     local timeout=0
-    local core_debug_level=$(kuberun silence exec noobaa-core-0 -- printenv NOOBAA_LOG_LEVEL)
+    local core_debug_level=""
+
+    core_debug_level=$(get_core_noobaa_log_level || true)
 
     kuberun silence patch configmap noobaa-config -p ${patch}
 
@@ -339,7 +356,7 @@ function check_change_debug_level_in_config_map {
         echo_time "💬  Waiting for NOOBAA_LOG_LEVEL core env var to match the noobaa-config"
         timeout=$((timeout+10))
         sleep 10
-        core_debug_level=$(kuberun silence exec noobaa-core-0 -- printenv NOOBAA_LOG_LEVEL)
+        core_debug_level=$(get_core_noobaa_log_level || true)
         if [ ${timeout} -ge 180 ] 
         then
             echo_time "❌  reached the timeout for waiting to the update"
