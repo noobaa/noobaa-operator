@@ -13,7 +13,7 @@ readOnlyRootFilesystem: false
 requiredDropCapabilities:
   - ALL
 fsGroup:
-  type: MustRunAs
+  type: RunAsAny
 runAsUser:
   type: RunAsAny
 seLinuxContext:

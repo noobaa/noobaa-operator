@@ -7348,7 +7348,7 @@ seccompProfiles:
   - runtime/default
 `
 
-const Sha256_deploy_scc_core_yaml = "dd3fb26a323dddbbb9f399b8ff86c41dbbfe63b3bbb0cfe79b785c68948063a8"
+const Sha256_deploy_scc_core_yaml = "199d32358dd2d16de5494458eb46ae4d932b0f3612608127c609a5256867903c"
 
 const File_deploy_scc_core_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -7365,7 +7365,7 @@ readOnlyRootFilesystem: false
 requiredDropCapabilities:
   - ALL
 fsGroup:
-  type: MustRunAs
+  type: RunAsAny
 runAsUser:
   type: RunAsAny
 seLinuxContext:
