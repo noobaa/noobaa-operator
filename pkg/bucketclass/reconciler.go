@@ -382,9 +382,57 @@ func (r *Reconciler) UpdateBucketClass(bucketNames []string) error {
 		}
 		util.KubeUpdate(r.BucketClass)
 		return util.NewPersistentError("InvalidConfReverting", fmt.Sprintf("Unable to change bucketclass due to error: %v", result.ErrorMessage))
-		// return fmt.Errorf("Failed to update bucket class %q with error: %v - Reverting back", r.BucketClass.Name, result.ErrorMessage)
+	}
+
+	if err := r.updateArchivePolicyForExistingBuckets(bucketNames); err != nil {
+		return err
 	}
 
 	log.Infof("✅ Successfully updated bucket class %q", r.BucketClass.Name)
+	return nil
+}
+
+// updateArchivePolicyForExistingBuckets applies the BucketClass archive policy to
+// existing buckets that do not yet have one. Per the update semantics:
+//   - Adding an archive policy to a BucketClass that had none affects existing buckets.
+//   - Changing or removing an existing archive policy only affects new OBCs.
+//
+// To distinguish these cases without access to the old BucketClass spec, we read each
+// bucket and only apply the archive policy when the bucket has no archive policy set.
+func (r *Reconciler) updateArchivePolicyForExistingBuckets(bucketNames []string) error {
+	if r.BucketClass.Spec.ArchivePolicy == nil {
+		return nil
+	}
+
+	log := r.Logger
+	archiveResource := r.BucketClass.Spec.ArchivePolicy.DeepArchiveResource
+	if archiveResource == "" {
+		return nil
+	}
+
+	for _, bucketName := range bucketNames {
+		bucketInfo, err := r.NBClient.ReadBucketAPI(nb.ReadBucketParams{Name: bucketName})
+		if err != nil {
+			return fmt.Errorf("failed to read bucket %q for archive policy update: %w", bucketName, err)
+		}
+
+		if bucketInfo.ArchivePolicy != nil {
+			log.Infof("Bucket %q already has an archive policy, skipping (change/removal only affects new OBCs)", bucketName)
+			continue
+		}
+
+		err = r.NBClient.UpdateBucketAPI(nb.CreateBucketParams{
+			Name: bucketName,
+			ArchivePolicy: &nb.ArchivePolicyConfig{
+				DeepArchiveResource: &nb.NamespaceResourceFullConfig{
+					Resource: archiveResource,
+				},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to apply archive policy to bucket %q: %w", bucketName, err)
+		}
+		log.Infof("✅ Applied archive policy to existing bucket %q", bucketName)
+	}
 	return nil
 }

@@ -5,14 +5,15 @@ import (
 	"os"
 	"strconv"
 
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Cmd returns a CLI command
@@ -58,6 +59,10 @@ func CmdUpdate() *cobra.Command {
 		"Set quota max objects quantity config to requested bucket")
 	cmd.Flags().String("max-size", "",
 		"Set quota max size config to requested bucket")
+	cmd.Flags().String("deep-archive-resource", "",
+		"Set or update the deep archive NamespaceStore resource for the bucket's archive policy")
+	cmd.Flags().Bool("remove-archive-policy", false,
+		"Remove the archive policy from the bucket")
 	return cmd
 }
 
@@ -151,17 +156,28 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	}
 	maxSize, _ := cmd.Flags().GetString("max-size")
 	maxObjects, _ := cmd.Flags().GetString("max-objects")
+	deepArchiveResource, _ := cmd.Flags().GetString("deep-archive-resource")
+	removeArchivePolicy, _ := cmd.Flags().GetBool("remove-archive-policy")
+
+	if deepArchiveResource != "" && removeArchivePolicy {
+		log.Fatalf(`❌ Cannot use both --deep-archive-resource and --remove-archive-policy`)
+	}
 
 	updateParams := nb.CreateBucketParams{
 		Name:         bucketName,
 		ForceMd5Etag: forceMd5EtagPtr,
 	}
 
-	if maxSize != "" || maxObjects != "" {
-		bucketInfo, err := nbClient.ReadBucketAPI(nb.ReadBucketParams{Name: bucketName})
+	needBucketRead := maxSize != "" || maxObjects != ""
+	var bucketInfo nb.BucketInfo
+	if needBucketRead {
+		bucketInfo, err = nbClient.ReadBucketAPI(nb.ReadBucketParams{Name: bucketName})
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf(`❌ Could not read bucket %q: %v`, bucketName, err)
 		}
+	}
+
+	if maxSize != "" || maxObjects != "" {
 		quota, err := mergeQuotaForUpdate(bucketInfo.Quota, bucketName, maxSize, maxObjects)
 		if err != nil {
 			log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %q`, bucketName, err)
@@ -170,6 +186,30 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 			log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %v`, bucketName, err)
 		}
 		updateParams.Quota = &quota
+	}
+
+	if deepArchiveResource != "" {
+		archivePolicy, err := buildArchivePolicyForUpdate(deepArchiveResource)
+		if err != nil {
+			log.Fatal(err)
+		}
+		ns := &nbv1.NamespaceStore{
+			TypeMeta:   metav1.TypeMeta{Kind: "NamespaceStore"},
+			ObjectMeta: metav1.ObjectMeta{Name: deepArchiveResource, Namespace: options.Namespace},
+		}
+		if !util.KubeCheck(ns) {
+			log.Fatalf(`❌ Could not update bucket %q archive policy: NamespaceStore %q not found in namespace %q`,
+				bucketName, deepArchiveResource, options.Namespace)
+		}
+		if !util.IsArchiveNamespaceStore(ns) {
+			log.Fatalf(`❌ Could not update bucket %q archive policy: NamespaceStore %q must have spec.archive=true`,
+				bucketName, deepArchiveResource)
+		}
+		updateParams.ArchivePolicy = archivePolicy
+	}
+
+	if removeArchivePolicy {
+		updateParams.RemoveArchivePolicy = true
 	}
 
 	err = nbClient.UpdateBucketAPI(updateParams)
@@ -224,6 +264,12 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		fmt.Printf("  %-22s : %s\n", "ResiliencyStatus", b.PolicyModes.ResiliencyStatus)
 		fmt.Printf("  %-22s : %s\n", "QuotaStatus", b.PolicyModes.QuotaStatus)
 	}
+	if b.ArchivePolicy != nil && b.ArchivePolicy.DeepArchiveResource != nil {
+		fmt.Printf("  %-22s : %s\n", "Archive Resource", b.ArchivePolicy.DeepArchiveResource.Resource)
+		if b.ArchivePolicy.DeepArchiveResource.Path != "" {
+			fmt.Printf("  %-22s : %s\n", "Archive Path", b.ArchivePolicy.DeepArchiveResource.Path)
+		}
+	}
 	if b.Undeletable != "" {
 		fmt.Printf("  %-22s : %s\n", "Undeletable", b.Undeletable)
 	}
@@ -269,6 +315,15 @@ func RunList(cmd *cobra.Command, args []string) {
 	fmt.Printf("\n")
 	fmt.Print(table.String())
 	fmt.Printf("\n")
+}
+
+// buildArchivePolicyForUpdate returns the archive policy config for a bucket update.
+func buildArchivePolicyForUpdate(deepArchiveResource string) (*nb.ArchivePolicyConfig, error) {
+	return &nb.ArchivePolicyConfig{
+		DeepArchiveResource: &nb.NamespaceResourceFullConfig{
+			Resource: deepArchiveResource,
+		},
+	}, nil
 }
 
 func prepareQuotaConfig(bucketName string, maxSize string, maxObjects string) (nb.QuotaConfig, error) {
