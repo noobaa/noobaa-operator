@@ -341,13 +341,14 @@ type CreateSystemReply struct {
 
 // CreateBucketParams is the params of bucket_api.create_bucket() and bucket_api.update_bucket().
 type CreateBucketParams struct {
-	Name          string               `json:"name"`
-	Tiering       string               `json:"tiering,omitempty"`
-	ForceMd5Etag  *bool                `json:"force_md5_etag,omitempty"`
-	BucketClaim   *BucketClaimInfo     `json:"bucket_claim,omitempty"`
-	Namespace     *NamespaceBucketInfo `json:"namespace,omitempty"`
-	Quota         *QuotaConfig         `json:"quota,omitempty"`
-	ArchivePolicy *ArchivePolicyConfig `json:"archive_policy,omitempty"`
+	Name                string               `json:"name"`
+	Tiering             string               `json:"tiering,omitempty"`
+	ForceMd5Etag        *bool                `json:"force_md5_etag,omitempty"`
+	BucketClaim         *BucketClaimInfo     `json:"bucket_claim,omitempty"`
+	Namespace           *NamespaceBucketInfo `json:"namespace,omitempty"`
+	Quota               *QuotaConfig         `json:"quota,omitempty"`
+	ArchivePolicy       *ArchivePolicyConfig `json:"archive_policy,omitempty"`
+	RemoveArchivePolicy bool                 `json:"remove_archive_policy,omitempty"`
 }
 
 // QuotaConfig quota configuration
