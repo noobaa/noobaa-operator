@@ -262,7 +262,7 @@ type NooBaaSpec struct {
 	// settings for the core, db and endpoint components.
 	// Explicit per-component resource/count fields take precedence over the profile.
 	// +optional
-	// +kubebuilder:validation:Enum=default;mixed-workload;small-objects
+	// +kubebuilder:validation:Enum=default;mixed-workload;small-objects;dev-env;mini-env
 	PerformanceProfile PerformanceProfileType `json:"performanceProfile,omitempty"`
 }
 
@@ -894,4 +894,8 @@ const (
 	PerformanceProfileMixedWorkload PerformanceProfileType = "mixed-workload"
 	// PerformanceProfileSmallObjects is for small objects workload
 	PerformanceProfileSmallObjects PerformanceProfileType = "small-objects"
+	// PerformanceProfileDevEnv is for development environments with moderate resources
+	PerformanceProfileDevEnv PerformanceProfileType = "dev-env"
+	// PerformanceProfileMiniEnv is for low-resource environments with minimal footprint
+	PerformanceProfileMiniEnv PerformanceProfileType = "mini-env"
 )

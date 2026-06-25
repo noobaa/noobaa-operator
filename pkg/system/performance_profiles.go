@@ -10,6 +10,7 @@ import (
 
 type performanceProfile struct {
 	coreResources     corev1.ResourceRequirements
+	logResources      *corev1.ResourceRequirements
 	dbResources       corev1.ResourceRequirements
 	endpointResources corev1.ResourceRequirements
 	endpointMinCount  int32
@@ -59,6 +60,34 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 		dbInstances:       2,
 		pvPoolNumVolumes:  3,
 	},
+	nbv1.PerformanceProfileDevEnv: {
+		coreResources:     profileResources("500m", "500m", "1Gi", "1Gi"),
+		dbResources:       profileResources("1", "1", "2Gi", "2Gi"),
+		endpointResources: profileResources("500m", "500m", "500Mi", "500Mi"),
+		endpointMinCount:  1,
+		endpointMaxCount:  1,
+		dbInstances:       1,
+		pvPoolNumVolumes:  1,
+	},
+	nbv1.PerformanceProfileMiniEnv: {
+		coreResources: profileResources("100m", "100m", "1Gi", "1Gi"),
+		logResources: &corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("50m"),
+				corev1.ResourceMemory: resource.MustParse("200Mi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("50m"),
+				corev1.ResourceMemory: resource.MustParse("200Mi"),
+			},
+		},
+		dbResources:       profileResources("100m", "100m", "500Mi", "500Mi"),
+		endpointResources: profileResources("100m", "100m", "500Mi", "500Mi"),
+		endpointMinCount:  1,
+		endpointMaxCount:  1,
+		dbInstances:       1,
+		pvPoolNumVolumes:  1,
+	},
 }
 
 func lookupProfile(nb *nbv1.NooBaa) performanceProfile {
@@ -77,6 +106,13 @@ func getCoreResources(nb *nbv1.NooBaa) corev1.ResourceRequirements {
 		return *nb.Spec.CoreResources
 	}
 	return lookupProfile(nb).coreResources
+}
+
+func getLogResources(nb *nbv1.NooBaa) *corev1.ResourceRequirements {
+	if nb.Spec.LogResources != nil {
+		return nb.Spec.LogResources
+	}
+	return lookupProfile(nb).logResources
 }
 
 func getDBResources(nb *nbv1.NooBaa) corev1.ResourceRequirements {

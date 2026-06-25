@@ -76,7 +76,7 @@ var DBImage = "quay.io/sclorg/postgresql-16-c9s"
 var PostgresMajorVersion = 16
 
 // PostgresInstances is the default number of postgres instances in a managed postgres cluster
-var PostgresInstances = 2
+var PostgresInstances = 1
 
 // Psql12Image is the default postgres12 db image url
 // currently it can not be overridden.
@@ -187,7 +187,7 @@ var AWSSTSARN = ""
 var CnpgVersion = "1.27.0"
 
 // CnpgImage is the container image url of cloudnative-pg operator
-var CnpgImage = "quay.io/noobaa/cloudnative-pg-noobaa:v1.25.0"
+var CnpgImage = "quay.io/rhceph-dev/odf4-odf-cloudnative-pg-rhel9-operator:v4.22"
 
 // UseCnpgApiGroup indicates if the original CloudNativePG API group should be used for the installation manifests
 // Relevant for the CLI commands. during reconciliation we look at the env variable USE_CNPG_API_GROUP to determine
@@ -292,6 +292,10 @@ func init() {
 	FlagSet.IntVar(
 		&DBVolumeSizeGB, "db-volume-size-gb",
 		DBVolumeSizeGB, "The database volume size in GB",
+	)
+	FlagSet.IntVar(
+		&PostgresInstances, "postgres-instances",
+		PostgresInstances, "The number of postgres instances",
 	)
 	FlagSet.StringVar(
 		&DBStorageClass, "db-storage-class",
