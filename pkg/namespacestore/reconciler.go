@@ -712,17 +712,11 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 
 	case nbv1.NSStoreTypeGoogleCloudStorage:
 		conn.Endpoint = "https://www.googleapis.com"
-		var googleCredentialsJSON string
-		if wifCredentialsJSON := r.Secret.StringData[util.GoogleCredentialsJson]; wifCredentialsJSON != "" {
-			googleCredentialsJSON = wifCredentialsJSON
-		} else {
-			googleCredentialsJSON = r.Secret.StringData[util.GoogleServiceAccountPrivateKeyJson]
-			if googleCredentialsJSON == "" {
-				return nil, util.NewPersistentError("InvalidGoogleSecret", fmt.Sprintf(
-					"Invalid secret for google type %q expected JSON in data.GoogleCredentialsJson or data.GoogleServiceAccountPrivateKeyJson",
-					r.Secret.Name,
-				))
-			}
+		googleCredentialsJSON, err := util.GoogleCredentialsFromStoreSecret(r.Secret)
+		if err != nil {
+			return nil, util.NewPersistentError("InvalidGoogleSecret", fmt.Sprintf(
+				"Invalid google credentials secret: %v", err,
+			))
 		}
 
 		isGoogleExternalAccountJSON, identity, err := util.ParseGoogleCredentials(googleCredentialsJSON)

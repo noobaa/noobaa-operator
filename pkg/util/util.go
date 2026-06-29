@@ -102,6 +102,8 @@ const (
 	GoogleImpersonationURLPrefix = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/"
 	GoogleImpersonationURLSuffix = ":generateAccessToken"
 
+	gcpServiceAccountEmailSuffix = ".iam.gserviceaccount.com"
+
 	// GoogleServiceAccountPrivateKeyJson is the secret data key for classic GCP (service_account) credentials.
 	GoogleServiceAccountPrivateKeyJson = "GoogleServiceAccountPrivateKeyJson"
 	// GoogleCredentialsJson is the secret data key for GCP WIF (external_account) credentials.
@@ -147,6 +149,15 @@ var AccessKeyRegexp, _ = regexp.Compile(`^[a-zA-Z0-9]{20}$`)
 // SecretKeyRegexp validates secret keys, which are 40 characters long and may include alphanumeric characters '+' and '/'
 var SecretKeyRegexp, _ = regexp.Compile(`^[a-zA-Z0-9+/]{40}$`)
 
+var (
+	// project number should be a numeric string
+	gcpProjectNumberRegexp = regexp.MustCompile(`^[0-9]+$`)
+	// pool ID and provider ID contain only lowercase alphanumeric characters and dashes, and start and end with an alphanumeric character
+	gcpWIFPoolOrProviderIDRegexp = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{2,30}[a-z0-9])?$`)
+	// service account ID contains lowercase alphanumeric characters and dashes
+	gcpServiceAccountIDRegexp = regexp.MustCompile(`^[a-z]([-a-z0-9]*[a-z0-9])$`)
+)
+
 // IsValidationError check if err is of type ValidationError
 func IsValidationError(err error) bool {
 	_, ok := err.(ValidationError)
@@ -177,13 +188,13 @@ var (
 	// MapStorTypeToMandatoryProperties holds a map of store type -> credentials mandatory properties
 	// note that this map holds the mandatory properties for both backingstores and namespacestores
 	MapStorTypeToMandatoryProperties = map[string][]string{
-		"aws-s3":        {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},         // backingstores and namespacestores
-		"s3-compatible": {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},         // backingstores and namespacestores
-		"ibm-cos":       {"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"}, // backingstores and namespacestores
+		"aws-s3":               {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},              // backingstores and namespacestores
+		"s3-compatible":        {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},              // backingstores and namespacestores
+		"ibm-cos":              {"IBM_COS_ACCESS_KEY_ID", "IBM_COS_SECRET_ACCESS_KEY"},      // backingstores and namespacestores
 		"google-cloud-storage": {GoogleCredentialsJson, GoogleServiceAccountPrivateKeyJson}, // backingstores and namespacestores
-		"azure-blob": {"AccountName", "AccountKey"}, // backingstores and namespacestores
-		"pv-pool":    {},                            // backingstores
-		"nsfs":       {},                            // namespacestores
+		"azure-blob":           {"AccountName", "AccountKey"},                               // backingstores and namespacestores
+		"pv-pool":              {},                                                          // backingstores
+		"nsfs":                 {},                                                          // namespacestores
 	}
 )
 
@@ -1286,6 +1297,33 @@ func ParseGoogleCredentials(credentialsJSON string) (bool, string, error) {
 	return creds.Type == "external_account", identity, nil
 }
 
+// GoogleCredentialsFromStoreSecret returns GCP credentials JSON from a backing store or namespace store secret.
+// Exactly one of GoogleCredentialsJson (WIF) or GoogleServiceAccountPrivateKeyJson (classic) must be set.
+func GoogleCredentialsFromStoreSecret(secret *corev1.Secret) (string, error) {
+	if secret == nil {
+		return "", ValidationError{Msg: "invalid google secret: secret is nil"}
+	}
+	wifJSON := secretDataString(secret, GoogleCredentialsJson)
+	serviceAccountJSON := secretDataString(secret, GoogleServiceAccountPrivateKeyJson)
+	if wifJSON != "" && serviceAccountJSON != "" {
+		return "", ValidationError{Msg: fmt.Sprintf(
+			"secret %q in namespace %q must not contain both %q and %q; use %q for GCP WIF (STS) external_account or %q for service_account",
+			secret.Name, secret.Namespace, GoogleCredentialsJson, GoogleServiceAccountPrivateKeyJson,
+			GoogleCredentialsJson, GoogleServiceAccountPrivateKeyJson,
+		)}
+	}
+	if wifJSON != "" {
+		return wifJSON, nil
+	}
+	if serviceAccountJSON != "" {
+		return serviceAccountJSON, nil
+	}
+	return "", ValidationError{Msg: fmt.Sprintf(
+		"Invalid secret for google type %q in namespace %q expected JSON in data.GoogleCredentialsJson or data.GoogleServiceAccountPrivateKeyJson",
+		secret.Name, secret.Namespace,
+	)}
+}
+
 // googleIdentityFromCredentials returns the identity.
 // - For GCP (service_account type in JSON) - it uses private_key_id
 // - For GCP STS (external_account type in JSON) it uses the email from service_account_impersonation_url.
@@ -1338,11 +1376,8 @@ func BuildGoogleWIFCredentialsJSON(projectNumber, poolID, providerID, serviceAcc
 	providerID = strings.TrimSpace(providerID)
 	serviceAccountEmail = strings.TrimSpace(serviceAccountEmail)
 
-	if projectNumber == "" || poolID == "" || providerID == "" || serviceAccountEmail == "" {
-		return "", fmt.Errorf("project number, pool id, provider id, and service account email are required")
-	}
-	if !strings.Contains(serviceAccountEmail, "@") {
-		return "", fmt.Errorf("invalid service_account_impersonation_url: malformed service account email %q", serviceAccountEmail)
+	if err := ValidateGCPWIFParamFormats(projectNumber, poolID, providerID, serviceAccountEmail); err != nil {
+		return "", err
 	}
 
 	googleExternalAccountCredentialType := "external_account"
@@ -1369,18 +1404,131 @@ func BuildGoogleWIFCredentialsJSON(projectNumber, poolID, providerID, serviceAcc
 }
 
 // GcpProjectIDFromServiceAccountEmail returns the GCP project ID from a service account email
+// the format is: SERVICE_ACCOUNT_NAME@PROJECT_ID.iam.gserviceaccount.com
 // (e.g. "noobaa-wif-sa@my-project.iam.gserviceaccount.com" -> "my-project").
 func GcpProjectIDFromServiceAccountEmail(email string) (string, error) {
-	const suffix = ".iam.gserviceaccount.com"
 	at := strings.LastIndex(email, "@")
 	if at < 0 {
 		return "", fmt.Errorf("invalid GCP service account email %q", email)
 	}
-	projectID := strings.TrimSuffix(email[at+1:], suffix)
+	projectID := strings.TrimSuffix(email[at+1:], gcpServiceAccountEmailSuffix)
 	if projectID == "" {
 		return "", fmt.Errorf("invalid GCP service account email %q", email)
 	}
 	return projectID, nil
+}
+
+// ValidateGCPProjectNumber validates a GCP project number (numeric string, not project ID).
+func ValidateGCPProjectNumber(projectNumber, fieldName string) error {
+	projectNumber = strings.TrimSpace(projectNumber)
+	if projectNumber == "" {
+		return ValidationError{Msg: fmt.Sprintf("%s is required and must be non-empty", fieldName)}
+	}
+	if !gcpProjectNumberRegexp.MatchString(projectNumber) {
+		return ValidationError{Msg: fmt.Sprintf("%s must be a numeric GCP project number (digits only), not a project ID", fieldName)}
+	}
+	return nil
+}
+
+// ValidateGCPWIFPoolOrProviderID validates a GCP workload identity pool ID or provider ID
+func ValidateGCPWIFPoolOrProviderID(resourceID, fieldName string) error {
+	const (
+		minLen           = 4
+		maxLen           = 32
+		reservedIDPrefix = "gcp-"
+	)
+
+	resourceID = strings.TrimSpace(resourceID)
+	if resourceID == "" {
+		return ValidationError{Msg: fmt.Sprintf("%s is required and must be non-empty", fieldName)}
+	}
+	if len(resourceID) < minLen || len(resourceID) > maxLen {
+		return ValidationError{Msg: fmt.Sprintf("%s must be %d-%d characters", fieldName, minLen, maxLen)}
+	}
+	if strings.HasPrefix(resourceID, reservedIDPrefix) {
+		return ValidationError{Msg: fmt.Sprintf("%s must not start with %q (reserved by Google)", fieldName, reservedIDPrefix)}
+	}
+	if !gcpWIFPoolOrProviderIDRegexp.MatchString(resourceID) {
+		return ValidationError{Msg: fmt.Sprintf("%s must contain only lowercase letters, digits, and hyphens [a-z0-9-]", fieldName)}
+	}
+	return nil
+}
+
+// ValidateGCPServiceAccountEmail validates a user-managed GCP service account.
+func ValidateGCPServiceAccountEmail(email, fieldName string) error {
+	const (
+		accountIDMinLen = 6
+		accountIDMaxLen = 30
+	)
+
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return ValidationError{Msg: fmt.Sprintf("%s is required and must be non-empty", fieldName)}
+	}
+	if !strings.HasSuffix(email, gcpServiceAccountEmailSuffix) {
+		return ValidationError{Msg: fmt.Sprintf("%s must end with %q", fieldName, gcpServiceAccountEmailSuffix)}
+	}
+	if strings.Count(email, "@") != 1 {
+		return ValidationError{Msg: fmt.Sprintf("%s must be a valid GCP service account email (exactly one @)", fieldName)}
+	}
+
+	serviceAccountID, domain, ok := strings.Cut(email, "@")
+	if !ok || serviceAccountID == "" {
+		return ValidationError{Msg: fmt.Sprintf("%s must be a valid GCP service account email (missing service account ID)", fieldName)}
+	}
+	if strings.TrimSuffix(domain, gcpServiceAccountEmailSuffix) == "" {
+		return ValidationError{Msg: fmt.Sprintf("%s must be a valid GCP service account email (missing project ID)", fieldName)}
+	}
+	if len(serviceAccountID) < accountIDMinLen || len(serviceAccountID) > accountIDMaxLen {
+		return ValidationError{Msg: fmt.Sprintf("%s account ID must be %d-%d characters", fieldName, accountIDMinLen, accountIDMaxLen)}
+	}
+	if !gcpServiceAccountIDRegexp.MatchString(serviceAccountID) {
+		return ValidationError{Msg: fmt.Sprintf("%s must be a valid GCP service account email (account ID: lowercase letters, digits, hyphens)", fieldName)}
+	}
+	return nil
+}
+
+// ValidateGCPWIFParamFormats validates GCP WIF (STS) parameter formats.
+// All four parameters must be non-empty before calling this function.
+func ValidateGCPWIFParamFormats(projectNumber, poolID, providerID, serviceAccountEmail string) error {
+	if err := ValidateGCPProjectNumber(projectNumber, "project-number"); err != nil {
+		return err
+	}
+	if err := ValidateGCPWIFPoolOrProviderID(poolID, "pool-id"); err != nil {
+		return err
+	}
+	if err := ValidateGCPWIFPoolOrProviderID(providerID, "provider-id"); err != nil {
+		return err
+	}
+	if err := ValidateGCPServiceAccountEmail(serviceAccountEmail, "service-account-email"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ValidateGCPWIFParams validates completeness and format of GCP WIF (STS) parameters.
+// If any parameter is set, all four must be set and valid. If none are set, validation passes.
+func ValidateGCPWIFParams(projectNumber, poolID, providerID, serviceAccountEmail string) error {
+	count := 0
+	if projectNumber != "" {
+		count++
+	}
+	if poolID != "" {
+		count++
+	}
+	if providerID != "" {
+		count++
+	}
+	if serviceAccountEmail != "" {
+		count++
+	}
+	if count == 0 {
+		return nil
+	}
+	if count != 4 {
+		return ValidationError{Msg: "when any GCP WIF (STS) parameter is set, all four are required: project-number, pool-id, provider-id, service-account-email"}
+	}
+	return ValidateGCPWIFParamFormats(projectNumber, poolID, providerID, serviceAccountEmail)
 }
 
 // IsAzurePlatformNonGovernment returns true if this cluster is running on Azure and also not on azure government\DOD cloud
@@ -1689,6 +1837,40 @@ func IsStringGraphicOrSpacesCharsOnly(s string) bool {
 		}
 	}
 	return true
+}
+
+// ValidateGoogleCredentialsJSONType checks that credentials JSON is valid and matches
+// the expected type: service_account for long-lived creds, external_account for GCP WIF (STS).
+func ValidateGoogleCredentialsJSONType(credentialsJSON string, expectedSTS bool) error {
+	isSTS, _, err := ParseGoogleCredentials(credentialsJSON)
+	if err != nil {
+		return err
+	}
+	if expectedSTS && !isSTS {
+		return ValidationError{Msg: fmt.Sprintf("GCP credentials JSON type must be %q for WIF (STS)", "external_account")}
+	}
+	if !expectedSTS && isSTS {
+		return ValidationError{Msg: fmt.Sprintf("GCP credentials JSON type must be %q for long-lived credentials", "service_account")}
+	}
+	return nil
+}
+
+// VerifyGoogleCredentialsJSONTypeInSecret validates credential JSON type in an existing secret.
+// Call VerifyCredsInSecret first for existence and mandatory key checks.
+func VerifyGoogleCredentialsJSONTypeInSecret(secretName, namespace string, expectSTS bool) {
+	secret := KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret)
+	secret.Name = secretName
+	secret.Namespace = namespace
+	if !KubeCheck(secret) {
+		log.Fatalf("secret %q does not exist", secretName)
+	}
+	credentialsJSON, err := GoogleCredentialsFromStoreSecret(secret)
+	if err != nil {
+		log.Fatalf("❌ secret %q: %v", secret.Name, err)
+	}
+	if err := ValidateGoogleCredentialsJSONType(credentialsJSON, expectSTS); err != nil {
+		log.Fatalf("❌ secret %q: %v", secret.Name, err)
+	}
 }
 
 // VerifyCredsInSecret throws fatal error when a given secret doesn't contain the mandatory properties

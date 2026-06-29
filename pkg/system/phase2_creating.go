@@ -1180,12 +1180,11 @@ func (r *Reconciler) ReconcileGCPCredentials() error {
 			gcpProjectNumberEnvVar, projectNumber, gcpPoolIdEnvVar, poolId,
 			gcpProviderIdEnvVar, providerId, gcpServiceAccountEmailEnvVar, serviceAccountEmail,
 		)
-		if projectNumber != "" && poolId != "" && providerId != "" && serviceAccountEmail != "" {
-			r.IsGCPSTSCluster = true
-		} else {
-			r.Logger.Errorf("One or more required param missing for GCP WIF (STS)")
-			return fmt.Errorf("One or more required param missing for GCP WIF (STS)")
+		if err := util.ValidateGCPWIFParams(projectNumber, poolId, providerId, serviceAccountEmail); err != nil {
+			r.Logger.Errorf("Invalid GCP WIF (STS) parameters: %v", err)
+			return fmt.Errorf("invalid GCP WIF (STS) parameters: %w", err)
 		}
+		r.IsGCPSTSCluster = true
 	}
 
 	r.Logger.Info("Running on GCP. will create a CredentialsRequest resource")

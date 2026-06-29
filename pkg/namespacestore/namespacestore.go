@@ -578,9 +578,14 @@ func RunCreateGoogleCloudStorage(cmd *cobra.Command, args []string) {
 			if err != nil {
 				log.Fatalf("Failed to parse json file %q: %v", privateKeyJSONFile, err)
 			}
+			credentialsType, ok := privateKeyJSON["type"].(string)
+			if !ok || credentialsType != "service_account" {
+				log.Fatalf("GCP credentials JSON 'type' field must be a string with value %q", "service_account")
+			}
 			secret.StringData[util.GoogleServiceAccountPrivateKeyJson] = string(bytes)
 		} else {
 			util.VerifyCredsInSecret(secretName, options.Namespace, mandatoryProperties)
+			util.VerifyGoogleCredentialsJSONTypeInSecret(secretName, options.Namespace, false)
 			secret.Name = secretName
 			secret.Namespace = options.Namespace
 		}
