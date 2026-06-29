@@ -350,6 +350,52 @@ spec:
 type: azure-blob
 ```
 
+### GCP
+```shell
+noobaa backingstore create google-cloud-storage gcp-bs --target-bucket personal-bucket --private-key-json-file '/example/path'
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  labels:
+    app: noobaa
+  name: gcp-bs
+  namespace: app-namespace
+spec:
+  googleCloudStorage:
+    secret:
+      name: backing-store-google-cloud-storage-gcp-bs
+      namespace: secret-namespace
+    targetBucket: personal-bucket
+  type: google-cloud-storage
+```
+
+### GCP WIF (STS)
+```shell
+noobaa backingstore create google-cloud-storage-sts gcp-bs-sts --project-number='123456789' --pool-id='my-pool' --provider-id='my-provider' --service-account-email='noobaa-wif-sa@my-project.iam.gserviceaccount.com' --target-bucket personal-bucket
+```
+```yaml
+apiVersion: noobaa.io/v1alpha1
+kind: BackingStore
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  labels:
+    app: noobaa
+  name: gcp-bs-sts
+  namespace: app-namespace
+spec:
+  googleCloudStorage:
+    secret:
+      name: backing-store-google-cloud-storage-gcp-bs-sts
+      namespace: secret-namespace
+    targetBucket: personal-bucket
+  type: google-cloud-storage
+```
+
 ### Persistent Volume Pool
 ```shell
 noobaa backingstore create pv-pool pv-backingstore --num-volumes 3 --pv-size-gb 17 --storage-class local-path
