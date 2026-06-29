@@ -250,6 +250,10 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 		r.CNPGCluster.Spec.InheritedMetadata.Labels = map[string]string{}
 	}
 	r.CNPGCluster.Spec.InheritedMetadata.Labels["app"] = "noobaa"
+	if r.CNPGCluster.Spec.InheritedMetadata.Annotations == nil {
+		r.CNPGCluster.Spec.InheritedMetadata.Annotations = map[string]string{}
+	}
+	r.CNPGCluster.Spec.InheritedMetadata.Annotations[util.OpenShiftRequiredSCCAnnotation] = "restricted-v2"
 
 	// update the image catalog ref
 	desiredMajorVersion := getDesiredMajorVersion(dbSpec)
