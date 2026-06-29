@@ -10,6 +10,7 @@ import (
 	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	"github.com/go-test/deep"
 	storagesnapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
+	secv1 "github.com/openshift/api/security/v1"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/cnpg"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
@@ -253,7 +254,7 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 	if r.CNPGCluster.Spec.InheritedMetadata.Annotations == nil {
 		r.CNPGCluster.Spec.InheritedMetadata.Annotations = map[string]string{}
 	}
-	r.CNPGCluster.Spec.InheritedMetadata.Annotations[util.OpenShiftRequiredSCCAnnotation] = "restricted-v2"
+	r.CNPGCluster.Spec.InheritedMetadata.Annotations[secv1.RequiredSCCAnnotation] = "restricted-v2"
 
 	// update the image catalog ref
 	desiredMajorVersion := getDesiredMajorVersion(dbSpec)

@@ -376,7 +376,7 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	if NooBaaDB.Spec.Template.Annotations == nil {
 		NooBaaDB.Spec.Template.Annotations = make(map[string]string)
 	}
-	NooBaaDB.Spec.Template.Annotations[util.OpenShiftRequiredSCCAnnotation] = "noobaa-db"
+	NooBaaDB.Spec.Template.Annotations[secv1.RequiredSCCAnnotation] = "noobaa-db"
 	NooBaaDB.Spec.Template.Labels["noobaa-db"] = "postgres"
 	NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
 	NooBaaDB.Spec.ServiceName = r.ServiceDbPg.Name
@@ -847,7 +847,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	}
 
 	r.CoreApp.Spec.Template.Annotations["noobaa.io/configmap-hash"] = r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"]
-	r.CoreApp.Spec.Template.Annotations[util.OpenShiftRequiredSCCAnnotation] = "noobaa-core"
+	r.CoreApp.Spec.Template.Annotations[secv1.RequiredSCCAnnotation] = "noobaa-core"
 
 	// we want to check that the cm exists and also that it has data in it
 	if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
