@@ -18,11 +18,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.26"
 
       - name: Generate API
         run: make gen-api-fail-if-dirty --always-make
 
       - name: Run Tests
         run: make test
-
