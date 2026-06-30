@@ -1068,7 +1068,7 @@ func (r *Reconciler) fallbackToPVPoolWithEvent(backingStoreType nbv1.StoreType, 
 		backingStoreType, minutesToWaitForDefaultBSCreation, nbv1.StoreTypePVPool)
 	additionalInfoForLogs := fmt.Sprintf(" (could not get Secret %s).", secretName)
 	r.Logger.Info(message + additionalInfoForLogs)
-	r.Recorder.Event(r.NooBaa, corev1.EventTypeWarning, "DefaultBackingStoreFailure", message)
+	r.Recorder.Eventf(r.NooBaa, nil, corev1.EventTypeWarning, "DefaultBackingStoreFailure", "DefaultBackingStoreFailure", message)
 	if err := r.preparePVPoolBackingStore(); err != nil {
 		return err
 	}
@@ -1102,7 +1102,7 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 	// create the actual S3 bucket
 	region, err := util.GetAWSRegion()
 	if err != nil {
-		r.Recorder.Eventf(r.NooBaa, corev1.EventTypeWarning, "DefaultBackingStoreFailure",
+		r.Recorder.Eventf(r.NooBaa, nil, corev1.EventTypeWarning, "DefaultBackingStoreFailure", "DefaultBackingStoreFailure",
 			"Failed to get AWSRegion. using	 us-east-1 as the default region. %q", err)
 		region = "us-east-1"
 	}
@@ -1469,7 +1469,7 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 func (r *Reconciler) createGCPBucketWithCredentialsJSON(credentialsJSON, projectID string) (string, error) {
 	bucketName := strings.ToLower(randname.GenerateWithPrefix("noobaabucket", 5))
 	ctx := context.Background()
-	gcpclient, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(credentialsJSON)))
+	gcpclient, err := storage.NewClient(ctx, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentialsJSON)))
 	if err != nil {
 		r.Logger.Errorf("got error creating GCP storage client. error: %v", err)
 		return "", err
