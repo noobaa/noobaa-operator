@@ -225,7 +225,6 @@ func ValidateNamespacePolicy(namespacePolicy *nbv1.NamespacePolicy, namespace st
 // store exists, is ready, and is of a supported type.
 func ValidateVectorPolicy(vectorPolicy *nbv1.VectorPolicy, placementPolicy *nbv1.PlacementPolicy, namespacePolicy *nbv1.NamespacePolicy, namespace string) error {
 	log := util.Logger()
-	log.Infof("validating vector policy %+v", vectorPolicy)
 	if vectorPolicy == nil {
 		return nil
 	}
