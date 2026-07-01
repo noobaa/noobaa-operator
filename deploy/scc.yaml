@@ -11,5 +11,3 @@ seLinuxContext:
 supplementalGroups:
   type: RunAsAny
 readOnlyRootFilesystem: true
-seccompProfiles:
-  - runtime/default

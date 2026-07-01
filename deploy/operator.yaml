@@ -15,7 +15,7 @@ spec:
         app: noobaa
         noobaa-operator: deployment
       annotations:
-        openshift.io/required-scc: noobaa
+        openshift.io/required-scc: restricted-v2
     spec:
         # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa

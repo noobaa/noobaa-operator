@@ -373,10 +373,6 @@ func (r *Reconciler) SetDesiredNooBaaDB() error {
 	if dbAnnotations, ok := r.NooBaa.Spec.Annotations["db"]; ok {
 		NooBaaDB.Spec.Template.Annotations = dbAnnotations
 	}
-	if NooBaaDB.Spec.Template.Annotations == nil {
-		NooBaaDB.Spec.Template.Annotations = make(map[string]string)
-	}
-	NooBaaDB.Spec.Template.Annotations[secv1.RequiredSCCAnnotation] = "noobaa-db"
 	NooBaaDB.Spec.Template.Labels["noobaa-db"] = "postgres"
 	NooBaaDB.Spec.Selector.MatchLabels["noobaa-db"] = "postgres"
 	NooBaaDB.Spec.ServiceName = r.ServiceDbPg.Name

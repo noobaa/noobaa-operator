@@ -4888,18 +4888,15 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "4195344f0c1e4dbbc1b6227499eea591f639d849a4d2e31a892fa55ba7f8aa57"
+const Sha256_deploy_internal_pod_agent_yaml = "74237f435120c893cd8e349e9ac685dd1c884e121c018f46e48228f845a51093"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
 metadata:
   labels:
     app: noobaa
-  annotations:
-    openshift.io/required-scc: noobaa-core
   name: noobaa-agent
 spec:
-  serviceAccountName: noobaa-core
   containers:
     - name: noobaa-agent
       image: NOOBAA_CORE_IMAGE
@@ -5820,7 +5817,7 @@ spec:
                   resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_postgres_db_yaml = "3ab0a066e8ee5fea8309edf7fda07d6700a05bbfeaccc3861fdd2512b8c4f75b"
+const Sha256_deploy_internal_statefulset_postgres_db_yaml = "53b628aaceffc1952efed5ed1131f16461fde6eb78c1a5f0f281f3efc30c30b4"
 
 const File_deploy_internal_statefulset_postgres_db_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5841,8 +5838,6 @@ spec:
       labels:
         app: noobaa
         noobaa-db: postgres
-      annotations:
-        openshift.io/required-scc: noobaa-db
     spec:
       serviceAccountName: noobaa-db
       containers:
@@ -6710,7 +6705,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "a9fbb951abf1417b6518fc4a75949f69647145cf3dfa9710ed49678875cf0b93"
+const Sha256_deploy_operator_yaml = "e32d15db85c924ccda2f0d4ea6b3351ab35735866646126205bd7cd3a53732f0"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -6729,7 +6724,7 @@ spec:
         app: noobaa
         noobaa-operator: deployment
       annotations:
-        openshift.io/required-scc: noobaa
+        openshift.io/required-scc: restricted-v2
     spec:
         # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa
@@ -7329,7 +7324,7 @@ rules:
       - namespacestores
 `
 
-const Sha256_deploy_scc_yaml = "c8fe9f46a54e07bb16d263047689d956a3b3d1d3988dbc09dd0d51d60913cc16"
+const Sha256_deploy_scc_yaml = "baa4d3a3def2d63a5d9e53bc4fc1ac961f9b4fe5172db7118d1529caa14e2191"
 
 const File_deploy_scc_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -7344,11 +7339,9 @@ seLinuxContext:
 supplementalGroups:
   type: RunAsAny
 readOnlyRootFilesystem: true
-seccompProfiles:
-  - runtime/default
 `
 
-const Sha256_deploy_scc_core_yaml = "199d32358dd2d16de5494458eb46ae4d932b0f3612608127c609a5256867903c"
+const Sha256_deploy_scc_core_yaml = "dd3fb26a323dddbbb9f399b8ff86c41dbbfe63b3bbb0cfe79b785c68948063a8"
 
 const File_deploy_scc_core_yaml = `apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -7365,7 +7358,7 @@ readOnlyRootFilesystem: false
 requiredDropCapabilities:
   - ALL
 fsGroup:
-  type: RunAsAny
+  type: MustRunAs
 runAsUser:
   type: RunAsAny
 seLinuxContext:
