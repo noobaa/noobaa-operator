@@ -184,7 +184,7 @@ var PrometheusNamespace = ""
 var AWSSTSARN = ""
 
 // CnpgVersion is the version of cloudnative-pg operator to use
-var CnpgVersion = "1.29.2"
+var CnpgVersion = "1.29.1"
 
 // CnpgImage is the container image url of cloudnative-pg operator
 var CnpgImage = "quay.io/noobaa/cloudnative-pg-noobaa:v1.25.0"
