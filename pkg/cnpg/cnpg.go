@@ -251,6 +251,18 @@ func LoadCnpgResources() (*CnpgResources, error) {
 	return cnpgRes, nil
 }
 
+// cnpgExtraRules returns additional RBAC rules required by the CNPG controller
+// binary that are not present in the embedded operator manifest YAML.
+func cnpgExtraRules() []rbacv1.PolicyRule {
+	return []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"discovery.k8s.io"},
+			Resources: []string{"endpointslices"},
+			Verbs:     []string{"get", "list", "watch"},
+		},
+	}
+}
+
 // modifyCnpgRbac modifies the RBAC resources for CloudNativePG operator
 func modifyCnpgRbac(cnpgRes *CnpgResources) {
 
@@ -266,8 +278,9 @@ func modifyCnpgRbac(cnpgRes *CnpgResources) {
 			Name:      cnpgManagerRoleName,
 			Namespace: options.Namespace,
 		},
-		// we copy the rules from the cluster role
-		Rules: cnpgRes.CnpgManagerClusterRole.Rules,
+		// we copy the rules from the cluster role and add any extra rules
+		// that the CNPG controller needs but are not in the embedded manifest
+		Rules: append(cnpgRes.CnpgManagerClusterRole.Rules, cnpgExtraRules()...),
 	}
 
 	// add role binding for the role
