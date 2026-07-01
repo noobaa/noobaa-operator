@@ -1,6 +1,6 @@
 module github.com/noobaa/noobaa-operator/v5
 
-go 1.26.3
+go 1.26.4
 
 replace (
 	// TODO: remove this replace once https://github.com/libopenstorage/secrets/pull/83 is merged
@@ -29,7 +29,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/aws/aws-sdk-go v1.48.12
 	github.com/blang/semver/v4 v4.0.0
-	github.com/cloudnative-pg/cloudnative-pg v1.29.1
+	github.com/cloudnative-pg/cloudnative-pg v1.29.2
 	github.com/coreos/go-semver v0.3.1
 	github.com/distribution/reference v0.6.0
 	github.com/gemalto/kmip-go v0.1.0
@@ -37,7 +37,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/kedacore/keda/v2 v2.20.1
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20221122204822-d1a8c34382f1
-	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.4.0
+	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.6.0
 	github.com/libopenstorage/secrets v0.0.0-20240416031220-a17cf7f72c6c
 	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
 	github.com/onsi/ginkgo/v2 v2.32.0
@@ -48,7 +48,7 @@ require (
 	github.com/operator-framework/api v0.36.0
 	github.com/operator-framework/operator-lib v0.19.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.87.1
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.92.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rook/rook/pkg/apis v0.0.0-20260330211118-fb400b9d29fd
 	github.com/sirupsen/logrus v1.9.4
@@ -58,22 +58,22 @@ require (
 	golang.org/x/term v0.44.0
 	google.golang.org/api v0.286.0
 	google.golang.org/grpc v1.81.1
-	k8s.io/api v0.36.0
-	k8s.io/apiextensions-apiserver v0.36.0
-	k8s.io/apimachinery v0.36.0
-	k8s.io/cli-runtime v0.36.0
-	k8s.io/client-go v0.36.0
-	k8s.io/code-generator v0.36.0
+	k8s.io/api v0.36.2
+	k8s.io/apiextensions-apiserver v0.36.2
+	k8s.io/apimachinery v0.36.2
+	k8s.io/cli-runtime v0.36.2
+	k8s.io/client-go v0.36.2
+	k8s.io/code-generator v0.36.1
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01
 	k8s.io/kube-aggregator v0.35.3
-	k8s.io/kube-openapi v0.0.0-20260502001324-b7f5293f4787
+	k8s.io/kube-openapi v0.0.0-20260603220949-865597e52e25
 	k8s.io/kubectl v0.35.3
-	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
+	k8s.io/utils v0.0.0-20260626114624-be93311217bd
 	nhooyr.io/websocket v1.8.7
 	sigs.k8s.io/container-object-storage-interface-api v0.1.0
 	sigs.k8s.io/container-object-storage-interface-provisioner-sidecar v0.1.0
 	sigs.k8s.io/container-object-storage-interface-spec v0.1.0
-	sigs.k8s.io/controller-runtime v0.24.0
+	sigs.k8s.io/controller-runtime v0.24.1
 	sigs.k8s.io/yaml v1.6.0
 )
 
@@ -93,16 +93,16 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/avast/retry-go/v5 v5.0.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
-	github.com/cloudnative-pg/barman-cloud v0.5.0 // indirect
+	github.com/cloudnative-pg/barman-cloud v0.5.1 // indirect
 	github.com/cloudnative-pg/cnpg-i v0.5.0 // indirect
-	github.com/cloudnative-pg/machinery v0.4.0 // indirect
+	github.com/cloudnative-pg/machinery v0.5.0 // indirect
 	github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2 // indirect
 	github.com/containernetworking/cni v1.2.3 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
 	github.com/expr-lang/expr v1.17.8 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
+	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
@@ -151,6 +151,7 @@ require (
 	golang.org/x/sync v0.21.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
+	k8s.io/streaming v0.36.2 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.0 // indirect
 )
