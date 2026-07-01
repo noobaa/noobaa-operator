@@ -184,7 +184,7 @@ var PrometheusNamespace = ""
 var AWSSTSARN = ""
 
 // CnpgVersion is the version of cloudnative-pg operator to use
-var CnpgVersion = "1.27.0"
+var CnpgVersion = "1.29.2"
 
 // CnpgImage is the container image url of cloudnative-pg operator
 var CnpgImage = "quay.io/rhceph-dev/odf4-odf-cloudnative-pg-rhel9-operator:v4.22"
