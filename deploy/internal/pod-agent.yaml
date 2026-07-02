@@ -3,6 +3,8 @@ kind: Pod
 metadata:
   labels:
     app: noobaa
+  annotations:
+    openshift.io/required-scc: noobaa-agent
   name: noobaa-agent
 spec:
   containers:
@@ -42,6 +44,7 @@ spec:
         runAsNonRoot: true
         allowPrivilegeEscalation: false
   automountServiceAccountToken: false
+  serviceAccountName: noobaa-core
   securityContext:
     runAsUser: 10001
     runAsGroup: 0

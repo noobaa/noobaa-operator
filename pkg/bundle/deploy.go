@@ -4885,13 +4885,15 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "74237f435120c893cd8e349e9ac685dd1c884e121c018f46e48228f845a51093"
+const Sha256_deploy_internal_pod_agent_yaml = "46429d12f4a438f4d3666737cd214c5c8bc2d07acf467e7b9a22439c9cc00fc6"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
 metadata:
   labels:
     app: noobaa
+  annotations:
+    openshift.io/required-scc: noobaa-agent
   name: noobaa-agent
 spec:
   containers:
@@ -4931,6 +4933,7 @@ spec:
         runAsNonRoot: true
         allowPrivilegeEscalation: false
   automountServiceAccountToken: false
+  serviceAccountName: noobaa-core
   securityContext:
     runAsUser: 10001
     runAsGroup: 0
@@ -7127,7 +7130,7 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_core_yaml = "1ec420603dcec64b247852d106535a85a1a866129f78f790c2e5c9285f029ae7"
+const Sha256_deploy_role_core_yaml = "92e0178504b6d3ff202db026efe38de5cac63d29751b5e488842aa5326f36156"
 
 const File_deploy_role_core_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -7172,6 +7175,7 @@ rules:
   - security.openshift.io
   resourceNames:
   - noobaa-core
+  - noobaa-agent
   resources:
   - securitycontextconstraints
   verbs:
@@ -7333,6 +7337,35 @@ seLinuxContext:
 supplementalGroups:
   type: RunAsAny
 readOnlyRootFilesystem: true
+`
+
+const Sha256_deploy_scc_agent_yaml = "17f8e599442503e38885b1c1a1bb2b615d8f93d1e12d5b0d9e2c190d0129be37"
+
+const File_deploy_scc_agent_yaml = `apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: noobaa-agent
+allowPrivilegeEscalation: false
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
+fsGroup:
+  type: MustRunAs
+  ranges:
+  - min: 0
+    max: 0
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
 `
 
 const Sha256_deploy_scc_core_yaml = "dd3fb26a323dddbbb9f399b8ff86c41dbbfe63b3bbb0cfe79b785c68948063a8"
