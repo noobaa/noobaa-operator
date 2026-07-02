@@ -843,6 +843,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	}
 
 	r.CoreApp.Spec.Template.Annotations["noobaa.io/configmap-hash"] = r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"]
+	r.CoreApp.Spec.Template.Annotations[secv1.RequiredSCCAnnotation] = "noobaa-core"
 
 	// we want to check that the cm exists and also that it has data in it
 	if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
