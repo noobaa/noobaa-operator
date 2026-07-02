@@ -1,0 +1,25 @@
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: noobaa-agent
+allowPrivilegeEscalation: false
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
+fsGroup:
+  type: MustRunAs
+  ranges:
+  - min: 0
+    max: 0
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
