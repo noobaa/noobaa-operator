@@ -24,9 +24,16 @@ rules:
   - apiGroups:
       - ""
     resources:
+      - persistentvolumes
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+  - apiGroups:
+      - ""
+    resources:
       - configmaps
       - secrets
-      - persistentvolumes
     verbs:
       - "*"
   - apiGroups:
