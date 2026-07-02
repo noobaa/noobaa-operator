@@ -1280,6 +1280,19 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 		return true
 	}
 
+	if pod.Spec.ServiceAccountName != r.PodAgentTemplate.Spec.ServiceAccountName {
+		r.Logger.Warnf("Change in ServiceAccountName detected: pod(%v) template(%v)",
+			pod.Spec.ServiceAccountName, r.PodAgentTemplate.Spec.ServiceAccountName)
+		return true
+	}
+
+	const requiredSCCAnnotation = "openshift.io/required-scc"
+	if pod.Annotations[requiredSCCAnnotation] != r.PodAgentTemplate.Annotations[requiredSCCAnnotation] {
+		r.Logger.Warnf("Change in %s detected: pod(%v) template(%v)",
+			requiredSCCAnnotation, pod.Annotations[requiredSCCAnnotation], r.PodAgentTemplate.Annotations[requiredSCCAnnotation])
+		return true
+	}
+
 	return false
 }
 
