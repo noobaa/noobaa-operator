@@ -162,10 +162,11 @@ noobaa-operator-5c959d5564-qzgqb                   2/2     Running   0          
 ```
 
 ### 9) Wait For Default Backingstore to Be Ready (Noobaa-Operator Tab)
-Note that the default backing store might not be up as soon as the noobaa installation completes. For this reason it is advised to run `kubectl get pods` to make sure the default backing store is up. In case its not, wait for it to be up. If you run kubectl wait on the backing store before its up, the command will fail.
+The default backing store CR is created shortly after `system create` completes. On Kubernetes 1.31+ (and a matching `kubectl` client), wait for the resource to appear and become available in one command:
 
-In case you use the default backingstore pod, we need it to be in phase Ready, run:
 ```bash
-kubectl wait --for=condition=available backingstore/noobaa-default-backing-store --timeout=6m
+kubectl wait --for=create --for=condition=available backingstore/noobaa-default-backing-store --timeout=6m -n noobaa
 ```
+
+On Kubernetes or `kubectl` versions older than 1.31, `--for=create` is not supported and the command fails with `NotFound` if the backing store does not exist yet. Upgrade the client (or cluster) to 1.31+, or wait until `kubectl get backingstore noobaa-default-backing-store -n noobaa` succeeds before running `kubectl wait --for=condition=available`.
 

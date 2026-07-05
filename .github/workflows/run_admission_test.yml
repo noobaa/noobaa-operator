@@ -66,11 +66,9 @@ jobs:
           -n test
           ./build/_output/bin/noobaa-operator status -n test
 
-      - name: Wait for phase Ready in the backingstore pod
+      - name: Wait for default backingstore to be available
         run: |
-          cd ./noobaa-operator
-          ./.travis/number_of_pods_in_system.sh --namespace test --pods 5
-          kubectl wait --for=condition=available backingstore/noobaa-default-backing-store --timeout=10m -n test
+          kubectl wait --for=create --for=condition=available backingstore/noobaa-default-backing-store --timeout=10m -n test
 
       - name: Run Admission test
         run: |
