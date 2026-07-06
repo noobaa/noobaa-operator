@@ -729,6 +729,7 @@ type AddExternalConnectionParams struct {
 	AzureSTSCredentials *AzureSTSCredentials      `json:"azure_sts_credentials,omitempty"`
 	Region              string                    `json:"region,omitempty"`
 	AzureLogAccessKeys  *AzureLogAccessKeysParams `json:"azure_log_access_keys,omitempty"`
+	Bucket              string                    `json:"bucket,omitempty"`
 }
 
 // CheckExternalConnectionParams is the params of account_api.check_external_connection()
@@ -758,10 +759,17 @@ type CheckExternalConnectionReply struct {
 // UpdateExternalConnectionParams is the params of account_api.update_external_connection()
 type UpdateExternalConnectionParams struct {
 	Name               string                    `json:"name"`
+	EndpointInfo       EndpointInfo              `json:"endpoint_info"`
 	Identity           MaskedString              `json:"identity"`
 	Secret             MaskedString              `json:"secret"`
 	AzureLogAccessKeys *AzureLogAccessKeysParams `json:"azure_log_access_keys,omitempty"`
 	Region             string                    `json:"region,omitempty"`
+}
+
+type EndpointInfo struct {
+	Endpoint     string       `json:"endpoint"`
+	EndpointType EndpointType `json:"endpoint_type"`
+	Bucket       string       `json:"bucket,omitempty"`
 }
 
 // DeleteExternalConnectionParams is the params of account_api.delete_external_connection()
