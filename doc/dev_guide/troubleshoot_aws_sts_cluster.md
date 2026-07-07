@@ -1,4 +1,4 @@
-# TroubleShoot AWS STS Cluster
+# Troubleshoot AWS STS Cluster
 Here are a couple of errors we saw during installations and how to investigate/fix them. The issues are happening when trying to install noobaa and the system is stuck in phase 'Configuring' while noobaa is trying to create the default backingstore that matches the AWS STS platform.
 
 Please open the operator logs:

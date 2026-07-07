@@ -1,6 +1,6 @@
 # Create GCP WIF (STS) Setup On Minikube With NooBaa
 
-If you want to understand the GCP WIF and Minikube see: [Create GCP WIF (STS) Setup On Minikube](create_gcp_wif_setup_on_minikube.md).
+If you want to understand the GCP WIF and Minikube see: [Create GCP WIF (STS) Setup On Minikube](create_gcp_wif_sts_setup_on_minikube.md).
 
 In this guide, we would create a setup to illustrate the token exchange that is done using installed NooBaa system and getting the token that were projected in the pods.
 
