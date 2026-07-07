@@ -62,9 +62,9 @@ type Reconciler struct {
 	Secret         *corev1.Secret
 	ServiceAccount *corev1.ServiceAccount
 
-	SystemInfo              *nb.SystemInfo
-	ExternalConnectionInfo  *nb.ExternalConnectionInfo
-	NamespaceResourceinfo   *nb.NamespaceResourceInfo
+	SystemInfo             *nb.SystemInfo
+	ExternalConnectionInfo *nb.ExternalConnectionInfo
+	NamespaceResourceinfo  *nb.NamespaceResourceInfo
 
 	AddExternalConnectionParams    *nb.AddExternalConnectionParams
 	CreateNamespaceResourceParams  *nb.CreateNamespaceResourceParams
@@ -547,6 +547,7 @@ func (r *Reconciler) ReadSystemInfo() error {
 			Namespace: options.Namespace,
 		},
 		AccessMode: accessMode,
+		Archive:    r.NamespaceStore.Spec.Archive,
 	}
 
 	return nil
@@ -876,6 +877,10 @@ func (r *Reconciler) ReconcileNamespaceStore() error {
 	if r.CreateNamespaceResourceParams != nil {
 		err := r.NBClient.CreateNamespaceResourceAPI(*r.CreateNamespaceResourceParams)
 		if err != nil {
+			if rpcErr, ok := err.(*nb.RPCError); ok && rpcErr.RPCCode == string(nb.ExternalConnectionInvalidArchiveTarget) {
+				return util.NewPersistentError(rpcErr.RPCCode,
+					fmt.Sprintf("NamespaceStore %q invalid archive target %q", r.NamespaceStore.Name, r.CreateNamespaceResourceParams.TargetBucket))
+			}
 			return err
 		}
 	}
