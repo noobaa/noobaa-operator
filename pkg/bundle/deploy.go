@@ -4358,7 +4358,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "558ec22578b22c3ac3a6d6b72fa95a7122739014ded0a73adbac319aa4457aed"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "e028fd7874ebec9b0b63f84ed2f9b3648a8785c7f0cd99b49d8de4a28b7d1910"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4383,6 +4383,7 @@ spec:
         app: noobaa
       annotations:
         noobaa.io/configmap-hash: ""
+        openshift.io/required-scc: noobaa-endpoint
     spec:
       # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa-endpoint
@@ -5599,7 +5600,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "4ef493f94d8f81746f9d8904085de093b4ed37ee15d0767cc563f7aa89c86de8"
+const Sha256_deploy_internal_statefulset_core_yaml = "cc38a4b3cd26c43156962823645c43be26e39ed57a7205d6b390c7849c39651b"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5623,6 +5624,7 @@ spec:
         noobaa-mgmt: noobaa
       annotations:
         noobaa.io/configmap-hash: ""
+        openshift.io/required-scc: noobaa-core
     spec:
       # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa-core
