@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -466,7 +468,7 @@ func prepareWarpHostList(endpointType EndpointType, https bool) string {
 	}
 
 	return strings.Join(util.Map(ips, func(ip string) string {
-		return fmt.Sprintf("%s:%d", ip, port)
+		return net.JoinHostPort(ip, strconv.FormatInt(int64(port), 10))
 	}), ",")
 }
 
