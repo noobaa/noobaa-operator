@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -2281,4 +2282,10 @@ func HasNodeInclusionPolicyInPodTopologySpread() bool {
 		return false
 	}
 	return true
+}
+
+// GetFormattedEndpoint constructs a URL string of the form scheme://host:port,
+// using net.JoinHostPort to properly bracket IPv6 addresses.
+func GetFormattedEndpoint(scheme string, host string, port int32) string {
+	return fmt.Sprintf("%s://%s", scheme, net.JoinHostPort(host, strconv.FormatInt(int64(port), 10)))
 }
