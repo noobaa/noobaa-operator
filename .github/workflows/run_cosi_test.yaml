@@ -72,11 +72,11 @@ jobs:
           kubectl create -k github.com/kubernetes-sigs/container-object-storage-interface-api -n test
           kubectl create -k github.com/kubernetes-sigs/container-object-storage-interface-controller
 
-      - name: Wait for phase Ready in the backingstore pod
+      - name: Wait for default backingstore to be available
         run: |
-          cd ./noobaa-operator
-          ./.travis/number_of_pods_in_system.sh --namespace test --pods 5
-          kubectl wait --for=condition=available backingstore/noobaa-default-backing-store --timeout=5m -n test
+          # TODO: bump the kubernetes version to least v1.31 (to wait for a resource that was not created)
+          sleep 1m # wait for the default backingstore to be created
+          kubectl wait --for=create --for=condition=available backingstore/noobaa-default-backing-store --timeout=5m -n test
 
       - name: Run COSI test
         run: |
