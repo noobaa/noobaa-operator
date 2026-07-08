@@ -8,6 +8,7 @@ import (
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -81,13 +82,13 @@ func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, route *routev1.Rout
 				if pod.Status.HostIP != "" {
 					status.NodePorts = append(
 						status.NodePorts,
-						fmt.Sprintf("%s://%s:%d", proto, pod.Status.HostIP, servicePort.NodePort),
+						util.GetFormattedEndpoint(proto, pod.Status.HostIP, servicePort.NodePort),
 					)
 				}
 				if pod.Status.PodIP != "" {
 					status.PodPorts = append(
 						status.PodPorts,
-						fmt.Sprintf("%s://%s:%s", proto, pod.Status.PodIP, servicePort.TargetPort.String()),
+						util.GetFormattedEndpoint(proto, pod.Status.PodIP, servicePort.TargetPort.IntVal),
 					)
 				}
 			}
@@ -98,7 +99,7 @@ func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, route *routev1.Rout
 	if srv.Spec.ClusterIP != "" {
 		status.InternalIP = append(
 			status.InternalIP,
-			fmt.Sprintf("%s://%s:%d", proto, srv.Spec.ClusterIP, servicePort.Port),
+			util.GetFormattedEndpoint(proto, srv.Spec.ClusterIP, servicePort.Port),
 		)
 		status.InternalDNS = append(
 			status.InternalDNS,
@@ -110,7 +111,7 @@ func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, route *routev1.Rout
 	if route.Spec.Host != "" {
 		status.ExternalDNS = append(
 			status.ExternalDNS,
-			fmt.Sprintf("%s://%s:%d", proto, route.Spec.Host, servicePort.Port),
+			util.GetFormattedEndpoint(proto, route.Spec.Host, servicePort.Port),
 		)
 	}
 
@@ -120,7 +121,7 @@ func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, route *routev1.Rout
 			if lb.IP != "" {
 				status.ExternalIP = append(
 					status.ExternalIP,
-					fmt.Sprintf("%s://%s:%d", proto, lb.IP, servicePort.Port),
+					util.GetFormattedEndpoint(proto, lb.IP, servicePort.Port),
 				)
 			}
 			if lb.Hostname != "" {
@@ -137,7 +138,7 @@ func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, route *routev1.Rout
 		for _, ip := range srv.Spec.ExternalIPs {
 			status.ExternalIP = append(
 				status.ExternalIP,
-				fmt.Sprintf("%s://%s:%d", proto, ip, servicePort.Port),
+				util.GetFormattedEndpoint(proto, ip, servicePort.Port),
 			)
 		}
 	}
