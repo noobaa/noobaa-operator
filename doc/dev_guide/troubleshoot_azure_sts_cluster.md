@@ -1,4 +1,4 @@
-# TroubleShoot Azure STS Cluster
+# Troubleshoot Azure STS Cluster
 Here are common errors encountered during Azure STS installations and how to investigate/fix them. These issues typically occur when trying to install NooBaa and the system is stuck in phase 'Configuring' while NooBaa attempts to create the default backingstore that matches the Azure STS platform or when backingstore and namespacestore stuck in creating state. 
 
 
