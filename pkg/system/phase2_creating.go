@@ -198,6 +198,7 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	}
 
 	util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_core_yaml).(*secv1.SecurityContextConstraints))
+	util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_agent_yaml).(*secv1.SecurityContextConstraints))
 	if err := r.ReconcileObject(r.ServiceMgmt, r.SetDesiredServiceMgmt); err != nil {
 		return err
 	}
