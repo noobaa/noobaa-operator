@@ -12,6 +12,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -88,10 +89,15 @@ func (r *Reconciler) CheckServiceStatus(srv *corev1.Service, route *routev1.Rout
 					)
 				}
 				if pod.Status.PodIP != "" {
-					status.PodPorts = append(
-						status.PodPorts,
-						util.GetFormattedEndpoint(proto, pod.Status.PodIP, servicePort.TargetPort.IntVal),
-					)
+					portNumber, ok := podTargetPortNumber(&pod, servicePort.TargetPort)
+					if ok {
+						status.PodPorts = append(
+							status.PodPorts,
+							util.GetFormattedEndpoint(proto, pod.Status.PodIP, portNumber),
+						)
+					} else {
+						log.Warnf("Could not resolve target port %q for pod %s", servicePort.TargetPort.String(), pod.Name)
+					}
 				}
 			}
 		}
@@ -174,4 +180,19 @@ func (r *Reconciler) InitNBClient() error {
 	// even when auth_token is empty.
 	_, err := r.NBClient.ReadAuthAPI()
 	return err
+}
+
+// podTargetPortNumber resolves a service targetPort to the numeric container port on a pod.
+func podTargetPortNumber(pod *corev1.Pod, targetPort intstr.IntOrString) (int32, bool) {
+	if targetPort.Type == intstr.Int {
+		return targetPort.IntVal, true
+	}
+	for i := range pod.Spec.Containers {
+		for _, port := range pod.Spec.Containers[i].Ports {
+			if port.Name == targetPort.StrVal {
+				return port.ContainerPort, true
+			}
+		}
+	}
+	return 0, false
 }
