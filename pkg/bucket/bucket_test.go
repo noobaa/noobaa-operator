@@ -1,11 +1,67 @@
 package bucket
 
 import (
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+var _ = Describe("CmdUpdate", func() {
+	It("should register the deep-archive-resource flag", func() {
+		cmd := CmdUpdate()
+		f := cmd.Flags().Lookup("deep-archive-resource")
+		Expect(f).NotTo(BeNil())
+		Expect(f.DefValue).To(Equal(""))
+	})
+})
+
+var _ = Describe("IsArchiveNamespaceStore for deep archive update", func() {
+	It("should return true when archive is set", func() {
+		ns := &nbv1.NamespaceStore{
+			Spec: nbv1.NamespaceStoreSpec{
+				Type:    nbv1.NSStoreTypeS3Compatible,
+				Archive: true,
+			},
+		}
+		Expect(util.IsArchiveNamespaceStore(ns)).To(BeTrue())
+	})
+
+	It("should return false when archive is not set on s3-compatible store", func() {
+		ns := &nbv1.NamespaceStore{
+			Spec: nbv1.NamespaceStoreSpec{
+				Type:    nbv1.NSStoreTypeS3Compatible,
+				Archive: false,
+			},
+		}
+		Expect(util.IsArchiveNamespaceStore(ns)).To(BeFalse())
+	})
+
+	It("should return false when archive is not set on aws-s3 store", func() {
+		ns := &nbv1.NamespaceStore{
+			Spec: nbv1.NamespaceStoreSpec{
+				Type:    nbv1.NSStoreTypeAWSS3,
+				Archive: false,
+			},
+		}
+		Expect(util.IsArchiveNamespaceStore(ns)).To(BeFalse())
+	})
+
+	It("should return false when archive is set but type is not s3-compatible", func() {
+		ns := &nbv1.NamespaceStore{
+			Spec: nbv1.NamespaceStoreSpec{
+				Type:    nbv1.NSStoreTypeAWSS3,
+				Archive: true,
+			},
+		}
+		Expect(util.IsArchiveNamespaceStore(ns)).To(BeFalse())
+	})
+
+	It("should return false for a nil NamespaceStore", func() {
+		Expect(util.IsArchiveNamespaceStore(nil)).To(BeFalse())
+	})
+})
 
 var _ = Describe("mergeQuotaForUpdate", func() {
 	Context("when only max-objects is set and a size quota already exists", func() {
