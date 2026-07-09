@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -31,6 +32,21 @@ import (
 	sigyaml "sigs.k8s.io/yaml"
 )
 
+const (
+	S3Compatible          = "s3-compatible"
+	IBMCOS                = "ibm-cos"
+	AWSS3                 = "aws-s3"
+	AWSSTSS3              = "aws-sts-s3"
+	GoogleCloudStorage    = "google-cloud-storage"
+	GoogleCloudStorageSTS = "google-cloud-storage-sts"
+	AzureBlob             = "azure-blob"
+	AzureSTSBlob          = "azure-sts-blob"
+	PVPool                = "pv-pool"
+)
+
+var validBackingStores = []string{S3Compatible, IBMCOS, AWSS3, AWSSTSS3, GoogleCloudStorage,
+	GoogleCloudStorageSTS, AzureBlob, AzureSTSBlob, PVPool}
+
 var ctx = context.TODO()
 
 // Cmd returns a CLI command
@@ -41,6 +57,7 @@ func Cmd() *cobra.Command {
 	}
 	cmd.AddCommand(
 		CmdCreate(),
+		CmdUpdate(),
 		CmdDelete(),
 		CmdStatus(),
 		CmdList(),
@@ -68,6 +85,17 @@ func CmdCreate() *cobra.Command {
 		CmdCreatePVPool(),
 		CmdCreateAzureSTS(),
 	)
+	return cmd
+}
+
+func CmdUpdate() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update <backing-store-name>",
+		Short: "Update a backing store",
+		Run:   RunUpdate,
+	}
+	cmd.Flags().String("endpoint", "", "New endpoint URL")
+
 	return cmd
 }
 
@@ -518,8 +546,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if len(args) != 1 || args[0] == "" {
 		log.Fatalf(`❌ Missing expected arguments: <backing-store-type> %s`, cmd.UsageString())
 	}
-	if args[0] != "aws-s3" && args[0] != "aws-sts-s3" && args[0] != "google-cloud-storage" && args[0] != "google-cloud-storage-sts" &&
-		args[0] != "azure-blob" && args[0] != "ibm-cos" && args[0] != "pv-pool" && args[0] != "s3-compatible" && args[0] != "azure-sts-blob" {
+	if !slices.Contains(validBackingStores, args[0]) {
 		log.Fatalf(`❌ Unsupported <backing-store-type> -> %s %s`, args[0], cmd.UsageString())
 	}
 }
@@ -929,6 +956,68 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 			},
 		}
 	})
+}
+
+func RunUpdate(cmd *cobra.Command, args []string) {
+	// args: <backingstore name>
+	// flags: <endpoint>
+	log := util.Logger()
+
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <backing-store-name> %s`, cmd.UsageString())
+	}
+
+	endpoint, err := cmd.Flags().GetString("endpoint")
+	endpoint = strings.TrimSpace(endpoint)
+	if err != nil || len(endpoint) == 0 {
+		log.Fatalf("❌ Endpoint is required for update command")
+	}
+
+	o := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml)
+	bs := o.(*nbv1.BackingStore)
+	bs.Name = args[0]
+	bs.Namespace = options.Namespace
+
+	err = util.KubeClient().Get(util.Context(), util.ObjectKey(bs), bs)
+	if err != nil {
+		log.Fatalf("❌ Could not fetch the backing store: %v", err)
+	}
+
+	storeType := bs.Spec.Type
+	if !slices.Contains(validBackingStores, string(storeType)) {
+		log.Fatalf(`❌ Unsupported <backing-store-type> %s`, storeType)
+	} else if storeType != IBMCOS && storeType != S3Compatible {
+		log.Fatalf("❌ Target endpoint for backing store type %s cannot be updated", storeType)
+	}
+
+	switch storeType {
+	case S3Compatible:
+		if bs.Spec.S3Compatible == nil {
+			log.Fatalf(`❌ Invalid backing store spec`)
+		}
+		bs.Spec.S3Compatible.Endpoint = endpoint
+	case IBMCOS:
+		if bs.Spec.IBMCos == nil {
+			log.Fatalf(`❌ Invalid backing store spec`)
+		}
+		bs.Spec.IBMCos.Endpoint = endpoint
+	default:
+	}
+
+	success := util.KubeUpdate(bs)
+	if !success {
+		log.Fatalf("❌ Error updating backing store %s", bs.Name)
+	}
+
+	log.Printf("✅ BackingStore %s Spec updated. Changes will be applied", bs.Name)
+	log.Printf("")
+	log.Printf("BackingStore Wait Ready:")
+
+	if WaitReady(bs) {
+		log.Printf("")
+		log.Printf("")
+		RunStatus(cmd, args)
+	}
 }
 
 // RunDelete runs a CLI command
