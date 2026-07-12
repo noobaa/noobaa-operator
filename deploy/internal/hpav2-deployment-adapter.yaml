@@ -23,6 +23,8 @@ spec:
         app.kubernetes.io/component: metrics-adapter
         app.kubernetes.io/name: prometheus-adapter
         app.kubernetes.io/version: 0.10.0
+      annotations:
+        openshift.io/required-scc: restricted-v2
     spec:
       automountServiceAccountToken: true
       containers:
