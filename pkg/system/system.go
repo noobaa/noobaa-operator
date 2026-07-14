@@ -165,7 +165,6 @@ type KeycloakOIDCProvider struct {
 	Issuer                     string `json:"issuer"`
 	ClientID                   string `json:"client_id"`
 	ClientSecret               string `json:"client_secret"`
-	JWKSURI                    string `json:"jwks_uri"`
 	TokenIntrospectionEndpoint string `json:"token_introspection_endpoint"`
 }
 
@@ -191,7 +190,6 @@ func CmdOidc() *cobra.Command {
 			"For Keycloak, the expected structure is:\n"+
 			`{"providers":[{"issuer":"<kc-server>:<kc-port>/realms/<realm-name>",`+
 			`"client_id":"<client-id>","client_secret":"<client-secret>",`+
-			`"jwks_uri":"http://<kc-server>:<kc-port>/realms/<realm-name>/protocol/openid-connect/certs",`+
 			`"token_introspection_endpoint":"http://<kc-server>:<kc-port>/realms/<realm-name>/protocol/openid-connect/token/introspect"}]}`,
 	)
 	return cmd
@@ -734,9 +732,6 @@ func validateKeycloakOIDCConfig(configJSON string) (*KeycloakOIDCConfig, error) 
 		}
 		if provider.ClientSecret == "" {
 			missing = append(missing, "client_secret")
-		}
-		if provider.JWKSURI == "" {
-			missing = append(missing, "jwks_uri")
 		}
 		if provider.TokenIntrospectionEndpoint == "" {
 			missing = append(missing, "token_introspection_endpoint")
