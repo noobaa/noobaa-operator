@@ -506,6 +506,7 @@ type CreateNamespaceResourceParams struct {
 	AccessMode     APIAccessModeType   `json:"access_mode"`
 	NSFSConfig     *NSFSConfig         `json:"nsfs_config,omitempty"`
 	NamespaceStore *NamespaceStoreInfo `json:"namespace_store,omitempty"`
+	Archive        bool                `json:"archive,omitempty"`
 }
 
 // APIAccessModeType is the type of all the optional access modes
@@ -688,6 +689,8 @@ const (
 	ExternalConnectionTimeSkew ExternalConnectionStatus = "TIME_SKEW"
 	// ExternalConnectionUnknownFailure enum
 	ExternalConnectionUnknownFailure ExternalConnectionStatus = "UNKNOWN_FAILURE"
+	// ExternalConnectionInvalidArchiveTarget enum
+	ExternalConnectionInvalidArchiveTarget ExternalConnectionStatus = "INVALID_ARCHIVE_TARGET"
 )
 
 // ExternalConnectionInfo is a struct for reply with connection info
