@@ -7,6 +7,7 @@ import (
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -42,6 +43,9 @@ func ValidateBackingStore(bs nbv1.BackingStore) error {
 			return err
 		}
 		if err := ValidateMinVolumeCount(bs); err != nil {
+			return err
+		}
+		if err := ValidatePvpoolResources(bs); err != nil {
 			return err
 		}
 	case nbv1.StoreTypeS3Compatible:
@@ -257,6 +261,40 @@ func ValidateMinVolumeCount(bs nbv1.BackingStore) error {
 	if bs.Spec.PVPool.NumVolumes <= 0 {
 		return util.ValidationError{
 			Msg: "Unsupported volume count, the minimum supported volume count is 1",
+		}
+	}
+	return nil
+}
+
+// ValidatePvpoolResources validates the CPU and memory resources in PVPool VolumeResources.
+// It checks that resource values are valid (non-negative) and that requests do not exceed limits.
+func ValidatePvpoolResources(bs nbv1.BackingStore) error {
+	if bs.Spec.PVPool == nil || bs.Spec.PVPool.VolumeResources == nil {
+		return nil
+	}
+	vr := bs.Spec.PVPool.VolumeResources
+
+	for _, rName := range []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory} {
+		if qty, ok := vr.Requests[rName]; ok {
+			if qty.Cmp(resource.MustParse("0")) < 0 {
+				return util.ValidationError{
+					Msg: fmt.Sprintf("Invalid PV pool resource: request %s must not be negative", rName),
+				}
+			}
+		}
+		if qty, ok := vr.Limits[rName]; ok {
+			if qty.Cmp(resource.MustParse("0")) < 0 {
+				return util.ValidationError{
+					Msg: fmt.Sprintf("Invalid PV pool resource: limit %s must not be negative", rName),
+				}
+			}
+		}
+		req, hasReq := vr.Requests[rName]
+		lim, hasLim := vr.Limits[rName]
+		if hasReq && hasLim && req.Cmp(lim) > 0 {
+			return util.ValidationError{
+				Msg: fmt.Sprintf("Invalid PV pool resource: request %s (%s) exceeds limit (%s)", rName, req.String(), lim.String()),
+			}
 		}
 	}
 	return nil

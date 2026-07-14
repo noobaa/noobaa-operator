@@ -262,7 +262,7 @@ type NooBaaSpec struct {
 	// settings for the core, db and endpoint components.
 	// Explicit per-component resource/count fields take precedence over the profile.
 	// +optional
-	// +kubebuilder:validation:Enum=default;mixed-workload;small-objects;dev-env;mini-env
+	// +kubebuilder:validation:Enum=default;default-ibm-z;mixed-workload;small-objects;dev-env;mini-env
 	PerformanceProfile PerformanceProfileType `json:"performanceProfile,omitempty"`
 }
 
@@ -890,6 +890,8 @@ type PerformanceProfileType string
 const (
 	// PerformanceProfileDefault is the default profile
 	PerformanceProfileDefault PerformanceProfileType = "default"
+	// PerformanceProfileDefaultIBMZ is the default profile adjusted for IBM Z (s390x) with halved CPU requests
+	PerformanceProfileDefaultIBMZ PerformanceProfileType = "default-ibm-z"
 	// PerformanceProfileMixedWorkload is for mixed workload
 	PerformanceProfileMixedWorkload PerformanceProfileType = "mixed-workload"
 	// PerformanceProfileSmallObjects is for small objects workload

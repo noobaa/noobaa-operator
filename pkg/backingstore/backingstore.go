@@ -299,28 +299,13 @@ func CmdCreateGoogleCloudStorageSTS() *cobra.Command {
 	return cmd
 }
 
-// Minimum backing store pv pool resources
 const (
-	// CPU, in cores. (500m = .5 cores)
-	minCPUString string = "100m"
-	// Memory, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
-	minMemoryString string = "400Mi"
-
-	// Test ENV minimal resources
-	testEnvMinCPUString    string = "50m"
-	testEnvMinMemoryString string = "200Mi"
-
-	// Dev ENV minimal resources
-	devEnvMinCPUString    string = "500m"
-	devEnvMinMemoryString string = "500Mi"
-
 	// Default volume size for pv-pool backing store
 	defaultVolumeSize = int64(20 * 1024 * 1024 * 1024) // 20Gi=20*1024^3
 )
 
 // CmdCreatePVPool returns a CLI command
 func CmdCreatePVPool() *cobra.Command {
-	minCPUStringByEnv, minMemoryStringByEnv := getMinimalResourcesByEnv()
 	cmd := &cobra.Command{
 		Use:   "pv-pool <backing-store-name>",
 		Short: "Create pv-pool backing store",
@@ -335,20 +320,20 @@ func CmdCreatePVPool() *cobra.Command {
 		`PV size of each volume in the store`,
 	)
 	cmd.Flags().String(
-		"request-cpu", minCPUStringByEnv,
-		"Request cpu for an agent pod",
+		"request-cpu", "",
+		"Request cpu for an agent pod (default: determined by performance profile)",
 	)
 	cmd.Flags().String(
-		"request-memory", minMemoryStringByEnv,
-		"Request memory for an agent pod",
+		"request-memory", "",
+		"Request memory for an agent pod (default: determined by performance profile)",
 	)
 	cmd.Flags().String(
-		"limit-cpu", minCPUStringByEnv,
-		"Limit cpu for an agent pod",
+		"limit-cpu", "",
+		"Limit cpu for an agent pod (default: determined by performance profile)",
 	)
 	cmd.Flags().String(
-		"limit-memory", minMemoryStringByEnv,
-		"Limit memory for an agent pod",
+		"limit-memory", "",
+		"Limit memory for an agent pod (default: determined by performance profile)",
 	)
 	cmd.Flags().String(
 		"storage-class", "",
@@ -446,6 +431,21 @@ func createCommon(cmd *cobra.Command, args []string, storeType nbv1.StoreType, p
 	}
 
 	populate(backStore, secret)
+
+	if storeType == nbv1.StoreTypePVPool && backStore.Spec.PVPool != nil {
+		profileDefaults := system.GetPVPoolResources(sys)
+		effective := corev1.ResourceRequirements{
+			Requests: profileDefaults.Requests.DeepCopy(),
+			Limits:   profileDefaults.Limits.DeepCopy(),
+		}
+		if vr := backStore.Spec.PVPool.VolumeResources; vr != nil {
+			applyResourceOverrides(&effective, vr)
+		}
+		if err := validateResourceRequestsVsLimits(effective); err != nil {
+			log.Fatalf(`❌ PV pool resource conflict (against profile defaults): %v`, err)
+		}
+	}
+
 	if secretName != "" {
 		if !util.KubeCheck(secret) {
 			log.Fatalf(`❌ Could not find the suggested secret: name %q namespace %q`, secret.Name, secret.Namespace)
@@ -878,50 +878,63 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 			}
 		}
 
-		var requestCPUQuantity, requestMemoryQuantity, limitCPUQuantity, limitMemoryQuantity resource.Quantity
-		var err error
-		requestCPUQuantity, err = resource.ParseQuantity(requestCPU)
-		if err != nil {
-			log.Fatalf(`❌ Could not parse request cpu %q`,
-				requestCPU)
+		volumeRequests := corev1.ResourceList{
+			corev1.ResourceStorage: *resource.NewQuantity(int64(pvSizeGB)*1024*1024*1024, resource.BinarySI),
 		}
-		requestMemoryQuantity, err = resource.ParseQuantity(requestMemory)
-		if err != nil {
-			log.Fatalf(`❌ Could not parse request Memory %q`,
-				requestMemory)
+		volumeLimits := corev1.ResourceList{}
+
+		if requestCPU != "" {
+			qty, err := resource.ParseQuantity(requestCPU)
+			if err != nil {
+				log.Fatalf(`❌ Could not parse request cpu %q`, requestCPU)
+			}
+			volumeRequests[corev1.ResourceCPU] = qty
 		}
-		limitCPUQuantity, err = resource.ParseQuantity(limitCPU)
-		if err != nil {
-			log.Fatalf(`❌ Could not parse limit cpu %q`,
-				limitCPU)
+		if requestMemory != "" {
+			qty, err := resource.ParseQuantity(requestMemory)
+			if err != nil {
+				log.Fatalf(`❌ Could not parse request memory %q`, requestMemory)
+			}
+			volumeRequests[corev1.ResourceMemory] = qty
 		}
-		limitMemoryQuantity, err = resource.ParseQuantity(limitMemory)
-		if err != nil {
-			log.Fatalf(`❌ Could not parse limit Memory %q`,
-				limitMemory)
+		if limitCPU != "" {
+			qty, err := resource.ParseQuantity(limitCPU)
+			if err != nil {
+				log.Fatalf(`❌ Could not parse limit cpu %q`, limitCPU)
+			}
+			volumeLimits[corev1.ResourceCPU] = qty
 		}
-		if requestCPUQuantity.Cmp(limitCPUQuantity) > 0 {
-			log.Fatalf(`❌ Request CPU %v is larger than limit CPU %v`,
-				requestCPUQuantity.String(), limitCPUQuantity.String())
+		if limitMemory != "" {
+			qty, err := resource.ParseQuantity(limitMemory)
+			if err != nil {
+				log.Fatalf(`❌ Could not parse limit memory %q`, limitMemory)
+			}
+			volumeLimits[corev1.ResourceMemory] = qty
 		}
-		if requestMemoryQuantity.Cmp(limitMemoryQuantity) > 0 {
-			log.Fatalf(`❌ Request memory %v is larger than limit memory %v`,
-				requestMemoryQuantity.String(), limitMemoryQuantity.String())
+
+		if reqCPU, hasReqCPU := volumeRequests[corev1.ResourceCPU]; hasReqCPU {
+			if limCPU, hasLimCPU := volumeLimits[corev1.ResourceCPU]; hasLimCPU {
+				if reqCPU.Cmp(limCPU) > 0 {
+					log.Fatalf(`❌ Request CPU %v is larger than limit CPU %v`,
+						reqCPU.String(), limCPU.String())
+				}
+			}
+		}
+		if reqMem, hasReqMem := volumeRequests[corev1.ResourceMemory]; hasReqMem {
+			if limMem, hasLimMem := volumeLimits[corev1.ResourceMemory]; hasLimMem {
+				if reqMem.Cmp(limMem) > 0 {
+					log.Fatalf(`❌ Request memory %v is larger than limit memory %v`,
+						reqMem.String(), limMem.String())
+				}
+			}
 		}
 
 		backStore.Spec.PVPool = &nbv1.PVPoolSpec{
 			StorageClass: storageClass,
 			NumVolumes:   int(numVolumes),
 			VolumeResources: &corev1.VolumeResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: *resource.NewQuantity(int64(pvSizeGB)*1024*1024*1024, resource.BinarySI),
-					corev1.ResourceCPU:     requestCPUQuantity,
-					corev1.ResourceMemory:  requestMemoryQuantity,
-				},
-				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    limitCPUQuantity,
-					corev1.ResourceMemory: limitMemoryQuantity,
-				},
+				Requests: volumeRequests,
+				Limits:   volumeLimits,
 			},
 			Secret: corev1.SecretReference{
 				Name:      secret.Name,
