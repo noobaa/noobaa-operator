@@ -554,6 +554,10 @@ type NooBaaStatus struct {
 	// +optional
 	UpgradePhase UpgradePhase `json:"upgradePhase,omitempty"`
 
+	// LastSuccessfulUpgradeImage is the image that most recently completed the core upgrade job
+	// +optional
+	LastSuccessfulUpgradeImage string `json:"lastSuccessfulUpgradeImage,omitempty"`
+
 	// Upgrade reports the status of the ongoing postgres upgrade process
 	// +optional
 	PostgresUpdatePhase UpgradePhase `json:"postgresUpdatePhase,omitempty"`
@@ -736,8 +740,8 @@ type AccountsStatus struct {
 
 // ServicesStatus is the status info of the system's services
 type ServicesStatus struct {
-	ServiceMgmt    ServiceStatus `json:"serviceMgmt"`
-	ServiceS3      ServiceStatus `json:"serviceS3"`
+	ServiceMgmt ServiceStatus `json:"serviceMgmt"`
+	ServiceS3   ServiceStatus `json:"serviceS3"`
 	// +optional
 	ServiceSts     ServiceStatus `json:"serviceSts,omitempty"`
 	ServiceIam     ServiceStatus `json:"serviceIam,omitempty"`
