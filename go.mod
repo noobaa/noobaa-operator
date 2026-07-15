@@ -17,7 +17,7 @@ require (
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/IBM/keyprotect-go-client v0.12.2
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
-	github.com/aws/aws-sdk-go v1.55.8
+	github.com/aws/aws-sdk-go v1.48.12
 	github.com/blang/semver/v4 v4.0.0
 	github.com/coreos/go-semver v0.3.1
 	github.com/docker/distribution v2.8.2+incompatible
@@ -56,7 +56,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20240822171749-76de80e0abd9
 	k8s.io/kubectl v0.25.4
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
-	nhooyr.io/websocket v1.8.17
+	nhooyr.io/websocket v1.8.7
 	sigs.k8s.io/container-object-storage-interface-api v0.1.0
 	sigs.k8s.io/container-object-storage-interface-provisioner-sidecar v0.1.0
 	sigs.k8s.io/container-object-storage-interface-spec v0.1.0
