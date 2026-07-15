@@ -2198,6 +2198,10 @@ spec:
                   key rotate
                 format: date-time
                 type: string
+              lastSuccessfulUpgradeImage:
+                description: LastSuccessfulUpgradeImage is the image that most recently
+                  completed the core upgrade job
+                type: string
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed for this noobaa system.

@@ -1511,7 +1511,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "e359dfd8f3c4a8ef7ac5605b1c86ce6d939846435e13c8376cef2252bb9e95f4"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "b0cd35ec708b34b39b1b104f9d62f36f1ee3fb93fea2e7e0c5a54ff98ce0f070"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3713,6 +3713,10 @@ spec:
                   key rotate
                 format: date-time
                 type: string
+              lastSuccessfulUpgradeImage:
+                description: LastSuccessfulUpgradeImage is the image that most recently
+                  completed the core upgrade job
+                type: string
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed for this noobaa system.
@@ -4873,6 +4877,84 @@ metadata:
   annotations:
     service.beta.openshift.io/inject-cabundle: 'true'
 data: {}
+`
+
+const Sha256_deploy_internal_job_upgrade_core_yaml = "afc168042ec3d0bc22426a11f0e682344a17179ed04f7c48ab04d6db2ef55aff"
+
+const File_deploy_internal_job_upgrade_core_yaml = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: noobaa-core-upgrade
+  labels:
+    app: noobaa
+spec:
+  completions: 1
+  parallelism: 1
+  # backoffLimit is set by setDesiredUpgradeJob() — see upgradeJobBackoffLimit in pkg/system/upgrade_reconciler.go
+  template:
+    metadata:
+      labels:
+        app: noobaa
+      annotations:
+        openshift.io/required-scc: noobaa-core
+    spec:
+      # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
+      serviceAccountName: noobaa-core
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 0
+      volumes:
+        - name: noobaa-server
+          secret:
+            secretName: noobaa-server
+            optional: true
+      containers:
+        - name: noobaa-core-upgrade
+          image: NOOBAA_CORE_IMAGE
+          command:
+            - /bin/bash
+            - -c
+            - "cd /root/node_modules/noobaa-core && node ./src/upgrade/upgrade_manager.js --upgrade_scripts_dir /root/node_modules/noobaa-core/src/upgrade/upgrade_scripts"
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: UPGRADE_SCRIPTS_DIR
+              value: /root/node_modules/noobaa-core/src/upgrade/upgrade_scripts
+            - name: POSTGRES_HOST
+            - name: POSTGRES_HOST_RO
+            - name: POSTGRES_PORT
+            - name: POSTGRES_DBNAME
+            - name: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+            - name: POSTGRES_CONNECTION_STRING
+            - name: POSTGRES_SSL_REQUIRED
+            - name: POSTGRES_SSL_UNAUTHORIZED
+            - name: POSTGRES_HOST_PATH
+            - name: POSTGRES_USER_PATH
+            - name: POSTGRES_PASSWORD_PATH
+            - name: POSTGRES_DBNAME_PATH
+            - name: POSTGRES_PORT_PATH
+            - name: POSTGRES_CONNECTION_STRING_PATH
+            - name: DB_TYPE
+              value: postgres
+            - name: CONTAINER_PLATFORM
+              value: KUBERNETES
+            - name: NODE_EXTRA_CA_CERTS
+            - name: HTTP_PROXY
+            - name: HTTPS_PROXY
+            - name: NO_PROXY
+          envFrom:
+            - configMapRef:
+                name: noobaa-config
+          volumeMounts:
+            - name: noobaa-server
+              mountPath: /etc/noobaa-server
+              readOnly: true
+      restartPolicy: Never
 `
 
 const Sha256_deploy_internal_nsfs_pvc_cr_yaml = "6dd65ca7d324991b813f209ec6a8a6bcf6c2c9a9f45c519ad3fba51e25042f07"
