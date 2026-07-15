@@ -1511,7 +1511,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "88be0872b57677c437aeb656eac747cd13871d9b2733d41b0b2ec5b2d4ea7603"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "e359dfd8f3c4a8ef7ac5605b1c86ce6d939846435e13c8376cef2252bb9e95f4"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -3461,6 +3461,7 @@ spec:
                   Explicit per-component resource/count fields take precedence over the profile.
                 enum:
                 - default
+                - default-ibm-z
                 - mixed-workload
                 - small-objects
                 - dev-env

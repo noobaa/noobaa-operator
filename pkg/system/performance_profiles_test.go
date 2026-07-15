@@ -233,6 +233,49 @@ func TestGetEndpointResources(t *testing.T) {
 	}
 }
 
+func TestGetPVPoolResources(t *testing.T) {
+	tests := []struct {
+		name     string
+		nb       *nbv1.NooBaa
+		expected corev1.ResourceRequirements
+	}{
+		{
+			name: "default profile",
+			nb: &nbv1.NooBaa{
+				Spec: nbv1.NooBaaSpec{
+					PerformanceProfile: nbv1.PerformanceProfileDefault,
+				},
+			},
+			expected: performanceProfiles[nbv1.PerformanceProfileDefault].pvPoolResources,
+		},
+		{
+			name: "mixed-workload profile",
+			nb: &nbv1.NooBaa{
+				Spec: nbv1.NooBaaSpec{
+					PerformanceProfile: nbv1.PerformanceProfileMixedWorkload,
+				},
+			},
+			expected: performanceProfiles[nbv1.PerformanceProfileMixedWorkload].pvPoolResources,
+		},
+		{
+			name: "mini profile",
+			nb: &nbv1.NooBaa{
+				Spec: nbv1.NooBaaSpec{
+					PerformanceProfile: nbv1.PerformanceProfileMiniEnv,
+				},
+			},
+			expected: performanceProfiles[nbv1.PerformanceProfileMiniEnv].pvPoolResources,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetPVPoolResources(tt.nb)
+			assertResourceRequirements(t, got, tt.expected)
+		})
+	}
+}
+
 func TestGetDBInstances(t *testing.T) {
 	explicitInstances := 5
 
@@ -462,6 +505,7 @@ func assertPerformanceProfile(t *testing.T, got, want performanceProfile) {
 	assertResourceRequirements(t, got.coreResources, want.coreResources)
 	assertResourceRequirements(t, got.dbResources, want.dbResources)
 	assertResourceRequirements(t, got.endpointResources, want.endpointResources)
+	assertResourceRequirements(t, got.pvPoolResources, want.pvPoolResources)
 	if got.endpointMinCount != want.endpointMinCount {
 		t.Errorf("endpointMinCount = %d, want %d", got.endpointMinCount, want.endpointMinCount)
 	}
@@ -504,32 +548,44 @@ func assertResourceList(t *testing.T, got, want corev1.ResourceList, listName st
 
 func TestProfileResourcesValues(t *testing.T) {
 	tests := []struct {
-		name    string
-		profile nbv1.PerformanceProfileType
-		core    [4]string
-		db      [4]string
+		name     string
+		profile  nbv1.PerformanceProfileType
+		core     [4]string
+		db       [4]string
 		endpoint [4]string
+		pvPool   [4]string
 	}{
 		{
-			name:    "default",
-			profile: nbv1.PerformanceProfileDefault,
-			core:    [4]string{"500m", "1", "1Gi", "4Gi"},
-			db:      [4]string{"1", "1", "2Gi", "2Gi"},
+			name:     "default",
+			profile:  nbv1.PerformanceProfileDefault,
+			core:     [4]string{"500m", "1", "1Gi", "4Gi"},
+			db:       [4]string{"1", "1", "2Gi", "2Gi"},
 			endpoint: [4]string{"500m", "2", "1Gi", "3Gi"},
+			pvPool:   [4]string{"400m", "400m", "800Mi", "800Mi"},
 		},
 		{
-			name:    "mixed-workload",
-			profile: nbv1.PerformanceProfileMixedWorkload,
-			core:    [4]string{"1", "2", "2Gi", "4Gi"},
-			db:      [4]string{"4", "4", "8Gi", "8Gi"},
-			endpoint: [4]string{"2", "4", "2Gi", "4Gi"},
+			name:     "default-ibm-z",
+			profile:  nbv1.PerformanceProfileDefaultIBMZ,
+			core:     [4]string{"250m", "1", "1Gi", "4Gi"},
+			db:       [4]string{"500m", "1", "2Gi", "2Gi"},
+			endpoint: [4]string{"250m", "2", "1Gi", "3Gi"},
+			pvPool:   [4]string{"200m", "400m", "800Mi", "800Mi"},
 		},
 		{
-			name:    "small-objects",
-			profile: nbv1.PerformanceProfileSmallObjects,
-			core:    [4]string{"1", "2", "2Gi", "6Gi"},
-			db:      [4]string{"6", "6", "16Gi", "16Gi"},
+			name:     "mixed-workload",
+			profile:  nbv1.PerformanceProfileMixedWorkload,
+			core:     [4]string{"1", "2", "2Gi", "4Gi"},
+			db:       [4]string{"4", "4", "8Gi", "8Gi"},
 			endpoint: [4]string{"2", "4", "2Gi", "4Gi"},
+			pvPool:   [4]string{"1", "1", "2Gi", "2Gi"},
+		},
+		{
+			name:     "small-objects",
+			profile:  nbv1.PerformanceProfileSmallObjects,
+			core:     [4]string{"1", "2", "2Gi", "6Gi"},
+			db:       [4]string{"6", "6", "16Gi", "16Gi"},
+			endpoint: [4]string{"2", "4", "2Gi", "4Gi"},
+			pvPool:   [4]string{"1", "1", "2Gi", "2Gi"},
 		},
 	}
 
@@ -539,6 +595,7 @@ func TestProfileResourcesValues(t *testing.T) {
 			assertResourceQuantity(t, profile.coreResources, tt.core)
 			assertResourceQuantity(t, profile.dbResources, tt.db)
 			assertResourceQuantity(t, profile.endpointResources, tt.endpoint)
+			assertResourceQuantity(t, profile.pvPoolResources, tt.pvPool)
 		})
 	}
 }

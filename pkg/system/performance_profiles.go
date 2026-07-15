@@ -4,6 +4,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -13,6 +14,7 @@ type performanceProfile struct {
 	logResources      *corev1.ResourceRequirements
 	dbResources       corev1.ResourceRequirements
 	endpointResources corev1.ResourceRequirements
+	pvPoolResources   corev1.ResourceRequirements
 	endpointMinCount  int32
 	endpointMaxCount  int32
 	dbInstances       int
@@ -37,6 +39,18 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 		coreResources:     profileResources("500m", "1", "1Gi", "4Gi"),
 		dbResources:       profileResources("1", "1", "2Gi", "2Gi"),
 		endpointResources: profileResources("500m", "2", "1Gi", "3Gi"),
+		pvPoolResources:   profileResources("400m", "400m", "800Mi", "800Mi"),
+		endpointMinCount:  1,
+		endpointMaxCount:  2,
+		dbInstances:       2,
+		pvPoolNumVolumes:  3,
+	},
+	// for IBM Z, we adjust the CPU requests by a factor of 0.5 https://redhat.atlassian.net/browse/RHSTOR-9067
+	nbv1.PerformanceProfileDefaultIBMZ: {
+		coreResources:     profileResources("250m", "1", "1Gi", "4Gi"),
+		dbResources:       profileResources("500m", "1", "2Gi", "2Gi"),
+		endpointResources: profileResources("250m", "2", "1Gi", "3Gi"),
+		pvPoolResources:   profileResources("200m", "400m", "800Mi", "800Mi"),
 		endpointMinCount:  1,
 		endpointMaxCount:  2,
 		dbInstances:       2,
@@ -46,6 +60,7 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 		coreResources:     profileResources("1", "2", "2Gi", "4Gi"),
 		dbResources:       profileResources("4", "4", "8Gi", "8Gi"),
 		endpointResources: profileResources("2", "4", "2Gi", "4Gi"),
+		pvPoolResources:   profileResources("1", "1", "2Gi", "2Gi"),
 		endpointMinCount:  2,
 		endpointMaxCount:  4,
 		dbInstances:       2,
@@ -55,6 +70,7 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 		coreResources:     profileResources("1", "2", "2Gi", "6Gi"),
 		dbResources:       profileResources("6", "6", "16Gi", "16Gi"),
 		endpointResources: profileResources("2", "4", "2Gi", "4Gi"),
+		pvPoolResources:   profileResources("1", "1", "2Gi", "2Gi"),
 		endpointMinCount:  2,
 		endpointMaxCount:  4,
 		dbInstances:       2,
@@ -64,6 +80,7 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 		coreResources:     profileResources("500m", "500m", "1Gi", "1Gi"),
 		dbResources:       profileResources("1", "1", "2Gi", "2Gi"),
 		endpointResources: profileResources("500m", "500m", "500Mi", "500Mi"),
+		pvPoolResources:   profileResources("500m", "500m", "500Mi", "500Mi"),
 		endpointMinCount:  1,
 		endpointMaxCount:  1,
 		dbInstances:       1,
@@ -83,6 +100,7 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 		},
 		dbResources:       profileResources("100m", "100m", "500Mi", "500Mi"),
 		endpointResources: profileResources("100m", "100m", "500Mi", "500Mi"),
+		pvPoolResources:   profileResources("100m", "100m", "400Mi", "400Mi"),
 		endpointMinCount:  1,
 		endpointMaxCount:  1,
 		dbInstances:       1,
@@ -169,4 +187,14 @@ func getEndpointMinMax(nb *nbv1.NooBaa) (int32, int32) {
 		}
 	}
 	return minCount, maxCount
+}
+
+// GetPVPoolResources returns the default CPU/memory resources for PV pool
+// backingstore pods based on the performance profile.
+// In test env, returns minimal resources regardless of the profile.
+func GetPVPoolResources(nb *nbv1.NooBaa) corev1.ResourceRequirements {
+	if util.IsTestEnv() {
+		return profileResources("50m", "50m", "200Mi", "200Mi")
+	}
+	return lookupProfile(nb).pvPoolResources
 }

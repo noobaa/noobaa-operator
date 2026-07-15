@@ -1946,6 +1946,7 @@ spec:
                   Explicit per-component resource/count fields take precedence over the profile.
                 enum:
                 - default
+                - default-ibm-z
                 - mixed-workload
                 - small-objects
                 - dev-env

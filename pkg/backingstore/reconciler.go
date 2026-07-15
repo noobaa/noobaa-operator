@@ -1384,31 +1384,36 @@ func (r *Reconciler) updatePodTemplate() error {
 }
 
 func (r *Reconciler) updatePodResourcesTemplate(c *corev1.Container) error {
-	minCPUStringByEnv, minMemoryStringByEnv := getMinimalResourcesByEnv()
-	minimalCPU := resource.MustParse(minCPUStringByEnv)
-	minimalMemory := resource.MustParse(minMemoryStringByEnv)
-	var src, dst *corev1.ResourceList
-	pvPool := r.BackingStore.Spec.PVPool
+	profileDefaults := system.GetPVPoolResources(r.NooBaa)
 
-	// Request
-	dst = &c.Resources.Requests
-	if pvPool != nil && pvPool.VolumeResources != nil {
-		src = &pvPool.VolumeResources.Requests
-	}
-	if err := r.reconcileResources(src, dst, minimalCPU, minimalMemory); err != nil {
-		return err
+	c.Resources.Requests = profileDefaults.Requests.DeepCopy()
+	c.Resources.Limits = profileDefaults.Limits.DeepCopy()
+
+	if pvPool := r.BackingStore.Spec.PVPool; pvPool != nil && pvPool.VolumeResources != nil {
+		applyResourceOverrides(&c.Resources, pvPool.VolumeResources)
 	}
 
-	// Limits
-	src = nil
-	if pvPool != nil && pvPool.VolumeResources != nil {
-		src = &pvPool.VolumeResources.Limits
-	}
-	dst = &c.Resources.Limits
-	if err := r.reconcileResources(src, dst, minimalCPU, minimalMemory); err != nil {
-		return err
+	if err := validateResourceRequestsVsLimits(c.Resources); err != nil {
+		return util.NewPersistentError("InvalidResources",
+			fmt.Sprintf("BackingStore %q has invalid resources: %v", r.BackingStore.Name, err))
 	}
 
+	r.Logger.Infof("BackingStore %q PV pool resources — requests cpu:%v mem:%v, limits cpu:%v mem:%v",
+		r.BackingStore.Name,
+		c.Resources.Requests.Cpu(), c.Resources.Requests.Memory(),
+		c.Resources.Limits.Cpu(), c.Resources.Limits.Memory())
+	return nil
+}
+
+// validateResourceRequestsVsLimits checks that for each resource, request does not exceed limit.
+func validateResourceRequestsVsLimits(res corev1.ResourceRequirements) error {
+	for _, rName := range []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory} {
+		req, hasReq := res.Requests[rName]
+		lim, hasLim := res.Limits[rName]
+		if hasReq && hasLim && req.Cmp(lim) > 0 {
+			return fmt.Errorf("request %s (%s) exceeds limit (%s)", rName, req.String(), lim.String())
+		}
+	}
 	return nil
 }
 
@@ -1440,46 +1445,20 @@ func (r *Reconciler) deletePvPool() error {
 	return nil
 }
 
-func (r *Reconciler) reconcileResources(src, dst *corev1.ResourceList, minCPU, minMem resource.Quantity) error {
-	log := r.Logger
-	cpu := minCPU
-	mem := minMem
-
-	if src != nil {
-		if qty, ok := (*src)[corev1.ResourceCPU]; ok {
-			if qty.Cmp(minCPU) < 0 {
-				return util.NewPersistentError("MinRequestCpu",
-					fmt.Sprintf("NooBaa BackingStore %v is in rejected phase due to small cpu request %v, min is %v", r.BackingStore.Name, qty.String(), minCPU.String()))
-			}
-			cpu = qty
+// applyResourceOverrides overrides CPU and memory in dst with values from src
+// when present. Used to apply user-specified PVPool.VolumeResources over profile defaults.
+func applyResourceOverrides(dst *corev1.ResourceRequirements, src *corev1.VolumeResourceRequirements) {
+	overrideList := func(dstList *corev1.ResourceList, srcList corev1.ResourceList) {
+		if srcList == nil {
+			return
 		}
-		if qty, ok := (*src)[corev1.ResourceMemory]; ok {
-			if qty.Cmp(minMem) < 0 {
-				return util.NewPersistentError("MinRequestCpu",
-					fmt.Sprintf("NooBaa BackingStore %v is in rejected phase due to small memory request %v, min is %v", r.BackingStore.Name, qty.String(), minMem.String()))
-			}
-			mem = qty
+		if qty, ok := srcList[corev1.ResourceCPU]; ok {
+			(*dstList)[corev1.ResourceCPU] = qty
+		}
+		if qty, ok := srcList[corev1.ResourceMemory]; ok {
+			(*dstList)[corev1.ResourceMemory] = qty
 		}
 	}
-	log.Infof("BackingStore %q was created with resurce cpu:%v mem:%v.", r.BackingStore.Name, cpu, mem)
-
-	(*dst)[corev1.ResourceCPU] = cpu
-	(*dst)[corev1.ResourceMemory] = mem
-	return nil
-}
-
-// getMinimalResourcesByEnv returns the minimal CPU / memory resources by env
-// of backingstore of type pv-pool
-func getMinimalResourcesByEnv() (string, string) {
-	minCPUStringByEnv := minCPUString
-	minMemoryStringByEnv := minMemoryString
-	if util.IsTestEnv() {
-		minCPUStringByEnv = testEnvMinCPUString
-		minMemoryStringByEnv = testEnvMinMemoryString
-	}
-	if util.IsDevEnv() {
-		minCPUStringByEnv = devEnvMinCPUString
-		minMemoryStringByEnv = devEnvMinMemoryString
-	}
-	return minCPUStringByEnv, minMemoryStringByEnv
+	overrideList(&dst.Requests, src.Requests)
+	overrideList(&dst.Limits, src.Limits)
 }
