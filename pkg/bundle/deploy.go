@@ -6829,7 +6829,7 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "22c739e1b81a9d3c1b167b89c0e8e6757b2981b1434071aa4441332ec4c68d64"
+const Sha256_deploy_role_yaml = "074639a33687392f9d7d914133672af3f532d5f36bee61f9422f019f5aee394c"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -6863,6 +6863,14 @@ rules:
   - serviceaccounts
   verbs:
   - '*'
+- apiGroups:
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+  - update
 - apiGroups:
   - ""
   resources:
