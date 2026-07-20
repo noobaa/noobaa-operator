@@ -27,6 +27,8 @@ spec:
       volumes:
         - name: logs
           emptyDir: {}
+        - name: shared-bin
+          emptyDir: {}
         - name: mgmt-secret
           secret:
             secretName: noobaa-mgmt-serving-cert
@@ -48,6 +50,20 @@ spec:
       securityContext:
         runAsUser: 10001
         runAsGroup: 0
+      initContainers:
+        - name: copy-leader-elect
+          image: NOOBAA_OPERATOR_IMAGE
+          command:
+            - cp
+            - /usr/local/bin/noobaa-operator
+            - /noobaa-shared/noobaa-operator
+          volumeMounts:
+            - name: shared-bin
+              mountPath: /noobaa-shared
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
       containers:
         #----------------#
         # CORE CONTAINER #
@@ -60,9 +76,24 @@ spec:
             timeoutSeconds: 2
           image: NOOBAA_CORE_IMAGE
           terminationMessagePolicy: FallbackToLogsOnError
+          command:
+            # Prefer core_init.js (newer core images); fall back to supervisord (older images).
+            - /noobaa-shared/noobaa-operator
+            - leader-elect
+            - --
+            - /bin/bash
+            - -ec
+            - |
+              if [ -f /root/node_modules/noobaa-core/src/cmd/core_init.js ]; then
+                exec /usr/local/bin/node /root/node_modules/noobaa-core/src/cmd/core_init.js
+              fi
+              exec /usr/bin/supervisord start
           volumeMounts:
             - name: logs
               mountPath: /log
+            - name: shared-bin
+              mountPath: /noobaa-shared
+              readOnly: true
             - name: mgmt-secret
               mountPath: /etc/mgmt-secret
               readOnly: true
@@ -119,6 +150,8 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_VERSION_AUTH_ENABLED
+            - name: NOOBAA_CORE_LEASE_NAME
+              value: ""
             - name: POSTGRES_HOST
               value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_HOST_RO

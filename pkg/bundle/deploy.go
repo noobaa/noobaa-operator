@@ -5603,7 +5603,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "cc38a4b3cd26c43156962823645c43be26e39ed57a7205d6b390c7849c39651b"
+const Sha256_deploy_internal_statefulset_core_yaml = "8ff071dc752f7020b32222f46713887a4f9c0d2bd4d0e6d766d470f37ab5d466"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5634,6 +5634,8 @@ spec:
       volumes:
         - name: logs
           emptyDir: {}
+        - name: shared-bin
+          emptyDir: {}
         - name: mgmt-secret
           secret:
             secretName: noobaa-mgmt-serving-cert
@@ -5655,6 +5657,20 @@ spec:
       securityContext:
         runAsUser: 10001
         runAsGroup: 0
+      initContainers:
+        - name: copy-leader-elect
+          image: NOOBAA_OPERATOR_IMAGE
+          command:
+            - cp
+            - /usr/local/bin/noobaa-operator
+            - /noobaa-shared/noobaa-operator
+          volumeMounts:
+            - name: shared-bin
+              mountPath: /noobaa-shared
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
       containers:
         #----------------#
         # CORE CONTAINER #
@@ -5667,9 +5683,24 @@ spec:
             timeoutSeconds: 2
           image: NOOBAA_CORE_IMAGE
           terminationMessagePolicy: FallbackToLogsOnError
+          command:
+            # Prefer core_init.js (newer core images); fall back to supervisord (older images).
+            - /noobaa-shared/noobaa-operator
+            - leader-elect
+            - --
+            - /bin/bash
+            - -ec
+            - |
+              if [ -f /root/node_modules/noobaa-core/src/cmd/core_init.js ]; then
+                exec /usr/local/bin/node /root/node_modules/noobaa-core/src/cmd/core_init.js
+              fi
+              exec /usr/bin/supervisord start
           volumeMounts:
             - name: logs
               mountPath: /log
+            - name: shared-bin
+              mountPath: /noobaa-shared
+              readOnly: true
             - name: mgmt-secret
               mountPath: /etc/mgmt-secret
               readOnly: true
@@ -5726,6 +5757,8 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_VERSION_AUTH_ENABLED
+            - name: NOOBAA_CORE_LEASE_NAME
+              value: ""
             - name: POSTGRES_HOST
               value: "noobaa-db-pg-0.noobaa-db-pg"
             - name: POSTGRES_HOST_RO
@@ -7137,7 +7170,7 @@ subjects:
   name: custom-metrics-prometheus-adapter
 `
 
-const Sha256_deploy_role_core_yaml = "92e0178504b6d3ff202db026efe38de5cac63d29751b5e488842aa5326f36156"
+const Sha256_deploy_role_core_yaml = "922820415ce947d0f60eb47b82e2032806839729db5f587c5eddd6be8d156433"
 
 const File_deploy_role_core_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -7197,6 +7230,14 @@ rules:
   - update
   - list
   - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
 `
 
 const Sha256_deploy_role_db_yaml = "bc7eeca1125dfcdb491ab8eb69e3dcbce9f004a467b88489f85678b3c6872cce"
