@@ -8,7 +8,7 @@ ARG NOOBAA_BIN_PATH=build/_output/bin/noobaa-operator
 # tar is needed for kubectl cp
 RUN microdnf -y install tar
 
-# install operator binary
+# install operator binary (includes Hidden leader-elect subcommand for core pods)
 COPY ${NOOBAA_BIN_PATH} ${OPERATOR}
 
 USER ${USER_UID}
