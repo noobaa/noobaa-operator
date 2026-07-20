@@ -4,14 +4,6 @@ metadata:
   name: noobaa
 rules:
 - apiGroups:
-  - security.openshift.io
-  resourceNames:
-  - noobaa
-  resources:
-  - securitycontextconstraints
-  verbs:
-  - use
-- apiGroups:
   - noobaa.io
   resources:
   - '*'
