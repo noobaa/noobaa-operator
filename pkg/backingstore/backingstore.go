@@ -94,7 +94,10 @@ func CmdUpdate() *cobra.Command {
 		Short: "Update a backing store",
 		Run:   RunUpdate,
 	}
-	cmd.Flags().String("endpoint", "", "New endpoint URL")
+	cmd.Flags().String(
+		"endpoint", "",
+		"New endpoint URL",
+	)
 
 	return cmd
 }
@@ -959,8 +962,6 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 }
 
 func RunUpdate(cmd *cobra.Command, args []string) {
-	// args: <backingstore name>
-	// flags: <endpoint>
 	log := util.Logger()
 
 	if len(args) != 1 || args[0] == "" {
@@ -1001,7 +1002,6 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 			log.Fatalf(`❌ Invalid backing store spec`)
 		}
 		bs.Spec.IBMCos.Endpoint = endpoint
-	default:
 	}
 
 	success := util.KubeUpdate(bs)
