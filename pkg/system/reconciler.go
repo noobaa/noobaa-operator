@@ -28,6 +28,7 @@ import (
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -73,6 +74,7 @@ type Reconciler struct {
 	NooBaa                    *nbv1.NooBaa
 	ServiceAccount            *corev1.ServiceAccount
 	CoreApp                   *appsv1.StatefulSet
+	CoreLease                 *coordinationv1.Lease
 	CoreAppConfig             *corev1.ConfigMap
 	DefaultCoreApp            *corev1.PodSpec
 	PostgresDBConf            *corev1.ConfigMap
@@ -160,6 +162,7 @@ func NewReconciler(
 		NooBaa:                    util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		ServiceAccount:            util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
 		CoreApp:                   util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
+		CoreLease:                 util.KubeObject(bundle.File_deploy_internal_lease_core_yaml).(*coordinationv1.Lease),
 		CoreAppConfig:             util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap),
 		PostgresDBConf:            util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap),
 		NooBaaPostgresDB:          util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet),
@@ -216,6 +219,7 @@ func NewReconciler(
 	r.NooBaa.Namespace = r.Request.Namespace
 	r.ServiceAccount.Namespace = r.Request.Namespace
 	r.CoreApp.Namespace = r.Request.Namespace
+	r.CoreLease.Namespace = r.Request.Namespace
 	r.CoreAppConfig.Namespace = r.Request.Namespace
 	r.PostgresDBConf.Namespace = r.Request.Namespace
 	r.NooBaaPostgresDB.Namespace = r.Request.Namespace
@@ -269,6 +273,7 @@ func NewReconciler(
 	r.NooBaa.Name = r.Request.Name
 	r.ServiceAccount.Name = r.Request.Name
 	r.CoreApp.Name = r.Request.Name + "-core"
+	r.CoreLease.Name = r.Request.Name + "-core-lease"
 	r.CoreAppConfig.Name = "noobaa-config"
 	r.NooBaaPostgresDB.Name = r.Request.Name + "-db-pg"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
@@ -360,6 +365,7 @@ func (r *Reconciler) CheckAll() {
 	CheckSystem(r.NooBaa)
 	r.reportKMSConditionStatus()
 	util.KubeCheck(r.CoreApp)
+	util.KubeCheckQuiet(r.CoreLease)
 	util.KubeCheck(r.CoreAppConfig)
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)

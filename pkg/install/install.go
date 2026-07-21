@@ -23,12 +23,17 @@ func CmdInstall() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install the operator and create the noobaa system",
-		Run:   RunInstall,
-		Args:  cobra.NoArgs,
+		Long: `Install the operator and create the NooBaa system.
+
+Core HA is enabled by default (2 noobaa-core pods with Kubernetes lease leader election).
+Use --disable-core-ha to install with a single core pod.`,
+		Run:  RunInstall,
+		Args: cobra.NoArgs,
 	}
 	cmd.Flags().Bool("use-obc-cleanup-policy", false, "Create NooBaa system with obc cleanup policy")
 	cmd.Flags().Bool("use-standalone-db", false, "Create NooBaa system with standalone DB (Legacy)")
 	cmd.Flags().Bool("no-wait", false, "Don't wait for the system to be ready. Exit after applying the changes")
+	cmd.Flags().Bool("disable-core-ha", false, "Disable noobaa-core HA (single core pod). Default is HA enabled (2 pods with lease leader election)")
 	cmd.AddCommand(
 		CmdYaml(),
 		cnpg.CmdCNPG(),
