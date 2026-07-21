@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -67,14 +68,19 @@ func CmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a noobaa system",
-		Run:   RunCreate,
-		Args:  cobra.NoArgs,
+		Long: `Create a noobaa system.
+
+Core HA is enabled by default (2 noobaa-core pods with Kubernetes lease leader election).
+Use --disable-core-ha to install with a single core pod.`,
+		Run:  RunCreate,
+		Args: cobra.NoArgs,
 	}
 	cmd.Flags().String("core-resources", "", "Core resources JSON")
 	cmd.Flags().String("db-resources", "", "DB resources JSON")
 	cmd.Flags().String("endpoint-resources", "", "Endpoint resources JSON")
 	cmd.Flags().Bool("use-standalone-db", false, "Create NooBaa system with standalone DB (Legacy)")
 	cmd.Flags().Bool("use-obc-cleanup-policy", false, "Create NooBaa system with obc cleanup policy")
+	AddDisableCoreHAFlags(cmd)
 	return cmd
 }
 
@@ -195,6 +201,15 @@ func CmdOidc() *cobra.Command {
 	return cmd
 }
 
+// AddDisableCoreHAFlags registers the disable-core-ha flag on install/create (local to those commands, like use-standalone-db).
+func AddDisableCoreHAFlags(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(
+		&options.DisableCoreHA, "disable-core-ha",
+		options.DisableCoreHA,
+		"Disable noobaa-core HA (single core pod). Default is HA enabled (2 pods with lease leader election)",
+	)
+}
+
 // LoadSystemDefaults loads a noobaa system CR from bundled yamls
 // and apply's changes from CLI flags to the defaults.
 func LoadSystemDefaults() *nbv1.NooBaa {
@@ -210,6 +225,7 @@ func LoadSystemDefaults() *nbv1.NooBaa {
 	sys.Spec.LoadBalancerSourceSubnets.S3 = options.S3LoadBalancerSourceSubnets
 	sys.Spec.LoadBalancerSourceSubnets.STS = options.STSLoadBalancerSourceSubnets
 	sys.Spec.LoadBalancerSourceSubnets.Vectors = options.VectorsLoadBalancerSourceSubnets
+	sys.Spec.DisableCoreHA = options.DisableCoreHA
 
 	LoadConfigMapFromFlags()
 
@@ -1207,9 +1223,10 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 	if coreApp.Spec.Replicas != nil {
 		desiredReplicas = *coreApp.Spec.Replicas
 	}
-	if coreApp.Status.Replicas != desiredReplicas {
+	// HA: only the leader becomes Ready; standbys stay not Ready — require at least one.
+	if coreApp.Status.ReadyReplicas < 1 {
 		log.Printf(`⏳ System Phase is %q. StatefulSet %q is not yet ready:`+
-			` ReadyReplicas %d/%d`,
+			` ReadyReplicas %d, need at least 1 (%d configured)`,
 			sys.Status.Phase,
 			coreAppName,
 			coreApp.Status.ReadyReplicas,
@@ -1226,22 +1243,15 @@ func CheckWaitingFor(sys *nbv1.NooBaa) error {
 	if corePodErr != nil {
 		return corePodErr
 	}
-	if len(corePodList.Items) != int(desiredReplicas) {
-		return fmt.Errorf("Can't find the core pods")
-	}
-	corePod := &corePodList.Items[0]
-	if corePod.Status.Phase != corev1.PodRunning {
-		log.Printf(`⏳ System Phase is %q. Pod %q is not yet ready: %s`,
-			sys.Status.Phase, corePod.Name, util.GetPodStatusLine(corePod))
+	if len(corePodList.Items) == 0 {
+		log.Printf(`⏳ System Phase is %q. No core pods found yet (want %d)`,
+			sys.Status.Phase, desiredReplicas)
 		return nil
 	}
-	for i := range corePod.Status.ContainerStatuses {
-		c := &corePod.Status.ContainerStatuses[i]
-		if !c.Ready {
-			log.Printf(`⏳ System Phase is %q. Container %q is not yet ready: %s`,
-				sys.Status.Phase, c.Name, util.GetContainerStatusLine(c))
-			return nil
-		}
+	if len(corePodList.Items) != int(desiredReplicas) {
+		log.Printf(`⏳ System Phase is %q. Found %d core pods, want %d`,
+			sys.Status.Phase, len(corePodList.Items), desiredReplicas)
+		return nil
 	}
 
 	log.Printf(`⏳ System Phase is %q. Waiting for phase ready ...`, sys.Status.Phase)
@@ -1381,13 +1391,17 @@ func Connect(isExternal bool) (*Client, error) {
 
 	if isExternal {
 
-		// setup port forwarding
+		// Port-forward to a Ready mgmt/core pod (HA: standbys are not Ready).
+		podName, err := findReadyMgmtPod(r.ServiceMgmt)
+		if err != nil {
+			return nil, fmt.Errorf("Connect(): %w", err)
+		}
 		router := &nb.APIRouterPortForward{
 			ServiceMgmt:  r.ServiceMgmt,
 			PodNamespace: r.NooBaa.Namespace,
-			PodName:      r.NooBaa.Name + "-core-0",
+			PodName:      podName,
 		}
-		err := router.Start()
+		err = router.Start()
 		if err != nil {
 			return nil, err
 		}
@@ -1438,6 +1452,54 @@ func Connect(isExternal bool) (*Client, error) {
 		S3URL:       s3URL,
 		VectorsURL:  vectorsURL,
 	}, nil
+}
+
+// findReadyMgmtPod returns the name of a Ready pod matching the mgmt Service selector.
+// Matches kube Endpoints policy: only Ready backends are eligible for mgmt traffic.
+func findReadyMgmtPod(svc *corev1.Service) (string, error) {
+	if svc == nil {
+		return "", fmt.Errorf("mgmt service is nil")
+	}
+	if len(svc.Spec.Selector) == 0 {
+		return "", fmt.Errorf("mgmt service %q has empty selector", svc.Name)
+	}
+	podList := &corev1.PodList{}
+	if !util.KubeList(podList, client.InNamespace(svc.Namespace), client.MatchingLabels(svc.Spec.Selector)) {
+		return "", fmt.Errorf("failed listing pods for mgmt service %q", svc.Name)
+	}
+	return pickReadyPodName(podList.Items)
+}
+
+// pickReadyPodName returns the lexicographically first Running+Ready pod name.
+func pickReadyPodName(pods []corev1.Pod) (string, error) {
+	var ready []string
+	for i := range pods {
+		pod := &pods[i]
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
+		if pod.Status.Phase != corev1.PodRunning {
+			continue
+		}
+		if !isPodReady(pod) {
+			continue
+		}
+		ready = append(ready, pod.Name)
+	}
+	if len(ready) == 0 {
+		return "", fmt.Errorf("no Ready mgmt/core pod found for port-forward")
+	}
+	sort.Strings(ready)
+	return ready[0], nil
+}
+
+func isPodReady(pod *corev1.Pod) bool {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }
 
 // IsRunningInCluster returns true when the process runs inside a Kubernetes pod.

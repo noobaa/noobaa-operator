@@ -3,13 +3,14 @@
 // Exposed as a Hidden cobra subcommand of the noobaa-operator binary and
 // copied into the core pod from the operator image:
 //
-//	noobaa-operator leader-elect [flags] -- <command> [args...]
+//	noobaa-operator leader-elect -- <command> [args...]
 //
+// Timings and lease name come from environment variables (see NOOBAA_CORE_*).
 // The command is Hidden so it does not appear in public CLI help. The wrapper
 // acquires a namespaced Lease, spawns the given command in its own process
 // group while holding leadership, reaps orphaned children (PID 1), and on
-// SIGTERM/SIGINT or leadership loss stops the child group before releasing
-// the Lease (ReleaseOnCancel).
+// SIGTERM/SIGINT or leadership loss stops the child group, cancels the elector
+// (stopping renew), then releases the Lease once le.Run has returned.
 package leaderelect
 
 import (
@@ -27,6 +28,8 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/spf13/cobra"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/leaderelection"
@@ -38,9 +41,14 @@ const (
 	exitConfig = 1
 	exitLost   = 2
 
-	envLeaseName    = "NOOBAA_CORE_LEASE_NAME"
-	envPodNamespace = "POD_NAMESPACE"
-	saNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+	envLeaseName     = "NOOBAA_CORE_LEASE_NAME"
+	envLeaseDuration = "NOOBAA_CORE_LEASE_DURATION"
+	envRenewDeadline = "NOOBAA_CORE_RENEW_DEADLINE"
+	envRetryPeriod   = "NOOBAA_CORE_RETRY_PERIOD"
+	envShutdownGrace = "NOOBAA_CORE_SHUTDOWN_GRACE"
+	envLostGrace     = "NOOBAA_CORE_LOST_GRACE"
+	envPodNamespace  = "POD_NAMESPACE"
+	saNamespaceFile  = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 	defaultLeaseDuration = 20 * time.Second
 	defaultRenewDeadline = 10 * time.Second
@@ -49,12 +57,12 @@ const (
 	defaultLostGrace     = 8 * time.Second
 	// childSigkillWait is how long stopChild waits after SIGKILL for the child process group to exit before returning.
 	childSigkillWait = 5 * time.Second
-	// leaseReleaseMargin is extra time after child teardown for ReleaseOnCancel.
+	// leaseReleaseMargin is extra time after child teardown for the manual lease release Update.
 	leaseReleaseMargin = 10 * time.Second
 )
 
 // RecommendedTerminationGracePeriod is the pod terminationGracePeriodSeconds
-// that leaves room for ShutdownGrace + SIGKILL wait + lease release on cancel.
+// that leaves room for ShutdownGrace + SIGKILL wait + manual lease release.
 func RecommendedTerminationGracePeriod(shutdownGrace time.Duration) int64 {
 	if shutdownGrace <= 0 {
 		shutdownGrace = defaultShutdownGrace
@@ -74,17 +82,18 @@ type Config struct {
 }
 
 // Cmd returns the leader-elect CLI command (Hidden — for in-pod use).
+// Configuration is read from environment variables; args are only the wrapped command.
 func Cmd() *cobra.Command {
-	cfg := defaultConfig()
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Hidden:                true,
 		Use:                   "leader-elect -- <command> [args...]",
 		Short:                 "Acquire a Lease then exec a command (PID 1 leader-elect wrapper)",
 		DisableFlagsInUseLine: true,
+		DisableFlagParsing:    true,
 		SilenceUsage:          true,
-		Args:                  cobra.ArbitraryArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			cfg.Command = args
+		Run: func(_ *cobra.Command, args []string) {
+			cfg := defaultConfig()
+			cfg.Command = commandFromArgs(args)
 			if err := cfg.Validate(); err != nil {
 				fmt.Fprintf(os.Stderr, "leader-elect: %v\n", err)
 				os.Exit(exitConfig)
@@ -92,71 +101,82 @@ func Cmd() *cobra.Command {
 			os.Exit(Run(cfg))
 		},
 	}
-	bindFlags(cmd, cfg)
-	return cmd
 }
 
 func defaultConfig() *Config {
 	return &Config{
 		LeaseName:     os.Getenv(envLeaseName),
-		LeaseDuration: defaultLeaseDuration,
-		RenewDeadline: defaultRenewDeadline,
-		RetryPeriod:   defaultRetryPeriod,
-		ShutdownGrace: defaultShutdownGrace,
-		LostGrace:     defaultLostGrace,
+		LeaseDuration: durationFromEnv(envLeaseDuration, defaultLeaseDuration),
+		RenewDeadline: durationFromEnv(envRenewDeadline, defaultRenewDeadline),
+		RetryPeriod:   durationFromEnv(envRetryPeriod, defaultRetryPeriod),
+		ShutdownGrace: durationFromEnv(envShutdownGrace, defaultShutdownGrace),
+		LostGrace:     durationFromEnv(envLostGrace, defaultLostGrace),
 	}
 }
 
-func bindFlags(cmd *cobra.Command, cfg *Config) {
-	cmd.Flags().StringVar(&cfg.LeaseName, "lease-name", cfg.LeaseName, "Lease object name (default: $NOOBAA_CORE_LEASE_NAME)")
-	cmd.Flags().DurationVar(&cfg.LeaseDuration, "lease-duration", cfg.LeaseDuration, "Lease duration")
-	cmd.Flags().DurationVar(&cfg.RenewDeadline, "renew-deadline", cfg.RenewDeadline, "Leadership renew deadline")
-	cmd.Flags().DurationVar(&cfg.RetryPeriod, "retry-period", cfg.RetryPeriod, "Leadership retry period")
-	cmd.Flags().DurationVar(&cfg.ShutdownGrace, "shutdown-grace", cfg.ShutdownGrace, "Time to wait for child exit after SIGTERM/SIGINT before SIGKILL")
-	cmd.Flags().DurationVar(&cfg.LostGrace, "lost-grace", cfg.LostGrace, "Time to wait for child exit after leadership loss before SIGKILL")
+// durationFromEnv parses a duration env var; returns fallback if unset or invalid.
+func durationFromEnv(key string, fallback time.Duration) time.Duration {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil || d <= 0 {
+		return fallback
+	}
+	return d
 }
 
-// ParseArgs parses leader-elect flags and the wrapped command (args after flags/--).
+// commandFromArgs returns the wrapped command, stripping a leading "--" if present.
+func commandFromArgs(args []string) []string {
+	if len(args) == 0 {
+		return nil
+	}
+	if args[0] == "--" {
+		return append([]string(nil), args[1:]...)
+	}
+	return append([]string(nil), args...)
+}
+
+// ParseArgs builds Config from the environment and the wrapped command args.
 // It does not run the election or spawn processes.
 func ParseArgs(args []string) (*Config, error) {
 	cfg := defaultConfig()
-	cmd := &cobra.Command{
-		Use:           "leader-elect",
-		SilenceErrors: true,
-		SilenceUsage:  true,
-		Args:          cobra.ArbitraryArgs,
-		Run: func(_ *cobra.Command, a []string) {
-			cfg.Command = a
-		},
-	}
-	bindFlags(cmd, cfg)
-	cmd.SetArgs(args)
-	if err := cmd.Execute(); err != nil {
-		return nil, err
-	}
+	cfg.Command = commandFromArgs(args)
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 	return cfg, nil
 }
 
-// Validate checks required fields and the lost-grace invariant.
+// Validate checks required fields and client-go timing invariants.
 func (c *Config) Validate() error {
 	if c == nil {
 		return fmt.Errorf("nil config")
 	}
 	if c.LeaseName == "" {
-		return fmt.Errorf("--lease-name is required (or set $%s)", envLeaseName)
+		return fmt.Errorf("$%s is required", envLeaseName)
 	}
 	if len(c.Command) == 0 {
 		return fmt.Errorf("command is required after --")
 	}
 	maxLost := c.LeaseDuration - c.RenewDeadline
 	if maxLost <= 0 {
-		return fmt.Errorf("lease-duration (%v) must be greater than renew-deadline (%v)", c.LeaseDuration, c.RenewDeadline)
+		return fmt.Errorf("%s (%v) must be greater than %s (%v)",
+			envLeaseDuration, c.LeaseDuration, envRenewDeadline, c.RenewDeadline)
 	}
 	if c.LostGrace >= maxLost {
-		return fmt.Errorf("--lost-grace (%v) must be < lease-duration - renew-deadline (%v)", c.LostGrace, maxLost)
+		return fmt.Errorf("%s (%v) must be < %s - %s (%v)",
+			envLostGrace, c.LostGrace, envLeaseDuration, envRenewDeadline, maxLost)
+	}
+	// Match NewLeaderElector: renewDeadline must be > retryPeriod*JitterFactor (1.2).
+	if c.RetryPeriod <= 0 {
+		return fmt.Errorf("%s (%v) must be greater than zero", envRetryPeriod, c.RetryPeriod)
+	}
+	minRenew := time.Duration(leaderelection.JitterFactor * float64(c.RetryPeriod))
+	if c.RenewDeadline <= minRenew {
+		return fmt.Errorf("%s (%v) must be greater than %s*%g (%v)",
+			envRenewDeadline, c.RenewDeadline, envRetryPeriod, leaderelection.JitterFactor, minRenew)
 	}
 	return nil
 }
@@ -191,9 +211,11 @@ func Run(cfg *Config) int {
 	defer cancel()
 
 	r := &runner{
-		cfg:    cfg,
-		cancel: cancel,
-		log:    log,
+		cfg:      cfg,
+		cancel:   cancel,
+		log:      log,
+		lock:     lock,
+		identity: identity,
 	}
 
 	sigCh := make(chan os.Signal, 2)
@@ -202,25 +224,44 @@ func Run(cfg *Config) int {
 
 	go func() {
 		sig := <-sigCh
-		r.log.Infof("leader-elect: received %v, stopping child then releasing lease", sig)
+		r.log.Infof("leader-elect: received %v, stopping child then cancelling election", sig)
 		r.stopChild(cfg.ShutdownGrace)
 		r.forceExit(exitOK)
 		cancel()
 	}()
 
+	// closed when OnStartedLeading returns, or immediately if we never led.
+	leadingDone := make(chan struct{})
+	closeLeadingDone := sync.OnceFunc(func() { close(leadingDone) })
+	var led bool
+	var ledMu sync.Mutex
+
 	le, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
-		Lock:            lock,
-		LeaseDuration:   cfg.LeaseDuration,
-		RenewDeadline:   cfg.RenewDeadline,
-		RetryPeriod:     cfg.RetryPeriod,
-		ReleaseOnCancel: true,
+		Lock:          lock,
+		LeaseDuration: cfg.LeaseDuration,
+		RenewDeadline: cfg.RenewDeadline,
+		RetryPeriod:   cfg.RetryPeriod,
+		// Do not release on cancel: renew cancel can race with stopChild and
+		// hand the Lease to a standby while core is still running.
+		// We release manually after le.Run returns and OnStartedLeading finishes.
+		ReleaseOnCancel: false,
 		Name:            cfg.LeaseName,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(leadCtx context.Context) {
+				ledMu.Lock()
+				led = true
+				ledMu.Unlock()
+				defer closeLeadingDone()
 				r.onStartedLeading(leadCtx)
 			},
 			OnStoppedLeading: func() {
 				r.log.Infof("leader-elect: stopped leading (identity %s)", identity)
+				ledMu.Lock()
+				didLead := led
+				ledMu.Unlock()
+				if !didLead {
+					closeLeadingDone()
+				}
 			},
 		},
 	})
@@ -231,6 +272,9 @@ func Run(cfg *Config) int {
 
 	log.Infof("leader-elect: waiting for lease %s/%s as %s", namespace, cfg.LeaseName, identity)
 	le.Run(ctx)
+	// Renew has stopped. Wait for leading teardown (esp. loss-path stopChild) before release.
+	<-leadingDone
+	r.releaseLease()
 
 	return r.getExit()
 }
@@ -262,9 +306,11 @@ type logger interface {
 }
 
 type runner struct {
-	cfg    *Config
-	cancel context.CancelFunc
-	log    logger
+	cfg      *Config
+	cancel   context.CancelFunc
+	log      logger
+	lock     resourcelock.Interface
+	identity string
 
 	mu            sync.Mutex
 	childPID      int
@@ -273,6 +319,7 @@ type runner struct {
 	exitCode      int
 	exitSet       bool
 	termRequested bool
+	releaseOnce   sync.Once
 }
 
 func (r *runner) setExit(code int) {
@@ -342,13 +389,13 @@ func (r *runner) onStartedLeading(leadCtx context.Context) {
 		termRequested := r.termRequested
 		r.mu.Unlock()
 		if termRequested {
-			// SIGTERM/lost path owns the wrapper exit code.
+			// SIGTERM path owns the wrapper exit code; lease release is after le.Run.
 			return
 		}
 		code := r.getChildCode()
 		r.log.Infof("leader-elect: child exited with code %d", code)
 		r.setExit(code)
-		r.cancel() // release lease after child is down
+		r.cancel()
 	case <-leadCtx.Done():
 		r.mu.Lock()
 		termRequested := r.termRequested
@@ -369,6 +416,48 @@ func (r *runner) onStartedLeading(leadCtx context.Context) {
 		case <-time.After(r.cfg.LostGrace + childSigkillWait):
 		}
 	}
+}
+
+// releaseLease clears our HolderIdentity after renew has stopped and the child
+// is down so a standby can acquire immediately. Crashes still rely on Lease TTL.
+// Workaround until client-go waits for OnStartedLeading before ReleaseOnCancel:
+// https://github.com/kubernetes/kubernetes/pull/139991
+func (r *runner) releaseLease() {
+	r.releaseOnce.Do(func() {
+		if r.lock == nil {
+			return
+		}
+		deadline := r.cfg.RenewDeadline
+		if deadline <= 0 {
+			deadline = defaultRenewDeadline
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), deadline)
+		defer cancel()
+
+		old, _, err := r.lock.Get(ctx)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				r.log.Errorf("leader-elect: get lease for release: %v", err)
+			}
+			return
+		}
+		if old.HolderIdentity != r.identity {
+			return
+		}
+
+		now := metav1.NewTime(time.Now())
+		rec := resourcelock.LeaderElectionRecord{
+			LeaderTransitions:    old.LeaderTransitions,
+			LeaseDurationSeconds: 1,
+			RenewTime:            now,
+			AcquireTime:          now,
+		}
+		if err := r.lock.Update(ctx, rec); err != nil {
+			r.log.Errorf("leader-elect: release lease: %v", err)
+			return
+		}
+		r.log.Infof("leader-elect: released lease")
+	})
 }
 
 func (r *runner) getChildCode() int {

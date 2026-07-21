@@ -214,6 +214,12 @@ type NooBaaSpec struct {
 	// +optional
 	Annotations AnnotationsSpec `json:"annotations,omitempty"`
 
+	// DisableCoreHA (optional) disables noobaa-core high availability (2 replicas with Kubernetes lease leader election).
+	// When false or omitted, two core pods compete for the Lease; only the leader becomes Ready.
+	// When true, a single core pod still runs leader-elect and holds the Lease.
+	// +optional
+	DisableCoreHA bool `json:"disableCoreHA,omitempty"`
+
 	// DisableLoadBalancerService (optional) sets the service type to ClusterIP instead of LoadBalancer
 	// +nullable
 	// +optional

@@ -5,13 +5,16 @@ metadata:
   labels:
     app: noobaa
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       noobaa-core: noobaa
   serviceName: noobaa-mgmt
+  # OnDelete: RollingUpdate waits for Ready after each pod; HA standbys never
+  # become Ready, so the roll stalls after the standby and never updates the
+  # leader. With OnDelete, operator will detect template/hash drift and delete outdated pods itself.
   updateStrategy:
-    type: RollingUpdate
+    type: OnDelete
   template:
     metadata:
       labels:
@@ -60,6 +63,13 @@ spec:
           volumeMounts:
             - name: shared-bin
               mountPath: /noobaa-shared
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "32Mi"
+            limits:
+              cpu: "10m"
+              memory: "32Mi"
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
@@ -146,6 +156,31 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_VERSION_AUTH_ENABLED
+            - name: NOOBAA_CORE_LEASE_DURATION
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_CORE_LEASE_DURATION
+            - name: NOOBAA_CORE_RENEW_DEADLINE
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_CORE_RENEW_DEADLINE
+            - name: NOOBAA_CORE_RETRY_PERIOD
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_CORE_RETRY_PERIOD
+            - name: NOOBAA_CORE_SHUTDOWN_GRACE
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_CORE_SHUTDOWN_GRACE
+            - name: NOOBAA_CORE_LOST_GRACE
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_CORE_LOST_GRACE
             - name: NOOBAA_CORE_LEASE_NAME
               value: ""
             - name: POSTGRES_HOST

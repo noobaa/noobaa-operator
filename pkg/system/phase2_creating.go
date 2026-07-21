@@ -51,6 +51,10 @@ const (
 	gcpPoolIdEnvVar              string = "POOL_ID"
 	gcpProviderIdEnvVar          string = "PROVIDER_ID"
 	gcpServiceAccountEmailEnvVar string = "SERVICE_ACCOUNT_EMAIL"
+
+	// coreConfigMapHashAnnotation is set on the core configmap and STS/endpoint pod
+	// templates so OnDelete can detect config drift.
+	coreConfigMapHashAnnotation = "noobaa.io/configmap-hash"
 )
 
 // ReconcilePhaseCreating runs the reconcile phase
@@ -203,6 +207,10 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 
+	if err := r.ReconcileObject(r.CoreLease, r.SetDesiredCoreLease); err != nil {
+		return err
+	}
+
 	// before reconciling the core, check if the image was changed so an upgrade is needed.
 	// if upgrade is needed, stop the core and endpoints pods to allow the upgrade_manager in noobaa-core to run without interruptions
 	if util.KubeCheckQuiet(r.CoreApp) {
@@ -219,6 +227,10 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	}
 
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
+		return err
+	}
+	// OnDelete: operator must delete outdated pods (see restartStaleCorePods).
+	if err := r.restartStaleCorePods(); err != nil {
 		return err
 	}
 
@@ -621,7 +633,7 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			}
 
 		case "NOOBAA_CORE_LEASE_NAME":
-			c.Env[j].Value = r.Request.Name + "-core-leader"
+			c.Env[j].Value = r.CoreLease.Name
 		}
 	}
 
@@ -648,21 +660,19 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
 	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
+	// OnDelete avoids RollingUpdate stall on never-Ready HA standbys; see restartStaleCorePods.
+	r.CoreApp.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+		Type: appsv1.OnDeleteStatefulSetStrategyType,
+	}
 
 	podSpec := &r.CoreApp.Spec.Template.Spec
-	// ShutdownGrace (25s) + SIGKILL wait (5s) + lease-release margin (10s).
-	// Keep in sync with leaderelect.RecommendedTerminationGracePeriod.
-	terminationGracePeriodSeconds := leaderelect.RecommendedTerminationGracePeriod(0)
+	terminationGracePeriodSeconds := r.coreTerminationGracePeriodSeconds()
 	podSpec.TerminationGracePeriodSeconds = &terminationGracePeriodSeconds
 	podSpec.ServiceAccountName = "noobaa-core"
 	coreImageChanged := false
 
-	if r.CoreApp.Spec.Replicas != nil && *r.CoreApp.Spec.Replicas == 0 {
-		// replicas can be set to 0 if the cluster went through data import to DB cluster
-		// restore back to 1 replica
-		oneReplica := int32(1)
-		r.CoreApp.Spec.Replicas = &oneReplica
-	}
+	desiredCoreReplicas := getDesiredCoreReplicas(r.NooBaa)
+	r.CoreApp.Spec.Replicas = &desiredCoreReplicas
 
 	// adding the missing Volumes from default podSpec
 	podSpec.Volumes = r.DefaultCoreApp.Volumes
@@ -857,7 +867,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 		r.CoreApp.Spec.Template.Annotations = make(map[string]string)
 	}
 
-	r.CoreApp.Spec.Template.Annotations["noobaa.io/configmap-hash"] = r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"]
+	r.CoreApp.Spec.Template.Annotations[coreConfigMapHashAnnotation] = r.CoreAppConfig.Annotations[coreConfigMapHashAnnotation]
 	r.CoreApp.Spec.Template.Annotations[secv1.RequiredSCCAnnotation] = "noobaa-core"
 
 	// we want to check that the cm exists and also that it has data in it
@@ -1683,6 +1693,11 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 		"NOOBAA_VERSION_AUTH_ENABLED":  "true",
 		"ENDPOINT_SYSTEM_STORE_SOURCE": "core", // by default, load the system store in the endpoint from the core instead of the DB
 		"OPERATOR_LOG_LEVEL":           "info",
+		"NOOBAA_CORE_LEASE_DURATION":   "20s",
+		"NOOBAA_CORE_RENEW_DEADLINE":   "10s",
+		"NOOBAA_CORE_RETRY_PERIOD":     "3s",
+		"NOOBAA_CORE_SHUTDOWN_GRACE":   "25s",
+		"NOOBAA_CORE_LOST_GRACE":       "8s",
 	}
 	for key, value := range DefaultConfigMapData {
 		if _, ok := r.CoreAppConfig.Data[key]; !ok {
@@ -1702,8 +1717,100 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 			coreData[k] = v
 		}
 	}
-	r.CoreAppConfig.Annotations["noobaa.io/configmap-hash"] = util.GetCmDataHash(coreData)
+	r.CoreAppConfig.Annotations[coreConfigMapHashAnnotation] = util.GetCmDataHash(coreData)
 
+	return nil
+}
+
+func isCoreHAEnabled(nooBaa *nbv1.NooBaa) bool {
+	// Omitted/false keeps HA enabled; only an explicit disableCoreHA=true uses 1 replica.
+	return !nooBaa.Spec.DisableCoreHA
+}
+
+func getDesiredCoreReplicas(nooBaa *nbv1.NooBaa) int32 {
+	if isCoreHAEnabled(nooBaa) {
+		return options.CoreHAReplicaCount
+	}
+	return 1
+}
+
+// coreTerminationGracePeriodSeconds derives pod terminationGracePeriodSeconds from
+// noobaa-config NOOBAA_CORE_SHUTDOWN_GRACE (invalid/missing → leaderelect default).
+func (r *Reconciler) coreTerminationGracePeriodSeconds() int64 {
+	shutdownGrace := time.Duration(0)
+	if raw := strings.TrimSpace(r.CoreAppConfig.Data["NOOBAA_CORE_SHUTDOWN_GRACE"]); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil && d > 0 {
+			shutdownGrace = d
+		}
+	}
+	return leaderelect.RecommendedTerminationGracePeriod(shutdownGrace)
+}
+
+// restartStaleCorePods deletes one outdated core pod per reconcile under OnDelete.
+func (r *Reconciler) restartStaleCorePods() error {
+	if r.CoreApp.UID == "" {
+		return nil
+	}
+	// Refresh status (UpdateRevision) after the STS reconcile.
+	if !util.KubeCheckQuiet(r.CoreApp) {
+		return nil
+	}
+
+	desiredHash := ""
+	if r.CoreApp.Spec.Template.Annotations != nil {
+		desiredHash = r.CoreApp.Spec.Template.Annotations[coreConfigMapHashAnnotation]
+	}
+	updateRevision := r.CoreApp.Status.UpdateRevision
+
+	podList := &corev1.PodList{}
+	if !util.KubeList(podList, client.InNamespace(r.Request.Namespace), client.MatchingLabels{"noobaa-core": r.Request.Name}) {
+		return fmt.Errorf("failed listing core pods to restart stale revisions")
+	}
+
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if pod.DeletionTimestamp != nil {
+			// Wait for in-flight deletes before starting another.
+			return nil
+		}
+		if !isCorePodStale(pod, desiredHash, updateRevision) {
+			continue
+		}
+		r.Logger.Warnf("deleting outdated core pod %q (OnDelete) desiredHash=%q updateRevision=%q",
+			pod.Name, desiredHash, updateRevision)
+		util.KubeDeleteNoPolling(pod)
+		return nil
+	}
+	return nil
+}
+
+func isCorePodStale(pod *corev1.Pod, desiredHash, updateRevision string) bool {
+	if pod == nil {
+		return false
+	}
+	if desiredHash != "" {
+		podHash := ""
+		if pod.Annotations != nil {
+			podHash = pod.Annotations[coreConfigMapHashAnnotation]
+		}
+		if podHash != "" && podHash != desiredHash {
+			return true
+		}
+	}
+	if updateRevision == "" || pod.Labels == nil {
+		return false
+	}
+	podRevision := pod.Labels[appsv1.ControllerRevisionHashLabelKey]
+	return podRevision != "" && podRevision != updateRevision
+}
+
+// SetDesiredCoreLease updates the core Lease as desired for reconciling
+func (r *Reconciler) SetDesiredCoreLease() error {
+	if r.CoreLease.Labels == nil {
+		r.CoreLease.Labels = map[string]string{}
+	}
+	r.CoreLease.Labels["app"] = "noobaa"
+	r.CoreLease.Labels["noobaa-core-lease"] = r.Request.Name
 	return nil
 }
 

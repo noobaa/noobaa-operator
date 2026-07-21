@@ -78,6 +78,13 @@ var PostgresMajorVersion = 16
 // PostgresInstances is the default number of postgres instances in a managed postgres cluster
 var PostgresInstances = 1
 
+// CoreHAReplicaCount is the noobaa-core StatefulSet replica count when core HA is enabled.
+const CoreHAReplicaCount int32 = 2
+
+// DisableCoreHA is the default for spec.disableCoreHA on new systems (install/system create).
+// When false (default), core HA is enabled. Use --disable-core-ha for a single core pod.
+var DisableCoreHA = false
+
 // Psql12Image is the default postgres12 db image url
 // currently it can not be overridden.
 var Psql12Image = "centos/postgresql-12-centos7"
