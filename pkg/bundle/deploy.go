@@ -6829,21 +6829,13 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "074639a33687392f9d7d914133672af3f532d5f36bee61f9422f019f5aee394c"
+const Sha256_deploy_role_yaml = "1320e5dd53566499e487ad122caef7a0ba9853e8304cb335bab6f90a9ae5daa3"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: noobaa
 rules:
-- apiGroups:
-  - security.openshift.io
-  resourceNames:
-  - noobaa
-  resources:
-  - securitycontextconstraints
-  verbs:
-  - use
 - apiGroups:
   - noobaa.io
   resources:
@@ -7331,23 +7323,6 @@ rules:
       - noobaas
       - bucketclasses
       - namespacestores
-`
-
-const Sha256_deploy_scc_yaml = "baa4d3a3def2d63a5d9e53bc4fc1ac961f9b4fe5172db7118d1529caa14e2191"
-
-const File_deploy_scc_yaml = `apiVersion: security.openshift.io/v1
-kind: SecurityContextConstraints
-metadata:
-  name: noobaa
-requiredDropCapabilities:
-  - ALL
-runAsUser:
-  type: RunAsAny
-seLinuxContext:
-  type: RunAsAny
-supplementalGroups:
-  type: RunAsAny
-readOnlyRootFilesystem: true
 `
 
 const Sha256_deploy_scc_agent_yaml = "17f8e599442503e38885b1c1a1bb2b615d8f93d1e12d5b0d9e2c190d0129be37"
