@@ -4686,7 +4686,7 @@ data:
       metricsQuery: (sum(irate(<<.Series>>{<<.LabelMatchers>>}[5m])) by (<<.GroupBy>>))
 `
 
-const Sha256_deploy_internal_hpav2_deployment_adapter_yaml = "097a81580b56da76caee3022d682d7eee1fd58acd46fed383039188026102429"
+const Sha256_deploy_internal_hpav2_deployment_adapter_yaml = "9dc6739a1050a400b236cf6981f8f87950a9f8c72cef21a121f5107b69dfada4"
 
 const File_deploy_internal_hpav2_deployment_adapter_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4713,6 +4713,8 @@ spec:
         app.kubernetes.io/component: metrics-adapter
         app.kubernetes.io/name: prometheus-adapter
         app.kubernetes.io/version: 0.10.0
+      annotations:
+        openshift.io/required-scc: restricted-v2
     spec:
       automountServiceAccountToken: true
       containers:
@@ -6707,7 +6709,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "8f2d1b2d9b43ca5aa530bc6cf1f4d094a1fa04622b70e434af93afdfc75b65c9"
+const Sha256_deploy_operator_yaml = "e32d15db85c924ccda2f0d4ea6b3351ab35735866646126205bd7cd3a53732f0"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -6725,6 +6727,8 @@ spec:
       labels:
         app: noobaa
         noobaa-operator: deployment
+      annotations:
+        openshift.io/required-scc: restricted-v2
     spec:
         # Notice that changing the serviceAccountName would need to update existing AWS STS role trust policy for customers
       serviceAccountName: noobaa
