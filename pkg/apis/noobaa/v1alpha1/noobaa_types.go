@@ -849,6 +849,10 @@ const (
 
 	// AlertmanagerHostOverride is Annotation name for overriding the alertmanager host, in the format https://<alertmanager-host>:<port>
 	AlertmanagerHostOverride = "noobaa.io/alertmanager_host_override"
+
+	// PVCAccessModeRWO is a boolean Annotation name for overriding the NooBaa PVC access mode.
+	// If set to true, the PVC access mode will be set to ReadWriteOnce.
+	PVCAccessModeRWO = "noobaa.io/pvc_access_mode_rwo"
 )
 
 // DBTypes is a string enum type for specify the types of DB that are supported.

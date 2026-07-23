@@ -2,6 +2,10 @@ package system
 
 import (
 	"testing"
+
+	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestFormatBytesKB(t *testing.T) {
@@ -255,4 +259,79 @@ func assertParam(t *testing.T, params map[string]string, key, expected string) {
 	if got != expected {
 		t.Errorf("param %q = %q, want %q", key, got, expected)
 	}
+}
+
+func TestGetDesiredDBPVCAccessMode(t *testing.T) {
+	tests := []struct {
+		name        string
+		annotations map[string]string
+		want        corev1.PersistentVolumeAccessMode
+	}{
+		{
+			name:        "nil annotations defaults to RWOP",
+			annotations: nil,
+			want:        corev1.ReadWriteOncePod,
+		},
+		{
+			name:        "missing annotation defaults to RWOP",
+			annotations: map[string]string{},
+			want:        corev1.ReadWriteOncePod,
+		},
+		{
+			name:        "annotation true sets RWO",
+			annotations: map[string]string{nbv1.PVCAccessModeRWO: "true"},
+			want:        corev1.ReadWriteOnce,
+		},
+		{
+			name:        "annotation false keeps RWOP",
+			annotations: map[string]string{nbv1.PVCAccessModeRWO: "false"},
+			want:        corev1.ReadWriteOncePod,
+		},
+		{
+			name:        "annotation other value keeps RWOP",
+			annotations: map[string]string{nbv1.PVCAccessModeRWO: "yes"},
+			want:        corev1.ReadWriteOncePod,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getDesiredDBPVCAccessMode(tt.annotations)
+			if got != tt.want {
+				t.Fatalf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSetDesiredStorageConfAccessMode(t *testing.T) {
+	storageClass := "lab-rwo-only"
+	dbSpec := &nbv1.NooBaaDBSpec{
+		DBStorageClass: &storageClass,
+	}
+
+	t.Run("defaults to RWOP", func(t *testing.T) {
+		storageConfiguration := &cnpgv1.StorageConfiguration{}
+		if err := setDesiredStorageConf(storageConfiguration, dbSpec, nil); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		modes := storageConfiguration.PersistentVolumeClaimTemplate.AccessModes
+		if len(modes) != 1 || modes[0] != corev1.ReadWriteOncePod {
+			t.Fatalf("got access modes %v, want [%s]", modes, corev1.ReadWriteOncePod)
+		}
+	})
+
+	t.Run("annotation true sets RWO", func(t *testing.T) {
+		storageConfiguration := &cnpgv1.StorageConfiguration{}
+		annotations := map[string]string{nbv1.PVCAccessModeRWO: "true"}
+		if err := setDesiredStorageConf(storageConfiguration, dbSpec, annotations); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		modes := storageConfiguration.PersistentVolumeClaimTemplate.AccessModes
+		if len(modes) != 1 || modes[0] != corev1.ReadWriteOnce {
+			t.Fatalf("got access modes %v, want [%s]", modes, corev1.ReadWriteOnce)
+		}
+		if storageConfiguration.StorageClass == nil || *storageConfiguration.StorageClass != storageClass {
+			t.Fatalf("got storage class %v, want %q", storageConfiguration.StorageClass, storageClass)
+		}
+	})
 }

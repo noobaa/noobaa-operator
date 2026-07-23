@@ -270,7 +270,7 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 
 	// update db volume resources
 	// update the storage configuration
-	err := setDesiredStorageConf(&r.CNPGCluster.Spec.StorageConfiguration, dbSpec)
+	err := setDesiredStorageConf(&r.CNPGCluster.Spec.StorageConfiguration, dbSpec, r.NooBaa.Annotations)
 	if err != nil {
 		r.cnpgLogError("got error getting desired storage configuration for cnpg cluster. error: %v", err)
 		return err
@@ -771,14 +771,15 @@ func getDesiredDbImage(dbSpec *nbv1.NooBaaDBSpec) string {
 	return desiredDbImage
 }
 
-func setDesiredStorageConf(storageConfiguration *cnpgv1.StorageConfiguration, dbSpec *nbv1.NooBaaDBSpec) error {
+func setDesiredStorageConf(storageConfiguration *cnpgv1.StorageConfiguration, dbSpec *nbv1.NooBaaDBSpec, annotations map[string]string) error {
 	if storageConfiguration == nil {
 		return fmt.Errorf("storage configuration is nil")
 	}
 	if storageConfiguration.PersistentVolumeClaimTemplate == nil {
 		storageConfiguration.PersistentVolumeClaimTemplate = &corev1.PersistentVolumeClaimSpec{}
 	}
-	storageConfiguration.PersistentVolumeClaimTemplate.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOncePod}
+	accessMode := getDesiredDBPVCAccessMode(annotations)
+	storageConfiguration.PersistentVolumeClaimTemplate.AccessModes = []corev1.PersistentVolumeAccessMode{accessMode}
 	if dbSpec.DBStorageClass != nil {
 		storageConfiguration.StorageClass = dbSpec.DBStorageClass
 	} else {
@@ -810,6 +811,16 @@ func setDesiredStorageConf(storageConfiguration *cnpgv1.StorageConfiguration, db
 	storageConfiguration.Size = desiredSize
 
 	return nil
+}
+
+// getDesiredDBPVCAccessMode returns the DB PVC access mode from the NooBaa CR annotation.
+// Default is ReadWriteOncePod. Set noobaa.io/pvc_access_mode_rwo=true to use ReadWriteOnce
+// when the CSI driver lacks RWOP support.
+func getDesiredDBPVCAccessMode(annotations map[string]string) corev1.PersistentVolumeAccessMode {
+	if annotations != nil && annotations[nbv1.PVCAccessModeRWO] == "true" {
+		return corev1.ReadWriteOnce
+	}
+	return corev1.ReadWriteOncePod
 }
 
 func isClusterReady(cluster *cnpgv1.Cluster) bool {
