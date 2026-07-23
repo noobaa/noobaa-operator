@@ -14,6 +14,7 @@ import (
 
 	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	cnpgReleases "github.com/cloudnative-pg/cloudnative-pg/releases"
+	secv1 "github.com/openshift/api/security/v1"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -385,6 +386,10 @@ func modifyResources(cnpgRes *CnpgResources) {
 	depl.Spec.Template.Spec.Containers[0].Image = options.CnpgImage
 	// add app:noobaa label to the deployments pod
 	depl.Spec.Template.Labels["app"] = "noobaa"
+	if depl.Spec.Template.Annotations == nil {
+		depl.Spec.Template.Annotations = make(map[string]string)
+	}
+	depl.Spec.Template.Annotations[secv1.RequiredSCCAnnotation] = "restricted-v2"
 	// add WATCH_NAMESPACE env variable to the deployment to restrict the operator to current namespace
 	depl.Spec.Template.Spec.Containers[0].Env = append(depl.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 		Name: "WATCH_NAMESPACE",
