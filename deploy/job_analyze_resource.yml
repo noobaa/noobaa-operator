@@ -11,6 +11,11 @@ spec:
   activeDeadlineSeconds: 60
   ttlSecondsAfterFinished: 10
   template:
+    metadata:
+      labels:
+        app: noobaa
+      annotations:
+        openshift.io/required-scc: restricted-v2
     spec:
       volumes:
       - name: cloud-credentials
