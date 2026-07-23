@@ -12,6 +12,7 @@ spec:
   ttlSecondsAfterFinished: 10
   template:
     spec:
+      automountServiceAccountToken: false
       volumes:
       - name: cloud-credentials
         secret:
@@ -30,7 +31,6 @@ spec:
           - name: HTTP_PROXY
           - name: HTTPS_PROXY
           - name: NO_PROXY
-          - name: NODE_EXTRA_CA_CERTS
         command: 
             - /bin/bash
             - -c
