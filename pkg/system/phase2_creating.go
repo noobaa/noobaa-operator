@@ -203,23 +203,15 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 
-	// before reconciling the core, check if the image was changed so an upgrade is needed.
-	// if upgrade is needed, stop the core and endpoints pods to allow the upgrade_manager in noobaa-core to run without interruptions
-	if util.KubeCheckQuiet(r.CoreApp) {
-		if r.NooBaa.Status.ActualImage != r.CoreApp.Spec.Template.Spec.Containers[0].Image {
-			numRunningPods, err := r.stopNoobaaPodsAndGetNumRunningPods()
-			if err != nil {
-				return fmt.Errorf("got error stopping noobaa-core and noobaa-endpoint pods. error: %v", err)
-			}
-			// wait for the endpoints to be stopped
-			if numRunningPods != 0 {
-				return fmt.Errorf("waiting for noobaa-core and noobaa-endpoint pods to be terminated before upgrade. %d pods are still running", numRunningPods)
-			}
-		}
+	// run core image upgrade job before reconciling core STS
+	if err := r.reconcileCoreImageUpgrade(); err != nil {
+		return err
 	}
 
-	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
-		return err
+	if !r.isCoreImageUpgradeNeeded() || r.isCoreUpgradeFinishedForActualImage() {
+		if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
+			return err
+		}
 	}
 
 	// reconcile noobaa-mgmt route only if routes are enabled
@@ -597,7 +589,11 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 		case "POSTGRES_HOST_PATH":
 			c.Env[j].Value = postgresSecretMountPath + "/host"
 		case "POSTGRES_CONNECTION_STRING_PATH":
-			c.Env[j].Value = postgresSecretMountPath + "/db_url"
+			if r.shouldReconcileCNPGCluster() {
+				c.Env[j].Value = postgresSecretMountPath + "/uri"
+			} else {
+				c.Env[j].Value = postgresSecretMountPath + "/db_url"
+			}
 
 		case "NODE_EXTRA_CA_CERTS":
 			c.Env[j].Value = r.ApplyCAsToPods
@@ -654,7 +650,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	podSpec.ServiceAccountName = "noobaa-core"
 	coreImageChanged := false
 
-	if r.CoreApp.Spec.Replicas != nil && *r.CoreApp.Spec.Replicas == 0 {
+	if r.CoreApp.Spec.Replicas != nil && *r.CoreApp.Spec.Replicas == 0 && !r.shouldBlockWorkloadRestore() {
 		// replicas can be set to 0 if the cluster went through data import to DB cluster
 		// restore back to 1 replica
 		oneReplica := int32(1)
