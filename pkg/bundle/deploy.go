@@ -5963,7 +5963,7 @@ const File_deploy_internal_text_system_status_readme_rejected_tmpl = `
 	NooBaa Operator Version: {{.OperatorVersion}}
 `
 
-const Sha256_deploy_job_analyze_resource_yml = "c80810baeda94fd9dd97a6c62241be5c582e08009bdbb1f2a13992c99d90ea33"
+const Sha256_deploy_job_analyze_resource_yml = "679a4e5b63548cab5a3efdc44b4d21ff5709c8f2f4e48438cba077c9c7a14785"
 
 const File_deploy_job_analyze_resource_yml = `apiVersion: batch/v1
 kind: Job
@@ -5978,6 +5978,11 @@ spec:
   activeDeadlineSeconds: 60
   ttlSecondsAfterFinished: 10
   template:
+    metadata:
+      labels:
+        app: noobaa
+      annotations:
+        openshift.io/required-scc: restricted-v2
     spec:
       volumes:
       - name: cloud-credentials
