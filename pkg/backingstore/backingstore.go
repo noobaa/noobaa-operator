@@ -1108,7 +1108,7 @@ func WaitReady(backStore *nbv1.BackingStore) bool {
 	log := util.Logger()
 	klient := util.KubeClient()
 
-	interval := time.Duration(30)
+	interval := time.Duration(3)
 
 	err := wait.PollUntilContextCancel(ctx, interval*time.Second, true, func(ctx context.Context) (bool, error) {
 		err := klient.Get(util.Context(), util.ObjectKey(backStore), backStore)
