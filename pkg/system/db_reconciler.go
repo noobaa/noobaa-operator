@@ -303,6 +303,15 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 		Enabled: true,
 	}
 
+	if r.CNPGCluster.Spec.Certificates == nil {
+		r.CNPGCluster.Spec.Certificates = &cnpgv1.CertificatesConfiguration{}
+	}
+	r.CNPGCluster.Spec.Certificates.ServerAltDNSNames = []string{
+		r.ServiceDbPg.Name,
+		r.ServiceDbPg.Name + "." + r.Request.Namespace,
+		r.ServiceDbPg.Name + "." + r.Request.Namespace + ".svc",
+	}
+
 	r.CNPGCluster.Spec.FailoverDelay = defaultFailoverDelaySec
 
 	r.setPostgresConfig()
@@ -608,6 +617,17 @@ func (r *Reconciler) setPostgresConfig() {
 	}
 	r.cnpgLog("PGTune config: memory=%dKB, cpu=%d, endpoints=%d", totalMemoryKB, cpuNum, endpointMaxCount)
 
+	// propagate TLS security settings to the PostgreSQL server
+	tlsSec := r.NooBaa.Spec.Security.APIServerSecurity
+	if tlsSec != nil && !util.IsTLSConfigDisabled() {
+		if tlsSec.TLSMinVersion != nil {
+			overrideParameters["ssl_min_protocol_version"] = string(*tlsSec.TLSMinVersion)
+		}
+		if len(tlsSec.TLSCiphers) > 0 {
+			overrideParameters["ssl_ciphers"] = util.MapCiphersToOpenSSL(tlsSec.TLSCiphers)
+		}
+	}
+
 	// apply any user-specified DBConf overrides on top of the calculated values
 	if r.NooBaa.Spec.DBSpec.DBConf != nil {
 		for k, v := range r.NooBaa.Spec.DBSpec.DBConf {
@@ -892,6 +912,7 @@ func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSp
 		!reflect.DeepEqual(existingClusterSpec.Monitoring, r.CNPGCluster.Spec.Monitoring) ||
 		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.Parameters, r.CNPGCluster.Spec.PostgresConfiguration.Parameters) ||
 		!reflect.DeepEqual(existingClusterSpec.Backup, r.CNPGCluster.Spec.Backup) ||
+		!reflect.DeepEqual(existingClusterSpec.Certificates, r.CNPGCluster.Spec.Certificates) ||
 		existingClusterSpec.PriorityClassName != r.CNPGCluster.Spec.PriorityClassName ||
 		existingClusterSpec.FailoverDelay != r.CNPGCluster.Spec.FailoverDelay
 }
