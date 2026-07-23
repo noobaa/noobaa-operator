@@ -2,7 +2,7 @@ package bundle
 
 const Version = "5.23.0"
 
-const Sha256_deploy_cluster_role_yaml = "6417dcd3e52c38e04ba6b70b7e22985f0f7ddf1edec96287fcc0cb5f42b30c04"
+const Sha256_deploy_cluster_role_yaml = "9c0ac29295c67349acc345029b8b2e3de01a512d5dc92e31b17938b52f41c60d"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -30,9 +30,16 @@ rules:
   - apiGroups:
       - ""
     resources:
+      - persistentvolumes
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+  - apiGroups:
+      - ""
+    resources:
       - configmaps
       - secrets
-      - persistentvolumes
     verbs:
       - "*"
   - apiGroups:
