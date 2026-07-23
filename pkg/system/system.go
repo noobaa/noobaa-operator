@@ -823,15 +823,20 @@ func CheckNooBaaDBImages(cmd *cobra.Command, sys *nbv1.NooBaa, args []string) st
 	return runningImage
 }
 
-// CheckOperatorImage runs a CLI command
-func CheckOperatorImage(cmd *cobra.Command, args []string) string {
-	runningImage := ""
+// GetRunningOperatorImage returns the image of the running operator Deployment,
+// falling back to options.OperatorImage when the Deployment is missing.
+func GetRunningOperatorImage() string {
 	deployment := util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
 	deployment.Namespace = options.Namespace
-	if util.KubeCheckQuiet(deployment) {
-		runningImage = deployment.Spec.Template.Spec.Containers[0].Image
+	if util.KubeCheckQuiet(deployment) && len(deployment.Spec.Template.Spec.Containers) > 0 {
+		return deployment.Spec.Template.Spec.Containers[0].Image
 	}
-	return runningImage
+	return options.OperatorImage
+}
+
+// CheckOperatorImage runs a CLI command
+func CheckOperatorImage(cmd *cobra.Command, args []string) string {
+	return GetRunningOperatorImage()
 }
 
 // RunSystemVersionsStatus runs a CLI command
