@@ -2002,6 +2002,39 @@ func ContainsAny[T any](arr []T, item T, eq func(T, T) bool) bool {
 	return false
 }
 
+// IsTolerationSuperset returns true if ss tolerates a superset of t
+func IsTolerationSuperset(ss, t corev1.Toleration) bool {
+	if ss == t {
+		return true
+	}
+	// Empty key + Exists means match all keys and values.
+	if t.Key != ss.Key &&
+		(ss.Key != "" || ss.Operator != corev1.TolerationOpExists) {
+		return false
+	}
+	// Empty effect means match all effects.
+	if t.Effect != ss.Effect && ss.Effect != "" {
+		return false
+	}
+	// For NoExecute, ss must not expire sooner than t.
+	if ss.Effect == corev1.TaintEffectNoExecute {
+		if ss.TolerationSeconds != nil {
+			if t.TolerationSeconds == nil ||
+				*t.TolerationSeconds > *ss.TolerationSeconds {
+				return false
+			}
+		}
+	}
+	switch ss.Operator {
+	case corev1.TolerationOpEqual, "": // Empty operator means Equal (Kubernetes default)
+		return (t.Operator == corev1.TolerationOpEqual || t.Operator == "") && t.Value == ss.Value
+	case corev1.TolerationOpExists: // Exists covers Equal for the same key
+		return true
+	default:
+		return false
+	}
+}
+
 // GetEnvVariable is looking for env variable called name in env and return a pointer to the variable
 func GetEnvVariable(env *[]corev1.EnvVar, name string) *corev1.EnvVar {
 	for i := range *env {

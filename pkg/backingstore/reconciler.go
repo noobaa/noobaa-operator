@@ -1240,7 +1240,8 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 	podTolerations := pod.Spec.Tolerations
 	noobaaTolerations := r.NooBaa.Spec.Tolerations
 	for _, noobaaToleration := range noobaaTolerations {
-		if !util.Contains(podTolerations, noobaaToleration) {
+		if !util.ContainsAny(podTolerations, noobaaToleration, util.IsTolerationSuperset) {
+			r.Logger.Warnf("Change in Tolerations detected: missing/uncovered (%+v) pod(%+v)", noobaaToleration, podTolerations)
 			return true
 		}
 	}
