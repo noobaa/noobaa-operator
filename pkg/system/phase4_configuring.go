@@ -1230,7 +1230,7 @@ func (r *Reconciler) prepareGCPBackingStore() error {
 	}
 	r.GCPBucketCreds.StringData["GoogleServiceAccountPrivateKeyJson"] = cloudCredsSecret.StringData["service_account.json"]
 	ctx := context.Background()
-	gcpclient, err := storage.NewClient(ctx, option.WithCredentialsJSON([]byte(cloudCredsSecret.StringData["service_account.json"])))
+	gcpclient, err := storage.NewClient(ctx, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(cloudCredsSecret.StringData["service_account.json"])))
 	if err != nil {
 		r.Logger.Info(err)
 		return err
