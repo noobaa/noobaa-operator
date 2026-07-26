@@ -5963,7 +5963,7 @@ const File_deploy_internal_text_system_status_readme_rejected_tmpl = `
 	NooBaa Operator Version: {{.OperatorVersion}}
 `
 
-const Sha256_deploy_job_analyze_resource_yml = "c80810baeda94fd9dd97a6c62241be5c582e08009bdbb1f2a13992c99d90ea33"
+const Sha256_deploy_job_analyze_resource_yml = "3292c193668e4325e9dd66c7777c1bda936e2d503971fbfa6261ad8ebe4ffa5f"
 
 const File_deploy_job_analyze_resource_yml = `apiVersion: batch/v1
 kind: Job
@@ -5979,6 +5979,7 @@ spec:
   ttlSecondsAfterFinished: 10
   template:
     spec:
+      automountServiceAccountToken: false
       volumes:
       - name: cloud-credentials
         secret:
@@ -5997,7 +5998,6 @@ spec:
           - name: HTTP_PROXY
           - name: HTTPS_PROXY
           - name: NO_PROXY
-          - name: NODE_EXTRA_CA_CERTS
         command: 
             - /bin/bash
             - -c

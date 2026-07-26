@@ -225,7 +225,7 @@ func setNetworkEnvsInJob(analyzeResourceJob *batchv1.Job) {
 			coreApp.Name, coreApp.Namespace)
 	}
 
-	for _, networkEnvName := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "NODE_EXTRA_CA_CERTS"} {
+	for _, networkEnvName := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
 		networkEnvInCoreApp := util.GetEnvVariable(&coreApp.Spec.Template.Spec.Containers[0].Env, networkEnvName)
 		if networkEnvInCoreApp != nil && networkEnvInCoreApp.Value != "" {
 			networkEnvInJob := util.GetEnvVariable(&analyzeResourceJob.Spec.Template.Spec.Containers[0].Env, networkEnvName)
