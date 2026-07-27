@@ -27,7 +27,6 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -784,22 +783,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				c.Image = r.NooBaa.Status.ActualImage
 			}
 
-			if logResources := getLogResources(r.NooBaa); logResources != nil {
-				c.Resources = *logResources
-			} else {
-				var reqCPU, reqMem resource.Quantity
-				reqCPU, _ = resource.ParseQuantity("200m")
-				reqMem, _ = resource.ParseQuantity("500Mi")
-
-				logResourceList := corev1.ResourceList{
-					corev1.ResourceCPU:    reqCPU,
-					corev1.ResourceMemory: reqMem,
-				}
-				c.Resources = corev1.ResourceRequirements{
-					Requests: logResourceList,
-					Limits:   logResourceList,
-				}
-			}
+			c.Resources = getLogResources(r.NooBaa)
 			// we want to check that the cm exists and also that it has data in it
 			if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
 				configMapVolumeMounts := []corev1.VolumeMount{{
