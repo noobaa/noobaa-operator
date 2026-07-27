@@ -6742,7 +6742,7 @@ spec:
   sourceNamespace: default
 `
 
-const Sha256_deploy_operator_yaml = "e32d15db85c924ccda2f0d4ea6b3351ab35735866646126205bd7cd3a53732f0"
+const Sha256_deploy_operator_yaml = "f07a5e8c1750d485746a48e94faf1c7c9d9bd4f5622377a1d27b990387e7815f"
 
 const File_deploy_operator_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -6833,7 +6833,7 @@ spec:
               cpu: "250m"
               memory: "512Mi"
             requests:
-              cpu: "100m"
+              cpu: "10m"
               memory: "256Mi"
           env:
             - name: OPERATOR_NAME
