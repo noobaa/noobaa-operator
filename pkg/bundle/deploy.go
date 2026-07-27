@@ -4640,7 +4640,7 @@ spec:
   versionPriority: 100
 `
 
-const Sha256_deploy_internal_hpav2_autoscaling_yaml = "5af69e55a40026f5a01d102232fbecb1ecbc2c5482f60b1226baf5fe2afc07e6"
+const Sha256_deploy_internal_hpav2_autoscaling_yaml = "0ddaedbd523750e686b0382a2c1bec3a71b51ca3282a2ea5aafd3a947b584b3e"
 
 const File_deploy_internal_hpav2_autoscaling_yaml = `kind: HorizontalPodAutoscaler
 apiVersion: autoscaling/v2
@@ -4653,12 +4653,33 @@ spec:
     kind: Deployment
     name: noobaa-endpoint
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 80
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+  # reduce replica flapping. The small objects profile endpoint CPU request is 1 core,
+  # so a saturated pod reaches ~100% utilisation and a mixed small/large object stream can push
+  # utilisation across the trigger repeatedly. Scale up gradually (2 pods every 60 seconds),
+  # but hold added endpoints through transient pauses before removing them to avoid endpoint
+  # pod churn which is expensive.
+  # These are conservative starting points, not yet validated under live burst traffic.
+  # the behavior defined here only applies to the first creation of the HPA object,
+  # If changed, it should be updated in the reconcileAdapterHPA 
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
 `
 
 const Sha256_deploy_internal_hpav2_configmap_adapter_yaml = "8f857756f46511c8763fbc03e9373cb3eec11c2251d7a844ae4990d55208336b"

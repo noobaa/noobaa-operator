@@ -68,7 +68,12 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 		coreResources:     profileResources("1", "2", "2Gi", "6Gi"),
 		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
 		dbResources:       profileResources("6", "6", "16Gi", "16Gi"),
-		endpointResources: profileResources("2", "4", "2Gi", "4Gi"),
+		// Endpoint CPU request is 1 (not 2): a single-process endpoint serving small
+		// objects is main-thread bound and tops out at ~1 core, so request 2 leaves the
+		// HPA reading ~50% utilisation on a fully-saturated pod and it never scales.
+		// Request 1 makes a saturated pod read ~100%, restoring the CPU-based trigger.
+		// Larger profiles keep request 2 because their per-pod ceiling is ~2.5 cores.
+		endpointResources: profileResources("1", "4", "2Gi", "4Gi"),
 		pvPoolResources:   profileResources("1", "1", "2Gi", "2Gi"),
 		endpointMinCount:  2,
 		endpointMaxCount:  4,

@@ -516,6 +516,14 @@ func (r *Reconciler) reconcileAdapterHPA() error {
 	if r.AdapterHPA.Spec.Metrics[0].Object != nil {
 		r.AdapterHPA.Spec.Metrics[0].Object.Target.Value = nil
 	}
+
+	if r.AdapterHPA.Spec.Behavior == nil {
+		// update the behavior of an existing HPA object that has no defined behavior
+		// if behavior is already set it will not be overwritten, allowing for custom behavior to be maintained
+		desired := util.KubeObject(bundle.File_deploy_internal_hpav2_autoscaling_yaml).(*autoscalingv2.HorizontalPodAutoscaler)
+		r.AdapterHPA.Spec.Behavior = desired.Spec.Behavior
+	}
+
 	return nil
 }
 

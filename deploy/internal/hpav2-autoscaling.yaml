@@ -9,9 +9,30 @@ spec:
     kind: Deployment
     name: noobaa-endpoint
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 80
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+  # reduce replica flapping. The small objects profile endpoint CPU request is 1 core,
+  # so a saturated pod reaches ~100% utilisation and a mixed small/large object stream can push
+  # utilisation across the trigger repeatedly. Scale up gradually (2 pods every 60 seconds),
+  # but hold added endpoints through transient pauses before removing them to avoid endpoint
+  # pod churn which is expensive.
+  # These are conservative starting points, not yet validated under live burst traffic.
+  # the behavior defined here only applies to the first creation of the HPA object,
+  # If changed, it should be updated in the reconcileAdapterHPA 
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
