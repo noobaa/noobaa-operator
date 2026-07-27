@@ -109,6 +109,52 @@ func TestGetCoreResources(t *testing.T) {
 	}
 }
 
+func TestGetLogResources(t *testing.T) {
+	explicit := profileResources("300m", "300m", "300Mi", "300Mi")
+
+	tests := []struct {
+		name     string
+		nb       *nbv1.NooBaa
+		expected corev1.ResourceRequirements
+	}{
+		{
+			name: "default profile",
+			nb: &nbv1.NooBaa{
+				Spec: nbv1.NooBaaSpec{
+					PerformanceProfile: nbv1.PerformanceProfileDefault,
+				},
+			},
+			expected: performanceProfiles[nbv1.PerformanceProfileDefault].logResources,
+		},
+		{
+			name: "mini-env profile",
+			nb: &nbv1.NooBaa{
+				Spec: nbv1.NooBaaSpec{
+					PerformanceProfile: nbv1.PerformanceProfileMiniEnv,
+				},
+			},
+			expected: performanceProfiles[nbv1.PerformanceProfileMiniEnv].logResources,
+		},
+		{
+			name: "explicit log resources override profile",
+			nb: &nbv1.NooBaa{
+				Spec: nbv1.NooBaaSpec{
+					PerformanceProfile: nbv1.PerformanceProfileDefault,
+					LogResources:       &explicit,
+				},
+			},
+			expected: explicit,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getLogResources(tt.nb)
+			assertResourceRequirements(t, got, tt.expected)
+		})
+	}
+}
+
 func TestGetDBResources(t *testing.T) {
 	explicitCNPG := profileResources("5", "5", "5Gi", "5Gi")
 
@@ -503,6 +549,7 @@ func TestGetResourcesPrecedencePerComponent(t *testing.T) {
 func assertPerformanceProfile(t *testing.T, got, want performanceProfile) {
 	t.Helper()
 	assertResourceRequirements(t, got.coreResources, want.coreResources)
+	assertResourceRequirements(t, got.logResources, want.logResources)
 	assertResourceRequirements(t, got.dbResources, want.dbResources)
 	assertResourceRequirements(t, got.endpointResources, want.endpointResources)
 	assertResourceRequirements(t, got.pvPoolResources, want.pvPoolResources)
@@ -551,6 +598,7 @@ func TestProfileResourcesValues(t *testing.T) {
 		name     string
 		profile  nbv1.PerformanceProfileType
 		core     [4]string
+		log      [4]string
 		db       [4]string
 		endpoint [4]string
 		pvPool   [4]string
@@ -559,6 +607,7 @@ func TestProfileResourcesValues(t *testing.T) {
 			name:     "default",
 			profile:  nbv1.PerformanceProfileDefault,
 			core:     [4]string{"500m", "1", "1Gi", "4Gi"},
+			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
 			db:       [4]string{"1", "1", "2Gi", "2Gi"},
 			endpoint: [4]string{"500m", "2", "1Gi", "3Gi"},
 			pvPool:   [4]string{"400m", "400m", "800Mi", "800Mi"},
@@ -567,6 +616,7 @@ func TestProfileResourcesValues(t *testing.T) {
 			name:     "default-ibm-z",
 			profile:  nbv1.PerformanceProfileDefaultIBMZ,
 			core:     [4]string{"250m", "1", "1Gi", "4Gi"},
+			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
 			db:       [4]string{"500m", "1", "2Gi", "2Gi"},
 			endpoint: [4]string{"250m", "2", "1Gi", "3Gi"},
 			pvPool:   [4]string{"200m", "400m", "800Mi", "800Mi"},
@@ -575,6 +625,7 @@ func TestProfileResourcesValues(t *testing.T) {
 			name:     "mixed-workload",
 			profile:  nbv1.PerformanceProfileMixedWorkload,
 			core:     [4]string{"1", "2", "2Gi", "4Gi"},
+			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
 			db:       [4]string{"4", "4", "8Gi", "8Gi"},
 			endpoint: [4]string{"2", "4", "2Gi", "4Gi"},
 			pvPool:   [4]string{"1", "1", "2Gi", "2Gi"},
@@ -583,9 +634,19 @@ func TestProfileResourcesValues(t *testing.T) {
 			name:     "small-objects",
 			profile:  nbv1.PerformanceProfileSmallObjects,
 			core:     [4]string{"1", "2", "2Gi", "6Gi"},
+			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
 			db:       [4]string{"6", "6", "16Gi", "16Gi"},
 			endpoint: [4]string{"2", "4", "2Gi", "4Gi"},
 			pvPool:   [4]string{"1", "1", "2Gi", "2Gi"},
+		},
+		{
+			name:     "mini-env",
+			profile:  nbv1.PerformanceProfileMiniEnv,
+			core:     [4]string{"100m", "100m", "1Gi", "1Gi"},
+			log:      [4]string{"50m", "50m", "200Mi", "200Mi"},
+			db:       [4]string{"100m", "100m", "500Mi", "500Mi"},
+			endpoint: [4]string{"100m", "100m", "500Mi", "500Mi"},
+			pvPool:   [4]string{"100m", "100m", "400Mi", "400Mi"},
 		},
 	}
 
@@ -593,6 +654,7 @@ func TestProfileResourcesValues(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			profile := performanceProfiles[tt.profile]
 			assertResourceQuantity(t, profile.coreResources, tt.core)
+			assertResourceQuantity(t, profile.logResources, tt.log)
 			assertResourceQuantity(t, profile.dbResources, tt.db)
 			assertResourceQuantity(t, profile.endpointResources, tt.endpoint)
 			assertResourceQuantity(t, profile.pvPoolResources, tt.pvPool)

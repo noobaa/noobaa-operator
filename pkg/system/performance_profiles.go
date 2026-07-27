@@ -11,7 +11,7 @@ import (
 
 type performanceProfile struct {
 	coreResources     corev1.ResourceRequirements
-	logResources      *corev1.ResourceRequirements
+	logResources      corev1.ResourceRequirements
 	dbResources       corev1.ResourceRequirements
 	endpointResources corev1.ResourceRequirements
 	pvPoolResources   corev1.ResourceRequirements
@@ -37,6 +37,7 @@ func profileResources(cpuReq, cpuLim, memReq, memLim string) corev1.ResourceRequ
 var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 	nbv1.PerformanceProfileDefault: {
 		coreResources:     profileResources("500m", "1", "1Gi", "4Gi"),
+		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
 		dbResources:       profileResources("1", "1", "2Gi", "2Gi"),
 		endpointResources: profileResources("500m", "2", "1Gi", "3Gi"),
 		pvPoolResources:   profileResources("400m", "400m", "800Mi", "800Mi"),
@@ -48,6 +49,7 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 	// for IBM Z, we adjust the CPU requests by a factor of 0.5 https://redhat.atlassian.net/browse/RHSTOR-9067
 	nbv1.PerformanceProfileDefaultIBMZ: {
 		coreResources:     profileResources("250m", "1", "1Gi", "4Gi"),
+		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
 		dbResources:       profileResources("500m", "1", "2Gi", "2Gi"),
 		endpointResources: profileResources("250m", "2", "1Gi", "3Gi"),
 		pvPoolResources:   profileResources("200m", "400m", "800Mi", "800Mi"),
@@ -58,6 +60,7 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 	},
 	nbv1.PerformanceProfileMixedWorkload: {
 		coreResources:     profileResources("1", "2", "2Gi", "4Gi"),
+		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
 		dbResources:       profileResources("4", "4", "8Gi", "8Gi"),
 		endpointResources: profileResources("2", "4", "2Gi", "4Gi"),
 		pvPoolResources:   profileResources("1", "1", "2Gi", "2Gi"),
@@ -68,6 +71,7 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 	},
 	nbv1.PerformanceProfileSmallObjects: {
 		coreResources:     profileResources("1", "2", "2Gi", "6Gi"),
+		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
 		dbResources:       profileResources("6", "6", "16Gi", "16Gi"),
 		endpointResources: profileResources("2", "4", "2Gi", "4Gi"),
 		pvPoolResources:   profileResources("1", "1", "2Gi", "2Gi"),
@@ -78,6 +82,7 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 	},
 	nbv1.PerformanceProfileDevEnv: {
 		coreResources:     profileResources("500m", "500m", "1Gi", "1Gi"),
+		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
 		dbResources:       profileResources("1", "1", "2Gi", "2Gi"),
 		endpointResources: profileResources("500m", "500m", "500Mi", "500Mi"),
 		pvPoolResources:   profileResources("500m", "500m", "500Mi", "500Mi"),
@@ -87,17 +92,8 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 		pvPoolNumVolumes:  1,
 	},
 	nbv1.PerformanceProfileMiniEnv: {
-		coreResources: profileResources("100m", "100m", "1Gi", "1Gi"),
-		logResources: &corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("50m"),
-				corev1.ResourceMemory: resource.MustParse("200Mi"),
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("50m"),
-				corev1.ResourceMemory: resource.MustParse("200Mi"),
-			},
-		},
+		coreResources:     profileResources("100m", "100m", "1Gi", "1Gi"),
+		logResources:      profileResources("50m", "50m", "200Mi", "200Mi"),
 		dbResources:       profileResources("100m", "100m", "500Mi", "500Mi"),
 		endpointResources: profileResources("100m", "100m", "500Mi", "500Mi"),
 		pvPoolResources:   profileResources("100m", "100m", "400Mi", "400Mi"),
@@ -126,9 +122,9 @@ func getCoreResources(nb *nbv1.NooBaa) corev1.ResourceRequirements {
 	return lookupProfile(nb).coreResources
 }
 
-func getLogResources(nb *nbv1.NooBaa) *corev1.ResourceRequirements {
+func getLogResources(nb *nbv1.NooBaa) corev1.ResourceRequirements {
 	if nb.Spec.LogResources != nil {
-		return nb.Spec.LogResources
+		return *nb.Spec.LogResources
 	}
 	return lookupProfile(nb).logResources
 }
