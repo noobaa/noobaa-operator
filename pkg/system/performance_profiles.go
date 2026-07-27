@@ -1,12 +1,19 @@
 package system
 
 import (
+	"runtime"
+
 	"github.com/sirupsen/logrus"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+)
+
+const (
+	ibmZCpuArch         = "s390x"
+	ibmZCpuAdjustFactor = 0.5
 )
 
 type performanceProfile struct {
@@ -41,18 +48,6 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 		dbResources:       profileResources("1", "1", "2Gi", "2Gi"),
 		endpointResources: profileResources("500m", "2", "1Gi", "3Gi"),
 		pvPoolResources:   profileResources("400m", "400m", "800Mi", "800Mi"),
-		endpointMinCount:  1,
-		endpointMaxCount:  2,
-		dbInstances:       2,
-		pvPoolNumVolumes:  3,
-	},
-	// for IBM Z, we adjust the CPU requests by a factor of 0.5 https://redhat.atlassian.net/browse/RHSTOR-9067
-	nbv1.PerformanceProfileDefaultIBMZ: {
-		coreResources:     profileResources("250m", "1", "1Gi", "4Gi"),
-		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
-		dbResources:       profileResources("500m", "1", "2Gi", "2Gi"),
-		endpointResources: profileResources("250m", "2", "1Gi", "3Gi"),
-		pvPoolResources:   profileResources("200m", "400m", "800Mi", "800Mi"),
 		endpointMinCount:  1,
 		endpointMaxCount:  2,
 		dbInstances:       2,
@@ -104,6 +99,23 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 	},
 }
 
+// On IBM Z (s390x), halve CPU requests for all profile-managed components once at
+// startup, matching ocs-operator's IbmZCpuAdjustFactor.
+// See https://redhat.atlassian.net/browse/RHSTOR-9067
+func init() {
+	if runtime.GOARCH != ibmZCpuArch {
+		return
+	}
+	for name, profile := range performanceProfiles {
+		profile.coreResources = adjustCpuResourcesForIbmZ(profile.coreResources, ibmZCpuAdjustFactor)
+		profile.logResources = adjustCpuResourcesForIbmZ(profile.logResources, ibmZCpuAdjustFactor)
+		profile.dbResources = adjustCpuResourcesForIbmZ(profile.dbResources, ibmZCpuAdjustFactor)
+		profile.endpointResources = adjustCpuResourcesForIbmZ(profile.endpointResources, ibmZCpuAdjustFactor)
+		profile.pvPoolResources = adjustCpuResourcesForIbmZ(profile.pvPoolResources, ibmZCpuAdjustFactor)
+		performanceProfiles[name] = profile
+	}
+}
+
 func lookupProfile(nb *nbv1.NooBaa) performanceProfile {
 	profileType := nb.Spec.PerformanceProfile
 	if profile, ok := performanceProfiles[profileType]; ok {
@@ -141,6 +153,21 @@ func getEndpointResources(nb *nbv1.NooBaa) corev1.ResourceRequirements {
 		return *nb.Spec.Endpoints.Resources
 	}
 	return lookupProfile(nb).endpointResources
+}
+
+// adjustCpuResourcesForIbmZ multiplies CPU requests by adjustFactor (limits are unchanged).
+func adjustCpuResourcesForIbmZ(rr corev1.ResourceRequirements, adjustFactor float64) corev1.ResourceRequirements {
+	rrCopy := rr.DeepCopy()
+	if rrCopy.Requests != nil {
+		if cpuRequest, exists := rrCopy.Requests[corev1.ResourceCPU]; exists {
+			rrCopy.Requests[corev1.ResourceCPU] = adjustCpu(cpuRequest, adjustFactor)
+		}
+	}
+	return *rrCopy
+}
+
+func adjustCpu(cpuQty resource.Quantity, adjustFactor float64) resource.Quantity {
+	return *resource.NewMilliQuantity(int64(float64(cpuQty.MilliValue())*adjustFactor), resource.DecimalSI)
 }
 
 func getDBInstances(nb *nbv1.NooBaa) int {
