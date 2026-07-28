@@ -16,6 +16,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/crd"
 	"github.com/noobaa/noobaa-operator/v5/pkg/diagnostics"
 	"github.com/noobaa/noobaa-operator/v5/pkg/install"
+	"github.com/noobaa/noobaa-operator/v5/pkg/leaderelect"
 	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/noobaaaccount"
 	"github.com/noobaa/noobaa-operator/v5/pkg/obc"
@@ -153,6 +154,7 @@ Load noobaa completion to bash:
 			crd.Cmd(),
 			olm.Cmd(),
 			bench.Cmd(),
+			leaderelect.Cmd(),
 		},
 	}}
 

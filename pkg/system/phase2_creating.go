@@ -12,6 +12,7 @@ import (
 	"github.com/libopenstorage/secrets"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/leaderelect"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util/kms"
@@ -618,6 +619,9 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 			} else {
 				c.Env[j].Value = falseStr
 			}
+
+		case "NOOBAA_CORE_LEASE_NAME":
+			c.Env[j].Value = r.Request.Name + "-core-leader"
 		}
 	}
 
@@ -646,9 +650,9 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
 
 	podSpec := &r.CoreApp.Spec.Template.Spec
-	// set the termination grace period for noobaa-core pod.
-	// For now we set it to 1 second. A better approach should be to implement a graceful shutdown for the noobaa-core pod when SIGTERM is received.
-	terminationGracePeriodSeconds := int64(1)
+	// ShutdownGrace (25s) + SIGKILL wait (5s) + lease-release margin (10s).
+	// Keep in sync with leaderelect.RecommendedTerminationGracePeriod.
+	terminationGracePeriodSeconds := leaderelect.RecommendedTerminationGracePeriod(0)
 	podSpec.TerminationGracePeriodSeconds = &terminationGracePeriodSeconds
 	podSpec.ServiceAccountName = "noobaa-core"
 	coreImageChanged := false
@@ -663,13 +667,39 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	// adding the missing Volumes from default podSpec
 	podSpec.Volumes = r.DefaultCoreApp.Volumes
 
+	// Upsert owned init containers from the default YAML so upgrades pick up
+	// copy-leader-elect without wiping webhook-injected or other foreign inits
+	// (KubeCheck loads the live STS over CoreApp).
+	operatorImage := GetRunningOperatorImage()
+	for i := range r.DefaultCoreApp.InitContainers {
+		desired := *r.DefaultCoreApp.InitContainers[i].DeepCopy()
+		if desired.Name == "copy-leader-elect" {
+			desired.Image = operatorImage
+		}
+		found := false
+		for j := range podSpec.InitContainers {
+			if podSpec.InitContainers[j].Name == desired.Name {
+				podSpec.InitContainers[j] = desired
+				found = true
+				break
+			}
+		}
+		if !found {
+			podSpec.InitContainers = append(podSpec.InitContainers, desired)
+		}
+	}
+
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
 
-		// adding the missing VolumeMounts from default container
-		c.VolumeMounts = r.DefaultCoreApp.Containers[i].VolumeMounts
-		// adding the missing Env variable from default container
-		util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Containers[i].Env)
+		if i < len(r.DefaultCoreApp.Containers) {
+			// adding the missing VolumeMounts from default container
+			c.VolumeMounts = r.DefaultCoreApp.Containers[i].VolumeMounts
+			// adding the missing Env variable from default container
+			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Containers[i].Env)
+			// Sync Command so upgrades converge on the leader-elect wrap
+			c.Command = append([]string(nil), r.DefaultCoreApp.Containers[i].Command...)
+		}
 		r.setDesiredCoreEnv(c)
 
 		switch c.Name {
