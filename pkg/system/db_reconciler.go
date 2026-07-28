@@ -14,6 +14,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/cnpg"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	secv1 "github.com/openshift/api/security/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -165,6 +166,17 @@ func (r *Reconciler) reconcileDBCluster() error {
 		// Check if noobaa CR has a recovery configuration.
 		if r.NooBaa.Spec.DBSpec.DBRecovery == nil {
 			// No recovery configuration found, set bootstrap configuration to init a new DB
+
+			// This is a fresh installation
+			// Set openshift.io/required-scc annotation for new clusters only
+			// This annotation is set in InheritedMetadata so CNPG will propagate it to newly created pods
+			// We only set this during initial cluster creation (not recovery) to avoid CNPG trying to patch existing pods,
+			// which would fail because OpenShift doesn't allow changing the required-scc annotation on running pods
+			if r.CNPGCluster.Spec.InheritedMetadata.Annotations == nil {
+				r.CNPGCluster.Spec.InheritedMetadata.Annotations = map[string]string{}
+			}
+			r.CNPGCluster.Spec.InheritedMetadata.Annotations[secv1.RequiredSCCAnnotation] = "restricted-v2"
+
 			if r.CNPGCluster.Spec.Bootstrap == nil {
 				r.CNPGCluster.Spec.Bootstrap = &cnpgv1.BootstrapConfiguration{
 					InitDB: &cnpgv1.BootstrapInitDB{
