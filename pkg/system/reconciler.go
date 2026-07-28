@@ -28,6 +28,7 @@ import (
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -73,6 +74,8 @@ type Reconciler struct {
 	NooBaa                    *nbv1.NooBaa
 	ServiceAccount            *corev1.ServiceAccount
 	CoreApp                   *appsv1.StatefulSet
+	UpgradeJob                *batchv1.Job
+	DefaultUpgradeJob         *corev1.PodSpec
 	CoreAppConfig             *corev1.ConfigMap
 	DefaultCoreApp            *corev1.PodSpec
 	PostgresDBConf            *corev1.ConfigMap
@@ -160,6 +163,7 @@ func NewReconciler(
 		NooBaa:                    util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_noobaa_cr_yaml).(*nbv1.NooBaa),
 		ServiceAccount:            util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount),
 		CoreApp:                   util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
+		UpgradeJob:                util.KubeObject(bundle.File_deploy_internal_job_upgrade_core_yaml).(*batchv1.Job),
 		CoreAppConfig:             util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap),
 		PostgresDBConf:            util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap),
 		NooBaaPostgresDB:          util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet),
@@ -216,6 +220,7 @@ func NewReconciler(
 	r.NooBaa.Namespace = r.Request.Namespace
 	r.ServiceAccount.Namespace = r.Request.Namespace
 	r.CoreApp.Namespace = r.Request.Namespace
+	r.UpgradeJob.Namespace = r.Request.Namespace
 	r.CoreAppConfig.Namespace = r.Request.Namespace
 	r.PostgresDBConf.Namespace = r.Request.Namespace
 	r.NooBaaPostgresDB.Namespace = r.Request.Namespace
@@ -269,6 +274,7 @@ func NewReconciler(
 	r.NooBaa.Name = r.Request.Name
 	r.ServiceAccount.Name = r.Request.Name
 	r.CoreApp.Name = r.Request.Name + "-core"
+	r.UpgradeJob.Name = r.Request.Name + "-core-upgrade"
 	r.CoreAppConfig.Name = "noobaa-config"
 	r.NooBaaPostgresDB.Name = r.Request.Name + "-db-pg"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
@@ -348,6 +354,7 @@ func NewReconciler(
 	r.BucketLoggingVolumeMount = "/var/logs/bucket-logs"
 
 	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.DeepCopy()
+	r.DefaultUpgradeJob = r.UpgradeJob.Spec.Template.Spec.DeepCopy()
 	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.DeepCopy()
 	r.webIdentityTokenPath = util.WebIdentityTokenPath
 
@@ -777,11 +784,11 @@ func (r *Reconciler) stopNoobaaPodsAndGetNumRunningPods() (int, error) {
 		return -1, err
 	}
 	corePodsList := &corev1.PodList{}
-	if !util.KubeList(corePodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-core": "noobaa"}) {
+	if !util.KubeList(corePodsList, client.InNamespace(r.Request.Namespace), client.MatchingLabels{"noobaa-core": r.Request.Name}) {
 		return -1, fmt.Errorf("got error listing noobaa-core pods")
 	}
 	endpointPodsList := &corev1.PodList{}
-	if !util.KubeList(endpointPodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-s3": "noobaa"}) {
+	if !util.KubeList(endpointPodsList, client.InNamespace(r.Request.Namespace), client.MatchingLabels{"noobaa-s3": r.Request.Name}) {
 		return -1, fmt.Errorf("got error listing noobaa-endpoints pods")
 	}
 	return len(corePodsList.Items) + len(endpointPodsList.Items), nil
