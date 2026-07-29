@@ -613,15 +613,6 @@ func TestProfileResourcesValues(t *testing.T) {
 			pvPool:   [4]string{"400m", "400m", "800Mi", "800Mi"},
 		},
 		{
-			name:     "default-ibm-z",
-			profile:  nbv1.PerformanceProfileDefaultIBMZ,
-			core:     [4]string{"250m", "1", "1Gi", "4Gi"},
-			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
-			db:       [4]string{"500m", "1", "2Gi", "2Gi"},
-			endpoint: [4]string{"250m", "2", "1Gi", "3Gi"},
-			pvPool:   [4]string{"200m", "400m", "800Mi", "800Mi"},
-		},
-		{
 			name:     "mixed-workload",
 			profile:  nbv1.PerformanceProfileMixedWorkload,
 			core:     [4]string{"1", "2", "2Gi", "4Gi"},
@@ -680,5 +671,71 @@ func assertResourceQuantity(t *testing.T, resources corev1.ResourceRequirements,
 	}
 	if resources.Limits.Memory().Cmp(memLim) != 0 {
 		t.Errorf("memory limit = %s, want %s", resources.Limits.Memory().String(), memLim.String())
+	}
+}
+
+func TestAdjustCpuResourcesForIbmZ(t *testing.T) {
+	tests := []struct {
+		name       string
+		cpuReq     string
+		cpuLim     string
+		factor     float64
+		wantCPUReq string
+		wantCPULim string
+	}{
+		{
+			name:       "whole number cpu",
+			cpuReq:     "2",
+			cpuLim:     "4",
+			factor:     0.5,
+			wantCPUReq: "1",
+			wantCPULim: "4",
+		},
+		{
+			name:       "fractional cpu",
+			cpuReq:     "1.5",
+			cpuLim:     "2",
+			factor:     0.5,
+			wantCPUReq: "750m",
+			wantCPULim: "2",
+		},
+		{
+			name:       "even milli cpu",
+			cpuReq:     "500m",
+			cpuLim:     "1",
+			factor:     0.5,
+			wantCPUReq: "250m",
+			wantCPULim: "1",
+		},
+		{
+			name:       "odd milli cpu",
+			cpuReq:     "501m",
+			cpuLim:     "1",
+			factor:     0.5,
+			wantCPUReq: "250m", // int64 truncates 250.5
+			wantCPULim: "1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := profileResources(tt.cpuReq, tt.cpuLim, "1Gi", "4Gi")
+			got := adjustCpuResourcesForIbmZ(input, tt.factor)
+
+			wantCPUReq := resource.MustParse(tt.wantCPUReq)
+			wantCPULim := resource.MustParse(tt.wantCPULim)
+			if got.Requests.Cpu().Cmp(wantCPUReq) != 0 {
+				t.Errorf("cpu request = %s, want %s", got.Requests.Cpu().String(), wantCPUReq.String())
+			}
+			if got.Limits.Cpu().Cmp(wantCPULim) != 0 {
+				t.Errorf("cpu limit = %s, want %s", got.Limits.Cpu().String(), wantCPULim.String())
+			}
+			if got.Requests.Memory().Cmp(*input.Requests.Memory()) != 0 {
+				t.Errorf("memory request changed unexpectedly")
+			}
+			if got.Limits.Memory().Cmp(*input.Limits.Memory()) != 0 {
+				t.Errorf("memory limit changed unexpectedly")
+			}
+		})
 	}
 }
