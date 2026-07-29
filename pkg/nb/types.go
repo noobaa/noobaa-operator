@@ -44,6 +44,7 @@ type AccountInfo struct {
 	NextPasswordChange int64          `json:"next_password_change"`
 	DefaultResource    string         `json:"default_resource"`
 	AccessKeys         []S3AccessKeys `json:"access_keys"`
+	ARN                string         `json:"arn,omitempty"`
 	AllowedIPs         []struct {
 		Start string `json:"start"`
 		End   string `json:"end"`
