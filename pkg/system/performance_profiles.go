@@ -13,7 +13,7 @@ import (
 
 const (
 	ibmZCpuArch         = "s390x"
-	ibmZCpuAdjustFactor = 0.5
+	ibmZCpuAdjustFactor = 0.2
 )
 
 type performanceProfile struct {
