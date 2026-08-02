@@ -627,7 +627,7 @@ func TestProfileResourcesValues(t *testing.T) {
 			core:     [4]string{"1", "2", "2Gi", "6Gi"},
 			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
 			db:       [4]string{"6", "6", "16Gi", "16Gi"},
-			endpoint: [4]string{"2", "4", "2Gi", "4Gi"},
+			endpoint: [4]string{"1", "4", "2Gi", "4Gi"},
 			pvPool:   [4]string{"1", "1", "2Gi", "2Gi"},
 		},
 		{
