@@ -53,7 +53,7 @@ const (
 	gcpServiceAccountEmailEnvVar string = "SERVICE_ACCOUNT_EMAIL"
 
 	// coreConfigMapHashAnnotation is set on the core configmap and STS/endpoint pod
-	// templates so config drift can be detected (e.g. for pod restarts).
+	// templates so OnDelete can detect config drift.
 	coreConfigMapHashAnnotation = "noobaa.io/configmap-hash"
 )
 
@@ -227,6 +227,10 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 	}
 
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
+		return err
+	}
+	// OnDelete: operator must delete outdated pods (see restartStaleCorePods).
+	if err := r.restartStaleCorePods(); err != nil {
 		return err
 	}
 
@@ -656,6 +660,10 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
 	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
+	// OnDelete avoids RollingUpdate stall on never-Ready HA standbys; see restartStaleCorePods.
+	r.CoreApp.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+		Type: appsv1.OnDeleteStatefulSetStrategyType,
+	}
 
 	podSpec := &r.CoreApp.Spec.Template.Spec
 	terminationGracePeriodSeconds := r.coreTerminationGracePeriodSeconds()
@@ -1736,6 +1744,64 @@ func (r *Reconciler) coreTerminationGracePeriodSeconds() int64 {
 		}
 	}
 	return leaderelect.RecommendedTerminationGracePeriod(shutdownGrace)
+}
+
+// restartStaleCorePods deletes one outdated core pod per reconcile under OnDelete.
+func (r *Reconciler) restartStaleCorePods() error {
+	if r.CoreApp.UID == "" {
+		return nil
+	}
+	// Refresh status (UpdateRevision) after the STS reconcile.
+	if !util.KubeCheckQuiet(r.CoreApp) {
+		return nil
+	}
+
+	desiredHash := ""
+	if r.CoreApp.Spec.Template.Annotations != nil {
+		desiredHash = r.CoreApp.Spec.Template.Annotations[coreConfigMapHashAnnotation]
+	}
+	updateRevision := r.CoreApp.Status.UpdateRevision
+
+	podList := &corev1.PodList{}
+	if !util.KubeList(podList, client.InNamespace(r.Request.Namespace), client.MatchingLabels{"noobaa-core": r.Request.Name}) {
+		return fmt.Errorf("failed listing core pods to restart stale revisions")
+	}
+
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if pod.DeletionTimestamp != nil {
+			// Wait for in-flight deletes before starting another.
+			return nil
+		}
+		if !isCorePodStale(pod, desiredHash, updateRevision) {
+			continue
+		}
+		r.Logger.Warnf("deleting outdated core pod %q (OnDelete) desiredHash=%q updateRevision=%q",
+			pod.Name, desiredHash, updateRevision)
+		util.KubeDeleteNoPolling(pod)
+		return nil
+	}
+	return nil
+}
+
+func isCorePodStale(pod *corev1.Pod, desiredHash, updateRevision string) bool {
+	if pod == nil {
+		return false
+	}
+	if desiredHash != "" {
+		podHash := ""
+		if pod.Annotations != nil {
+			podHash = pod.Annotations[coreConfigMapHashAnnotation]
+		}
+		if podHash != "" && podHash != desiredHash {
+			return true
+		}
+	}
+	if updateRevision == "" || pod.Labels == nil {
+		return false
+	}
+	podRevision := pod.Labels[appsv1.ControllerRevisionHashLabelKey]
+	return podRevision != "" && podRevision != updateRevision
 }
 
 // SetDesiredCoreLease updates the core Lease as desired for reconciling
