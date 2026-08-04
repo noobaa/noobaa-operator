@@ -5623,7 +5623,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "1f60f4995b291944111536d9f70b2678ec75dd60f53c0340d2bf6adb5bdd1325"
+const Sha256_deploy_internal_statefulset_core_yaml = "8ff071dc752f7020b32222f46713887a4f9c0d2bd4d0e6d766d470f37ab5d466"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5704,13 +5704,17 @@ spec:
           image: NOOBAA_CORE_IMAGE
           terminationMessagePolicy: FallbackToLogsOnError
           command:
+            # Prefer core_init.js (newer core images); fall back to supervisord (older images).
             - /noobaa-shared/noobaa-operator
             - leader-elect
             - --
             - /bin/bash
             - -ec
             - |
-              exec /usr/local/bin/node /root/node_modules/noobaa-core/src/cmd/core_init.js
+              if [ -f /root/node_modules/noobaa-core/src/cmd/core_init.js ]; then
+                exec /usr/local/bin/node /root/node_modules/noobaa-core/src/cmd/core_init.js
+              fi
+              exec /usr/bin/supervisord start
           volumeMounts:
             - name: logs
               mountPath: /log

@@ -77,13 +77,17 @@ spec:
           image: NOOBAA_CORE_IMAGE
           terminationMessagePolicy: FallbackToLogsOnError
           command:
+            # Prefer core_init.js (newer core images); fall back to supervisord (older images).
             - /noobaa-shared/noobaa-operator
             - leader-elect
             - --
             - /bin/bash
             - -ec
             - |
-              exec /usr/local/bin/node /root/node_modules/noobaa-core/src/cmd/core_init.js
+              if [ -f /root/node_modules/noobaa-core/src/cmd/core_init.js ]; then
+                exec /usr/local/bin/node /root/node_modules/noobaa-core/src/cmd/core_init.js
+              fi
+              exec /usr/bin/supervisord start
           volumeMounts:
             - name: logs
               mountPath: /log
