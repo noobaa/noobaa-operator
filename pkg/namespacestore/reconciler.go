@@ -385,11 +385,7 @@ func (r *Reconciler) ReconcileDeletion(systemFound bool) error {
 		}
 
 		if r.NBClient != nil && r.NamespaceStore.Spec.Type != nbv1.NSStoreTypeNSFS {
-			hasOwned, err := r.hasOwnedExternalConnection()
-			if err != nil {
-				return err
-			}
-			if hasOwned {
+			if r.hasOwnedExternalConnection() {
 				err := r.NBClient.DeleteExternalConnectionAPI(nb.DeleteExternalConnectionParams{Name: r.NamespaceStore.Name})
 				if err != nil {
 					if rpcErr, isRPCErr := err.(*nb.RPCError); isRPCErr {
@@ -409,20 +405,22 @@ func (r *Reconciler) ReconcileDeletion(systemFound bool) error {
 	return r.FinalizeDeletion()
 }
 
-// hasOwnedExternalConnection checks list_accounts for an external connection named like this NamespaceStore
-func (r *Reconciler) hasOwnedExternalConnection() (bool, error) {
-	accountsList, err := r.NBClient.ListAccountsAPI(nb.ListAccountsParams{})
-	if err != nil {
-		return false, err
+// hasOwnedExternalConnection returns true if SystemInfo has an external connection
+// whose name matches this NamespaceStore. That means this store owns the connection
+// and it should be deleted on cleanup. If another store reused a shared connection,
+// the connection keeps that other name, so this returns false and we do not delete it.
+func (r *Reconciler) hasOwnedExternalConnection() bool {
+	if r.SystemInfo == nil {
+		return false
 	}
-	for _, account := range accountsList.Accounts {
-		for i := range account.ExternalConnections.Connections {
-			if account.ExternalConnections.Connections[i].Name == r.NamespaceStore.Name {
-				return true, nil
+	for _, account := range r.SystemInfo.Accounts {
+		for _, conn := range account.ExternalConnections.Connections {
+			if conn.Name == r.NamespaceStore.Name {
+				return true
 			}
 		}
 	}
-	return false, nil
+	return false
 }
 
 // FinalizeDeletion removed the finalizer and updates in order to let the namespace-store get reclaimed by kubernetes
