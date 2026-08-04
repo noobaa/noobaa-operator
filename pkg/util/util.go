@@ -178,11 +178,13 @@ var (
 
 	// InsecureHTTPTransport is a global insecure http transport
 	InsecureHTTPTransport = &http.Transport{
+		Proxy:           http.ProxyFromEnvironment,
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
 	// GlobalCARefreshingTransport is a global secure http transport
 	GlobalCARefreshingTransport = &http.Transport{
+		Proxy:           http.ProxyFromEnvironment,
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
 	}
 
