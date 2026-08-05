@@ -620,17 +620,30 @@ func (r *Reconciler) ReadSystemInfo() error {
 		return err
 	}
 
+	// used only in update_external_connection to check whether the target is a valid noobaa storage
+	bucketFromSpec := conn.Bucket
+	conn.Bucket = ""
+
 	// Check that noobaa-core uses the same connection as the pool
 	// Due to noobaa/noobaa-core#5750 the identity (access-key) is not returned in the api call so just warn for now
 	// TODO Improve handling of this condition
+	identityChange := false
 	if pool != nil {
 		if pool.CloudInfo == nil ||
 			pool.CloudInfo.EndpointType != conn.EndpointType ||
 			pool.CloudInfo.Endpoint != conn.Endpoint ||
 			pool.CloudInfo.Identity != string(conn.Identity) {
+			if pool.CloudInfo.Identity != string(conn.Identity) {
+				identityChange = true
+			}
 			r.Logger.Warnf("using existing pool but connection mismatch %+v pool %+v %+v", conn, pool, pool.CloudInfo)
 			r.UpdateExternalConnectionParams = &nb.UpdateExternalConnectionParams{
-				Name:               conn.Name,
+				Name: conn.Name,
+				EndpointInfo: nb.EndpointInfo{
+					Endpoint:     conn.Endpoint,
+					EndpointType: conn.EndpointType,
+					Bucket:       bucketFromSpec,
+				},
 				Identity:           conn.Identity,
 				Secret:             conn.Secret,
 				AzureLogAccessKeys: conn.AzureLogAccessKeys,
@@ -639,17 +652,41 @@ func (r *Reconciler) ReadSystemInfo() error {
 		}
 	}
 
-	// Reuse an existing connection if match is found
+	// Reuse an existing connection if match is found. If not found, check whether a connection matches
+	// with the existing pool details.
+	connectionFound := false
+	var oldConnection *nb.ExternalConnectionInfo
 	for i := range r.SystemInfo.Accounts {
 		account := &r.SystemInfo.Accounts[i]
 		for j := range account.ExternalConnections.Connections {
 			c := &account.ExternalConnections.Connections[j]
-			if c.EndpointType == conn.EndpointType &&
-				c.Endpoint == conn.Endpoint &&
-				c.Identity == string(conn.Identity) {
-				r.ExternalConnectionInfo = c
-				conn.Name = c.Name
+			if c.EndpointType == conn.EndpointType && c.Identity == string(conn.Identity) {
+				// this will match the existing endpoint used in the backingstore but the same connection may be used by other stores
+				if c.Endpoint == conn.Endpoint {
+					connectionFound = true
+					// Since connections are reused, existing connection name can be different from connection name in bs spec
+					if !identityChange && r.UpdateExternalConnectionParams != nil {
+						r.UpdateExternalConnectionParams.Name = c.Name
+						break
+					}
+
+					r.ExternalConnectionInfo = c
+					conn.Name = c.Name
+				} else if pool != nil && pool.CloudInfo != nil && pool.CloudInfo.Endpoint == c.Endpoint {
+					oldConnection = c
+				}
 			}
+		}
+	}
+
+	// if an existing connection was not found, but a connection matching with the old pool was found,
+	// update that connection
+	if !connectionFound && oldConnection != nil {
+		if r.UpdateExternalConnectionParams != nil {
+			r.UpdateExternalConnectionParams.Name = oldConnection.Name
+		} else {
+			r.ExternalConnectionInfo = oldConnection
+			conn.Name = oldConnection.Name
 		}
 	}
 
@@ -713,6 +750,7 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		conn.Identity = nb.MaskedString(r.Secret.StringData["AWS_ACCESS_KEY_ID"])
 		conn.Secret = nb.MaskedString(r.Secret.StringData["AWS_SECRET_ACCESS_KEY"])
 		s3Compatible := r.BackingStore.Spec.S3Compatible
+		conn.Bucket = s3Compatible.TargetBucket
 		switch s3Compatible.SignatureVersion {
 		case nbv1.S3SignatureVersionV4:
 			conn.AuthMethod = "AWS_V4"
@@ -760,6 +798,8 @@ func (r *Reconciler) MakeExternalConnectionParams() (*nb.AddExternalConnectionPa
 		conn.Identity = nb.MaskedString(r.Secret.StringData["IBM_COS_ACCESS_KEY_ID"])
 		conn.Secret = nb.MaskedString(r.Secret.StringData["IBM_COS_SECRET_ACCESS_KEY"])
 		IBMCos := r.BackingStore.Spec.IBMCos
+		conn.Bucket = IBMCos.TargetBucket
+
 		switch IBMCos.SignatureVersion {
 		case nbv1.S3SignatureVersionV4:
 			conn.AuthMethod = "AWS_V4"
