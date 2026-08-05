@@ -238,6 +238,8 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
+            - name: NOTIFICATION_LOG_DIR
+              value: ""
           envFrom:
             - configMapRef:
                 name: noobaa-config

@@ -453,19 +453,16 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					} else {
 						c.Env[j].Value = ""
 					}
+				case "NOTIFICATION_LOG_DIR":
+					notification_log_dir_value := "";
+					if (r.NooBaa.Spec.BucketNotifications.Enabled) {
+						notification_log_dir_value = "/var/logs/notifications";
+					}
+					c.Env[j].Value = notification_log_dir_value
 				}
 			}
 
 			util.ApplyTLSEnvVars(&c.Env, r.NooBaa.Spec.Security.APIServerSecurity)
-
-			if r.NooBaa.Spec.BucketNotifications.Enabled {
-				envVar := corev1.EnvVar{
-					Name:  "NOTIFICATION_LOG_DIR",
-					Value: "/var/logs/notifications",
-				}
-
-				util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar})
-			}
 
 			c.SecurityContext = &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
