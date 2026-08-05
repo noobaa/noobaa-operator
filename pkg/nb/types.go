@@ -749,6 +749,7 @@ type CheckExternalConnectionParams struct {
 	AzureLogAccessKeys     *AzureLogAccessKeysParams `json:"azure_log_access_keys,omitempty"`
 	Region                 string                    `json:"region,omitempty"`
 	AzureSTSCredentials    *AzureSTSCredentials      `json:"azure_sts_credentials,omitempty"`
+	Bucket                 string                    `json:"bucket,omitempty"`
 }
 
 // CheckExternalConnectionReply is the reply of account_api.check_external_connection()
@@ -760,11 +761,18 @@ type CheckExternalConnectionReply struct {
 	} `json:"error,omitempty"`
 }
 
+// EndpointInfo carries the endpoint URL and type for connection updates.
+type EndpointInfo struct {
+	Endpoint     string       `json:"endpoint,omitempty"`
+	EndpointType EndpointType `json:"endpoint_type,omitempty"`
+}
+
 // UpdateExternalConnectionParams is the params of account_api.update_external_connection()
 type UpdateExternalConnectionParams struct {
 	Name               string                    `json:"name"`
-	Identity           MaskedString              `json:"identity"`
-	Secret             MaskedString              `json:"secret"`
+	EndpointInfo       *EndpointInfo             `json:"endpoint_info,omitempty"`
+	Identity           MaskedString              `json:"identity,omitempty"`
+	Secret             MaskedString              `json:"secret,omitempty"`
 	AzureLogAccessKeys *AzureLogAccessKeysParams `json:"azure_log_access_keys,omitempty"`
 	Region             string                    `json:"region,omitempty"`
 }

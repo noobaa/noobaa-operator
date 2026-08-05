@@ -15,6 +15,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/cosi"
 	"github.com/noobaa/noobaa-operator/v5/pkg/crd"
 	"github.com/noobaa/noobaa-operator/v5/pkg/diagnostics"
+	"github.com/noobaa/noobaa-operator/v5/pkg/connection"
 	"github.com/noobaa/noobaa-operator/v5/pkg/install"
 	"github.com/noobaa/noobaa-operator/v5/pkg/leaderelect"
 	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
@@ -141,6 +142,7 @@ Load noobaa completion to bash:
 			diagnostics.CmdDbDumpDeprecated(),
 			diagnostics.Cmd(),
 			sts.Cmd(),
+			connection.Cmd(),
 		},
 	}, {
 		Message: "Advanced:",

@@ -9,6 +9,7 @@ import (
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/constants"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
@@ -143,6 +144,12 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	if !systemFound {
 		log.Infof("NooBaa not found or already deleted. Skip reconcile.")
 		return r.completeReconcile(nil)
+	}
+
+	if r.NamespaceStore.Annotations != nil &&
+		r.NamespaceStore.Annotations[constants.PauseReconcile] == "true" {
+		log.Infof("NamespaceStore %q reconciliation paused. Skipping reconcile.", r.NamespaceStore.Name)
+		return reconcile.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
 	if util.EnsureCommonMetaFields(r.NamespaceStore, nbv1.Finalizer) {
