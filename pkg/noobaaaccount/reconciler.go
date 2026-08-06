@@ -261,7 +261,8 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 		}
 	}
 
-	return nil
+	// Ensure credentials Secret exists before Ready
+	return r.ensureNoobaaAccountSecret()
 }
 
 // ReconcileDeletion handles the deletion of a noobaa account using the noobaa api
@@ -355,23 +356,50 @@ func (r *Reconciler) CreateNooBaaAccount() error {
 			return err
 		}
 		accessKeys = readAccountReply.AccessKeys[0]
+		if accountInfo.ARN == "" {
+			accountInfo.ARN = readAccountReply.ARN
+		}
 	} else {
 		accessKeys = accountInfo.AccessKeys[0]
 	}
-	r.Secret.StringData = map[string]string{}
-	r.Secret.StringData["AWS_ACCESS_KEY_ID"] = string(accessKeys.AccessKey)
-	r.Secret.StringData["AWS_SECRET_ACCESS_KEY"] = string(accessKeys.SecretKey)
-	r.Secret.StringData["ARN"] = string(accountInfo.ARN)
 
-	r.Own(r.Secret)
-	err = r.Client.Create(r.Ctx, r.Secret)
-	if err != nil {
-		r.Logger.Errorf("got error on NooBaaAccount creation. error: %v", err)
+	if err := r.createNoobaaAccountSecret(accessKeys, accountInfo.ARN); err != nil {
 		return err
 	}
 
 	log.Infof("✅ Successfully created account %q", r.NooBaaAccount.Name)
 	return nil
+}
+
+// createNoobaaAccountSecret creates the credentials Secret for the NooBaaAccount
+func (r *Reconciler) createNoobaaAccountSecret(accessKeys nb.S3AccessKeys, arn string) error {
+	r.Secret.StringData = map[string]string{
+		"AWS_ACCESS_KEY_ID":     string(accessKeys.AccessKey),
+		"AWS_SECRET_ACCESS_KEY": string(accessKeys.SecretKey),
+		"ARN":                   arn,
+	}
+	r.Own(r.Secret)
+	if !util.KubeCreateSkipExisting(r.Secret) {
+		return fmt.Errorf("Failed to create NoobaaAccount secret %q", r.Secret.Name)
+	}
+	return nil
+}
+
+// ensureNoobaaAccountSecret ensures the credentials Secret exists for the NooBaaAccount
+func (r *Reconciler) ensureNoobaaAccountSecret() error {
+	if util.KubeCheck(r.Secret) {
+		return nil
+	}
+
+	r.Logger.Warnf("⏳ Secret %q is missing, recreating from account credentials", r.Secret.Name)
+	accountInfo, err := r.NBClient.ReadAccountAPI(nb.ReadAccountParams{Email: r.NooBaaAccount.Name})
+	if err != nil {
+		return err
+	}
+	if len(accountInfo.AccessKeys) == 0 {
+		return fmt.Errorf("NooBaaAccount %q has no access keys", r.NooBaaAccount.Name)
+	}
+	return r.createNoobaaAccountSecret(accountInfo.AccessKeys[0], accountInfo.ARN)
 }
 
 // UpdateNooBaaAccount update an existing noobaa account
