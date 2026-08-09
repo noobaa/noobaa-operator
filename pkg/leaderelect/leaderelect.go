@@ -3,8 +3,9 @@
 // Exposed as a Hidden cobra subcommand of the noobaa-operator binary and
 // copied into the core pod from the operator image:
 //
-//	noobaa-operator leader-elect [flags] -- <command> [args...]
+//	noobaa-operator leader-elect -- <command> [args...]
 //
+// Timings and lease name come from environment variables (see NOOBAA_CORE_*).
 // The command is Hidden so it does not appear in public CLI help. The wrapper
 // acquires a namespaced Lease, spawns the given command in its own process
 // group while holding leadership, reaps orphaned children (PID 1), and on
@@ -38,9 +39,14 @@ const (
 	exitConfig = 1
 	exitLost   = 2
 
-	envLeaseName    = "NOOBAA_CORE_LEASE_NAME"
-	envPodNamespace = "POD_NAMESPACE"
-	saNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+	envLeaseName     = "NOOBAA_CORE_LEASE_NAME"
+	envLeaseDuration = "NOOBAA_CORE_LEASE_DURATION"
+	envRenewDeadline = "NOOBAA_CORE_RENEW_DEADLINE"
+	envRetryPeriod   = "NOOBAA_CORE_RETRY_PERIOD"
+	envShutdownGrace = "NOOBAA_CORE_SHUTDOWN_GRACE"
+	envLostGrace     = "NOOBAA_CORE_LOST_GRACE"
+	envPodNamespace  = "POD_NAMESPACE"
+	saNamespaceFile  = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 	defaultLeaseDuration = 20 * time.Second
 	defaultRenewDeadline = 10 * time.Second
@@ -74,17 +80,18 @@ type Config struct {
 }
 
 // Cmd returns the leader-elect CLI command (Hidden — for in-pod use).
+// Configuration is read from environment variables; args are only the wrapped command.
 func Cmd() *cobra.Command {
-	cfg := defaultConfig()
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Hidden:                true,
 		Use:                   "leader-elect -- <command> [args...]",
 		Short:                 "Acquire a Lease then exec a command (PID 1 leader-elect wrapper)",
 		DisableFlagsInUseLine: true,
+		DisableFlagParsing:    true,
 		SilenceUsage:          true,
-		Args:                  cobra.ArbitraryArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			cfg.Command = args
+		Run: func(_ *cobra.Command, args []string) {
+			cfg := defaultConfig()
+			cfg.Command = commandFromArgs(args)
 			if err := cfg.Validate(); err != nil {
 				fmt.Fprintf(os.Stderr, "leader-elect: %v\n", err)
 				os.Exit(exitConfig)
@@ -92,71 +99,82 @@ func Cmd() *cobra.Command {
 			os.Exit(Run(cfg))
 		},
 	}
-	bindFlags(cmd, cfg)
-	return cmd
 }
 
 func defaultConfig() *Config {
 	return &Config{
 		LeaseName:     os.Getenv(envLeaseName),
-		LeaseDuration: defaultLeaseDuration,
-		RenewDeadline: defaultRenewDeadline,
-		RetryPeriod:   defaultRetryPeriod,
-		ShutdownGrace: defaultShutdownGrace,
-		LostGrace:     defaultLostGrace,
+		LeaseDuration: durationFromEnv(envLeaseDuration, defaultLeaseDuration),
+		RenewDeadline: durationFromEnv(envRenewDeadline, defaultRenewDeadline),
+		RetryPeriod:   durationFromEnv(envRetryPeriod, defaultRetryPeriod),
+		ShutdownGrace: durationFromEnv(envShutdownGrace, defaultShutdownGrace),
+		LostGrace:     durationFromEnv(envLostGrace, defaultLostGrace),
 	}
 }
 
-func bindFlags(cmd *cobra.Command, cfg *Config) {
-	cmd.Flags().StringVar(&cfg.LeaseName, "lease-name", cfg.LeaseName, "Lease object name (default: $NOOBAA_CORE_LEASE_NAME)")
-	cmd.Flags().DurationVar(&cfg.LeaseDuration, "lease-duration", cfg.LeaseDuration, "Lease duration")
-	cmd.Flags().DurationVar(&cfg.RenewDeadline, "renew-deadline", cfg.RenewDeadline, "Leadership renew deadline")
-	cmd.Flags().DurationVar(&cfg.RetryPeriod, "retry-period", cfg.RetryPeriod, "Leadership retry period")
-	cmd.Flags().DurationVar(&cfg.ShutdownGrace, "shutdown-grace", cfg.ShutdownGrace, "Time to wait for child exit after SIGTERM/SIGINT before SIGKILL")
-	cmd.Flags().DurationVar(&cfg.LostGrace, "lost-grace", cfg.LostGrace, "Time to wait for child exit after leadership loss before SIGKILL")
+// durationFromEnv parses a duration env var; returns fallback if unset or invalid.
+func durationFromEnv(key string, fallback time.Duration) time.Duration {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil || d <= 0 {
+		return fallback
+	}
+	return d
 }
 
-// ParseArgs parses leader-elect flags and the wrapped command (args after flags/--).
+// commandFromArgs returns the wrapped command, stripping a leading "--" if present.
+func commandFromArgs(args []string) []string {
+	if len(args) == 0 {
+		return nil
+	}
+	if args[0] == "--" {
+		return append([]string(nil), args[1:]...)
+	}
+	return append([]string(nil), args...)
+}
+
+// ParseArgs builds Config from the environment and the wrapped command args.
 // It does not run the election or spawn processes.
 func ParseArgs(args []string) (*Config, error) {
 	cfg := defaultConfig()
-	cmd := &cobra.Command{
-		Use:           "leader-elect",
-		SilenceErrors: true,
-		SilenceUsage:  true,
-		Args:          cobra.ArbitraryArgs,
-		Run: func(_ *cobra.Command, a []string) {
-			cfg.Command = a
-		},
-	}
-	bindFlags(cmd, cfg)
-	cmd.SetArgs(args)
-	if err := cmd.Execute(); err != nil {
-		return nil, err
-	}
+	cfg.Command = commandFromArgs(args)
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 	return cfg, nil
 }
 
-// Validate checks required fields and the lost-grace invariant.
+// Validate checks required fields and client-go timing invariants.
 func (c *Config) Validate() error {
 	if c == nil {
 		return fmt.Errorf("nil config")
 	}
 	if c.LeaseName == "" {
-		return fmt.Errorf("--lease-name is required (or set $%s)", envLeaseName)
+		return fmt.Errorf("$%s is required", envLeaseName)
 	}
 	if len(c.Command) == 0 {
 		return fmt.Errorf("command is required after --")
 	}
 	maxLost := c.LeaseDuration - c.RenewDeadline
 	if maxLost <= 0 {
-		return fmt.Errorf("lease-duration (%v) must be greater than renew-deadline (%v)", c.LeaseDuration, c.RenewDeadline)
+		return fmt.Errorf("%s (%v) must be greater than %s (%v)",
+			envLeaseDuration, c.LeaseDuration, envRenewDeadline, c.RenewDeadline)
 	}
 	if c.LostGrace >= maxLost {
-		return fmt.Errorf("--lost-grace (%v) must be < lease-duration - renew-deadline (%v)", c.LostGrace, maxLost)
+		return fmt.Errorf("%s (%v) must be < %s - %s (%v)",
+			envLostGrace, c.LostGrace, envLeaseDuration, envRenewDeadline, maxLost)
+	}
+	// Match NewLeaderElector: renewDeadline must be > retryPeriod*JitterFactor (1.2).
+	if c.RetryPeriod <= 0 {
+		return fmt.Errorf("%s (%v) must be greater than zero", envRetryPeriod, c.RetryPeriod)
+	}
+	minRenew := time.Duration(leaderelection.JitterFactor * float64(c.RetryPeriod))
+	if c.RenewDeadline <= minRenew {
+		return fmt.Errorf("%s (%v) must be greater than %s*%g (%v)",
+			envRenewDeadline, c.RenewDeadline, envRetryPeriod, leaderelection.JitterFactor, minRenew)
 	}
 	return nil
 }
