@@ -8,6 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestGetDesiredCoreReplicas(t *testing.T) {
@@ -184,5 +185,197 @@ func TestPickStaleCorePodToDelete(t *testing.T) {
 				t.Fatalf("pickStaleCorePodToDelete() = %q, want %q", got.Name, tt.want)
 			}
 		})
+	}
+}
+
+func TestDesiredCoreAffinity(t *testing.T) {
+	t.Parallel()
+
+	const coreName = "noobaa"
+	zoneKey := "topology.kubernetes.io/zone"
+
+	reconcilerFor := func(nb *nbv1.NooBaa) *Reconciler {
+		return &Reconciler{
+			NooBaa:  nb,
+			Request: types.NamespacedName{Name: nb.Name},
+		}
+	}
+
+	t.Run("HA off no affinity", func(t *testing.T) {
+		t.Parallel()
+		nb := &nbv1.NooBaa{}
+		nb.Name = coreName
+		nb.Spec.DisableCoreHA = true
+		if got := reconcilerFor(nb).desiredCoreAffinity(); got != nil {
+			t.Fatalf("expected nil affinity, got %#v", got)
+		}
+	})
+
+	t.Run("HA on no affinity hostname only", func(t *testing.T) {
+		t.Parallel()
+		nb := &nbv1.NooBaa{}
+		nb.Name = coreName
+		got := reconcilerFor(nb).desiredCoreAffinity()
+		if got == nil || got.PodAntiAffinity == nil {
+			t.Fatal("expected pod anti-affinity")
+		}
+		prefs := got.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
+		if len(prefs) != 1 {
+			t.Fatalf("preferred terms = %d, want 1", len(prefs))
+		}
+		assertPreferredCoreTerm(t, prefs[0], coreName, corev1.LabelHostname)
+	})
+
+	t.Run("HA on with topologyKey zone", func(t *testing.T) {
+		t.Parallel()
+		nb := &nbv1.NooBaa{}
+		nb.Name = coreName
+		nb.Spec.Affinity = &nbv1.AffinitySpec{TopologyKey: zoneKey}
+		got := reconcilerFor(nb).desiredCoreAffinity()
+		prefs := got.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
+		if len(prefs) != 2 {
+			t.Fatalf("preferred terms = %d, want 2", len(prefs))
+		}
+		assertPreferredCoreTerm(t, prefs[0], coreName, corev1.LabelHostname)
+		assertPreferredCoreTerm(t, prefs[1], coreName, zoneKey)
+	})
+
+	t.Run("HA on topologyKey hostname no duplicate", func(t *testing.T) {
+		t.Parallel()
+		nb := &nbv1.NooBaa{}
+		nb.Name = coreName
+		nb.Spec.Affinity = &nbv1.AffinitySpec{TopologyKey: corev1.LabelHostname}
+		got := reconcilerFor(nb).desiredCoreAffinity()
+		prefs := got.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
+		if len(prefs) != 1 {
+			t.Fatalf("preferred terms = %d, want 1", len(prefs))
+		}
+		assertPreferredCoreTerm(t, prefs[0], coreName, corev1.LabelHostname)
+	})
+
+	t.Run("HA on preserves nodeAffinity", func(t *testing.T) {
+		t.Parallel()
+		nb := &nbv1.NooBaa{}
+		nb.Name = coreName
+		nb.Spec.Affinity = &nbv1.AffinitySpec{
+			NodeAffinity: &corev1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+						MatchExpressions: []corev1.NodeSelectorRequirement{{
+							Key:      "node-role.kubernetes.io/worker",
+							Operator: corev1.NodeSelectorOpExists,
+						}},
+					}},
+				},
+			},
+		}
+		got := reconcilerFor(nb).desiredCoreAffinity()
+		if got.NodeAffinity == nil {
+			t.Fatal("expected nodeAffinity preserved")
+		}
+		if got.PodAntiAffinity == nil || len(got.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
+			t.Fatal("expected injected hostname preferred term")
+		}
+		// Must not mutate the CR affinity object.
+		if nb.Spec.Affinity.PodAntiAffinity != nil {
+			t.Fatal("expected CR PodAntiAffinity to remain nil (deep copy)")
+		}
+	})
+
+	t.Run("HA on existing preferred term no duplicate", func(t *testing.T) {
+		t.Parallel()
+		existing := corev1.WeightedPodAffinityTerm{
+			Weight: 100,
+			PodAffinityTerm: corev1.PodAffinityTerm{
+				TopologyKey: corev1.LabelHostname,
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{"noobaa-core": coreName},
+				},
+			},
+		}
+		nb := &nbv1.NooBaa{}
+		nb.Name = coreName
+		nb.Spec.Affinity = &nbv1.AffinitySpec{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{existing},
+			},
+		}
+		got := reconcilerFor(nb).desiredCoreAffinity()
+		prefs := got.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
+		if len(prefs) != 1 {
+			t.Fatalf("preferred terms = %d, want 1 (no duplicate)", len(prefs))
+		}
+	})
+
+	t.Run("HA on stricter user selector still injects term", func(t *testing.T) {
+		t.Parallel()
+		// User term includes noobaa-core but also an extra label — must not suppress ours.
+		userTerm := corev1.WeightedPodAffinityTerm{
+			Weight: 50,
+			PodAffinityTerm: corev1.PodAffinityTerm{
+				TopologyKey: corev1.LabelHostname,
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"noobaa-core": coreName,
+						"app":         "special",
+					},
+				},
+			},
+		}
+		nb := &nbv1.NooBaa{}
+		nb.Name = coreName
+		nb.Spec.Affinity = &nbv1.AffinitySpec{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{userTerm},
+			},
+		}
+		got := reconcilerFor(nb).desiredCoreAffinity()
+		prefs := got.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
+		if len(prefs) != 2 {
+			t.Fatalf("preferred terms = %d, want 2 (user + generated)", len(prefs))
+		}
+		assertPreferredCoreTerm(t, prefs[1], coreName, corev1.LabelHostname)
+	})
+
+	t.Run("HA off preserves user podAntiAffinity", func(t *testing.T) {
+		t.Parallel()
+		userTerm := corev1.WeightedPodAffinityTerm{
+			Weight: 50,
+			PodAffinityTerm: corev1.PodAffinityTerm{
+				TopologyKey: "topology.kubernetes.io/region",
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{"app": "custom"},
+				},
+			},
+		}
+		nb := &nbv1.NooBaa{}
+		nb.Name = coreName
+		nb.Spec.DisableCoreHA = true
+		nb.Spec.Affinity = &nbv1.AffinitySpec{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{userTerm},
+			},
+		}
+		got := reconcilerFor(nb).desiredCoreAffinity()
+		if got == nil || got.PodAntiAffinity == nil {
+			t.Fatal("expected user podAntiAffinity")
+		}
+		prefs := got.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
+		if len(prefs) != 1 || prefs[0].Weight != 50 || prefs[0].PodAffinityTerm.TopologyKey != "topology.kubernetes.io/region" {
+			t.Fatalf("user anti-affinity changed: %#v", prefs)
+		}
+	})
+}
+
+func assertPreferredCoreTerm(t *testing.T, term corev1.WeightedPodAffinityTerm, coreName, topologyKey string) {
+	t.Helper()
+	if term.Weight != 100 {
+		t.Fatalf("weight = %d, want 100", term.Weight)
+	}
+	if term.PodAffinityTerm.TopologyKey != topologyKey {
+		t.Fatalf("topologyKey = %q, want %q", term.PodAffinityTerm.TopologyKey, topologyKey)
+	}
+	if term.PodAffinityTerm.LabelSelector == nil || term.PodAffinityTerm.LabelSelector.MatchLabels["noobaa-core"] != coreName {
+		t.Fatalf("labelSelector = %#v, want noobaa-core=%s", term.PodAffinityTerm.LabelSelector, coreName)
 	}
 }

@@ -3,6 +3,7 @@ package system
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"reflect"
 	"strings"
@@ -843,7 +844,7 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			[]corev1.LocalObjectReference{*r.NooBaa.Spec.ImagePullSecret}
 	}
 	podSpec.Tolerations = r.NooBaa.Spec.Tolerations
-	podSpec.Affinity = r.GetAffinity()
+	podSpec.Affinity = r.desiredCoreAffinity()
 	podSpec.PriorityClassName = r.NooBaa.Spec.CorePriorityClassName
 
 	if r.CoreApp.UID == "" {
@@ -1732,6 +1733,83 @@ func getDesiredCoreReplicas(nooBaa *nbv1.NooBaa) int32 {
 		return options.CoreHAReplicaCount
 	}
 	return 1
+}
+
+// desiredCoreAffinity returns pod affinity for noobaa-core.
+// When Core HA is on, adds preferred anti-affinity for hostname so replicas prefer
+// different nodes. if spec.affinity.topologyKey is set, adds preferred anti-affinity for that
+// topology domain too.
+func (r *Reconciler) desiredCoreAffinity() *corev1.Affinity {
+
+	if r.NooBaa == nil {
+		return nil
+	}
+
+	base := r.GetAffinity()
+	if base != nil {
+		base = base.DeepCopy()
+	}
+
+	if !isCoreHAEnabled(r.NooBaa) {
+		return base
+	}
+
+	if base == nil {
+		base = &corev1.Affinity{}
+	}
+
+	topologyKey := ""
+	if r.NooBaa.Spec.Affinity != nil {
+		topologyKey = r.NooBaa.Spec.Affinity.TopologyKey
+	}
+
+	peerLabels := map[string]string{"noobaa-core": r.Request.Name}
+	//when core HA is enabled, always add preferred anti-affinity for hostname
+	ensurePreferredAntiAffinity(base, peerLabels, corev1.LabelHostname)
+	// if added by the user, also add the topology key to the preferred anti-affinity
+	if topologyKey != "" && topologyKey != corev1.LabelHostname {
+		ensurePreferredAntiAffinity(base, peerLabels, topologyKey)
+	}
+	return base
+}
+
+func ensurePreferredAntiAffinity(aff *corev1.Affinity, matchLabels map[string]string, topologyKey string) {
+	term := corev1.WeightedPodAffinityTerm{
+		Weight: 100,
+		PodAffinityTerm: corev1.PodAffinityTerm{
+			TopologyKey: topologyKey,
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: maps.Clone(matchLabels),
+			},
+		},
+	}
+	if aff.PodAntiAffinity == nil {
+		aff.PodAntiAffinity = &corev1.PodAntiAffinity{}
+	}
+	//don't add the same preferred anti-affinity again
+	if hasEquivalentPreferredAntiAffinity(aff.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution, matchLabels, topologyKey) {
+		return
+	}
+	//add the preferred anti-affinity to the affinity
+	aff.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution = append(
+		aff.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution, term)
+}
+
+func hasEquivalentPreferredAntiAffinity(terms []corev1.WeightedPodAffinityTerm, matchLabels map[string]string, topologyKey string) bool {
+	for i := range terms {
+		t := &terms[i]
+		if t.PodAffinityTerm.TopologyKey != topologyKey {
+			continue
+		}
+		if t.PodAffinityTerm.LabelSelector == nil {
+			continue
+		}
+		selector := t.PodAffinityTerm.LabelSelector
+		if len(selector.MatchExpressions) == 0 && maps.Equal(selector.MatchLabels, matchLabels) {
+			return true
+		}
+	}
+	return false
 }
 
 // coreTerminationGracePeriodSeconds returns how many seconds Kubernetes should
