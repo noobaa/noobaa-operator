@@ -4914,6 +4914,146 @@ metadata:
     app: noobaa
 `
 
+const Sha256_deploy_internal_networkpolicy_core_yaml = "e03679b5dda3c850d4918bb9f82a08e4c07809b115cf40aa4e490a212aa3a662"
+
+const File_deploy_internal_networkpolicy_core_yaml = `apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-core
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchLabels:
+      noobaa-core: noobaa
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8443
+    - protocol: TCP
+      port: 8444
+    - protocol: TCP
+      port: 8445
+    - protocol: TCP
+      port: 8446
+    - protocol: TCP
+      port: 60100
+    - protocol: UDP
+      port: 5140
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8443
+`
+
+const Sha256_deploy_internal_networkpolicy_db_yaml = "12da7394e49f66025bdcbfda849209a827c0eb3b1ab1ffdc1591cb5ac6d58b3b"
+
+const File_deploy_internal_networkpolicy_db_yaml = `apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-db-pg-cluster
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: noobaa-db-pg-cluster
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 8000
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 9187
+`
+
+const Sha256_deploy_internal_networkpolicy_endpoint_yaml = "6c55cda146ca6f55d2f2de9332e63e5f57eb897f3b9f180e212f69cd9740a2c5"
+
+const File_deploy_internal_networkpolicy_endpoint_yaml = `apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-endpoint
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchLabels:
+      noobaa-s3: noobaa
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 6001
+    - protocol: TCP
+      port: 6443
+    - protocol: TCP
+      port: 7443
+    - protocol: TCP
+      port: 8444
+    - protocol: TCP
+      port: 9443
+    - protocol: TCP
+      port: 13443
+    - protocol: TCP
+      port: 14443
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 6001
+    - protocol: TCP
+      port: 6443
+    - protocol: TCP
+      port: 7443
+    - protocol: TCP
+      port: 9443
+    - protocol: TCP
+      port: 13443
+    - protocol: TCP
+      port: 14443
+`
+
+const Sha256_deploy_internal_networkpolicy_pvpool_yaml = "c1db3e37d5f50a40f3176eca696e511c997690033df5f1596fd88831f3bcbc40"
+
+const File_deploy_internal_networkpolicy_pvpool_yaml = `apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-pvpool
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchExpressions:
+    - key: pool
+      operator: Exists
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 60101
+`
+
 const Sha256_deploy_internal_nsfs_pvc_cr_yaml = "6dd65ca7d324991b813f209ec6a8a6bcf6c2c9a9f45c519ad3fba51e25042f07"
 
 const File_deploy_internal_nsfs_pvc_cr_yaml = `apiVersion: v1
@@ -6948,7 +7088,7 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "1320e5dd53566499e487ad122caef7a0ba9853e8304cb335bab6f90a9ae5daa3"
+const Sha256_deploy_role_yaml = "4739938379286ce9852a155f5faed0425457c7251419b5ac8ac99c7f8575a42a"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -7118,6 +7258,17 @@ rules:
   - volumesnapshots
   verbs:
   - get
+  - list
+  - watch
+  - delete
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - get
+  - create
+  - update
   - list
   - watch
   - delete

@@ -30,6 +30,7 @@ import (
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -140,6 +141,12 @@ type Reconciler struct {
 	// CNPG resources
 	CNPGImageCatalog *cnpgv1.ImageCatalog
 	CNPGCluster      *cnpgv1.Cluster
+
+	// Network Policies (Phase 1 - operands only)
+	NetworkPolicyCore     *networkingv1.NetworkPolicy
+	NetworkPolicyDb       *networkingv1.NetworkPolicy
+	NetworkPolicyEndpoint *networkingv1.NetworkPolicy
+	NetworkPolicyPVPool   *networkingv1.NetworkPolicy
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -211,6 +218,11 @@ func NewReconciler(
 		CNPGImageCatalog: cnpg.GetCnpgImageCatalogObj(req.Namespace, req.Name+pgImageCatalogSuffix),
 		CNPGCluster:      cnpg.GetCnpgClusterObj(req.Namespace, req.Name+pgClusterSuffix),
 
+		NetworkPolicyCore:     util.KubeObject(bundle.File_deploy_internal_networkpolicy_core_yaml).(*networkingv1.NetworkPolicy),
+		NetworkPolicyDb:       util.KubeObject(bundle.File_deploy_internal_networkpolicy_db_yaml).(*networkingv1.NetworkPolicy),
+		NetworkPolicyEndpoint: util.KubeObject(bundle.File_deploy_internal_networkpolicy_endpoint_yaml).(*networkingv1.NetworkPolicy),
+		NetworkPolicyPVPool:   util.KubeObject(bundle.File_deploy_internal_networkpolicy_pvpool_yaml).(*networkingv1.NetworkPolicy),
+
 		SecretMetricsAuth:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretOIDCKeyCloakConfig: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 	}
@@ -269,6 +281,12 @@ func NewReconciler(
 	r.SecretMetricsAuth.Namespace = r.Request.Namespace
 	r.SecretOIDCKeyCloakConfig.Namespace = r.Request.Namespace
 
+	// Network Policy namespaces
+	r.NetworkPolicyCore.Namespace = r.Request.Namespace
+	r.NetworkPolicyDb.Namespace = r.Request.Namespace
+	r.NetworkPolicyEndpoint.Namespace = r.Request.Namespace
+	r.NetworkPolicyPVPool.Namespace = r.Request.Namespace
+
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
 	r.ServiceAccount.Name = r.Request.Name
@@ -320,6 +338,12 @@ func NewReconciler(
 	r.BucketNotificationsPVC.Name = r.Request.Name + "-bucket-notifications-pvc"
 	r.SecretMetricsAuth.Name = r.Request.Name + "-metrics-auth-secret"
 	r.SecretOIDCKeyCloakConfig.Name = r.Request.Name + "-oidc-keycloak-config"
+
+	// Network Policy names
+	r.NetworkPolicyCore.Name = r.Request.Name + "-core"
+	r.NetworkPolicyDb.Name = r.Request.Name + "-db-pg-cluster"
+	r.NetworkPolicyEndpoint.Name = r.Request.Name + "-endpoint"
+	r.NetworkPolicyPVPool.Name = r.Request.Name + "-pvpool"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name

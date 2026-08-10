@@ -120,6 +120,10 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		return err
 	}
 
+	if err := r.ReconcileNetworkPolicies(); err != nil {
+		r.Logger.Warnf("ReconcileNetworkPolicies: %v (will retry next cycle)", err)
+	}
+
 	return nil
 }
 

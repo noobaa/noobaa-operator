@@ -169,3 +169,14 @@ rules:
   - list
   - watch
   - delete
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - get
+  - create
+  - update
+  - list
+  - watch
+  - delete
