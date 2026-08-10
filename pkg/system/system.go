@@ -371,7 +371,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if useOBCCleanupPolicy {
 		sys.Spec.CleanupPolicy.Confirmation = nbv1.DeleteOBCConfirmation
 	}
-	if disableCoreHA {
+	if disableCoreHA || options.DevEnv || options.MiniEnv {
 		sys.Spec.DisableCoreHA = true
 	}
 	if coreResourcesJSON != "" {
