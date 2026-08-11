@@ -25,6 +25,7 @@ func RunCollect(cmd *cobra.Command, args []string) {
 	kubeconfig, _ := cmd.Flags().GetString("kubeconfig")
 	destDir, _ := cmd.Flags().GetString("dir")
 	collectDBDump, _ := cmd.Flags().GetBool("db-dump")
+	dbDumpFrom, _ := cmd.Flags().GetString("dump-from")
 	c := Collector{
 		folderName: fmt.Sprintf("%s_%d", "noobaa_diagnostics", time.Now().Unix()),
 		log:        util.Logger(),
@@ -55,7 +56,7 @@ func RunCollect(cmd *cobra.Command, args []string) {
 	// Collects db dump in addition to diagnostics.
 	// A separate tarball is created for diagnostics and db dump
 	if collectDBDump {
-		CollectDBDump(kubeconfig, destDir)
+		CollectDBDump(kubeconfig, destDir, dbDumpFrom)
 	}
 }
 
