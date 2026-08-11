@@ -4364,7 +4364,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "16b4b00ed2e3f87a4862754ada95512dfa5731a80f22ee15800602bd4c8b4cae"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "e55babcc37ae8d7b038ec9394184c1ec8458309cc2511cd5d514bb58bc763993"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4543,6 +4543,8 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
+            - name: NOTIFICATION_LOG_DIR
+              value: ""
           volumeMounts:
             # curently ssl_utils expects both secrets to be configured in order to use
             # certificates. TODO: Allow each secret to be configured by intself.
@@ -5640,7 +5642,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "9fc44f63efc86044491b316f70a18e4087d2f716f2ad4fedafe7cb937597b1df"
+const Sha256_deploy_internal_statefulset_core_yaml = "9a446baf09a5995591b96a1990ce256ff5e48a3bf7d839f6a0fc7bf89a9c06e6"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5882,6 +5884,8 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
+            - name: NOTIFICATION_LOG_DIR
+              value: ""
           envFrom:
             - configMapRef:
                 name: noobaa-config

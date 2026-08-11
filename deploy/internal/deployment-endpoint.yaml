@@ -175,6 +175,8 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
+            - name: NOTIFICATION_LOG_DIR
+              value: ""
           volumeMounts:
             # curently ssl_utils expects both secrets to be configured in order to use
             # certificates. TODO: Allow each secret to be configured by intself.

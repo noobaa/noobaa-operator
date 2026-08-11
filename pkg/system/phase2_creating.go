@@ -638,15 +638,13 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 
 		case "NOOBAA_CORE_LEASE_NAME":
 			c.Env[j].Value = r.CoreLease.Name
+		case "NOTIFICATION_LOG_DIR":
+			notification_log_dir_value := "";
+			if (r.NooBaa.Spec.BucketNotifications.Enabled) {
+				notification_log_dir_value = "/var/logs/notifications";
+			}
+			c.Env[j].Value = notification_log_dir_value
 		}
-	}
-
-	if r.NooBaa.Spec.BucketNotifications.Enabled {
-		envVar := corev1.EnvVar{
-			Name:  "NOTIFICATION_LOG_DIR",
-			Value: "/var/logs/notifications",
-		}
-		util.MergeEnvArrays(&c.Env, &[]corev1.EnvVar{envVar})
 	}
 
 	util.ApplyTLSEnvVars(&c.Env, r.NooBaa.Spec.Security.APIServerSecurity)
