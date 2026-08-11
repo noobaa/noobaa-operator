@@ -180,11 +180,6 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_CORE_SHUTDOWN_GRACE
-            - name: NOOBAA_CORE_LOST_GRACE
-              valueFrom:
-                configMapKeyRef:
-                  name: noobaa-config
-                  key: NOOBAA_CORE_LOST_GRACE
             - name: NOOBAA_CORE_LEASE_NAME
               value: ""
             - name: POSTGRES_HOST

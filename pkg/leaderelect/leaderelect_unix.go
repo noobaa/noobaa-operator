@@ -54,7 +54,10 @@ func waitStatusExitCode(status syscall.WaitStatus) int {
 	return exitConfig
 }
 
-func (r *runner) stopChild(grace time.Duration) {
+// stopChild SIGKILLs the child process group and waits briefly for it to exit.
+// Used for both pod SIGTERM/SIGINT and leadership loss — there is no separate
+// graceful drain window (supervisord drain delayed lease release / failover).
+func (r *runner) stopChild() {
 	r.mu.Lock()
 	r.termRequested = true
 	pid := r.childPID
@@ -65,28 +68,17 @@ func (r *runner) stopChild(grace time.Duration) {
 		return
 	}
 
-	// Signal the whole process group (Setpgid makes pgid == child pid).
-	if err := syscall.Kill(-pid, syscall.SIGTERM); err != nil && err != syscall.ESRCH {
-		r.log.Errorf("leader-elect: kill pgid %d SIGTERM: %v", pid, err)
+	// Hard-kill the whole process group (Setpgid makes pgid == child pid).
+	r.log.Infof("leader-elect: SIGKILL process group %d", pid)
+	if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil && err != syscall.ESRCH {
+		r.log.Errorf("leader-elect: kill pgid %d SIGKILL: %v", pid, err)
 	}
 
 	if done == nil {
 		return
 	}
-
-	timer := time.NewTimer(grace)
-	defer timer.Stop()
 	select {
 	case <-done:
-		return
-	case <-timer.C:
-		r.log.Infof("leader-elect: grace %v elapsed, SIGKILL process group %d", grace, pid)
-		if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil && err != syscall.ESRCH {
-			r.log.Errorf("leader-elect: kill pgid %d SIGKILL: %v", pid, err)
-		}
-		select {
-		case <-done:
-		case <-time.After(childSigkillWait):
-		}
+	case <-time.After(childSigkillWait):
 	}
 }

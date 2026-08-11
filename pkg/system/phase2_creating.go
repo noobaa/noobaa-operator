@@ -1697,11 +1697,12 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 		"NOOBAA_VERSION_AUTH_ENABLED":  "true",
 		"ENDPOINT_SYSTEM_STORE_SOURCE": "core", // by default, load the system store in the endpoint from the core instead of the DB
 		"OPERATOR_LOG_LEVEL":           "info",
-		"NOOBAA_CORE_LEASE_DURATION":   "20s",
-		"NOOBAA_CORE_RENEW_DEADLINE":   "10s",
-		"NOOBAA_CORE_RETRY_PERIOD":     "3s",
-		"NOOBAA_CORE_SHUTDOWN_GRACE":   "25s",
-		"NOOBAA_CORE_LOST_GRACE":       "8s",
+		"NOOBAA_CORE_LEASE_DURATION": "20s",
+		"NOOBAA_CORE_RENEW_DEADLINE": "10s",
+		"NOOBAA_CORE_RETRY_PERIOD":   "3s",
+		// Used by the operator to size core pod terminationGracePeriodSeconds.
+		// Leader-elect SIGKILLs the child immediately on stop; this is not a drain window.
+		"NOOBAA_CORE_SHUTDOWN_GRACE": "25s",
 	}
 	for key, value := range DefaultConfigMapData {
 		if _, ok := r.CoreAppConfig.Data[key]; !ok {
@@ -1816,10 +1817,11 @@ func hasEquivalentPreferredAntiAffinity(terms []corev1.WeightedPodAffinityTerm, 
 }
 
 // coreTerminationGracePeriodSeconds returns how many seconds Kubernetes should
-// give the core pod to shut down after it is told to stop. We size this from
-// NOOBAA_CORE_SHUTDOWN_GRACE in noobaa-config, plus a little extra so
-// leader-elect can finish stopping core and releasing the lease. If that
-// config value is missing or invalid, we use the built-in default (40 seconds).
+// give the core pod to shut down after it is told to stop. Sized from
+// NOOBAA_CORE_SHUTDOWN_GRACE in noobaa-config, plus margin for SIGKILL wait and
+// lease release. Leader-elect no longer drains supervisord for that duration;
+// the value mainly controls how long the pod may remain Terminating. If the
+// config value is missing or invalid, the built-in default is used (40 seconds).
 func (r *Reconciler) coreTerminationGracePeriodSeconds() int64 {
 	shutdownGrace := time.Duration(0)
 	if raw := strings.TrimSpace(r.CoreAppConfig.Data["NOOBAA_CORE_SHUTDOWN_GRACE"]); raw != "" {

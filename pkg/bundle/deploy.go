@@ -5640,7 +5640,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "9fc44f63efc86044491b316f70a18e4087d2f716f2ad4fedafe7cb937597b1df"
+const Sha256_deploy_internal_statefulset_core_yaml = "53d4f049d29a5c368ee267bb94a93ff173f105c238f6f8936baea8ba941222b9"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5824,11 +5824,6 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_CORE_SHUTDOWN_GRACE
-            - name: NOOBAA_CORE_LOST_GRACE
-              valueFrom:
-                configMapKeyRef:
-                  name: noobaa-config
-                  key: NOOBAA_CORE_LOST_GRACE
             - name: NOOBAA_CORE_LEASE_NAME
               value: ""
             - name: POSTGRES_HOST

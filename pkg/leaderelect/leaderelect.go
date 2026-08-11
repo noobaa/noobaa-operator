@@ -9,7 +9,7 @@
 // The command is Hidden so it does not appear in public CLI help. The wrapper
 // acquires a namespaced Lease, spawns the given command in its own process
 // group while holding leadership, reaps orphaned children (PID 1), and on
-// SIGTERM/SIGINT or leadership loss stops the child group before releasing
+// SIGTERM/SIGINT or leadership loss SIGKILLs the child group then releases
 // the Lease (ReleaseOnCancel).
 package leaderelect
 
@@ -43,8 +43,6 @@ const (
 	envLeaseDuration = "NOOBAA_CORE_LEASE_DURATION"
 	envRenewDeadline = "NOOBAA_CORE_RENEW_DEADLINE"
 	envRetryPeriod   = "NOOBAA_CORE_RETRY_PERIOD"
-	envShutdownGrace = "NOOBAA_CORE_SHUTDOWN_GRACE"
-	envLostGrace     = "NOOBAA_CORE_LOST_GRACE"
 	envPodNamespace  = "POD_NAMESPACE"
 	saNamespaceFile  = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
@@ -52,7 +50,6 @@ const (
 	defaultRenewDeadline = 10 * time.Second
 	defaultRetryPeriod   = 3 * time.Second
 	defaultShutdownGrace = 25 * time.Second
-	defaultLostGrace     = 8 * time.Second
 	// childSigkillWait is how long stopChild waits after SIGKILL for the child process group to exit before returning.
 	childSigkillWait = 5 * time.Second
 	// leaseReleaseMargin is extra time after child teardown for ReleaseOnCancel.
@@ -60,7 +57,9 @@ const (
 )
 
 // RecommendedTerminationGracePeriod is the pod terminationGracePeriodSeconds
-// that leaves room for ShutdownGrace + SIGKILL wait + lease release on cancel.
+// that leaves room for a configured shutdown budget + SIGKILL wait + lease release.
+// shutdownGrace comes from NOOBAA_CORE_SHUTDOWN_GRACE (operator / ConfigMap); stopChild
+// itself always SIGKILLs immediately and only waits up to childSigkillWait.
 func RecommendedTerminationGracePeriod(shutdownGrace time.Duration) int64 {
 	if shutdownGrace <= 0 {
 		shutdownGrace = defaultShutdownGrace
@@ -74,8 +73,6 @@ type Config struct {
 	LeaseDuration time.Duration
 	RenewDeadline time.Duration
 	RetryPeriod   time.Duration
-	ShutdownGrace time.Duration
-	LostGrace     time.Duration
 	Command       []string
 }
 
@@ -107,8 +104,6 @@ func defaultConfig() *Config {
 		LeaseDuration: durationFromEnv(envLeaseDuration, defaultLeaseDuration),
 		RenewDeadline: durationFromEnv(envRenewDeadline, defaultRenewDeadline),
 		RetryPeriod:   durationFromEnv(envRetryPeriod, defaultRetryPeriod),
-		ShutdownGrace: durationFromEnv(envShutdownGrace, defaultShutdownGrace),
-		LostGrace:     durationFromEnv(envLostGrace, defaultLostGrace),
 	}
 }
 
@@ -158,14 +153,9 @@ func (c *Config) Validate() error {
 	if len(c.Command) == 0 {
 		return fmt.Errorf("command is required after --")
 	}
-	maxLost := c.LeaseDuration - c.RenewDeadline
-	if maxLost <= 0 {
+	if c.LeaseDuration <= c.RenewDeadline {
 		return fmt.Errorf("%s (%v) must be greater than %s (%v)",
 			envLeaseDuration, c.LeaseDuration, envRenewDeadline, c.RenewDeadline)
-	}
-	if c.LostGrace >= maxLost {
-		return fmt.Errorf("%s (%v) must be < %s - %s (%v)",
-			envLostGrace, c.LostGrace, envLeaseDuration, envRenewDeadline, maxLost)
 	}
 	// Match NewLeaderElector: renewDeadline must be > retryPeriod*JitterFactor (1.2).
 	if c.RetryPeriod <= 0 {
@@ -226,7 +216,7 @@ func Run(cfg *Config) int {
 	go func() {
 		sig := <-sigCh
 		r.log.Infof("leader-elect: received %v, stopping child then releasing lease", sig)
-		r.stopChild(cfg.ShutdownGrace)
+		r.stopChild()
 		r.forceExit(exitOK)
 		cancel()
 	}()
@@ -355,7 +345,7 @@ func (r *runner) onStartedLeading(leadCtx context.Context) {
 	go r.waitAndReap(childPID, childDone)
 
 	if alreadyTerm {
-		r.stopChild(r.cfg.ShutdownGrace)
+		r.stopChild()
 		return
 	}
 
@@ -365,7 +355,7 @@ func (r *runner) onStartedLeading(leadCtx context.Context) {
 		termRequested := r.termRequested
 		r.mu.Unlock()
 		if termRequested {
-			// SIGTERM/lost path owns the wrapper exit code.
+			// Teardown path owns the wrapper exit code.
 			return
 		}
 		code := r.getChildCode()
@@ -377,20 +367,26 @@ func (r *runner) onStartedLeading(leadCtx context.Context) {
 		termRequested := r.termRequested
 		r.mu.Unlock()
 		if termRequested {
-			// SIGTERM path owns teardown; wait for child then return.
-			select {
-			case <-childDone:
-			case <-time.After(r.cfg.ShutdownGrace + childSigkillWait):
-			}
+			// SIGTERM path already called stopChild; just wait for the child.
+			r.waitChildExited()
 			return
 		}
 		r.log.Errorf("leader-elect: leadership lost, stopping child")
-		r.stopChild(r.cfg.LostGrace)
+		r.stopChild()
 		r.forceExit(exitLost)
-		select {
-		case <-childDone:
-		case <-time.After(r.cfg.LostGrace + childSigkillWait):
-		}
+	}
+}
+
+func (r *runner) waitChildExited() {
+	r.mu.Lock()
+	done := r.childExited
+	r.mu.Unlock()
+	if done == nil {
+		return
+	}
+	select {
+	case <-done:
+	case <-time.After(childSigkillWait):
 	}
 }
 

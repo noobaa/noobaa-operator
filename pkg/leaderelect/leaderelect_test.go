@@ -13,8 +13,6 @@ func clearLeaderElectEnv(t *testing.T) {
 	t.Setenv(envLeaseDuration, "")
 	t.Setenv(envRenewDeadline, "")
 	t.Setenv(envRetryPeriod, "")
-	t.Setenv(envShutdownGrace, "")
-	t.Setenv(envLostGrace, "")
 }
 
 func TestParseArgs(t *testing.T) {
@@ -70,12 +68,6 @@ func TestParseArgs(t *testing.T) {
 			if !reflect.DeepEqual(cfg.Command, tt.wantCmd) {
 				t.Errorf("Command = %#v, want %#v", cfg.Command, tt.wantCmd)
 			}
-			if cfg.LostGrace != defaultLostGrace {
-				t.Errorf("LostGrace = %v, want %v", cfg.LostGrace, defaultLostGrace)
-			}
-			if cfg.ShutdownGrace != defaultShutdownGrace {
-				t.Errorf("ShutdownGrace = %v, want %v", cfg.ShutdownGrace, defaultShutdownGrace)
-			}
 		})
 	}
 }
@@ -93,8 +85,6 @@ func TestParseArgsTimingsFromEnv(t *testing.T) {
 	t.Setenv(envLeaseDuration, "30s")
 	t.Setenv(envRenewDeadline, "12s")
 	t.Setenv(envRetryPeriod, "4s")
-	t.Setenv(envShutdownGrace, "15s")
-	t.Setenv(envLostGrace, "5s")
 
 	cfg, err := ParseArgs([]string{"--", "true"})
 	if err != nil {
@@ -109,24 +99,6 @@ func TestParseArgsTimingsFromEnv(t *testing.T) {
 	if cfg.RetryPeriod != 4*time.Second {
 		t.Errorf("RetryPeriod = %v, want 4s", cfg.RetryPeriod)
 	}
-	if cfg.ShutdownGrace != 15*time.Second {
-		t.Errorf("ShutdownGrace = %v, want 15s", cfg.ShutdownGrace)
-	}
-	if cfg.LostGrace != 5*time.Second {
-		t.Errorf("LostGrace = %v, want 5s", cfg.LostGrace)
-	}
-}
-
-func TestParseArgsLostGraceInvariantFromEnv(t *testing.T) {
-	t.Setenv(envLeaseName, "lease")
-	t.Setenv(envLeaseDuration, "20s")
-	t.Setenv(envRenewDeadline, "10s")
-	t.Setenv(envLostGrace, "10s")
-
-	_, err := ParseArgs([]string{"--", "true"})
-	if err == nil || !strings.Contains(err.Error(), envLostGrace) {
-		t.Fatalf("expected error mentioning %s, got %v", envLostGrace, err)
-	}
 }
 
 func TestDurationFromEnvInvalidFallsBack(t *testing.T) {
@@ -136,7 +108,7 @@ func TestDurationFromEnvInvalidFallsBack(t *testing.T) {
 	}
 }
 
-func TestValidateGraceInvariant(t *testing.T) {
+func TestValidate(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -151,44 +123,8 @@ func TestValidateGraceInvariant(t *testing.T) {
 				LeaseDuration: defaultLeaseDuration,
 				RenewDeadline: defaultRenewDeadline,
 				RetryPeriod:   defaultRetryPeriod,
-				LostGrace:     defaultLostGrace,
 				Command:       []string{"sleep"},
 			},
-		},
-		{
-			name: "lost-grace just under max",
-			cfg: Config{
-				LeaseName:     "x",
-				LeaseDuration: 20 * time.Second,
-				RenewDeadline: 10 * time.Second,
-				RetryPeriod:   3 * time.Second,
-				LostGrace:     9 * time.Second,
-				Command:       []string{"sleep"},
-			},
-		},
-		{
-			name: "lost-grace equal rejected",
-			cfg: Config{
-				LeaseName:     "x",
-				LeaseDuration: 20 * time.Second,
-				RenewDeadline: 10 * time.Second,
-				RetryPeriod:   3 * time.Second,
-				LostGrace:     10 * time.Second,
-				Command:       []string{"sleep"},
-			},
-			wantErr: envLostGrace,
-		},
-		{
-			name: "lost-grace above max rejected",
-			cfg: Config{
-				LeaseName:     "x",
-				LeaseDuration: 20 * time.Second,
-				RenewDeadline: 10 * time.Second,
-				RetryPeriod:   3 * time.Second,
-				LostGrace:     11 * time.Second,
-				Command:       []string{"sleep"},
-			},
-			wantErr: envLostGrace,
 		},
 		{
 			name: "lease-duration not greater than renew-deadline",
@@ -197,7 +133,6 @@ func TestValidateGraceInvariant(t *testing.T) {
 				LeaseDuration: 10 * time.Second,
 				RenewDeadline: 10 * time.Second,
 				RetryPeriod:   3 * time.Second,
-				LostGrace:     1 * time.Second,
 				Command:       []string{"sleep"},
 			},
 			wantErr: envLeaseDuration,
@@ -209,7 +144,6 @@ func TestValidateGraceInvariant(t *testing.T) {
 				LeaseDuration: 20 * time.Second,
 				RenewDeadline: 10 * time.Second,
 				RetryPeriod:   10 * time.Second,
-				LostGrace:     1 * time.Second,
 				Command:       []string{"sleep"},
 			},
 			wantErr: envRenewDeadline,
@@ -221,7 +155,6 @@ func TestValidateGraceInvariant(t *testing.T) {
 				LeaseDuration: 30 * time.Second,
 				RenewDeadline: 12 * time.Second,
 				RetryPeriod:   10 * time.Second, // 10s * 1.2 = 12s
-				LostGrace:     1 * time.Second,
 				Command:       []string{"sleep"},
 			},
 			wantErr: envRenewDeadline,
@@ -233,7 +166,6 @@ func TestValidateGraceInvariant(t *testing.T) {
 				LeaseDuration: 30 * time.Second,
 				RenewDeadline: 13 * time.Second,
 				RetryPeriod:   10 * time.Second, // 10s * 1.2 = 12s
-				LostGrace:     1 * time.Second,
 				Command:       []string{"sleep"},
 			},
 		},
@@ -244,7 +176,6 @@ func TestValidateGraceInvariant(t *testing.T) {
 				LeaseDuration: defaultLeaseDuration,
 				RenewDeadline: defaultRenewDeadline,
 				RetryPeriod:   0,
-				LostGrace:     defaultLostGrace,
 				Command:       []string{"sleep"},
 			},
 			wantErr: envRetryPeriod,
@@ -255,7 +186,6 @@ func TestValidateGraceInvariant(t *testing.T) {
 				LeaseDuration: defaultLeaseDuration,
 				RenewDeadline: defaultRenewDeadline,
 				RetryPeriod:   defaultRetryPeriod,
-				LostGrace:     defaultLostGrace,
 				Command:       []string{"sleep"},
 			},
 			wantErr: envLeaseName,
@@ -267,7 +197,6 @@ func TestValidateGraceInvariant(t *testing.T) {
 				LeaseDuration: defaultLeaseDuration,
 				RenewDeadline: defaultRenewDeadline,
 				RetryPeriod:   defaultRetryPeriod,
-				LostGrace:     defaultLostGrace,
 			},
 			wantErr: "command is required after --",
 		},

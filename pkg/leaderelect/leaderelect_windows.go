@@ -5,7 +5,6 @@ package leaderelect
 import (
 	"fmt"
 	"os/exec"
-	"time"
 )
 
 func checkPlatform() error {
@@ -25,7 +24,7 @@ func (r *runner) waitAndReap(childPID int, done chan struct{}) {
 }
 
 // stopChild cannot signal process groups on Windows.
-func (r *runner) stopChild(grace time.Duration) {
+func (r *runner) stopChild() {
 	r.mu.Lock()
 	r.termRequested = true
 	r.mu.Unlock()
