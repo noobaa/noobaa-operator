@@ -222,6 +222,16 @@ The operator tracks database status through `NooBaaDBStatus`:
 - **Service Discovery**: Uses Kubernetes services for database access
 - **TLS Support**: Optional TLS encryption for database connections. TLS is enabled by default for monitoring endpoints
 
+### DB dump command
+
+Diagnostics collection and database dump commands now feature a new `--dump-from` option. This allows users to target either the primary (`primary`) or replica (`replica`) database, with the primary selected by default.
+When executed, database dumps direct to the specified database pod and generate SQL output accessible locally
+
+
+```
+noobaa diagnostics db-dump --dump-from primary
+```
+
 ### Troubleshooting
 
 #### Common Issues
