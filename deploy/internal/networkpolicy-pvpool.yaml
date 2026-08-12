@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-pvpool
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchExpressions:
+    - key: pool
+      operator: Exists
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 60101

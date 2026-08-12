@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-core
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchLabels:
+      noobaa-core: noobaa
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8443
+    - protocol: TCP
+      port: 8444
+    - protocol: TCP
+      port: 8445
+    - protocol: TCP
+      port: 8446
+    - protocol: TCP
+      port: 60100
+    - protocol: UDP
+      port: 5140
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8443

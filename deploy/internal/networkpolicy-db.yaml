@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-db-pg-cluster
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: noobaa-db-pg-cluster
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 8000
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 9187
