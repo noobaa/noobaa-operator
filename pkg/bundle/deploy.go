@@ -3651,7 +3651,7 @@ data:
     pg_stat_statements.track = all
 `
 
-const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "5ef599d78f148d91023d38ef516f73a0d903dfb060eb382fb741b65291955fbe"
+const Sha256_deploy_internal_configmap_postgres_initdb_yaml = "e14a7236a4d1afb7ffd850b931f745a74be1ec889168382744b8d8cbd36366c3"
 
 const File_deploy_internal_configmap_postgres_initdb_yaml = `apiVersion: v1
 kind: ConfigMap
@@ -3700,7 +3700,7 @@ data:
           set -e
           sed -i -e 's/^\(postgres:[^:]\):[0-9]*:[0-9]*:/\1:10001:0:/' /etc/passwd
           su postgres -c "bash -x /usr/bin/run-postgresql" &
-          THRESHOLD=33
+          THRESHOLD=25
           USE=$(df -h --output=pcent "/$HOME/data" | tail -n 1 | tr -d '[:space:]%')
           # Check if the used space is more than the threshold
           if [ "$USE" -gt "$THRESHOLD" ]; then
@@ -3733,7 +3733,7 @@ data:
           set -e
           PGDATA=$HOME/data/userdata
           PGDATA_12=$HOME/data/userdata-12
-          THRESHOLD=33
+          THRESHOLD=25
           USE=$(df -h --output=pcent "/$HOME/data" | tail -n 1 | tr -d '[:space:]%')
           # Check if the used space is more than the threshold
           if [ "$USE" -gt "$THRESHOLD" ]; then
