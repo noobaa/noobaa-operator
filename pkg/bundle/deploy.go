@@ -4989,7 +4989,7 @@ spec:
       port: 9187
 `
 
-const Sha256_deploy_internal_networkpolicy_endpoint_yaml = "6c55cda146ca6f55d2f2de9332e63e5f57eb897f3b9f180e212f69cd9740a2c5"
+const Sha256_deploy_internal_networkpolicy_endpoint_yaml = "37b72fc7a57df738460390ef88f02d7ea47ab0cb44dd4df0f8c61257e9fd74d2"
 
 const File_deploy_internal_networkpolicy_endpoint_yaml = `apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -5021,6 +5021,10 @@ spec:
       port: 13443
     - protocol: TCP
       port: 14443
+    # N2N ICE listens on a random port in this range (see noobaa-core rpc_n2n_agent)
+    - protocol: TCP
+      port: 60101
+      endPort: 60600
   - from:
     - namespaceSelector: {}
     ports:
@@ -5038,7 +5042,7 @@ spec:
       port: 14443
 `
 
-const Sha256_deploy_internal_networkpolicy_pvpool_yaml = "c1db3e37d5f50a40f3176eca696e511c997690033df5f1596fd88831f3bcbc40"
+const Sha256_deploy_internal_networkpolicy_pvpool_yaml = "bf0a2f786bc4e0e1f199abbd0ca2f24f186b58e21d5c95ed9b1ca8380eaed9de"
 
 const File_deploy_internal_networkpolicy_pvpool_yaml = `apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -5057,8 +5061,10 @@ spec:
   - from:
     - podSelector: {}
     ports:
+    # N2N ICE listens on a random port in this range (see noobaa-core rpc_n2n_agent)
     - protocol: TCP
       port: 60101
+      endPort: 60600
 `
 
 const Sha256_deploy_internal_nsfs_pvc_cr_yaml = "6dd65ca7d324991b813f209ec6a8a6bcf6c2c9a9f45c519ad3fba51e25042f07"
