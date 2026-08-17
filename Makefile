@@ -294,6 +294,11 @@ test-upgrade: gen cli
 	@echo "✅ test-upgrade"
 .PHONY: test-upgrade
 
+test-tls-pqc-readiness:
+	$(TIME) bash test/tls_pqc_readiness_check.sh
+	@echo "✅ test-tls-pqc-readiness"
+.PHONY: test-tls-pqc-readiness
+
 # find or download controller-gen if necessary
 controller-gen:
 ifneq ($(CONTROLLER_GEN_VERSION), $(shell controller-gen --version | awk -F ":" '{print $2}'))
