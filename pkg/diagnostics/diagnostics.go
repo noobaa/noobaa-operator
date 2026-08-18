@@ -39,6 +39,7 @@ func CmdCollect() *cobra.Command {
 	}
 	cmd.Flags().String("dir", "", "collect noobaa diagnostics tar file into destination directory")
 	cmd.Flags().Bool("db-dump", false, "collect db dump in addition to diagnostics")
+	cmd.Flags().String("dump-from", "primary", "specifies the database type from which to collect the dump. Valid options are 'primary' and 'replica' (default: 'primary')")
 	return cmd
 }
 
@@ -51,6 +52,7 @@ func CmdDbDump() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 	cmd.Flags().String("dir", "", "collect db dump file into destination directory")
+	cmd.Flags().String("dump-from", "primary", "specifies the database type from which to collect the dump. Valid options are 'primary' and 'replica' (default: 'primary')")
 	return cmd
 }
 
@@ -127,6 +129,7 @@ func CmdDbDumpDeprecated() *cobra.Command {
 		Args:       cobra.NoArgs,
 	}
 	cmd.Flags().String("dir", "", "collect db dump file into destination directory")
+	cmd.Flags().String("dump-from", "primary", "specifies the database type from which to collect the dump. Valid options are 'primary' and 'replica' (default: 'primary')")
 	return cmd
 }
 
@@ -141,5 +144,6 @@ func CmdDiagnoseDeprecated() *cobra.Command {
 	}
 	cmd.Flags().String("dir", "", "collect noobaa diagnose tar file into destination directory")
 	cmd.Flags().Bool("db-dump", false, "collect db dump in addition to diagnostics")
+	cmd.Flags().String("dump-from", "primary", "specifies the database type from which to collect the dump. Valid options are 'primary' and 'replica' (default: 'primary')")
 	return cmd
 }
