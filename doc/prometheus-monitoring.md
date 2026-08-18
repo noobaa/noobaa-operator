@@ -17,7 +17,8 @@ This document focuses on containerized deployments and highlights how to access 
 This section provides details about the metrics URL and port configuration used by the NooBaa Operator services.
 
 #### Prometheus Metrics HTTPS URLs - </br>
-- **Core metrics (aggregated)** are exposed on the S3 service metrics-https port: </br> `https://<s3-service>:9443/`
+- **Core metrics (aggregated)** are exposed on the management `/metrics/*` endpoint (service port `443`, container port `8443`): </br> `https://<mgmt-service>:443/metrics/`
+- **Endpoint metrics** are exposed on the S3 service metrics-https port: </br> `https://<s3-service>:9443/`
 - **Web server metrics** are exposed on the management service: </br> `https://<mgmt-service>:443/metrics/web_server`
 - **Background workers metrics** are exposed on the management service: </br> `https://<mgmt-service>:443/metrics/bg_workers`
 - **Hosted agents metrics** are exposed on the management service: </br> `https://<mgmt-service>:443/metrics/hosted_agents`
@@ -32,9 +33,9 @@ The operator creates ServiceMonitors for both services, configures HTTPS scheme 
 
 NooBaa exposes Prometheus metrics for multiple components.
 NooBaa core metrics are prefixed by `NooBaa_` and endpoint metrics by `NooBaa_Endpoint_` (default `PROMETHEUS_PREFIX`). </br>
-Core metrics are exposed at the S3 service metrics-https endpoint (`/` on port `9443`), while `/metrics/web_server`, `/metrics/bg_workers`, and `/metrics/hosted_agents` are exposed on the management HTTPS service (port `443`/`8443`).
+Core `NooBaa_*` metrics are exposed at the management `/metrics/` endpoint (service port `443`, container port `8443`). The S3 ServiceMonitor scrapes `/` on port `9443` for endpoint metrics. Process metrics for `/metrics/web_server`, `/metrics/bg_workers`, and `/metrics/hosted_agents` are also exposed on the management HTTPS service.
 
-### NooBaa Core Metrics (`/` on port `9443`)
+### NooBaa Core Metrics (`/metrics/` on management service port `443`, container port `8443`)
 
 | Metric | What it shows | Labels |
 |--------|----------------|--------|
@@ -100,7 +101,7 @@ Core metrics are exposed at the S3 service metrics-https endpoint (`/` on port `
 | NooBaa_bucket_used_bytes | Object Bucket Used Bytes | `bucket_name` |
 | NooBaa_replication_target_status | Replication target bucket reachability (1=reachable, 0=unreachable) | `source_bucket`, `target_bucket` |
 
-### NooBaa Endpoint Metrics (`/metrics/*` on port `8443`)
+### NooBaa Endpoint Metrics (`/` on S3 port `9443`)
 
 | Metric | What it shows | Labels |
 |--------|----------------|--------|
@@ -124,8 +125,8 @@ Core metrics are exposed at the S3 service metrics-https endpoint (`/` on port `
 | NooBaa_Endpoint_semaphore_value | Namespace semaphore value | `type`, `average_interval` |
 | NooBaa_Endpoint_fork_counter | Number of fork hits | `code` |
 
-#### Endpoint metrics discovery
-The web_server, bg_workers, and hosted_agents endpoints export a large and evolving set of runtime metrics. If `NOOBAA_METRICS_AUTH_ENABLED=true`, ensure the token is set (see [Set JWT Token](#3-set-jwt-token)) and use either the port-forward from step 4 or exec from step 5, then run these queries. If `NOOBAA_METRICS_AUTH_ENABLED=false`, the Authorization header is not required.
+#### Core per-process metrics discovery
+The web_server, bg_workers, and hosted_agents endpoints export a large and evolving set of runtime metrics from the management service. The management Service exposes these on port `443`; the container and port-forward target is `8443` (for example `kubectl port-forward svc/<noobaa-name>-mgmt 8443:443`). Requests through the Service use `https://<mgmt-service>:443/metrics/...`, while exec or port-forward access targets `8443`. If `NOOBAA_METRICS_AUTH_ENABLED=true`, ensure the token is set (see [Set JWT Token](#3-set-jwt-token)) and use either the port-forward from step 4 or exec from step 5, then run these queries. If `NOOBAA_METRICS_AUTH_ENABLED=false`, the Authorization header is not required.
 
 ```sh
 # Web server metrics
@@ -170,11 +171,11 @@ curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/
 curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/hosted_agents | head
 ```
 
-#### 5. Fetch metrics from inside the core pod (no port-forward)
-If you prefer not to use port-forward, you can query the metrics endpoints directly from inside the core pod using the same bearer token.
+#### 5. Fetch metrics from inside the pods (no port-forward)
+If you prefer not to use port-forward, you can query the metrics endpoints directly from inside the pods using the same bearer token. Endpoint metrics (`/` on port `9443`) are served from the endpoint pod; management metrics (`/metrics/*` on container port `8443`) are served from the core pod.
 
 ```sh
-kubectl exec -it <noobaa-core-pod> -- \
+kubectl exec -it <noobaa-endpoint-pod> -- \
   curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://localhost:9443/ | head
 kubectl exec -it <noobaa-core-pod> -- \
   curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://localhost:8443/metrics/web_server | head
@@ -222,7 +223,7 @@ Values will vary based on runtime and workload.
 
 ### Direct Metrics Fetch Example
 
-The following is an example of Prometheus text format output from the core metrics endpoint -
+The following is an example of Prometheus text format output from the endpoint metrics endpoint (`/` on S3 port `9443`) -
 
 ```shell
 > curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:9443/ | head -n 12
