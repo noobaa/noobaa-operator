@@ -6582,7 +6582,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_obc_objectbucket_io_objectbuckets_crd_yaml = "a1da53a81af9a94b7cc6ac677d0f5bb181b8b34dad92338a94228722067b4361"
+const Sha256_deploy_obc_objectbucket_io_objectbuckets_crd_yaml = "55a9a15ae5700b29267056acb2a1872e85d9e9abadc527ed0e3407e96d2ac4b5"
 
 const File_deploy_obc_objectbucket_io_objectbuckets_crd_yaml = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -6652,6 +6652,8 @@ spec:
               claimRef:
                 description: ObjectReference to ObjectBucketClaim
                 type: object
+                nullable: true
+                x-kubernetes-preserve-unknown-fields: true
               endpoint:
                 description: Endpoint contains all connection relevant data that an
                   app may require for accessing the bucket
