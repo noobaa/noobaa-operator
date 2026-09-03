@@ -688,6 +688,9 @@ func (r *Reconciler) SetReadme(t *template.Template) {
 // UpdateStatus updates the system status in kubernetes from the memory
 func (r *Reconciler) UpdateStatus() error {
 	r.NooBaa.Status.ObservedGeneration = r.NooBaa.Generation
+	// Drop leftover postgresUpdatePhase from the ODF 4.15 dump/restore state
+	// machine so omitempty omits it from the status PUT.
+	r.NooBaa.Status.PostgresUpdatePhase = ""
 	err := r.Client.Status().Update(r.Ctx, r.NooBaa)
 	if err != nil {
 		r.Logger.Errorf("UpdateStatus: %s", err)
