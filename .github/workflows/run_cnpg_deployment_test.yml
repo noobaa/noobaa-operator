@@ -27,8 +27,9 @@ jobs:
 
       - name: Start Minikube
         id: minikube
-        uses: medyagh/setup-minikube@latest
+        uses: medyagh/setup-minikube@v0.0.19
         with:
+            driver: docker
             cpus: 'max'
             memory: 'max'
 
@@ -38,7 +39,9 @@ jobs:
 
       - name: Run Build Image
         id: run-build-image
-        run: eval $(minikube docker-env) && make image || exit 1
+        run: |
+          make image
+          minikube image load noobaa/noobaa-operator:$(go run cmd/version/main.go)
 
       - name: Install noobaa
         run: ./build/_output/bin/noobaa-operator-local -n ${NAMESPACE} --mini install
