@@ -10,6 +10,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -85,6 +86,15 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	// Validate flags
 	if oldEndpoint == "" || newEndpoint == "" {
 		log.Fatalf("both --old-endpoint and --new-endpoint are required")
+	}
+	if err := validations.ValidateEndPoint(&oldEndpoint); err != nil {
+		log.Fatalf("invalid old endpoint: %s", err)
+	}
+	if err := validations.ValidateEndPoint(&newEndpoint); err != nil {
+		log.Fatalf("invalid new endpoint: %s", err)
+	}
+	if oldEndpoint == newEndpoint {
+		log.Fatalf("old and new endpoints are identical: %s", oldEndpoint)
 	}
 
 	// List and filter all matching stores using oldEndpoint
@@ -258,7 +268,7 @@ func findConnections(nbClient nb.Client, endpoint string) (map[string]connEntry,
 		account := &systemInfo.Accounts[i]
 		for j := range account.ExternalConnections.Connections {
 			conn := &account.ExternalConnections.Connections[j]
-			if conn.Endpoint == endpoint {
+			if equal, _ := validations.EndpointsEquivalent(conn.Endpoint, endpoint); equal {
 				if _, exists := uniqueConns[conn.Name]; !exists {
 					uniqueConns[conn.Name] = connEntry{
 						name:         conn.Name,
@@ -275,12 +285,16 @@ func matchBackingStore(bs *nbv1.BackingStore, oldEndpoint string) (matchedStore,
 	if bs != nil {
 		switch bs.Spec.Type {
 		case nbv1.StoreTypeS3Compatible:
-			if bs.Spec.S3Compatible != nil && bs.Spec.S3Compatible.Endpoint == oldEndpoint {
-				return matchedStore{isBackingStore: true, Store: bs, endpointType: nb.EndpointTypeS3Compat}, true
+			if bs.Spec.S3Compatible != nil {
+				if equal, _ := validations.EndpointsEquivalent(bs.Spec.S3Compatible.Endpoint, oldEndpoint); equal {
+					return matchedStore{isBackingStore: true, Store: bs, endpointType: nb.EndpointTypeS3Compat}, true
+				}
 			}
 		case nbv1.StoreTypeIBMCos:
-			if bs.Spec.IBMCos != nil && bs.Spec.IBMCos.Endpoint == oldEndpoint {
-				return matchedStore{isBackingStore: true, Store: bs, endpointType: nb.EndpointTypeIBMCos}, true
+			if bs.Spec.IBMCos != nil {
+				if equal, _ := validations.EndpointsEquivalent(bs.Spec.IBMCos.Endpoint, oldEndpoint); equal {
+					return matchedStore{isBackingStore: true, Store: bs, endpointType: nb.EndpointTypeIBMCos}, true
+				}
 			}
 		}
 	}
@@ -291,12 +305,16 @@ func matchNamespaceStore(ns *nbv1.NamespaceStore, oldEndpoint string) (matchedSt
 	if ns != nil {
 		switch ns.Spec.Type {
 		case nbv1.NSStoreTypeS3Compatible:
-			if ns.Spec.S3Compatible != nil && ns.Spec.S3Compatible.Endpoint == oldEndpoint {
-				return matchedStore{isBackingStore: false, Store: ns, endpointType: nb.EndpointTypeS3Compat}, true
+			if ns.Spec.S3Compatible != nil {
+				if equal, _ := validations.EndpointsEquivalent(ns.Spec.S3Compatible.Endpoint, oldEndpoint); equal {
+					return matchedStore{isBackingStore: false, Store: ns, endpointType: nb.EndpointTypeS3Compat}, true
+				}
 			}
 		case nbv1.NSStoreTypeIBMCos:
-			if ns.Spec.IBMCos != nil && ns.Spec.IBMCos.Endpoint == oldEndpoint {
-				return matchedStore{isBackingStore: false, Store: ns, endpointType: nb.EndpointTypeIBMCos}, true
+			if ns.Spec.IBMCos != nil {
+				if equal, _ := validations.EndpointsEquivalent(ns.Spec.IBMCos.Endpoint, oldEndpoint); equal {
+					return matchedStore{isBackingStore: false, Store: ns, endpointType: nb.EndpointTypeIBMCos}, true
+				}
 			}
 		}
 	}
