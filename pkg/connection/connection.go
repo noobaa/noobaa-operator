@@ -10,9 +10,9 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
-
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -86,6 +86,9 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	if oldEndpoint == "" || newEndpoint == "" {
 		log.Fatalf("both --old-endpoint and --new-endpoint are required")
 	}
+	if oldEndpoint == newEndpoint {
+		log.Fatalf("old and new endpoints are identical: %s", oldEndpoint)
+	}
 
 	// List and filter all matching stores using oldEndpoint
 	matched := findMatchingStores(oldEndpoint)
@@ -128,8 +131,8 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	log.Infof("Paused reconciliation for all matching stores")
 
 	// Patch all CR specs with new endpoint
-	var patched []matchedStore
-	if err := patchEndpoints(matched, newEndpoint, &patched); err != nil {
+	patched, err := patchEndpoints(matched, newEndpoint)
+	if err != nil {
 		log.Errorf("failed to patch endpoints: %s", err)
 		rollback(patched, oldEndpoint, matched, nil, nil)
 		log.Fatalf("Rollback complete. Endpoint update aborted.")
@@ -455,21 +458,26 @@ func setPauseAnnotation(stores []matchedStore, pause bool) (errors []error) {
 		if store == nil {
 			return append(errors, fmt.Errorf("encountered empty value for store"))
 		}
+
 		storeName := m.name()
-		annotations := store.GetAnnotations()
-		if annotations == nil {
-			annotations = map[string]string{}
-		}
+		err := updateWithRetry(m.Store, func(store client.Object) error {
+			annotations := store.GetAnnotations()
+			if annotations == nil {
+				annotations = map[string]string{}
+			}
 
-		if pause {
-			annotations[constants.PauseReconcile] = "true"
-		} else {
-			delete(annotations, constants.PauseReconcile)
-		}
-		store.SetAnnotations(annotations)
+			if pause {
+				annotations[constants.PauseReconcile] = "true"
+			} else {
+				delete(annotations, constants.PauseReconcile)
+			}
+			store.SetAnnotations(annotations)
+			return nil
+		})
 
-		if !util.KubeUpdate(store) {
-			errors = append(errors, fmt.Errorf("failed to update Store %q annotations", storeName))
+		if err != nil {
+			errors = append(errors, fmt.Errorf("failed to update Store %q annotations. error: %w", storeName, err))
+			// Continue removing pause annotations for remaining stores on error
 			if pause {
 				return
 			}
@@ -478,35 +486,60 @@ func setPauseAnnotation(stores []matchedStore, pause bool) (errors []error) {
 	return errors
 }
 
-func patchEndpoints(stores []matchedStore, newEndpoint string, patched *[]matchedStore) error {
+// mutateEndpoint updates the endpoint of the provided BackingStore or
+// NamespaceStore resource based on its configured store type.
+func mutateEndpoint(store client.Object, isBackingStore bool, endpoint string) {
+	if isBackingStore {
+		bs := store.(*nbv1.BackingStore)
+		switch bs.Spec.Type {
+		case nbv1.StoreTypeS3Compatible:
+			bs.Spec.S3Compatible.Endpoint = endpoint
+		case nbv1.StoreTypeIBMCos:
+			bs.Spec.IBMCos.Endpoint = endpoint
+		}
+	} else {
+		ns := store.(*nbv1.NamespaceStore)
+		switch ns.Spec.Type {
+		case nbv1.NSStoreTypeS3Compatible:
+			ns.Spec.S3Compatible.Endpoint = endpoint
+		case nbv1.NSStoreTypeIBMCos:
+			ns.Spec.IBMCos.Endpoint = endpoint
+		}
+	}
+}
+
+func patchEndpoints(stores []matchedStore, newEndpoint string) ([]matchedStore, error) {
+	patched := []matchedStore{}
 	for i := range stores {
-		m := &stores[i]
-		if m.isBackingStore {
-			bs := m.Store.(*nbv1.BackingStore)
-			switch bs.Spec.Type {
-			case nbv1.StoreTypeS3Compatible:
-				bs.Spec.S3Compatible.Endpoint = newEndpoint
-			case nbv1.StoreTypeIBMCos:
-				bs.Spec.IBMCos.Endpoint = newEndpoint
-			}
-			m.Store = bs
-		} else {
-			ns := m.Store.(*nbv1.NamespaceStore)
-			switch ns.Spec.Type {
-			case nbv1.NSStoreTypeS3Compatible:
-				ns.Spec.S3Compatible.Endpoint = newEndpoint
-			case nbv1.NSStoreTypeIBMCos:
-				ns.Spec.IBMCos.Endpoint = newEndpoint
-			}
-			m.Store = ns
+		m := stores[i]
+		if err := updateWithRetry(m.Store, func(store client.Object) error {
+			mutateEndpoint(store, m.isBackingStore, newEndpoint)
+			return nil
+		}); err != nil {
+			return patched, err
+		}
+		patched = append(patched, m)
+	}
+	return patched, nil
+}
+
+// updateWithRetry updates a Kubernetes object using optimistic concurrency
+// control and retries the operation when a conflict occurs.
+func updateWithRetry(obj client.Object, mutate func(client.Object) error) error {
+	if obj == nil {
+		return fmt.Errorf("function expects a non-nil object")
+	}
+
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		if _, _, err := util.KubeGet(obj); err != nil {
+			return err
 		}
 
-		if !util.KubeUpdate(m.Store) {
-			return fmt.Errorf("failed to patch Store %q", m.name())
+		if err := mutate(obj); err != nil {
+			return err
 		}
-		*patched = append(*patched, *m)
-	}
-	return nil
+		return util.KubeUpdateWithError(obj)
+	})
 }
 
 // rollback reverts already-patched stores to the old endpoint, reverts any
@@ -517,27 +550,11 @@ func rollback(patched []matchedStore, oldEndpoint string, allStores []matchedSto
 	log.Infof("Rolling back %d patched store(s) to endpoint %q", len(patched), oldEndpoint)
 	for i := range patched {
 		m := &patched[i]
-		if m.isBackingStore {
-			bs := m.Store.(*nbv1.BackingStore)
-			switch bs.Spec.Type {
-			case nbv1.StoreTypeS3Compatible:
-				bs.Spec.S3Compatible.Endpoint = oldEndpoint
-			case nbv1.StoreTypeIBMCos:
-				bs.Spec.IBMCos.Endpoint = oldEndpoint
-			}
-			m.Store = bs
-		} else {
-			ns := m.Store.(*nbv1.NamespaceStore)
-			switch ns.Spec.Type {
-			case nbv1.NSStoreTypeS3Compatible:
-				ns.Spec.S3Compatible.Endpoint = oldEndpoint
-			case nbv1.NSStoreTypeIBMCos:
-				ns.Spec.IBMCos.Endpoint = oldEndpoint
-			}
-			m.Store = ns
-		}
-		if !util.KubeUpdate(m.Store) {
-			log.Errorf("failed to rollback Store %q", m.name())
+		if err := updateWithRetry(m.Store, func(store client.Object) error {
+			mutateEndpoint(store, m.isBackingStore, oldEndpoint)
+			return nil
+		}); err != nil {
+			log.Errorf("failed to rollback Store %q: %s", m.name(), err)
 		}
 	}
 
@@ -562,7 +579,7 @@ func rollback(patched []matchedStore, oldEndpoint string, allStores []matchedSto
 		}
 	}
 
-	if errs := setPauseAnnotation(allStores, false); len(errs) > 0 {
+	if errs := removePauseAnnotations(allStores); len(errs) > 0 {
 		log.Errorf("failed to remove pause annotations during rollback: %s", errs)
 	}
 }
