@@ -646,6 +646,19 @@ func (r *Reconciler) setPostgresConfig() {
 		}
 	}
 
+	// Enforce TLS on the PostgreSQL server by rejecting any non-SSL TCP connection.
+	//
+	// noobaa-core always connects to the internal CNPG cluster over TLS (POSTGRES_SSL_REQUIRED
+	// env var in setDesiredCoreEnv), so plaintext access is never legitimate and must be blocked at the server.
+	// CNPG will insert these user-defined rules before its default trailing "host all all all <auth>"
+	// rule, so a plaintext client matches the reject rule first while SSL clients fail trhough to the default
+	// rule and connect normally. 
+	//
+	// NOTE: Unix-socket (local) connections are unaffected and remain peer-authenticated inside the pod.
+	r.CNPGCluster.Spec.PostgresConfiguration.PgHBA = []string{
+		"hostnossl all all all reject",
+	}
+
 	// apply any user-specified DBConf overrides on top of the calculated values
 	if r.NooBaa.Spec.DBSpec.DBConf != nil {
 		for k, v := range r.NooBaa.Spec.DBSpec.DBConf {
@@ -929,6 +942,7 @@ func (r *Reconciler) wasClusterSpecChanged(existingClusterSpec *cnpgv1.ClusterSp
 		!reflect.DeepEqual(existingClusterSpec.StorageConfiguration.PersistentVolumeClaimTemplate, r.CNPGCluster.Spec.StorageConfiguration.PersistentVolumeClaimTemplate) ||
 		!reflect.DeepEqual(existingClusterSpec.Monitoring, r.CNPGCluster.Spec.Monitoring) ||
 		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.Parameters, r.CNPGCluster.Spec.PostgresConfiguration.Parameters) ||
+		!reflect.DeepEqual(existingClusterSpec.PostgresConfiguration.PgHBA, r.CNPGCluster.Spec.PostgresConfiguration.PgHBA) ||
 		!reflect.DeepEqual(existingClusterSpec.Backup, r.CNPGCluster.Spec.Backup) ||
 		!reflect.DeepEqual(existingClusterSpec.Certificates, r.CNPGCluster.Spec.Certificates) ||
 		existingClusterSpec.PriorityClassName != r.CNPGCluster.Spec.PriorityClassName ||

@@ -409,6 +409,7 @@ func baseClusterSpec() cnpgv1.ClusterSpec {
 		},
 		PostgresConfiguration: cnpgv1.PostgresConfiguration{
 			Parameters: map[string]string{"wal_level": "replica", "jit": "off"},
+			PgHBA:      []string{"hostnossl all all all reject"},
 		},
 		Backup: &cnpgv1.BackupConfiguration{
 			VolumeSnapshot: &cnpgv1.VolumeSnapshotConfiguration{
@@ -461,6 +462,12 @@ func TestWasClusterSpecChanged(t *testing.T) {
 		}, true},
 		{"postgres parameter added", func(s *cnpgv1.ClusterSpec) {
 			s.PostgresConfiguration.Parameters["work_mem"] = "8MB"
+		}, true},
+		{"pg_hba rule changed", func(s *cnpgv1.ClusterSpec) {
+			s.PostgresConfiguration.PgHBA = []string{"host all all all trust"}
+		}, true},
+		{"pg_hba rule removed", func(s *cnpgv1.ClusterSpec) {
+			s.PostgresConfiguration.PgHBA = nil
 		}, true},
 		{"backup snapshot class", func(s *cnpgv1.ClusterSpec) { s.Backup.VolumeSnapshot.ClassName = "other" }, true},
 		{"backup removed", func(s *cnpgv1.ClusterSpec) { s.Backup = nil }, true},
