@@ -566,6 +566,20 @@ type TierItem struct {
 	Mode  string `json:"mode,omitempty"`
 }
 
+// SafeReplacePoolParams is the params of pool_api.safe_replace_pool()
+type SafeReplacePoolParams struct {
+	OldPoolName     string `json:"old_pool_name"`
+	NewPoolName     string `json:"new_pool_name"`
+	EnableMigration bool   `json:"enable_migration,omitempty"`
+}
+
+// SafeReplacePoolReply is the reply of pool_api.safe_replace_pool()
+type SafeReplacePoolReply struct {
+	ReplacedTiers   int    `json:"replaced_tiers"`
+	UpdatedAccounts int    `json:"updated_accounts"`
+	Mode            string `json:"mode"`
+}
+
 // DeleteBucketParams is the params of bucket_api.delete_bucket()
 type DeleteBucketParams struct {
 	Name string `json:"name"`
