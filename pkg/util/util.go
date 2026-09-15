@@ -586,6 +586,18 @@ func KubeDeleteAllOf(obj client.Object, opts ...client.DeleteAllOfOption) bool {
 	return deleted
 }
 
+// KubeUpdateWithError updates an object and returns the error if any
+func KubeUpdateWithError(obj client.Object) error {
+	klient := KubeClient()
+	objKey := ObjectKey(obj)
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	err := klient.Update(ctx, obj)
+	if err == nil {
+		log.Printf("✅ Updated: %s %q\n", gvk.Kind, objKey.Name)
+	}
+	return err
+}
+
 // KubeUpdate updates an object and reports the object status.
 func KubeUpdate(obj client.Object) bool {
 	klient := KubeClient()
