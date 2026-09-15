@@ -35,6 +35,7 @@ type Client interface {
 	CreateTierAPI(CreateTierParams) error
 	CreateNamespaceResourceAPI(CreateNamespaceResourceParams) error
 	CreateTieringPolicyAPI(TieringPolicyInfo) error
+	SafeReplacePoolAPI(SafeReplacePoolParams) (SafeReplacePoolReply, error)
 
 	DeleteBucketAPI(DeleteBucketParams) error
 	DeleteBucketAndObjectsAPI(DeleteBucketParams) error
@@ -293,6 +294,17 @@ func (c *RPCClient) CreateTierAPI(params CreateTierParams) error {
 func (c *RPCClient) CreateTieringPolicyAPI(params TieringPolicyInfo) error {
 	req := &RPCMessage{API: "tiering_policy_api", Method: "create_policy", Params: params}
 	return c.Call(req, nil)
+}
+
+// SafeReplacePoolAPI calls pool_api.safe_replace_pool()
+func (c *RPCClient) SafeReplacePoolAPI(params SafeReplacePoolParams) (SafeReplacePoolReply, error) {
+	req := &RPCMessage{API: "pool_api", Method: "safe_replace_pool", Params: params}
+	res := &struct {
+		RPCMessage `json:",inline"`
+		Reply      SafeReplacePoolReply `json:"reply"`
+	}{}
+	err := c.Call(req, res)
+	return res.Reply, err
 }
 
 // DeleteBucketAPI calls bucket_api.delete_bucket()

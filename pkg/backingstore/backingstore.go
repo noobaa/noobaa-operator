@@ -46,6 +46,7 @@ func Cmd() *cobra.Command {
 		CmdList(),
 		CmdReconcile(),
 		CmdRunRemovePendingPods(),
+		CmdReplace(),
 	)
 	return cmd
 }
@@ -349,6 +350,27 @@ func CmdDelete() *cobra.Command {
 		Short: "Delete backing store",
 		Run:   RunDelete,
 	}
+	return cmd
+}
+
+// CmdReplace returns a CLI command
+func CmdReplace() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "replace <old-backing-store> <new-backing-store>",
+		Short: "Replace one backing store with another across all buckets",
+		Long: `Replace references to one backing store with another across all bucket tiers and account defaults.
+
+Use --migrate to first enable mirroring between the old and new backing stores,
+allowing the system to replicate existing data before completing the switch.
+
+Workflow:
+  1. noobaa backingstore replace <old> <new> --migrate   (start mirroring)
+  2. Wait for data replication to complete
+  3. noobaa backingstore replace <old> <new>              (finalize replacement)
+  4. oc delete backingstore <old>                          (remove the old store)`,
+		Run: RunReplace,
+	}
+	cmd.Flags().Bool("migrate", false, "Enable mirroring to replicate data before replacement")
 	return cmd
 }
 
@@ -945,6 +967,90 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 }
 
 // RunDelete runs a CLI command
+// RunReplace runs a CLI command to replace one backing store with another
+func RunReplace(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	if len(args) != 2 || args[0] == "" || args[1] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <old-backing-store> <new-backing-store> %s`, cmd.UsageString())
+	}
+
+	oldBSName := args[0]
+	newBSName := args[1]
+
+	if oldBSName == newBSName {
+		log.Fatalf(`❌ Old and new backing store names must be different`)
+	}
+
+	migrate, _ := cmd.Flags().GetBool("migrate")
+
+	// Verify both backing stores exist in Kubernetes
+	oldBS := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+	oldBS.Name = oldBSName
+	oldBS.Namespace = options.Namespace
+	if !util.KubeCheck(oldBS) {
+		log.Fatalf(`❌ BackingStore %q not found in namespace %q`, oldBSName, options.Namespace)
+	}
+
+	newBS := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+	newBS.Name = newBSName
+	newBS.Namespace = options.Namespace
+	if !util.KubeCheck(newBS) {
+		log.Fatalf(`❌ BackingStore %q not found in namespace %q`, newBSName, options.Namespace)
+	}
+
+	if newBS.Status.Phase != nbv1.BackingStorePhaseReady {
+		log.Fatalf(`❌ BackingStore %q is not Ready (current phase: %s)`, newBSName, newBS.Status.Phase)
+	}
+
+	nbClient := system.GetNBClient()
+
+	if migrate {
+		log.Infof("🔄 Starting migration: mirroring data from %q to %q", oldBSName, newBSName)
+		log.Infof("   This adds %q as a mirror to all tiers currently using %q", newBSName, oldBSName)
+		log.Infof("   The background mirror_writer will replicate existing data automatically")
+	} else {
+		log.Infof("🔄 Replacing %q with %q across all bucket tiers and account defaults", oldBSName, newBSName)
+	}
+
+	reply, err := nbClient.SafeReplacePoolAPI(nb.SafeReplacePoolParams{
+		OldPoolName:     oldBSName,
+		NewPoolName:     newBSName,
+		EnableMigration: migrate,
+	})
+	if err != nil {
+		log.Fatalf(`❌ Failed to replace backing store: %s`, err)
+	}
+
+	if reply.ReplacedTiers == 0 && reply.UpdatedAccounts == 0 {
+		log.Infof("ℹ️  No tiers or accounts reference %q — nothing to replace", oldBSName)
+		return
+	}
+
+	log.Infof("✅ %s", reply.Mode)
+	log.Infof("   Tiers updated:    %d", reply.ReplacedTiers)
+	log.Infof("   Accounts updated: %d", reply.UpdatedAccounts)
+
+	if migrate {
+		log.Infof("")
+		log.Infof("📋 Next steps:")
+		log.Infof("   1. Wait for data replication to complete")
+		log.Infof("      Check progress: noobaa bucket status <bucket-name>")
+		log.Infof("   2. Finalize the replacement:")
+		log.Infof("      noobaa backingstore replace %s %s", oldBSName, newBSName)
+		log.Infof("   3. Prevent operator from recreating the default backing store:")
+		log.Infof("      oc patch noobaa/noobaa -n %s --type json --patch='[{\"op\":\"add\",\"path\":\"/spec/manualDefaultBackingStore\",\"value\":true}]'", options.Namespace)
+		log.Infof("   4. Delete the old backing store:")
+		log.Infof("      oc delete backingstore %s -n %s", oldBSName, options.Namespace)
+	} else {
+		log.Infof("")
+		log.Infof("📋 The old backing store %q has been detached from all tiers.", oldBSName)
+		log.Infof("   You can now delete it:")
+		log.Infof("      oc patch noobaa/noobaa -n %s --type json --patch='[{\"op\":\"add\",\"path\":\"/spec/manualDefaultBackingStore\",\"value\":true}]'", options.Namespace)
+		log.Infof("      oc delete backingstore %s -n %s", oldBSName, options.Namespace)
+	}
+}
+
 func RunDelete(cmd *cobra.Command, args []string) {
 
 	log := util.Logger()
