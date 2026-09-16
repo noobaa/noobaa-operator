@@ -27,6 +27,12 @@ func IsTLSConfigDisabled() bool {
 type IanaCipherEntry struct {
 	CipherGoID        uint16
 	CipherOpenSSLName string
+	// IsTLS13 marks TLS 1.3 cipher suites. TLS 1.3 suites are negotiated through a
+	// different mechanism than TLS 1.2-and-lower suites (OpenSSL's
+	// SSL_CTX_set_ciphersuites vs SSL_CTX_set_cipher_list), so consumers that
+	// configure the two independently — e.g. PostgreSQL's ssl_tls13_ciphers vs
+	// ssl_ciphers — must not mix them. See SplitCiphersByTLS13.
+	IsTLS13 bool
 }
 
 // IanaCipherMap maps supported IANA/Go cipher suite names to their Go ID and
@@ -34,9 +40,9 @@ type IanaCipherEntry struct {
 // APIServerSecurity TLS settings — see ODF's supported ciphers at
 // https://github.com/red-hat-storage/ocs-tls-profiles/
 var IanaCipherMap = map[string]IanaCipherEntry{
-	"TLS_AES_128_GCM_SHA256":                        {CipherGoID: 4865, CipherOpenSSLName: "TLS_AES_128_GCM_SHA256"},
-	"TLS_AES_256_GCM_SHA384":                        {CipherGoID: 4866, CipherOpenSSLName: "TLS_AES_256_GCM_SHA384"},
-	"TLS_CHACHA20_POLY1305_SHA256":                  {CipherGoID: 4867, CipherOpenSSLName: "TLS_CHACHA20_POLY1305_SHA256"},
+	"TLS_AES_128_GCM_SHA256":                        {CipherGoID: 4865, CipherOpenSSLName: "TLS_AES_128_GCM_SHA256", IsTLS13: true},
+	"TLS_AES_256_GCM_SHA384":                        {CipherGoID: 4866, CipherOpenSSLName: "TLS_AES_256_GCM_SHA384", IsTLS13: true},
+	"TLS_CHACHA20_POLY1305_SHA256":                  {CipherGoID: 4867, CipherOpenSSLName: "TLS_CHACHA20_POLY1305_SHA256", IsTLS13: true},
 	"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256":       {CipherGoID: 49195, CipherOpenSSLName: "ECDHE-ECDSA-AES128-GCM-SHA256"},
 	"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384":       {CipherGoID: 49196, CipherOpenSSLName: "ECDHE-ECDSA-AES256-GCM-SHA384"},
 	"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256": {CipherGoID: 52393, CipherOpenSSLName: "ECDHE-ECDSA-CHACHA20-POLY1305"},
@@ -79,6 +85,30 @@ func MapCiphersToOpenSSL(names []string) string {
 		}
 	}
 	return strings.Join(result, ":")
+}
+
+// SplitCiphersByTLS13 partitions the given IANA cipher suite names into TLS 1.2-and-lower
+// suites and TLS 1.3 suites, returning each group as an OpenSSL-format ":"-separated list.
+// This is required by consumers that configure the two families through separate knobs —
+// notably PostgreSQL, whose ssl_ciphers parameter only accepts TLS 1.2-and-lower suites
+// (SSL_CTX_set_cipher_list) while TLS 1.3 suites must go to ssl_tls13_ciphers
+// (SSL_CTX_set_ciphersuites). Feeding TLS 1.3 suite names to ssl_ciphers makes PostgreSQL
+// fail to start with "could not set the cipher list (no valid ciphers available)".
+// Unrecognized entries are silently skipped (validate via ValidateTLSSpec first).
+func SplitCiphersByTLS13(names []string) (legacy string, tls13 string) {
+	var legacyNames, tls13Names []string
+	for _, name := range names {
+		entry, ok := IanaCipherMap[name]
+		if !ok {
+			continue
+		}
+		if entry.IsTLS13 {
+			tls13Names = append(tls13Names, entry.CipherOpenSSLName)
+		} else {
+			legacyNames = append(legacyNames, entry.CipherOpenSSLName)
+		}
+	}
+	return strings.Join(legacyNames, ":"), strings.Join(tls13Names, ":")
 }
 
 // MapCipherSuites converts IANA cipher suite names to uint16 IDs for tls.Config.CipherSuites.
