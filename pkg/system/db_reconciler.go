@@ -635,14 +635,34 @@ func (r *Reconciler) setPostgresConfig() {
 	}
 	r.cnpgLog("PGTune config: memory=%dKB, cpu=%d, endpoints=%d", totalMemoryKB, cpuNum, endpointMaxCount)
 
-	// propagate TLS security settings to the PostgreSQL server
+	// Clean up previous ciphers, will be reconciled by user provided list later.
+	delete(desiredParameters, "ssl_min_protocol_version")
+	delete(desiredParameters, "ssl_ciphers")
+
+	// propagate TLS security settings to the PostgreSQL server.
 	tlsSec := r.NooBaa.Spec.Security.APIServerSecurity
 	if tlsSec != nil && !util.IsTLSConfigDisabled() {
 		if tlsSec.TLSMinVersion != nil {
 			overrideParameters["ssl_min_protocol_version"] = string(*tlsSec.TLSMinVersion)
 		}
 		if len(tlsSec.TLSCiphers) > 0 {
-			overrideParameters["ssl_ciphers"] = util.MapCiphersToOpenSSL(tlsSec.TLSCiphers)
+			// PostgreSQL's ssl_ciphers parameter (SSL_CTX_set_cipher_list) only accepts
+			// TLS 1.2-and-lower cipher suites; passing TLS 1.3 suite names makes the server
+			// fail to start with "could not set the cipher list (no valid ciphers available)".
+			// TLS 1.3 suites are configured through ssl_tls13_ciphers (SSL_CTX_set_ciphersuites),
+			// which only exists on PostgreSQL 17+. NooBaa currently supports PostgreSQL 16 only
+			// (see options.PostgresMajorVersion), so TLS 1.3 cipher selection is not
+			// configurable and is left at the OpenSSL default; only the TLS 1.2-and-lower
+			// suites are routed to ssl_ciphers.
+			legacyCiphers, tls13Ciphers := util.SplitCiphersByTLS13(tlsSec.TLSCiphers)
+			if legacyCiphers != "" {
+				overrideParameters["ssl_ciphers"] = legacyCiphers
+			}
+			if tls13Ciphers != "" {
+				r.cnpgLog("skipping TLS 1.3 ciphers %q for ssl_ciphers: TLS 1.3 cipher selection "+
+					"is not configurable on PostgreSQL %d and uses the OpenSSL default",
+					tls13Ciphers, options.PostgresMajorVersion)
+			}
 		}
 	}
 

@@ -204,3 +204,34 @@ func TestApplyTLSEnvVars(t *testing.T) {
 		})
 	}
 }
+
+func TestSplitCiphersByTLS13(t *testing.T) {
+	cases := []struct {
+		name       string
+		ciphers    []string
+		wantLegacy string
+		wantTLS13  string
+	}{
+		{name: "tls13 only", ciphers: []string{"TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384"},
+			wantLegacy: "", wantTLS13: "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384"},
+		{name: "tls12 only", ciphers: []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"},
+			wantLegacy: "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384", wantTLS13: ""},
+		{name: "mixed", ciphers: []string{"TLS_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"},
+			wantLegacy: "ECDHE-RSA-AES128-GCM-SHA256", wantTLS13: "TLS_AES_256_GCM_SHA384"},
+		{name: "unrecognized dropped", ciphers: []string{"UNKNOWN_CIPHER", "TLS_CHACHA20_POLY1305_SHA256"},
+			wantLegacy: "", wantTLS13: "TLS_CHACHA20_POLY1305_SHA256"},
+		{name: "empty", ciphers: nil, wantLegacy: "", wantTLS13: ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			legacy, tls13 := SplitCiphersByTLS13(tc.ciphers)
+			if legacy != tc.wantLegacy {
+				t.Errorf("legacy ssl_ciphers = %q, expected %q", legacy, tc.wantLegacy)
+			}
+			if tls13 != tc.wantTLS13 {
+				t.Errorf("tls13 ciphers = %q, expected %q", tls13, tc.wantTLS13)
+			}
+		})
+	}
+}
