@@ -231,6 +231,10 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		}
 	}
 
+	if err := r.ensureParallelCoreStatefulSet(); err != nil {
+		return err
+	}
+
 	if err := r.ReconcileObject(r.CoreApp, r.SetDesiredCoreApp); err != nil {
 		return err
 	}
@@ -654,6 +658,60 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 	util.ApplyTLSEnvVars(&c.Env, r.NooBaa.Spec.Security.APIServerSecurity)
 }
 
+// checks if the statefulset has parallel pod management policy
+func hasParallelPodManagement(sts *appsv1.StatefulSet) bool {
+	if sts.UID == "" {
+		return false
+	}
+	return sts.Spec.PodManagementPolicy == appsv1.ParallelPodManagement
+}
+
+// ensures that the statefulset has parallel pod management policy
+// PodManagementPolicy is immutable, so we need to delete the statefulset and create a new one
+// can happen when upgrading from older operator versions
+func (r *Reconciler) ensureParallelCoreStatefulSet() error {
+	if !util.KubeCheckQuiet(r.CoreApp) {
+		return nil
+	}
+	if hasParallelPodManagement(r.CoreApp) {
+		return nil
+	}
+
+	current := r.CoreApp.Spec.PodManagementPolicy
+	if current == "" {
+		current = appsv1.OrderedReadyPodManagement
+	}
+	r.Logger.Infof(
+		"upgrading %s StatefulSet to parallel pod startup (delete STS, keep pods, recreate) from %q",
+		r.CoreApp.Name, current,
+	)
+
+	// delete the statefulset and keep the pods
+	orphan := metav1.DeletePropagationOrphan
+	if !util.KubeDelete(r.CoreApp, &client.DeleteOptions{PropagationPolicy: &orphan}) {
+		return fmt.Errorf(
+			"failed to delete %s StatefulSet for parallel pod startup upgrade (pods preserved)",
+			r.CoreApp.Name,
+		)
+	}
+
+	clearStatefulSetServerFieldsForRecreate(r.CoreApp)
+	return nil
+}
+
+// clearStatefulSetServerFieldsForRecreate removes server-owned metadata after the
+// StatefulSet object was deleted. Without this, the next Create would reuse stale
+// uid/resourceVersion from the deleted object.
+func clearStatefulSetServerFieldsForRecreate(obj metav1.Object) {
+	obj.SetResourceVersion("")
+	obj.SetUID("")
+	obj.SetGeneration(0)
+	obj.SetCreationTimestamp(metav1.Time{})
+	obj.SetDeletionTimestamp(nil)
+	obj.SetDeletionGracePeriodSeconds(nil)
+	obj.SetManagedFields(nil)
+}
+
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
 func (r *Reconciler) SetDesiredCoreApp() error {
 	if coreLabels, ok := r.NooBaa.Spec.Labels["core"]; ok {
@@ -666,6 +724,8 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 	r.CoreApp.Spec.Template.Labels["noobaa-mgmt"] = r.Request.Name
 	r.CoreApp.Spec.Selector.MatchLabels["noobaa-core"] = r.Request.Name
 	r.CoreApp.Spec.ServiceName = r.ServiceMgmt.Name
+	// Parallel startup so HA scale-down/recreate does not wait on NotReady standbys.
+	r.CoreApp.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
 	// OnDelete avoids RollingUpdate stall on never-Ready HA standbys; see restartStaleCorePods.
 	r.CoreApp.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
 		Type: appsv1.OnDeleteStatefulSetStrategyType,
