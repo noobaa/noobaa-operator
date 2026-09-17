@@ -66,6 +66,8 @@ spec:
               claimRef:
                 description: ObjectReference to ObjectBucketClaim
                 type: object
+                nullable: true
+                x-kubernetes-preserve-unknown-fields: true
               endpoint:
                 description: Endpoint contains all connection relevant data that an
                   app may require for accessing the bucket
