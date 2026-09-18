@@ -22,17 +22,36 @@ noobaa connection update --old-endpoint <CURRENT_URL> --new-endpoint <NEW_URL>
 
 | Flag | Required | Description |
 |---|---|---|
-| `--old-endpoint` | Yes | The current endpoint URL to replace |
-| `--new-endpoint` | Yes | The new endpoint URL to set |
+| `--old-endpoint` | Yes | The current endpoint URL to replace (normalized before use; see [Endpoint normalization](#endpoint-normalization)) |
+| `--new-endpoint` | Yes | The new endpoint URL to set (normalized before use; written to store CR specs) |
 | `-n / --namespace` | No | Kubernetes namespace (defaults to current context namespace) |
 
 ### Example
 
 ```shell
 noobaa connection update \
-  --old-endpoint http://minio-old.example.com:9000 \
-  --new-endpoint http://minio-new.example.com:9000
+  --old-endpoint minio-old.example.com:9000 \
+  --new-endpoint https://minio-new.example.com:9000
 ```
+
+## Endpoint normalization
+
+Both `--old-endpoint` and `--new-endpoint` are trimmed and normalized before the command runs. This matches how the BackingStore and NamespaceStore reconcilers treat endpoints internally.
+
+Normalization rules:
+
+1. Leading and trailing whitespace is removed.
+2. If the value has no URL scheme (`http://` or `https://`), `https://` is prepended.
+3. The URL is parsed; if the scheme is still empty after parsing, it defaults to `https`.
+4. The normalized string is used for all subsequent steps.
+
+**Matching** compares endpoints after normalization. A store whose CR spec contains `minio.example.com:9000` matches `--old-endpoint https://minio.example.com:9000`, and vice versa.
+
+**Important:**
+
+- `http://` and `https://` are **not** equivalent. Use the same scheme the store actually uses, or normalization may not find a match (for example, a CR with `http://10.0.0.1:9000` will not match `--old-endpoint 10.0.0.1:9000`, which normalizes to `https://10.0.0.1:9000`).
+- If `--old-endpoint` and `--new-endpoint` normalize to the same URL, the command exits with an error and makes no changes.
+- When CR specs are patched, they are set to the **normalized** value of `--new-endpoint` (including an explicit `https://` scheme when one was omitted on the flag).
 
 ## How It Works
 
@@ -40,7 +59,7 @@ The command performs the following steps in order. If any step fails, all change
 
 ### 1. Discover matching stores
 
-All BackingStores and NamespaceStores in the target namespace are listed. Stores whose spec endpoint matches `--old-endpoint` are selected.
+All BackingStores and NamespaceStores in the target namespace are listed. Stores whose spec endpoint is equivalent to the normalized `--old-endpoint` are selected (see [Endpoint normalization](#endpoint-normalization)).
 
 ### 2. Read credentials
 
@@ -61,11 +80,11 @@ The annotation `noobaa.io/pause-reconcile: "true"` is set on every matched store
 
 ### 5. Patch CR specs
 
-Each matched store's `.spec.s3Compatible.endpoint` or `.spec.ibmCos.endpoint` field is updated to the new URL via `KubeUpdate`.
+Each matched store's `.spec.s3Compatible.endpoint` or `.spec.ibmCos.endpoint` field is updated to the normalized `--new-endpoint` value via `KubeUpdate` (with retry on Kubernetes resource conflicts).
 
 ### 6. Update core connections
 
-The command reads the NooBaa system info to discover all external connections that reference the old endpoint. Connections are deduplicated by name (the same connection can appear across multiple accounts). Each unique connection is updated via `UpdateExternalConnection`.
+The command reads the NooBaa system info to discover all external connections whose endpoint is equivalent to the normalized old endpoint. Connections are deduplicated by name (the same connection can appear across multiple accounts). Each unique connection is updated via `UpdateExternalConnection` to the normalized new endpoint.
 
 ### 7. Resume reconciliation
 
@@ -86,9 +105,10 @@ If a connection revert itself fails during rollback, the command logs a `MANUAL 
 
 Before running the command, verify:
 
-1. **New endpoint is valid** 
+1. **New endpoint is valid** and reachable over the scheme you intend (remember that a scheme-less flag is normalized to `https://`).
 2. **Credentials are valid** for the new endpoint.
-2. **No other stores use the new endpoint yet** for a different purpose. The command does not check for conflicts with existing connections that already point to the new endpoint.
+3. **`--old-endpoint` matches existing stores** after normalization (same host/port and scheme as in the CR; `http` vs `https` matters).
+4. **No other stores use the new endpoint yet** for a different purpose. The command does not check for conflicts with existing connections that already point to the new endpoint.
 
 ## Annotations Reference
 
@@ -104,6 +124,12 @@ kubectl annotate namespacestore <STORE_NAME> noobaa.io/pause-reconcile- -n <NAME
 ```
 
 ## Troubleshooting
+
+### `no matching stores found for endpoint`
+The normalized `--old-endpoint` did not match any store CR. Check the endpoint in the BackingStore or NamespaceStore spec (`kubectl get backingstore <name> -o yaml`) and pass an endpoint that normalizes to the same URL. Common causes: wrong scheme (`http` in the CR but `https` implied by a scheme-less flag), wrong host/port, or typo.
+
+### `old and new endpoints are identical`
+Both flags normalized to the same URL (for example `--old-endpoint minio:9000` and `--new-endpoint https://minio:9000`). Provide a genuinely different new endpoint.
 
 ### `MANUAL ACTION REQUIRED`
 A rollback could not fully revert one or more NooBaa core connections. The listed connections still point to the new endpoint while the store CRs have been reverted to the old endpoint. Use the NooBaa management console or RPC to manually update those connections back to the old endpoint.
