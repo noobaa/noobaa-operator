@@ -408,6 +408,15 @@ func extractCredentials(secret *corev1.Secret, storeType StoreType) (string, str
 		identityKey = "IBM_COS_ACCESS_KEY_ID"
 		secretKey = "IBM_COS_SECRET_ACCESS_KEY"
 	}
+
+	if secret.StringData[identityKey] == "" {
+		secret.StringData[identityKey] = util.MapAlternateKeysValue(secret.StringData, identityKey)
+	}
+
+	if secret.StringData[secretKey] == "" {
+		secret.StringData[secretKey] = util.MapAlternateKeysValue(secret.StringData, secretKey)
+	}
+
 	return secret.StringData[identityKey], secret.StringData[secretKey]
 }
 
