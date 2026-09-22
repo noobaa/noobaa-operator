@@ -1,10 +1,11 @@
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: objectbucketclaims.objectbucket.io
 spec:
-  conversion:
-    strategy: None
   group: objectbucket.io
   names:
     kind: ObjectBucketClaim
@@ -19,7 +20,7 @@ spec:
   - additionalPrinterColumns:
     - description: StorageClass
       jsonPath: .spec.storageClassName
-      name: Storage-Class
+      name: StorageClass
       type: string
     - description: Phase
       jsonPath: .status.phase
@@ -31,53 +32,73 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: ObjectBucketClaim is the Schema for the objectbucketclaims API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
+          metadata:
+            type: object
           spec:
-            description: Specification of the desired behavior of the claim.
+            description: ObjectBucketClaimSpec defines the desired state of ObjectBucketClaim
             properties:
               additionalConfig:
                 additionalProperties:
                   type: string
-                description: AdditionalConfig gives providers a location to set proprietary
-                  config values (tenant, namespace, etc)
+                description: |-
+                  AdditionalConfig gives providers a location to set
+                  proprietary config values (tenant, namespace, etc)
                 type: object
               bucketName:
-                description: BucketName (not recommended) the name of the bucket.
-                  Caution! In-store bucket names may collide across namespaces.  If
-                  you define the name yourself, try to make it as unique as possible.
-                type: string
-              objectBucketName:
-                description: ObjectBucketName is the name of the object bucket resource. 
-                  This is the authoritative determination for binding.
+                description: |-
+                  BucketName (not recommended) the name of the bucket.  Caution!
+                  In-store bucket names may collide across namespaces.  If you define
+                  the name yourself, try to make it as unique as possible.
                 type: string
               generateBucketName:
-                description: GenerateBucketName (recommended) a prefix for a bucket
-                  name to be followed by a hyphen and 5 random characters. Protects
-                  against in-store name collisions.
+                description: |-
+                  GenerateBucketName (recommended) a prefix for a bucket name to be
+                  followed by a hyphen and 5 random characters. Protects against
+                  in-store name collisions.
+                type: string
+              objectBucketName:
+                description: |-
+                  ObjectBucketName is the name of the object bucket resource. This is the authoritative
+                  determination for binding.
                 type: string
               storageClassName:
                 description: StorageClass names the StorageClass object representing
                   the desired provisioner and parameters
+                minLength: 1
                 type: string
             required:
             - storageClassName
             type: object
+            x-kubernetes-validations:
+            - message: bucketName is immutable once set
+              rule: '!has(oldSelf.bucketName) || oldSelf.bucketName == "" || self.bucketName
+                == oldSelf.bucketName'
+            - message: generateBucketName is immutable once set
+              rule: '!has(oldSelf.generateBucketName) || oldSelf.generateBucketName ==
+                "" || self.generateBucketName == oldSelf.generateBucketName'
           status:
-            description: Most recently observed status of the claim.
+            description: ObjectBucketClaimStatus defines the observed state of ObjectBucketClaim
             properties:
               phase:
                 description: ObjectBucketClaimStatusPhase is set by the controller
-                  to save the state of the provisioning process
+                  to save the state of the provisioning process.
                 enum:
                 - Pending
                 - Bound
