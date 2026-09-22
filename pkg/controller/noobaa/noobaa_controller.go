@@ -2,7 +2,9 @@ package noobaa
 
 import (
 	"context"
+	"strings"
 
+	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
@@ -17,12 +19,17 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+// cnpgClusterNameSuffix is appended to the NooBaa CR name to form the CNPG Cluster name.
+// Must stay in sync with pgClusterSuffix in pkg/system/db_reconciler.go.
+const cnpgClusterNameSuffix = "-db-pg-cluster"
 
 // NotificationSource specifies a queue of notifications
 type NotificationSource struct {
@@ -128,6 +135,10 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return err
 	}
+
+	if err := watchCNPGCluster(c, mgr, logEventsPredicate); err != nil {
+		return err
+	}
 	// watch on notificationSource in order to keep the controller work queue
 	notificationSource := &NotificationSource{}
 	err = c.Watch(notificationSource)
@@ -147,3 +158,50 @@ func Add(mgr manager.Manager) error {
 
 	return nil
 }
+
+// watchCNPGCluster watches CNPG Cluster deletion so dbRecovery starts immediately
+// after the user deletes noobaa-db-pg-cluster. The watch is skipped when the CNPG
+// CRD is not installed (KMS/kind tests, standalone DB) so the operator can still start.
+func watchCNPGCluster(c controller.Controller, mgr manager.Manager, logEventsPredicate util.LogEventsPredicate) error {
+	if !util.KubeList(&cnpgv1.ClusterList{}, client.InNamespace(options.Namespace)) {
+		logrus.Info("CNPG Cluster CRD is not available, skipping Cluster watch")
+		return nil
+	}
+
+	return c.Watch(source.Kind[client.Object](mgr.GetCache(), &cnpgv1.Cluster{},
+		handler.EnqueueRequestsFromMapFunc(mapCNPGClusterToNooBaa),
+		&cnpgClusterDeletePredicate{}, &logEventsPredicate))
+}
+
+// mapCNPGClusterToNooBaa enqueues the NooBaa system named by the CNPG Cluster name
+// (<noobaa-name>-db-pg-cluster) in the same namespace.
+func mapCNPGClusterToNooBaa(_ context.Context, obj client.Object) []reconcile.Request {
+	name := obj.GetName()
+	if !strings.HasSuffix(name, cnpgClusterNameSuffix) {
+		return nil
+	}
+	return []reconcile.Request{{
+		NamespacedName: types.NamespacedName{
+			Name:      options.SystemName,
+			Namespace: options.Namespace,
+		},
+	}}
+}
+
+// cnpgClusterDeletePredicate queues reconcile only when a CNPG Cluster is deleted.
+// Recovery from dbRecovery is triggered by deleting the Cluster; without this watch
+// the operator stays idle until some other NooBaa-owned resource changes.
+type cnpgClusterDeletePredicate struct {
+	predicate.Funcs
+}
+
+func (p cnpgClusterDeletePredicate) Create(event.CreateEvent) bool { return false }
+func (p cnpgClusterDeletePredicate) Delete(e event.DeleteEvent) bool {
+	if e.Object != nil {
+		logrus.Infof("Delete event detected for CNPG cluster %s (%s), queuing Reconcile",
+			e.Object.GetName(), e.Object.GetNamespace())
+	}
+	return true
+}
+func (p cnpgClusterDeletePredicate) Update(event.UpdateEvent) bool   { return false }
+func (p cnpgClusterDeletePredicate) Generic(event.GenericEvent) bool { return false }
