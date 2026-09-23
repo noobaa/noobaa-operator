@@ -220,7 +220,7 @@ The operator tracks database status through `NooBaaDBStatus`:
 #### Network Security
 - **Internal Communication**: Database pods communicate within cluster network
 - **Service Discovery**: Uses Kubernetes services for database access
-- **TLS Support**: Optional TLS encryption for database connections. TLS is enabled by default for monitoring endpoints
+- **TLS Support**: TLS encryption is enforced for all TCP connections to the internal database. noobaa-core connects over TLS, and the operator configures a `pg_hba.conf` rule (`hostnossl all all all reject`) on the CNPG Cluster so the server rejects any plaintext (`sslmode=disable`) connection. TLS is also enabled by default for monitoring endpoints
 
 ### DB dump command
 
