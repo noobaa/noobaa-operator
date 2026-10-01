@@ -82,7 +82,7 @@ func (r *Reconciler) ReconcilePhaseConfiguring() error {
 	if err := r.reconcileAdmissionTLSConf(); err != nil {
 		return err
 	}
-	util.KubeCreateOptional(util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints))
+	util.KubeApply(util.KubeObject(bundle.File_deploy_scc_endpoint_yaml).(*secv1.SecurityContextConstraints))
 	if err := r.ReconcileObject(r.DeploymentEndpoint, r.SetDesiredDeploymentEndpoint); err != nil {
 		return err
 	}
@@ -1735,7 +1735,14 @@ func (r *Reconciler) ReconcilePrometheusRule() error {
 		return nil
 	}
 
-	return r.ReconcileObjectOptional(r.PrometheusRule, nil)
+	return r.ReconcileObjectOptional(r.PrometheusRule, r.SetDesiredPrometheusRule)
+}
+
+// SetDesiredPrometheusRule sets the rules from the bundle, so alert changes also reach existing rules
+func (r *Reconciler) SetDesiredPrometheusRule() error {
+	desired := util.KubeObject(bundle.File_deploy_internal_prometheus_rules_yaml).(*monitoringv1.PrometheusRule)
+	r.PrometheusRule.Spec = desired.Spec
+	return nil
 }
 
 // ApplyMonitoringLabels function adds the name of the resource that manages

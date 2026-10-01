@@ -285,10 +285,8 @@ func (r *Reconciler) SetDesiredServiceS3() error {
 	}
 	r.ServiceS3.Spec.Selector["noobaa-s3"] = r.Request.Name
 	r.ServiceS3.Labels["noobaa-s3-svc"] = "true"
-	r.addServicePortIfNotExists(r.ServiceS3, corev1.ServicePort{
-		Name: "metrics-https",
-		Port: 9443,
-	})
+	desired := util.KubeObject(bundle.File_deploy_internal_service_s3_yaml).(*corev1.Service)
+	r.ServiceS3.Spec.Ports = desiredServicePorts(r.ServiceS3.Spec.Ports, desired.Spec.Ports)
 	return nil
 }
 
@@ -306,15 +304,26 @@ func (r *Reconciler) SetDesiredServiceVectors() error {
 	return nil
 }
 
-// addServicePortIfNotExists adds a port to the service's port list
-// only if a port with the same name doesn't already exist
-func (r *Reconciler) addServicePortIfNotExists(svc *corev1.Service, port corev1.ServicePort) {
-	for _, existing := range svc.Spec.Ports {
-		if existing.Name == port.Name {
-			return
+// desiredServicePorts returns the bundle ports of a service with the nodePorts
+// allocated to the live ports with the same name, so an update does not change them.
+// It also sets the defaults that the API server sets, so an unchanged service is not updated.
+func desiredServicePorts(live, bundlePorts []corev1.ServicePort) []corev1.ServicePort {
+	ports := make([]corev1.ServicePort, len(bundlePorts))
+	for i, p := range bundlePorts {
+		if p.Protocol == "" {
+			p.Protocol = corev1.ProtocolTCP
 		}
+		if p.TargetPort.Type == intstr.Int && p.TargetPort.IntVal == 0 {
+			p.TargetPort = intstr.FromInt32(p.Port)
+		}
+		for _, lp := range live {
+			if lp.Name == p.Name {
+				p.NodePort = lp.NodePort
+			}
+		}
+		ports[i] = p
 	}
-	svc.Spec.Ports = append(svc.Spec.Ports, port)
+	return ports
 }
 
 // SetDesiredRouteS3 updates the RouteS3 as desired for reconciling
@@ -346,6 +355,12 @@ func (r *Reconciler) SetDesiredServiceSts() error {
 		r.ServiceSts.Spec.LoadBalancerSourceRanges = r.NooBaa.Spec.LoadBalancerSourceSubnets.STS
 	}
 	r.ServiceSts.Spec.Selector["noobaa-s3"] = r.Request.Name
+	// add the bundle annotations (serving cert) to existing services, and keep the ones set by others
+	desired := util.KubeObject(bundle.File_deploy_internal_service_sts_yaml).(*corev1.Service)
+	if r.ServiceSts.Annotations == nil {
+		r.ServiceSts.Annotations = map[string]string{}
+	}
+	maps.Copy(r.ServiceSts.Annotations, desired.Annotations)
 	return nil
 }
 

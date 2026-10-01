@@ -1,5 +1,11 @@
 package system
 
+import (
+	"github.com/noobaa/noobaa-operator/v5/pkg/bundle"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	networkingv1 "k8s.io/api/networking/v1"
+)
+
 // ReconcileNetworkPolicies reconciles network policies for NooBaa operands.
 // Operator and CNPG controller policies are Phase 2 scope (ODF 5.1).
 func (r *Reconciler) ReconcileNetworkPolicies() error {
@@ -12,7 +18,7 @@ func (r *Reconciler) ReconcileNetworkPolicies() error {
 		return err
 	}
 
-	if err := r.ReconcileObject(r.NetworkPolicyPVPool, nil); err != nil {
+	if err := r.ReconcileObject(r.NetworkPolicyPVPool, r.SetDesiredNetworkPolicyPVPool); err != nil {
 		return err
 	}
 
@@ -35,10 +41,21 @@ func (r *Reconciler) SetDesiredNetworkPolicyCore() error {
 	return nil
 }
 
-// SetDesiredNetworkPolicyEndpoint updates the endpoint network policy pod selector
+// SetDesiredNetworkPolicyEndpoint sets the endpoint network policy spec from the bundle,
+// so bundle changes also reach existing policies, and updates the pod selector
 // to match the actual NooBaa system name
 func (r *Reconciler) SetDesiredNetworkPolicyEndpoint() error {
+	desired := util.KubeObject(bundle.File_deploy_internal_networkpolicy_endpoint_yaml).(*networkingv1.NetworkPolicy)
+	r.NetworkPolicyEndpoint.Spec = desired.Spec
 	r.NetworkPolicyEndpoint.Spec.PodSelector.MatchLabels["noobaa-s3"] = r.Request.Name
+	return nil
+}
+
+// SetDesiredNetworkPolicyPVPool sets the pv-pool network policy spec from the bundle,
+// so bundle changes also reach existing policies
+func (r *Reconciler) SetDesiredNetworkPolicyPVPool() error {
+	desired := util.KubeObject(bundle.File_deploy_internal_networkpolicy_pvpool_yaml).(*networkingv1.NetworkPolicy)
+	r.NetworkPolicyPVPool.Spec = desired.Spec
 	return nil
 }
 
