@@ -1804,7 +1804,9 @@ func (r *Reconciler) setDesiredServiceMonitorS3() error {
 // setServiceMonitorEndpointsToHTTPS updates all endpoints to use the given HTTPS
 // port name and sets the scheme to "https", ensuring upgrades from HTTP work correctly.
 func (r *Reconciler) setServiceMonitorEndpointsToHTTPS(endpoints []monitoringv1.Endpoint, portName string) {
-	schemeHTTPS := monitoringv1.SchemeHTTPS
+	// the prometheus-operator CRD only accepts lowercase scheme values
+	// (see PR #2001: monitoringv1.SchemeHTTPS is "HTTPS", which is rejected by the API)
+	schemeHTTPS := monitoringv1.Scheme("https")
 	for i := range endpoints {
 		endpoints[i].Port = portName
 		endpoints[i].Scheme = &schemeHTTPS
