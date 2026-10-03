@@ -201,13 +201,13 @@ function create_oci_release() {
   echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
 
   echo "Pushing the images to docker.io..."
-  docker push $docker_image
+  docker manifest push $docker_image
 
   echo "Logging in to quay.io..."
   echo "$QUAY_TOKEN" | docker login -u "$QUAY_USERNAME" --password-stdin quay.io
 
   echo "Pushing the images to quay.io..."
-  docker push $quay_image
+  docker manifest push $quay_image
 }
 
 function create_krew() {
