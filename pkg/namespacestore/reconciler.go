@@ -70,6 +70,8 @@ type Reconciler struct {
 	AddExternalConnectionParams    *nb.AddExternalConnectionParams
 	CreateNamespaceResourceParams  *nb.CreateNamespaceResourceParams
 	UpdateExternalConnectionParams *nb.UpdateExternalConnectionParams
+	EndpointChanged                bool
+	OldCoreEndpoint                string
 }
 
 // Own sets the object owner references to the namespacestore
@@ -508,6 +510,12 @@ func (r *Reconciler) ReadSystemInfo() error {
 			nsr.Endpoint != conn.Endpoint ||
 			nsr.Identity != string(conn.Identity) {
 			r.Logger.Warnf("using existing namespace resource but connection mismatch %+v namespace store %+v", conn, nsr)
+
+			// endpoint changes are only allowed using CLI
+			if nsr.Endpoint != conn.Endpoint {
+				r.EndpointChanged = true
+				r.OldCoreEndpoint = nsr.Endpoint
+			}
 			r.UpdateExternalConnectionParams = &nb.UpdateExternalConnectionParams{
 				Name:               conn.Name,
 				Identity:           conn.Identity,
@@ -803,6 +811,12 @@ func (r *Reconciler) ReconcileExternalConnection() error {
 	}
 
 	if r.UpdateExternalConnectionParams != nil {
+		if r.EndpointChanged {
+			r.Logger.Errorf("NamespaceStore endpoint cannot be updated directly on the spec")
+			return util.NewPersistentError("InvalidNamespaceStore",
+				fmt.Sprintf("NamespaceStore endpoint cannot be updated directly on the spec. Restore it to old endpoint %+v",
+					r.OldCoreEndpoint))
+		}
 		checkConnectionParams.IgnoreNameAlreadyExist = true
 		err := r.CheckExternalConnection(checkConnectionParams)
 		if err != nil {
