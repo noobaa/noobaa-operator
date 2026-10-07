@@ -672,7 +672,7 @@ func (r *Reconciler) setPostgresConfig() {
 	// env var in setDesiredCoreEnv), so plaintext access is never legitimate and must be blocked at the server.
 	// CNPG will insert these user-defined rules before its default trailing "host all all all <auth>"
 	// rule, so a plaintext client matches the reject rule first while SSL clients fail trhough to the default
-	// rule and connect normally. 
+	// rule and connect normally.
 	//
 	// NOTE: Unix-socket (local) connections are unaffected and remain peer-authenticated inside the pod.
 	r.CNPGCluster.Spec.PostgresConfiguration.PgHBA = []string{
@@ -810,20 +810,25 @@ func calculateWalKeepSize(dataVolumeSize string) string {
 	return formatBytesKB(walKeepMB * 1024)
 }
 
-// calculateMaxConnections computes the PostgreSQL max_connections based on the
-// number of endpoint pods. Each noobaa-core process (web_server, bg_worker,
-// hosted_agents) uses up to 20 DB connections (default + md pools). Each
-// endpoint process uses up to 80 connections (default + md pools, excluding
-// the read_only pool which targets the standby replica).
-// 3 additional connections are reserved for superuser access.
+// calculateMaxConnections computes PostgreSQL max_connections from NooBaa client
+// processes. Core runs web_server + hosted_agents (2 processes). The BG workers
+// process runs in a separate singleton pod (1 process). Each of those uses up to 20 DB
+// connections (default + md pools). Each endpoint process uses up to 80
+// (default + md pools, excluding the read_only pool which targets the standby).
+// 3 extra connections are reserved for superuser access.
 func calculateMaxConnections(numEndpoints int) int {
 	const (
-		coreProcesses          = 3
-		connectionsPerCore     = 20
-		connectionsPerEndpoint = 80
-		superuserReserved      = 3
+		coreProcesses           = 2 // web_server + hosted_agents
+		bgWorkersProcesses      = 1 // singleton Deployment, not scalable yet
+		connectionsPerCore      = 20
+		connectionsPerBgWorkers = 20
+		connectionsPerEndpoint  = 80
+		superuserReserved       = 3
 	)
-	return coreProcesses*connectionsPerCore + numEndpoints*connectionsPerEndpoint + superuserReserved
+	return coreProcesses*connectionsPerCore +
+		bgWorkersProcesses*connectionsPerBgWorkers +
+		numEndpoints*connectionsPerEndpoint +
+		superuserReserved
 }
 
 func getDesiredMajorVersion(dbSpec *nbv1.NooBaaDBSpec) int {

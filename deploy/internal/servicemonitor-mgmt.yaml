@@ -14,13 +14,6 @@ spec:
       action: keep
       regex: "true"
   - port: mgmt-https
-    path: /metrics/bg_workers
-    scheme: https
-    relabelings:
-    - sourceLabels: [__meta_kubernetes_pod_ready]
-      action: keep
-      regex: "true"
-  - port: mgmt-https
     path: /metrics/hosted_agents
     scheme: https
     relabelings:
