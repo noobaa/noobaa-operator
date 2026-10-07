@@ -124,10 +124,10 @@ spec:
             - containerPort: 8080
             - containerPort: 8443
             - containerPort: 8444
-            - containerPort: 8445
             - containerPort: 8446
             - containerPort: 60100
           env:
+            - name: BG_ADDR
             - name: NOOBAA_DISABLE_COMPRESSION
               valueFrom:
                 configMapKeyRef:
