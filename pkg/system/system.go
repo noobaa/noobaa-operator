@@ -1351,6 +1351,8 @@ func Connect(isExternal bool) (*Client, error) {
 	if !util.KubeCheck(r.ServiceMgmt) {
 		return nil, fmt.Errorf("Connect(): ServiceMgmt not found")
 	}
+	// BG workers Service is not required here: Connect() callers (OBC, COSI,
+	// backingstore, etc.) only use mgmt APIs. Core/endpoints reach BG via BG_ADDR.
 	if !util.KubeCheck(r.SecretOp) {
 		return nil, fmt.Errorf("Connect(): SecretOp not found")
 	}
