@@ -1,13 +1,13 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: noobaa-core
+  name: noobaa-bg-workers
   labels:
     app: noobaa
 spec:
   podSelector:
     matchLabels:
-      noobaa-core: noobaa
+      noobaa-bg-workers: noobaa
   policyTypes:
   - Ingress
   ingress:
@@ -15,19 +15,10 @@ spec:
     - podSelector: {}
     ports:
     - protocol: TCP
-      port: 8080
-    - protocol: TCP
-      port: 8443
-    - protocol: TCP
-      port: 8444
-    - protocol: TCP
-      port: 8446
-    - protocol: TCP
-      port: 60100
-    - protocol: UDP
-      port: 5140
+      port: 8445
+  # Prometheus scrapes :7002 from a monitoring namespace (same as core 8443 / db 9187 / endpoint 9443).
   - from:
     - namespaceSelector: {}
     ports:
     - protocol: TCP
-      port: 8443
+      port: 7002

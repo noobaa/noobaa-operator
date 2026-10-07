@@ -16,24 +16,25 @@ This document focuses on containerized deployments and highlights how to access 
 
 This section provides details about the metrics URL and port configuration used by the NooBaa Operator services.
 
-#### Prometheus Metrics HTTPS URLs - </br>
+#### Prometheus Metrics URLs - </br>
 - **Core metrics (aggregated)** are exposed on the management `/metrics/*` endpoint (service port `443`, container port `8443`): </br> `https://<mgmt-service>:443/metrics/`
 - **Endpoint metrics** are exposed on the S3 service metrics-https port: </br> `https://<s3-service>:9443/`
 - **Web server metrics** are exposed on the management service: </br> `https://<mgmt-service>:443/metrics/web_server`
-- **Background workers metrics** are exposed on the management service: </br> `https://<mgmt-service>:443/metrics/bg_workers`
+- **Background workers metrics** are exposed on the bg-workers service (HTTP): </br> `http://<bg-workers-service>:7002/metrics`
 - **Hosted agents metrics** are exposed on the management service: </br> `https://<mgmt-service>:443/metrics/hosted_agents`
 
 #### Default services and ports - </br>
 - S3 service name: `s3`, metrics-https port: `9443` (metrics path is `/`)
 - Management service name: `<noobaa-name>-mgmt`, HTTPS port: `443` (targets container port `8443`)
+- BG workers service name: `<noobaa-name>-bg-workers`, HTTP port: `7002` (metrics path is `/metrics`)
 
-The operator creates ServiceMonitors for both services, configures HTTPS scheme with TLS (`caFile` and `serverName`), and injects Bearer token authorization automatically. The `serverName` is set dynamically to `<service-name>.<namespace>.svc` during reconciliation.
+The operator creates ServiceMonitors for the management, S3, and bg-workers services. Management and S3 use HTTPS with TLS (`caFile` and `serverName`) and Bearer token authorization. The bg-workers monitor scrapes HTTP `:7002/metrics`. The `serverName` for HTTPS targets is set dynamically to `<service-name>.<namespace>.svc` during reconciliation.
 
 ## Metrics Description
 
 NooBaa exposes Prometheus metrics for multiple components.
 NooBaa core metrics are prefixed by `NooBaa_` and endpoint metrics by `NooBaa_Endpoint_` (default `PROMETHEUS_PREFIX`). </br>
-Core `NooBaa_*` metrics are exposed at the management `/metrics/` endpoint (service port `443`, container port `8443`). The S3 ServiceMonitor scrapes `/` on port `9443` for endpoint metrics. Process metrics for `/metrics/web_server`, `/metrics/bg_workers`, and `/metrics/hosted_agents` are also exposed on the management HTTPS service.
+Core `NooBaa_*` metrics are exposed at the management `/metrics/` endpoint (service port `443`, container port `8443`). The S3 ServiceMonitor scrapes `/` on port `9443` for endpoint metrics. Process metrics for `/metrics/web_server` and `/metrics/hosted_agents` are exposed on the management HTTPS service. Background-worker process metrics are scraped from the bg-workers service at `http://<bg-workers-service>:7002/metrics`.
 
 ### NooBaa Core Metrics (`/metrics/` on management service port `443`, container port `8443`)
 
@@ -126,17 +127,19 @@ Core `NooBaa_*` metrics are exposed at the management `/metrics/` endpoint (serv
 | NooBaa_Endpoint_fork_counter | Number of fork hits | `code` |
 
 #### Core per-process metrics discovery
-The web_server, bg_workers, and hosted_agents endpoints export a large and evolving set of runtime metrics from the management service. The management Service exposes these on port `443`; the container and port-forward target is `8443` (for example `kubectl port-forward svc/<noobaa-name>-mgmt 8443:443`). Requests through the Service use `https://<mgmt-service>:443/metrics/...`, while exec or port-forward access targets `8443`. If `NOOBAA_METRICS_AUTH_ENABLED=true`, ensure the token is set (see [Set JWT Token](#3-set-jwt-token)) and use either the port-forward from step 4 or exec from step 5, then run these queries. If `NOOBAA_METRICS_AUTH_ENABLED=false`, the Authorization header is not required.
+The web_server and hosted_agents endpoints export a large and evolving set of runtime metrics from the management service. The management Service exposes these on port `443`; the container and port-forward target is `8443` (for example `kubectl port-forward svc/<noobaa-name>-mgmt 8443:443`). Requests through the Service use `https://<mgmt-service>:443/metrics/...`, while exec or port-forward access targets `8443`. If `NOOBAA_METRICS_AUTH_ENABLED=true`, ensure the token is set (see [Set JWT Token](#3-set-jwt-token)) and use either the port-forward from step 4 or exec from step 5, then run these queries. If `NOOBAA_METRICS_AUTH_ENABLED=false`, the Authorization header is not required.
+
+Background-worker process metrics are served by the bg-workers pod on HTTP port `7002` (path `/metrics`), not on the management service.
 
 ```sh
 # Web server metrics
 curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/web_server | head
 
-# Background workers metrics
-curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/bg_workers | head
-
 # Hosted agents metrics
 curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/hosted_agents | head
+
+# Background workers metrics (bg-workers service, HTTP)
+curl -s http://127.0.0.1:7002/metrics | head
 ```
 
 
@@ -145,7 +148,7 @@ curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/
 This section will walk you through the initial steps required to access metrics in a containerized deployment.
 
 #### 1. Verify NooBaa is running </br>
-Ensure the NooBaa core and endpoint containers are up and ready in your namespace.
+Ensure the NooBaa core, endpoint, and bg-workers containers are up and ready in your namespace.
 
 #### 2. Generate activity
 Run a few S3 or IAM operations (create bucket, upload objects, list objects) to generate metrics.
@@ -164,15 +167,16 @@ You can access metrics by port-forwarding the services and using local `curl`.
 # Keep these port-forward commands running in separate terminal windows or tabs.
 kubectl -n <namespace> port-forward svc/s3 9443:9443
 kubectl -n <namespace> port-forward svc/<noobaa-name>-mgmt 8443:443
+kubectl -n <namespace> port-forward svc/<noobaa-name>-bg-workers 7002:7002
 
 curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:9443/ | head
 curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/web_server | head
-curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/bg_workers | head
 curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/hosted_agents | head
+curl -s http://127.0.0.1:7002/metrics | head
 ```
 
 #### 5. Fetch metrics from inside the pods (no port-forward)
-If you prefer not to use port-forward, you can query the metrics endpoints directly from inside the pods using the same bearer token. Endpoint metrics (`/` on port `9443`) are served from the endpoint pod; management metrics (`/metrics/*` on container port `8443`) are served from the core pod.
+If you prefer not to use port-forward, you can query the metrics endpoints directly from inside the pods using the same bearer token where HTTPS is required. Endpoint metrics (`/` on port `9443`) are served from the endpoint pod; management metrics (`/metrics/*` on container port `8443`) are served from the core pod; background-worker metrics (`/metrics` on port `7002`) are served from the bg-workers pod.
 
 ```sh
 kubectl exec -it <noobaa-endpoint-pod> -- \
@@ -180,9 +184,9 @@ kubectl exec -it <noobaa-endpoint-pod> -- \
 kubectl exec -it <noobaa-core-pod> -- \
   curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://localhost:8443/metrics/web_server | head
 kubectl exec -it <noobaa-core-pod> -- \
-  curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://localhost:8443/metrics/bg_workers | head
-kubectl exec -it <noobaa-core-pod> -- \
   curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://localhost:8443/metrics/hosted_agents | head
+kubectl exec -it <noobaa-bg-workers-pod> -- \
+  curl -s http://localhost:7002/metrics | head
 ```
 
 #### 6. Prometheus dashboard testing (local/minikube)
@@ -205,7 +209,7 @@ kubectl port-forward --namespace='default' prometheus-prometheus-kube-prometheus
 
 ## Prometheus Alert Rules
 
-NooBaa ships PrometheusRule resources with recording rules and alerts. Prometheus evaluates these rules on each scrape interval and sends firing alerts to Alertmanager (if configured). To see active rules and alerts:
+NooBaa ships PrometheusRule resources with recording rules and alerts. Prometheus evaluates these rules on each scrape interval and sends firing alerts to Alertmanager (if configured). Rules match `NooBaa_*` metric names, not the scrape URL, so they keep working after background-worker metrics moved from mgmt `/metrics/bg_workers` to the bg-workers ServiceMonitor. To see active rules and alerts:
 
 - Prometheus UI (see [Prometheus dashboard testing](#6-prometheus-dashboard-testing-localminikube)): `http://127.0.0.1:9090/alerts` and `http://127.0.0.1:9090/rules`
 - Confirm rules exist in the namespace:
@@ -218,7 +222,7 @@ Reference: [Prometheus alerting rules](https://prometheus.io/docs/prometheus/lat
 
 ## Examples
 
-The examples below assume you have the port-forward from step 4 running and `JWT_TOKEN` set (see [Set JWT Token](#3-set-jwt-token)).
+The examples below assume you have the port-forward from step 4 running. HTTPS examples also need `JWT_TOKEN` (see [Set JWT Token](#3-set-jwt-token)); the bg-workers `/metrics` example is HTTP and does not.
 Values will vary based on runtime and workload.
 
 ### Direct Metrics Fetch Example
@@ -261,10 +265,10 @@ NooBaa_WebServer_process_cpu_seconds_total 43.522436000000006
 
 ### Background Workers Metrics Example
 
-The following is an example of querying the background workers metrics endpoint -
+The following is an example of querying the background workers metrics endpoint on the bg-workers service (`/metrics` on port `7002`) -
 
 ```shell
-> curl -sk -H "Authorization: Bearer ${JWT_TOKEN}" https://127.0.0.1:8443/metrics/bg_workers | head -n 12
+> curl -s http://127.0.0.1:7002/metrics | head -n 12
 # HELP NooBaa_BGWorkers_process_cpu_user_seconds_total Total user CPU time spent in seconds.
 # TYPE NooBaa_BGWorkers_process_cpu_user_seconds_total counter
 NooBaa_BGWorkers_process_cpu_user_seconds_total 20.725111999999996

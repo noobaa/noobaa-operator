@@ -4371,6 +4371,175 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
+const Sha256_deploy_internal_deployment_bg_workers_yaml = "2b7a62d4d321c88fe9fbd734fe95e62d12ba4bfd761493218dd9e776ca886767"
+
+const File_deploy_internal_deployment_bg_workers_yaml = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noobaa-bg-workers
+  labels:
+    app: noobaa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      noobaa-bg-workers: noobaa
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: noobaa
+        noobaa-bg-workers: noobaa
+        noobaa-component: bg-workers
+      annotations:
+        noobaa.io/configmap-hash: ""
+        openshift.io/required-scc: noobaa-core
+    spec:
+      serviceAccountName: noobaa-core
+      volumes:
+        - name: mgmt-secret
+          secret:
+            secretName: noobaa-mgmt-serving-cert
+            optional: true
+        - name: bg-workers-secret
+          secret:
+            secretName: noobaa-bg-workers-serving-cert
+            optional: true
+        - name: noobaa-server
+          secret:
+            secretName: noobaa-server
+            optional: true
+        - name: bound-sa-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  audience: openshift
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 0
+      containers:
+        - name: bg-workers
+          image: NOOBAA_CORE_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
+          command:
+            # Upgrade: OLM can start this operator while the old core image is
+            # still running. That image has no bg_init.js. Sleep instead of
+            # CrashLoop until the core image rolls.
+            - /bin/bash
+            - -ec
+            - |
+              if [ -f /root/node_modules/noobaa-core/src/cmd/bg_init.js ]; then
+                exec /usr/local/bin/node /root/node_modules/noobaa-core/src/cmd/bg_init.js
+              fi
+              echo "bg_init.js missing (old core image); sleeping until the image is updated"
+              exec sleep infinity
+          readinessProbe:
+            tcpSocket:
+              port: 8445
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+          volumeMounts:
+            - name: mgmt-secret
+              mountPath: /etc/mgmt-secret
+              readOnly: true
+            - name: bg-workers-secret
+              mountPath: /etc/bg-secret
+              readOnly: true
+            - name: noobaa-server
+              mountPath: /etc/noobaa-server
+              readOnly: true
+            - name: bound-sa-token
+              mountPath: /var/run/secrets/openshift/serviceaccount
+              readOnly: true
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "3Gi"
+          ports:
+            - containerPort: 8445
+              name: bg-https
+            - containerPort: 7002
+              name: metrics
+          env:
+            - name: NOOBAA_BG_ROLE
+              value: scanner
+            - name: NOOBAA_DISABLE_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_DISABLE_COMPRESSION
+            - name: NOOBAA_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_LOG_LEVEL
+            - name: NOOBAA_LOG_COLOR
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_LOG_COLOR
+            - name: NOOBAA_METRICS_AUTH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_METRICS_AUTH_ENABLED
+            - name: MGMT_ADDR
+            - name: BG_ADDR
+            - name: MD_ADDR
+            - name: HOSTED_AGENTS_ADDR
+            - name: POSTGRES_HOST
+            - name: POSTGRES_HOST_RO
+            - name: POSTGRES_PORT
+            - name: POSTGRES_DBNAME
+            - name: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+            - name: POSTGRES_CONNECTION_STRING
+            - name: POSTGRES_SSL_REQUIRED
+            - name: POSTGRES_SSL_UNAUTHORIZED
+            - name: POSTGRES_HOST_PATH
+            - name: POSTGRES_USER_PATH
+            - name: POSTGRES_PASSWORD_PATH
+            - name: POSTGRES_DBNAME_PATH
+            - name: POSTGRES_PORT_PATH
+            - name: POSTGRES_CONNECTION_STRING_PATH
+            - name: DB_TYPE
+              value: postgres
+            - name: CONTAINER_PLATFORM
+              value: KUBERNETES
+            - name: NODE_EXTRA_CA_CERTS
+            - name: TLS_MIN_VERSION
+            - name: TLS_CIPHERS
+            - name: TLS_GROUPS
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+          envFrom:
+            - configMapRef:
+                name: noobaa-config
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+`
+
 const Sha256_deploy_internal_deployment_endpoint_yaml = "e55babcc37ae8d7b038ec9394184c1ec8458309cc2511cd5d514bb58bc763993"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
@@ -4921,7 +5090,35 @@ metadata:
     app: noobaa
 `
 
-const Sha256_deploy_internal_networkpolicy_core_yaml = "e03679b5dda3c850d4918bb9f82a08e4c07809b115cf40aa4e490a212aa3a662"
+const Sha256_deploy_internal_networkpolicy_bg_workers_yaml = "bd9707aee6609363f9393071110baaf6581a146e8511bb42973890cff4accaf0"
+
+const File_deploy_internal_networkpolicy_bg_workers_yaml = `apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-bg-workers
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchLabels:
+      noobaa-bg-workers: noobaa
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8445
+  # Prometheus scrapes :7002 from a monitoring namespace (same as core 8443 / db 9187 / endpoint 9443).
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 7002
+`
+
+const Sha256_deploy_internal_networkpolicy_core_yaml = "82575021b2a4e8102d7cb619a63bb8375c768312e2a1784eb67b4f8a197b122d"
 
 const File_deploy_internal_networkpolicy_core_yaml = `apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -4945,8 +5142,6 @@ spec:
       port: 8443
     - protocol: TCP
       port: 8444
-    - protocol: TCP
-      port: 8445
     - protocol: TCP
       port: 8446
     - protocol: TCP
@@ -5568,6 +5763,31 @@ type: Opaque
 data: {}
 `
 
+const Sha256_deploy_internal_service_bg_workers_yaml = "294cc4e1caad0109969c41938422dec72a887c477a663b42e71d7fbb4b8cf93c"
+
+const File_deploy_internal_service_bg_workers_yaml = `apiVersion: v1
+kind: Service
+metadata:
+  name: SYSNAME-bg-workers
+  labels:
+    app: noobaa
+    noobaa-bg-workers-svc: "true"
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: noobaa-bg-workers-serving-cert
+    service.alpha.openshift.io/serving-cert-secret-name: noobaa-bg-workers-serving-cert
+spec:
+  type: ClusterIP
+  selector:
+    noobaa-bg-workers: SYSNAME
+  ports:
+    - port: 8445
+      name: bg-https
+      targetPort: 8445
+    - port: 7002
+      name: metrics
+      targetPort: 7002
+`
+
 const Sha256_deploy_internal_service_db_yaml = "ad9f76ccec1a38c07af34d0251e9e3f3d64bfad48ebaebbdfeef653af1e6eafc"
 
 const File_deploy_internal_service_db_yaml = `apiVersion: v1
@@ -5611,7 +5831,7 @@ spec:
       name: iam-https
 `
 
-const Sha256_deploy_internal_service_mgmt_yaml = "758174ba728febd71b5809671cb49a3a9e148f66637e59ff8aae905918bcd36a"
+const Sha256_deploy_internal_service_mgmt_yaml = "c293935b7bc10bcff03ee11198edfaa33c77fcf73e2c5da7b2e2ce661873a0d7"
 
 const File_deploy_internal_service_mgmt_yaml = `apiVersion: v1
 kind: Service
@@ -5634,8 +5854,6 @@ spec:
     - port: 443
       name: mgmt-https
       targetPort: 8443
-    - port: 8445
-      name: bg-https
     - port: 8446
       name: hosted-agents-https
 `
@@ -5751,7 +5969,30 @@ spec:
     noobaa-operator: deployment
 `
 
-const Sha256_deploy_internal_servicemonitor_mgmt_yaml = "3b2820e1088e9cffea1404d1296186af8d478b5c2530a27899104885caa2dcdf"
+const Sha256_deploy_internal_servicemonitor_bg_workers_yaml = "2fc3e13b147ea8f8b85436eed53c3bdf20229ee25ca2e3f3bef80575298b0812"
+
+const File_deploy_internal_servicemonitor_bg_workers_yaml = `apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noobaa-bg-workers-service-monitor
+  labels:
+    app: noobaa
+spec:
+  endpoints:
+  - port: metrics
+    path: /metrics
+    scheme: http
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_ready]
+      action: keep
+      regex: "true"
+  namespaceSelector: {}
+  selector:
+    matchLabels:
+      noobaa-bg-workers-svc: "true"
+`
+
+const Sha256_deploy_internal_servicemonitor_mgmt_yaml = "3d9db86ad468ed34b02b74a17e2bc5245a6a054f3c1bb2bd9201e3a76a77882b"
 
 const File_deploy_internal_servicemonitor_mgmt_yaml = `apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -5763,13 +6004,6 @@ spec:
   endpoints:
   - port: mgmt-https
     path: /metrics/web_server
-    scheme: https
-    relabelings:
-    - sourceLabels: [__meta_kubernetes_pod_ready]
-      action: keep
-      regex: "true"
-  - port: mgmt-https
-    path: /metrics/bg_workers
     scheme: https
     relabelings:
     - sourceLabels: [__meta_kubernetes_pod_ready]
@@ -5807,7 +6041,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "9a446baf09a5995591b96a1990ce256ff5e48a3bf7d839f6a0fc7bf89a9c06e6"
+const Sha256_deploy_internal_statefulset_core_yaml = "4f9ea9bf2d1e5a1f63dd26dcfb322d3330d7ef45e44e46f4031c17290a1ef521"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5935,10 +6169,10 @@ spec:
             - containerPort: 8080
             - containerPort: 8443
             - containerPort: 8444
-            - containerPort: 8445
             - containerPort: 8446
             - containerPort: 60100
           env:
+            - name: BG_ADDR
             - name: NOOBAA_DISABLE_COMPRESSION
               valueFrom:
                 configMapKeyRef:

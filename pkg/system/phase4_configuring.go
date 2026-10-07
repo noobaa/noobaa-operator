@@ -401,8 +401,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					}
 				case "BG_ADDR":
 					if r.JoinSecret == nil {
-						port := nb.FindPortByName(r.ServiceMgmt, "bg-https")
-						c.Env[j].Value = fmt.Sprintf(`%s:%d`, mgmtBaseAddr, port.Port)
+						c.Env[j].Value = r.bgWorkersServiceAddr()
 					} else {
 						c.Env[j].Value = r.JoinSecret.StringData["bg_addr"]
 					}
@@ -1781,6 +1780,17 @@ func (r *Reconciler) ReconcileServiceMonitors() error {
 	if err := r.ReconcileObjectOptional(r.ServiceMonitorS3, r.setDesiredServiceMonitorS3); err != nil {
 		return err
 	}
+	r.ApplyMonitoringLabels(r.ServiceMonitorBgWorkers)
+	if err := r.ReconcileObjectOptional(r.ServiceMonitorBgWorkers, r.setDesiredServiceMonitorBgWorkers); err != nil {
+		return err
+	}
+	return nil
+}
+
+// setDesiredServiceMonitorBgWorkers keeps ready-only scrape targets. Metrics are
+// HTTP on :7002 (no TLS/bearer); that matches the BG workers Service port.
+func (r *Reconciler) setDesiredServiceMonitorBgWorkers() error {
+	r.setServiceMonitorKeepReadyPodRelabel(r.ServiceMonitorBgWorkers.Spec.Endpoints)
 	return nil
 }
 
