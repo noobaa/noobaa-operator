@@ -5807,7 +5807,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "9a446baf09a5995591b96a1990ce256ff5e48a3bf7d839f6a0fc7bf89a9c06e6"
+const Sha256_deploy_internal_statefulset_core_yaml = "987f86f210081559a4842dafa3a77fd5d1da5a598bfde21f2b296a157c1bcf8a"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5821,6 +5821,7 @@ spec:
     matchLabels:
       noobaa-core: noobaa
   serviceName: noobaa-mgmt
+  podManagementPolicy: Parallel
   # OnDelete: RollingUpdate waits for Ready after each pod; HA standbys never
   # become Ready, so the roll stalls after the standby and never updates the
   # leader. With OnDelete, operator will detect template/hash drift and delete outdated pods itself.

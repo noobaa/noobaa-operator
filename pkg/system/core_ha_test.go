@@ -379,3 +379,76 @@ func assertPreferredCoreTerm(t *testing.T, term corev1.WeightedPodAffinityTerm, 
 		t.Fatalf("labelSelector = %#v, want noobaa-core=%s", term.PodAffinityTerm.LabelSelector, coreName)
 	}
 }
+
+func TestCoreStatefulSetHasOrderedReadyPolicy(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		sts    appsv1.StatefulSet
+		want   bool
+	}{
+		{
+			name: "no live object",
+			sts:  appsv1.StatefulSet{},
+			want: false,
+		},
+		{
+			name: "already parallel",
+			sts: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{UID: "uid-1"},
+				Spec:       appsv1.StatefulSetSpec{PodManagementPolicy: appsv1.ParallelPodManagement},
+			},
+			want: false,
+		},
+		{
+			name: "ordered ready",
+			sts: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{UID: "uid-1"},
+				Spec:       appsv1.StatefulSetSpec{PodManagementPolicy: appsv1.OrderedReadyPodManagement},
+			},
+			want: true,
+		},
+		{
+			name: "empty defaults to ordered ready on cluster",
+			sts: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{UID: "uid-1"},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := coreStatefulSetHasOrderedReadyPolicy(&tt.sts); got != tt.want {
+				t.Fatalf("coreStatefulSetHasOrderedReadyPolicy() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestClearStatefulSetServerFieldsForRecreate(t *testing.T) {
+	t.Parallel()
+
+	now := metav1.Now()
+	grace := int64(30)
+	sts := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			UID:                        types.UID("uid-1"),
+			ResourceVersion:            "rv-1",
+			Generation:                 3,
+			CreationTimestamp:          now,
+			DeletionTimestamp:          &now,
+			DeletionGracePeriodSeconds: &grace,
+		},
+	}
+
+	clearStatefulSetServerFieldsForRecreate(sts)
+	if sts.UID != "" || sts.ResourceVersion != "" || sts.Generation != 0 {
+		t.Fatalf("identity not cleared: uid=%q rv=%q gen=%d", sts.UID, sts.ResourceVersion, sts.Generation)
+	}
+	if !sts.CreationTimestamp.IsZero() || sts.DeletionTimestamp != nil || sts.DeletionGracePeriodSeconds != nil {
+		t.Fatal("timestamps/grace not cleared")
+	}
+}
