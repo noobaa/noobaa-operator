@@ -46,6 +46,7 @@ func Cmd() *cobra.Command {
 		CmdList(),
 		CmdReconcile(),
 		CmdRunRemovePendingPods(),
+		CmdReplace(),
 	)
 	return cmd
 }
@@ -349,6 +350,27 @@ func CmdDelete() *cobra.Command {
 		Short: "Delete backing store",
 		Run:   RunDelete,
 	}
+	return cmd
+}
+
+// CmdReplace returns a CLI command
+func CmdReplace() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "replace <old-backing-store> <new-backing-store>",
+		Short: "Replace one backing store with another across all buckets",
+		Long: `Replace references to one backing store with another across all bucket tiers and account defaults.
+
+Use --migrate to first enable mirroring between the old and new backing stores,
+allowing the system to replicate existing data before completing the switch.
+
+Workflow:
+  1. noobaa backingstore replace <old> <new> --migrate   (start mirroring)
+  2. Wait for data replication to complete
+  3. noobaa backingstore replace <old> <new>              (finalize replacement)
+  4. oc delete backingstore <old>                          (remove the old store)`,
+		Run: RunReplace,
+	}
+	cmd.Flags().Bool("migrate", false, "Enable mirroring to replicate data before replacement")
 	return cmd
 }
 
@@ -945,6 +967,221 @@ func RunCreatePVPool(cmd *cobra.Command, args []string) {
 }
 
 // RunDelete runs a CLI command
+// RunReplace runs a CLI command to replace one backing store with another
+func RunReplace(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+
+	if len(args) != 2 || args[0] == "" || args[1] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <old-backing-store> <new-backing-store> %s`, cmd.UsageString())
+	}
+
+	oldBSName := args[0]
+	newBSName := args[1]
+
+	if oldBSName == newBSName {
+		log.Fatalf(`❌ Old and new backing store names must be different`)
+	}
+
+	migrate, _ := cmd.Flags().GetBool("migrate")
+
+	// Verify both backing stores exist in Kubernetes
+	oldBS := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+	oldBS.Name = oldBSName
+	oldBS.Namespace = options.Namespace
+	if !util.KubeCheck(oldBS) {
+		log.Fatalf(`❌ BackingStore %q not found in namespace %q`, oldBSName, options.Namespace)
+	}
+
+	newBS := util.KubeObject(bundle.File_deploy_crds_noobaa_io_v1alpha1_backingstore_cr_yaml).(*nbv1.BackingStore)
+	newBS.Name = newBSName
+	newBS.Namespace = options.Namespace
+	if !util.KubeCheck(newBS) {
+		log.Fatalf(`❌ BackingStore %q not found in namespace %q`, newBSName, options.Namespace)
+	}
+
+	if newBS.Status.Phase != nbv1.BackingStorePhaseReady {
+		log.Fatalf(`❌ BackingStore %q is not Ready (current phase: %s)`, newBSName, newBS.Status.Phase)
+	}
+
+	nbClient := system.GetNBClient()
+
+	// Verify both pools exist in NooBaa and new pool is healthy
+	_, err := nbClient.ReadPoolAPI(nb.ReadPoolParams{Name: oldBSName})
+	if err != nil {
+		log.Fatalf(`❌ Pool %q not found in NooBaa: %s`, oldBSName, err)
+	}
+	newPoolInfo, err := nbClient.ReadPoolAPI(nb.ReadPoolParams{Name: newBSName})
+	if err != nil {
+		log.Fatalf(`❌ Pool %q not found in NooBaa: %s`, newBSName, err)
+	}
+	if newPoolInfo.Mode != "OPTIMAL" {
+		log.Fatalf(`❌ Pool %q is not healthy (mode: %s)`, newBSName, newPoolInfo.Mode)
+	}
+
+	if migrate {
+		log.Infof("🔄 Starting migration: mirroring data from %q to %q", oldBSName, newBSName)
+		log.Infof("   This adds %q as a mirror to all tiers currently using %q", newBSName, oldBSName)
+		log.Infof("   The background mirror_writer will replicate existing data automatically")
+	} else {
+		log.Infof("🔄 Replacing %q with %q across all bucket tiers and account defaults", oldBSName, newBSName)
+	}
+
+	systemInfo, err := nbClient.ReadSystemAPI()
+	if err != nil {
+		log.Fatalf(`❌ Failed to read system info: %s`, err)
+	}
+
+	// Build tier name → TierInfo lookup from system info
+	tierByName := map[string]nb.TierInfo{}
+	for _, t := range systemInfo.Tiers {
+		tierByName[t.Name] = t
+	}
+
+	// Phase 1: Update all tiers that reference the old pool
+	tiersUpdated := replacePoolInTiers(nbClient, systemInfo.Buckets, tierByName, oldBSName, newBSName, migrate)
+
+	// Phase 2: Update account default_resource references
+	accountsUpdated := replacePoolInAccounts(nbClient, systemInfo.Accounts, oldBSName, newBSName)
+
+	if tiersUpdated == 0 && accountsUpdated == 0 {
+		log.Infof("ℹ️  No tiers or accounts reference %q — nothing to replace", oldBSName)
+		return
+	}
+
+	if migrate {
+		log.Infof("✅ MIRROR_STARTED")
+	} else {
+		log.Infof("✅ REPLACED")
+	}
+	log.Infof("   Tiers updated:    %d", tiersUpdated)
+	log.Infof("   Accounts updated: %d", accountsUpdated)
+
+	log.Infof("")
+	if migrate {
+		log.Infof("📋 Next steps:")
+		log.Infof("   1. Wait for data replication to complete")
+		log.Infof("      Check progress: noobaa bucket status <bucket-name>")
+		log.Infof("   2. Finalize the replacement:")
+		log.Infof("      noobaa backingstore replace %s %s", oldBSName, newBSName)
+	} else {
+		log.Infof("📋 The old backing store %q has been detached from all tiers.", oldBSName)
+	}
+	log.Infof("   To clean up the old backing store:")
+	log.Infof("      oc patch noobaa/noobaa -n %s --type json --patch='[{\"op\":\"add\",\"path\":\"/spec/manualDefaultBackingStore\",\"value\":true}]'", options.Namespace)
+	log.Infof("      oc delete backingstore %s -n %s", oldBSName, options.Namespace)
+}
+
+// replacePoolInTiers iterates all buckets from system info, looks up each tier
+// in the pre-built map, and replaces references to oldPool with newPool.
+// In migrate mode it adds newPool as a mirror group alongside oldPool.
+func replacePoolInTiers(nbClient nb.Client, buckets []nb.BucketInfo, tierByName map[string]nb.TierInfo, oldPool, newPool string, migrate bool) int {
+	log := util.Logger()
+	tiersUpdated := 0
+	seen := map[string]bool{}
+
+	for _, bucket := range buckets {
+		if bucket.Tiering == nil {
+			continue
+		}
+		for _, tierItem := range bucket.Tiering.Tiers {
+			tierName := tierItem.Tier
+			if seen[tierName] {
+				continue
+			}
+			seen[tierName] = true
+
+			tierInfo, ok := tierByName[tierName]
+			if !ok {
+				log.Warnf("⚠️  Tier %q not found in system info, skipping", tierName)
+				continue
+			}
+
+			if !util.Contains(tierInfo.AttachedPools, oldPool) {
+				continue
+			}
+
+			updateParams := buildTierUpdate(tierInfo, oldPool, newPool, migrate)
+			if updateParams == nil {
+				continue
+			}
+			err := nbClient.UpdateTierAPI(*updateParams)
+			if err != nil {
+				log.Fatalf(`❌ Failed to update tier %q: %s`, tierName, err)
+			}
+			log.Infof("   Updated tier %q (bucket %q)", tierName, bucket.Name)
+			tiersUpdated++
+		}
+	}
+	return tiersUpdated
+}
+
+// buildTierUpdate constructs the UpdateTierParams to swap oldPool with newPool.
+// In migrate mode, it adds newPool alongside the existing pools (MIRROR).
+// In replace mode, it replaces oldPool with newPool and preserves data_placement.
+func buildTierUpdate(tier nb.TierInfo, oldPool, newPool string, migrate bool) *nb.UpdateTierParams {
+	if migrate {
+		// Add newPool to attached_pools for mirroring; keep oldPool
+		if util.Contains(tier.AttachedPools, newPool) {
+			return nil // already mirrored
+		}
+		pools := make([]string, 0, len(tier.AttachedPools)+1)
+		pools = append(pools, tier.AttachedPools...)
+		pools = append(pools, newPool)
+		return &nb.UpdateTierParams{
+			Name:          tier.Name,
+			DataPlacement: "MIRROR",
+			AttachedPools: pools,
+		}
+	}
+
+	// Replace mode: swap oldPool → newPool, preserve data_placement
+	pools := make([]string, 0, len(tier.AttachedPools))
+	for _, p := range tier.AttachedPools {
+		if p == oldPool {
+			if !util.Contains(pools, newPool) {
+				pools = append(pools, newPool)
+			}
+		} else if !util.Contains(pools, p) {
+			pools = append(pools, p)
+		}
+	}
+
+	placement := tier.DataPlacement
+	// If only one pool remains, MIRROR is meaningless — use SPREAD
+	if len(pools) <= 1 && placement == "MIRROR" {
+		placement = "SPREAD"
+	}
+	return &nb.UpdateTierParams{
+		Name:          tier.Name,
+		DataPlacement: placement,
+		AttachedPools: pools,
+	}
+}
+
+// replacePoolInAccounts updates any account whose default_resource points to oldPool.
+func replacePoolInAccounts(nbClient nb.Client, accounts []nb.AccountInfo, oldPool, newPool string) int {
+	log := util.Logger()
+	updated := 0
+	for i := range accounts {
+		acct := &accounts[i]
+		if acct.DefaultResource != oldPool {
+			continue
+		}
+		newRes := newPool
+		err := nbClient.UpdateAccountS3Access(nb.UpdateAccountS3AccessParams{
+			Email:           acct.Email,
+			S3Access:        acct.HasS3Access,
+			DefaultResource: &newRes,
+		})
+		if err != nil {
+			log.Fatalf(`❌ Failed to update account %q default_resource: %s`, acct.Email, err)
+		}
+		log.Infof("   Updated account %q default_resource", acct.Email)
+		updated++
+	}
+	return updated
+}
+
 func RunDelete(cmd *cobra.Command, args []string) {
 
 	log := util.Logger()

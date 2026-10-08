@@ -33,6 +33,7 @@ type Client interface {
 	CreateCloudPoolAPI(CreateCloudPoolParams) error
 	UpdateCloudPoolAPI(UpdateCloudPoolParams) error
 	CreateTierAPI(CreateTierParams) error
+	UpdateTierAPI(UpdateTierParams) error
 	CreateNamespaceResourceAPI(CreateNamespaceResourceParams) error
 	CreateTieringPolicyAPI(TieringPolicyInfo) error
 
@@ -292,6 +293,12 @@ func (c *RPCClient) CreateTierAPI(params CreateTierParams) error {
 // CreateTieringPolicyAPI calls tiering_policy_api.create_policy()
 func (c *RPCClient) CreateTieringPolicyAPI(params TieringPolicyInfo) error {
 	req := &RPCMessage{API: "tiering_policy_api", Method: "create_policy", Params: params}
+	return c.Call(req, nil)
+}
+
+// UpdateTierAPI calls tier_api.update_tier()
+func (c *RPCClient) UpdateTierAPI(params UpdateTierParams) error {
+	req := &RPCMessage{API: "tier_api", Method: "update_tier", Params: params}
 	return c.Call(req, nil)
 }
 
