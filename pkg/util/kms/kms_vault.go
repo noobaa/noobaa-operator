@@ -110,40 +110,59 @@ func tlsConfig(config map[string]interface{}, namespace string) error {
 	secret.Namespace = namespace
 
 	if caCertSecretName, ok := config[VaultCaCert]; ok {
-		secret.Name = caCertSecretName.(string)
-		if !util.KubeCheckOptional(secret) {
-			return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+		secretName := caCertSecretName.(string)
+		// TREAT EMPTY STRING AS MISSING - SKIP ENTIRELY
+		if secretName == "" {
+			delete(config, VaultCaCert)
+		} else {
+			secret.Name = secretName
+			if !util.KubeCheckOptional(secret) {
+				return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+			}
+			caFileAddr, err := writeCrtsToFile(secret.Name, namespace, secret.Data["cert"], VaultCaCert)
+			if err != nil {
+				return fmt.Errorf("can not write crt %v to file %v", VaultCaCert, err)
+			}
+			config[VaultCaCert] = caFileAddr
 		}
-		caFileAddr, err := writeCrtsToFile(secret.Name, namespace, secret.Data["cert"], VaultCaCert)
-		if err != nil {
-			return fmt.Errorf("can not write crt %v to file %v", VaultCaCert, err)
-		}
-		config[VaultCaCert] = caFileAddr
 	}
 
 	if clientCertSecretName, ok := config[VaultClientCert]; ok {
-		secret.Name = clientCertSecretName.(string)
-		if !util.KubeCheckOptional(secret) {
-			return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+		secretName := clientCertSecretName.(string)
+		// TREAT EMPTY STRING AS MISSING - SKIP ENTIRELY
+		if secretName == "" {
+			delete(config, VaultClientCert)
+		} else {
+			secret.Name = secretName
+			if !util.KubeCheckOptional(secret) {
+				return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+			}
+			clientCertFileAddr, err := writeCrtsToFile(secret.Name, namespace, secret.Data["cert"], VaultClientCert)
+			if err != nil {
+				return fmt.Errorf("can not write crt %v to file %v", VaultClientCert, err)
+			}
+			config[VaultClientCert] = clientCertFileAddr
 		}
-		clientCertFileAddr, err := writeCrtsToFile(secret.Name, namespace, secret.Data["cert"], VaultClientCert)
-		if err != nil {
-			return fmt.Errorf("can not write crt %v to file %v", VaultClientCert, err)
-		}
-		config[VaultClientCert] = clientCertFileAddr
+	}
 
-	}
 	if clientKeySecretName, ok := config[VaultClientKey]; ok {
-		secret.Name = clientKeySecretName.(string)
-		if !util.KubeCheckOptional(secret) {
-			return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+		secretName := clientKeySecretName.(string)
+		// TREAT EMPTY STRING AS MISSING - SKIP ENTIRELY
+		if secretName == "" {
+			delete(config, VaultClientKey)
+		} else {
+			secret.Name = secretName
+			if !util.KubeCheckOptional(secret) {
+				return fmt.Errorf(`❌ Could not find secret %q in namespace %q`, secret.Name, secret.Namespace)
+			}
+			clientKeyFileAddr, err := writeCrtsToFile(secret.Name, namespace, secret.Data["key"], VaultClientKey)
+			if err != nil {
+				return fmt.Errorf("can not write crt %v to file %v", VaultClientKey, err)
+			}
+			config[VaultClientKey] = clientKeyFileAddr
 		}
-		clientKeyFileAddr, err := writeCrtsToFile(secret.Name, namespace, secret.Data["key"], VaultClientKey)
-		if err != nil {
-			return fmt.Errorf("can not write crt %v to file %v", VaultClientKey, err)
-		}
-		config[VaultClientKey] = clientKeyFileAddr
 	}
+
 	return nil
 }
 
