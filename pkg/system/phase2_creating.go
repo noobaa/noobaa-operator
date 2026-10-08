@@ -53,8 +53,8 @@ const (
 	gcpProviderIdEnvVar          string = "PROVIDER_ID"
 	gcpServiceAccountEmailEnvVar string = "SERVICE_ACCOUNT_EMAIL"
 
-	// coreConfigMapHashAnnotation is set on the core configmap and STS/endpoint pod
-	// templates so OnDelete can detect config drift.
+	// coreConfigMapHashAnnotation is set on the core configmap and on core,
+	// endpoint, and BG workers pod templates so a ConfigMap change rolls those pods.
 	coreConfigMapHashAnnotation = "noobaa.io/configmap-hash"
 )
 
@@ -212,6 +212,10 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 
+	if err := r.ReconcileObject(r.ServiceBgWorkers, r.SetDesiredServiceBgWorkers); err != nil {
+		return err
+	}
+
 	if err := r.ReconcileObject(r.CoreLease, r.SetDesiredCoreLease); err != nil {
 		return err
 	}
@@ -239,6 +243,11 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 
+	if err := r.ReconcileObject(r.BgWorkersApp, r.SetDesiredBgWorkersApp); err != nil {
+		return err
+	}
+	r.deleteLegacyBgScannerResources()
+
 	// reconcile noobaa-mgmt route only if routes are enabled
 	if !r.NooBaa.Spec.DisableRoutes {
 		if err := r.ReconcileObjectOptional(r.RouteMgmt, nil); err != nil {
@@ -263,6 +272,8 @@ func (r *Reconciler) SetDesiredServiceAccount() error {
 func (r *Reconciler) SetDesiredServiceMgmt() error {
 	r.ServiceMgmt.Spec.Selector["noobaa-mgmt"] = r.Request.Name
 	r.ServiceMgmt.Labels["noobaa-mgmt-svc"] = "true"
+	desired := util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service)
+	r.ServiceMgmt.Spec.Ports = desiredServicePorts(r.ServiceMgmt.Spec.Ports, desired.Spec.Ports)
 	return nil
 }
 
@@ -658,11 +669,16 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 		case "NOOBAA_CORE_LEASE_NAME":
 			c.Env[j].Value = r.CoreLease.Name
 		case "NOTIFICATION_LOG_DIR":
-			notification_log_dir_value := "";
-			if (r.NooBaa.Spec.BucketNotifications.Enabled) {
-				notification_log_dir_value = "/var/logs/notifications";
+			notification_log_dir_value := ""
+			if r.NooBaa.Spec.BucketNotifications.Enabled {
+				notification_log_dir_value = "/var/logs/notifications"
 			}
 			c.Env[j].Value = notification_log_dir_value
+
+		case "BG_ADDR":
+			if r.ServiceBgWorkers != nil && r.ServiceBgWorkers.Name != "" {
+				c.Env[j].Value = r.bgWorkersServiceAddr()
+			}
 		}
 	}
 
@@ -730,6 +746,10 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 			util.MergeEnvArrays(&c.Env, &r.DefaultCoreApp.Containers[i].Env)
 			// Sync Command so upgrades converge on the leader-elect wrap
 			c.Command = append([]string(nil), r.DefaultCoreApp.Containers[i].Command...)
+			// Sync container ports (drop legacy 8445 when BG is external)
+			if len(r.DefaultCoreApp.Containers[i].Ports) > 0 {
+				c.Ports = append([]corev1.ContainerPort(nil), r.DefaultCoreApp.Containers[i].Ports...)
+			}
 		}
 		r.setDesiredCoreEnv(c)
 
@@ -1850,7 +1870,7 @@ func (r *Reconciler) coreTerminationGracePeriodSeconds() int64 {
 // restartStaleCorePods deletes one outdated core pod per reconcile when the
 // StatefulSet uses OnDelete. A pod is outdated if its config hash or
 // controller revision does not match the desired StatefulSet. We only delete
-// one at a time and skip if a delete is already in progress. also prefer deleting 
+// one at a time and skip if a delete is already in progress. also prefer deleting
 // the standby pod over the leader pod, to minimize downtime.
 func (r *Reconciler) restartStaleCorePods() error {
 	if r.CoreApp.UID == "" {

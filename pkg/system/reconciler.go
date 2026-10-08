@@ -78,6 +78,10 @@ type Reconciler struct {
 	CoreLease                 *coordinationv1.Lease
 	CoreAppConfig             *corev1.ConfigMap
 	DefaultCoreApp            *corev1.PodSpec
+	BgWorkersApp              *appsv1.Deployment
+	DefaultBgWorkersApp       *corev1.PodSpec
+	ServiceBgWorkers          *corev1.Service
+	ServiceMonitorBgWorkers   *monitoringv1.ServiceMonitor
 	PostgresDBConf            *corev1.ConfigMap
 	NooBaaPostgresDB          *appsv1.StatefulSet
 	ServiceMgmt               *corev1.Service
@@ -143,10 +147,11 @@ type Reconciler struct {
 	CNPGCluster      *cnpgv1.Cluster
 
 	// Network Policies (Phase 1 - operands only)
-	NetworkPolicyCore     *networkingv1.NetworkPolicy
-	NetworkPolicyDb       *networkingv1.NetworkPolicy
-	NetworkPolicyEndpoint *networkingv1.NetworkPolicy
-	NetworkPolicyPVPool   *networkingv1.NetworkPolicy
+	NetworkPolicyCore      *networkingv1.NetworkPolicy
+	NetworkPolicyDb        *networkingv1.NetworkPolicy
+	NetworkPolicyEndpoint  *networkingv1.NetworkPolicy
+	NetworkPolicyPVPool    *networkingv1.NetworkPolicy
+	NetworkPolicyBgWorkers *networkingv1.NetworkPolicy
 }
 
 // NewReconciler initializes a reconciler to be used for loading or reconciling a noobaa system
@@ -171,6 +176,9 @@ func NewReconciler(
 		CoreApp:                   util.KubeObject(bundle.File_deploy_internal_statefulset_core_yaml).(*appsv1.StatefulSet),
 		CoreLease:                 util.KubeObject(bundle.File_deploy_internal_lease_core_yaml).(*coordinationv1.Lease),
 		CoreAppConfig:             util.KubeObject(bundle.File_deploy_internal_configmap_empty_yaml).(*corev1.ConfigMap),
+		BgWorkersApp:              util.KubeObject(bundle.File_deploy_internal_deployment_bg_workers_yaml).(*appsv1.Deployment),
+		ServiceBgWorkers:          util.KubeObject(bundle.File_deploy_internal_service_bg_workers_yaml).(*corev1.Service),
+		ServiceMonitorBgWorkers:   util.KubeObject(bundle.File_deploy_internal_servicemonitor_bg_workers_yaml).(*monitoringv1.ServiceMonitor),
 		PostgresDBConf:            util.KubeObject(bundle.File_deploy_internal_configmap_postgres_db_yaml).(*corev1.ConfigMap),
 		NooBaaPostgresDB:          util.KubeObject(bundle.File_deploy_internal_statefulset_postgres_db_yaml).(*appsv1.StatefulSet),
 		ServiceDb:                 util.KubeObject(bundle.File_deploy_internal_service_db_yaml).(*corev1.Service),
@@ -218,10 +226,11 @@ func NewReconciler(
 		CNPGImageCatalog: cnpg.GetCnpgImageCatalogObj(req.Namespace, req.Name+pgImageCatalogSuffix),
 		CNPGCluster:      cnpg.GetCnpgClusterObj(req.Namespace, req.Name+pgClusterSuffix),
 
-		NetworkPolicyCore:     util.KubeObject(bundle.File_deploy_internal_networkpolicy_core_yaml).(*networkingv1.NetworkPolicy),
-		NetworkPolicyDb:       util.KubeObject(bundle.File_deploy_internal_networkpolicy_db_yaml).(*networkingv1.NetworkPolicy),
-		NetworkPolicyEndpoint: util.KubeObject(bundle.File_deploy_internal_networkpolicy_endpoint_yaml).(*networkingv1.NetworkPolicy),
-		NetworkPolicyPVPool:   util.KubeObject(bundle.File_deploy_internal_networkpolicy_pvpool_yaml).(*networkingv1.NetworkPolicy),
+		NetworkPolicyCore:      util.KubeObject(bundle.File_deploy_internal_networkpolicy_core_yaml).(*networkingv1.NetworkPolicy),
+		NetworkPolicyDb:        util.KubeObject(bundle.File_deploy_internal_networkpolicy_db_yaml).(*networkingv1.NetworkPolicy),
+		NetworkPolicyEndpoint:  util.KubeObject(bundle.File_deploy_internal_networkpolicy_endpoint_yaml).(*networkingv1.NetworkPolicy),
+		NetworkPolicyPVPool:    util.KubeObject(bundle.File_deploy_internal_networkpolicy_pvpool_yaml).(*networkingv1.NetworkPolicy),
+		NetworkPolicyBgWorkers: util.KubeObject(bundle.File_deploy_internal_networkpolicy_bg_workers_yaml).(*networkingv1.NetworkPolicy),
 
 		SecretMetricsAuth:        util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretOIDCKeyCloakConfig: util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
@@ -233,6 +242,9 @@ func NewReconciler(
 	r.CoreApp.Namespace = r.Request.Namespace
 	r.CoreLease.Namespace = r.Request.Namespace
 	r.CoreAppConfig.Namespace = r.Request.Namespace
+	r.BgWorkersApp.Namespace = r.Request.Namespace
+	r.ServiceBgWorkers.Namespace = r.Request.Namespace
+	r.ServiceMonitorBgWorkers.Namespace = r.Request.Namespace
 	r.PostgresDBConf.Namespace = r.Request.Namespace
 	r.NooBaaPostgresDB.Namespace = r.Request.Namespace
 	r.ServiceMgmt.Namespace = r.Request.Namespace
@@ -286,6 +298,7 @@ func NewReconciler(
 	r.NetworkPolicyDb.Namespace = r.Request.Namespace
 	r.NetworkPolicyEndpoint.Namespace = r.Request.Namespace
 	r.NetworkPolicyPVPool.Namespace = r.Request.Namespace
+	r.NetworkPolicyBgWorkers.Namespace = r.Request.Namespace
 
 	// Set Names
 	r.NooBaa.Name = r.Request.Name
@@ -293,6 +306,9 @@ func NewReconciler(
 	r.CoreApp.Name = r.Request.Name + "-core"
 	r.CoreLease.Name = r.Request.Name + "-core-lease"
 	r.CoreAppConfig.Name = "noobaa-config"
+	r.BgWorkersApp.Name = r.Request.Name + "-bg-workers"
+	r.ServiceBgWorkers.Name = r.Request.Name + "-bg-workers"
+	r.ServiceMonitorBgWorkers.Name = r.ServiceBgWorkers.Name + "-service-monitor"
 	r.NooBaaPostgresDB.Name = r.Request.Name + "-db-pg"
 	r.ServiceMgmt.Name = r.Request.Name + "-mgmt"
 	r.ServiceSyslog.Name = "noobaa-syslog"
@@ -344,6 +360,7 @@ func NewReconciler(
 	r.NetworkPolicyDb.Name = r.Request.Name + "-db-pg-cluster"
 	r.NetworkPolicyEndpoint.Name = r.Request.Name + "-endpoint"
 	r.NetworkPolicyPVPool.Name = r.Request.Name + "-pvpool"
+	r.NetworkPolicyBgWorkers.Name = r.Request.Name + "-bg-workers"
 
 	// Set the target service for routes.
 	r.RouteMgmt.Spec.To.Name = r.ServiceMgmt.Name
@@ -377,6 +394,7 @@ func NewReconciler(
 	r.BucketLoggingVolumeMount = "/var/logs/bucket-logs"
 
 	r.DefaultCoreApp = r.CoreApp.Spec.Template.Spec.DeepCopy()
+	r.DefaultBgWorkersApp = r.BgWorkersApp.Spec.Template.Spec.DeepCopy()
 	r.DefaultDeploymentEndpoint = r.DeploymentEndpoint.Spec.Template.Spec.DeepCopy()
 	r.webIdentityTokenPath = util.WebIdentityTokenPath
 
@@ -391,6 +409,8 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.CoreApp)
 	util.KubeCheckQuiet(r.CoreLease)
 	util.KubeCheck(r.CoreAppConfig)
+	util.KubeCheck(r.BgWorkersApp)
+	util.KubeCheck(r.ServiceBgWorkers)
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
 	util.KubeCheck(r.ServiceSts)
@@ -423,6 +443,7 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheckOptional(r.GCPCloudCreds)
 	util.KubeCheckOptional(r.PrometheusRule)
 	util.KubeCheckOptional(r.ServiceMonitorMgmt)
+	util.KubeCheckOptional(r.ServiceMonitorBgWorkers)
 	util.KubeCheckOptional(r.ServiceMonitorS3)
 	util.KubeCheckOptional(r.RouteMgmt)
 	util.KubeCheckOptional(r.RouteS3)
@@ -809,15 +830,26 @@ func (r *Reconciler) stopNoobaaPodsAndGetNumRunningPods() (int, error) {
 		r.Logger.Errorf("got error stopping noobaa-endpoints pods. error: %v", err)
 		return -1, err
 	}
+	if err := r.ReconcileObject(r.BgWorkersApp, func() error {
+		r.BgWorkersApp.Spec.Replicas = &zeroReplicas
+		return nil
+	}); err != nil {
+		r.Logger.Errorf("got error stopping noobaa-bg-workers pods. error: %v", err)
+		return -1, err
+	}
 	corePodsList := &corev1.PodList{}
-	if !util.KubeList(corePodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-core": "noobaa"}) {
+	if !util.KubeList(corePodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-core": r.Request.Name}) {
 		return -1, fmt.Errorf("got error listing noobaa-core pods")
 	}
 	endpointPodsList := &corev1.PodList{}
-	if !util.KubeList(endpointPodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-s3": "noobaa"}) {
+	if !util.KubeList(endpointPodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-s3": r.Request.Name}) {
 		return -1, fmt.Errorf("got error listing noobaa-endpoints pods")
 	}
-	return len(corePodsList.Items) + len(endpointPodsList.Items), nil
+	bgPodsList := &corev1.PodList{}
+	if !util.KubeList(bgPodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-bg-workers": r.Request.Name}) {
+		return -1, fmt.Errorf("got error listing noobaa-bg-workers pods")
+	}
+	return len(corePodsList.Items) + len(endpointPodsList.Items) + len(bgPodsList.Items), nil
 }
 
 func (r *Reconciler) GetAffinity() *corev1.Affinity {

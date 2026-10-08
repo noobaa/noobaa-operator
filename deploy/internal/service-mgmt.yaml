@@ -19,7 +19,5 @@ spec:
     - port: 443
       name: mgmt-https
       targetPort: 8443
-    - port: 8445
-      name: bg-https
     - port: 8446
       name: hosted-agents-https
