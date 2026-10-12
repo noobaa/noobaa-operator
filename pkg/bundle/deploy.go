@@ -7177,7 +7177,7 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "4739938379286ce9852a155f5faed0425457c7251419b5ac8ac99c7f8575a42a"
+const Sha256_deploy_role_yaml = "93f73921675cc51000b4ec9bfcb07be4375216db499b09ca73fc0c1c9054018d"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -7361,7 +7361,16 @@ rules:
   - list
   - watch
   - delete
-`
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - operatorconditions
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch`
 
 const Sha256_deploy_role_binding_yaml = "59a2627156ed3db9cd1a4d9c47e8c1044279c65e84d79c525e51274329cb16ff"
 
