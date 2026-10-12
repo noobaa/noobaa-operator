@@ -54,6 +54,10 @@ func RunOperator(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed to become leader: %s", err)
 	}
 
+	if err := system.InitOLMUpgradeable(); err != nil {
+		log.Fatalf("Failed to initialize OLM Upgradeable condition: %s", err)
+	}
+
 	// Create a new Cmd to provide shared dependencies and start components
 	// mgr => namespace scoped manager
 	mgr, err := manager.New(config, manager.Options{
