@@ -373,6 +373,10 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	log := r.Logger
 	log.Infof("Start NooBaa system Reconcile ...")
 
+	// report to OLM whether the operator can be upgraded. Runs last, also on early returns and errors,
+	// so it sees the DB status set during this reconcile.
+	defer r.ReconcileOLMUpgradeable()
+
 	if !CheckSystem(r.NooBaa) {
 		if r.NooBaa.DeletionTimestamp != nil {
 			log.Infof("NooBaa not found or already deleted.")

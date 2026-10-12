@@ -40,6 +40,7 @@ import (
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	operv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	operv2 "github.com/operator-framework/api/pkg/operators/v2"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/sirupsen/logrus"
@@ -190,6 +191,7 @@ func init() {
 	Panic(monitoringv1.AddToScheme(scheme.Scheme))
 	Panic(cloudcredsv1.AddToScheme(scheme.Scheme))
 	Panic(operv1.AddToScheme(scheme.Scheme))
+	Panic(operv2.AddToScheme(scheme.Scheme))
 	Panic(cephv1.AddToScheme(scheme.Scheme))
 	Panic(routev1.AddToScheme(scheme.Scheme))
 	Panic(secv1.AddToScheme(scheme.Scheme))
