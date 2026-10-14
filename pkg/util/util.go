@@ -315,6 +315,25 @@ func MapperProvider(config *rest.Config, httpClient *http.Client) (meta.RESTMapp
 	}), nil
 }
 
+// PersistentVolumeClaimExists reports whether the named PVC is present in the cluster.
+func PersistentVolumeClaimExists(namespace, name string) bool {
+	if name == "" {
+		return false
+	}
+	pvc := &corev1.PersistentVolumeClaim{}
+	pvc.Namespace = namespace
+	pvc.Name = name
+	return KubeCheckQuiet(pvc)
+}
+
+// SetKubeClientForTest replaces the process-wide client used by KubeCheck and KubeList.
+// It returns the previous client so the caller can restore it.
+func SetKubeClientForTest(c client.Client) client.Client {
+	prev := lazyClient
+	lazyClient = c
+	return prev
+}
+
 // KubeClient resturns a controller-runtime client
 // We use a lazy mapper and a specialized implementation of fast mapper
 // in order to avoid lags when running a CLI client to a far away cluster.

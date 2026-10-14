@@ -70,6 +70,17 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 
+	pvcHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+		return namespacestore.MapPvcToNamespaceStores(types.NamespacedName{
+			Name:      obj.GetName(),
+			Namespace: obj.GetNamespace(),
+		})
+	})
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.PersistentVolumeClaim{}, pvcHandler, logEventsPredicate))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

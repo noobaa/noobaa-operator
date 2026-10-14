@@ -670,6 +670,19 @@ func (r *Reconciler) setDesiredEndpointMounts(podSpec *corev1.PodSpec, container
 		}
 		if nsStore.Spec.NSFS != nil {
 			pvcName := nsStore.Spec.NSFS.PvcName
+			if !util.PersistentVolumeClaimExists(nsStore.Namespace, pvcName) {
+				r.Logger.Warnf("skipping endpoint mount for NamespaceStore %q because PVC %q was not found", nsStore.Name, pvcName)
+				// Drop a stale indicator left from a previous reconcile when the PVC existed.
+				envName := "NSFS_NSR_" + nsStore.Name
+				filtered := container.Env[:0]
+				for _, env := range container.Env {
+					if env.Name != envName {
+						filtered = append(filtered, env)
+					}
+				}
+				container.Env = filtered
+				continue
+			}
 			isPvcExist := false
 			volumeName := "nsfs-" + nsStore.Name
 			for _, volume := range podSpec.Volumes {
