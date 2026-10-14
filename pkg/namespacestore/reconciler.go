@@ -292,7 +292,33 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 			fmt.Sprintf("NamespaceStore Secret %q not found or deleted", r.Secret.Name))
 	}
 
+	if err := r.checkNsfsPvc(); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// checkNsfsPvc rejects an NSFS NamespaceStore when its PVC is not in the cluster.
+// A store that has never reached Ready waits a few minutes so the PVC can be created first.
+func (r *Reconciler) checkNsfsPvc() error {
+	nsfs := r.NamespaceStore.Spec.NSFS
+	if r.NamespaceStore.Spec.Type != nbv1.NSStoreTypeNSFS || nsfs == nil || nsfs.PvcName == "" {
+		return nil
+	}
+
+	if util.PersistentVolumeClaimExists(r.NamespaceStore.Namespace, nsfs.PvcName) {
+		return nil
+	}
+
+	if time.Since(r.NamespaceStore.CreationTimestamp.Time) < 5*time.Minute {
+		err := fmt.Errorf("NamespaceStore PVC %q not found, but not rejecting the young as it might be in process", nsfs.PvcName)
+		r.Logger.Infof("%v", err)
+		return err
+	}
+
+	return util.NewPersistentError("MissingPvc",
+		fmt.Sprintf("NamespaceStore PVC %q not found or deleted", nsfs.PvcName))
 }
 
 // ReconcilePhaseConnecting checks that we have the system and secret needed to reconcile

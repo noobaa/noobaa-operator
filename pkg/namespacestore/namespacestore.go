@@ -1105,3 +1105,30 @@ func MapSecretToNamespaceStores(secret types.NamespacedName) []reconcile.Request
 
 	return reqs
 }
+
+// MapPvcToNamespaceStores returns NamespaceStores whose NSFS spec references this PVC.
+func MapPvcToNamespaceStores(pvc types.NamespacedName) []reconcile.Request {
+	log := util.Logger()
+	log.Infof("checking which namespaceStores to reconcile. mapping pvc %v to namespaceStores", pvc)
+	nsList := &nbv1.NamespaceStoreList{
+		TypeMeta: metav1.TypeMeta{Kind: "NamespaceStoreList"},
+	}
+	if !util.KubeList(nsList, &client.ListOptions{Namespace: pvc.Namespace}) {
+		log.Infof("Could not list namespaceStores in namespace %q", pvc.Namespace)
+		return nil
+	}
+
+	reqs := []reconcile.Request{}
+	for _, ns := range nsList.Items {
+		if ns.Spec.Type == nbv1.NSStoreTypeNSFS && ns.Spec.NSFS != nil && ns.Spec.NSFS.PvcName == pvc.Name {
+			reqs = append(reqs, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      ns.Name,
+					Namespace: ns.Namespace,
+				},
+			})
+		}
+	}
+	log.Infof("will reconcile these namespaceStores: %v", reqs)
+	return reqs
+}
