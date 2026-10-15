@@ -353,10 +353,15 @@ type CreateBucketParams struct {
 	RemoveArchivePolicy bool                 `json:"remove_archive_policy,omitempty"`
 }
 
+// QuotaModeStrict enables synchronous quota checks on the NooBaa API.
+const QuotaModeStrict = "strict"
+
 // QuotaConfig quota configuration
 type QuotaConfig struct {
 	Size     *SizeQuotaConfig     `json:"size,omitempty"`
 	Quantity *QuantityQuotaConfig `json:"quantity,omitempty"`
+	// Mode is "strict" when synchronous quota checks are enabled. Omitted otherwise.
+	Mode string `json:"mode,omitempty"`
 }
 
 // SizeQuotaConfig size quota configuration
@@ -378,8 +383,9 @@ func (q *QuotaConfig) IsEqual(q2 *QuotaConfig) bool {
 	if q == nil && q2 == nil {
 		return true
 	}
-	if (q == nil && q2.Size == nil && q2.Quantity == nil) ||
-		(q2 == nil && q.Size == nil && q.Quantity == nil) {
+	// A nil quota matches an empty one, but not a quota that only sets Mode.
+	if (q == nil && q2.Size == nil && q2.Quantity == nil && q2.Mode == "") ||
+		(q2 == nil && q.Size == nil && q.Quantity == nil && q.Mode == "") {
 		return true
 	}
 	return reflect.DeepEqual(q, q2)

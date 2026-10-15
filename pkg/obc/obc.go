@@ -67,6 +67,8 @@ func CmdCreate() *cobra.Command {
 		"Set quota max objects quantity config to requested bucket")
 	cmd.Flags().String("max-size", "",
 		"Set quota max size config to requested bucket")
+	cmd.Flags().Bool("strict-quota", false,
+		"Enable synchronous quota checks. A size or object limit may come from this claim or its bucket class")
 	// vectors bucket configuration
 	cmd.Flags().String("bucket-type", "",
 		"Set bucket type: '' (default) or 'vector'")
@@ -145,6 +147,7 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 	maxSize, _ := cmd.Flags().GetString("max-size")
 	maxObjects, _ := cmd.Flags().GetString("max-objects")
+	strictQuota, _ := cmd.Flags().GetBool("strict-quota")
 	gid, _ := cmd.Flags().GetInt("gid")
 	uid, _ := cmd.Flags().GetInt("uid")
 	distinguishedName, _ := cmd.Flags().GetString("distinguished-name")
@@ -251,6 +254,9 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 	if maxObjects != "" {
 		obc.Spec.AdditionalConfig["maxObjects"] = maxObjects
+	}
+	if strictQuota {
+		obc.Spec.AdditionalConfig["strictQuota"] = "true"
 	}
 
 	err := ValidateOBC(obc, true)

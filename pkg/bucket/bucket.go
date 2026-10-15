@@ -46,6 +46,8 @@ func CmdCreate() *cobra.Command {
 		"Set quota max objects quantity config to requested bucket")
 	cmd.Flags().String("max-size", "",
 		"Set quota max size config to requested bucket")
+	cmd.Flags().Bool("strict-quota", false,
+		"Enable synchronous quota checks. Requires max-size and/or max-objects")
 	return cmd
 }
 
@@ -61,6 +63,8 @@ func CmdUpdate() *cobra.Command {
 		"Set quota max objects quantity config to requested bucket")
 	cmd.Flags().String("max-size", "",
 		"Set quota max size config to requested bucket")
+	cmd.Flags().Bool("strict-quota", false,
+		"Enable synchronous quota checks. Requires a size or object limit on the bucket")
 	cmd.Flags().String("deep-archive-resource", "",
 		"Set or update the deep archive NamespaceStore resource for the bucket's archive policy")
 	cmd.Flags().Bool("remove-archive-policy", false,
@@ -188,6 +192,13 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatalf(`Missing expected arguments: <bucket-name> %s`, cmd.UsageString())
 	}
 	bucketName := args[0]
+	maxSize, _ := cmd.Flags().GetString("max-size")
+	maxObjects, _ := cmd.Flags().GetString("max-objects")
+	strictQuota, _ := cmd.Flags().GetBool("strict-quota")
+	if strictQuota && maxSize == "" && maxObjects == "" {
+		log.Fatalf(`❌ Must provide max-size and/or max-objects when using --strict-quota`)
+	}
+
 	nbClient := system.GetNBClient()
 
 	bucketClass, err := bucketclass.GetDefaultBucketClass(options.Namespace)
@@ -204,11 +215,11 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	maxSize, _ := cmd.Flags().GetString("max-size")
-	maxObjects, _ := cmd.Flags().GetString("max-objects")
-
 	quota, err := prepareQuotaConfig(bucketName, maxSize, maxObjects)
 	if err != nil {
+		log.Fatalf(`❌ Could not create bucket "%q" quota validation failed %q`, bucketName, err)
+	}
+	if err = applyStrictQuota(&quota, strictQuota); err != nil {
 		log.Fatalf(`❌ Could not create bucket "%q" quota validation failed %q`, bucketName, err)
 	}
 
@@ -240,6 +251,7 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	}
 	maxSize, _ := cmd.Flags().GetString("max-size")
 	maxObjects, _ := cmd.Flags().GetString("max-objects")
+	strictQuota, _ := cmd.Flags().GetBool("strict-quota")
 	deepArchiveResource, _ := cmd.Flags().GetString("deep-archive-resource")
 	removeArchivePolicy, _ := cmd.Flags().GetBool("remove-archive-policy")
 
@@ -252,7 +264,7 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 		ForceMd5Etag: forceMd5EtagPtr,
 	}
 
-	needBucketRead := maxSize != "" || maxObjects != ""
+	needBucketRead := maxSize != "" || maxObjects != "" || strictQuota
 	var bucketInfo nb.BucketInfo
 	if needBucketRead {
 		bucketInfo, err = nbClient.ReadBucketAPI(nb.ReadBucketParams{Name: bucketName})
@@ -261,9 +273,12 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if maxSize != "" || maxObjects != "" {
+	if maxSize != "" || maxObjects != "" || strictQuota {
 		quota, err := mergeQuotaForUpdate(bucketInfo.Quota, bucketName, maxSize, maxObjects)
 		if err != nil {
+			log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %q`, bucketName, err)
+		}
+		if err = applyStrictQuota(&quota, strictQuota); err != nil {
 			log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %q`, bucketName, err)
 		}
 		if err := nb.ValidateQuotaAgainstBucketUsage(&bucketInfo, &quota); err != nil {
@@ -434,6 +449,7 @@ func mergeQuotaForUpdate(existing *nb.QuotaConfig, bucketName string, maxSize st
 		return mergedQuota, err
 	}
 	if existing != nil {
+		mergedQuota.Mode = existing.Mode
 		if existing.Size != nil {
 			mergedQuota.Size = &nb.SizeQuotaConfig{
 				Value: existing.Size.Value,
@@ -471,4 +487,17 @@ func mergeQuotaForUpdate(existing *nb.QuotaConfig, bucketName string, maxSize st
 		}
 	}
 	return mergedQuota, nil
+}
+
+// applyStrictQuota sets quota mode to strict when the CLI flag is set.
+// A positive size or object limit must already be present on the quota.
+func applyStrictQuota(quota *nb.QuotaConfig, strictQuota bool) error {
+	if !strictQuota {
+		return nil
+	}
+	if quota == nil || (quota.Size == nil && quota.Quantity == nil) {
+		return fmt.Errorf("strict quota requires max-size and/or max-objects")
+	}
+	quota.Mode = nb.QuotaModeStrict
+	return nil
 }
