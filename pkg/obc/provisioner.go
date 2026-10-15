@@ -658,22 +658,30 @@ func GetQuotaConfig(bucketName string, BucketClassSpec *nbv1.BucketClassSpec, ob
 	var minMaxSize, minMaxObjects int64
 
 	// get quota config from ob
+	obStrict := false
 	if obAdditionalConfig != nil {
 		obMaxSize = obAdditionalConfig["maxSize"]
 		obMaxObjects = obAdditionalConfig["maxObjects"]
+		obStrict = obAdditionalConfig["strictQuota"] == "true"
 	}
 	// get quota config from bucketclass
+	bcStrict := false
 	if BucketClassSpec.Quota != nil {
 		bcMaxSize = BucketClassSpec.Quota.MaxSize
 		bcMaxObjects = BucketClassSpec.Quota.MaxObjects
+		bcStrict = BucketClassSpec.Quota.StrictQuota
 	}
+	strict := obStrict || bcStrict
 
-	log.Debugf("getQuotaConfig: bucket %q, obMaxSize %q, obMaxObjects %q, bcMaxSize %q, bcMaxObjects %q",
-		bucketName, obMaxSize, obMaxObjects, bcMaxSize, bcMaxObjects)
+	log.Debugf("getQuotaConfig: bucket %q, obMaxSize %q, obMaxObjects %q, bcMaxSize %q, bcMaxObjects %q, strict %t",
+		bucketName, obMaxSize, obMaxObjects, bcMaxSize, bcMaxObjects, strict)
 
 	quota := nb.QuotaConfig{}
 	// In order to remove the bucket quota, returns empty quota config if bucketclass and ob have no quota config
 	if bcMaxSize == "" && bcMaxObjects == "" && obMaxSize == "" && obMaxObjects == "" {
+		if strict {
+			return nil, fmt.Errorf("bucket %q GetQuotaConfig: strict quota requires maxSize and/or maxObjects", bucketName)
+		}
 		return &quota, nil
 	}
 
@@ -721,6 +729,12 @@ func GetQuotaConfig(bucketName string, BucketClassSpec *nbv1.BucketClassSpec, ob
 	}
 	if minMaxObjects > 0 {
 		quota.Quantity = &nb.QuantityQuotaConfig{Value: int(minMaxObjects)}
+	}
+	if strict {
+		if quota.Size == nil && quota.Quantity == nil {
+			return nil, fmt.Errorf("bucket %q GetQuotaConfig: strict quota requires maxSize and/or maxObjects", bucketName)
+		}
+		quota.Mode = nb.QuotaModeStrict
 	}
 
 	return &quota, nil
