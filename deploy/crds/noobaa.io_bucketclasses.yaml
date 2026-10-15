@@ -168,6 +168,12 @@ spec:
                   maxSize:
                     description: limits the max total size of objects per bucket
                     type: string
+                  mode:
+                    description: Mode sets quota enforcement to strict or async.
+                    enum:
+                    - strict
+                    - async
+                    type: string
                 type: object
               replicationPolicy:
                 description: ReplicationPolicy specifies a json of replication rules

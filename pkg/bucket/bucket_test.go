@@ -15,6 +15,72 @@ var _ = Describe("CmdUpdate", func() {
 		Expect(f).NotTo(BeNil())
 		Expect(f.DefValue).To(Equal(""))
 	})
+
+	It("should register the strict-quota flag", func() {
+		cmd := CmdUpdate()
+		f := cmd.Flags().Lookup("strict-quota")
+		Expect(f).NotTo(BeNil())
+		Expect(f.DefValue).To(Equal("false"))
+	})
+})
+
+var _ = Describe("CmdCreate", func() {
+	It("should register the strict-quota flag", func() {
+		cmd := CmdCreate()
+		f := cmd.Flags().Lookup("strict-quota")
+		Expect(f).NotTo(BeNil())
+		Expect(f.DefValue).To(Equal("false"))
+	})
+})
+
+var _ = Describe("QuotaModeChange", func() {
+	It("rejects clearing strict mode when it is not already strict", func() {
+		_, err := nb.QuotaModeChange("", nb.QuotaModeAsync)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("only valid when previous quota mode is strict"))
+	})
+
+	It("clears strict mode when it is already strict", func() {
+		mode, err := nb.QuotaModeChange(nb.QuotaModeStrict, nb.QuotaModeAsync)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(mode).To(Equal(nb.QuotaModeAsync))
+	})
+
+	It("leaves the current mode unchanged when the flag is omitted", func() {
+		mode, err := nb.QuotaModeChange(nb.QuotaModeStrict, "")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(mode).To(Equal(nb.QuotaModeStrict))
+	})
+})
+
+var _ = Describe("applyQuotaMode", func() {
+	It("sets mode strict when a limit is present", func() {
+		quota := &nb.QuotaConfig{Quantity: &nb.QuantityQuotaConfig{Value: 2}}
+		Expect(applyQuotaMode(quota, nb.QuotaModeStrict)).To(Succeed())
+		Expect(quota.Mode).To(Equal(nb.QuotaModeStrict))
+	})
+
+	It("sets mode async when strict quota is turned off", func() {
+		quota := &nb.QuotaConfig{
+			Quantity: &nb.QuantityQuotaConfig{Value: 2},
+			Mode:     nb.QuotaModeStrict,
+		}
+		Expect(applyQuotaMode(quota, nb.QuotaModeAsync)).To(Succeed())
+		Expect(quota.Mode).To(Equal(nb.QuotaModeAsync))
+	})
+
+	It("leaves mode unchanged when the flag is not set", func() {
+		quota := &nb.QuotaConfig{Quantity: &nb.QuantityQuotaConfig{Value: 2}, Mode: nb.QuotaModeStrict}
+		Expect(applyQuotaMode(quota, "")).To(Succeed())
+		Expect(quota.Mode).To(Equal(nb.QuotaModeStrict))
+	})
+
+	It("returns an error when strict quota has no limit", func() {
+		quota := &nb.QuotaConfig{}
+		err := applyQuotaMode(quota, nb.QuotaModeStrict)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("strict quota requires max-size and/or max-objects"))
+	})
 })
 
 var _ = Describe("IsArchiveNamespaceStore for deep archive update", func() {
@@ -92,6 +158,32 @@ var _ = Describe("mergeQuotaForUpdate", func() {
 			Expect(mergedQuota.Size.Unit).To(Equal("G"))
 			Expect(mergedQuota.Quantity).NotTo(BeNil())
 			Expect(mergedQuota.Quantity.Value).To(Equal(3))
+		})
+	})
+
+	Context("when an existing quota uses strict mode", func() {
+		It("keeps mode when only a limit is updated", func() {
+			existing := &nb.QuotaConfig{
+				Size: &nb.SizeQuotaConfig{Value: 5, Unit: "G"},
+				Mode: nb.QuotaModeStrict,
+			}
+			mergedQuota, err := mergeQuotaForUpdate(existing, "b", "", "2")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mergedQuota.Mode).To(Equal(nb.QuotaModeStrict))
+			Expect(mergedQuota.Quantity.Value).To(Equal(2))
+		})
+	})
+
+	Context("when both limits are cleared on a strict quota", func() {
+		It("removes the quota mode along with the limits", func() {
+			existing := &nb.QuotaConfig{
+				Size:     &nb.SizeQuotaConfig{Value: 5, Unit: "G"},
+				Quantity: &nb.QuantityQuotaConfig{Value: 2},
+				Mode:     nb.QuotaModeStrict,
+			}
+			mergedQuota, err := mergeQuotaForUpdate(existing, "b", "0", "0")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mergedQuota).To(Equal(nb.QuotaConfig{}))
 		})
 	})
 

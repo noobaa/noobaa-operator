@@ -67,6 +67,8 @@ func CmdCreate() *cobra.Command {
 		"Set quota max objects quantity config to requested bucket")
 	cmd.Flags().String("max-size", "",
 		"Set quota max size config to requested bucket")
+	cmd.Flags().Bool("strict-quota", false,
+		"Enable synchronous quota checks. A size or object limit may come from this claim or its bucket class")
 	// vectors bucket configuration
 	cmd.Flags().String("bucket-type", "",
 		"Set bucket type: '' (default) or 'vector'")
@@ -145,6 +147,10 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	}
 	maxSize, _ := cmd.Flags().GetString("max-size")
 	maxObjects, _ := cmd.Flags().GetString("max-objects")
+	quotaMode, err := nb.QuotaModeChange("", quotaModeFromFlag(cmd))
+	if err != nil {
+		log.Fatalf(`❌ %s`, err)
+	}
 	gid, _ := cmd.Flags().GetInt("gid")
 	uid, _ := cmd.Flags().GetInt("uid")
 	distinguishedName, _ := cmd.Flags().GetString("distinguished-name")
@@ -185,8 +191,9 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	obc.Spec.StorageClassName = sc.Name
 	obc.Spec.AdditionalConfig = map[string]string{}
 
+	var bucketClass *nbv1.BucketClass
 	if bucketClassName != "" {
-		bucketClass := &nbv1.BucketClass{
+		bucketClass = &nbv1.BucketClass{
 			TypeMeta: metav1.TypeMeta{Kind: "BucketClass"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      bucketClassName,
@@ -217,6 +224,9 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		if path != "" {
 			log.Fatalf(`❌ Could not create OBC %q with inner path while missing namespace/vector bucketclass`, obc.Name)
 		}
+	}
+	if quotaMode == nb.QuotaModeStrict && maxSize == "" && maxObjects == "" && !bucketClassHasStrictQuotaLimit(bucketClass) {
+		log.Fatalf(`❌ Must provide max-size and/or max-objects when using --strict-quota`)
 	}
 
 	if replicationPolicy != "" {
@@ -252,8 +262,11 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if maxObjects != "" {
 		obc.Spec.AdditionalConfig["maxObjects"] = maxObjects
 	}
+	if quotaMode != "" {
+		obc.Spec.AdditionalConfig["mode"] = quotaMode
+	}
 
-	err := ValidateOBC(obc, true)
+	err = ValidateOBC(obc, true)
 	if err != nil {
 		log.Fatalf(`❌ Could not create OBC %q in namespace %q validation failed %q`, obc.Name, obc.Namespace, err)
 	}
@@ -702,4 +715,25 @@ func GenerateAccountKeys(name, accountName, appNamespace string) error {
 
 	log.Printf("✅ Successfully regenerate s3 credentials for the OBC %q", name)
 	return nil
+}
+
+// quotaModeFromFlag returns strict or async when --strict-quota was passed.
+func quotaModeFromFlag(cmd *cobra.Command) string {
+	if cmd.Flags().Lookup("strict-quota") == nil || !cmd.Flags().Changed("strict-quota") {
+		return ""
+	}
+	strictQuota, err := cmd.Flags().GetBool("strict-quota")
+	if err != nil {
+		return ""
+	}
+	return nb.QuotaModeForFlag(strictQuota)
+}
+
+// bucketClassHasStrictQuotaLimit reports whether the class already enforces strict quota with a limit.
+func bucketClassHasStrictQuotaLimit(bucketClass *nbv1.BucketClass) bool {
+	if bucketClass == nil || bucketClass.Spec.Quota == nil {
+		return false
+	}
+	quota := bucketClass.Spec.Quota
+	return quota.Mode == nb.QuotaModeStrict && (quota.MaxSize != "" || quota.MaxObjects != "")
 }

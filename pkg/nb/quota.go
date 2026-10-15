@@ -7,6 +7,34 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 )
 
+// QuotaModeForFlag maps --strict-quota to a quota mode.
+// true is strict and false is async.
+func QuotaModeForFlag(strict bool) string {
+	if strict {
+		return QuotaModeStrict
+	}
+	return QuotaModeAsync
+}
+
+// QuotaModeChange applies a --strict-quota selection.
+// requested is empty when the flag was omitted, strict when set, and async when set to false.
+// Clearing strict mode is allowed only when the current mode is already strict.
+func QuotaModeChange(current, requested string) (string, error) {
+	switch requested {
+	case "":
+		return current, nil
+	case QuotaModeStrict:
+		return QuotaModeStrict, nil
+	case QuotaModeAsync:
+		if current != QuotaModeStrict {
+			return "", fmt.Errorf("--strict-quota=false is only valid when previous quota mode is strict")
+		}
+		return QuotaModeAsync, nil
+	default:
+		return "", fmt.Errorf("quota mode must be strict or async")
+	}
+}
+
 // WarnIfQuotaCappedByFree emits a best-effort warning when the configured size quota exceeds
 // the bucket's effective free capacity, meaning raising the quota will not increase Data Space Avail
 func WarnIfQuotaCappedByFree(bucketName string, bucket *BucketInfo, nbClient Client, quota *QuotaConfig, warnf func(format string, args ...interface{})) {
