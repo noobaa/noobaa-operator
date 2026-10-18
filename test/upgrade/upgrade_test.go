@@ -13,10 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	. "github.com/onsi/ginkgo/v2"
@@ -200,7 +199,7 @@ func upgradeNooBaa(upgradeTargetVersion string) {
 //        S3 FUNCTIONS      //
 //////////////////////////////
 
-func getS3ClientForOBC(obcName string) *s3.S3 {
+func getS3ClientForOBC(obcName string) *s3.Client {
 	accessKey, secretKey = getAccountCredentials(obcName)
 	Expect(accessKey).ToNot(BeEmpty())
 	Expect(secretKey).ToNot(BeEmpty())
@@ -211,24 +210,25 @@ func getS3ClientForOBC(obcName string) *s3.S3 {
 }
 
 // getS3Client creates an S3 client using the provided access key and secret key.
-func getS3Client(accessKey string, secretKey string) (*s3.S3, error) {
+func getS3Client(accessKey string, secretKey string) (*s3.Client, error) {
 	client := &http.Client{Transport: util.InsecureHTTPTransport}
-	s3Config := &aws.Config{
-		Credentials: credentials.NewStaticCredentials(
+	s3Config := aws.Config{
+		Credentials: credentials.NewStaticCredentialsProvider(
 			accessKey,
 			secretKey,
 			"",
 		),
-		Region:           aws.String("us-east-1"),
-		Endpoint:         aws.String(s3Endpoint),
-		S3ForcePathStyle: aws.Bool(true),
-		HTTPClient:       client,
+		Region:       "us-east-1",
+		BaseEndpoint: aws.String(s3Endpoint),
+		HTTPClient:   client,
+		// Keep WhenRequired so a future switch to config.LoadDefaultConfig does not
+		// enable CRC32/aws-chunked checksums that break S3-compatible endpoints.
+		RequestChecksumCalculation: aws.RequestChecksumCalculationWhenRequired,
+		ResponseChecksumValidation: aws.ResponseChecksumValidationWhenRequired,
 	}
-	s3Session, err := session.NewSession(s3Config)
-	if err != nil {
-		return nil, err
-	}
-	s3Client := s3.New(s3Session)
+	s3Client := s3.NewFromConfig(s3Config, func(o *s3.Options) {
+		o.UsePathStyle = true
+	})
 	return s3Client, nil
 }
 
@@ -247,8 +247,8 @@ func getAccountCredentials(bucketName string) (string, string) {
 }
 
 // putObject uploads an object to the specified bucket.
-func putObject(s3Client *s3.S3, bucketName string, objectKey string, objectContent string) {
-	_, err := s3Client.PutObject(&s3.PutObjectInput{
+func putObject(s3Client *s3.Client, bucketName string, objectKey string, objectContent string) {
+	_, err := s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket: &bucketName,
 		Key:    &objectKey,
 		Body:   strings.NewReader(objectContent),
@@ -259,8 +259,8 @@ func putObject(s3Client *s3.S3, bucketName string, objectKey string, objectConte
 }
 
 // getObject retrieves an object from the specified bucket and validates its content.
-func getObject(s3Client *s3.S3, bucketName string, objectKey string, objectContent string) {
-	getObjectOutput, err := s3Client.GetObject(&s3.GetObjectInput{
+func getObject(s3Client *s3.Client, bucketName string, objectKey string, objectContent string) {
+	getObjectOutput, err := s3Client.GetObject(context.TODO(), &s3.GetObjectInput{
 		Bucket: &bucketName,
 		Key:    &objectKey,
 	})
