@@ -1068,7 +1068,7 @@ function check_deletes {
     test_noobaa backingstore list
     delete_backingstore_path
     delete_namespacestore_path
-    delete_accounts
+    delete_account
     delete_non_existing_resources
     echo_time "✅  delete cycle is done"
 }
@@ -1538,4 +1538,31 @@ function test_create_obc_with_nsfs_acc_distinguished_name {
         echo_time "❌  [${FUNCNAME[0]}]: Noobaa obc nsfs account creation test failed. Expected: distinguished_name=$distinguished_name, Got: distinguished_name=$account_distinguished_name"
         exit 1
     fi
+}
+
+function test_bucket_update_placement {
+    echo_time "💬  Testing bucket update-placement command"
+
+    echo_time "💬  Creating a second backing store for placement test"
+    test_noobaa backingstore create pv-pool placement-test-bs --num-volumes 1 --pv-size-gb 16
+    wait_for_backingstore_ready placement-test-bs
+
+    echo_time "💬  Creating a CLI bucket on the default backing store"
+    test_noobaa bucket create placement-test-bucket
+
+    echo_time "💬  Updating bucket placement to use new backing store"
+    test_noobaa bucket update-placement placement-test-bucket --placement Spread --backingstores placement-test-bs
+
+    echo_time "💬  Verifying OBC bucket is rejected"
+    local obc_bucket
+    obc_bucket=$(test_noobaa silence obc list | grep -v NAME | head -1 | awk '{print $3}')
+    if [[ -n "${obc_bucket}" ]]; then
+        test_noobaa should_fail bucket update-placement "${obc_bucket}" --placement Spread --backingstores placement-test-bs
+    fi
+
+    echo_time "💬  Cleanup"
+    test_noobaa bucket delete placement-test-bucket
+    kuberun delete backingstore placement-test-bs
+
+    echo_time "✅  bucket update-placement test passed"
 }

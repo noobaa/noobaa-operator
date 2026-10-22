@@ -566,6 +566,13 @@ type TierItem struct {
 	Mode  string `json:"mode,omitempty"`
 }
 
+// UpdateTierParams is the params of tier_api.update_tier()
+type UpdateTierParams struct {
+	Name          string   `json:"name"`
+	DataPlacement string   `json:"data_placement,omitempty"`
+	AttachedPools []string `json:"attached_pools,omitempty"`
+}
+
 // DeleteBucketParams is the params of bucket_api.delete_bucket()
 type DeleteBucketParams struct {
 	Name string `json:"name"`
