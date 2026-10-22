@@ -6,6 +6,7 @@ import (
 
 	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/namespacestore"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/system"
@@ -132,6 +133,27 @@ func Add(mgr manager.Manager) error {
 
 	// Watch for StorageClass changes to trigger reconcile and recreate it when deleted
 	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &storagev1.StorageClass{}, storageClassHandler, &logEventsPredicate))
+	if err != nil {
+		return err
+	}
+
+	// An NSFS PVC create or delete must rebuild the endpoint Deployment mounts.
+	nsfsPvcHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+		reqs := namespacestore.MapPvcToNamespaceStores(types.NamespacedName{
+			Name:      obj.GetName(),
+			Namespace: obj.GetNamespace(),
+		})
+		if len(reqs) == 0 {
+			return nil
+		}
+		return []reconcile.Request{{
+			NamespacedName: types.NamespacedName{
+				Name:      options.SystemName,
+				Namespace: options.Namespace,
+			},
+		}}
+	})
+	err = c.Watch(source.Kind[client.Object](mgr.GetCache(), &corev1.PersistentVolumeClaim{}, nsfsPvcHandler, &logEventsPredicate))
 	if err != nil {
 		return err
 	}

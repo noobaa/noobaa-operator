@@ -4,12 +4,19 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/constants"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
+	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // const configuration values for the validation checks
@@ -327,6 +334,82 @@ func getDefaultS3CompatibleNsStore() nbv1.NamespaceStore {
 			},
 		},
 		ObjectMeta: metav1.ObjectMeta{Name: "test1"},
+	}
+}
+
+func useKubeClient(t *testing.T, objs ...client.Object) {
+	t.Helper()
+	cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(objs...).Build()
+	prev := util.SetKubeClientForTest(cl)
+	t.Cleanup(func() { util.SetKubeClientForTest(prev) })
+}
+
+func nsfsStore(name, pvcName string, phase nbv1.NamespaceStorePhase, created time.Time) *nbv1.NamespaceStore {
+	return &nbv1.NamespaceStore{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              name,
+			Namespace:         "openshift-storage",
+			CreationTimestamp: metav1.NewTime(created),
+		},
+		Spec: nbv1.NamespaceStoreSpec{
+			Type: nbv1.NSStoreTypeNSFS,
+			NSFS: &nbv1.NSFSSpec{PvcName: pvcName},
+		},
+		Status: nbv1.NamespaceStoreStatus{Phase: phase},
+	}
+}
+
+func checkNsfsPvcReconciler(store *nbv1.NamespaceStore) *Reconciler {
+	return &Reconciler{
+		NamespaceStore: store,
+		Logger:         logrus.NewEntry(logrus.New()),
+	}
+}
+
+func TestCheckNsfsPvcRejectsReadyStoreWhenPvcIsGone(t *testing.T) {
+	store := nsfsStore("nsfs-ns-store-test", "nsfs-test-pvc", nbv1.NamespaceStorePhaseReady, time.Now().Add(-time.Hour))
+	useKubeClient(t, store)
+
+	err := checkNsfsPvcReconciler(store).checkNsfsPvc()
+	perr, ok := err.(*util.PersistentError)
+	if !ok {
+		t.Fatalf("expected MissingPvc persistent error, got %v", err)
+	}
+	if perr.Reason != "MissingPvc" {
+		t.Fatalf("reason = %q", perr.Reason)
+	}
+}
+
+func TestCheckNsfsPvcWaitsForYoungStore(t *testing.T) {
+	// Age-only grace matches MissingSecret, including after SetPhase(Verifying)
+	// has already cleared a Ready phase in memory.
+	store := nsfsStore("nsfs-new", "nsfs-test-pvc", nbv1.NamespaceStorePhaseReady, time.Now())
+	useKubeClient(t, store)
+
+	err := checkNsfsPvcReconciler(store).checkNsfsPvc()
+	if err == nil || util.IsPersistentError(err) {
+		t.Fatalf("expected a temporary error, got %v", err)
+	}
+}
+
+func TestCheckNsfsPvcAllowsExistingPvc(t *testing.T) {
+	store := nsfsStore("nsfs-ok", "nsfs-test-pvc", nbv1.NamespaceStorePhaseReady, time.Now().Add(-time.Hour))
+	pvc := &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "nsfs-test-pvc", Namespace: store.Namespace}}
+	useKubeClient(t, store, pvc)
+
+	if err := checkNsfsPvcReconciler(store).checkNsfsPvc(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMapPvcToNamespaceStores(t *testing.T) {
+	match := nsfsStore("nsfs-match", "shared-pvc", nbv1.NamespaceStorePhaseReady, time.Now())
+	other := nsfsStore("nsfs-other", "other-pvc", nbv1.NamespaceStorePhaseReady, time.Now())
+	useKubeClient(t, match, other)
+
+	reqs := MapPvcToNamespaceStores(types.NamespacedName{Name: "shared-pvc", Namespace: match.Namespace})
+	if len(reqs) != 1 || reqs[0].Name != match.Name {
+		t.Fatalf("requests = %+v", reqs)
 	}
 }
 
