@@ -614,21 +614,13 @@ func (r *Reconciler) setPostgresConfig() {
 	_, endpointMaxCount := r.getEndpointMinMaxCount()
 
 	totalMemoryKB := defaultCalcMemoryKB
-	cpuNum := defaultCalcCPU
 	dbResources := getDBResources(r.NooBaa)
 	if !dbResources.Limits.Memory().IsZero() {
 		totalMemoryKB = dbResources.Limits.Memory().Value() / 1024
 	} else if !dbResources.Requests.Memory().IsZero() {
 		totalMemoryKB = dbResources.Requests.Memory().Value() / 1024
 	}
-	if !dbResources.Limits.Cpu().IsZero() {
-		cpuNum = dbResources.Limits.Cpu().MilliValue() / 1000
-	} else if !dbResources.Requests.Cpu().IsZero() {
-		cpuNum = dbResources.Requests.Cpu().MilliValue() / 1000
-	}
-	if cpuNum < 1 {
-		cpuNum = 1
-	}
+	cpuNum := cpuCoresForPGTune(dbResources)
 
 	for k, v := range calculatePGConfig(totalMemoryKB, cpuNum, int(endpointMaxCount), r.CNPGCluster.Spec.StorageConfiguration.Size) {
 		overrideParameters[k] = v
@@ -694,6 +686,20 @@ func (r *Reconciler) setPostgresConfig() {
 	}
 
 	r.CNPGCluster.Spec.PostgresConfiguration.Parameters = desiredParameters
+}
+
+// cpuCoresForPGTune converts DB CPU resources to a whole-core count for PGTune.
+// Quantity.Value() rounds up (e.g. 3999m -> 4), so fractional N999m profile CPUs
+// keep the same tuning as the previous whole-integer defaults. MilliValue()/1000
+// would truncate instead (3999m -> 3).
+func cpuCoresForPGTune(dbResources corev1.ResourceRequirements) int64 {
+	if !dbResources.Limits.Cpu().IsZero() {
+		return dbResources.Limits.Cpu().Value()
+	}
+	if !dbResources.Requests.Cpu().IsZero() {
+		return dbResources.Requests.Cpu().Value()
+	}
+	return defaultCalcCPU
 }
 
 // calculatePGConfig computes dynamically-calculated PostgreSQL configuration parameters.
