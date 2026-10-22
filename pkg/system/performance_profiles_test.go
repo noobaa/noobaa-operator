@@ -606,29 +606,29 @@ func TestProfileResourcesValues(t *testing.T) {
 		{
 			name:     "default",
 			profile:  nbv1.PerformanceProfileDefault,
-			core:     [4]string{"500m", "1", "1Gi", "4Gi"},
+			core:     [4]string{"500m", "999m", "1Gi", "4Gi"},
 			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
-			db:       [4]string{"1", "1", "2Gi", "2Gi"},
-			endpoint: [4]string{"500m", "2", "1Gi", "3Gi"},
+			db:       [4]string{"999m", "999m", "2Gi", "2Gi"},
+			endpoint: [4]string{"500m", "1999m", "1Gi", "3Gi"},
 			pvPool:   [4]string{"400m", "400m", "800Mi", "800Mi"},
 		},
 		{
 			name:     "mixed-workload",
 			profile:  nbv1.PerformanceProfileMixedWorkload,
-			core:     [4]string{"1", "2", "2Gi", "4Gi"},
+			core:     [4]string{"999m", "1999m", "2Gi", "4Gi"},
 			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
-			db:       [4]string{"4", "4", "8Gi", "8Gi"},
-			endpoint: [4]string{"2", "4", "2Gi", "4Gi"},
-			pvPool:   [4]string{"1", "1", "2Gi", "2Gi"},
+			db:       [4]string{"3999m", "3999m", "8Gi", "8Gi"},
+			endpoint: [4]string{"1999m", "3999m", "2Gi", "4Gi"},
+			pvPool:   [4]string{"999m", "999m", "2Gi", "2Gi"},
 		},
 		{
 			name:     "small-objects",
 			profile:  nbv1.PerformanceProfileSmallObjects,
-			core:     [4]string{"1", "2", "2Gi", "6Gi"},
+			core:     [4]string{"999m", "1999m", "2Gi", "6Gi"},
 			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
-			db:       [4]string{"6", "6", "16Gi", "16Gi"},
-			endpoint: [4]string{"1", "4", "2Gi", "4Gi"},
-			pvPool:   [4]string{"1", "1", "2Gi", "2Gi"},
+			db:       [4]string{"5999m", "5999m", "16Gi", "16Gi"},
+			endpoint: [4]string{"999m", "3999m", "2Gi", "4Gi"},
+			pvPool:   [4]string{"999m", "999m", "2Gi", "2Gi"},
 		},
 		{
 			name:     "mini-env",
@@ -671,6 +671,35 @@ func assertResourceQuantity(t *testing.T, resources corev1.ResourceRequirements,
 	}
 	if resources.Limits.Memory().Cmp(memLim) != 0 {
 		t.Errorf("memory limit = %s, want %s", resources.Limits.Memory().String(), memLim.String())
+	}
+}
+
+// Guaranteed pods (CPU request == limit) with whole-integer CPUs fail kubelet
+// admission under full-pcpus-only. Profile defaults must use fractional millicores.
+func TestPerformanceProfiles_GuaranteedCPUNotWholeInteger(t *testing.T) {
+	for name, profile := range performanceProfiles {
+		t.Run(string(name), func(t *testing.T) {
+			for _, component := range []struct {
+				label     string
+				resources corev1.ResourceRequirements
+			}{
+				{"core", profile.coreResources},
+				{"log", profile.logResources},
+				{"db", profile.dbResources},
+				{"endpoint", profile.endpointResources},
+				{"pvPool", profile.pvPoolResources},
+			} {
+				cpuReq := component.resources.Requests[corev1.ResourceCPU]
+				cpuLim := component.resources.Limits[corev1.ResourceCPU]
+				if cpuReq.Cmp(cpuLim) != 0 {
+					continue
+				}
+				if cpuReq.MilliValue()%1000 == 0 {
+					t.Errorf("%s: Guaranteed CPU %s is a whole integer; use N999m fractions for full-pcpus-only",
+						component.label, cpuReq.String())
+				}
+			}
+		})
 	}
 }
 
