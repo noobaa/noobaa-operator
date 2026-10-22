@@ -5,6 +5,7 @@ import (
 
 	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -191,6 +192,114 @@ func TestCalculatePGConfig_NoCPU(t *testing.T) {
 			t.Errorf("unexpected parallel parameter %q when cpuNum=0", key)
 		}
 	}
+}
+
+func TestCPUCoresForPGTune_FractionalMatchesInteger(t *testing.T) {
+	tests := []struct {
+		name       string
+		resources  corev1.ResourceRequirements
+		wantCPUNum int64
+	}{
+		{
+			name:       "limits 999m rounds up to 1",
+			resources:  profileResources("999m", "999m", "2Gi", "2Gi"),
+			wantCPUNum: 1,
+		},
+		{
+			name:       "limits 3999m rounds up to 4",
+			resources:  profileResources("3999m", "3999m", "8Gi", "8Gi"),
+			wantCPUNum: 4,
+		},
+		{
+			name:       "limits 5999m rounds up to 6",
+			resources:  profileResources("5999m", "5999m", "16Gi", "16Gi"),
+			wantCPUNum: 6,
+		},
+		{
+			name: "request-only 3999m rounds up to 4",
+			resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("3999m"),
+					corev1.ResourceMemory: resource.MustParse("8Gi"),
+				},
+			},
+			wantCPUNum: 4,
+		},
+		{
+			name:       "whole integer 4 unchanged",
+			resources:  profileResources("4", "4", "8Gi", "8Gi"),
+			wantCPUNum: 4,
+		},
+		{
+			name:       "empty resources use default",
+			resources:  corev1.ResourceRequirements{},
+			wantCPUNum: defaultCalcCPU,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := cpuCoresForPGTune(tt.resources)
+			if got != tt.wantCPUNum {
+				t.Fatalf("cpuCoresForPGTune() = %d, want %d", got, tt.wantCPUNum)
+			}
+		})
+	}
+}
+
+func TestSetPostgresConfig_FractionalCPUMatchesInteger(t *testing.T) {
+	pairs := []struct {
+		fractional string
+		integer    string
+		memory     string
+	}{
+		{"999m", "1", "2Gi"},
+		{"3999m", "4", "8Gi"},
+		{"5999m", "6", "16Gi"},
+	}
+
+	for _, tt := range pairs {
+		t.Run(tt.fractional+" vs "+tt.integer, func(t *testing.T) {
+			fracParams := postgresParamsForDBResources(t, profileResources(tt.fractional, tt.fractional, tt.memory, tt.memory))
+			intParams := postgresParamsForDBResources(t, profileResources(tt.integer, tt.integer, tt.memory, tt.memory))
+			for _, key := range []string{
+				"max_worker_processes",
+				"max_parallel_workers",
+				"max_parallel_workers_per_gather",
+				"max_parallel_maintenance_workers",
+				"shared_buffers",
+				"work_mem",
+			} {
+				if intParams[key] != fracParams[key] {
+					t.Errorf("param %q: fractional(%s)=%q integer(%s)=%q",
+						key, tt.fractional, fracParams[key], tt.integer, intParams[key])
+				}
+			}
+		})
+	}
+}
+
+func postgresParamsForDBResources(t *testing.T, dbResources corev1.ResourceRequirements) map[string]string {
+	t.Helper()
+	rr := dbResources.DeepCopy()
+	r := &Reconciler{
+		Logger: logrus.NewEntry(logrus.New()),
+		NooBaa: &nbv1.NooBaa{
+			Spec: nbv1.NooBaaSpec{
+				DBSpec: &nbv1.NooBaaDBSpec{DBResources: rr},
+			},
+		},
+		CNPGCluster: &cnpgv1.Cluster{
+			Spec: cnpgv1.ClusterSpec{
+				StorageConfiguration: cnpgv1.StorageConfiguration{Size: "50Gi"},
+				PostgresConfiguration: cnpgv1.PostgresConfiguration{
+					Parameters: map[string]string{},
+				},
+			},
+		},
+	}
+	r.setPostgresConfig()
+	return r.CNPGCluster.Spec.PostgresConfiguration.Parameters
 }
 
 func TestCalculatePGConfig_WalKeepSize(t *testing.T) {

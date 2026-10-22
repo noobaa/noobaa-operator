@@ -41,12 +41,14 @@ func profileResources(cpuReq, cpuLim, memReq, memLim string) corev1.ResourceRequ
 	}
 }
 
+// Use N999m CPU fractions instead of whole integers so Guaranteed pods avoid
+// full-pcpus-only / SMT alignment failures (BZ 2009650, DFBUGS-11202).
 var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 	nbv1.PerformanceProfileDefault: {
-		coreResources:     profileResources("500m", "1", "1Gi", "4Gi"),
+		coreResources:     profileResources("500m", "999m", "1Gi", "4Gi"),
 		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
-		dbResources:       profileResources("1", "1", "2Gi", "2Gi"),
-		endpointResources: profileResources("500m", "2", "1Gi", "3Gi"),
+		dbResources:       profileResources("999m", "999m", "2Gi", "2Gi"),
+		endpointResources: profileResources("500m", "1999m", "1Gi", "3Gi"),
 		pvPoolResources:   profileResources("400m", "400m", "800Mi", "800Mi"),
 		endpointMinCount:  1,
 		endpointMaxCount:  2,
@@ -54,27 +56,27 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 		pvPoolNumVolumes:  3,
 	},
 	nbv1.PerformanceProfileMixedWorkload: {
-		coreResources:     profileResources("1", "2", "2Gi", "4Gi"),
+		coreResources:     profileResources("999m", "1999m", "2Gi", "4Gi"),
 		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
-		dbResources:       profileResources("4", "4", "8Gi", "8Gi"),
-		endpointResources: profileResources("2", "4", "2Gi", "4Gi"),
-		pvPoolResources:   profileResources("1", "1", "2Gi", "2Gi"),
+		dbResources:       profileResources("3999m", "3999m", "8Gi", "8Gi"),
+		endpointResources: profileResources("1999m", "3999m", "2Gi", "4Gi"),
+		pvPoolResources:   profileResources("999m", "999m", "2Gi", "2Gi"),
 		endpointMinCount:  2,
 		endpointMaxCount:  4,
 		dbInstances:       2,
 		pvPoolNumVolumes:  3,
 	},
 	nbv1.PerformanceProfileSmallObjects: {
-		coreResources:     profileResources("1", "2", "2Gi", "6Gi"),
+		coreResources:     profileResources("999m", "1999m", "2Gi", "6Gi"),
 		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
-		dbResources:       profileResources("6", "6", "16Gi", "16Gi"),
-		// Endpoint CPU request is 1 (not 2): a single-process endpoint serving small
+		dbResources:       profileResources("5999m", "5999m", "16Gi", "16Gi"),
+		// Endpoint CPU request is ~1 (not ~2): a single-process endpoint serving small
 		// objects is main-thread bound and tops out at ~1 core, so request 2 leaves the
 		// HPA reading ~50% utilisation on a fully-saturated pod and it never scales.
-		// Request 1 makes a saturated pod read ~100%, restoring the CPU-based trigger.
-		// Larger profiles keep request 2 because their per-pod ceiling is ~2.5 cores.
-		endpointResources: profileResources("1", "4", "2Gi", "4Gi"),
-		pvPoolResources:   profileResources("1", "1", "2Gi", "2Gi"),
+		// Request ~1 makes a saturated pod read ~100%, restoring the CPU-based trigger.
+		// Larger profiles keep request ~2 because their per-pod ceiling is ~2.5 cores.
+		endpointResources: profileResources("999m", "3999m", "2Gi", "4Gi"),
+		pvPoolResources:   profileResources("999m", "999m", "2Gi", "2Gi"),
 		endpointMinCount:  2,
 		endpointMaxCount:  4,
 		dbInstances:       2,
@@ -83,7 +85,7 @@ var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 	nbv1.PerformanceProfileDevEnv: {
 		coreResources:     profileResources("500m", "500m", "1Gi", "1Gi"),
 		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
-		dbResources:       profileResources("1", "1", "2Gi", "2Gi"),
+		dbResources:       profileResources("999m", "999m", "2Gi", "2Gi"),
 		endpointResources: profileResources("500m", "500m", "500Mi", "500Mi"),
 		pvPoolResources:   profileResources("500m", "500m", "500Mi", "500Mi"),
 		endpointMinCount:  1,
