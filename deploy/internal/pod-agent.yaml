@@ -27,6 +27,7 @@ spec:
           value: /etc/agent-config/agent_config
         - name: NOOBAA_LOG_LEVEL
         - name: NOOBAA_LOG_COLOR
+        - name: ROLLBACK_TO_ICE
       command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
       # Insert the relevant image for the agent
       ports:
