@@ -2,6 +2,7 @@ package obc
 
 import (
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
@@ -365,5 +366,69 @@ var _ = Describe("GetQuotaConfig", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(quota.Quantity).NotTo(BeNil())
 		Expect(quota.Quantity.Value).To(Equal(1000))
+		Expect(quota.Mode).To(BeEmpty())
+	})
+
+	It("sets mode strict when the OBC strictQuota flag is true and a limit is set", func() {
+		bcSpec := &nbv1.BucketClassSpec{}
+		obConfig := map[string]string{
+			"maxObjects":  "1000",
+			"strictQuota": "true",
+		}
+		log := logrus.NewEntry(logrus.New())
+
+		quota, err := GetQuotaConfig("test-bucket", bcSpec, obConfig, log)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(quota.Mode).To(Equal(nb.QuotaModeStrict))
+		Expect(quota.Quantity.Value).To(Equal(1000))
+	})
+
+	It("sets mode strict when the BucketClass strictQuota flag is true", func() {
+		bcSpec := &nbv1.BucketClassSpec{
+			Quota: &nbv1.Quota{
+				MaxSize:     "1Gi",
+				StrictQuota: true,
+			},
+		}
+		log := logrus.NewEntry(logrus.New())
+
+		quota, err := GetQuotaConfig("test-bucket", bcSpec, nil, log)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(quota.Mode).To(Equal(nb.QuotaModeStrict))
+		Expect(quota.Size).NotTo(BeNil())
+	})
+
+	It("keeps BucketClass strict mode when the OBC strictQuota value is false", func() {
+		bcSpec := &nbv1.BucketClassSpec{
+			Quota: &nbv1.Quota{
+				MaxObjects:  "10",
+				StrictQuota: true,
+			},
+		}
+		obConfig := map[string]string{
+			"strictQuota": "false",
+		}
+		log := logrus.NewEntry(logrus.New())
+
+		quota, err := GetQuotaConfig("test-bucket", bcSpec, obConfig, log)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(quota.Mode).To(Equal(nb.QuotaModeStrict))
+	})
+
+	It("returns an error when strict quota is set without a positive limit", func() {
+		bcSpec := &nbv1.BucketClassSpec{}
+		obConfig := map[string]string{
+			"strictQuota": "true",
+		}
+		log := logrus.NewEntry(logrus.New())
+
+		quota, err := GetQuotaConfig("test-bucket", bcSpec, obConfig, log)
+
+		Expect(quota).To(BeNil())
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("strict quota requires maxSize and/or maxObjects"))
 	})
 })

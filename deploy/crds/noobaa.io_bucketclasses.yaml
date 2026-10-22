@@ -168,6 +168,10 @@ spec:
                   maxSize:
                     description: limits the max total size of objects per bucket
                     type: string
+                  strictQuota:
+                    description: StrictQuota enables synchronous quota checks. Requires
+                      maxSize and/or maxObjects.
+                    type: boolean
                 type: object
               replicationPolicy:
                 description: ReplicationPolicy specifies a json of replication rules
