@@ -401,8 +401,7 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 					}
 				case "BG_ADDR":
 					if r.JoinSecret == nil {
-						port := nb.FindPortByName(r.ServiceMgmt, "bg-https")
-						c.Env[j].Value = fmt.Sprintf(`%s:%d`, mgmtBaseAddr, port.Port)
+						c.Env[j].Value = r.bgWorkersServiceAddr()
 					} else {
 						c.Env[j].Value = r.JoinSecret.StringData["bg_addr"]
 					}
@@ -468,9 +467,9 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 						c.Env[j].Value = ""
 					}
 				case "NOTIFICATION_LOG_DIR":
-					notification_log_dir_value := "";
-					if (r.NooBaa.Spec.BucketNotifications.Enabled) {
-						notification_log_dir_value = "/var/logs/notifications";
+					notification_log_dir_value := ""
+					if r.NooBaa.Spec.BucketNotifications.Enabled {
+						notification_log_dir_value = "/var/logs/notifications"
 					}
 					c.Env[j].Value = notification_log_dir_value
 				}
@@ -1781,6 +1780,23 @@ func (r *Reconciler) ReconcileServiceMonitors() error {
 	if err := r.ReconcileObjectOptional(r.ServiceMonitorS3, r.setDesiredServiceMonitorS3); err != nil {
 		return err
 	}
+	r.ApplyMonitoringLabels(r.ServiceMonitorBgWorkers)
+	if err := r.ReconcileObjectOptional(r.ServiceMonitorBgWorkers, r.setDesiredServiceMonitorBgWorkers); err != nil {
+		return err
+	}
+	return nil
+}
+
+// setDesiredServiceMonitorBgWorkers scrapes BG worker metrics over HTTPS.
+// The process serves them at / with the bg-workers serving certificate.
+func (r *Reconciler) setDesiredServiceMonitorBgWorkers() error {
+	for i := range r.ServiceMonitorBgWorkers.Spec.Endpoints {
+		r.ServiceMonitorBgWorkers.Spec.Endpoints[i].Path = "/"
+	}
+	r.setServiceMonitorEndpointsToHTTPS(r.ServiceMonitorBgWorkers.Spec.Endpoints, "metrics-https")
+	r.setServiceMonitorAuthorization(r.ServiceMonitorBgWorkers.Spec.Endpoints)
+	r.setServiceMonitorTLSConfig(r.ServiceMonitorBgWorkers.Spec.Endpoints, r.ServiceBgWorkers.Name)
+	r.setServiceMonitorKeepReadyPodRelabel(r.ServiceMonitorBgWorkers.Spec.Endpoints)
 	return nil
 }
 
