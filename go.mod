@@ -9,7 +9,7 @@ replace (
 )
 
 require (
-	cloud.google.com/go/storage v1.36.0
+	cloud.google.com/go/storage v1.38.0
 	github.com/Azure/azure-sdk-for-go v67.2.0+incompatible
 	github.com/Azure/azure-storage-blob-go v0.15.0
 	github.com/Azure/go-autorest/autorest v0.11.28
@@ -19,13 +19,14 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/aws/aws-sdk-go v1.48.12
 	github.com/blang/semver/v4 v4.0.0
+	github.com/coder/websocket v1.8.15
 	github.com/coreos/go-semver v0.3.1
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/gemalto/kmip-go v0.0.10
 	github.com/google/uuid v1.6.0
 	github.com/kedacore/keda/v2 v2.7.0
 	github.com/kube-object-storage/lib-bucket-provisioner v0.0.0-20221122204822-d1a8c34382f1
-	github.com/libopenstorage/secrets v0.0.0-20240416031220-a17cf7f72c6c
+	github.com/libopenstorage/secrets v0.0.0-20260901190741-925417d11ff0
 	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.35.1
@@ -38,12 +39,12 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.75.2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rook/rook/pkg/apis v0.0.0-20240819063246-893ea7f6d6a1
-	github.com/sirupsen/logrus v1.9.4
+	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	golang.org/x/term v0.33.0
-	google.golang.org/api v0.162.0
+	google.golang.org/api v0.169.0
 	google.golang.org/grpc v1.70.0
 	k8s.io/api v0.30.3
 	k8s.io/apiextensions-apiserver v0.30.3
@@ -56,7 +57,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20240822171749-76de80e0abd9
 	k8s.io/kubectl v0.25.4
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
-	nhooyr.io/websocket v1.8.7
 	sigs.k8s.io/container-object-storage-interface-api v0.1.0
 	sigs.k8s.io/container-object-storage-interface-provisioner-sidecar v0.1.0
 	sigs.k8s.io/container-object-storage-interface-spec v0.1.0
@@ -95,7 +95,7 @@ require (
 	go.opentelemetry.io/otel v1.32.0 // indirect
 	go.opentelemetry.io/otel/metric v1.32.0 // indirect
 	go.opentelemetry.io/otel/trace v1.32.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/tools/go/packages/packagestest v0.1.1-deprecated // indirect
@@ -136,7 +136,7 @@ require (
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
-	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
+	github.com/googleapis/gax-go/v2 v2.12.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
