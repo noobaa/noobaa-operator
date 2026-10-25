@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/sirupsen/logrus"
-	"nhooyr.io/websocket"
 )
 
 const (
