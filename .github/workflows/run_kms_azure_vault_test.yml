@@ -4,7 +4,7 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   run-azure-vault-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
@@ -31,6 +31,7 @@ jobs:
       - name: Deploy Dependencies
         run: |
           set -x
+          export KIND_WORKER_COUNT=0
           bash .travis/install-5nodes-kind-cluster.sh
           go get -v github.com/onsi/ginkgo/ginkgo
           go install -mod=mod -v github.com/onsi/ginkgo/ginkgo
