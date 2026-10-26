@@ -80,6 +80,7 @@ spec:
               mountPath: /var/run/secrets/openshift/serviceaccount
               readOnly: true
           resources:
+            # Default performance profile (overridden by getBgWorkersResources).
             requests:
               cpu: "250m"
               memory: "1Gi"

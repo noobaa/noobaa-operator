@@ -1518,7 +1518,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "cf8b0283a5d8660badba7edc2cb196fb43815f7a837eab7cb86f5fbeb204e2cf"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "36c3bd5216b515acd42025e32e35628aeb3f1a2ad3bdcfef32b9df566b75c82f"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2537,6 +2537,70 @@ spec:
                     description: Prometheus namespace that scrap metrics from noobaa
                     type: string
                 type: object
+              bgWorkersPriorityClassName:
+                description: BgWorkersPriorityClassName (optional) overrides the priority
+                  class for the bg-workers pod
+                type: string
+              bgWorkersResources:
+                description: BgWorkersResources (optional) overrides the default resource
+                  requirements for the noobaa-bg-workers container
+                properties:
+                  claims:
+                    description: |-
+                      Claims lists the names of resources, defined in spec.resourceClaims,
+                      that are used by this container.
+
+                      This field depends on the
+                      DynamicResourceAllocation feature gate.
+
+                      This field is immutable. It can only be set for containers.
+                    items:
+                      description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                      properties:
+                        name:
+                          description: |-
+                            Name must match the name of one entry in pod.spec.resourceClaims of
+                            the Pod where this field is used. It makes that resource available
+                            inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: |-
+                      Limits describes the maximum amount of compute resources allowed.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: |-
+                      Requests describes the minimum amount of compute resources required.
+                      If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                      otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    type: object
+                type: object
               bucketLogging:
                 description: BucketLogging sets the configuration for bucket logging
                 properties:
@@ -3470,7 +3534,7 @@ spec:
               performanceProfile:
                 description: |-
                   PerformanceProfile (optional) selects a bundle of resource and count
-                  settings for the core, db and endpoint components.
+                  settings for the core, db, endpoint, and bg-workers components.
                   Explicit per-component resource/count fields take precedence over the profile.
                 enum:
                 - default
@@ -4371,7 +4435,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_bg_workers_yaml = "55a23b0188ef5b9ca859aacb52477250cbccfddbc6cd6c09a0324e504828f40e"
+const Sha256_deploy_internal_deployment_bg_workers_yaml = "b41d43900cf2bc58915bfa2f93ae65583f409f9389035432f9bbc4ed49ec63db"
 
 const File_deploy_internal_deployment_bg_workers_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4455,6 +4519,7 @@ spec:
               mountPath: /var/run/secrets/openshift/serviceaccount
               readOnly: true
           resources:
+            # Default performance profile (overridden by getBgWorkersResources).
             requests:
               cpu: "250m"
               memory: "1Gi"
