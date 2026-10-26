@@ -3,6 +3,9 @@ set -o errexit
 
 # Pin to 1.30 line (override with any v1.30.z via KIND_NODE_IMAGE)
 KIND_NODE_IMAGE="${KIND_NODE_IMAGE:-kindest/node:v1.30.13}"
+# Number of worker nodes (default 4 preserves the historical 5-node cluster).
+# Set KIND_WORKER_COUNT=0 for a single control-plane node only.
+KIND_WORKER_COUNT="${KIND_WORKER_COUNT:-4}"
 
 # create registry container unless it already exists
 reg_name='kind-registry'
@@ -14,6 +17,17 @@ if [ "${running}" != 'true' ]; then
     registry:2
 fi
 
+# Build kind node list: always one control-plane, then KIND_WORKER_COUNT workers
+nodes_yaml="- role: control-plane
+  image: ${KIND_NODE_IMAGE}"
+i=0
+while [ "${i}" -lt "${KIND_WORKER_COUNT}" ]; do
+  nodes_yaml="${nodes_yaml}
+- role: worker
+  image: ${KIND_NODE_IMAGE}"
+  i=$((i + 1))
+done
+
 # create a cluster with the local registry enabled in containerd (node image: 1.30 line, overridable via KIND_NODE_IMAGE)
 cat <<EOF | kind create cluster --name 5nodes --config=-
 kind: Cluster
@@ -23,16 +37,7 @@ containerdConfigPatches:
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${reg_port}"]
     endpoint = ["http://${reg_name}:${reg_port}"]
 nodes:
-- role: control-plane
-  image: ${KIND_NODE_IMAGE}
-- role: worker
-  image: ${KIND_NODE_IMAGE}
-- role: worker
-  image: ${KIND_NODE_IMAGE}
-- role: worker
-  image: ${KIND_NODE_IMAGE}
-- role: worker
-  image: ${KIND_NODE_IMAGE}
+${nodes_yaml}
 EOF
 
 # connect the registry to the cluster network
