@@ -103,10 +103,21 @@ function build_cli_for_all() {
 
 function build_oci() {
   local tag_prefix=$1
-  local os=linux
-  local arch=amd64
+  local os=$2
+  local arch=$3
 
-  docker build --platform $os/$arch --build-arg NOOBAA_BIN_PATH=$(generate_full_bin_path $os $arch) -t $tag_prefix/noobaa-operator:$(get_noobaa_version) -f build/Dockerfile .
+  docker build --platform $os/$arch --build-arg NOOBAA_BIN_PATH=$(generate_full_bin_path $os $arch) -t $tag_prefix/noobaa-operator:${os}-${arch}-$(get_noobaa_version) -f build/Dockerfile .
+}
+
+function build_oci_for_all() {
+  local repository=$1
+  build_oci "${repository}" linux amd64
+  build_oci "${repository}" linux arm64
+
+  local version=$(get_noobaa_version)
+  docker manifest create "${repository}/noobaa-operator:${version}" \
+    --amend "${repository}/noobaa-operator:linux-amd64-${version}" \
+    --amend "${repository}/noobaa-operator:linux-arm64-${version}"
 }
 
 function generate_krew_manifest() {
@@ -209,7 +220,7 @@ function generate_operator_bundle() {
 function main() {
   check_deps "${dependencies[@]}"
   build_cli_for_all
-  build_oci ${OCI_ORG:-noobaa}
+  build_oci_for_all ${OCI_ORG:-noobaa}
   generate_krew_manifest
   generate_homebrew_formula
   generate_operator_bundle
