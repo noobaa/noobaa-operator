@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
@@ -25,6 +26,7 @@ func Cmd() *cobra.Command {
 	cmd.AddCommand(
 		CmdCreate(),
 		CmdUpdate(),
+		CmdUpdatePlacement(),
 		CmdDelete(),
 		CmdStatus(),
 		CmdList(),
@@ -64,6 +66,88 @@ func CmdUpdate() *cobra.Command {
 	cmd.Flags().Bool("remove-archive-policy", false,
 		"Remove the archive policy from the bucket")
 	return cmd
+}
+
+// CmdUpdatePlacement returns a CLI command
+func CmdUpdatePlacement() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update-placement <bucket-name>",
+		Short: "Update the placement policy of a NooBaa bucket",
+		Run:   RunUpdatePlacement,
+	}
+	cmd.Flags().String("placement", "",
+		"Set placement policy - Mirror | Spread")
+	cmd.Flags().StringSlice("backingstores", nil,
+		"Set backing stores (use commas or multiple flags)")
+	return cmd
+}
+
+// RunUpdatePlacement updates the placement policy (tier) of a non-OBC bucket.
+func RunUpdatePlacement(cmd *cobra.Command, args []string) {
+	log := util.Logger()
+	if len(args) != 1 || args[0] == "" {
+		log.Fatalf(`❌ Missing expected arguments: <bucket-name> %s`, cmd.UsageString())
+	}
+	bucketName := args[0]
+
+	placement, _ := cmd.Flags().GetString("placement")
+	backingStores, _ := cmd.Flags().GetStringSlice("backingstores")
+
+	if placement == "" && len(backingStores) == 0 {
+		log.Fatalf(`❌ Must provide --placement and/or --backingstores`)
+	}
+	if placement != "" {
+		placement = strings.ToUpper(placement)
+	}
+	if placement != "" && placement != "SPREAD" && placement != "MIRROR" {
+		log.Fatalf(`❌ Must provide valid placement: Mirror | Spread`)
+	}
+	if len(backingStores) == 0 {
+		log.Fatalf(`❌ Must provide at least one backing store via --backingstores`)
+	}
+
+	nbClient := system.GetNBClient()
+
+	bucketInfo, err := nbClient.ReadBucketAPI(nb.ReadBucketParams{Name: bucketName})
+	if err != nil {
+		log.Fatalf(`❌ Could not read bucket %q: %v`, bucketName, err)
+	}
+
+	if bucketInfo.BucketClaim != nil {
+		log.Fatalf(`❌ Bucket %q is managed by BucketClass %q — update the BucketClass instead`,
+			bucketName, bucketInfo.BucketClaim.BucketClass)
+	}
+
+	if bucketInfo.Tiering == nil || len(bucketInfo.Tiering.Tiers) == 0 {
+		log.Fatalf(`❌ Bucket %q has no tiering policy`, bucketName)
+	}
+
+	// Verify all backing stores exist as pools in NooBaa
+	for _, bs := range backingStores {
+		_, err := nbClient.ReadPoolAPI(nb.ReadPoolParams{Name: bs})
+		if err != nil {
+			log.Fatalf(`❌ Backing store %q not found in NooBaa: %v`, bs, err)
+		}
+	}
+
+	// Update the first tier (primary tier) of the bucket
+	tierName := bucketInfo.Tiering.Tiers[0].Tier
+
+	dataPlacement := placement
+	if dataPlacement == "" {
+		dataPlacement = "SPREAD"
+	}
+
+	err = nbClient.UpdateTierAPI(nb.UpdateTierParams{
+		Name:          tierName,
+		DataPlacement: dataPlacement,
+		AttachedPools: backingStores,
+	})
+	if err != nil {
+		log.Fatalf(`❌ Failed to update tier %q: %v`, tierName, err)
+	}
+
+	log.Infof("✅ Updated bucket %q placement to %s with backing stores %v", bucketName, dataPlacement, backingStores)
 }
 
 // CmdDelete returns a CLI command
