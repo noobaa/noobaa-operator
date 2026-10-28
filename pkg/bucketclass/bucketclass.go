@@ -79,6 +79,8 @@ func CmdCreatePlacementBucketClass() *cobra.Command {
 		"Set quota max objects quantity config to requested bucket")
 	cmd.Flags().String("max-size", "",
 		"Set quota max size config to requested bucket")
+	cmd.Flags().Bool("strict-quota", false,
+		"Enable synchronous quota checks. Requires max-size and/or max-objects")
 	cmd.Flags().String("deep-archive-resource", "",
 		"Set an s3-compatible ibm-deep-archive NamespaceStore for the archive policy (IBM Deep Archive cold-storage)")
 
@@ -429,10 +431,15 @@ func PopulatePlacementBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1.Buck
 
 	maxSize, _ := cmd.Flags().GetString("max-size")
 	maxObjects, _ := cmd.Flags().GetString("max-objects")
-	if maxSize != "" || maxObjects != "" {
+	strictQuota, _ := cmd.Flags().GetBool("strict-quota")
+	if strictQuota && maxSize == "" && maxObjects == "" {
+		log.Fatalf(`❌ Must provide max-size and/or max-objects when using --strict-quota`)
+	}
+	if maxSize != "" || maxObjects != "" || strictQuota {
 		bucketClassSpec.Quota = &nbv1.Quota{
-			MaxSize:    maxSize,
-			MaxObjects: maxObjects,
+			MaxSize:     maxSize,
+			MaxObjects:  maxObjects,
+			StrictQuota: strictQuota,
 		}
 	}
 

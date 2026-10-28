@@ -170,6 +170,10 @@ type Quota struct {
 
 	//limits the max total quantity of objects per bucket
 	MaxObjects string `json:"maxObjects,omitempty"`
+
+	// StrictQuota enables synchronous quota checks. Requires maxSize and/or maxObjects.
+	// +optional
+	StrictQuota bool `json:"strictQuota,omitempty"`
 }
 
 // CacheSpec specifies the cache specifications for the bucket class
