@@ -1,6 +1,7 @@
 package obc
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,10 +10,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/bucketclass"
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
@@ -279,40 +280,47 @@ func UpdateBucketTagging(sysClient *system.Client, obc *nbv1.ObjectBucketClaim) 
 
 	client := &http.Client{Transport: util.InsecureHTTPTransport}
 	s3Status := &sysClient.NooBaa.Status.Services.ServiceS3
-	s3Config := &aws.Config{
-		Credentials: credentials.NewStaticCredentials(
+	s3Config := aws.Config{
+		Credentials: credentials.NewStaticCredentialsProvider(
 			sysClient.SecretAdmin.StringData["AWS_ACCESS_KEY_ID"],
 			sysClient.SecretAdmin.StringData["AWS_SECRET_ACCESS_KEY"],
 			"",
 		),
-		Region:           aws.String("us-east-1"),
-		Endpoint:         aws.String(s3Status.InternalDNS[0]),
-		S3ForcePathStyle: aws.Bool(true),
-		HTTPClient:       client,
+		Region:       "us-east-1",
+		BaseEndpoint: aws.String(s3Status.InternalDNS[0]),
+		HTTPClient:   client,
+		// PutBucketTagging is a RequireChecksum op, so the SDK sends x-amz-checksum-crc32
+		// regardless of WhenRequired. That is fine: BaseEndpoint below is always the NooBaa
+		// S3 service, and noobaa-core ignores both checksum headers for this op -- it has no
+		// x-amz-checksum-* handling at all, and Content-MD5 is only length-checked in
+		// util/http_utils.js, then used solely by the object-write paths, never by
+		// endpoint/s3/ops/s3_put_bucket_tagging.js. aws-sdk-go v1 always attached Content-MD5
+		// here, dropping it is intentional. Revisit only if core starts validating either
+		// header, or if this client is ever pointed at a non-core S3 endpoint.
+		RequestChecksumCalculation: aws.RequestChecksumCalculationWhenRequired,
+		ResponseChecksumValidation: aws.ResponseChecksumValidationWhenRequired,
 	}
-	s3Session, err := session.NewSession(s3Config)
-	if err != nil {
-		return err
-	}
-	s3Client := s3.New(s3Session)
+	s3Client := s3.NewFromConfig(s3Config, func(o *s3.Options) {
+		o.UsePathStyle = true
+	})
 
 	// convert labels to tagging array
-	taggingArray := []*s3.Tag{}
+	taggingArray := []s3types.Tag{}
 	for key, value := range obc.Labels {
 		if _, ok := excludeBucketTaggingLabelKeysSet[key]; ok {
 			continue
 		}
 		keyPointer := key
 		valuePointer := value
-		taggingArray = append(taggingArray, &s3.Tag{Key: &keyPointer, Value: &valuePointer})
+		taggingArray = append(taggingArray, s3types.Tag{Key: &keyPointer, Value: &valuePointer})
 	}
 	logrus.Infof("put bucket tagging on bucket: %s tagging: %+v ", obc.Spec.BucketName, taggingArray)
 	if len(taggingArray) == 0 {
 		return nil
 	}
-	_, err = s3Client.PutBucketTagging(&s3.PutBucketTaggingInput{
+	_, err := s3Client.PutBucketTagging(context.TODO(), &s3.PutBucketTaggingInput{
 		Bucket: &obc.Spec.BucketName,
-		Tagging: &s3.Tagging{
+		Tagging: &s3types.Tagging{
 			TagSet: taggingArray,
 		},
 	})

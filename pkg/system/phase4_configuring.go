@@ -33,13 +33,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 const (
@@ -1137,7 +1135,7 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 		Transport: util.GlobalCARefreshingTransport,
 		Timeout:   10 * time.Second,
 	}
-	var s3Config *aws.Config
+	var s3Config aws.Config
 	if r.IsAWSSTSCluster { // handle STS case first
 		// get credentials
 		if len(cloudCredsSecret.StringData[credentialsKey]) == 0 {
@@ -1152,15 +1150,11 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 		roleARNInput := info["role_arn"]
 		webIdentityTokenPathInput := info["web_identity_token_file"]
 		r.Logger.Info("Initiating a Session with AWS")
-		sess, err := session.NewSession(&aws.Config{
-			Region:              aws.String(region),
-			STSRegionalEndpoint: endpoints.RegionalSTSEndpoint,
-			HTTPClient:          awsHTTPClient,
+		// STS uses regional endpoints by default when Region is set (v2 UseGlobalEndpoint defaults to false).
+		stsClient := sts.NewFromConfig(aws.Config{
+			Region:     region,
+			HTTPClient: awsHTTPClient,
 		})
-		if err != nil {
-			return fmt.Errorf("could not create AWS Session %v", err)
-		}
-		stsClient := sts.New(sess)
 		r.Logger.Infof("AssumeRoleWithWebIdentityInput, roleARN = %s webIdentityTokenPath = %s, ",
 			roleARNInput, webIdentityTokenPathInput)
 		webIdentityTokenPathOutput, err := os.ReadFile(webIdentityTokenPathInput)
@@ -1174,34 +1168,34 @@ func (r *Reconciler) prepareAWSBackingStore() error {
 			RoleSessionName:  aws.String(r.AWSSTSRoleSessionName),
 			WebIdentityToken: aws.String(WebIdentityToken),
 		}
-		result, err := stsClient.AssumeRoleWithWebIdentity(input)
+		result, err := stsClient.AssumeRoleWithWebIdentity(context.TODO(), input)
 		if err != nil {
 			return fmt.Errorf("could not use AWS AssumeRoleWithWebIdentity with role name %s and web identity token file %s, %v",
 				roleARNInput, webIdentityTokenPathInput, err)
 		}
-		s3Config = &aws.Config{
-			Credentials: credentials.NewStaticCredentials(
+		s3Config = aws.Config{
+			Credentials: credentials.NewStaticCredentialsProvider(
 				*result.Credentials.AccessKeyId,
 				*result.Credentials.SecretAccessKey,
 				*result.Credentials.SessionToken,
 			),
 			HTTPClient: awsHTTPClient,
-			Region:     &region,
+			Region:     region,
 		}
 	} else { // handle AWS long-lived credentials (not STS)
-		s3Config = &aws.Config{
-			Credentials: credentials.NewStaticCredentials(
+		s3Config = aws.Config{
+			Credentials: credentials.NewStaticCredentialsProvider(
 				cloudCredsSecret.StringData["aws_access_key_id"],
 				cloudCredsSecret.StringData["aws_secret_access_key"],
 				"",
 			),
 			HTTPClient: awsHTTPClient,
-			Region:     &region,
+			Region:     region,
 		}
 	}
 
 	bucketName := r.DefaultBackingStore.Spec.AWSS3.TargetBucket
-	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
+	if err := r.createS3BucketForBackingStore(s3Config, bucketName, false); err != nil {
 		return err
 	}
 
@@ -1435,6 +1429,11 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 		location = fmt.Sprintf(ibmLocation, region)
 	}
 
+	// AWS SDK v1 defaulted schemeless endpoints to https. v2 BaseEndpoint
+	// requires a full URI, and url.Parse alone accepts hosts without a scheme.
+	if !strings.Contains(endpoint, "://") {
+		endpoint = "https://" + endpoint
+	}
 	if _, err := url.Parse(endpoint); err != nil {
 		r.Logger.Errorf("Invalid formate URL %q", endpoint)
 		return fmt.Errorf("Invalid formate URL %q", endpoint)
@@ -1461,10 +1460,9 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 	bucketName := r.generateBackingStoreTargetName()
 	r.Logger.Infof("IBM COS Bucket Name: %s", bucketName)
 
-	s3Config := &aws.Config{
-		S3ForcePathStyle: aws.Bool(true),
-		Endpoint:         aws.String(endpoint),
-		Credentials: credentials.NewStaticCredentials(
+	s3Config := aws.Config{
+		BaseEndpoint: aws.String(endpoint),
+		Credentials: credentials.NewStaticCredentialsProvider(
 			accessKeyID,
 			secretAccessKey,
 			"",
@@ -1473,9 +1471,13 @@ func (r *Reconciler) prepareIBMBackingStore() error {
 			Transport: util.GlobalCARefreshingTransport,
 			Timeout:   10 * time.Second,
 		},
-		Region: &location,
+		Region: location,
+		// Keep WhenRequired so a future switch to config.LoadDefaultConfig does not
+		// enable CRC32/aws-chunked checksums that break S3-compatible endpoints.
+		RequestChecksumCalculation: aws.RequestChecksumCalculationWhenRequired,
+		ResponseChecksumValidation: aws.ResponseChecksumValidationWhenRequired,
 	}
-	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
+	if err := r.createS3BucketForBackingStore(s3Config, bucketName, true); err != nil {
 		return err
 	}
 	r.Logger.Infof("Created bucket: %s", bucketName)
@@ -1560,10 +1562,14 @@ func (r *Reconciler) prepareCephBackingStore() error {
 	}
 
 	endpoint := cephObjectStoreUserSecret.StringData["Endpoint"]
+	// AWS SDK v1 defaulted schemeless endpoints to https. v2 BaseEndpoint
+	// requires a full URI.
+	if !strings.Contains(endpoint, "://") {
+		endpoint = "https://" + endpoint
+	}
 	r.Logger.Infof("Will connect to RGW at %q", endpoint)
 
 	region := "us-east-1"
-	forcePathStyle := true
 	client := &http.Client{
 		Transport: util.InsecureHTTPTransport,
 		Timeout:   10 * time.Second,
@@ -1572,20 +1578,23 @@ func (r *Reconciler) prepareCephBackingStore() error {
 		client.Transport = util.GlobalCARefreshingTransport
 	}
 
-	s3Config := &aws.Config{
-		Credentials: credentials.NewStaticCredentials(
+	s3Config := aws.Config{
+		Credentials: credentials.NewStaticCredentialsProvider(
 			cephObjectStoreUserSecret.StringData["AccessKey"],
 			cephObjectStoreUserSecret.StringData["SecretKey"],
 			"",
 		),
-		Endpoint:         &endpoint,
-		Region:           &region,
-		S3ForcePathStyle: &forcePathStyle,
-		HTTPClient:       client,
+		BaseEndpoint: aws.String(endpoint),
+		Region:       region,
+		HTTPClient:   client,
+		// Keep WhenRequired so a future switch to config.LoadDefaultConfig does not
+		// enable CRC32/aws-chunked checksums that break S3-compatible endpoints.
+		RequestChecksumCalculation: aws.RequestChecksumCalculationWhenRequired,
+		ResponseChecksumValidation: aws.ResponseChecksumValidationWhenRequired,
 	}
 
 	bucketName := r.generateBackingStoreTargetName()
-	if err := r.createS3BucketForBackingStore(s3Config, bucketName); err != nil {
+	if err := r.createS3BucketForBackingStore(s3Config, bucketName, true); err != nil {
 		return err
 	}
 
@@ -1718,25 +1727,31 @@ func (r *Reconciler) getInfoFromAwsStsSecret(data string) (map[string]string, er
 	return result, nil
 }
 
-func (r *Reconciler) createS3BucketForBackingStore(s3Config *aws.Config, bucketName string) error {
-	s3Session, err := session.NewSession(s3Config)
-	if err != nil {
-		return err
-	}
-	s3Client := s3.New(s3Session)
+func (r *Reconciler) createS3BucketForBackingStore(s3Config aws.Config, bucketName string, usePathStyle bool) error {
+	s3Client := s3.NewFromConfig(s3Config, func(o *s3.Options) {
+		o.UsePathStyle = usePathStyle
+	})
 
 	r.Logger.Infof("creating bucket %s", bucketName)
-	createBucketOutout, err := s3Client.CreateBucket(&s3.CreateBucketInput{Bucket: &bucketName})
+	// AWS SDK v1 auto-populated LocationConstraint from the session region for
+	// non-us-east-1 CreateBucket calls. v2 does not, so set it explicitly.
+	bucketInput := &s3.CreateBucketInput{Bucket: &bucketName}
+	if s3Config.Region != "" && s3Config.Region != "us-east-1" {
+		bucketInput.CreateBucketConfiguration = &s3types.CreateBucketConfiguration{
+			LocationConstraint: s3types.BucketLocationConstraint(s3Config.Region),
+		}
+	}
+	createBucketOutput, err := s3Client.CreateBucket(context.TODO(), bucketInput)
 	if err != nil {
-		awsErr, isAwsErr := err.(awserr.Error)
-		if isAwsErr && awsErr.Code() == s3.ErrCodeBucketAlreadyOwnedByYou {
+		var alreadyOwned *s3types.BucketAlreadyOwnedByYou
+		if errors.As(err, &alreadyOwned) {
 			r.Logger.Infof("bucket was already created. continuing")
 		} else {
 			r.Logger.Errorf("got error when trying to create bucket %s. error: %v", bucketName, err)
 			return err
 		}
 	} else {
-		r.Logger.Infof("Successfully created bucket %s. result = %v", bucketName, createBucketOutout)
+		r.Logger.Infof("Successfully created bucket %s. result = %v", bucketName, createBucketOutput)
 	}
 	return nil
 }
