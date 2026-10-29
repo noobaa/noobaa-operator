@@ -6,6 +6,7 @@ KIND_NODE_IMAGE="${KIND_NODE_IMAGE:-kindest/node:v1.30.13}"
 # Number of worker nodes (default 4 preserves the historical 5-node cluster).
 # Set KIND_WORKER_COUNT=0 for a single control-plane node only.
 KIND_WORKER_COUNT="${KIND_WORKER_COUNT:-4}"
+KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-5nodes}"
 
 # create registry container unless it already exists
 reg_name='kind-registry'
@@ -29,7 +30,7 @@ while [ "${i}" -lt "${KIND_WORKER_COUNT}" ]; do
 done
 
 # create a cluster with the local registry enabled in containerd (node image: 1.30 line, overridable via KIND_NODE_IMAGE)
-cat <<EOF | kind create cluster --name 5nodes --config=-
+cat <<EOF | kind create cluster --name "${KIND_CLUSTER_NAME}" --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 containerdConfigPatches:

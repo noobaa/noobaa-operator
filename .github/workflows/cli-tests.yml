@@ -9,7 +9,7 @@ concurrency:
 jobs:
   run-cli-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -23,19 +23,28 @@ jobs:
           cache: true
           cache-dependency-path: |
             **/go.sum
+
+      # Installs the kind binary only. The cluster is created by install-5nodes-kind-cluster.sh below.
+      - name: Set up kind
+        uses: helm/kind-action@v1
+        with:
+          install_only: true
+
       - name: Set environment variables
         run: |
           echo "PATH=$PATH:$HOME/go/bin" >> $GITHUB_ENV
           echo "OPERATOR_IMAGE=noobaa/noobaa-operator:integration" >> $GITHUB_ENV
+          echo "KIND_CLUSTER_NAME=5nodes" >> $GITHUB_ENV
 
-      - name: Setup Minikube
-        uses: medyagh/setup-minikube@v0.0.19
-        with:
-          driver: docker
-          kubernetes-version: v1.33.0
-
-      - name: Verify Minikube is running
-        run: minikube status
+      - name: Create kind cluster
+        run: |
+          set -x
+          # 0 workers = 1-node cluster (control-plane only). Default is 4 workers.
+          export KIND_WORKER_COUNT=0
+          bash .travis/install-5nodes-kind-cluster.sh
+          kubectl cluster-info
+          kubectl wait --for=condition=Ready nodes --all --timeout=300s
+          kubectl get nodes
 
       - name: Install Tools
         run: |
@@ -48,7 +57,7 @@ jobs:
           make cli
           make image
           docker tag noobaa/noobaa-operator:$(go run cmd/version/main.go) $OPERATOR_IMAGE
-          minikube image load $OPERATOR_IMAGE
+          kind load docker-image $OPERATOR_IMAGE --name "$KIND_CLUSTER_NAME"
 
       - name: Run CLI Tests
         run: make test-cli-flow
