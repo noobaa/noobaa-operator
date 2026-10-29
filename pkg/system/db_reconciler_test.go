@@ -45,7 +45,7 @@ func TestCalculatePGConfig_4GB_2CPU_3Endpoints(t *testing.T) {
 
 	params := calculatePGConfig(totalMemoryKB, cpuNum, numEndpoints, "50Gi")
 
-	// 3 endpoints -> max_connections = 3*20 + 3*80 + 3 = 303
+	// 3 endpoints -> max_connections = 2*20 + 1*20 + 3*80 + 3 = 303
 	expected := map[string]string{
 		"shared_buffers":       "1GB",
 		"effective_cache_size": "3GB",
@@ -116,7 +116,7 @@ func TestCalculatePGConfig_8GB_4CPU_7Endpoints(t *testing.T) {
 
 	params := calculatePGConfig(totalMemoryKB, cpuNum, numEndpoints, "50Gi")
 
-	// 7 endpoints -> max_connections = 3*20 + 7*80 + 3 = 623
+	// 7 endpoints -> max_connections = 2*20 + 1*20 + 7*80 + 3 = 623
 	assertParam(t, params, "shared_buffers", "2GB")
 	assertParam(t, params, "effective_cache_size", "6GB")
 	assertParam(t, params, "maintenance_work_mem", "512MB")
@@ -160,7 +160,7 @@ func TestCalculatePGConfig_WalBuffers(t *testing.T) {
 
 func TestCalculatePGConfig_WorkMem_MinimumFloor(t *testing.T) {
 	// Tiny memory with many endpoints -> work_mem should be at least 4MB
-	// 10 endpoints -> max_connections = 3*20 + 10*80 + 3 = 863
+	// 10 endpoints -> max_connections = 2*20 + 1*20 + 10*80 + 3 = 863
 	totalMemoryKB := int64(512 * 1024) // 512MB
 	params := calculatePGConfig(totalMemoryKB, 1, 10, "50Gi")
 
@@ -343,11 +343,11 @@ func TestCalculateMaxConnections(t *testing.T) {
 		numEndpoints int
 		expected     int
 	}{
-		{"1 endpoint", 1, 3*20 + 1*80 + 3},     // 143
-		{"2 endpoints", 2, 3*20 + 2*80 + 3},    // 223
-		{"3 endpoints", 3, 3*20 + 3*80 + 3},    // 303
-		{"5 endpoints", 5, 3*20 + 5*80 + 3},    // 463
-		{"10 endpoints", 10, 3*20 + 10*80 + 3}, // 863
+		{"1 endpoint", 1, 2*20 + 1*20 + 1*80 + 3},     // 143
+		{"2 endpoints", 2, 2*20 + 1*20 + 2*80 + 3},    // 223
+		{"3 endpoints", 3, 2*20 + 1*20 + 3*80 + 3},    // 303
+		{"5 endpoints", 5, 2*20 + 1*20 + 5*80 + 3},    // 463
+		{"10 endpoints", 10, 2*20 + 1*20 + 10*80 + 3}, // 863
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
