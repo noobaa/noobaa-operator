@@ -1208,7 +1208,7 @@ func (r *Reconciler) needUpdate(pod *corev1.Pod) bool {
 		return true
 	}
 
-	for _, name := range []string{"NOOBAA_LOG_LEVEL", "NOOBAA_LOG_COLOR"} {
+	for _, name := range []string{"NOOBAA_LOG_LEVEL", "NOOBAA_LOG_COLOR", "ROLLBACK_TO_ICE"} {
 		configMapValue := r.CoreAppConfig.Data[name]
 		noobaaLogEnvVar := util.GetEnvVariable(&c.Env, name)
 
@@ -1331,6 +1331,8 @@ func (r *Reconciler) updatePodTemplate() error {
 			c.Env[j].Value = r.CoreAppConfig.Data["NOOBAA_LOG_LEVEL"]
 		case "NOOBAA_LOG_COLOR":
 			c.Env[j].Value = r.CoreAppConfig.Data["NOOBAA_LOG_COLOR"]
+		case "ROLLBACK_TO_ICE":
+			c.Env[j].Value = r.CoreAppConfig.Data["ROLLBACK_TO_ICE"]
 		}
 	}
 	util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")

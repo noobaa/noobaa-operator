@@ -1710,6 +1710,7 @@ func (r *Reconciler) SetDesiredCoreAppConfig() error {
 		"DISABLE_DEV_RANDOM_SEED":      "true",
 		"NOOBAA_LOG_LEVEL":             "default_level",
 		"NOOBAA_LOG_COLOR":             "true",
+		"ROLLBACK_TO_ICE":             "false",
 		"NOOBAA_METRICS_AUTH_ENABLED":  "true",
 		"NOOBAA_VERSION_AUTH_ENABLED":  "true",
 		"ENDPOINT_SYSTEM_STORE_SOURCE": "core", // by default, load the system store in the endpoint from the core instead of the DB
