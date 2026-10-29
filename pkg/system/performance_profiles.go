@@ -17,15 +17,16 @@ const (
 )
 
 type performanceProfile struct {
-	coreResources     corev1.ResourceRequirements
-	logResources      corev1.ResourceRequirements
-	dbResources       corev1.ResourceRequirements
-	endpointResources corev1.ResourceRequirements
-	pvPoolResources   corev1.ResourceRequirements
-	endpointMinCount  int32
-	endpointMaxCount  int32
-	dbInstances       int
-	pvPoolNumVolumes  int
+	coreResources      corev1.ResourceRequirements
+	logResources       corev1.ResourceRequirements
+	dbResources        corev1.ResourceRequirements
+	endpointResources  corev1.ResourceRequirements
+	pvPoolResources    corev1.ResourceRequirements
+	bgWorkersResources corev1.ResourceRequirements
+	endpointMinCount   int32
+	endpointMaxCount   int32
+	dbInstances        int
+	pvPoolNumVolumes   int
 }
 
 func profileResources(cpuReq, cpuLim, memReq, memLim string) corev1.ResourceRequirements {
@@ -45,64 +46,64 @@ func profileResources(cpuReq, cpuLim, memReq, memLim string) corev1.ResourceRequ
 // full-pcpus-only / SMT alignment failures (BZ 2009650, DFBUGS-11202).
 var performanceProfiles = map[nbv1.PerformanceProfileType]performanceProfile{
 	nbv1.PerformanceProfileDefault: {
-		coreResources:     profileResources("500m", "999m", "1Gi", "4Gi"),
-		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
-		dbResources:       profileResources("999m", "999m", "2Gi", "2Gi"),
-		endpointResources: profileResources("500m", "1999m", "1Gi", "3Gi"),
-		pvPoolResources:   profileResources("400m", "400m", "800Mi", "800Mi"),
-		endpointMinCount:  1,
-		endpointMaxCount:  2,
-		dbInstances:       2,
-		pvPoolNumVolumes:  3,
+		coreResources:      profileResources("500m", "999m", "1Gi", "4Gi"),
+		logResources:       profileResources("200m", "200m", "500Mi", "500Mi"),
+		dbResources:        profileResources("999m", "999m", "2Gi", "2Gi"),
+		endpointResources:  profileResources("500m", "1999m", "1Gi", "3Gi"),
+		pvPoolResources:    profileResources("400m", "400m", "800Mi", "800Mi"),
+		bgWorkersResources: profileResources("250m", "999m", "1Gi", "3Gi"),
+		endpointMinCount:   1,
+		endpointMaxCount:   2,
+		dbInstances:        2,
+		pvPoolNumVolumes:   3,
 	},
 	nbv1.PerformanceProfileMixedWorkload: {
-		coreResources:     profileResources("999m", "1999m", "2Gi", "4Gi"),
-		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
-		dbResources:       profileResources("3999m", "3999m", "8Gi", "8Gi"),
-		endpointResources: profileResources("1999m", "3999m", "2Gi", "4Gi"),
-		pvPoolResources:   profileResources("999m", "999m", "2Gi", "2Gi"),
-		endpointMinCount:  2,
-		endpointMaxCount:  4,
-		dbInstances:       2,
-		pvPoolNumVolumes:  3,
+		coreResources:      profileResources("999m", "1999m", "2Gi", "4Gi"),
+		logResources:       profileResources("200m", "200m", "500Mi", "500Mi"),
+		dbResources:        profileResources("3999m", "3999m", "8Gi", "8Gi"),
+		endpointResources:  profileResources("1999m", "3999m", "2Gi", "4Gi"),
+		pvPoolResources:    profileResources("999m", "999m", "2Gi", "2Gi"),
+		bgWorkersResources: profileResources("500m", "1999m", "1Gi", "3Gi"),
+		endpointMinCount:   2,
+		endpointMaxCount:   4,
+		dbInstances:        2,
+		pvPoolNumVolumes:   3,
 	},
 	nbv1.PerformanceProfileSmallObjects: {
-		coreResources:     profileResources("999m", "1999m", "2Gi", "6Gi"),
-		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
-		dbResources:       profileResources("5999m", "5999m", "16Gi", "16Gi"),
-		// Endpoint CPU request is ~1 (not ~2): a single-process endpoint serving small
-		// objects is main-thread bound and tops out at ~1 core, so request 2 leaves the
-		// HPA reading ~50% utilisation on a fully-saturated pod and it never scales.
-		// Request ~1 makes a saturated pod read ~100%, restoring the CPU-based trigger.
-		// Larger profiles keep request ~2 because their per-pod ceiling is ~2.5 cores.
-		endpointResources: profileResources("999m", "3999m", "2Gi", "4Gi"),
-		pvPoolResources:   profileResources("999m", "999m", "2Gi", "2Gi"),
-		endpointMinCount:  2,
-		endpointMaxCount:  4,
-		dbInstances:       2,
-		pvPoolNumVolumes:  3,
+		coreResources:      profileResources("999m", "1999m", "2Gi", "6Gi"),
+		logResources:       profileResources("200m", "200m", "500Mi", "500Mi"),
+		dbResources:        profileResources("5999m", "5999m", "16Gi", "16Gi"),
+		endpointResources:  profileResources("999m", "3999m", "2Gi", "4Gi"),
+		pvPoolResources:    profileResources("999m", "999m", "2Gi", "2Gi"),
+		bgWorkersResources: profileResources("500m", "1999m", "1Gi", "3Gi"),
+		endpointMinCount:   2,
+		endpointMaxCount:   4,
+		dbInstances:        2,
+		pvPoolNumVolumes:   3,
 	},
 	nbv1.PerformanceProfileDevEnv: {
-		coreResources:     profileResources("500m", "500m", "1Gi", "1Gi"),
-		logResources:      profileResources("200m", "200m", "500Mi", "500Mi"),
-		dbResources:       profileResources("999m", "999m", "2Gi", "2Gi"),
-		endpointResources: profileResources("500m", "500m", "500Mi", "500Mi"),
-		pvPoolResources:   profileResources("500m", "500m", "500Mi", "500Mi"),
-		endpointMinCount:  1,
-		endpointMaxCount:  1,
-		dbInstances:       1,
-		pvPoolNumVolumes:  1,
+		coreResources:      profileResources("500m", "500m", "1Gi", "1Gi"),
+		logResources:       profileResources("200m", "200m", "500Mi", "500Mi"),
+		dbResources:        profileResources("999m", "999m", "2Gi", "2Gi"),
+		endpointResources:  profileResources("500m", "500m", "500Mi", "500Mi"),
+		pvPoolResources:    profileResources("500m", "500m", "500Mi", "500Mi"),
+		bgWorkersResources: profileResources("250m", "500m", "500Mi", "1Gi"),
+		endpointMinCount:   1,
+		endpointMaxCount:   1,
+		dbInstances:        1,
+		pvPoolNumVolumes:   1,
 	},
 	nbv1.PerformanceProfileMiniEnv: {
-		coreResources:     profileResources("100m", "100m", "1Gi", "1Gi"),
-		logResources:      profileResources("50m", "50m", "200Mi", "200Mi"),
-		dbResources:       profileResources("100m", "100m", "500Mi", "500Mi"),
-		endpointResources: profileResources("100m", "100m", "500Mi", "500Mi"),
-		pvPoolResources:   profileResources("100m", "100m", "400Mi", "400Mi"),
-		endpointMinCount:  1,
-		endpointMaxCount:  1,
-		dbInstances:       1,
-		pvPoolNumVolumes:  1,
+		coreResources:      profileResources("100m", "100m", "1Gi", "1Gi"),
+		logResources:       profileResources("50m", "50m", "200Mi", "200Mi"),
+		dbResources:        profileResources("100m", "100m", "500Mi", "500Mi"),
+		endpointResources:  profileResources("100m", "100m", "500Mi", "500Mi"),
+		pvPoolResources:    profileResources("100m", "100m", "400Mi", "400Mi"),
+		bgWorkersResources: profileResources("100m", "100m", "500Mi", "1Gi"),
+		endpointMinCount:   1,
+		endpointMaxCount:   1,
+		dbInstances:        1,
+		pvPoolNumVolumes:   1,
 	},
 }
 
@@ -119,6 +120,7 @@ func init() {
 		profile.dbResources = adjustCpuResourcesForIbmZ(profile.dbResources, ibmZCpuAdjustFactor)
 		profile.endpointResources = adjustCpuResourcesForIbmZ(profile.endpointResources, ibmZCpuAdjustFactor)
 		profile.pvPoolResources = adjustCpuResourcesForIbmZ(profile.pvPoolResources, ibmZCpuAdjustFactor)
+		profile.bgWorkersResources = adjustCpuResourcesForIbmZ(profile.bgWorkersResources, ibmZCpuAdjustFactor)
 		performanceProfiles[name] = profile
 	}
 }
@@ -160,6 +162,14 @@ func getEndpointResources(nb *nbv1.NooBaa) corev1.ResourceRequirements {
 		return *nb.Spec.Endpoints.Resources
 	}
 	return lookupProfile(nb).endpointResources
+}
+
+// getBgWorkersResources returns CR override or the performance-profile BG workers budget.
+func getBgWorkersResources(nb *nbv1.NooBaa) corev1.ResourceRequirements {
+	if nb.Spec.BgWorkersResources != nil {
+		return *nb.Spec.BgWorkersResources
+	}
+	return lookupProfile(nb).bgWorkersResources
 }
 
 // adjustCpuResourcesForIbmZ multiplies CPU requests by adjustFactor (limits are unchanged).
