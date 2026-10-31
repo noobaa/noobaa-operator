@@ -435,11 +435,21 @@ func (r *Reconciler) CheckAll() {
 // and makes changes based on the state read and what is in the System.Spec.
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *Reconciler) Reconcile() (reconcile.Result, error) {
+func (r *Reconciler) Reconcile() (res reconcile.Result, reconcileErr error) {
 	var err error = nil
-	res := reconcile.Result{}
 	log := r.Logger
 	log.Infof("Start NooBaa system Reconcile ...")
+
+	// report to OLM whether the operator can be upgraded. Runs last, also on early returns and errors,
+	// so it sees the DB status set during this reconcile.
+	defer func() {
+		if olmErr := r.ReconcileOLMUpgradeable(); olmErr != nil {
+			res.RequeueAfter = 3 * time.Second
+			if reconcileErr == nil {
+				reconcileErr = olmErr;
+			}
+		}
+	}()
 
 	if !CheckSystem(r.NooBaa) {
 		if r.NooBaa.DeletionTimestamp != nil {
