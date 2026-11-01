@@ -11,6 +11,9 @@ RESOURCE='mini'
 
 function post_install_tests {
     aws_credentials
+    # Run before destructive steps such as check_deletes / check_pgdb_config_override.
+    test_noobaa_loadbalancer_source_subnet
+    test_multinamespace_bucketclass
     check_pv_pool_resources
     check_S3_compatible
     check_namespacestore
@@ -18,7 +21,6 @@ function post_install_tests {
     bucketclass_cycle
     bz_2038884
     obc_cycle
-    replication_cycle
     check_backingstore
     obc_nsfs_negative_tests
     test_create_obc_with_nsfs_acc_cfg_uid_gid
@@ -29,8 +31,6 @@ function post_install_tests {
     delete_replication_files
     check_pgdb_config_override
     test_noobaa_cr_deletion
-    test_noobaa_loadbalancer_source_subnet
-    test_multinamespace_bucketclass
     test_bucket_update_placement
     check_default_backingstore #It deletes all the buckets and non-default accounts, creates new backingstore and attach it to default admin account and then deletes default backingstore
 }
