@@ -37,7 +37,8 @@ function kuberun {
 }
 
 echo_time() {
-    date +"%T $*"
+    # Write to stderr so $(test_noobaa silence ... list) captures stay clean on retries.
+    date +"%T $*" >&2
 }
 
 function test_noobaa {
@@ -274,6 +275,81 @@ function wait_for_backingstore_ready {
     fi
 }
 
+# read_pg_max_connections prints numeric max_connections from postgres, or empty if unavailable.
+# Reads the applied runtime value from pg_settings so the wait succeeds only after restart.
+function read_pg_max_connections {
+    local value
+    # Cap the client wait. This poll runs while the postgres pod is terminating or recreating.
+    value=$(${kubectl} exec --request-timeout=20s noobaa-db-pg-0 -- psql -tAc \
+        "SELECT setting FROM pg_settings WHERE name = 'max_connections';" 2>/dev/null \
+        | tr -d '[:space:]')
+    if [[ "${value}" =~ ^[0-9]+$ ]]
+    then
+        echo "${value}"
+    fi
+}
+
+# filter_cli_list drops CLI table headers and empty-list sentinels from stdin.
+# Headers may start with NAME, BUCKET-NAME, or NAMESPACE (OBC list).
+function filter_cli_list {
+    # Case-sensitive: headers are uppercase. -i would drop a real row named "namespace".
+    grep -vE '^(NAME|BUCKET-NAME|NAMESPACE)([[:space:]]|$)|^No .+ found'
+}
+
+# delete_bucket_idempotent deletes a bucket and treats a missing bucket as success.
+# Retries transient failures with the same budget as test_noobaa.
+function delete_bucket_idempotent {
+    local bucket=$1
+    local count=1
+    local retries=18
+    local out rc
+
+    if [ -z "${bucket}" ]
+    then
+        echo_time "⚠️  delete_bucket_idempotent called with no bucket, skipping"
+        return 0
+    fi
+
+    while [ ${count} -le ${retries} ]
+    do
+        out=$(${noobaa} bucket delete "${bucket}" 2>&1)
+        rc=$?
+        if [ ${rc} -eq 0 ]
+        then
+            echo_time "✅  ${noobaa} bucket delete ${bucket} passed"
+            return 0
+        fi
+        if echo "${out}" | grep -qiF "No such bucket: ${bucket}" || echo "${out}" | grep -qi 'NO_SUCH_BUCKET'
+        then
+            echo_time "✅  ${noobaa} bucket delete ${bucket} skipped - bucket already absent"
+            return 0
+        fi
+        # Permanent: bucket still has objects. Retrying cannot help.
+        if echo "${out}" | grep -qiE 'NOT_EMPTY|Cannot delete bucket'
+        then
+            echo_time "❌  ${noobaa} bucket delete ${bucket} failed - bucket not empty"
+            echo "${out}"
+            exit 1
+        fi
+        if [ ${count} -lt ${retries} ]
+        then
+            echo_time "❌ failed to run ${noobaa} bucket delete ${bucket} retrying"
+            echo "${out}"
+            sleep 10
+            count=$((count+1))
+        else
+            echo_time "❌  ${noobaa} bucket delete ${bucket} failed, Exiting"
+            echo "${out}"
+            local pod_operator=$(kuberun get pod | grep noobaa-operator | awk '{print $1}')
+            echo_time "==============OPERATOR LOGS============"
+            kuberun logs ${pod_operator} -c noobaa-operator
+            echo_time "==============CORE LOGS============"
+            kuberun logs noobaa-core-0
+            exit 1
+        fi
+    done
+}
+
 # wait_for_bucketclasses_absent polls until none of the named bucketclasses remain.
 # Caps at timeout_sec (default 30). Returns 1 after the cap so callers can warn.
 function wait_for_bucketclasses_absent {
@@ -403,30 +479,40 @@ function check_change_debug_level_in_config_map {
 function check_pgdb_config_override {
     local temp_file=/tmp/test-$(date +%s).json
     trap 'rm -f "$temp_file"' RETURN
-    local current_max_connections=`${kubectl} exec noobaa-db-pg-0 -- psql -c "SELECT MAX(setting) FROM pg_file_settings WHERE name = 'max_connections';" | awk 'NR==3 {print $1}'`
+    local current_max_connections
+    current_max_connections=$(read_pg_max_connections)
+    if [ -z "${current_max_connections}" ]
+    then
+        echo_time "❌  Could not read current PostgreSQL max_connections, Exiting"
+        exit 1
+    fi
     local final_max_connections=$((current_max_connections + 100))
     printf "{\"spec\":{\"dbConf\":\"\\\nmax_connections = $final_max_connections\"}}" > $temp_file
 
     kuberun silence patch noobaas.noobaa.io noobaa --patch-file $temp_file --type merge
 
-    echo_time "💬  Waiting for PostgreSQL DB max_connections to match the value specified in dbConf"
-    local deadline=$(( $(date +%s) + 180 ))
-    while [[ "${final_max_connections}" != "${current_max_connections}" ]]
-    do
-        if [ $(date +%s) -ge ${deadline} ]
-        then
-            echo_time "❌  reached the timeout for waiting to the update"
-            break
-        fi
-        sleep 2
-        current_max_connections=`${kubectl} exec noobaa-db-pg-0 -- psql -c "SELECT MAX(setting) FROM pg_file_settings WHERE name = 'max_connections';" | awk 'NR==3 {print $1}'`
-    done 
-
-    if [[ "${final_max_connections}" == "${current_max_connections}" ]]
+    # Wait for the applied runtime setting after reconcile restarts postgres
+    # (operator → pod recreate → PVC reattach → startup/recovery).
+    if ! quiet_poll 300 5 "PostgreSQL max_connections = ${final_max_connections}" \
+        "[ \"\$(read_pg_max_connections)\" = \"${final_max_connections}\" ]" \
+        "${kubectl} describe pod noobaa-db-pg-0; ${kubectl} get events --sort-by=.lastTimestamp | tail -20"
     then
-        echo_time "✅  PostgreSQL DB config updated successfully"
-    else
-        echo_time "❌  PostgreSQL DB config didn't got updated, Exiting"
+        rm -f "$temp_file"
+        exit 1
+    fi
+
+    # Prove RPC is healthy again. Cap each attempt when an external timeout exists
+    # (RPCSendTimeout is 120s). Probe the binary, not command -v, which would match
+    # the local timeout helper. Skip the cap on macOS without coreutils/gtimeout.
+    local rpc_cmd="${noobaa} bucket list"
+    if command timeout 1 true >/dev/null 2>&1
+    then
+        rpc_cmd="command timeout 60 ${rpc_cmd}"
+    fi
+    if ! quiet_poll 300 5 "NooBaa RPC after dbConf" \
+        "${rpc_cmd} >/dev/null 2>&1" \
+        "${kubectl} get pod noobaa-db-pg-0 noobaa-core-0 -o wide; ${rpc_cmd}"
+    then
         rm -f "$temp_file"
         exit 1
     fi
@@ -496,6 +582,8 @@ function check_namespacestore_validator {
         --endpoint s3.${NAMESPACE}.svc.cluster.local:443 \
         --access-key ${AWS_ACCESS_KEY_ID} \
         --secret-key ${AWS_SECRET_ACCESS_KEY}
+
+    delete_bucket_idempotent "${buckets}"
 
     check_namespacestore_nsfs_validator
 }
@@ -724,7 +812,7 @@ function bucketclass_cycle {
     test_noobaa bucketclass create placement-bucketclass "bucket.class.replication" --backingstores ${backingstore[0]} --replication-policy replication1.json
     bucketclass_names+=("bucket.class.replication")
 
-    local bucketclass_list_array=($(test_noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME))
+    local bucketclass_list_array=($(test_noobaa silence bucketclass list | filter_cli_list | awk '{print $1}'))
     for bucketclass in ${bucketclass_list_array[@]}
     do
         test_noobaa bucketclass status ${bucketclass}
@@ -767,7 +855,7 @@ function obc_cycle {
     echo_time "💬  Starting the obc cycle"
     local buckets=()
 
-    local bucketclass_list_array=($(test_noobaa silence bucketclass list | awk '{print $1}' | grep -v NAME | grep -v noobaa-default-bucket-class))
+    local bucketclass_list_array=($(test_noobaa silence bucketclass list | filter_cli_list | awk '{print $1}' | grep -v noobaa-default-bucket-class))
     for bucketclass in ${bucketclass_list_array[@]}
     do
         buckets+=("bucket${bucketclass//[a-zA-Z.-]/}")
@@ -793,8 +881,8 @@ function obc_cycle {
 
 function account_cycle {
     echo_time "💬  Starting the account cycle"
-    local buckets=($(test_noobaa silence bucket list  | grep -v "BUCKET-NAME" | awk '{print $1}'))
-    local backingstores=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
+    local buckets=($(test_noobaa silence bucket list | filter_cli_list | awk '{print $1}'))
+    local backingstores=($(test_noobaa silence backingstore list | filter_cli_list | awk '{print $1}'))
     test_noobaa account create account1  #default_resource should be the system default
     test_noobaa account create account2 --default_resource ${backingstores[0]}
 
@@ -994,10 +1082,10 @@ function account_nsfs_cycle {
 
 function delete_backingstore_path {
     local object_bucket backing_store
-    local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
+    local backingstore=($(test_noobaa silence backingstore list | filter_cli_list | awk '{print $1}'))
     local bucketclass=($(test_noobaa silence bucketclass list  | grep ${backingstore[1]} | awk '{print $1}'))
     local obc=()
-    local all_obc=($(test_noobaa silence obc list | grep -v "BUCKET-NAME" | awk '{print $2":"$5}'))
+    local all_obc=($(test_noobaa silence obc list | filter_cli_list | awk '{print $2":"$5}'))
     
     # get obcs that their bucketclass is in bucketclass array
     for object_bucket in ${all_obc[@]}
@@ -1032,7 +1120,7 @@ function delete_backingstore_path {
     then
         echo_time "⚠️  Proceeding with a backingstore delete that may fail - bucketclasses still present"
     fi
-    local buckets=($(test_noobaa silence bucket list  | grep -v "BUCKET-NAME" | awk '{print $1}'))
+    local buckets=($(test_noobaa silence bucket list | filter_cli_list | awk '{print $1}'))
     echo_time "✅  buckets in system: ${buckets}"
     test_noobaa backingstore delete ${backingstore[1]}
     test_noobaa should_fail backingstore delete ${backingstore[0]}
@@ -1041,10 +1129,10 @@ function delete_backingstore_path {
 
 function delete_namespacestore_path {
     local object_bucket namespace_store
-    local namespacestore=($(test_noobaa silence namespacestore list | grep -v "NAME" | awk '{print $1}'))
-    local bucketclass=($(test_noobaa silence bucketclass list | grep -v "NAME" | awk '{print $1}'))
+    local namespacestore=($(test_noobaa silence namespacestore list | filter_cli_list | awk '{print $1}'))
+    local bucketclass=($(test_noobaa silence bucketclass list | filter_cli_list | awk '{print $1}'))
     local obc=()
-    local all_obc=($(test_noobaa silence obc list | grep -v "BUCKET-NAME" | awk '{print $2":"$5}'))
+    local all_obc=($(test_noobaa silence obc list | filter_cli_list | awk '{print $2":"$5}'))
 
     # get obcs that their bucketclass is in bucketclass array
     for object_bucket in ${all_obc[@]}
@@ -1090,7 +1178,7 @@ function delete_namespacestore_path {
     then
         echo_time "⚠️  Proceeding with a namespacestore delete that may fail - bucketclasses still present"
     fi
-    local buckets=($(test_noobaa silence bucket list  | grep -v "BUCKET-NAME" | awk '{print $1}'))
+    local buckets=($(test_noobaa silence bucket list | filter_cli_list | awk '{print $1}'))
     echo_time "✅  buckets in system: ${buckets}"
     test_noobaa namespacestore delete ${namespacestore[0]}
     test_noobaa namespacestore delete ${namespacestore[1]}
@@ -1098,7 +1186,7 @@ function delete_namespacestore_path {
 }
 
 function delete_account {
-    local accounts=($(test_noobaa silence account list | grep -v "NAME" | awk '{print $1}'))
+    local accounts=($(test_noobaa silence account list | filter_cli_list | awk '{print $1}'))
     for account in ${accounts[@]}
     do
         test_noobaa account delete ${account}
@@ -1113,9 +1201,9 @@ function delete_non_existing_resources {
 
 function check_deletes {
     echo_time "💬  Starting the delete cycle"
-    local obc=($(test_noobaa silence obc list | grep -v "NAME\|default" | awk '{print $2}'))
-    local bucketclass=($(test_noobaa silence bucketclass list  | grep -v NAME | awk '{print $1}'))
-    local backingstore=($(test_noobaa silence backingstore list | grep -v "NAME" | awk '{print $1}'))
+    local obc=($(test_noobaa silence obc list | filter_cli_list | grep -v default | awk '{print $2}'))
+    local bucketclass=($(test_noobaa silence bucketclass list | filter_cli_list | awk '{print $1}'))
+    local backingstore=($(test_noobaa silence backingstore list | filter_cli_list | awk '{print $1}'))
     test_noobaa obc delete ${obc[0]}
     test_noobaa bucketclass delete ${bucketclass[0]}
     test_noobaa backingstore list
@@ -1231,16 +1319,13 @@ function check_default_backingstore {
 
     echo_time "💬 Deleting Noobaa default backingstore and its connected instances"
     echo_time "💬 Deleting buckets"
-    NOOBAA_ACCESS_KEY=$(kuberun get secret noobaa-admin -n test -o json | jq -r '.data.AWS_ACCESS_KEY_ID|@base64d')
-    NOOBAA_SECRET_KEY=$(kuberun get secret noobaa-admin -n test -o json | jq -r '.data.AWS_SECRET_ACCESS_KEY|@base64d')
-    ENDPOINT=$(kuberun get noobaa noobaa -n test -o json | jq -r '.status.services.serviceS3.nodePorts[0]')
-    echo $ENDPOINT
-    AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 ls
-    for bucket in $(AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 ls | awk '{print $3}'); 
-    do  
-        AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 rb "s3://${bucket}" --force ; 
+    wait_for_noobaa_ready
+    local buckets=($(test_noobaa silence bucket list | filter_cli_list | awk '{print $1}'))
+    for bucket in ${buckets[@]}
+    do
+        delete_bucket_idempotent "${bucket}"
     done
-    "💬 Deleting non-default accounts"
+    echo_time "💬 Deleting non-default accounts"
     delete_account
 
     echo_time "💬 Creating new-default-backing-store and updating the admin account default_resourse with it"
@@ -1254,7 +1339,7 @@ function check_default_backingstore {
 
     if ! quiet_poll 120 2 "default backingstore to be deleted" \
         "! ${kubectl} get backingstore noobaa-default-backing-store >/dev/null 2>&1" \
-        "${kubectl} get backingstore noobaa-default-backing-store -o yaml"
+        "${kubectl} get backingstore noobaa-default-backing-store --request-timeout=10s -o yaml"
     then
         exit 1
     fi
