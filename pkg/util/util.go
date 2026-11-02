@@ -52,6 +52,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -59,6 +60,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -245,6 +247,7 @@ func init() {
 	Panic(routev1.AddToScheme(scheme.Scheme))
 	Panic(secv1.AddToScheme(scheme.Scheme))
 	Panic(autoscalingv1.AddToScheme(scheme.Scheme))
+	Panic(schedulingv1.AddToScheme(scheme.Scheme))
 	Panic(kedav1alpha1.AddToScheme(scheme.Scheme))
 	Panic(apiregistration.AddToScheme(scheme.Scheme))
 	Panic(configv1.AddToScheme(scheme.Scheme))
@@ -2341,6 +2344,23 @@ func ValidateQuotaConfig(name string, maxSize string, maxObjects string) error {
 		}
 	}
 
+	return nil
+}
+
+// CheckPriorityClassExists checks if a PriorityClass with the given name exists in the cluster.
+// If name is empty, it returns nil (optional field).
+func CheckPriorityClassExists(ctx context.Context, c client.Client, name string) error {
+	if name == "" {
+		return nil
+	}
+	pc := &schedulingv1.PriorityClass{}
+	err := c.Get(ctx, types.NamespacedName{Name: name}, pc)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return fmt.Errorf("PriorityClass %q not found in cluster", name)
+		}
+		return fmt.Errorf("failed to get PriorityClass %q: %w", name, err)
+	}
 	return nil
 }
 
