@@ -27,11 +27,13 @@ function post_install_tests {
     test_create_obc_with_nsfs_acc_distinguished_name
     # check_dbdump
     account_cycle
+    # Before check_deletes / dbConf. Needs OBCs from obc_cycle. Cleans up its transient BS
+    # so delete_backingstore_path still sees the expected backingstore[0]/[1] indices.
+    test_bucket_update_placement
     check_deletes
     delete_replication_files
     check_pgdb_config_override
     test_noobaa_cr_deletion
-    test_bucket_update_placement
     check_default_backingstore #It deletes all the buckets and non-default accounts, creates new backingstore and attach it to default admin account and then deletes default backingstore
 }
 
