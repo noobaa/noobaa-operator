@@ -10,6 +10,7 @@ spec:
     matchLabels:
       noobaa-core: noobaa
   serviceName: noobaa-mgmt
+  podManagementPolicy: Parallel
   # OnDelete: RollingUpdate waits for Ready after each pod; HA standbys never
   # become Ready, so the roll stalls after the standby and never updates the
   # leader. With OnDelete, operator will detect template/hash drift and delete outdated pods itself.
