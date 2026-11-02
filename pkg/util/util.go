@@ -53,6 +53,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -62,6 +63,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/cli-runtime/pkg/printers"
@@ -118,9 +120,11 @@ type OAuth2Endpoints struct {
 	TokenEndpoint         string `json:"token_endpoint"`
 }
 
-// ValidationError is a custom error if the validation failed
+// ValidationError is a custom error if the validation failed.
+// Err, when set, is the underlying cause and is not part of Error().
 type ValidationError struct {
 	Msg string
+	Err error
 }
 
 // googleCredentialsJSON is a minimal view of Google credential JSON (service_account or external_account).
@@ -170,6 +174,9 @@ func IsValidationError(err error) bool {
 func (e ValidationError) Error() string {
 	return e.Msg
 }
+
+// Unwrap returns the underlying cause, if any.
+func (e ValidationError) Unwrap() error { return e.Err }
 
 var (
 	ctx        = context.TODO()
@@ -247,6 +254,7 @@ func init() {
 	Panic(routev1.AddToScheme(scheme.Scheme))
 	Panic(secv1.AddToScheme(scheme.Scheme))
 	Panic(autoscalingv1.AddToScheme(scheme.Scheme))
+	Panic(schedulingv1.AddToScheme(scheme.Scheme))
 	Panic(kedav1alpha1.AddToScheme(scheme.Scheme))
 	Panic(apiregistration.AddToScheme(scheme.Scheme))
 	Panic(configv1.AddToScheme(scheme.Scheme))
@@ -2345,6 +2353,77 @@ func ValidateQuotaConfig(name string, maxSize string, maxObjects string) error {
 	}
 
 	return nil
+}
+
+// PriorityClassNotFoundError means the named PriorityClass is confirmed absent.
+type PriorityClassNotFoundError struct {
+	Name string
+}
+
+func (e *PriorityClassNotFoundError) Error() string {
+	return fmt.Sprintf("PriorityClass %q not found in cluster", e.Name)
+}
+
+// PriorityClassLookupError means a PriorityClass read failed for a reason other than confirmed absence.
+type PriorityClassLookupError struct {
+	Name string
+	Err  error
+}
+
+func (e *PriorityClassLookupError) Error() string {
+	return fmt.Sprintf("failed to get PriorityClass %q: %v", e.Name, e.Err)
+}
+
+// Unwrap returns the underlying API error.
+func (e *PriorityClassLookupError) Unwrap() error { return e.Err }
+
+// IsPriorityClassNotFound reports whether err confirms that a PriorityClass does not exist.
+func IsPriorityClassNotFound(err error) bool {
+	return errorChainContains(err, func(err error) bool {
+		_, ok := err.(*PriorityClassNotFoundError)
+		return ok
+	})
+}
+
+// IsPriorityClassLookupError reports whether err is a PriorityClass API read failure.
+func IsPriorityClassLookupError(err error) bool {
+	return errorChainContains(err, func(err error) bool {
+		_, ok := err.(*PriorityClassLookupError)
+		return ok
+	})
+}
+
+func errorChainContains(err error, match func(error) bool) bool {
+	for err != nil {
+		if match(err) {
+			return true
+		}
+		unwrapper, ok := err.(interface{ Unwrap() error })
+		if !ok {
+			return false
+		}
+		err = unwrapper.Unwrap()
+	}
+	return false
+}
+
+// CheckPriorityClassExists checks if a PriorityClass with the given name exists in the cluster.
+// An empty name is valid because the field is optional.
+// The lookup uses the process-wide API client, which reads from the API server.
+// A controller cache miss is therefore not treated as a confirmed absence.
+func CheckPriorityClassExists(ctx context.Context, name string) error {
+	if name == "" {
+		return nil
+	}
+	pc := &schedulingv1.PriorityClass{}
+	err := KubeClient().Get(ctx, types.NamespacedName{Name: name}, pc)
+	if err == nil {
+		return nil
+	}
+	if errors.IsNotFound(err) {
+		return &PriorityClassNotFoundError{Name: name}
+	}
+	return &PriorityClassLookupError{Name: name, Err: err}
 }
 
 //

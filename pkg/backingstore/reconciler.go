@@ -377,7 +377,7 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 
 	err := validations.ValidateBackingStore(*r.BackingStore)
 	if err != nil {
-		return util.NewPersistentError("BackingStoreValidationError", err.Error())
+		return reconcileBackingStoreValidationError(r.BackingStore, err)
 	}
 
 	if r.NooBaa.UID == "" {
@@ -394,6 +394,24 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 	}
 
 	return nil
+}
+
+// reconcileBackingStoreValidationError keeps a missing PV-pool PriorityClass distinct
+// from other validation failures. A failed API read stays retryable.
+func reconcileBackingStoreValidationError(bs *nbv1.BackingStore, err error) error {
+	if util.IsPriorityClassNotFound(err) {
+		className := ""
+		if bs.Spec.PVPool != nil {
+			className = bs.Spec.PVPool.PriorityClassName
+		}
+		return util.NewPersistentError("InvalidPriorityClass",
+			fmt.Sprintf("Invalid pvPool.priorityClassName %q for BackingStore %q: %v",
+				className, bs.Name, err))
+	}
+	if util.IsPriorityClassLookupError(err) {
+		return err
+	}
+	return util.NewPersistentError("BackingStoreValidationError", err.Error())
 }
 
 // ReconcilePhaseConnecting checks that we have the system and secret needed to reconcile

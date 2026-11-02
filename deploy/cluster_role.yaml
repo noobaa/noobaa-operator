@@ -161,18 +161,26 @@ rules:
     - get
     - list
     - watch
-  - apiGroups: 
+  - apiGroups:
       - coordination.k8s.io
-    resources: 
+    resources:
       - leases
-    verbs: 
+    verbs:
       - get
       - watch
       - list
       - delete
       - update
       - create
-  - apiGroups: 
+  - apiGroups:
+      - scheduling.k8s.io
+    resources:
+      - priorityclasses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - objectstorage.k8s.io
     resources: 
       - buckets

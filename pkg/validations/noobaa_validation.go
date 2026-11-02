@@ -6,6 +6,7 @@ import (
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"k8s.io/apimachinery/pkg/api/equality"
 )
 
 // ValidateNoobaaDeletion check the existence of AllowNoobaaDeletion in Noobaa CR
@@ -18,13 +19,20 @@ func ValidateNoobaaDeletion(nb nbv1.NooBaa) error {
 	return nil
 }
 
-// ValidateNoobaaUpdate validates that the updated Noobaa CR is valid
-func ValidateNoobaaUpdate(nb nbv1.NooBaa) error {
+// ValidateNoobaaUpdate validates that the updated Noobaa CR is valid.
+// PriorityClass existence is checked only when spec changes, so finalizer removal
+// is not rejected after a referenced PriorityClass has been deleted.
+func ValidateNoobaaUpdate(nb, oldNb nbv1.NooBaa) error {
 	if err := validateNoobaaAutoscalerConfig(nb); err != nil {
 		return err
 	}
 	if err := validateNoobaaLoadbalancerSourceSubnets(nb); err != nil {
 		return err
+	}
+	if !equality.Semantic.DeepEqual(nb.Spec, oldNb.Spec) {
+		if err := ValidatePriorityClasses(nb); err != nil {
+			return err
+		}
 	}
 	return validateTLSSecurity(nb)
 }
@@ -37,7 +45,41 @@ func ValidateNoobaaCreation(nb nbv1.NooBaa) error {
 	if err := validateNoobaaLoadbalancerSourceSubnets(nb); err != nil {
 		return err
 	}
+	if err := ValidatePriorityClasses(nb); err != nil {
+		return err
+	}
 	return validateTLSSecurity(nb)
+}
+
+// ValidatePriorityClasses validates that referenced PriorityClasses exist in the cluster
+func ValidatePriorityClasses(nb nbv1.NooBaa) error {
+	specs := []struct {
+		fieldName string
+		className string
+	}{
+		{"corePriorityClassName", nb.Spec.CorePriorityClassName},
+		{"dbPriorityClassName", nb.Spec.DBPriorityClassName},
+		{"endpointPriorityClassName", nb.Spec.EndpointPriorityClassName},
+	}
+
+	for _, s := range specs {
+		if s.className == "" {
+			continue
+		}
+		err := util.CheckPriorityClassExists(util.Context(), s.className)
+		if err == nil {
+			continue
+		}
+		if util.IsPriorityClassNotFound(err) {
+			return util.ValidationError{
+				Msg: fmt.Sprintf("Invalid %s %q: %v", s.fieldName, s.className, err),
+				Err: err,
+			}
+		}
+		return err
+	}
+
+	return nil
 }
 
 func validateTLSSecurity(nb nbv1.NooBaa) error {
