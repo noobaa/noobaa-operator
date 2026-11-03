@@ -1313,11 +1313,14 @@ function check_default_backingstore {
 
     echo_time "💬 Deleting Noobaa default backingstore and its connected instances"
     echo_time "💬 Deleting buckets"
-    wait_for_noobaa_ready
-    local buckets=($(test_noobaa silence bucket list | filter_cli_list | awk '{print $1}'))
-    for bucket in ${buckets[@]}
+    NOOBAA_ACCESS_KEY=$(kuberun get secret noobaa-admin -n test -o json | jq -r '.data.AWS_ACCESS_KEY_ID|@base64d')
+    NOOBAA_SECRET_KEY=$(kuberun get secret noobaa-admin -n test -o json | jq -r '.data.AWS_SECRET_ACCESS_KEY|@base64d')
+    ENDPOINT=$(kuberun get noobaa noobaa -n test -o json | jq -r '.status.services.serviceS3.nodePorts[0]')
+    echo $ENDPOINT
+    AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 ls
+    for bucket in $(AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 ls | awk '{print $3}');
     do
-        delete_bucket_idempotent "${bucket}"
+        AWS_ACCESS_KEY_ID=$NOOBAA_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$NOOBAA_SECRET_KEY AWS_EC2_METADATA_DISABLED=true aws --endpoint $ENDPOINT --no-verify-ssl s3 rb "s3://${bucket}" --force ;
     done
     echo_time "💬 Deleting non-default accounts"
     delete_account
