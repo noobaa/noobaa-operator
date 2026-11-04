@@ -4371,7 +4371,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "ecc598bf8cace5d61f798aea2b2194196da95c454de9ab8acd392e552c6bf5c2"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "d901016c964b119ac37471f039d06dfcf3e9e9a10eb1584cbb938046012f6923"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -5086,7 +5086,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "5cff78327078d03fb7ad086fe8a5225435064aff27ae2715d7ef0fb1fde37fae"
+const Sha256_deploy_internal_pod_agent_yaml = "2e435d78432dbeb8e23caca8ad4e32cc9ed17305591afbf55eaca3d33a8ec653"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -5813,7 +5813,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "ea93880d1a81b807d3ec5cf3e37ee14133e137588cd049d4e618a55696c5b382"
+const Sha256_deploy_internal_statefulset_core_yaml = "d6831f2838c4c3ee4c09a2d4a14b3a533a11b77151dc07139c17516bc8d6a7fe"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -7956,3 +7956,4 @@ spec:
               containerPort: 7761
 
 `
+
