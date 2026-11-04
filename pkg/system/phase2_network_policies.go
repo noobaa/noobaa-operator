@@ -18,6 +18,10 @@ func (r *Reconciler) ReconcileNetworkPolicies() error {
 		return err
 	}
 
+	if err := r.ReconcileObject(r.NetworkPolicyBgConsumers, r.SetDesiredNetworkPolicyBgConsumers); err != nil {
+		return err
+	}
+
 	if err := r.ReconcileObject(r.NetworkPolicyEndpoint, r.SetDesiredNetworkPolicyEndpoint); err != nil {
 		return err
 	}

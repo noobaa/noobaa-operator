@@ -612,6 +612,7 @@ func (r *Reconciler) setPostgresConfig() {
 	}
 
 	_, endpointMaxCount := r.getEndpointMinMaxCount()
+	bgConsumersReplicas := r.getBgConsumersReplicas()
 
 	totalMemoryKB := defaultCalcMemoryKB
 	dbResources := getDBResources(r.NooBaa)
@@ -622,10 +623,10 @@ func (r *Reconciler) setPostgresConfig() {
 	}
 	cpuNum := cpuCoresForPGTune(dbResources)
 
-	for k, v := range calculatePGConfig(totalMemoryKB, cpuNum, int(endpointMaxCount), r.CNPGCluster.Spec.StorageConfiguration.Size) {
+	for k, v := range calculatePGConfig(totalMemoryKB, cpuNum, int(endpointMaxCount), int(bgConsumersReplicas), r.CNPGCluster.Spec.StorageConfiguration.Size) {
 		overrideParameters[k] = v
 	}
-	r.cnpgLog("PGTune config: memory=%dKB, cpu=%d, endpoints=%d", totalMemoryKB, cpuNum, endpointMaxCount)
+	r.cnpgLog("PGTune config: memory=%dKB, cpu=%d, endpoints=%d, bgConsumers=%d", totalMemoryKB, cpuNum, endpointMaxCount, bgConsumersReplicas)
 
 	// Clean up previous ciphers, will be reconciled by user provided list later.
 	delete(desiredParameters, "ssl_min_protocol_version")
@@ -707,11 +708,12 @@ func cpuCoresForPGTune(dbResources corev1.ResourceRequirements) int64 {
 // Fixed assumptions: DB Version: 16, OS: Linux, DB Type: OLTP, Storage: SAN.
 // totalMemoryKB is the total DB memory in kilobytes, cpuNum is the number of CPU
 // cores (0 means unknown), numEndpoints is the number of endpoint pods used to
-// derive max_connections, and dataVolumeSize is the PVC size string used to derive wal_keep_size.
-func calculatePGConfig(totalMemoryKB int64, cpuNum int64, numEndpoints int, dataVolumeSize string) map[string]string {
+// derive max_connections, numBgConsumers is the configured bg-consumers replica
+// count, and dataVolumeSize is the PVC size string used to derive wal_keep_size.
+func calculatePGConfig(totalMemoryKB int64, cpuNum int64, numEndpoints, numBgConsumers int, dataVolumeSize string) map[string]string {
 	params := map[string]string{}
 
-	maxConnections := calculateMaxConnections(numEndpoints)
+	maxConnections := calculateMaxConnections(numEndpoints, numBgConsumers)
 
 	// shared_buffers = 25% of total memory
 	sharedBuffersKB := totalMemoryKB / 4
@@ -818,21 +820,24 @@ func calculateWalKeepSize(dataVolumeSize string) string {
 
 // calculateMaxConnections computes PostgreSQL max_connections from NooBaa client
 // processes. Core runs web_server + hosted_agents (2 processes). The BG workers
-// process runs in a separate singleton pod (1 process). Each of those uses up to 20 DB
-// connections (default + md pools). Each endpoint process uses up to 80
-// (default + md pools, excluding the read_only pool which targets the standby).
-// 3 extra connections are reserved for superuser access.
-func calculateMaxConnections(numEndpoints int) int {
+// STS runs as a singleton (1 process). BG consumers use Spec.BgConsumers.Replicas
+// (static scale; default 1). Each of those uses up to 20 DB connections (default
+// + md pools). Each endpoint process uses up to 80 (default + md pools, excluding
+// the read_only pool which targets the standby). 3 extra connections are reserved
+// for superuser access.
+func calculateMaxConnections(numEndpoints, numBgConsumers int) int {
 	const (
-		coreProcesses           = 2 // web_server + hosted_agents
-		bgWorkersProcesses      = 1 // singleton StatefulSet, not scalable yet
-		connectionsPerCore      = 20
-		connectionsPerBgWorkers = 20
-		connectionsPerEndpoint  = 80
-		superuserReserved       = 3
+		coreProcesses             = 2 // web_server + hosted_agents
+		bgWorkersProcesses        = 1 // singleton worker StatefulSet
+		connectionsPerCore        = 20
+		connectionsPerBgWorkers   = 20
+		connectionsPerBgConsumers = 20
+		connectionsPerEndpoint    = 80
+		superuserReserved         = 3
 	)
 	return coreProcesses*connectionsPerCore +
 		bgWorkersProcesses*connectionsPerBgWorkers +
+		numBgConsumers*connectionsPerBgConsumers +
 		numEndpoints*connectionsPerEndpoint +
 		superuserReserved
 }

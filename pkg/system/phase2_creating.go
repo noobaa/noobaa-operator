@@ -247,6 +247,10 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 
+	if err := r.ReconcileObject(r.BgConsumersApp, r.SetDesiredBgConsumersApp); err != nil {
+		return err
+	}
+
 	// reconcile noobaa-mgmt route only if routes are enabled (independent of BG)
 	if !r.NooBaa.Spec.DisableRoutes {
 		if err := r.ReconcileObjectOptional(r.RouteMgmt, nil); err != nil {
