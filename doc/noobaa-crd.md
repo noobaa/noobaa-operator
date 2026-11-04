@@ -25,6 +25,10 @@ The operator watches for NooBaaSystem changes and reconcile them to apply the fo
   - Endpoints:
     - Deployment
     - HorizontalPodAutoscaler
+  - Background workers:
+    - StatefulSet (`noobaa-bg-workers`)
+  - Background executors:
+    - Deployment (`noobaa-bg-executors`); scale via `spec.bgExecutors.replicas` (static; default 1, `0` disables)
 - NooBaa Setup
   - Admin Account
     - Once the server is up and running the operator will call an API to setup a new system in the server which returns a secret token:

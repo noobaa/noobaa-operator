@@ -18,6 +18,10 @@ func (r *Reconciler) ReconcileNetworkPolicies() error {
 		return err
 	}
 
+	if err := r.ReconcileObject(r.NetworkPolicyBgExecutors, r.SetDesiredNetworkPolicyBgExecutors); err != nil {
+		return err
+	}
+
 	if err := r.ReconcileObject(r.NetworkPolicyEndpoint, r.SetDesiredNetworkPolicyEndpoint); err != nil {
 		return err
 	}
@@ -42,6 +46,33 @@ func (r *Reconciler) ReconcileNetworkPolicies() error {
 // - Ingress controllers route external RouteMgmt traffic to this port
 func (r *Reconciler) SetDesiredNetworkPolicyCore() error {
 	r.NetworkPolicyCore.Spec.PodSelector.MatchLabels["noobaa-core"] = r.Request.Name
+	return nil
+}
+
+// SetDesiredNetworkPolicyBgWorkers sets the BG workers network policy spec from the
+// bundle so bundle changes reach existing policies, and updates the pod selector
+// to match the actual NooBaa system name.
+//
+// The cross-namespace rule allows TCP 9445 (metrics HTTPS) from any namespace because
+// Prometheus/monitoring scrapes this port and the scraper namespace varies by platform.
+// RPC on 8445 stays same-namespace only.
+func (r *Reconciler) SetDesiredNetworkPolicyBgWorkers() error {
+	desired := util.KubeObject(bundle.File_deploy_internal_networkpolicy_bg_workers_yaml).(*networkingv1.NetworkPolicy)
+	r.NetworkPolicyBgWorkers.Spec = desired.Spec
+	r.NetworkPolicyBgWorkers.Spec.PodSelector.MatchLabels["noobaa-bg-workers"] = r.Request.Name
+	return nil
+}
+
+// SetDesiredNetworkPolicyBgExecutors sets the BG executors network policy spec from
+// the bundle so bundle changes reach existing policies, and updates the pod
+// selector to match the actual NooBaa system name.
+//
+// Executors are outbound-only for now (no Service/metrics), so the policy denies
+// all ingress. A metrics allow rule can be added when a ServiceMonitor lands.
+func (r *Reconciler) SetDesiredNetworkPolicyBgExecutors() error {
+	desired := util.KubeObject(bundle.File_deploy_internal_networkpolicy_bg_executors_yaml).(*networkingv1.NetworkPolicy)
+	r.NetworkPolicyBgExecutors.Spec = desired.Spec
+	r.NetworkPolicyBgExecutors.Spec.PodSelector.MatchLabels["noobaa-bg-executors"] = r.Request.Name
 	return nil
 }
 

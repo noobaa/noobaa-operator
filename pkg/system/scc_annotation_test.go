@@ -36,11 +36,27 @@ func TestRequiredSCCAnnotationForAllNooBaaDeployments(t *testing.T) {
 			},
 		},
 		{
+			name:     "noobaa-bg-workers StatefulSet",
+			expected: "noobaa-core",
+			check: func(*testing.T) map[string]string {
+				bgWorkersStatefulSet := util.KubeObject(bundle.File_deploy_internal_statefulset_bg_workers_yaml).(*appsv1.StatefulSet)
+				return bgWorkersStatefulSet.Spec.Template.Annotations
+			},
+		},
+		{
 			name:     "noobaa-endpoint Deployment",
 			expected: "noobaa-endpoint",
 			check: func(*testing.T) map[string]string {
 				endpointDeployment := util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment)
 				return endpointDeployment.Spec.Template.Annotations
+			},
+		},
+		{
+			name:     "noobaa-bg-executors Deployment",
+			expected: "noobaa-bg-executors",
+			check: func(*testing.T) map[string]string {
+				bgExecutorsDeployment := util.KubeObject(bundle.File_deploy_internal_deployment_bg_executors_yaml).(*appsv1.Deployment)
+				return bgExecutorsDeployment.Spec.Template.Annotations
 			},
 		},
 		{

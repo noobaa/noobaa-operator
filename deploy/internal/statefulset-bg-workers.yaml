@@ -86,8 +86,8 @@ spec:
             - containerPort: 9445
               name: metrics-https
           env:
-            - name: NOOBAA_BG_ROLE
-              value: scanner
+            - name: BG_WORKERS_MODE
+              value: default
             - name: NOOBAA_DISABLE_COMPRESSION
               valueFrom:
                 configMapKeyRef:
