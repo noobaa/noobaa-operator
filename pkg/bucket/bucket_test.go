@@ -95,6 +95,19 @@ var _ = Describe("mergeQuotaForUpdate", func() {
 		})
 	})
 
+	Context("when an existing quota uses strict mode", func() {
+		It("keeps mode when only a limit is updated", func() {
+			existing := &nb.QuotaConfig{
+				Size: &nb.SizeQuotaConfig{Value: 5, Unit: "G"},
+				Mode: nb.QuotaModeStrict,
+			}
+			mergedQuota, err := mergeQuotaForUpdate(existing, "b", "", "2")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mergedQuota.Mode).To(Equal(nb.QuotaModeStrict))
+			Expect(mergedQuota.Quantity.Value).To(Equal(2))
+		})
+	})
+
 	Context("when max-size is explicitly cleared with zero", func() {
 		It("should remove the size limit and keep the object limit", func() {
 			existing := &nb.QuotaConfig{

@@ -696,7 +696,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_bucketclasses_yaml = "d31ffd534863d5fec56bbac39cf4f956fb613f5547b4402c36f19e9bc344df49"
+const Sha256_deploy_crds_noobaa_io_bucketclasses_yaml = "ba04465cdc429e128d8e21313bfb7615b9f72d2073ba12fa7a9b6d9075453d51"
 
 const File_deploy_crds_noobaa_io_bucketclasses_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -868,6 +868,10 @@ spec:
                   maxSize:
                     description: limits the max total size of objects per bucket
                     type: string
+                  strictQuota:
+                    description: StrictQuota enables synchronous quota checks. Requires
+                      maxSize and/or maxObjects.
+                    type: boolean
                 type: object
               replicationPolicy:
                 description: ReplicationPolicy specifies a json of replication rules
