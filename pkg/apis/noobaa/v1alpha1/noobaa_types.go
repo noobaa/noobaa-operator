@@ -198,6 +198,11 @@ type NooBaaSpec struct {
 	// +optional
 	Endpoints *EndpointsSpec `json:"endpoints,omitempty"`
 
+	// BgExecutors (optional) configures the bg-executors Deployment.
+	// Replicas are static (operator-owned); autoscaling is not supported yet.
+	// +optional
+	BgExecutors *BgExecutorsSpec `json:"bgExecutors,omitempty"`
+
 	// JoinSecret (optional) instructs the operator to join another cluster
 	// and point to a secret that holds the join information
 	// +optional
@@ -522,6 +527,18 @@ type EndpointsSpec struct {
 	// Resources (optional) overrides the default resource requirements for every endpoint pod
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+}
+
+// BgExecutorsSpec configures the bg-executors Deployment (static replica count).
+// +k8s:openapi-gen=true
+type BgExecutorsSpec struct {
+	// Replicas is the desired number of bg-executor pods.
+	// The operator sets Deployment.spec.replicas to this value (no HPA yet).
+	// nil / omitted defaults to 1; 0 disables the Deployment (scale to zero).
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
+	Replicas *int32 `json:"replicas,omitempty"`
 }
 
 // NooBaaStatus defines the observed state of System
