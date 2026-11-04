@@ -335,36 +335,64 @@ func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
 	r.setPostgresConfig()
 
 	// Configure backup settings if specified
-	if backupSpec := r.NooBaa.Spec.DBSpec.DBBackup; backupSpec != nil {
-		if backupSpec.VolumeSnapshot == nil {
-			r.cnpgLogError("volume snapshot backup configuration is not specified")
-			return fmt.Errorf("volume snapshot backup configuration is not specified")
-		}
-		offlineBackup := false
-		if r.CNPGCluster.Spec.Backup == nil {
-			r.CNPGCluster.Spec.Backup = &cnpgv1.BackupConfiguration{
-				VolumeSnapshot: &cnpgv1.VolumeSnapshotConfiguration{
-					ClassName: backupSpec.VolumeSnapshot.VolumeSnapshotClass,
-					Online:    &offlineBackup,
-				},
-			}
-		} else {
-			if r.CNPGCluster.Spec.Backup.VolumeSnapshot == nil {
-				r.CNPGCluster.Spec.Backup.VolumeSnapshot = &cnpgv1.VolumeSnapshotConfiguration{}
-			}
-			r.CNPGCluster.Spec.Backup.VolumeSnapshot.ClassName = backupSpec.VolumeSnapshot.VolumeSnapshotClass
-			r.CNPGCluster.Spec.Backup.VolumeSnapshot.Online = &offlineBackup
-		}
-	} else {
-		// Remove backup configuration if not specified
-		r.CNPGCluster.Spec.Backup = nil
+	if err := setDesiredBackupConf(&r.CNPGCluster.Spec, r.NooBaa.Spec.DBSpec.DBBackup); err != nil {
+		r.cnpgLogError("got error setting backup configuration. error: %v", err)
+		return err
 	}
 
 	// TODO: consider specifying a separate WAL storage configuration in Spec.WalStorage
-	// currently, the same storage will be used for both DB and WAL
+	// currently, the same storage will be used for both DB and WAL.
+	// NOTE: online backups (see newOnlineBackupConfiguration) depend on data and WAL being on a single volume.
+	// Moving WAL to a separate volume requires WAL archiving or atomic group snapshots of both volumes.
 
 	return nil
 
+}
+
+// setDesiredBackupConf sets the volume snapshot backup configuration of the cluster spec,
+// or removes it if backup is not configured.
+// Fields set by the API server defaults are kept, so the spec stays stable between reconciles.
+func setDesiredBackupConf(clusterSpec *cnpgv1.ClusterSpec, backupSpec *nbv1.DBBackupSpec) error {
+	if backupSpec == nil {
+		// Remove backup configuration if not specified
+		clusterSpec.Backup = nil
+		return nil
+	}
+	if backupSpec.VolumeSnapshot == nil {
+		return fmt.Errorf("volume snapshot backup configuration is not specified")
+	}
+	if clusterSpec.Backup == nil {
+		clusterSpec.Backup = &cnpgv1.BackupConfiguration{}
+	}
+	if clusterSpec.Backup.VolumeSnapshot == nil {
+		clusterSpec.Backup.VolumeSnapshot = &cnpgv1.VolumeSnapshotConfiguration{}
+	}
+	// Clusters created by older versions have online=false here. Changing it does not restart the DB pods.
+	// Backups that were already created keep running offline, since each Backup carries its own online setting.
+	onlineBackup := true
+	clusterSpec.Backup.VolumeSnapshot.ClassName = backupSpec.VolumeSnapshot.VolumeSnapshotClass
+	clusterSpec.Backup.VolumeSnapshot.Online = &onlineBackup
+	clusterSpec.Backup.VolumeSnapshot.OnlineConfiguration = newOnlineBackupConfiguration()
+	return nil
+}
+
+// newOnlineBackupConfiguration returns the settings for online (hot) volume snapshot backups.
+// An online backup does not fence the instance: PostgreSQL keeps running and replicating while the
+// snapshot is taken (pg_backup_start/pg_backup_stop). An offline backup stops PostgreSQL on the standby
+// until the snapshot is ready, and if the snapshot hangs or the restart fails, the standby stays down.
+//
+// There is no WAL archive, so waitForArchive must be false. The backup is still restorable because
+// reconcileClusterRecovery sets no recovery source: CNPG does not restore the backup_label, and PostgreSQL
+// runs crash recovery from the snapshot using the WAL in the same volume. This requires an atomic snapshot
+// of a single volume holding both data and WAL.
+func newOnlineBackupConfiguration() cnpgv1.OnlineConfiguration {
+	waitForArchive := false
+	// on a standby this requests an immediate restartpoint, which keeps the backup window short
+	immediateCheckpoint := true
+	return cnpgv1.OnlineConfiguration{
+		WaitForArchive:      &waitForArchive,
+		ImmediateCheckpoint: &immediateCheckpoint,
+	}
 }
 
 // cleanupDBBackup removes the scheduled backup configuration if it exists
@@ -474,7 +502,8 @@ func (r *Reconciler) getBackupResourceName() string {
 
 func (r *Reconciler) reconcileScheduledBackup() error {
 	backupSpec := r.NooBaa.Spec.DBSpec.DBBackup
-	offlineBackup := false
+	onlineBackup := true
+	onlineConfiguration := newOnlineBackupConfiguration()
 	// convert the standard cron schedule to the cnpg cron schedule
 	cnpgSchedule, err := convertToSixFieldCron(backupSpec.Schedule)
 	if err != nil {
@@ -488,7 +517,9 @@ func (r *Reconciler) reconcileScheduledBackup() error {
 		scheduledBackup.Spec.Schedule = cnpgSchedule
 		scheduledBackup.Spec.Cluster.Name = r.CNPGCluster.Name
 		scheduledBackup.Spec.Method = cnpgv1.BackupMethodVolumeSnapshot
-		scheduledBackup.Spec.Online = &offlineBackup
+		// set explicitly (and not inherited from the cluster spec) because the scheduled backup copies them to each Backup
+		scheduledBackup.Spec.Online = &onlineBackup
+		scheduledBackup.Spec.OnlineConfiguration = &onlineConfiguration
 		scheduledBackup.Spec.Target = cnpgv1.BackupTargetStandby
 		if scheduledBackup.Status.LastScheduleTime != nil {
 			r.NooBaa.Status.DBStatus.BackupStatus.LastBackupTime = scheduledBackup.Status.LastScheduleTime
