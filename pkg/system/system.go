@@ -1060,11 +1060,13 @@ func RunDBBackup(cmd *cobra.Command, args []string) {
 		backupName = sys.Name + pgClusterSuffix + "-backup-" + time.Now().Format("20060102150405")
 	}
 
-	offlineBackup := false
+	onlineBackup := true
+	onlineConfiguration := newOnlineBackupConfiguration()
 	backup := cnpg.GetCnpgBackupObj(sys.Namespace, backupName)
 	backup.Spec.Cluster.Name = sys.Name + pgClusterSuffix
 	backup.Spec.Method = cnpgv1.BackupMethodVolumeSnapshot
-	backup.Spec.Online = &offlineBackup
+	backup.Spec.Online = &onlineBackup
+	backup.Spec.OnlineConfiguration = &onlineConfiguration
 	backup.Spec.Target = cnpgv1.BackupTargetStandby
 
 	if !util.KubeCreateFailExisting(backup) {
