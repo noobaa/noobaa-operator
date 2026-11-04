@@ -4489,11 +4489,11 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_COLOR
-            - name: ROLLBACK_TO_ICE
+            - name: ROLLBACK_N2N_TO_ICE
               valueFrom:
                 configMapKeyRef:
                   name: noobaa-config
-                  key: ROLLBACK_TO_ICE
+                  key: ROLLBACK_N2N_TO_ICE
             - name: NOOBAA_METRICS_AUTH_ENABLED
               valueFrom:
                 configMapKeyRef:
@@ -5117,7 +5117,7 @@ spec:
           value: /etc/agent-config/agent_config
         - name: NOOBAA_LOG_LEVEL
         - name: NOOBAA_LOG_COLOR
-        - name: ROLLBACK_TO_ICE
+        - name: ROLLBACK_N2N_TO_ICE
       command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
       # Insert the relevant image for the agent
       ports:
@@ -5967,11 +5967,11 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_COLOR
-            - name: ROLLBACK_TO_ICE
+            - name: ROLLBACK_N2N_TO_ICE
               valueFrom:
                 configMapKeyRef:
                   name: noobaa-config
-                  key: ROLLBACK_TO_ICE
+                  key: ROLLBACK_N2N_TO_ICE
             - name: NOOBAA_METRICS_AUTH_ENABLED
               valueFrom:
                 configMapKeyRef:
@@ -7956,4 +7956,3 @@ spec:
               containerPort: 7761
 
 `
-
