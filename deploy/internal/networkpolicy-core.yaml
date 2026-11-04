@@ -21,8 +21,6 @@ spec:
     - protocol: TCP
       port: 8444
     - protocol: TCP
-      port: 8445
-    - protocol: TCP
       port: 8446
     - protocol: TCP
       port: 60100

@@ -156,6 +156,50 @@ func TestBundleDriftServiceS3(t *testing.T) {
 	}
 }
 
+func bundleServiceMgmt() *corev1.Service {
+	svc := util.KubeObject(bundle.File_deploy_internal_service_mgmt_yaml).(*corev1.Service)
+	svc.Namespace = bundleTestNamespace
+	svc.Name = "noobaa-mgmt"
+	return svc
+}
+
+func TestBundleDriftServiceMgmt(t *testing.T) {
+	// live service from before BG left core: still has bg-https, plus allocated nodePorts
+	old := bundleServiceMgmt()
+	old.Spec.ClusterIP = "172.30.2.2"
+	old.Spec.Selector["noobaa-mgmt"] = "noobaa"
+	old.Spec.Ports = []corev1.ServicePort{
+		{Name: "mgmt", Port: 80, TargetPort: intstr.FromInt32(8080), Protocol: corev1.ProtocolTCP, NodePort: 30011},
+		{Name: "mgmt-https", Port: 443, TargetPort: intstr.FromInt32(8443), Protocol: corev1.ProtocolTCP, NodePort: 30012},
+		{Name: "bg-https", Port: 8445, TargetPort: intstr.FromInt32(8445), Protocol: corev1.ProtocolTCP, NodePort: 30013},
+		{Name: "hosted-agents-https", Port: 8446, TargetPort: intstr.FromInt32(8446), Protocol: corev1.ProtocolTCP, NodePort: 30014},
+	}
+
+	r := newBundleTestReconciler(t, old)
+	live := reconcileTwice(t, r, bundleServiceMgmt, func(svc *corev1.Service) func() error {
+		r.ServiceMgmt = svc
+		return r.SetDesiredServiceMgmt
+	})
+
+	wantNodePorts := map[string]int32{"mgmt": 30011, "mgmt-https": 30012, "hosted-agents-https": 30014}
+	if len(live.Spec.Ports) != len(wantNodePorts) {
+		t.Fatalf("ports = %+v, want the %d bundle ports", live.Spec.Ports, len(wantNodePorts))
+	}
+	for _, p := range live.Spec.Ports {
+		want, ok := wantNodePorts[p.Name]
+		if !ok {
+			t.Errorf("unexpected port %q (%d) was not removed", p.Name, p.Port)
+			continue
+		}
+		if p.NodePort != want {
+			t.Errorf("port %q nodePort = %d, want %d", p.Name, p.NodePort, want)
+		}
+	}
+	if live.Spec.ClusterIP != "172.30.2.2" {
+		t.Errorf("clusterIP = %q, want it kept", live.Spec.ClusterIP)
+	}
+}
+
 func bundleServiceSts() *corev1.Service {
 	svc := util.KubeObject(bundle.File_deploy_internal_service_sts_yaml).(*corev1.Service)
 	svc.Namespace = bundleTestNamespace

@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-bg-workers
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchLabels:
+      noobaa-bg-workers: noobaa
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8445
+  # Prometheus scrapes metrics-https :9445 from a monitoring namespace (same as core 8443 / db 9187 / endpoint 9443).
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 9445
