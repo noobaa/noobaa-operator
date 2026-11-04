@@ -190,6 +190,11 @@ type NooBaaSpec struct {
 	// +optional
 	Endpoints *EndpointsSpec `json:"endpoints,omitempty"`
 
+	// BgConsumers (optional) configures the bg-consumers Deployment.
+	// Replicas are static (operator-owned); autoscaling is not supported yet.
+	// +optional
+	BgConsumers *BgConsumersSpec `json:"bgConsumers,omitempty"`
+
 	// JoinSecret (optional) instructs the operator to join another cluster
 	// and point to a secret that holds the join information
 	// +optional
@@ -514,6 +519,16 @@ type EndpointsSpec struct {
 	// Resources (optional) overrides the default resource requirements for every endpoint pod
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+}
+
+// BgConsumersSpec configures the bg-consumers Deployment (static replica count).
+// +k8s:openapi-gen=true
+type BgConsumersSpec struct {
+	// Replicas is the desired number of bg-consumer pods.
+	// The operator sets Deployment.spec.replicas to this value (no HPA yet).
+	// Defaults to 1 when unset or less than 1.
+	// +optional
+	Replicas int32 `json:"replicas,omitempty"`
 }
 
 // NooBaaStatus defines the observed state of System

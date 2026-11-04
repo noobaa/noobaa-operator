@@ -278,7 +278,7 @@ func (r *Reconciler) setDesiredBgWorkersEnv(c *corev1.Container) {
 	for j := range c.Env {
 		switch c.Env[j].Name {
 		case "NOOBAA_BG_ROLE":
-			c.Env[j].Value = "scanner"
+			c.Env[j].Value = "worker"
 		case "MGMT_ADDR":
 			port := nb.FindPortByName(r.ServiceMgmt, "mgmt-https")
 			c.Env[j].Value = fmt.Sprintf(`%s:%d`, mgmtBaseAddr, port.Port)
