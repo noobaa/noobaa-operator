@@ -1518,7 +1518,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "cf8b0283a5d8660badba7edc2cb196fb43815f7a837eab7cb86f5fbeb204e2cf"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "15c1efeae233de1a7d0bef25926c7fd5a04f665ab882e641eeabe3e2462a2e1e"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2536,6 +2536,19 @@ spec:
                   prometheusNamespace:
                     description: Prometheus namespace that scrap metrics from noobaa
                     type: string
+                type: object
+              bgConsumers:
+                description: |-
+                  BgConsumers (optional) configures the bg-consumers Deployment.
+                  Replicas are static (operator-owned); autoscaling is not supported yet.
+                properties:
+                  replicas:
+                    description: |-
+                      Replicas is the desired number of bg-consumer pods.
+                      The operator sets Deployment.spec.replicas to this value (no HPA yet).
+                      Defaults to 1 when unset or less than 1.
+                    format: int32
+                    type: integer
                 type: object
               bucketLogging:
                 description: BucketLogging sets the configuration for bucket logging
@@ -4371,6 +4384,163 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
+const Sha256_deploy_internal_deployment_bg_consumers_yaml = "174ac2a3bdec4268ce8619c4b9f2d6c43635b408c2e130660e9277851c8febda"
+
+const File_deploy_internal_deployment_bg_consumers_yaml = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noobaa-bg-consumers
+  labels:
+    app: noobaa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      noobaa-bg-consumers: noobaa
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: noobaa
+        noobaa-bg-consumers: noobaa
+        noobaa-component: bg-consumers
+      annotations:
+        noobaa.io/configmap-hash: ""
+        openshift.io/required-scc: noobaa-core
+    spec:
+      serviceAccountName: noobaa-core
+      volumes:
+        - name: mgmt-secret
+          secret:
+            secretName: noobaa-mgmt-serving-cert
+            optional: true
+        - name: noobaa-server
+          secret:
+            secretName: noobaa-server
+            optional: true
+        - name: bound-sa-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  audience: openshift
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 0
+      containers:
+        - name: bg-consumers
+          image: NOOBAA_CORE_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
+          command:
+            # Upgrade: OLM can start this operator while the old core image is
+            # still running. That image has no bg_init.js. Sleep instead of
+            # CrashLoop until the core image rolls.
+            - /bin/bash
+            - -ec
+            - |
+              if [ -f /root/node_modules/noobaa-core/src/cmd/bg_init.js ]; then
+                exec /usr/local/bin/node --unhandled-rejections=warn /root/node_modules/noobaa-core/src/cmd/bg_init.js
+              fi
+              echo "bg_init.js missing (old core image); sleeping until the image is updated"
+              exec sleep infinity
+          volumeMounts:
+            - name: mgmt-secret
+              mountPath: /etc/mgmt-secret
+              readOnly: true
+            - name: noobaa-server
+              mountPath: /etc/noobaa-server
+              readOnly: true
+            - name: bound-sa-token
+              mountPath: /var/run/secrets/openshift/serviceaccount
+              readOnly: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "500Mi"
+            limits:
+              cpu: "999m"
+              memory: "3Gi"
+          env:
+            - name: NOOBAA_BG_ROLE
+              value: consumer
+            - name: NOOBAA_DISABLE_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_DISABLE_COMPRESSION
+            - name: NOOBAA_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_LOG_LEVEL
+            - name: NOOBAA_LOG_COLOR
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_LOG_COLOR
+            - name: NOOBAA_METRICS_AUTH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_METRICS_AUTH_ENABLED
+            - name: MGMT_ADDR
+            - name: BG_ADDR
+            - name: MD_ADDR
+            - name: HOSTED_AGENTS_ADDR
+            - name: POSTGRES_HOST
+            - name: POSTGRES_HOST_RO
+            - name: POSTGRES_PORT
+            - name: POSTGRES_DBNAME
+            - name: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+            - name: POSTGRES_CONNECTION_STRING
+            - name: POSTGRES_SSL_REQUIRED
+            - name: POSTGRES_SSL_UNAUTHORIZED
+            - name: POSTGRES_HOST_PATH
+            - name: POSTGRES_USER_PATH
+            - name: POSTGRES_PASSWORD_PATH
+            - name: POSTGRES_DBNAME_PATH
+            - name: POSTGRES_PORT_PATH
+            - name: POSTGRES_CONNECTION_STRING_PATH
+            - name: GUARANTEED_LOGS_PATH
+            - name: DB_TYPE
+              value: postgres
+            - name: CONTAINER_PLATFORM
+              value: KUBERNETES
+            - name: NODE_EXTRA_CA_CERTS
+            - name: TLS_MIN_VERSION
+            - name: TLS_CIPHERS
+            - name: TLS_GROUPS
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+            - name: NOTIFICATION_LOG_DIR
+              value: ""
+          envFrom:
+            - configMapRef:
+                name: noobaa-config
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+`
+
 const Sha256_deploy_internal_deployment_endpoint_yaml = "e55babcc37ae8d7b038ec9394184c1ec8458309cc2511cd5d514bb58bc763993"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
@@ -4919,6 +5089,25 @@ metadata:
   name: noobaa-core-lease
   labels:
     app: noobaa
+`
+
+const Sha256_deploy_internal_networkpolicy_bg_consumers_yaml = "c217079b6ed65e188055e1de4a8725fe466413490927e7c6593de35afb98a0b1"
+
+const File_deploy_internal_networkpolicy_bg_consumers_yaml = `apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-bg-consumers
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchLabels:
+      noobaa-bg-consumers: noobaa
+  policyTypes:
+  - Ingress
+  # Deny all ingress until metrics/MQ Services land. Consumers are outbound-only
+  # for now (RPC to core/scanner, Postgres, future message queue).
+  ingress: []
 `
 
 const Sha256_deploy_internal_networkpolicy_bg_workers_yaml = "39b89df8d737ddaa9191ac7406b65d8fb454381be4e0542e763bf13742f261fe"
@@ -5872,7 +6061,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_bg_workers_yaml = "0f45e84bbf74060cebcdbe6b49ac62f7a6c7a3e3c5b76c4a3ab77c7e7dc1a3af"
+const Sha256_deploy_internal_statefulset_bg_workers_yaml = "1d30b88a00db8803ea7f2bc61f4415294f2c3247545418438f87bc4c8b289e06"
 
 const File_deploy_internal_statefulset_bg_workers_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5971,7 +6160,7 @@ spec:
               name: metrics-https
           env:
             - name: NOOBAA_BG_ROLE
-              value: scanner
+              value: worker
             - name: NOOBAA_DISABLE_COMPRESSION
               valueFrom:
                 configMapKeyRef:

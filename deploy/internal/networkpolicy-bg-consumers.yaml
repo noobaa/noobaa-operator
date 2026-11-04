@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-bg-consumers
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchLabels:
+      noobaa-bg-consumers: noobaa
+  policyTypes:
+  - Ingress
+  # Deny all ingress until metrics/MQ Services land. Consumers are outbound-only
+  # for now (RPC to core/scanner, Postgres, future message queue).
+  ingress: []

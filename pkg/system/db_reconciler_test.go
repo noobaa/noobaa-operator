@@ -43,15 +43,15 @@ func TestCalculatePGConfig_4GB_2CPU_3Endpoints(t *testing.T) {
 	cpuNum := int64(2)
 	numEndpoints := 3
 
-	params := calculatePGConfig(totalMemoryKB, cpuNum, numEndpoints, "50Gi")
+	params := calculatePGConfig(totalMemoryKB, cpuNum, numEndpoints, 1, "50Gi")
 
-	// 3 endpoints -> max_connections = 2*20 + 1*20 + 3*80 + 3 = 303
+	// 3 endpoints -> max_connections = 2*20 + 1*20 + 1*20 + 3*80 + 3 = 323
 	expected := map[string]string{
 		"shared_buffers":       "1GB",
 		"effective_cache_size": "3GB",
 		"maintenance_work_mem": "256MB",
 		"wal_buffers":          "16MB",
-		"max_connections":      "303",
+		"max_connections":      "323",
 		"wal_keep_size":        "6GB",
 	}
 
@@ -87,14 +87,14 @@ func TestCalculatePGConfig_16GB_8CPU_3Endpoints(t *testing.T) {
 	cpuNum := int64(8)
 	numEndpoints := 3
 
-	params := calculatePGConfig(totalMemoryKB, cpuNum, numEndpoints, "50Gi")
+	params := calculatePGConfig(totalMemoryKB, cpuNum, numEndpoints, 1, "50Gi")
 
-	// 3 endpoints -> max_connections = 303
+	// 3 endpoints -> max_connections = 323
 	assertParam(t, params, "shared_buffers", "4GB")
 	assertParam(t, params, "effective_cache_size", "12GB")
 	assertParam(t, params, "maintenance_work_mem", "1GB")
 	assertParam(t, params, "wal_buffers", "16MB")
-	assertParam(t, params, "max_connections", "303")
+	assertParam(t, params, "max_connections", "323")
 
 	// parallel settings with 8 CPUs
 	assertParam(t, params, "max_worker_processes", "8")
@@ -102,7 +102,7 @@ func TestCalculatePGConfig_16GB_8CPU_3Endpoints(t *testing.T) {
 	assertParam(t, params, "max_parallel_workers_per_gather", "4")
 	assertParam(t, params, "max_parallel_maintenance_workers", "4")
 
-	// work_mem: (16GB - 4GB) / ((303 + 8) * 3) = 12582912 / 933 = 13487kB
+	// work_mem: (16GB - 4GB) / ((323 + 8) * 3) = 12582912 / 993 = 12671kB
 	workMem := params["work_mem"]
 	if workMem == "" {
 		t.Error("work_mem not set")
@@ -114,13 +114,13 @@ func TestCalculatePGConfig_8GB_4CPU_7Endpoints(t *testing.T) {
 	cpuNum := int64(4)
 	numEndpoints := 7
 
-	params := calculatePGConfig(totalMemoryKB, cpuNum, numEndpoints, "50Gi")
+	params := calculatePGConfig(totalMemoryKB, cpuNum, numEndpoints, 1, "50Gi")
 
-	// 7 endpoints -> max_connections = 2*20 + 1*20 + 7*80 + 3 = 623
+	// 7 endpoints -> max_connections = 2*20 + 1*20 + 1*20 + 7*80 + 3 = 643
 	assertParam(t, params, "shared_buffers", "2GB")
 	assertParam(t, params, "effective_cache_size", "6GB")
 	assertParam(t, params, "maintenance_work_mem", "512MB")
-	assertParam(t, params, "max_connections", "623")
+	assertParam(t, params, "max_connections", "643")
 
 	// parallel: cpuNum=4 so parallel settings should be set
 	assertParam(t, params, "max_worker_processes", "4")
@@ -128,49 +128,49 @@ func TestCalculatePGConfig_8GB_4CPU_7Endpoints(t *testing.T) {
 	assertParam(t, params, "max_parallel_workers_per_gather", "2")
 	assertParam(t, params, "max_parallel_maintenance_workers", "2")
 
-	// work_mem: (8GB - 2GB) / ((623 + 4) * 3) = 6291456 / 1881 = 3344kB < 4MB minimum
+	// work_mem: (8GB - 2GB) / ((643 + 4) * 3) = 6291456 / 1941 = 3241kB < 4MB minimum
 	assertParam(t, params, "work_mem", "4MB")
 }
 
 func TestCalculatePGConfig_MaintenanceWorkMem_Cap(t *testing.T) {
 	// 256GB memory -> maintenance_work_mem = 256GB / 16 = 16GB, capped at 8GB
-	params := calculatePGConfig(256*1024*1024, 16, 3, "50Gi")
+	params := calculatePGConfig(256*1024*1024, 16, 3, 1, "50Gi")
 	assertParam(t, params, "maintenance_work_mem", "8GB")
 }
 
 func TestCalculatePGConfig_WalBuffers(t *testing.T) {
 	// 256MB memory -> shared_buffers = 64MB -> wal_buffers = 3% * 64MB = 1966kB
-	params256MB := calculatePGConfig(256*1024, 1, 3, "50Gi")
+	params256MB := calculatePGConfig(256*1024, 1, 3, 1, "50Gi")
 	got := params256MB["wal_buffers"]
 	if got != "1966kB" && got != "1MB" {
 		t.Logf("wal_buffers for 256MB = %q (this is expected to vary)", got)
 	}
 
 	// 1GB memory -> shared_buffers = 256MB -> wal_buffers = 3% * 256MB = 7864kB
-	params1GB := calculatePGConfig(1024*1024, 1, 3, "50Gi")
+	params1GB := calculatePGConfig(1024*1024, 1, 3, 1, "50Gi")
 	walBuf1GB := params1GB["wal_buffers"]
 	if walBuf1GB == "" {
 		t.Error("wal_buffers not set for 1GB")
 	}
 
 	// 4GB+ memory -> shared_buffers = 1GB+ -> wal_buffers = 3% >= ~30MB -> capped at 16MB
-	params4GB := calculatePGConfig(4*1024*1024, 1, 3, "50Gi")
+	params4GB := calculatePGConfig(4*1024*1024, 1, 3, 1, "50Gi")
 	assertParam(t, params4GB, "wal_buffers", "16MB")
 }
 
 func TestCalculatePGConfig_WorkMem_MinimumFloor(t *testing.T) {
 	// Tiny memory with many endpoints -> work_mem should be at least 4MB
-	// 10 endpoints -> max_connections = 2*20 + 1*20 + 10*80 + 3 = 863
+	// 10 endpoints -> max_connections = 2*20 + 1*20 + 1*20 + 10*80 + 3 = 883
 	totalMemoryKB := int64(512 * 1024) // 512MB
-	params := calculatePGConfig(totalMemoryKB, 1, 10, "50Gi")
+	params := calculatePGConfig(totalMemoryKB, 1, 10, 1, "50Gi")
 
-	// work_mem = (512MB - 128MB) / ((863 + 8) * 3) = 393216 / 2613 = 150kB -> floor to 4MB
+	// work_mem = (512MB - 128MB) / ((883 + 8) * 3) = 393216 / 2673 = 147kB -> floor to 4MB
 	assertParam(t, params, "work_mem", "4MB")
 }
 
 func TestCalculatePGConfig_ParallelWorkers_Capping(t *testing.T) {
 	// 32 CPUs -> workers_per_gather = ceil(32/2) = 16 -> capped at 4
-	params := calculatePGConfig(32*1024*1024, 32, 3, "50Gi")
+	params := calculatePGConfig(32*1024*1024, 32, 3, 1, "50Gi")
 
 	assertParam(t, params, "max_worker_processes", "32")
 	assertParam(t, params, "max_parallel_workers", "32")
@@ -179,7 +179,7 @@ func TestCalculatePGConfig_ParallelWorkers_Capping(t *testing.T) {
 }
 
 func TestCalculatePGConfig_NoCPU(t *testing.T) {
-	params := calculatePGConfig(4*1024*1024, 0, 3, "50Gi")
+	params := calculatePGConfig(4*1024*1024, 0, 3, 1, "50Gi")
 
 	// no parallel settings when cpuNum < 4
 	for _, key := range []string{
@@ -303,13 +303,13 @@ func postgresParamsForDBResources(t *testing.T, dbResources corev1.ResourceRequi
 }
 
 func TestCalculatePGConfig_WalKeepSize(t *testing.T) {
-	params50 := calculatePGConfig(4*1024*1024, 2, 3, "50Gi")
+	params50 := calculatePGConfig(4*1024*1024, 2, 3, 1, "50Gi")
 	assertParam(t, params50, "wal_keep_size", "6GB")
 
-	params200 := calculatePGConfig(4*1024*1024, 2, 3, "200Gi")
+	params200 := calculatePGConfig(4*1024*1024, 2, 3, 1, "200Gi")
 	assertParam(t, params200, "wal_keep_size", "16GB")
 
-	paramsInvalid := calculatePGConfig(4*1024*1024, 2, 3, "invalid")
+	paramsInvalid := calculatePGConfig(4*1024*1024, 2, 3, 1, "invalid")
 	assertParam(t, paramsInvalid, "wal_keep_size", "6GB")
 }
 
@@ -343,17 +343,17 @@ func TestCalculateMaxConnections(t *testing.T) {
 		numEndpoints int
 		expected     int
 	}{
-		{"1 endpoint", 1, 2*20 + 1*20 + 1*80 + 3},     // 143
-		{"2 endpoints", 2, 2*20 + 1*20 + 2*80 + 3},    // 223
-		{"3 endpoints", 3, 2*20 + 1*20 + 3*80 + 3},    // 303
-		{"5 endpoints", 5, 2*20 + 1*20 + 5*80 + 3},    // 463
-		{"10 endpoints", 10, 2*20 + 1*20 + 10*80 + 3}, // 863
+		{"1 endpoint", 1, 2*20 + 1*20 + 1*20 + 1*80 + 3},     // 163
+		{"2 endpoints", 2, 2*20 + 1*20 + 1*20 + 2*80 + 3},    // 243
+		{"3 endpoints", 3, 2*20 + 1*20 + 1*20 + 3*80 + 3},    // 323
+		{"5 endpoints", 5, 2*20 + 1*20 + 1*20 + 5*80 + 3},    // 483
+		{"10 endpoints", 10, 2*20 + 1*20 + 1*20 + 10*80 + 3}, // 883
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := calculateMaxConnections(tt.numEndpoints)
+			got := calculateMaxConnections(tt.numEndpoints, 1)
 			if got != tt.expected {
-				t.Errorf("calculateMaxConnections(%d) = %d, want %d", tt.numEndpoints, got, tt.expected)
+				t.Errorf("calculateMaxConnections(%d, 1) = %d, want %d", tt.numEndpoints, got, tt.expected)
 			}
 		})
 	}
