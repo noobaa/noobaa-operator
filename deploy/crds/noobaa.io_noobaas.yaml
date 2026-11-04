@@ -1015,6 +1015,19 @@ spec:
                     description: Prometheus namespace that scrap metrics from noobaa
                     type: string
                 type: object
+              bgExecutors:
+                description: |-
+                  BgExecutors (optional) configures the bg-executors Deployment.
+                  Replicas are static (operator-owned); autoscaling is not supported yet.
+                properties:
+                  replicas:
+                    description: |-
+                      Replicas is the desired number of bg-executor pods.
+                      The operator sets Deployment.spec.replicas to this value (no HPA yet).
+                      Defaults to 1 when unset or less than 1.
+                    format: int32
+                    type: integer
+                type: object
               bgWorkersPriorityClassName:
                 description: BgWorkersPriorityClassName (optional) overrides the priority
                   class for the bg-workers pod

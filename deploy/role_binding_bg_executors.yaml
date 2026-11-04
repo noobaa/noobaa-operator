@@ -1,0 +1,11 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: noobaa-bg-executors
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: noobaa-bg-executors
+subjects:
+- kind: ServiceAccount
+  name: noobaa-bg-executors
