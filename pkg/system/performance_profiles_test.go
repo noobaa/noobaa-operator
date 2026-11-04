@@ -222,6 +222,70 @@ func TestGetDBResources(t *testing.T) {
 	}
 }
 
+func TestGetBgWorkersResources(t *testing.T) {
+	explicit := profileResources("750m", "999m", "2Gi", "4Gi")
+
+	tests := []struct {
+		name     string
+		nb       *nbv1.NooBaa
+		expected corev1.ResourceRequirements
+	}{
+		{
+			name: "default profile",
+			nb: &nbv1.NooBaa{
+				Spec: nbv1.NooBaaSpec{
+					PerformanceProfile: nbv1.PerformanceProfileDefault,
+				},
+			},
+			expected: performanceProfiles[nbv1.PerformanceProfileDefault].bgWorkersResources,
+		},
+		{
+			name: "mini-env profile",
+			nb: &nbv1.NooBaa{
+				Spec: nbv1.NooBaaSpec{
+					PerformanceProfile: nbv1.PerformanceProfileMiniEnv,
+				},
+			},
+			expected: performanceProfiles[nbv1.PerformanceProfileMiniEnv].bgWorkersResources,
+		},
+		{
+			name: "dev-env profile",
+			nb: &nbv1.NooBaa{
+				Spec: nbv1.NooBaaSpec{
+					PerformanceProfile: nbv1.PerformanceProfileDevEnv,
+				},
+			},
+			expected: performanceProfiles[nbv1.PerformanceProfileDevEnv].bgWorkersResources,
+		},
+		{
+			name: "mixed-workload profile",
+			nb: &nbv1.NooBaa{
+				Spec: nbv1.NooBaaSpec{
+					PerformanceProfile: nbv1.PerformanceProfileMixedWorkload,
+				},
+			},
+			expected: performanceProfiles[nbv1.PerformanceProfileMixedWorkload].bgWorkersResources,
+		},
+		{
+			name: "explicit bg workers resources override profile",
+			nb: &nbv1.NooBaa{
+				Spec: nbv1.NooBaaSpec{
+					PerformanceProfile: nbv1.PerformanceProfileMiniEnv,
+					BgWorkersResources: &explicit,
+				},
+			},
+			expected: explicit,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getBgWorkersResources(tt.nb)
+			assertResourceRequirements(t, got, tt.expected)
+		})
+	}
+}
+
 func TestGetEndpointResources(t *testing.T) {
 	explicit := profileResources("3", "3", "3Gi", "3Gi")
 
@@ -553,6 +617,7 @@ func assertPerformanceProfile(t *testing.T, got, want performanceProfile) {
 	assertResourceRequirements(t, got.dbResources, want.dbResources)
 	assertResourceRequirements(t, got.endpointResources, want.endpointResources)
 	assertResourceRequirements(t, got.pvPoolResources, want.pvPoolResources)
+	assertResourceRequirements(t, got.bgWorkersResources, want.bgWorkersResources)
 	if got.endpointMinCount != want.endpointMinCount {
 		t.Errorf("endpointMinCount = %d, want %d", got.endpointMinCount, want.endpointMinCount)
 	}
@@ -595,49 +660,64 @@ func assertResourceList(t *testing.T, got, want corev1.ResourceList, listName st
 
 func TestProfileResourcesValues(t *testing.T) {
 	tests := []struct {
-		name     string
-		profile  nbv1.PerformanceProfileType
-		core     [4]string
-		log      [4]string
-		db       [4]string
-		endpoint [4]string
-		pvPool   [4]string
+		name      string
+		profile   nbv1.PerformanceProfileType
+		core      [4]string
+		log       [4]string
+		db        [4]string
+		endpoint  [4]string
+		pvPool    [4]string
+		bgWorkers [4]string
 	}{
 		{
-			name:     "default",
-			profile:  nbv1.PerformanceProfileDefault,
-			core:     [4]string{"500m", "999m", "1Gi", "4Gi"},
-			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
-			db:       [4]string{"999m", "999m", "2Gi", "2Gi"},
-			endpoint: [4]string{"500m", "1999m", "1Gi", "3Gi"},
-			pvPool:   [4]string{"400m", "400m", "800Mi", "800Mi"},
+			name:      "default",
+			profile:   nbv1.PerformanceProfileDefault,
+			core:      [4]string{"500m", "999m", "1Gi", "4Gi"},
+			log:       [4]string{"200m", "200m", "500Mi", "500Mi"},
+			db:        [4]string{"999m", "999m", "2Gi", "2Gi"},
+			endpoint:  [4]string{"500m", "1999m", "1Gi", "3Gi"},
+			pvPool:    [4]string{"400m", "400m", "800Mi", "800Mi"},
+			bgWorkers: [4]string{"250m", "999m", "1Gi", "3Gi"},
 		},
 		{
-			name:     "mixed-workload",
-			profile:  nbv1.PerformanceProfileMixedWorkload,
-			core:     [4]string{"999m", "1999m", "2Gi", "4Gi"},
-			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
-			db:       [4]string{"3999m", "3999m", "8Gi", "8Gi"},
-			endpoint: [4]string{"1999m", "3999m", "2Gi", "4Gi"},
-			pvPool:   [4]string{"999m", "999m", "2Gi", "2Gi"},
+			name:      "mixed-workload",
+			profile:   nbv1.PerformanceProfileMixedWorkload,
+			core:      [4]string{"999m", "1999m", "2Gi", "4Gi"},
+			log:       [4]string{"200m", "200m", "500Mi", "500Mi"},
+			db:        [4]string{"3999m", "3999m", "8Gi", "8Gi"},
+			endpoint:  [4]string{"1999m", "3999m", "2Gi", "4Gi"},
+			pvPool:    [4]string{"999m", "999m", "2Gi", "2Gi"},
+			bgWorkers: [4]string{"500m", "1999m", "1Gi", "3Gi"},
 		},
 		{
-			name:     "small-objects",
-			profile:  nbv1.PerformanceProfileSmallObjects,
-			core:     [4]string{"999m", "1999m", "2Gi", "6Gi"},
-			log:      [4]string{"200m", "200m", "500Mi", "500Mi"},
-			db:       [4]string{"5999m", "5999m", "16Gi", "16Gi"},
-			endpoint: [4]string{"999m", "3999m", "2Gi", "4Gi"},
-			pvPool:   [4]string{"999m", "999m", "2Gi", "2Gi"},
+			name:      "small-objects",
+			profile:   nbv1.PerformanceProfileSmallObjects,
+			core:      [4]string{"999m", "1999m", "2Gi", "6Gi"},
+			log:       [4]string{"200m", "200m", "500Mi", "500Mi"},
+			db:        [4]string{"5999m", "5999m", "16Gi", "16Gi"},
+			endpoint:  [4]string{"999m", "3999m", "2Gi", "4Gi"},
+			pvPool:    [4]string{"999m", "999m", "2Gi", "2Gi"},
+			bgWorkers: [4]string{"500m", "1999m", "1Gi", "3Gi"},
 		},
 		{
-			name:     "mini-env",
-			profile:  nbv1.PerformanceProfileMiniEnv,
-			core:     [4]string{"100m", "100m", "1Gi", "1Gi"},
-			log:      [4]string{"50m", "50m", "200Mi", "200Mi"},
-			db:       [4]string{"100m", "100m", "500Mi", "500Mi"},
-			endpoint: [4]string{"100m", "100m", "500Mi", "500Mi"},
-			pvPool:   [4]string{"100m", "100m", "400Mi", "400Mi"},
+			name:      "dev-env",
+			profile:   nbv1.PerformanceProfileDevEnv,
+			core:      [4]string{"500m", "500m", "1Gi", "1Gi"},
+			log:       [4]string{"200m", "200m", "500Mi", "500Mi"},
+			db:        [4]string{"999m", "999m", "2Gi", "2Gi"},
+			endpoint:  [4]string{"500m", "500m", "500Mi", "500Mi"},
+			pvPool:    [4]string{"500m", "500m", "500Mi", "500Mi"},
+			bgWorkers: [4]string{"250m", "500m", "500Mi", "1Gi"},
+		},
+		{
+			name:      "mini-env",
+			profile:   nbv1.PerformanceProfileMiniEnv,
+			core:      [4]string{"100m", "100m", "1Gi", "1Gi"},
+			log:       [4]string{"50m", "50m", "200Mi", "200Mi"},
+			db:        [4]string{"100m", "100m", "500Mi", "500Mi"},
+			endpoint:  [4]string{"100m", "100m", "500Mi", "500Mi"},
+			pvPool:    [4]string{"100m", "100m", "400Mi", "400Mi"},
+			bgWorkers: [4]string{"100m", "100m", "500Mi", "1Gi"},
 		},
 	}
 
@@ -649,6 +729,7 @@ func TestProfileResourcesValues(t *testing.T) {
 			assertResourceQuantity(t, profile.dbResources, tt.db)
 			assertResourceQuantity(t, profile.endpointResources, tt.endpoint)
 			assertResourceQuantity(t, profile.pvPoolResources, tt.pvPool)
+			assertResourceQuantity(t, profile.bgWorkersResources, tt.bgWorkers)
 		})
 	}
 }
