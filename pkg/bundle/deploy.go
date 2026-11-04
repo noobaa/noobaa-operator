@@ -4371,7 +4371,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "e55babcc37ae8d7b038ec9394184c1ec8458309cc2511cd5d514bb58bc763993"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "d901016c964b119ac37471f039d06dfcf3e9e9a10eb1584cbb938046012f6923"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4489,6 +4489,11 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_COLOR
+            - name: ROLLBACK_N2N_TO_ICE
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: ROLLBACK_N2N_TO_ICE
             - name: NOOBAA_METRICS_AUTH_ENABLED
               valueFrom:
                 configMapKeyRef:
@@ -5081,7 +5086,7 @@ spec:
       storage: 30Gi
 `
 
-const Sha256_deploy_internal_pod_agent_yaml = "46429d12f4a438f4d3666737cd214c5c8bc2d07acf467e7b9a22439c9cc00fc6"
+const Sha256_deploy_internal_pod_agent_yaml = "2e435d78432dbeb8e23caca8ad4e32cc9ed17305591afbf55eaca3d33a8ec653"
 
 const File_deploy_internal_pod_agent_yaml = `apiVersion: v1
 kind: Pod
@@ -5112,6 +5117,7 @@ spec:
           value: /etc/agent-config/agent_config
         - name: NOOBAA_LOG_LEVEL
         - name: NOOBAA_LOG_COLOR
+        - name: ROLLBACK_N2N_TO_ICE
       command: ["/noobaa_init_files/noobaa_init.sh", "agent"]
       # Insert the relevant image for the agent
       ports:
@@ -5807,7 +5813,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "9a446baf09a5995591b96a1990ce256ff5e48a3bf7d839f6a0fc7bf89a9c06e6"
+const Sha256_deploy_internal_statefulset_core_yaml = "d6831f2838c4c3ee4c09a2d4a14b3a533a11b77151dc07139c17516bc8d6a7fe"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -5961,6 +5967,11 @@ spec:
                 configMapKeyRef:
                   name: noobaa-config
                   key: NOOBAA_LOG_COLOR
+            - name: ROLLBACK_N2N_TO_ICE
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: ROLLBACK_N2N_TO_ICE
             - name: NOOBAA_METRICS_AUTH_ENABLED
               valueFrom:
                 configMapKeyRef:
