@@ -193,21 +193,17 @@ func (r *Reconciler) reconcileDBCluster() error {
 			diff := deep.Equal(*existingClusterSpec, r.CNPGCluster.Spec)
 			r.cnpgLog("cluster spec is changed, updating cluster. diff: %v", diff)
 
-			currentDBClusterStatus := r.NooBaa.Status.DBStatus.DBClusterStatus
-			// avoid updating a cluster that is being created or imported.
-			// We might want to consider allowing this somehow for supportability (through annotation or something)
-			if currentDBClusterStatus == nbv1.DBClusterStatusCreating || currentDBClusterStatus == nbv1.DBClusterStatusImporting {
-				r.cnpgLog("the cluster spec was changed but the cluster creation or import is still in progress, skipping update")
-				return fmt.Errorf("cluster creation or import is still in progress, skipping update")
-			}
-
-			r.cnpgLog("cluster spec is changed, updating cluster")
+			// Apply the change regardless of the current cluster status and let CNPG arbitrate.
+			// CNPG holds back all pod and PVC changes while its bootstrap job is running, so an
+			// update applied mid-creation only takes effect once the cluster is up. This also
+			// covers the initdb import job used by the 4.18 -> 4.19 standalone DB migration.
 			if err := r.Client.Update(r.Ctx, r.CNPGCluster); err != nil {
 				r.cnpgLogError("got error updating cluster. error: %v", err)
 				return err
 			}
+
 			// update the DB status
-			r.NooBaa.Status.DBStatus.DBClusterStatus = nbv1.DBClusterStatusUpdating
+			r.NooBaa.Status.DBStatus.DBClusterStatus = dbClusterStatusAfterSpecUpdate(r.NooBaa.Status.DBStatus.DBClusterStatus)
 		}
 
 		// The cluster spec is unchanged, no need to update
@@ -215,6 +211,17 @@ func (r *Reconciler) reconcileDBCluster() error {
 	}
 
 	return nil
+}
+
+// dbClusterStatusAfterSpecUpdate returns the DB cluster status to report after a cluster
+// spec update was applied. Only a Ready cluster moves to Updating. Any other status means
+// the initial deployment is still in flight, and ReconcileCNPGCluster advances it to Ready
+// once the cluster reports ready. Overwriting it here would mask the real phase.
+func dbClusterStatusAfterSpecUpdate(current nbv1.DBClusterStatus) nbv1.DBClusterStatus {
+	if current == nbv1.DBClusterStatusReady {
+		return nbv1.DBClusterStatusUpdating
+	}
+	return current
 }
 
 func (r *Reconciler) reconcileClusterSpec(dbSpec *nbv1.NooBaaDBSpec) error {
