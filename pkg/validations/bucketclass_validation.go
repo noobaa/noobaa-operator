@@ -157,6 +157,9 @@ func ValidatePlacementPolicy(placementPolicy *nbv1.PlacementPolicy, namespace st
 	for i := range placementPolicy.Tiers {
 		tier := &placementPolicy.Tiers[i]
 		for _, backingStoreName := range tier.BackingStores {
+			if backingStoreName == "" {
+				return fmt.Errorf("NooBaa BackingStore name is empty")
+			}
 			backStore := &nbv1.BackingStore{
 				TypeMeta: metav1.TypeMeta{Kind: "BackingStore"},
 				ObjectMeta: metav1.ObjectMeta{
