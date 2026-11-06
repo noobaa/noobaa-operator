@@ -309,6 +309,7 @@ func MapperProvider(config *rest.Config, httpClient *http.Client) (meta.RESTMapp
 				g.Name == "config.openshift.io" ||
 				g.Name == "postgresql.cnpg.noobaa.io" ||
 				g.Name == "postgresql.cnpg.io" ||
+				g.Name == "operators.coreos.com" ||
 				strings.HasSuffix(g.Name, ".k8s.io") {
 				return true
 			}
