@@ -49,6 +49,9 @@ func ValidateBackingStore(bs nbv1.BackingStore) error {
 		if err := ValidatePvpoolResources(bs); err != nil {
 			return err
 		}
+		if err := ValidatePvpoolPriorityClass(bs); err != nil {
+			return err
+		}
 	case nbv1.StoreTypeS3Compatible:
 		return ValidateSigVersion(bs.Spec.S3Compatible.SignatureVersion)
 	case nbv1.StoreTypeIBMCos:
@@ -135,8 +138,18 @@ func ValidateBSInValidSpec(bs nbv1.BackingStore) error {
 			return util.ValidationError{Msg: "PVPool spec must be provided for pv-pool type BackingStore"}
 		}
 	default:
+	}
+	return nil
+}
+
+// ValidatePvpoolPriorityClass validates that the priorityClassName on pvPool exists in the cluster
+func ValidatePvpoolPriorityClass(bs nbv1.BackingStore) error {
+	if bs.Spec.PVPool == nil || bs.Spec.PVPool.PriorityClassName == "" {
+		return nil
+	}
+	if err := util.CheckPriorityClassExists(util.Context(), util.KubeClient(), bs.Spec.PVPool.PriorityClassName); err != nil {
 		return util.ValidationError{
-			Msg: "Invalid Backingstore type, please provide a valid Backingstore type",
+			Msg: fmt.Sprintf("Invalid pvPool.priorityClassName %q: %v", bs.Spec.PVPool.PriorityClassName, err),
 		}
 	}
 	return nil

@@ -1,13 +1,17 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -505,6 +509,34 @@ func TestGoogleIdentityFromImpersonationURL(t *testing.T) {
 				t.Fatalf("expected identity %q, got %q", tc.expectedIdentity, identity)
 			}
 		})
+	}
+}
+
+func TestCheckPriorityClassExists(t *testing.T) {
+	s := scheme.Scheme
+	pc := &schedulingv1.PriorityClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "high-priority",
+		},
+		Value: 1000000,
+	}
+
+	client := fake.NewClientBuilder().WithScheme(s).WithObjects(pc).Build()
+	ctx := context.TODO()
+
+	// Empty string should succeed (optional field)
+	if err := CheckPriorityClassExists(ctx, client, ""); err != nil {
+		t.Fatalf("expected nil for empty priority class name, got: %v", err)
+	}
+
+	// Existing PriorityClass should succeed
+	if err := CheckPriorityClassExists(ctx, client, "high-priority"); err != nil {
+		t.Fatalf("expected nil for existing priority class, got: %v", err)
+	}
+
+	// Non-existing PriorityClass should fail
+	if err := CheckPriorityClassExists(ctx, client, "non-existent-pc"); err == nil {
+		t.Fatalf("expected error for non-existent priority class, got nil")
 	}
 }
 

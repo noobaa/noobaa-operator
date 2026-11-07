@@ -380,6 +380,14 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		return util.NewPersistentError("BackingStoreValidationError", err.Error())
 	}
 
+	if r.BackingStore.Spec.PVPool != nil && r.BackingStore.Spec.PVPool.PriorityClassName != "" {
+		if err := util.CheckPriorityClassExists(r.Ctx, r.Client, r.BackingStore.Spec.PVPool.PriorityClassName); err != nil {
+			return util.NewPersistentError("InvalidPriorityClass",
+				fmt.Sprintf("Invalid pvPool.priorityClassName %q for BackingStore %q: %v",
+					r.BackingStore.Spec.PVPool.PriorityClassName, r.BackingStore.Name, err))
+		}
+	}
+
 	if r.NooBaa.UID == "" {
 		return util.NewPersistentError("MissingSystem",
 			fmt.Sprintf("NooBaa system %q not found or deleted", r.NooBaa.Name))
