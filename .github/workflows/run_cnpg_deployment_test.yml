@@ -1,5 +1,5 @@
 name: Run CNPG Deployment Test
-on: [push, pull_request, workflow_dispatch]
+on: [pull_request, workflow_dispatch]
 description: "Basic sanity test noobaa deployment using a CNPG cluster"
 
 concurrency:
