@@ -95,7 +95,7 @@ spec:
               name: metrics-https
           env:
             - name: NOOBAA_BG_ROLE
-              value: scanner
+              value: worker
             - name: NOOBAA_DISABLE_COMPRESSION
               valueFrom:
                 configMapKeyRef:
