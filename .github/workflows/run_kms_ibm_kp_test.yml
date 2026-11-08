@@ -1,5 +1,5 @@
 name: KMS Test - IBM KP
-on: [push, pull_request, workflow_dispatch]
+on: [pull_request, workflow_dispatch]
 
 jobs:
   run-kms-ibm-kp-test:
