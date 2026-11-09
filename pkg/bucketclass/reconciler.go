@@ -357,7 +357,7 @@ func (r *Reconciler) UpdateBucketClass(bucketNames []string) error {
 			placement = "MIRROR"
 		}
 		// Name is irrelevant and will be populated in the BE
-		tiers = append(tiers, nb.TierInfo{Name: "TEMP", AttachedPools: tier.BackingStores, DataPlacement: placement})
+		tiers = append(tiers, nb.TierInfo{Name: "TEMP", AttachedPools: compactBackingStoreNames(tier.BackingStores), DataPlacement: placement})
 	}
 
 	result, err := r.NBClient.UpdateBucketClass(nb.UpdateBucketClassParams{
