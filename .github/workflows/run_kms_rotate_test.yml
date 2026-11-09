@@ -1,5 +1,5 @@
 name: KMS Test - K8S Key Rotate
-on: [push, pull_request, workflow_dispatch]
+on: [pull_request, workflow_dispatch]
 
 jobs:
   run-kms-key-rotate-test:
