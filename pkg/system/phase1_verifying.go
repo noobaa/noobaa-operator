@@ -82,6 +82,36 @@ func (r *Reconciler) ReconcilePhaseVerifying() error {
 		return util.NewPersistentError("InvalidTLSConfiguration", err.Error())
 	}
 
+	if err := r.checkPriorityClasses(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// checkPriorityClasses validates that any specified PriorityClasses exist in the cluster
+func (r *Reconciler) checkPriorityClasses() error {
+	specs := []struct {
+		fieldName string
+		className string
+	}{
+		{"corePriorityClassName", r.NooBaa.Spec.CorePriorityClassName},
+		{"dbPriorityClassName", r.NooBaa.Spec.DBPriorityClassName},
+		{"endpointPriorityClassName", r.NooBaa.Spec.EndpointPriorityClassName},
+	}
+
+	for _, s := range specs {
+		if s.className == "" {
+			continue
+		}
+		if err := util.CheckPriorityClassExists(r.Ctx, r.Client, s.className); err != nil {
+			return util.NewPersistentError(
+				"InvalidPriorityClass",
+				fmt.Sprintf("Invalid %s: %v", s.fieldName, err),
+			)
+		}
+	}
+
 	return nil
 }
 

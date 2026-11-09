@@ -26,6 +26,9 @@ func ValidateNoobaaUpdate(nb nbv1.NooBaa) error {
 	if err := validateNoobaaLoadbalancerSourceSubnets(nb); err != nil {
 		return err
 	}
+	if err := ValidatePriorityClasses(nb); err != nil {
+		return err
+	}
 	return validateTLSSecurity(nb)
 }
 
@@ -37,7 +40,35 @@ func ValidateNoobaaCreation(nb nbv1.NooBaa) error {
 	if err := validateNoobaaLoadbalancerSourceSubnets(nb); err != nil {
 		return err
 	}
+	if err := ValidatePriorityClasses(nb); err != nil {
+		return err
+	}
 	return validateTLSSecurity(nb)
+}
+
+// ValidatePriorityClasses validates that referenced PriorityClasses exist in the cluster
+func ValidatePriorityClasses(nb nbv1.NooBaa) error {
+	specs := []struct {
+		fieldName string
+		className string
+	}{
+		{"corePriorityClassName", nb.Spec.CorePriorityClassName},
+		{"dbPriorityClassName", nb.Spec.DBPriorityClassName},
+		{"endpointPriorityClassName", nb.Spec.EndpointPriorityClassName},
+	}
+
+	for _, s := range specs {
+		if s.className == "" {
+			continue
+		}
+		if err := util.CheckPriorityClassExists(util.Context(), util.KubeClient(), s.className); err != nil {
+			return util.ValidationError{
+				Msg: fmt.Sprintf("Invalid %s %q: %v", s.fieldName, s.className, err),
+			}
+		}
+	}
+
+	return nil
 }
 
 func validateTLSSecurity(nb nbv1.NooBaa) error {

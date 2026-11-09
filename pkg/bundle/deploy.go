@@ -2,7 +2,7 @@ package bundle
 
 const Version = "6.0.0"
 
-const Sha256_deploy_cluster_role_yaml = "9c0ac29295c67349acc345029b8b2e3de01a512d5dc92e31b17938b52f41c60d"
+const Sha256_deploy_cluster_role_yaml = "9a425ed6485561b76f904eb28c93badcc153a8229b86f3f74b3be0b0c4270cb3"
 
 const File_deploy_cluster_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -167,18 +167,26 @@ rules:
     - get
     - list
     - watch
-  - apiGroups: 
+  - apiGroups:
       - coordination.k8s.io
-    resources: 
+    resources:
       - leases
-    verbs: 
+    verbs:
       - get
       - watch
       - list
       - delete
       - update
       - create
-  - apiGroups: 
+  - apiGroups:
+      - scheduling.k8s.io
+    resources:
+      - priorityclasses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - objectstorage.k8s.io
     resources: 
       - buckets
