@@ -1,5 +1,5 @@
 name: golangci-lint
-on: [push, pull_request, workflow_dispatch]
+on: [pull_request, workflow_dispatch]
 
 jobs:
   golangci:
