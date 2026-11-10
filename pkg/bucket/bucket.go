@@ -434,6 +434,7 @@ func mergeQuotaForUpdate(existing *nb.QuotaConfig, bucketName string, maxSize st
 		return mergedQuota, err
 	}
 	if existing != nil {
+		mergedQuota.Mode = existing.Mode
 		if existing.Size != nil {
 			mergedQuota.Size = &nb.SizeQuotaConfig{
 				Value: existing.Size.Value,
