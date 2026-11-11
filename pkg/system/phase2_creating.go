@@ -17,6 +17,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/options"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util/kms"
+	routev1 "github.com/openshift/api/route/v1"
 	secv1 "github.com/openshift/api/security/v1"
 	cloudcredsv1 "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
@@ -108,6 +109,11 @@ func (r *Reconciler) ReconcilePhaseCreating() error {
 		if err := r.ReconcileObjectOptional(r.RouteVectors, r.SetDesiredRouteVectors); err != nil {
 			return err
 		}
+	}
+	// reconcile the tables Service and Route only while the S3 Tables Developer Preview
+	// is enabled through the NooBaa CR annotation; otherwise remove them.
+	if err := r.ReconcileS3TablesServiceAndRoute(); err != nil {
+		return err
 	}
 	// the credentials that are created by cloud-credentials-operator sometimes take time
 	// to be valid (requests sometimes returns InvalidAccessKeyId for 1-2 minutes)
@@ -352,6 +358,112 @@ func (r *Reconciler) SetDesiredRouteVectors() error {
 		r.RouteVectors.Spec.TLS.InsecureEdgeTerminationPolicy = "None"
 	}
 	return nil
+}
+
+// IsS3TablesEnabled returns true when the S3 Tables Developer Preview is enabled
+// through the NooBaa CR annotation noobaa.io/enable_s3_tables_dev_preview.
+func (r *Reconciler) IsS3TablesEnabled() bool {
+	val, exists := util.GetAnnotationValue(r.NooBaa.Annotations, nbv1.EnableS3TablesDevPreview)
+	return exists && strings.ToLower(val) == trueStr
+}
+
+// ReconcileS3TablesServiceAndRoute reconciles the tables Service and Route while the
+// S3 Tables Developer Preview annotation is set, and removes them when it is cleared.
+// Removing the annotation deletes only the Service and Route; table-bucket records,
+// catalog collections and backing buckets are left intact (§3.7, §11).
+func (r *Reconciler) ReconcileS3TablesServiceAndRoute() error {
+	if r.IsS3TablesEnabled() {
+		if err := r.ReconcileObject(r.ServiceTables, r.SetDesiredServiceTables); err != nil {
+			return err
+		}
+		// reconcile the tables route only if routes are enabled
+		if !r.NooBaa.Spec.DisableRoutes {
+			if err := r.ReconcileObjectOptional(r.RouteTables, r.SetDesiredRouteTables); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	// annotation not set - remove the Service and Route this system owns, if they exist.
+	if err := r.deleteOwnedS3TablesObject(r.RouteTables); err != nil {
+		return err
+	}
+	if err := r.deleteOwnedS3TablesObject(r.ServiceTables); err != nil {
+		return err
+	}
+	return nil
+}
+
+// deleteOwnedS3TablesObject deletes obj only when it exists and is controller-owned by this
+// NooBaa system. This runs on every reconcile where the preview annotation is absent, including
+// installations that never enabled it, so it must never remove an unrelated resource that happens
+// to share the name. It deletes through r.Client.Delete rather than util.KubeDelete, which polls
+// until the object is gone (stalling the reconcile) and masks/panics on unexpected errors. A
+// failed deletion is returned as an error so the reconcile retries rather than treating the
+// leftover resource as removed; an already-absent object is not an error.
+func (r *Reconciler) deleteOwnedS3TablesObject(obj client.Object) error {
+	if !util.KubeCheckQuiet(obj) {
+		return nil // does not exist - nothing to delete
+	}
+	owner := metav1.GetControllerOf(obj)
+	if owner == nil || owner.UID != r.NooBaa.UID {
+		return nil // not owned by this NooBaa system - leave it intact
+	}
+	if err := r.Client.Delete(r.Ctx, obj); err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	return nil
+}
+
+// SetDesiredServiceTables updates the ServiceTables as desired for reconciling.
+// Unlike the vector service, there is no loadBalancerSourceSubnets entry (§11).
+func (r *Reconciler) SetDesiredServiceTables() error {
+	if r.NooBaa.Spec.DisableLoadBalancerService {
+		r.ServiceTables.Spec.Type = corev1.ServiceTypeClusterIP
+		r.ServiceTables.Spec.LoadBalancerSourceRanges = []string{}
+	} else {
+		// It is here in case disableLoadBalancerService is removed from the crd or changed to false
+		r.ServiceTables.Spec.Type = corev1.ServiceTypeLoadBalancer
+	}
+	r.ServiceTables.Spec.Selector["noobaa-s3"] = r.Request.Name
+	return nil
+}
+
+// SetDesiredRouteTables updates the RouteTables as desired for reconciling
+func (r *Reconciler) SetDesiredRouteTables() error {
+	// A live Route (e.g. one adopted during reconcile) may have no TLS block. Initialize it with
+	// the reencrypt termination this feature requires before setting the insecure-edge policy, so a
+	// nil Spec.TLS never panics; any existing TLS configuration is preserved.
+	if r.RouteTables.Spec.TLS == nil {
+		r.RouteTables.Spec.TLS = &routev1.TLSConfig{Termination: routev1.TLSTerminationReencrypt}
+	}
+	r.RouteTables.Spec.TLS.InsecureEdgeTerminationPolicy = routev1.InsecureEdgeTerminationPolicyAllow
+	if r.NooBaa.Spec.DenyHTTP {
+		r.RouteTables.Spec.TLS.InsecureEdgeTerminationPolicy = routev1.InsecureEdgeTerminationPolicyNone
+	}
+	return nil
+}
+
+// setDesiredS3TablesEnv sets CONFIG_JS_S3_TABLES_ENABLED=true on the container while
+// the S3 Tables Developer Preview annotation is set, and removes it when cleared, so
+// core and endpoints never disagree on the feature flag (§3.7).
+func (r *Reconciler) setDesiredS3TablesEnv(c *corev1.Container) {
+	const envName = "CONFIG_JS_S3_TABLES_ENABLED"
+	if r.IsS3TablesEnabled() {
+		if envVar := util.GetEnvVariable(&c.Env, envName); envVar != nil {
+			envVar.Value = trueStr
+			envVar.ValueFrom = nil
+		} else {
+			c.Env = append(c.Env, corev1.EnvVar{Name: envName, Value: trueStr})
+		}
+		return
+	}
+	for i := range c.Env {
+		if c.Env[i].Name == envName {
+			c.Env = append(c.Env[:i], c.Env[i+1:]...)
+			return
+		}
+	}
 }
 
 // SetDesiredServiceSts updates the ServiceSts as desired for reconciling
@@ -682,6 +794,8 @@ func (r *Reconciler) setDesiredCoreEnv(c *corev1.Container) {
 	}
 
 	util.ApplyTLSEnvVars(&c.Env, r.NooBaa.Spec.Security.APIServerSecurity)
+
+	r.setDesiredS3TablesEnv(c)
 }
 
 // SetDesiredCoreApp updates the CoreApp as desired for reconciling
