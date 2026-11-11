@@ -92,6 +92,7 @@ type Reconciler struct {
 	ServiceDbPg               *corev1.Service
 	ServiceSyslog             *corev1.Service
 	ServiceVectors            *corev1.Service
+	ServiceTables             *corev1.Service
 	SecretServer              *corev1.Secret
 	SecretDB                  *corev1.Secret
 	SecretOp                  *corev1.Secret
@@ -128,6 +129,7 @@ type Reconciler struct {
 	RouteSts                  *routev1.Route
 	RouteIam                  *routev1.Route
 	RouteVectors              *routev1.Route
+	RouteTables               *routev1.Route
 	DeploymentEndpoint        *appsv1.Deployment
 	DefaultDeploymentEndpoint *corev1.PodSpec
 	JoinSecret                *corev1.Secret
@@ -189,6 +191,7 @@ func NewReconciler(
 		ServiceIam:                util.KubeObject(bundle.File_deploy_internal_service_iam_yaml).(*corev1.Service),
 		ServiceSyslog:             util.KubeObject(bundle.File_deploy_internal_service_syslog_yaml).(*corev1.Service),
 		ServiceVectors:            util.KubeObject(bundle.File_deploy_internal_service_vectors_yaml).(*corev1.Service),
+		ServiceTables:             util.KubeObject(bundle.File_deploy_internal_service_tables_yaml).(*corev1.Service),
 		SecretServer:              util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretDB:                  util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
 		SecretOp:                  util.KubeObject(bundle.File_deploy_internal_secret_empty_yaml).(*corev1.Secret),
@@ -217,6 +220,7 @@ func NewReconciler(
 		RouteSts:                  util.KubeObject(bundle.File_deploy_internal_route_sts_yaml).(*routev1.Route),
 		RouteIam:                  util.KubeObject(bundle.File_deploy_internal_route_iam_yaml).(*routev1.Route),
 		RouteVectors:              util.KubeObject(bundle.File_deploy_internal_route_vectors_yaml).(*routev1.Route),
+		RouteTables:               util.KubeObject(bundle.File_deploy_internal_route_tables_yaml).(*routev1.Route),
 		DeploymentEndpoint:        util.KubeObject(bundle.File_deploy_internal_deployment_endpoint_yaml).(*appsv1.Deployment),
 		CaBundleConf:              util.KubeObject(bundle.File_deploy_internal_configmap_ca_inject_yaml).(*corev1.ConfigMap),
 		KedaTriggerAuthentication: util.KubeObject(bundle.File_deploy_internal_hpa_keda_trigger_authentication_yaml).(*kedav1alpha1.TriggerAuthentication),
@@ -255,6 +259,7 @@ func NewReconciler(
 	r.ServiceDbPg.Namespace = r.Request.Namespace
 	r.ServiceSyslog.Namespace = r.Request.Namespace
 	r.ServiceVectors.Namespace = r.Request.Namespace
+	r.ServiceTables.Namespace = r.Request.Namespace
 	r.SecretServer.Namespace = r.Request.Namespace
 	r.SecretDB.Namespace = r.Request.Namespace
 	r.SecretOp.Namespace = r.Request.Namespace
@@ -283,6 +288,7 @@ func NewReconciler(
 	r.RouteSts.Namespace = r.Request.Namespace
 	r.RouteIam.Namespace = r.Request.Namespace
 	r.RouteVectors.Namespace = r.Request.Namespace
+	r.RouteTables.Namespace = r.Request.Namespace
 	r.DeploymentEndpoint.Namespace = r.Request.Namespace
 	r.CaBundleConf.Namespace = r.Request.Namespace
 	r.KedaTriggerAuthentication.Namespace = r.Request.Namespace
@@ -316,6 +322,7 @@ func NewReconciler(
 	r.ServiceSts.Name = "sts"
 	r.ServiceIam.Name = "iam"
 	r.ServiceVectors.Name = "vectors"
+	r.ServiceTables.Name = "tables"
 	r.ServiceDb.Name = r.Request.Name + "-db"
 	r.ServiceDbPg.Name = r.Request.Name + "-db-pg"
 	r.SecretServer.Name = r.Request.Name + "-server"
@@ -346,6 +353,7 @@ func NewReconciler(
 	r.RouteSts.Name = r.ServiceSts.Name
 	r.RouteIam.Name = r.ServiceIam.Name
 	r.RouteVectors.Name = r.ServiceVectors.Name
+	r.RouteTables.Name = r.ServiceTables.Name
 	r.DeploymentEndpoint.Name = r.Request.Name + "-endpoint"
 	r.CaBundleConf.Name = "ocp-injected-ca-bundle"
 	r.KedaScaled.Name = r.Request.Name
@@ -368,6 +376,7 @@ func NewReconciler(
 	r.RouteSts.Spec.To.Name = r.ServiceSts.Name
 	r.RouteIam.Spec.To.Name = r.ServiceIam.Name
 	r.RouteVectors.Spec.To.Name = r.ServiceVectors.Name
+	r.RouteTables.Spec.To.Name = r.ServiceTables.Name
 
 	// Since StorageClass is global we set the name and provisioner to have unique global name
 	r.OBCStorageClass.Name = options.SubDomainNS()
@@ -450,6 +459,8 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheckOptional(r.RouteSts)
 	util.KubeCheckOptional(r.RouteIam)
 	util.KubeCheckOptional(r.RouteVectors)
+	util.KubeCheckOptional(r.ServiceTables)
+	util.KubeCheckOptional(r.RouteTables)
 }
 
 // Reconcile reads that state of the cluster for a System object,

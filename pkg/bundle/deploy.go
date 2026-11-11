@@ -4371,7 +4371,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_endpoint_yaml = "e55babcc37ae8d7b038ec9394184c1ec8458309cc2511cd5d514bb58bc763993"
+const Sha256_deploy_internal_deployment_endpoint_yaml = "413f02b99d2ef14851761424f16e91e199fa2c1166b060b7b5e6d67350c7608d"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4421,6 +4421,10 @@ spec:
           secret:
             secretName: noobaa-vectors-serving-cert
             optional: true
+        - name: tables-secret
+          secret:
+            secretName: noobaa-tables-serving-cert
+            optional: true
         # This service account token can be used to provide identity outside the cluster.
         # For example, this token can be used with AWS(AssumeRoleWithWebIdentity)/Azure(WorkloadIdentityCredential)
         # to authenticate with AWS/Azure using IAM OIDC provider and STS.
@@ -4469,6 +4473,8 @@ spec:
               name: metrics-https
             - containerPort: 14443
               name: vectors-https
+            - containerPort: 15443
+              name: tables-https
           env:
             - name: NODE_NAME
               valueFrom:
@@ -4575,6 +4581,9 @@ spec:
               readOnly: true
             - name: vectors-secret
               mountPath: /etc/vector-secret
+              readOnly: true
+            - name: tables-secret
+              mountPath: /etc/tables-secret
               readOnly: true
             # used for aws sts endpoint type
             - name: bound-sa-token
@@ -5015,7 +5024,7 @@ spec:
       port: 9187
 `
 
-const Sha256_deploy_internal_networkpolicy_endpoint_yaml = "37b72fc7a57df738460390ef88f02d7ea47ab0cb44dd4df0f8c61257e9fd74d2"
+const Sha256_deploy_internal_networkpolicy_endpoint_yaml = "089096e7f76f6099d2fe5e0a46f1a6788aa58c6243712acf0e8fdcb07213a049"
 
 const File_deploy_internal_networkpolicy_endpoint_yaml = `apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -5047,6 +5056,8 @@ spec:
       port: 13443
     - protocol: TCP
       port: 14443
+    - protocol: TCP
+      port: 15443
     # N2N ICE listens on a random port in this range (see noobaa-core rpc_n2n_agent)
     - protocol: TCP
       port: 60101
@@ -5066,6 +5077,8 @@ spec:
       port: 13443
     - protocol: TCP
       port: 14443
+    - protocol: TCP
+      port: 15443
 `
 
 const Sha256_deploy_internal_networkpolicy_pvpool_yaml = "bf0a2f786bc4e0e1f199abbd0ca2f24f186b58e21d5c95ed9b1ca8380eaed9de"
@@ -5563,6 +5576,26 @@ spec:
   wildcardPolicy: None
 `
 
+const Sha256_deploy_internal_route_tables_yaml = "52cbe8591ea9a1d190fd29b8a9b0da7a23e8626d3b1407d57b471b971fd45a9a"
+
+const File_deploy_internal_route_tables_yaml = `apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: noobaa
+  name: tables
+spec:
+  port:
+    targetPort: tables-https
+  tls:
+    termination: reencrypt
+  to:
+    kind: Service
+    name: tables
+    weight: 100
+  wildcardPolicy: None
+`
+
 const Sha256_deploy_internal_route_vectors_yaml = "ff546544c1edc8a1dbbe50f58ee35a7595caf6dd17806a8528a8190ca1c0d0f9"
 
 const File_deploy_internal_route_vectors_yaml = `apiVersion: route.openshift.io/v1
@@ -5759,6 +5792,27 @@ spec:
       port: 514
       name: syslog
       targetPort: 5140
+`
+
+const Sha256_deploy_internal_service_tables_yaml = "de96a4442957af0f810b2a375e8baa917e14ae4b186f16d17545e3a63270acff"
+
+const File_deploy_internal_service_tables_yaml = `apiVersion: v1
+kind: Service
+metadata:
+  name: tables
+  labels:
+    app: noobaa
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: 'noobaa-tables-serving-cert'
+    service.alpha.openshift.io/serving-cert-secret-name: 'noobaa-tables-serving-cert'
+spec:
+  type: LoadBalancer
+  selector:
+    noobaa-s3: SYSNAME
+  ports:
+    - port: 443
+      targetPort: 15443
+      name: tables-https
 `
 
 const Sha256_deploy_internal_service_vectors_yaml = "5d9f7d228197107d1fa727581dbe3c0dd0cc2aca6855fc0d2bbec67273b66ff7"
@@ -7416,7 +7470,7 @@ spec:
         #     name: socket
 `
 
-const Sha256_deploy_role_yaml = "93f73921675cc51000b4ec9bfcb07be4375216db499b09ca73fc0c1c9054018d"
+const Sha256_deploy_role_yaml = "86d421f39b3b9b73ae278bb35d4d47c22bccce62112c9fc46f7362575e0d06b1"
 
 const File_deploy_role_yaml = `apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -7538,6 +7592,7 @@ rules:
   - update
   - list
   - watch
+  - delete
 - apiGroups:
   - autoscaling
   resources:

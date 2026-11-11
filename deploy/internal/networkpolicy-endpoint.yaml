@@ -28,6 +28,8 @@ spec:
       port: 13443
     - protocol: TCP
       port: 14443
+    - protocol: TCP
+      port: 15443
     # N2N ICE listens on a random port in this range (see noobaa-core rpc_n2n_agent)
     - protocol: TCP
       port: 60101
@@ -47,3 +49,5 @@ spec:
       port: 13443
     - protocol: TCP
       port: 14443
+    - protocol: TCP
+      port: 15443

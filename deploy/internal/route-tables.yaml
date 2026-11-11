@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: noobaa
+  name: tables
+spec:
+  port:
+    targetPort: tables-https
+  tls:
+    termination: reencrypt
+  to:
+    kind: Service
+    name: tables
+    weight: 100
+  wildcardPolicy: None

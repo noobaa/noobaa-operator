@@ -859,6 +859,11 @@ const (
 	// PVCAccessModeRWO is a boolean Annotation name for overriding the NooBaa PVC access mode.
 	// If set to true, the PVC access mode will be set to ReadWriteOnce.
 	PVCAccessModeRWO = "noobaa.io/pvc_access_mode_rwo"
+
+	// EnableS3TablesDevPreview is the Annotation name for enabling the S3 Tables Developer Preview.
+	// When set to "true", the operator exposes the tables Service and Route and sets
+	// CONFIG_JS_S3_TABLES_ENABLED=true on both the core statefulset and the endpoint deployment.
+	EnableS3TablesDevPreview = "noobaa.io/enable_s3_tables_dev_preview"
 )
 
 // DBTypes is a string enum type for specify the types of DB that are supported.
