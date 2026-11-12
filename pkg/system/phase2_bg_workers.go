@@ -76,13 +76,16 @@ func (r *Reconciler) SetDesiredBgWorkersApp() error {
 
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
-		if i < len(r.DefaultBgWorkersApp.Containers) {
-			c.VolumeMounts = r.DefaultBgWorkersApp.Containers[i].VolumeMounts
-			util.MergeEnvArrays(&c.Env, &r.DefaultBgWorkersApp.Containers[i].Env)
-			c.Command = append([]string(nil), r.DefaultBgWorkersApp.Containers[i].Command...)
-			c.Ports = append([]corev1.ContainerPort(nil), r.DefaultBgWorkersApp.Containers[i].Ports...)
-			// Keep bundle defaults on existing StatefulSets (CreateOrUpdate starts from live object).
-			c.Resources = r.DefaultBgWorkersApp.Containers[i].Resources
+		for j := range r.DefaultBgWorkersApp.Containers {
+			def := &r.DefaultBgWorkersApp.Containers[j]
+			if def.Name != c.Name {
+				continue
+			}
+			c.VolumeMounts = def.VolumeMounts
+			util.MergeEnvArrays(&c.Env, &def.Env)
+			c.Command = append([]string(nil), def.Command...)
+			c.Ports = append([]corev1.ContainerPort(nil), def.Ports...)
+			break
 		}
 		r.setDesiredCoreEnv(c)
 		r.setDesiredBgWorkersEnv(c)
@@ -91,6 +94,7 @@ func (r *Reconciler) SetDesiredBgWorkersApp() error {
 			continue
 		}
 
+		c.Resources = getBgWorkersResources(r.NooBaa)
 		c.Image = r.NooBaa.Status.ActualImage
 		util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
 		util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
@@ -261,6 +265,7 @@ func (r *Reconciler) SetDesiredBgWorkersApp() error {
 	}
 	podSpec.Tolerations = r.NooBaa.Spec.Tolerations
 	podSpec.Affinity = r.GetAffinity()
+	podSpec.PriorityClassName = r.NooBaa.Spec.BgWorkersPriorityClassName
 
 	if r.BgWorkersApp.Spec.Template.Annotations == nil {
 		r.BgWorkersApp.Spec.Template.Annotations = make(map[string]string)
