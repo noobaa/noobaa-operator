@@ -118,6 +118,7 @@ rules:
   - update
   - list
   - watch
+  - delete
 - apiGroups:
   - autoscaling
   resources:

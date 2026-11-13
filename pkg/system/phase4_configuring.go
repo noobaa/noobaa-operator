@@ -379,6 +379,11 @@ func (r *Reconciler) SetDesiredDeploymentEndpoint() error {
 				s3BaseAddr = fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceS3.Name, r.Request.Namespace)
 				syslogBaseAddr = fmt.Sprintf(`udp://%s.%s.svc`, r.ServiceSyslog.Name, r.Request.Namespace)
 				r.setDesiredCoreEnv(c)
+			} else {
+				// Joined endpoints have no core env to sync (setDesiredCoreEnv is skipped), but they
+				// still serve the TABLES listener, so they must honor the S3 Tables feature flag from
+				// the annotation on this NooBaa CR - including clearing a stale flag when it is removed.
+				r.setDesiredS3TablesEnv(c)
 			}
 
 			for j := range c.Env {
