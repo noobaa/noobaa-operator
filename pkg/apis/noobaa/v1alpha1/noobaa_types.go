@@ -105,6 +105,14 @@ type NooBaaSpec struct {
 	// +optional
 	CorePriorityClassName string `json:"corePriorityClassName,omitempty"`
 
+	// BgWorkersResources (optional) overrides the default resource requirements for the noobaa-bg-workers container
+	// +optional
+	BgWorkersResources *corev1.ResourceRequirements `json:"bgWorkersResources,omitempty"`
+
+	// BgWorkersPriorityClassName (optional) overrides the priority class for the bg-workers pod
+	// +optional
+	BgWorkersPriorityClassName string `json:"bgWorkersPriorityClassName,omitempty"`
+
 	// LogResources (optional) overrides the default resource requirements for the noobaa-log-processor container
 	// +optional
 	LogResources *corev1.ResourceRequirements `json:"logResources,omitempty"`
@@ -265,7 +273,7 @@ type NooBaaSpec struct {
 	BucketNotifications BucketNotificationsSpec `json:"bucketNotifications,omitempty"`
 
 	// PerformanceProfile (optional) selects a bundle of resource and count
-	// settings for the core, db and endpoint components.
+	// settings for the core, db, endpoint, and bg-workers components.
 	// Explicit per-component resource/count fields take precedence over the profile.
 	// +optional
 	// +kubebuilder:validation:Enum=default;mixed-workload;small-objects;dev-env;mini-env
