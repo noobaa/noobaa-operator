@@ -63,35 +63,22 @@ kubectl patch configmap noobaa-config -n <namespace> \
   -p '{"data":{"OPERATOR_LOG_LEVEL":"info"}}'
 ```
 
+Or use the CLI:
+
+```bash
+nb operator set-log-level debug -n <namespace>
+```
+
 The operator picks up the change on the next reconcile cycle (no restart needed).
 Core and endpoint pods are **not** affected.
 
 ### Example Output
 
-**Before the change** (`OPERATOR_LOG_LEVEL` = `info`, Update events logged at Info):
+```bash
+nb operator set-log-level debug -n test1
 
-```
-time="2025-10-10T13:20:54Z" level=info msg="Update event detected for noobaa (openshift-storage), queuing Reconcile"
-time="2025-10-10T13:20:54Z" level=info msg="Update event detected for noobaa-default-backing-store (openshift-storage), queuing Reconcile"
-```
+INFO[0000] ✅ Updated: ConfigMap "noobaa-config"
 
-**After the change** (`OPERATOR_LOG_LEVEL` = `info`, Update events demoted to Debug — hidden):
-
-```
-time="2025-10-10T13:20:54Z" level=info msg="Create event detected for noobaa (openshift-storage), queuing Reconcile"
-time="2025-10-10T13:20:54Z" level=info msg="Delete event detected for noobaa-default-backing-store (openshift-storage), queuing Reconcile"
-```
-
-Only Create and Delete events appear at Info level. The frequent Update/Generic
-events are now Debug-only and no longer visible unless `OPERATOR_LOG_LEVEL` is
-set to `debug`.
-
-**With `OPERATOR_LOG_LEVEL` = `debug`** (all events visible):
-
-```
-time="2025-10-10T13:20:54Z" level=info  msg="Create event detected for noobaa (openshift-storage), queuing Reconcile"
-time="2025-10-10T13:20:54Z" level=debug msg="Update event detected for noobaa (openshift-storage), queuing Reconcile"
-time="2025-10-10T13:20:54Z" level=debug msg="Update event detected for noobaa-default-backing-store (openshift-storage), queuing Reconcile"
-time="2025-10-10T13:20:57Z" level=info  msg="Delete event detected for noobaa-default-backing-store (openshift-storage), queuing Reconcile"
-time="2025-10-10T13:20:57Z" level=debug msg="Generic event detected for noobaa (openshift-storage), queuing Reconcile"
+Operator log level was set to "debug" successfully
+The operator picks up the change on the next reconcile. Core and endpoint pods are not restarted.
 ```
