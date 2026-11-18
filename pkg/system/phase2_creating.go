@@ -247,6 +247,12 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 
+	// Own SCC for executors (endpoint profile). Apply so later edits replace the live object.
+	util.KubeApply(util.KubeObject(bundle.File_deploy_scc_bg_executors_yaml).(*secv1.SecurityContextConstraints))
+	if err := r.ReconcileObject(r.BgExecutorsApp, r.SetDesiredBgExecutorsApp); err != nil {
+		return err
+	}
+
 	// reconcile noobaa-mgmt route only if routes are enabled (independent of BG)
 	if !r.NooBaa.Spec.DisableRoutes {
 		if err := r.ReconcileObjectOptional(r.RouteMgmt, nil); err != nil {
