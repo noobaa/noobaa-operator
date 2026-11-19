@@ -114,8 +114,7 @@ func (r *Reconciler) SetDesiredBgWorkersApp() error {
 				TimeoutSeconds:      2,
 			}
 		}
-		// Upgrade: a startupProbe on :8445 would CrashLoop old images that
-		// sleep because bg_init.js is missing. Readiness-only keeps 0/1 Running.
+		// Readiness-only on :8445 (no startupProbe) so partial startups stay 0/1 Running.
 		c.StartupProbe = nil
 
 		if r.shouldReconcileCNPGCluster() {

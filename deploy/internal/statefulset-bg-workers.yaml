@@ -51,17 +51,9 @@ spec:
           image: NOOBAA_CORE_IMAGE
           terminationMessagePolicy: FallbackToLogsOnError
           command:
-            # Upgrade: OLM can start this operator while the old core image is
-            # still running. That image has no bg_init.js. Sleep instead of
-            # CrashLoop until the core image rolls.
-            - /bin/bash
-            - -ec
-            - |
-              if [ -f /root/node_modules/noobaa-core/src/cmd/bg_init.js ]; then
-                exec /usr/local/bin/node --unhandled-rejections=warn /root/node_modules/noobaa-core/src/cmd/bg_init.js
-              fi
-              echo "bg_init.js missing (old core image); sleeping until the image is updated"
-              exec sleep infinity
+            - /usr/local/bin/node
+            - --unhandled-rejections=warn
+            - /root/node_modules/noobaa-core/src/server/bg_workers.js
           readinessProbe:
             tcpSocket:
               port: 8445
