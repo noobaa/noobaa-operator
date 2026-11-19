@@ -2,6 +2,8 @@ package bucketclass
 
 import (
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/util"
+	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,5 +68,15 @@ var _ = Describe("Verify Bucketclass provisioner actions", func() {
 
 			Expect(isObjectForProvisioner(obj, systemNS)).To(BeFalse())
 		})
+	})
+})
+
+var _ = Describe("BucketClass backing store readiness", func() {
+	It("should return a retryable error when a backingstore name is empty so UpdateBucketClass is not called", func() {
+		err := validations.ValidatePlacementPolicy(&nbv1.PlacementPolicy{
+			Tiers: []nbv1.Tier{{BackingStores: []string{""}}},
+		}, systemNS)
+		Expect(err).To(HaveOccurred())
+		Expect(util.IsPersistentError(err)).To(BeFalse())
 	})
 })

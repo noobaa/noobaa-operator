@@ -7,6 +7,7 @@ import (
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	"github.com/noobaa/noobaa-operator/v5/pkg/constants"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/validations"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -195,6 +196,21 @@ func TestValidateBSEndpointChange(t *testing.T) {
 	newAWS := getDefaultAWSS3BsStore()
 	err = validations.ValidateBSEndpointChange(newAWS, oldAWS)
 	AssertNotError(t, err, "aws-s3 type has no endpoint field, should always be allowed")
+}
+
+func TestShouldMigrateAllBucketsDefaultPool(t *testing.T) {
+	internal := nb.PoolInfo{Name: "backingstores", ResourceType: "INTERNAL"}
+	firstCloud := nb.PoolInfo{Name: "first-cloud", ResourceType: "CLOUD"}
+
+	if !shouldMigrateAllBucketsDefaultPool(&nb.SystemInfo{Pools: []nb.PoolInfo{internal}}, "first-cloud") {
+		t.Fatal("first non-internal pool should migrate default buckets")
+	}
+	if shouldMigrateAllBucketsDefaultPool(&nb.SystemInfo{Pools: []nb.PoolInfo{internal, firstCloud}}, "second-cloud") {
+		t.Fatal("later cloud pool should not migrate default buckets")
+	}
+	if shouldMigrateAllBucketsDefaultPool(nil, "first-cloud") {
+		t.Fatal("missing system info should not migrate")
+	}
 }
 
 func TestValidatePvpoolScaleDown(t *testing.T) {

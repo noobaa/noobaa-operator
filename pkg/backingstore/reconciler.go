@@ -990,6 +990,25 @@ func (r *Reconciler) CheckExternalConnection(connInfo *nb.CheckExternalConnectio
 	return nil
 }
 
+// shouldMigrateAllBucketsDefaultPool is true only for the first non-internal pool.
+// Later cloud BackingStores must not rewrite every bucket's default pool.
+func shouldMigrateAllBucketsDefaultPool(systemInfo *nb.SystemInfo, newPoolName string) bool {
+	if systemInfo == nil {
+		return false
+	}
+	for i := range systemInfo.Pools {
+		p := &systemInfo.Pools[i]
+		if p.Name == newPoolName {
+			continue
+		}
+		if p.ResourceType == "INTERNAL" || p.Name == "backingstores" {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 // ReconcilePool handles the pool using noobaa api
 func (r *Reconciler) ReconcilePool() error {
 
@@ -1065,6 +1084,10 @@ func (r *Reconciler) ReconcilePool() error {
 	}
 
 	if poolName != "" {
+		if !shouldMigrateAllBucketsDefaultPool(r.SystemInfo, poolName) {
+			r.Logger.Infof("Skipping UpdateAllBucketsDefaultPool for %q because a non-internal pool already exists", poolName)
+			return nil
+		}
 		err := r.NBClient.UpdateAllBucketsDefaultPool(nb.UpdateDefaultResourceParams{
 			PoolName: poolName,
 		})
