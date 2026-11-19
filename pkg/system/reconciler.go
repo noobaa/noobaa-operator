@@ -144,7 +144,7 @@ type Reconciler struct {
 	SecretOIDCKeyCloakConfig  *corev1.Secret
 	webIdentityTokenPath      string
 
-	defaultBackingStoreRequeueAfter time.Duration
+	defaultBackingStoreCreationDeadline time.Time
 
 	// CNPG resources
 	CNPGImageCatalog *cnpgv1.ImageCatalog
@@ -471,17 +471,22 @@ func (r *Reconciler) CheckAll() {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *Reconciler) Reconcile() (res reconcile.Result, reconcileErr error) {
 	var err error = nil
+	retryDefaultBackingStore := false
 	log := r.Logger
 	log.Infof("Start NooBaa system Reconcile ...")
 
-	// report to OLM whether the operator can be upgraded. Runs last, also on early returns and errors,
+	// report to OLM whether the operator can be upgraded. Runs after the main reconcile, also on early returns and errors,
 	// so it sees the DB status set during this reconcile.
 	defer func() {
 		if olmErr := r.ReconcileOLMUpgradeable(); olmErr != nil {
 			res.RequeueAfter = 3 * time.Second
 			if reconcileErr == nil {
-				reconcileErr = olmErr;
+				reconcileErr = olmErr
 			}
+		} else if retryDefaultBackingStore {
+			// Calculate after all API calls, including OLM. Zero would disable
+			// the retry, so use a minimal positive delay if the deadline passed.
+			res.RequeueAfter = max(time.Until(r.defaultBackingStoreCreationDeadline), time.Nanosecond)
 		}
 	}()
 
@@ -606,15 +611,13 @@ func (r *Reconciler) Reconcile() (res reconcile.Result, reconcileErr error) {
 
 	}
 
-	if err == nil && r.defaultBackingStoreRequeueAfter > 0 {
-		res.RequeueAfter = r.defaultBackingStoreRequeueAfter
-	}
-	err = r.UpdateStatus()
 	// if updateStatus will fail to update the CR for any reason we will continue to requeue the reconcile
 	// until the spec status will reflect the actual status of the bucketclass
-	if err != nil {
+	if statusErr := r.UpdateStatus(); statusErr != nil {
 		res.RequeueAfter = 3 * time.Second
-		log.Warnf("⏳ Temporary Error: %s", err)
+		log.Warnf("⏳ Temporary Error: %s", statusErr)
+	} else if err == nil {
+		retryDefaultBackingStore = !r.defaultBackingStoreCreationDeadline.IsZero()
 	}
 	return res, nil
 }
