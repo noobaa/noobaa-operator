@@ -146,6 +146,8 @@ type Reconciler struct {
 	SecretOIDCKeyCloakConfig  *corev1.Secret
 	webIdentityTokenPath      string
 
+	defaultBackingStoreRequeueAfter time.Duration
+
 	// CNPG resources
 	CNPGImageCatalog *cnpgv1.ImageCatalog
 	CNPGCluster      *cnpgv1.Cluster
@@ -615,6 +617,9 @@ func (r *Reconciler) Reconcile() (res reconcile.Result, reconcileErr error) {
 
 	}
 
+	if err == nil && r.defaultBackingStoreRequeueAfter > 0 {
+		res.RequeueAfter = r.defaultBackingStoreRequeueAfter
+	}
 	err = r.UpdateStatus()
 	// if updateStatus will fail to update the CR for any reason we will continue to requeue the reconcile
 	// until the spec status will reflect the actual status of the bucketclass
