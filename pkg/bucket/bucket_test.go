@@ -15,6 +15,43 @@ var _ = Describe("CmdUpdate", func() {
 		Expect(f).NotTo(BeNil())
 		Expect(f.DefValue).To(Equal(""))
 	})
+
+	It("should register the strict-quota flag", func() {
+		cmd := CmdUpdate()
+		f := cmd.Flags().Lookup("strict-quota")
+		Expect(f).NotTo(BeNil())
+		Expect(f.DefValue).To(Equal("false"))
+	})
+})
+
+var _ = Describe("CmdCreate", func() {
+	It("should register the strict-quota flag", func() {
+		cmd := CmdCreate()
+		f := cmd.Flags().Lookup("strict-quota")
+		Expect(f).NotTo(BeNil())
+		Expect(f.DefValue).To(Equal("false"))
+	})
+})
+
+var _ = Describe("applyStrictQuota", func() {
+	It("sets mode strict when a limit is present", func() {
+		quota := &nb.QuotaConfig{Quantity: &nb.QuantityQuotaConfig{Value: 2}}
+		Expect(applyStrictQuota(quota, true)).To(Succeed())
+		Expect(quota.Mode).To(Equal(nb.QuotaModeStrict))
+	})
+
+	It("leaves mode unchanged when the flag is not set", func() {
+		quota := &nb.QuotaConfig{Quantity: &nb.QuantityQuotaConfig{Value: 2}}
+		Expect(applyStrictQuota(quota, false)).To(Succeed())
+		Expect(quota.Mode).To(BeEmpty())
+	})
+
+	It("returns an error when strict quota has no limit", func() {
+		quota := &nb.QuotaConfig{}
+		err := applyStrictQuota(quota, true)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("strict quota requires max-size and/or max-objects"))
+	})
 })
 
 var _ = Describe("IsArchiveNamespaceStore for deep archive update", func() {
@@ -92,6 +129,19 @@ var _ = Describe("mergeQuotaForUpdate", func() {
 			Expect(mergedQuota.Size.Unit).To(Equal("G"))
 			Expect(mergedQuota.Quantity).NotTo(BeNil())
 			Expect(mergedQuota.Quantity.Value).To(Equal(3))
+		})
+	})
+
+	Context("when an existing quota uses strict mode", func() {
+		It("keeps mode when only a limit is updated", func() {
+			existing := &nb.QuotaConfig{
+				Size: &nb.SizeQuotaConfig{Value: 5, Unit: "G"},
+				Mode: nb.QuotaModeStrict,
+			}
+			mergedQuota, err := mergeQuotaForUpdate(existing, "b", "", "2")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mergedQuota.Mode).To(Equal(nb.QuotaModeStrict))
+			Expect(mergedQuota.Quantity.Value).To(Equal(2))
 		})
 	})
 
