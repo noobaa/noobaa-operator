@@ -1,13 +1,20 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 const (
@@ -505,6 +512,58 @@ func TestGoogleIdentityFromImpersonationURL(t *testing.T) {
 				t.Fatalf("expected identity %q, got %q", tc.expectedIdentity, identity)
 			}
 		})
+	}
+}
+
+func TestCheckPriorityClassExists(t *testing.T) {
+	s := scheme.Scheme
+	pc := &schedulingv1.PriorityClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "high-priority",
+		},
+		Value: 1000000,
+	}
+
+	kubeClient := fake.NewClientBuilder().WithScheme(s).WithObjects(pc).Build()
+	prev := SetKubeClientForTest(kubeClient)
+	t.Cleanup(func() { SetKubeClientForTest(prev) })
+	ctx := context.TODO()
+
+	// Empty string should succeed (optional field)
+	if err := CheckPriorityClassExists(ctx, ""); err != nil {
+		t.Fatalf("expected nil for empty priority class name, got: %v", err)
+	}
+
+	// Existing PriorityClass should succeed
+	if err := CheckPriorityClassExists(ctx, "high-priority"); err != nil {
+		t.Fatalf("expected nil for existing priority class, got: %v", err)
+	}
+
+	// Non-existing PriorityClass should be a confirmed absence
+	err := CheckPriorityClassExists(ctx, "non-existent-pc")
+	if !IsPriorityClassNotFound(err) {
+		t.Fatalf("expected PriorityClassNotFoundError, got: %v", err)
+	}
+	if IsPriorityClassLookupError(err) {
+		t.Fatalf("confirmed absence must not be a lookup failure: %v", err)
+	}
+}
+
+func TestCheckPriorityClassExistsLookupError(t *testing.T) {
+	kubeClient := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithInterceptorFuncs(interceptor.Funcs{
+		Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			return apierrors.NewInternalError(fmt.Errorf("apiserver unavailable"))
+		},
+	}).Build()
+	prev := SetKubeClientForTest(kubeClient)
+	t.Cleanup(func() { SetKubeClientForTest(prev) })
+
+	err := CheckPriorityClassExists(context.TODO(), "high-priority")
+	if !IsPriorityClassLookupError(err) {
+		t.Fatalf("expected PriorityClassLookupError, got: %v", err)
+	}
+	if IsPriorityClassNotFound(err) {
+		t.Fatalf("lookup failure must not be treated as a missing PriorityClass: %v", err)
 	}
 }
 

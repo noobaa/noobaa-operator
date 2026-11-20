@@ -79,8 +79,14 @@ func (nv *ResourceValidator) ValidateNoobaaUpdate() {
 		nv.SetValidationResult(false, "failed deserializing noobaa")
 		return
 	}
+	oldNB := nbv1.NooBaa{}
+	if nv.arRequest.Request.OldObject.Raw != nil {
+		if decoded := nv.DeserializeNB(nv.arRequest.Request.OldObject.Raw); decoded != nil {
+			oldNB = *decoded
+		}
+	}
 
-	if err := validations.ValidateNoobaaUpdate(*noobaaCR); err != nil && util.IsValidationError(err) {
+	if err := validations.ValidateNoobaaUpdate(*noobaaCR, oldNB); err != nil && util.IsValidationError(err) {
 		nv.SetValidationResult(false, err.Error())
 		return
 	}

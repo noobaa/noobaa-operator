@@ -80,7 +80,7 @@ func (bsv *ResourceValidator) ValidateUpdateBS() {
 		return
 	}
 
-	if err := validations.ValidateBackingStore(*bs); err != nil && util.IsValidationError(err) {
+	if err := validations.ValidateBackingStoreUpdate(*bs, *oldBS); err != nil && util.IsValidationError(err) {
 		bsv.SetValidationResult(false, err.Error())
 		return
 	}

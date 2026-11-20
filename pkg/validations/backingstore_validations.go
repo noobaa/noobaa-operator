@@ -9,6 +9,7 @@ import (
 	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	"github.com/noobaa/noobaa-operator/v5/pkg/util"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -21,6 +22,17 @@ const (
 
 // ValidateBackingStore validates create validations on resource Backinstore
 func ValidateBackingStore(bs nbv1.BackingStore) error {
+	return validateBackingStore(bs, true)
+}
+
+// ValidateBackingStoreUpdate validates a BackingStore update.
+// PriorityClass existence is checked only when spec changes, so removing a finalizer
+// is not rejected after the referenced PriorityClass has been deleted.
+func ValidateBackingStoreUpdate(bs, oldBs nbv1.BackingStore) error {
+	return validateBackingStore(bs, !equality.Semantic.DeepEqual(bs.Spec, oldBs.Spec))
+}
+
+func validateBackingStore(bs nbv1.BackingStore, checkPriorityClass bool) error {
 	// Ensure that the Spec contains the expected sub-spec for the declared type
 	if err := ValidateBSInValidSpec(bs); err != nil {
 		return err
@@ -48,6 +60,11 @@ func ValidateBackingStore(bs nbv1.BackingStore) error {
 		}
 		if err := ValidatePvpoolResources(bs); err != nil {
 			return err
+		}
+		if checkPriorityClass {
+			if err := ValidatePvpoolPriorityClass(bs); err != nil {
+				return err
+			}
 		}
 	case nbv1.StoreTypeS3Compatible:
 		return ValidateSigVersion(bs.Spec.S3Compatible.SignatureVersion)
@@ -135,11 +152,28 @@ func ValidateBSInValidSpec(bs nbv1.BackingStore) error {
 			return util.ValidationError{Msg: "PVPool spec must be provided for pv-pool type BackingStore"}
 		}
 	default:
-		return util.ValidationError{
-			Msg: "Invalid Backingstore type, please provide a valid Backingstore type",
-		}
 	}
 	return nil
+}
+
+// ValidatePvpoolPriorityClass validates that the priorityClassName on a pv-pool exists in the cluster.
+// Other store types ignore a stale pvPool.priorityClassName because they do not run PV-pool agent pods.
+// A confirmed absence is invalid configuration. An API read failure is returned as-is so callers can retry it.
+func ValidatePvpoolPriorityClass(bs nbv1.BackingStore) error {
+	if bs.Spec.Type != nbv1.StoreTypePVPool || bs.Spec.PVPool == nil || bs.Spec.PVPool.PriorityClassName == "" {
+		return nil
+	}
+	err := util.CheckPriorityClassExists(util.Context(), bs.Spec.PVPool.PriorityClassName)
+	if err == nil {
+		return nil
+	}
+	if util.IsPriorityClassNotFound(err) {
+		return util.ValidationError{
+			Msg: fmt.Sprintf("Invalid pvPool.priorityClassName %q: %v", bs.Spec.PVPool.PriorityClassName, err),
+			Err: err,
+		}
+	}
+	return err
 }
 
 // ValidateBSEmptySecretName validates a secret name is provided for cloud backingstores
