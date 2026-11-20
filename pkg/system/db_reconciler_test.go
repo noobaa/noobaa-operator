@@ -481,7 +481,7 @@ func TestDBClusterStatusAfterSpecUpdate(t *testing.T) {
 func baseClusterSpec() cnpgv1.ClusterSpec {
 	storageClass := "test-storage-class"
 	apiGroup := "postgresql.cnpg.io"
-	offlineBackup := false
+	onlineBackup := true
 	defaultQueriesEnabled := false
 
 	return cnpgv1.ClusterSpec{
@@ -522,8 +522,9 @@ func baseClusterSpec() cnpgv1.ClusterSpec {
 		},
 		Backup: &cnpgv1.BackupConfiguration{
 			VolumeSnapshot: &cnpgv1.VolumeSnapshotConfiguration{
-				ClassName: "test-snapshot-class",
-				Online:    &offlineBackup,
+				ClassName:           "test-snapshot-class",
+				Online:              &onlineBackup,
+				OnlineConfiguration: newOnlineBackupConfiguration(),
 			},
 		},
 		Certificates: &cnpgv1.CertificatesConfiguration{
@@ -579,6 +580,14 @@ func TestWasClusterSpecChanged(t *testing.T) {
 			s.PostgresConfiguration.PgHBA = nil
 		}, true},
 		{"backup snapshot class", func(s *cnpgv1.ClusterSpec) { s.Backup.VolumeSnapshot.ClassName = "other" }, true},
+		{"backup offline", func(s *cnpgv1.ClusterSpec) {
+			offlineBackup := false
+			s.Backup.VolumeSnapshot.Online = &offlineBackup
+		}, true},
+		{"backup wait for archive", func(s *cnpgv1.ClusterSpec) {
+			waitForArchive := true
+			s.Backup.VolumeSnapshot.OnlineConfiguration.WaitForArchive = &waitForArchive
+		}, true},
 		{"backup removed", func(s *cnpgv1.ClusterSpec) { s.Backup = nil }, true},
 		{"certificates", func(s *cnpgv1.ClusterSpec) {
 			s.Certificates.ServerAltDNSNames = append(s.Certificates.ServerAltDNSNames, "noobaa-db-pg.test.svc")
@@ -600,4 +609,98 @@ func TestWasClusterSpecChanged(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestSetDesiredBackupConf covers the backup stanza of the cluster spec, including clusters created by
+// older versions with offline backups, which must be switched to online backups without an update loop.
+func TestSetDesiredBackupConf(t *testing.T) {
+	t.Parallel()
+
+	backupSpec := &nbv1.DBBackupSpec{
+		VolumeSnapshot: &nbv1.VolumeSnapshotBackupSpec{VolumeSnapshotClass: "test-snapshot-class"},
+	}
+	offlineBackup := false
+	waitForArchive := true
+
+	tests := []struct {
+		name     string
+		existing *cnpgv1.BackupConfiguration
+	}{
+		{"new cluster", nil},
+		{"no volume snapshot configuration", &cnpgv1.BackupConfiguration{Target: cnpgv1.BackupTargetStandby}},
+		{"upgrade from offline backup", &cnpgv1.BackupConfiguration{
+			// as stored by older versions, after the API server defaults
+			Target: cnpgv1.BackupTargetStandby,
+			VolumeSnapshot: &cnpgv1.VolumeSnapshotConfiguration{
+				ClassName:              "old-snapshot-class",
+				Online:                 &offlineBackup,
+				OnlineConfiguration:    cnpgv1.OnlineConfiguration{WaitForArchive: &waitForArchive},
+				SnapshotOwnerReference: "none",
+			},
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			spec := &cnpgv1.ClusterSpec{Backup: tt.existing.DeepCopy()}
+			if err := setDesiredBackupConf(spec, backupSpec); err != nil {
+				t.Fatalf("setDesiredBackupConf() error = %v", err)
+			}
+
+			snapshotConf := spec.Backup.VolumeSnapshot
+			if snapshotConf.ClassName != "test-snapshot-class" {
+				t.Errorf("ClassName = %q, want %q", snapshotConf.ClassName, "test-snapshot-class")
+			}
+			if !snapshotConf.GetOnline() {
+				t.Errorf("Online = %v, want true", snapshotConf.Online)
+			}
+			if snapshotConf.OnlineConfiguration.GetWaitForArchive() {
+				t.Errorf("WaitForArchive = true, want false: there is no WAL archive")
+			}
+			if !snapshotConf.OnlineConfiguration.GetImmediateCheckpoint() {
+				t.Errorf("ImmediateCheckpoint = false, want true")
+			}
+
+			// fields defaulted by the API server are kept
+			if tt.existing != nil {
+				if spec.Backup.Target != tt.existing.Target {
+					t.Errorf("Target = %q, want %q", spec.Backup.Target, tt.existing.Target)
+				}
+				if tt.existing.VolumeSnapshot != nil &&
+					snapshotConf.SnapshotOwnerReference != tt.existing.VolumeSnapshot.SnapshotOwnerReference {
+					t.Errorf("SnapshotOwnerReference = %q, want %q",
+						snapshotConf.SnapshotOwnerReference, tt.existing.VolumeSnapshot.SnapshotOwnerReference)
+				}
+			}
+
+			// a second reconcile must not change the spec, otherwise the cluster is updated on every reconcile
+			reconciled := spec.DeepCopy()
+			if err := setDesiredBackupConf(reconciled, backupSpec); err != nil {
+				t.Fatalf("setDesiredBackupConf() error = %v", err)
+			}
+			r := &Reconciler{CNPGCluster: &cnpgv1.Cluster{Spec: *reconciled}}
+			if r.wasClusterSpecChanged(spec) {
+				t.Errorf("second reconcile changed the spec")
+			}
+		})
+	}
+
+	t.Run("backup not configured", func(t *testing.T) {
+		t.Parallel()
+		spec := &cnpgv1.ClusterSpec{Backup: &cnpgv1.BackupConfiguration{}}
+		if err := setDesiredBackupConf(spec, nil); err != nil {
+			t.Fatalf("setDesiredBackupConf() error = %v", err)
+		}
+		if spec.Backup != nil {
+			t.Errorf("Backup = %v, want nil", spec.Backup)
+		}
+	})
+
+	t.Run("no volume snapshot backup spec", func(t *testing.T) {
+		t.Parallel()
+		if err := setDesiredBackupConf(&cnpgv1.ClusterSpec{}, &nbv1.DBBackupSpec{}); err == nil {
+			t.Errorf("setDesiredBackupConf() error = nil, want an error")
+		}
+	})
 }
