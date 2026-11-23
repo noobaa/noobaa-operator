@@ -16,14 +16,21 @@ readonly GOLANGCI_LINT_VERSION=v2.15.0
 
 MODE="${1}"
 
-# Safely check whether Go is installed and set the GOPATH
-# Prefer the Go installation directories, with GOBIN taking precedence when set
- if command -v go >/dev/null 2>&1; then
-     GOBIN="$(go env GOBIN)"
-     GOPATH_BIN="$(go env GOPATH)/bin"
-     export PATH="${GOPATH_BIN}:${PATH}"
-     [ -n "${GOBIN}" ] && export PATH="${GOBIN}:${PATH}"
- fi
+# Safely check whether Go is installed and locate its binary directories
+if command -v go >/dev/null 2>&1; then
+    GOBIN="$(go env GOBIN)"
+    GOPATH_BIN="$(go env GOPATH)"
+    GOPATH_BIN="${GOPATH_BIN%%:*}/bin"
+    if [ "${MODE}" = "precommit" ]; then
+        # Preserve the linter selected by the original PATH
+        [ -n "${GOBIN}" ] && export PATH="${PATH}:${GOBIN}"
+        export PATH="${PATH}:${GOPATH_BIN}"
+    else
+        # Prefer the installed linter, with GOBIN taking precedence when set
+        export PATH="${GOPATH_BIN}:${PATH}"
+        [ -n "${GOBIN}" ] && export PATH="${GOBIN}:${PATH}"
+    fi
+fi
 
 # Function to install golangci-lint (for makefile mode)
 install_golangci_lint() {
@@ -82,7 +89,7 @@ run_precommit_lint() {
     elif [ ${LINT_EXIT_CODE} -ne 0 ]
     then
         echo "⚠️  golangci-lint encountered an error (exit code: ${LINT_EXIT_CODE})"
-        exit 0
+        exit 1
     fi
     
     echo "✅ golangci-lint passed!"
