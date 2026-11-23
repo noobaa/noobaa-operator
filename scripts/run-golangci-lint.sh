@@ -12,6 +12,7 @@
 # Exit code used by golangci-lint when linting issues are found
 # Allows us to distinguish between linting issues and other errors
 readonly ISSUES_EXIT_CODE=42
+readonly GOLANGCI_LINT_VERSION=v2.15.0
 
 MODE="${1}"
 
@@ -26,8 +27,8 @@ MODE="${1}"
 
 # Function to install golangci-lint (for makefile mode)
 install_golangci_lint() {
-    echo "Installing the latest golangci-lint with local toolchain"
-    if ! go install -a "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0"
+    echo "Installing golangci-lint ${GOLANGCI_LINT_VERSION}"
+    if ! go install -a "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}"
     then
         echo "⚠️ Failed to install golangci-lint"
         exit 0
