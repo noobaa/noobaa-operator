@@ -8,7 +8,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    noobaa-mgmt: SYSNAME
+    noobaa-bg-workers: SYSNAME
   ports:
     - protocol: UDP
       port: 514

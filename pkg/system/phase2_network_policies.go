@@ -39,12 +39,16 @@ func (r *Reconciler) ReconcileNetworkPolicies() error {
 	return nil
 }
 
-// SetDesiredNetworkPolicyCore updates the core network policy pod selector
-// to match the actual NooBaa system name.
+// SetDesiredNetworkPolicyCore replaces the core NetworkPolicy spec from the
+// bundle and sets the pod selector to the NooBaa system name. Replacing Spec
+// (not only the selector) ensures bundle removals, e.g. UDP 5140 after the
+// log-processor moved to bg-workers, apply on upgrade.
 // The cross-namespace rule allows TCP 8443 (mgmt-https) from any namespace because:
 // - Prometheus/monitoring scrapes metrics on this port (namespace varies by platform)
 // - Ingress controllers route external RouteMgmt traffic to this port
 func (r *Reconciler) SetDesiredNetworkPolicyCore() error {
+	desired := util.KubeObject(bundle.File_deploy_internal_networkpolicy_core_yaml).(*networkingv1.NetworkPolicy)
+	r.NetworkPolicyCore.Spec = desired.Spec
 	r.NetworkPolicyCore.Spec.PodSelector.MatchLabels["noobaa-core"] = r.Request.Name
 	return nil
 }

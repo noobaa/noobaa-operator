@@ -5200,7 +5200,7 @@ spec:
   ingress: []
 `
 
-const Sha256_deploy_internal_networkpolicy_bg_workers_yaml = "39b89df8d737ddaa9191ac7406b65d8fb454381be4e0542e763bf13742f261fe"
+const Sha256_deploy_internal_networkpolicy_bg_workers_yaml = "be024dd6a1dc95966015d3ffac666a28de3a63bc2b3fdaae0fec95a681d85515"
 
 const File_deploy_internal_networkpolicy_bg_workers_yaml = `apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -5220,6 +5220,10 @@ spec:
     ports:
     - protocol: TCP
       port: 8445
+    # BEST_EFFORT bucket logging: endpoints send syslog UDP to Service
+    # noobaa-syslog, which targets the noobaa-log-processor sidecar here.
+    - protocol: UDP
+      port: 5140
   # Prometheus scrapes metrics-https :9445 from a monitoring namespace (same as core 8443 / db 9187 / endpoint 9443).
   - from:
     - namespaceSelector: {}
@@ -5228,7 +5232,7 @@ spec:
       port: 9445
 `
 
-const Sha256_deploy_internal_networkpolicy_core_yaml = "82575021b2a4e8102d7cb619a63bb8375c768312e2a1784eb67b4f8a197b122d"
+const Sha256_deploy_internal_networkpolicy_core_yaml = "c75137344278f575930eb66cca7c7d19a971c5e2bd6139b58033728e5063eaa7"
 
 const File_deploy_internal_networkpolicy_core_yaml = `apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -5256,8 +5260,6 @@ spec:
       port: 8446
     - protocol: TCP
       port: 60100
-    - protocol: UDP
-      port: 5140
   - from:
     - namespaceSelector: {}
     ports:
@@ -6045,7 +6047,7 @@ spec:
 
 `
 
-const Sha256_deploy_internal_service_syslog_yaml = "f9f17c0ed02a78b01ff78d80b3881fbb9defbe7b7f22c4a88467566574738cf2"
+const Sha256_deploy_internal_service_syslog_yaml = "db15f31fff6225b22738182f362b5eebf6c07e8ac738b050f25bdeed30c5fa29"
 
 const File_deploy_internal_service_syslog_yaml = `apiVersion: v1
 kind: Service
@@ -6057,7 +6059,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    noobaa-mgmt: SYSNAME
+    noobaa-bg-workers: SYSNAME
   ports:
     - protocol: UDP
       port: 514
@@ -6197,7 +6199,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_bg_workers_yaml = "ed562cb18b39b7ca206571334f7611a129b93cb0ca97d4060acede5eb7284573"
+const Sha256_deploy_internal_statefulset_bg_workers_yaml = "cd266d81a5fc7918aa964fccda83e132131dc3d7818bd3831f3cf4f32f9ab390"
 
 const File_deploy_internal_statefulset_bg_workers_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -6226,6 +6228,9 @@ spec:
     spec:
       serviceAccountName: noobaa-core
       volumes:
+        # Shared by bg-workers + noobaa-log-processor for BEST_EFFORT bucket log staging.
+        - name: logs
+          emptyDir: {}
         - name: mgmt-secret
           secret:
             secretName: noobaa-mgmt-serving-cert
@@ -6262,6 +6267,8 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 2
           volumeMounts:
+            - name: logs
+              mountPath: /log
             - name: mgmt-secret
               mountPath: /etc/mgmt-secret
               readOnly: true
@@ -6361,9 +6368,45 @@ spec:
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
+        - name: noobaa-log-processor
+          image: NOOBAA_CORE_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
+          command:
+            [
+              "/root/node_modules/noobaa-core/src/deploy/NVA_build/noobaa_logs.sh",
+            ]
+          volumeMounts:
+            - name: logs
+              mountPath: /log
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "500Mi"
+            limits:
+              cpu: "200m"
+              memory: "500Mi"
+          ports:
+            - containerPort: 5140
+          env:
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
 `
 
-const Sha256_deploy_internal_statefulset_core_yaml = "89c0d854dfb4b597cb4e3886bf10a11996c31f34e3d7dd4a9139088d5b710892"
+const Sha256_deploy_internal_statefulset_core_yaml = "7168a1470cf2ef8a88bd4c6084fe33cabae6b6c14a84019767be05671d54de9d"
 
 const File_deploy_internal_statefulset_core_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -6466,6 +6509,7 @@ spec:
               fi
               exec /usr/bin/supervisord start
           volumeMounts:
+            # TODO: check if /log is still used on core (e.g. audit.csv); drop the mount and leftover code if not.
             - name: logs
               mountPath: /log
             - name: shared-bin
@@ -6618,43 +6662,6 @@ spec:
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
-        - name: noobaa-log-processor
-          image: NOOBAA_CORE_IMAGE
-          terminationMessagePolicy: FallbackToLogsOnError
-          command:
-            [
-              "/root/node_modules/noobaa-core/src/deploy/NVA_build/noobaa_logs.sh",
-            ]
-          volumeMounts:
-            - name: logs
-              mountPath: /log
-          resources:
-            requests:
-              cpu: "200m"
-              memory: "500Mi"
-            limits:
-              cpu: "200m"
-              memory: "500Mi"
-          ports:
-            - containerPort: 5140
-            - containerPort: 6514
-          env:
-            - name: CONTAINER_CPU_REQUEST
-              valueFrom:
-                resourceFieldRef:
-                  resource: requests.cpu
-            - name: CONTAINER_MEM_REQUEST
-              valueFrom:
-                resourceFieldRef:
-                  resource: requests.memory
-            - name: CONTAINER_CPU_LIMIT
-              valueFrom:
-                resourceFieldRef:
-                  resource: limits.cpu
-            - name: CONTAINER_MEM_LIMIT
-              valueFrom:
-                resourceFieldRef:
-                  resource: limits.memory
 `
 
 const Sha256_deploy_internal_statefulset_postgres_db_yaml = "53b628aaceffc1952efed5ed1131f16461fde6eb78c1a5f0f281f3efc30c30b4"

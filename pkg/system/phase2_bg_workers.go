@@ -73,88 +73,101 @@ func (r *Reconciler) SetDesiredBgWorkersApp() error {
 			break
 		}
 		r.setDesiredCoreEnv(c)
-		r.setDesiredBgWorkersEnv(c)
 
-		if c.Name != "bg-workers" {
-			continue
-		}
-
-		c.Resources = getBgWorkersResources(r.NooBaa)
-		c.Image = r.NooBaa.Status.ActualImage
-		util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
-		util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
-		util.ReflectEnvVariable(&c.Env, "NO_PROXY")
-
-		r.setDesiredRootMasterKeyMounts(podSpec, c)
-
-		if c.ReadinessProbe == nil {
-			c.ReadinessProbe = &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: intstr.FromInt(8445),
-					},
-				},
-				InitialDelaySeconds: 5,
-				PeriodSeconds:       10,
-				TimeoutSeconds:      2,
+		switch c.Name {
+		case "noobaa-log-processor":
+			c.Image = r.NooBaa.Status.ActualImage
+			c.Resources = getLogResources(r.NooBaa)
+			// we want to check that the cm exists and also that it has data in it
+			if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
+				configMapVolumeMounts := []corev1.VolumeMount{{
+					Name:      r.CaBundleConf.Name,
+					MountPath: "/etc/ocp-injected-ca-bundle",
+					ReadOnly:  true,
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
 			}
-		}
-		// Readiness-only on :8445 (no startupProbe) so partial startups stay 0/1 Running.
-		c.StartupProbe = nil
 
-		if r.shouldReconcileCNPGCluster() {
-			dbSecretVolumeMounts := []corev1.VolumeMount{{
-				Name:      r.CNPGCluster.Name,
-				MountPath: postgresSecretMountPath,
-				ReadOnly:  true,
-			}}
-			util.MergeVolumeMountList(&c.VolumeMounts, &dbSecretVolumeMounts)
-		} else if r.NooBaa.Spec.ExternalPgSecret != nil {
-			dbSecretVolumeMounts := []corev1.VolumeMount{{
-				Name:      r.NooBaa.Spec.ExternalPgSecret.Name,
-				MountPath: postgresSecretMountPath,
-				ReadOnly:  true,
-			}}
-			util.MergeVolumeMountList(&c.VolumeMounts, &dbSecretVolumeMounts)
-		}
+		case "bg-workers":
+			r.setDesiredBgWorkersEnv(c)
 
-		if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
-			configMapVolumeMounts := []corev1.VolumeMount{{
-				Name:      r.CaBundleConf.Name,
-				MountPath: "/etc/ocp-injected-ca-bundle",
-				ReadOnly:  true,
-			}}
-			util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
-		}
-		if r.ExternalPgSSLSecret != nil && util.KubeCheckQuiet(r.ExternalPgSSLSecret) {
-			secretVolumeMounts := []corev1.VolumeMount{{
-				Name:      r.ExternalPgSSLSecret.Name,
-				MountPath: "/etc/external-db-secret",
-				ReadOnly:  true,
-			}}
-			util.MergeVolumeMountList(&c.VolumeMounts, &secretVolumeMounts)
-		}
-		if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
-			bucketLogVolumeMounts := []corev1.VolumeMount{{
-				Name:      r.BucketLoggingVolume,
-				MountPath: r.BucketLoggingVolumeMount,
-			}}
-			util.MergeVolumeMountList(&c.VolumeMounts, &bucketLogVolumeMounts)
-		}
-		if r.NooBaa.Spec.BucketNotifications.Enabled {
-			notificationVolumeMounts := []corev1.VolumeMount{{
-				Name:      notificationsVolume,
-				MountPath: "/var/logs/notifications",
-			}}
-			util.MergeVolumeMountList(&c.VolumeMounts, &notificationVolumeMounts)
+			c.Resources = getBgWorkersResources(r.NooBaa)
+			c.Image = r.NooBaa.Status.ActualImage
+			util.ReflectEnvVariable(&c.Env, "HTTP_PROXY")
+			util.ReflectEnvVariable(&c.Env, "HTTPS_PROXY")
+			util.ReflectEnvVariable(&c.Env, "NO_PROXY")
 
-			for _, notifSecret := range r.NooBaa.Spec.BucketNotifications.Connections {
+			r.setDesiredRootMasterKeyMounts(podSpec, c)
+
+			if c.ReadinessProbe == nil {
+				c.ReadinessProbe = &corev1.Probe{
+					ProbeHandler: corev1.ProbeHandler{
+						TCPSocket: &corev1.TCPSocketAction{
+							Port: intstr.FromInt(8445),
+						},
+					},
+					InitialDelaySeconds: 5,
+					PeriodSeconds:       10,
+					TimeoutSeconds:      2,
+				}
+			}
+			// Readiness-only on :8445 (no startupProbe) so partial startups stay 0/1 Running.
+			c.StartupProbe = nil
+
+			if r.shouldReconcileCNPGCluster() {
+				dbSecretVolumeMounts := []corev1.VolumeMount{{
+					Name:      r.CNPGCluster.Name,
+					MountPath: postgresSecretMountPath,
+					ReadOnly:  true,
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &dbSecretVolumeMounts)
+			} else if r.NooBaa.Spec.ExternalPgSecret != nil {
+				dbSecretVolumeMounts := []corev1.VolumeMount{{
+					Name:      r.NooBaa.Spec.ExternalPgSecret.Name,
+					MountPath: postgresSecretMountPath,
+					ReadOnly:  true,
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &dbSecretVolumeMounts)
+			}
+
+			if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
+				configMapVolumeMounts := []corev1.VolumeMount{{
+					Name:      r.CaBundleConf.Name,
+					MountPath: "/etc/ocp-injected-ca-bundle",
+					ReadOnly:  true,
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
+			}
+			if r.ExternalPgSSLSecret != nil && util.KubeCheckQuiet(r.ExternalPgSSLSecret) {
 				secretVolumeMounts := []corev1.VolumeMount{{
-					Name:      notifSecret.Name,
-					MountPath: "/etc/notif_connect/" + notifSecret.Name,
+					Name:      r.ExternalPgSSLSecret.Name,
+					MountPath: "/etc/external-db-secret",
 					ReadOnly:  true,
 				}}
 				util.MergeVolumeMountList(&c.VolumeMounts, &secretVolumeMounts)
+			}
+			if r.NooBaa.Spec.BucketLogging.LoggingType == nbv1.BucketLoggingTypeGuaranteed {
+				bucketLogVolumeMounts := []corev1.VolumeMount{{
+					Name:      r.BucketLoggingVolume,
+					MountPath: r.BucketLoggingVolumeMount,
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &bucketLogVolumeMounts)
+			}
+			if r.NooBaa.Spec.BucketNotifications.Enabled {
+				notificationVolumeMounts := []corev1.VolumeMount{{
+					Name:      notificationsVolume,
+					MountPath: "/var/logs/notifications",
+				}}
+				util.MergeVolumeMountList(&c.VolumeMounts, &notificationVolumeMounts)
+
+				for _, notifSecret := range r.NooBaa.Spec.BucketNotifications.Connections {
+					secretVolumeMounts := []corev1.VolumeMount{{
+						Name:      notifSecret.Name,
+						MountPath: "/etc/notif_connect/" + notifSecret.Name,
+						ReadOnly:  true,
+					}}
+					util.MergeVolumeMountList(&c.VolumeMounts, &secretVolumeMounts)
+				}
 			}
 		}
 	}
