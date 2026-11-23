@@ -16,12 +16,12 @@ readonly ISSUES_EXIT_CODE=42
 MODE="${1}"
 
 # Safely check whether Go is installed and set the GOPATH
-# Also check for GOBIN and add it to the PATH in case the binary was installed to a non-standard location
+# Prefer the Go installation directories, with GOBIN taking precedence when set
  if command -v go >/dev/null 2>&1; then
      GOBIN="$(go env GOBIN)"
      GOPATH_BIN="$(go env GOPATH)/bin"
-     [ -n "${GOBIN}" ] && export PATH="${PATH}:${GOBIN}"
-     export PATH="${PATH}:${GOPATH_BIN}"
+     export PATH="${GOPATH_BIN}:${PATH}"
+     [ -n "${GOBIN}" ] && export PATH="${GOBIN}:${PATH}"
  fi
 
 # Function to install golangci-lint (for makefile mode)
