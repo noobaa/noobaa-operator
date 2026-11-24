@@ -1526,7 +1526,7 @@ spec:
       status: {}
 `
 
-const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "36c3bd5216b515acd42025e32e35628aeb3f1a2ad3bdcfef32b9df566b75c82f"
+const Sha256_deploy_crds_noobaa_io_noobaas_yaml = "c08d709f7c17722b9bf25dbd45f48b7954500ff80b6b40ed5ec0df5bb5c4ddb1"
 
 const File_deploy_crds_noobaa_io_noobaas_yaml = `---
 apiVersion: apiextensions.k8s.io/v1
@@ -2544,6 +2544,21 @@ spec:
                   prometheusNamespace:
                     description: Prometheus namespace that scrap metrics from noobaa
                     type: string
+                type: object
+              bgExecutors:
+                description: |-
+                  BgExecutors (optional) configures the bg-executors Deployment.
+                  Replicas are static (operator-owned); autoscaling is not supported yet.
+                properties:
+                  replicas:
+                    description: |-
+                      Replicas is the desired number of bg-executor pods.
+                      The operator sets Deployment.spec.replicas to this value (no HPA yet).
+                      nil / omitted defaults to 1; 0 disables the Deployment (scale to zero).
+                    format: int32
+                    maximum: 100
+                    minimum: 0
+                    type: integer
                 type: object
               bgWorkersPriorityClassName:
                 description: BgWorkersPriorityClassName (optional) overrides the priority
@@ -4443,6 +4458,165 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
+const Sha256_deploy_internal_deployment_bg_executors_yaml = "a467e87f33e53804fd8b2b5e4a32a5479712d8f086b81757a3201f5f9c57e4c7"
+
+const File_deploy_internal_deployment_bg_executors_yaml = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noobaa-bg-executors
+  labels:
+    app: noobaa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      noobaa-bg-executors: noobaa
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: noobaa
+        noobaa-bg-executors: noobaa
+        noobaa-component: bg-executors
+      annotations:
+        noobaa.io/configmap-hash: ""
+        openshift.io/required-scc: noobaa-bg-executors
+    spec:
+      # Dedicated executor SCC/SA. SCC is the endpoint profile; RBAC is the core role.
+      serviceAccountName: noobaa-bg-executors
+      volumes:
+        - name: mgmt-secret
+          secret:
+            secretName: noobaa-mgmt-serving-cert
+            optional: true
+        - name: noobaa-server
+          secret:
+            secretName: noobaa-server
+            optional: true
+        - name: bound-sa-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  audience: openshift
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroupChangePolicy: "OnRootMismatch"
+      containers:
+        - name: bg-executors
+          image: NOOBAA_CORE_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
+          command:
+            - /usr/local/bin/node
+            - --unhandled-rejections=warn
+            - /root/node_modules/noobaa-core/src/server/bg_workers.js
+          volumeMounts:
+            - name: mgmt-secret
+              mountPath: /etc/mgmt-secret
+              readOnly: true
+            - name: noobaa-server
+              mountPath: /etc/noobaa-server
+              readOnly: true
+            - name: bound-sa-token
+              mountPath: /var/run/secrets/openshift/serviceaccount
+              readOnly: true
+          securityContext:
+            seLinuxOptions:
+              type: "spc_t"
+            capabilities:
+              add: ["SETUID", "SETGID"]
+          # empty readyness probe
+          readinessProbe:
+            exec:
+              command: ["true"]
+            initialDelaySeconds: 1
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "500Mi"
+            limits:
+              cpu: "999m"
+              memory: "3Gi"
+          env:
+            - name: BG_WORKERS_MODE
+              value: executor
+            - name: NOOBAA_DISABLE_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_DISABLE_COMPRESSION
+            - name: NOOBAA_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_LOG_LEVEL
+            - name: NOOBAA_LOG_COLOR
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_LOG_COLOR
+            - name: NOOBAA_METRICS_AUTH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: noobaa-config
+                  key: NOOBAA_METRICS_AUTH_ENABLED
+            - name: MGMT_ADDR
+            - name: BG_ADDR
+            - name: MD_ADDR
+            - name: HOSTED_AGENTS_ADDR
+            - name: POSTGRES_HOST
+            - name: POSTGRES_HOST_RO
+            - name: POSTGRES_PORT
+            - name: POSTGRES_DBNAME
+            - name: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+            - name: POSTGRES_CONNECTION_STRING
+            - name: POSTGRES_SSL_REQUIRED
+            - name: POSTGRES_SSL_UNAUTHORIZED
+            - name: POSTGRES_HOST_PATH
+            - name: POSTGRES_USER_PATH
+            - name: POSTGRES_PASSWORD_PATH
+            - name: POSTGRES_DBNAME_PATH
+            - name: POSTGRES_PORT_PATH
+            - name: POSTGRES_CONNECTION_STRING_PATH
+            - name: GUARANTEED_LOGS_PATH
+            - name: DB_TYPE
+              value: postgres
+            - name: CONTAINER_PLATFORM
+              value: KUBERNETES
+            - name: NODE_EXTRA_CA_CERTS
+            - name: TLS_MIN_VERSION
+            - name: TLS_CIPHERS
+            - name: TLS_GROUPS
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+            - name: NOTIFICATION_LOG_DIR
+              value: ""
+          envFrom:
+            - configMapRef:
+                name: noobaa-config
+`
+
 const Sha256_deploy_internal_deployment_endpoint_yaml = "203ae626d1d27ff93c7dc95aae937b28f44e9a6967e4ef1f01320259c5ff66da"
 
 const File_deploy_internal_deployment_endpoint_yaml = `apiVersion: apps/v1
@@ -5005,6 +5179,25 @@ metadata:
   name: noobaa-core-lease
   labels:
     app: noobaa
+`
+
+const Sha256_deploy_internal_networkpolicy_bg_executors_yaml = "2eeb1c2b94078c5f35d430044a5a8f19ef1368ac6e64dc054cc657e720eef517"
+
+const File_deploy_internal_networkpolicy_bg_executors_yaml = `apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: noobaa-bg-executors
+  labels:
+    app: noobaa
+spec:
+  podSelector:
+    matchLabels:
+      noobaa-bg-executors: noobaa
+  policyTypes:
+  - Ingress
+  # Deny all ingress until metrics/MQ Services land. Executors are outbound-only
+  # for now (RPC to core/scanner, Postgres, future message queue).
+  ingress: []
 `
 
 const Sha256_deploy_internal_networkpolicy_bg_workers_yaml = "39b89df8d737ddaa9191ac7406b65d8fb454381be4e0542e763bf13742f261fe"
@@ -6004,7 +6197,7 @@ spec:
       noobaa-s3-svc: "true"
 `
 
-const Sha256_deploy_internal_statefulset_bg_workers_yaml = "94af1d14255167694110ee0fa2a945d022d9e449c1d32e98aaa9753e24a7ad87"
+const Sha256_deploy_internal_statefulset_bg_workers_yaml = "ed562cb18b39b7ca206571334f7611a129b93cb0ca97d4060acede5eb7284573"
 
 const File_deploy_internal_statefulset_bg_workers_yaml = `apiVersion: apps/v1
 kind: StatefulSet
@@ -6094,8 +6287,8 @@ spec:
             - containerPort: 9445
               name: metrics-https
           env:
-            - name: NOOBAA_BG_ROLE
-              value: scanner
+            - name: BG_WORKERS_MODE
+              value: default
             - name: NOOBAA_DISABLE_COMPRESSION
               valueFrom:
                 configMapKeyRef:
@@ -7741,6 +7934,75 @@ rules:
   - update
   - patch`
 
+const Sha256_deploy_role_bg_executors_yaml = "8b31fc8bf6b9b974370eae41885bb5c99129daf16dba462209dd6a35ab5a2654"
+
+const File_deploy_role_bg_executors_yaml = `apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: noobaa-bg-executors
+rules:
+- apiGroups:
+  - noobaa.io
+  resources:
+  - '*'
+  - noobaas
+  - backingstores
+  - bucketclasses
+  - noobaas/finalizers
+  - backingstores/finalizers
+  - bucketclasses/finalizers
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - endpoints
+  - persistentvolumeclaims
+  - events
+  - configmaps
+  - secrets
+  - serviceaccounts
+  verbs:
+  - '*'
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - daemonsets
+  - replicasets
+  - statefulsets
+  verbs:
+  - '*'
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - noobaa-bg-executors
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  - create
+  - update
+  - list
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+`
+
 const Sha256_deploy_role_binding_yaml = "59a2627156ed3db9cd1a4d9c47e8c1044279c65e84d79c525e51274329cb16ff"
 
 const File_deploy_role_binding_yaml = `apiVersion: rbac.authorization.k8s.io/v1
@@ -7789,6 +8051,21 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: custom-metrics-prometheus-adapter
+`
+
+const Sha256_deploy_role_binding_bg_executors_yaml = "cb3a8f82b845dee4f63fb453a6ae6730e5e3c64806219e94ebe71dabe0231bc3"
+
+const File_deploy_role_binding_bg_executors_yaml = `apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: noobaa-bg-executors
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: noobaa-bg-executors
+subjects:
+- kind: ServiceAccount
+  name: noobaa-bg-executors
 `
 
 const Sha256_deploy_role_binding_core_yaml = "23dd0d60002ea999cc9f7e10fb3a8000e2c19f8a3ee27971f443acd06f698729"
@@ -8099,6 +8376,45 @@ supplementalGroups:
   type: RunAsAny
 `
 
+const Sha256_deploy_scc_bg_executors_yaml = "858c25d57d1fa46d2c3421e666c5967c0272340bc0776c8e274e840f6029419f"
+
+const File_deploy_scc_bg_executors_yaml = `apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: noobaa-bg-executors
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: false
+allowedCapabilities:
+- SETUID
+- SETGID
+defaultAddCapabilities: []
+fsGroup:
+  type: MustRunAs
+groups: []
+priority: null
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- persistentVolumeClaim
+- projected
+- secret
+`
+
 const Sha256_deploy_scc_core_yaml = "dd3fb26a323dddbbb9f399b8ff86c41dbbfe63b3bbb0cfe79b785c68948063a8"
 
 const File_deploy_scc_core_yaml = `apiVersion: security.openshift.io/v1
@@ -8198,6 +8514,14 @@ metadata:
   name: noobaa
   annotations:
     serviceaccounts.openshift.io/oauth-redirectreference.noobaa-mgmt: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"noobaa-mgmt"}}'
+`
+
+const Sha256_deploy_service_account_bg_executors_yaml = "42456f0292e0c8fa6e47fd56f67467fed5219c362f719625229cdd6e95d9d482"
+
+const File_deploy_service_account_bg_executors_yaml = `apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: noobaa-bg-executors
 `
 
 const Sha256_deploy_service_account_core_yaml = "7e8f1d49bdba0969a33e8acc676cc5e2d50af9f4c94112b6de07548f3f704c24"

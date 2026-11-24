@@ -10,7 +10,6 @@ import (
 	secv1 "github.com/openshift/api/security/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -22,20 +21,6 @@ func (r *Reconciler) SetDesiredServiceBgWorkers() error {
 	r.ServiceBgWorkers.Labels["noobaa-bg-workers-svc"] = "true"
 	desired := util.KubeObject(bundle.File_deploy_internal_service_bg_workers_yaml).(*corev1.Service)
 	r.ServiceBgWorkers.Spec.Ports = desiredServicePorts(r.ServiceBgWorkers.Spec.Ports, desired.Spec.Ports)
-	return nil
-}
-
-// SetDesiredNetworkPolicyBgWorkers sets the BG workers network policy spec from the
-// bundle so bundle changes reach existing policies, and updates the pod selector
-// to match the actual NooBaa system name.
-//
-// The cross-namespace rule allows TCP 9445 (metrics HTTPS) from any namespace because
-// Prometheus/monitoring scrapes this port and the scraper namespace varies by platform.
-// RPC on 8445 stays same-namespace only.
-func (r *Reconciler) SetDesiredNetworkPolicyBgWorkers() error {
-	desired := util.KubeObject(bundle.File_deploy_internal_networkpolicy_bg_workers_yaml).(*networkingv1.NetworkPolicy)
-	r.NetworkPolicyBgWorkers.Spec = desired.Spec
-	r.NetworkPolicyBgWorkers.Spec.PodSelector.MatchLabels["noobaa-bg-workers"] = r.Request.Name
 	return nil
 }
 
@@ -274,15 +259,16 @@ func (r *Reconciler) SetDesiredBgWorkersApp() error {
 	return nil
 }
 
-// setDesiredBgWorkersEnv fills RPC router and role env for the BG workers pod.
+// setDesiredBgWorkersEnv fills RPC router and mode env for the BG workers pod.
 func (r *Reconciler) setDesiredBgWorkersEnv(c *corev1.Container) {
 	mgmtBaseAddr := fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceMgmt.Name, r.Request.Namespace)
 	s3BaseAddr := fmt.Sprintf(`wss://%s.%s.svc`, r.ServiceS3.Name, r.Request.Namespace)
 
 	for j := range c.Env {
 		switch c.Env[j].Name {
-		case "NOOBAA_BG_ROLE":
-			c.Env[j].Value = "scanner"
+		case "BG_WORKERS_MODE":
+			// Workers run scanners and producers (default mode).
+			c.Env[j].Value = "default"
 		case "MGMT_ADDR":
 			port := nb.FindPortByName(r.ServiceMgmt, "mgmt-https")
 			c.Env[j].Value = fmt.Sprintf(`%s:%d`, mgmtBaseAddr, port.Port)
