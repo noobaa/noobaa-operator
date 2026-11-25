@@ -791,6 +791,17 @@ func MapNamespacestoreToBucketclasses(namespacestore types.NamespacedName) []rec
 	return reqs
 }
 
+// compactBackingStoreNames drops empty strings so core never receives blank pool names.
+func compactBackingStoreNames(names []string) []string {
+	compact := make([]string, 0, len(names))
+	for _, name := range names {
+		if name != "" {
+			compact = append(compact, name)
+		}
+	}
+	return compact
+}
+
 // CreateTieringStructure creates a tering policy for a bucket
 func CreateTieringStructure(PlacementPolicy nbv1.PlacementPolicy, BucketName string, nbClient nb.Client) (string, error) {
 	tierName := fmt.Sprintf("%s.%x", BucketName, time.Now().Unix())
@@ -808,7 +819,7 @@ func CreateTieringStructure(PlacementPolicy nbv1.PlacementPolicy, BucketName str
 
 		err := nbClient.CreateTierAPI(nb.CreateTierParams{
 			Name:          name,
-			AttachedPools: tier.BackingStores,
+			AttachedPools: compactBackingStoreNames(tier.BackingStores),
 			DataPlacement: placement,
 		})
 		if err != nil {
