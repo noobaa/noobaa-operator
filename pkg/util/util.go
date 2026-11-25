@@ -277,6 +277,14 @@ func KubeConfig() *rest.Config {
 	return lazyConfig
 }
 
+// IsOpenShift returns true if the cluster has the OpenShift restricted-v2 SCC.
+func IsOpenShift() bool {
+	scc := &secv1.SecurityContextConstraints{
+		ObjectMeta: metav1.ObjectMeta{Name: "restricted-v2"},
+	}
+	return KubeCheckQuiet(scc)
+}
+
 // GetKubeVersion will fetch the kubernates minor version
 func GetKubeVersion() (*semver.Version, error) {
 	var err error

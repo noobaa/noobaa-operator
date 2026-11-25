@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/ptr"
 )
 
 type CnpgResources struct {
@@ -91,6 +92,10 @@ func RunInstall(cmd *cobra.Command, args []string) {
 		util.Panic(err)
 	}
 
+	if util.IsOpenShift() {
+		AdjustDeploymentSecurityContext(cnpgRes.CnpgOperatorDeployment)
+	}
+
 	for _, crd := range cnpgRes.CRDs {
 		util.KubeCreateSkipExisting(crd)
 	}
@@ -116,6 +121,10 @@ func RunUpgrade(cmd *cobra.Command, args []string) {
 		util.Panic(err)
 	}
 
+	if util.IsOpenShift() {
+		AdjustDeploymentSecurityContext(cnpgRes.CnpgOperatorDeployment)
+	}
+
 	for _, crd := range cnpgRes.CRDs {
 		util.KubeApply(crd)
 	}
@@ -125,12 +134,54 @@ func RunUpgrade(cmd *cobra.Command, args []string) {
 	util.KubeApply(cnpgRes.CnpgWebhooksClusterRoleBinding)
 	util.KubeApply(cnpgRes.CnpgWebhooksClusterRole)
 	util.KubeApply(cnpgRes.ConfigMap)
+	// The CNPG operator injects the webhook caBundle at runtime. KubeApply replaces the
+	// object with the embedded manifest (whose caBundle is empty), so copy the existing
+	// caBundle onto the objects before applying - otherwise the upgrade overwrites it with
+	// an empty value and webhook TLS verification fails until the CNPG operator restarts
+	// and re-injects it.
+	preserveWebhookCABundles(cnpgRes)
 	util.KubeApply(cnpgRes.MutatingWebhookConfiguration)
 	util.KubeApply(cnpgRes.ValidatingWebhookConfiguration)
 	util.KubeApply(cnpgRes.CnpgOperatorDeployment)
 	util.KubeApply(cnpgRes.CnpgManagerClusterRole)
 	util.KubeApply(cnpgRes.CnpgManagerRole)
 	util.KubeApply(cnpgRes.WebhooksService)
+}
+
+// preserveWebhookCABundles copies the caBundle that the CNPG operator injects at runtime
+// into the mutating/validating webhook configurations onto the objects about to be applied
+// on upgrade, matching per webhook by name. This prevents util.KubeApply (which replaces
+// the object with the embedded manifest whose caBundle is empty) from overwriting it with
+// an empty value.
+func preserveWebhookCABundles(cnpgRes *CnpgResources) {
+	if mutatingWebhookConfig := cnpgRes.MutatingWebhookConfiguration; mutatingWebhookConfig != nil {
+		existingConfig := mutatingWebhookConfig.DeepCopy()
+		if util.KubeCheckQuiet(existingConfig) {
+			caBundleByName := map[string][]byte{}
+			for i := range existingConfig.Webhooks {
+				caBundleByName[existingConfig.Webhooks[i].Name] = existingConfig.Webhooks[i].ClientConfig.CABundle
+			}
+			for i := range mutatingWebhookConfig.Webhooks {
+				if caBundle, ok := caBundleByName[mutatingWebhookConfig.Webhooks[i].Name]; ok && len(caBundle) > 0 {
+					mutatingWebhookConfig.Webhooks[i].ClientConfig.CABundle = caBundle
+				}
+			}
+		}
+	}
+	if validatingWebhookConfig := cnpgRes.ValidatingWebhookConfiguration; validatingWebhookConfig != nil {
+		existingConfig := validatingWebhookConfig.DeepCopy()
+		if util.KubeCheckQuiet(existingConfig) {
+			caBundleByName := map[string][]byte{}
+			for i := range existingConfig.Webhooks {
+				caBundleByName[existingConfig.Webhooks[i].Name] = existingConfig.Webhooks[i].ClientConfig.CABundle
+			}
+			for i := range validatingWebhookConfig.Webhooks {
+				if caBundle, ok := caBundleByName[validatingWebhookConfig.Webhooks[i].Name]; ok && len(caBundle) > 0 {
+					validatingWebhookConfig.Webhooks[i].ClientConfig.CABundle = caBundle
+				}
+			}
+		}
+	}
 }
 
 // CmdUninstall returns a CLI command
@@ -430,6 +481,37 @@ func modifyResources(cnpgRes *CnpgResources) {
 
 	// update the namespace in the service
 	cnpgRes.WebhooksService.Namespace = options.Namespace
+}
+
+// AdjustDeploymentSecurityContext adjusts the cnpg operator deployment's security
+// context to be compatible with the OpenShift restricted-v2 SCC. It removes the
+// explicit runAsUser/runAsGroup (so OpenShift injects a UID from the namespace range)
+// and the pod-level seccompProfile, and hardens the container security context.
+//
+// Used by CLI installs/upgrades on OpenShift and by OLM CSV generation.
+func AdjustDeploymentSecurityContext(depl *appsv1.Deployment) {
+	// pod-level security context
+	if depl.Spec.Template.Spec.SecurityContext == nil {
+		depl.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
+	}
+	podSc := depl.Spec.Template.Spec.SecurityContext
+	podSc.RunAsUser = nil
+	podSc.RunAsGroup = nil
+	podSc.SeccompProfile = nil
+	podSc.RunAsNonRoot = ptr.To(true)
+
+	// container-level security context
+	if depl.Spec.Template.Spec.Containers[0].SecurityContext == nil {
+		depl.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{}
+	}
+	containerSc := depl.Spec.Template.Spec.Containers[0].SecurityContext
+	containerSc.RunAsUser = nil
+	containerSc.RunAsGroup = nil
+	containerSc.AllowPrivilegeEscalation = ptr.To(false)
+	containerSc.ReadOnlyRootFilesystem = ptr.To(true)
+	containerSc.Capabilities = &corev1.Capabilities{
+		Drop: []corev1.Capability{"ALL"},
+	}
 }
 
 // modifyYamlBytes modifies the YAML bytes to replace the API group and webhooks path

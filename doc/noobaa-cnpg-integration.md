@@ -232,6 +232,18 @@ When executed, database dumps direct to the specified database pod and generate 
 noobaa diagnostics db-dump --dump-from primary
 ```
 
+
+#### OpenShift Security Context Compatibility
+
+The upstream CloudNative-PG operator deployment pins an explicit `runAsUser`/`runAsGroup` (e.g. `10001`) on its controller pod. On OpenShift the `restricted-v2` SCC rejects explicit UIDs outside the per-namespace allowed range.
+
+During CLI installs and upgrades, NooBaa automatically detects OpenShift by checking for the `restricted-v2` SCC and adjusts the CNPG operator deployment's security context:
+
+- Pod `securityContext`: removes `runAsUser`, `runAsGroup`, and `seccompProfile`; sets `runAsNonRoot: true`.
+- Container `securityContext`: removes `runAsUser`/`runAsGroup`; sets `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, and `capabilities.drop: ["ALL"]`.
+
+With `runAsUser`/`runAsGroup` removed, OpenShift injects a UID from the namespace range. On Kubernetes, the upstream security context is kept. Generated OLM CSVs always apply the same adjustments without requiring a cluster connection.
+
 ### Troubleshooting
 
 #### Common Issues
