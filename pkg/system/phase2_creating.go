@@ -290,7 +290,9 @@ func (r *Reconciler) SetDesiredServiceMgmt() error {
 
 // SetDesiredServiceSyslog updates the ServiceSyslog as desired for reconciling
 func (r *Reconciler) SetDesiredServiceSyslog() error {
-	r.ServiceSyslog.Spec.Selector["noobaa-mgmt"] = r.Request.Name
+	// Upgrade from pre-bg-workers (e.g. 6.0): drop noobaa-mgmt selector; syslog now targets bg-workers.
+	delete(r.ServiceSyslog.Spec.Selector, "noobaa-mgmt")
+	r.ServiceSyslog.Spec.Selector["noobaa-bg-workers"] = r.Request.Name
 	r.ServiceSyslog.Labels["noobaa-syslog-svc"] = "true"
 	return nil
 }
@@ -855,6 +857,19 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 		}
 	}
 
+	// Upgrade cleanup: older core StatefulSets still had the noobaa-log-processor
+	// sidecar. It now lives on bg-workers; remove any leftover container from the
+	// existing core StatefulSet being reconciled.
+	filtered := podSpec.Containers[:0]
+	for i := range podSpec.Containers {
+		if podSpec.Containers[i].Name == "noobaa-log-processor" {
+			continue
+		}
+		filtered = append(filtered, podSpec.Containers[i])
+	}
+	clear(podSpec.Containers[len(filtered):])
+	podSpec.Containers = filtered
+
 	for i := range podSpec.Containers {
 		c := &podSpec.Containers[i]
 
@@ -977,22 +992,6 @@ func (r *Reconciler) SetDesiredCoreApp() error {
 				}
 			}
 
-		case "noobaa-log-processor":
-			if c.Image != r.NooBaa.Status.ActualImage {
-				coreImageChanged = true
-				c.Image = r.NooBaa.Status.ActualImage
-			}
-
-			c.Resources = getLogResources(r.NooBaa)
-			// we want to check that the cm exists and also that it has data in it
-			if util.KubeCheckQuiet(r.CaBundleConf) && len(r.CaBundleConf.Data) > 0 {
-				configMapVolumeMounts := []corev1.VolumeMount{{
-					Name:      r.CaBundleConf.Name,
-					MountPath: "/etc/ocp-injected-ca-bundle",
-					ReadOnly:  true,
-				}}
-				util.MergeVolumeMountList(&c.VolumeMounts, &configMapVolumeMounts)
-			}
 		}
 	}
 	if r.NooBaa.Spec.ImagePullSecret == nil {

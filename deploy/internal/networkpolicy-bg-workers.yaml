@@ -16,6 +16,10 @@ spec:
     ports:
     - protocol: TCP
       port: 8445
+    # BEST_EFFORT bucket logging: endpoints send syslog UDP to Service
+    # noobaa-syslog, which targets the noobaa-log-processor sidecar here.
+    - protocol: UDP
+      port: 5140
   # Prometheus scrapes metrics-https :9445 from a monitoring namespace (same as core 8443 / db 9187 / endpoint 9443).
   - from:
     - namespaceSelector: {}

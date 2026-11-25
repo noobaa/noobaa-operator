@@ -25,6 +25,9 @@ spec:
     spec:
       serviceAccountName: noobaa-core
       volumes:
+        # Shared by bg-workers + noobaa-log-processor for BEST_EFFORT bucket log staging.
+        - name: logs
+          emptyDir: {}
         - name: mgmt-secret
           secret:
             secretName: noobaa-mgmt-serving-cert
@@ -61,6 +64,8 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 2
           volumeMounts:
+            - name: logs
+              mountPath: /log
             - name: mgmt-secret
               mountPath: /etc/mgmt-secret
               readOnly: true
@@ -160,3 +165,39 @@ spec:
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
+        - name: noobaa-log-processor
+          image: NOOBAA_CORE_IMAGE
+          terminationMessagePolicy: FallbackToLogsOnError
+          command:
+            [
+              "/root/node_modules/noobaa-core/src/deploy/NVA_build/noobaa_logs.sh",
+            ]
+          volumeMounts:
+            - name: logs
+              mountPath: /log
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "500Mi"
+            limits:
+              cpu: "200m"
+              memory: "500Mi"
+          ports:
+            - containerPort: 5140
+          env:
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory

@@ -24,8 +24,6 @@ spec:
       port: 8446
     - protocol: TCP
       port: 60100
-    - protocol: UDP
-      port: 5140
   - from:
     - namespaceSelector: {}
     ports:
