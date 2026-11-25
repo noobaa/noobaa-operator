@@ -85,6 +85,9 @@ func TestBgExecutorsCommandRunsBgWorkers(t *testing.T) {
 	if !hasSETUID || !hasSETGID {
 		t.Fatalf("capabilities.Add = %v, want SETUID and SETGID", cSC.Capabilities.Add)
 	}
+	if cSC.SELinuxOptions != nil {
+		t.Fatalf("container seLinuxOptions = %+v, want nil (MustRunAs SCC)", cSC.SELinuxOptions)
+	}
 	probe := deploy.Spec.Template.Spec.Containers[0].ReadinessProbe
 	if probe == nil || probe.Exec == nil || len(probe.Exec.Command) == 0 || probe.Exec.Command[0] != "true" {
 		t.Fatalf("expected exec readinessProbe [true], got %+v", probe)
