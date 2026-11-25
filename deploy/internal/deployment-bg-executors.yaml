@@ -64,8 +64,6 @@ spec:
               mountPath: /var/run/secrets/openshift/serviceaccount
               readOnly: true
           securityContext:
-            seLinuxOptions:
-              type: "spc_t"
             capabilities:
               add: ["SETUID", "SETGID"]
           # empty readyness probe

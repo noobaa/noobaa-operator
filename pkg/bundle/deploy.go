@@ -4458,7 +4458,7 @@ data:
     shared_preload_libraries = 'pg_stat_statements'
 `
 
-const Sha256_deploy_internal_deployment_bg_executors_yaml = "a467e87f33e53804fd8b2b5e4a32a5479712d8f086b81757a3201f5f9c57e4c7"
+const Sha256_deploy_internal_deployment_bg_executors_yaml = "a2bed5819cbe5b1ecf28b7c1b2f9a9c72847c4555eecc5c64142b7b6698eb6c3"
 
 const File_deploy_internal_deployment_bg_executors_yaml = `apiVersion: apps/v1
 kind: Deployment
@@ -4526,8 +4526,6 @@ spec:
               mountPath: /var/run/secrets/openshift/serviceaccount
               readOnly: true
           securityContext:
-            seLinuxOptions:
-              type: "spc_t"
             capabilities:
               add: ["SETUID", "SETGID"]
           # empty readyness probe
