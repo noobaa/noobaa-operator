@@ -119,7 +119,7 @@ release: release-docker release-cli
 #- Generate -#
 #------------#
 
-gen: install-hooks vendor pkg/bundle/deploy.go
+gen: vendor pkg/bundle/deploy.go
 	@echo "✅ gen"
 .PHONY: gen
 
@@ -184,7 +184,7 @@ test: lint test-go
 .PHONY: test
 
 lint: gen
-	@./scripts/run-golangci-lint.sh makefile
+	@./scripts/run-golangci-lint.sh
 	@echo "✅ lint"
 .PHONY: lint
 
@@ -317,12 +317,3 @@ deepcopy-gen:
 	}
 DEEPCOPY_GEN=$(GOBIN)/deepcopy-gen
 .PHONY: deepcopy-gen
-
-install-hooks:
-	@if [ -d .git ]; then \
-		if [ "$(shell git config core.hooksPath)" != ".githooks" ]; then \
-			git config core.hooksPath .githooks; \
-			echo "Git hooks path set to .githooks"; \
-		fi; \
-	fi
-.PHONY: install-hooks
