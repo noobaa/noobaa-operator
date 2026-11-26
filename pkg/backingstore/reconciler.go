@@ -196,6 +196,11 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 		// later health change may not notify the operator. Retry to refresh the
 		// mode so the BackingStore does not stay Creating until an unrelated event.
 		result.RequeueAfter = 10 * time.Second
+		// Reduce core API polling for pools that remain initializing for a long
+		// time. Use the resource age so the backoff survives operator restarts.
+		if time.Since(r.BackingStore.CreationTimestamp.Time) >= 10*time.Minute {
+			result.RequeueAfter = 2 * time.Minute
+		}
 	}
 	return result, completeErr
 }
