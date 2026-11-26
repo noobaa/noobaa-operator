@@ -430,7 +430,9 @@ func (r *Reconciler) CheckAll() {
 	util.KubeCheck(r.CoreAppConfig)
 	util.KubeCheck(r.BgWorkersApp)
 	util.KubeCheck(r.ServiceBgWorkers)
-	util.KubeCheck(r.BgExecutorsApp)
+	if util.IsBgExecutorsEnabled() {
+		util.KubeCheck(r.BgExecutorsApp)
+	}
 	util.KubeCheck(r.ServiceMgmt)
 	util.KubeCheck(r.ServiceS3)
 	util.KubeCheck(r.ServiceSts)
@@ -869,11 +871,11 @@ func (r *Reconciler) stopNoobaaPodsAndGetNumRunningPods() (int, error) {
 		r.Logger.Errorf("got error stopping noobaa-bg-workers pods. error: %v", err)
 		return -1, err
 	}
-	// Scale executors only if the Deployment already exists. ReconcileObject would
-	// create it from the bundle (selector hardcoded to "noobaa"); that selector is
-	// immutable, so a custom system name would stick wrong forever. Creation belongs
-	// in SetDesiredBgExecutorsApp on the normal reconcile path.
-	if util.KubeCheckQuiet(r.BgExecutorsApp) {
+	// Scale executors only if bg-executors are enabled and the Deployment already exists.
+	// ReconcileObject would create it from the bundle (selector hardcoded to "noobaa");
+	// that selector is immutable, so a custom system name would stick wrong forever.
+	// Creation belongs in SetDesiredBgExecutorsApp on the normal reconcile path.
+	if util.IsBgExecutorsEnabled() && util.KubeCheckQuiet(r.BgExecutorsApp) {
 		if err := r.ReconcileObject(r.BgExecutorsApp, func() error {
 			r.BgExecutorsApp.Spec.Replicas = &zeroReplicas
 			return nil
@@ -894,11 +896,15 @@ func (r *Reconciler) stopNoobaaPodsAndGetNumRunningPods() (int, error) {
 	if !util.KubeList(bgPodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-bg-workers": r.Request.Name}) {
 		return -1, fmt.Errorf("got error listing noobaa-bg-workers pods")
 	}
-	bgExecutorsPodsList := &corev1.PodList{}
-	if !util.KubeList(bgExecutorsPodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-bg-executors": r.Request.Name}) {
-		return -1, fmt.Errorf("got error listing noobaa-bg-executors pods")
+	numPods := len(corePodsList.Items) + len(endpointPodsList.Items) + len(bgPodsList.Items)
+	if util.IsBgExecutorsEnabled() {
+		bgExecutorsPodsList := &corev1.PodList{}
+		if !util.KubeList(bgExecutorsPodsList, client.InNamespace(options.Namespace), client.MatchingLabels{"noobaa-bg-executors": r.Request.Name}) {
+			return -1, fmt.Errorf("got error listing noobaa-bg-executors pods")
+		}
+		numPods += len(bgExecutorsPodsList.Items)
 	}
-	return len(corePodsList.Items) + len(endpointPodsList.Items) + len(bgPodsList.Items) + len(bgExecutorsPodsList.Items), nil
+	return numPods, nil
 }
 
 func (r *Reconciler) GetAffinity() *corev1.Affinity {

@@ -2273,6 +2273,16 @@ func EnsureCommonMetaFields(object metav1.Object, finalizer string) bool {
 	return updated
 }
 
+// EnableBgExecutorsEnv is the name of the operator environment variable that opts in to
+// deploying the bg-executors (Deployment, ServiceAccount, Role, RoleBinding, SCC and
+// NetworkPolicy). Set to "true" to enable. Default: disabled.
+const EnableBgExecutorsEnv = "ENABLE_BG_EXECUTORS"
+
+// IsBgExecutorsEnabled returns true when the ENABLE_BG_EXECUTORS env var is set to "true"
+func IsBgExecutorsEnabled() bool {
+	return os.Getenv(EnableBgExecutorsEnv) == "true"
+}
+
 // GetWatchNamespace returns the namespace the operator should be watching for changes
 // this was implemented in operator-sdk v0.17 and removed. copied from here:
 // https://github.com/operator-framework/operator-sdk/blob/53b00d125fb12515cd74fb169149913b401c8995/pkg/k8sutil/k8sutil.go#L45

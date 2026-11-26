@@ -153,6 +153,9 @@ var CosiDriverPath = "/var/lib/cosi/cosi.sock"
 // AdmissionWebhook is used for deploying the system with admission validation webhook
 var AdmissionWebhook = false
 
+// EnableBgExecutors is used for deploying the system with the bg-executors
+var EnableBgExecutors = false
+
 // TestEnv is used for deploying the system with test env minimal resources
 var TestEnv = false
 
@@ -367,6 +370,10 @@ func init() {
 	FlagSet.BoolVar(
 		&AdmissionWebhook, "admission",
 		false, "Install the system with admission validation webhook",
+	)
+	FlagSet.BoolVar(
+		&EnableBgExecutors, "enable-bg-executors",
+		false, "Install the system with the bg-executors (disabled by default)",
 	)
 	FlagSet.BoolVar(
 		&ShowSecrets, "show-secrets",

@@ -183,3 +183,20 @@ func TestSetDesiredBgExecutorsEnv(t *testing.T) {
 		t.Fatal("BG_ADDR must not be localhost for executors")
 	}
 }
+
+// Not parallel: t.Setenv cannot be used in parallel tests.
+func TestReconcilerBgExecutorsReplicasGatedByEnv(t *testing.T) {
+	three := int32(3)
+	r := &Reconciler{NooBaa: &nbv1.NooBaa{Spec: nbv1.NooBaaSpec{
+		BgExecutors: &nbv1.BgExecutorsSpec{Replicas: &three},
+	}}}
+
+	t.Setenv(util.EnableBgExecutorsEnv, "")
+	if got := r.getBgExecutorsReplicas(); got != 0 {
+		t.Fatalf("disabled: getBgExecutorsReplicas() = %d, want 0", got)
+	}
+	t.Setenv(util.EnableBgExecutorsEnv, "true")
+	if got := r.getBgExecutorsReplicas(); got != 3 {
+		t.Fatalf("enabled: getBgExecutorsReplicas() = %d, want 3", got)
+	}
+}

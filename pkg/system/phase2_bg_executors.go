@@ -290,7 +290,11 @@ func getBgExecutorsReplicas(nb *nbv1.NooBaa) int32 {
 	return replicas
 }
 
+// getBgExecutorsReplicas returns 0 unless bg-executors are enabled on the operator.
 func (r *Reconciler) getBgExecutorsReplicas() int32 {
+	if !util.IsBgExecutorsEnabled() {
+		return 0
+	}
 	return getBgExecutorsReplicas(r.NooBaa)
 }
 

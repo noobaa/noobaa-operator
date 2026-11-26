@@ -189,7 +189,12 @@ func (c *Collector) CollectPVCs(listOptions client.ListOptions) {
 // CollectSCC collects the SCC
 func (c *Collector) CollectSCC() {
 	c.log.Println("Collecting SCC logs")
-	for _, name := range []string{"noobaa-endpoint", "noobaa-bg-executors", "noobaa-core", "noobaa-agent"} {
+	sccNames := []string{"noobaa-endpoint", "noobaa-core", "noobaa-agent"}
+	// bg-executors are opt-in, skip their SCC unless enabled
+	if util.IsBgExecutorsEnabled() {
+		sccNames = append(sccNames, "noobaa-bg-executors")
+	}
+	for _, name := range sccNames {
 		scc := &secv1.SecurityContextConstraints{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,

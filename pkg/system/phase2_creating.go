@@ -253,10 +253,14 @@ func (r *Reconciler) ReconcilePhaseCreatingForMainClusters() error {
 		return err
 	}
 
-	// Own SCC for executors (endpoint profile). Apply so later edits replace the live object.
-	util.KubeApply(util.KubeObject(bundle.File_deploy_scc_bg_executors_yaml).(*secv1.SecurityContextConstraints))
-	if err := r.ReconcileObject(r.BgExecutorsApp, r.SetDesiredBgExecutorsApp); err != nil {
-		return err
+	// bg-executors are opt-in (ENABLE_BG_EXECUTORS on the operator, noobaa install --enable-bg-executors)
+	if util.IsBgExecutorsEnabled() {
+		if err := r.reconcileBgExecutorsRBAC(); err != nil {
+			return err
+		}
+		if err := r.ReconcileObject(r.BgExecutorsApp, r.SetDesiredBgExecutorsApp); err != nil {
+			return err
+		}
 	}
 
 	// reconcile noobaa-mgmt route only if routes are enabled (independent of BG)
@@ -1689,6 +1693,15 @@ func (r *Reconciler) reconcileRbac(scc, sa, role, binding string) error {
 	}
 
 	return nil
+}
+
+// reconcileBgExecutorsRBAC creates bg-executors scc, role, rolebinding and service account
+func (r *Reconciler) reconcileBgExecutorsRBAC() error {
+	return r.reconcileRbac(
+		bundle.File_deploy_scc_bg_executors_yaml,
+		bundle.File_deploy_service_account_bg_executors_yaml,
+		bundle.File_deploy_role_bg_executors_yaml,
+		bundle.File_deploy_role_binding_bg_executors_yaml)
 }
 
 // reconcileDBRBAC creates DB scc, role, rolebinding and service account
