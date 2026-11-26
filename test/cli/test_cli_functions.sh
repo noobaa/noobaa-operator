@@ -206,7 +206,7 @@ function install {
     local use_obc_cleanup_policy
     
     [ $((RANDOM%2)) -gt 0 ] && use_obc_cleanup_policy="--use-obc-cleanup-policy"
-    test_noobaa install --${RESOURCE} --admission ${use_obc_cleanup_policy} --use-standalone-db
+    test_noobaa install --${RESOURCE} --admission ${use_obc_cleanup_policy}
 
     wait_for_noobaa_ready
     wait_for_backingstore_ready noobaa-default-backing-store
@@ -304,12 +304,26 @@ function wait_for_backingstore_ready {
     fi
 }
 
+# Prints the current CNPG primary pod name, or returns failure if unavailable.
+function get_primary_db_pod {
+    local primary_pod
+    # Resolve the current primary on every attempt: CNPG can replace it during a restart.
+    primary_pod=$(${kubectl} get clusters.postgresql.cnpg.noobaa.io noobaa-db-pg-cluster \
+        --request-timeout=20s -o jsonpath='{.status.currentPrimary}' 2>/dev/null) || return 1
+    # CNPG may not report a primary while starting; let the caller retry.
+    if [ -z "${primary_pod}" ]; then
+        return 1
+    fi
+    echo "${primary_pod}"
+}
+
 # read_pg_max_connections prints numeric max_connections from postgres, or empty if unavailable.
 # Reads the applied runtime value from pg_settings so the wait succeeds only after restart.
 function read_pg_max_connections {
-    local value
+    local value primary_pod
+    primary_pod=$(get_primary_db_pod) || return 1
     # Cap the client wait. This poll runs while the postgres pod is terminating or recreating.
-    value=$(${kubectl} exec --request-timeout=20s noobaa-db-pg-0 -- psql -tAc \
+    value=$(${kubectl} exec --request-timeout=20s "${primary_pod}" -- psql -tAc \
         "SELECT setting FROM pg_settings WHERE name = 'max_connections';" 2>/dev/null \
         | tr -d '[:space:]')
     if [[ "${value}" =~ ^[0-9]+$ ]]
@@ -516,15 +530,15 @@ function check_pgdb_config_override {
         exit 1
     fi
     local final_max_connections=$((current_max_connections + 100))
-    printf "{\"spec\":{\"dbConf\":\"\\\nmax_connections = $final_max_connections\"}}" > $temp_file
+    printf '{"spec":{"dbSpec":{"dbConf":{"max_connections":"%s"}}}}' "${final_max_connections}" > "$temp_file"
 
     kuberun silence patch noobaas.noobaa.io noobaa --patch-file $temp_file --type merge
 
-    # Wait for the applied runtime setting after reconcile restarts postgres
-    # (operator → pod recreate → PVC reattach → startup/recovery).
+    # Wait for the runtime setting after NooBaa updates the CNPG configuration
+    # and CNPG restarts PostgreSQL.
     if ! quiet_poll 300 5 "PostgreSQL max_connections = ${final_max_connections}" \
         "[ \"\$(read_pg_max_connections)\" = \"${final_max_connections}\" ]" \
-        "${kubectl} describe pod noobaa-db-pg-0; ${kubectl} get events --sort-by=.lastTimestamp | tail -20"
+        "${kubectl} describe pod \"\$(get_primary_db_pod)\"; ${kubectl} get events --sort-by=.lastTimestamp | tail -20"
     then
         rm -f "$temp_file"
         exit 1
@@ -540,7 +554,7 @@ function check_pgdb_config_override {
     fi
     if ! quiet_poll 300 5 "NooBaa RPC after dbConf" \
         "${rpc_cmd} >/dev/null 2>&1" \
-        "${kubectl} get pod noobaa-db-pg-0 noobaa-core-0 -o wide; ${rpc_cmd}"
+        "${kubectl} get pod \$(get_primary_db_pod) noobaa-core-0 -o wide; ${rpc_cmd}"
     then
         rm -f "$temp_file"
         exit 1

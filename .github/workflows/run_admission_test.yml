@@ -59,7 +59,10 @@ jobs:
           cd ./noobaa-operator
           ./build/_output/bin/noobaa-operator crd create -n test
           ./build/_output/bin/noobaa-operator operator install --operator-image=$OPERATOR_IMAGE --admission --test-env -n test
-          ./build/_output/bin/noobaa-operator system create --use-standalone-db \
+          # system create requires the CNPG operator to be installed and ready.
+          ./build/_output/bin/noobaa-operator cnpg install -n test
+          kubectl rollout status deployment/cnpg-controller-manager --timeout=5m -n test
+          ./build/_output/bin/noobaa-operator system create \
           --db-resources='{ "limits": {"cpu": "80m","memory": "1G"}, "requests": {"cpu": "80m","memory": "1G"}}' \
           --core-resources='{ "limits": {"cpu": "80m","memory": "1G"}, "requests": {"cpu": "80m","memory": "1G"}}' \
           --endpoint-resources='{ "limits": {"cpu": "80m","memory": "1G"}, "requests": {"cpu": "80m","memory": "1G"}}' \
