@@ -988,6 +988,7 @@ func (r *Reconciler) ReconcileDefaultNsfsPvc() error {
 // ReconcileDefaultBackingStore attempts to get credentials to cloud storage using the cloud-credentials operator
 // and use it for the default backing store
 func (r *Reconciler) ReconcileDefaultBackingStore() error {
+	r.defaultBackingStoreCreationDeadline = time.Time{}
 	// Skip if joining another NooBaa
 	if r.JoinSecret != nil {
 		return nil
@@ -1039,8 +1040,11 @@ func (r *Reconciler) ReconcileDefaultBackingStore() error {
 			return err
 		}
 	} else {
-		minutesSinceCreation := time.Since(r.NooBaa.CreationTimestamp.Time).Minutes()
-		if minutesSinceCreation < 2 {
+		creationDeadline := r.NooBaa.CreationTimestamp.Add(2 * time.Minute)
+		if time.Now().Before(creationDeadline) {
+			// Passing the age threshold emits no event. Ensure creation is
+			// attempted again even if the rest of configuration succeeds.
+			r.defaultBackingStoreCreationDeadline = creationDeadline
 			return nil
 		}
 		if err := r.preparePVPoolBackingStore(); err != nil {

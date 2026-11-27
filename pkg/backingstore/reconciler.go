@@ -187,7 +187,22 @@ func (r *Reconciler) Reconcile() (reconcile.Result, error) {
 	}
 
 	err := r.ReconcilePhases()
-	return r.completeReconcile(err)
+	result, completeErr := r.completeReconcile(err)
+	// Preserve retries already scheduled for actual reconcile or status errors.
+	if err == nil && completeErr == nil && result.RequeueAfter == 0 &&
+		r.BackingStore.Spec.Type == nbv1.StoreTypePVPool &&
+		r.PoolInfo != nil && r.PoolInfo.Mode == "INITIALIZING" {
+		// Agents can register before core finishes initializing the pool, and that
+		// later health change may not notify the operator. Retry to refresh the
+		// mode so the BackingStore does not stay Creating until an unrelated event.
+		result.RequeueAfter = 10 * time.Second
+		// Reduce core API polling for pools that remain initializing for a long
+		// time. Use the resource age so the backoff survives operator restarts.
+		if time.Since(r.BackingStore.CreationTimestamp.Time) >= 10*time.Minute {
+			result.RequeueAfter = 2 * time.Minute
+		}
+	}
+	return result, completeErr
 }
 
 func (r *Reconciler) completeReconcile(err error) (reconcile.Result, error) {
@@ -1125,7 +1140,17 @@ func (r *Reconciler) reconcilePvPool() error {
 			return err
 		}
 	}
-	return r.reconcileExistingPods(podsList)
+	if err := r.reconcileExistingPods(podsList); err != nil {
+		return err
+	}
+
+	// Use the core snapshot after agent registration succeeds, rather than
+	// waiting for a separate NooBaa system reconcile to refresh the stored mode.
+	if r.PoolInfo != nil && r.BackingStore.Status.Mode.ModeCode != r.PoolInfo.Mode {
+		r.BackingStore.Status.Mode.ModeCode = r.PoolInfo.Mode
+		r.BackingStore.Status.Mode.TimeStamp = fmt.Sprint(time.Now())
+	}
+	return nil
 }
 
 func (r *Reconciler) reconcileMissingPods(podsList *corev1.PodList, pvcsList *corev1.PersistentVolumeClaimList) error {
