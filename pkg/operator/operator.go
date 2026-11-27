@@ -111,15 +111,12 @@ func RunUpgrade(cmd *cobra.Command, args []string) {
 	util.KubeApply(c.SA)
 	util.KubeApply(c.SACore)
 	util.KubeApply(c.SAEndpoint)
-	util.KubeApply(c.SABgExecutors)
 	util.KubeApply(c.Role)
 	util.KubeApply(c.RoleCore)
 	util.KubeApply(c.RoleEndpoint)
-	util.KubeApply(c.RoleBgExecutors)
 	util.KubeApply(c.RoleBinding)
 	util.KubeApply(c.RoleBindingCore)
 	util.KubeApply(c.RoleBindingEndpoint)
-	util.KubeApply(c.RoleBindingBgExecutors)
 	util.KubeApply(c.ClusterRole)
 	util.KubeApply(c.ClusterRoleBinding)
 
@@ -143,6 +140,16 @@ func RunUpgrade(cmd *cobra.Command, args []string) {
 		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
 		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
 			Name:  "ENABLE_NOOBAA_ADMISSION",
+			Value: "true",
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	enableBgExecutors, _ := cmd.Flags().GetBool("enable-bg-executors")
+	if enableBgExecutors {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  util.EnableBgExecutorsEnv,
 			Value: "true",
 		})
 		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
@@ -226,15 +233,12 @@ func RunInstall(cmd *cobra.Command, args []string) {
 	util.KubeCreateSkipExisting(c.SA)
 	util.KubeCreateSkipExisting(c.SACore)
 	util.KubeCreateSkipExisting(c.SAEndpoint)
-	util.KubeCreateSkipExisting(c.SABgExecutors)
 	util.KubeCreateSkipExisting(c.Role)
 	util.KubeCreateSkipExisting(c.RoleCore)
 	util.KubeCreateSkipExisting(c.RoleEndpoint)
-	util.KubeCreateSkipExisting(c.RoleBgExecutors)
 	util.KubeCreateSkipExisting(c.RoleBinding)
 	util.KubeCreateSkipExisting(c.RoleBindingCore)
 	util.KubeCreateSkipExisting(c.RoleBindingEndpoint)
-	util.KubeCreateSkipExisting(c.RoleBindingBgExecutors)
 	util.KubeCreateSkipExisting(c.ClusterRole)
 	util.KubeCreateSkipExisting(c.ClusterRoleBinding)
 
@@ -267,6 +271,16 @@ func RunInstall(cmd *cobra.Command, args []string) {
 		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
 		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
 			Name:  "ENABLE_NOOBAA_ADMISSION",
+			Value: "true",
+		})
+		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
+	}
+
+	enableBgExecutors, _ := cmd.Flags().GetBool("enable-bg-executors")
+	if enableBgExecutors {
+		operatorContainer := c.Deployment.Spec.Template.Spec.Containers[0]
+		operatorContainer.Env = append(operatorContainer.Env, corev1.EnvVar{
+			Name:  util.EnableBgExecutorsEnv,
 			Value: "true",
 		})
 		c.Deployment.Spec.Template.Spec.Containers[0].Env = operatorContainer.Env
@@ -369,15 +383,12 @@ func RunUninstall(cmd *cobra.Command, args []string) {
 		waitForOperatorPodExit()
 		util.KubeDelete(c.ClusterRoleBinding)
 		util.KubeDelete(c.ClusterRole)
-		util.KubeDelete(c.RoleBindingBgExecutors)
 		util.KubeDelete(c.RoleBindingEndpoint)
 		util.KubeDelete(c.RoleBindingCore)
 		util.KubeDelete(c.RoleBinding)
-		util.KubeDelete(c.RoleBgExecutors)
 		util.KubeDelete(c.RoleEndpoint)
 		util.KubeDelete(c.RoleCore)
 		util.KubeDelete(c.Role)
-		util.KubeDelete(c.SABgExecutors)
 		util.KubeDelete(c.SAEndpoint)
 		util.KubeDelete(c.SACore)
 		util.KubeDelete(c.SA)
@@ -421,15 +432,12 @@ func RunStatus(cmd *cobra.Command, args []string) {
 		DetectRole(c)
 		DetectClusterRole(c)
 	}
-	util.KubeCheck(c.SABgExecutors)
 	util.KubeCheck(c.Role)
 	util.KubeCheck(c.RoleCore)
 	util.KubeCheck(c.RoleEndpoint)
-	util.KubeCheck(c.RoleBgExecutors)
 	util.KubeCheck(c.RoleBinding)
 	util.KubeCheck(c.RoleBindingCore)
 	util.KubeCheck(c.RoleBindingEndpoint)
-	util.KubeCheck(c.RoleBindingBgExecutors)
 	util.KubeCheck(c.ClusterRole)
 	util.KubeCheck(c.ClusterRoleBinding)
 	util.KubeCheckOptional(c.WebhookConfiguration)
@@ -451,13 +459,10 @@ func RunYaml(cmd *cobra.Command, args []string) {
 	util.Panic(p.PrintObj(c.RoleBinding, os.Stdout))
 	util.Panic(p.PrintObj(c.SACore, os.Stdout))
 	util.Panic(p.PrintObj(c.SAEndpoint, os.Stdout))
-	util.Panic(p.PrintObj(c.SABgExecutors, os.Stdout))
 	util.Panic(p.PrintObj(c.RoleCore, os.Stdout))
 	util.Panic(p.PrintObj(c.RoleEndpoint, os.Stdout))
-	util.Panic(p.PrintObj(c.RoleBgExecutors, os.Stdout))
 	util.Panic(p.PrintObj(c.RoleBindingCore, os.Stdout))
 	util.Panic(p.PrintObj(c.RoleBindingEndpoint, os.Stdout))
-	util.Panic(p.PrintObj(c.RoleBindingBgExecutors, os.Stdout))
 	util.Panic(p.PrintObj(c.ClusterRole, os.Stdout))
 	util.Panic(p.PrintObj(c.ClusterRoleBinding, os.Stdout))
 	noDeploy, _ := cmd.Flags().GetBool("no-deploy")
@@ -468,27 +473,24 @@ func RunYaml(cmd *cobra.Command, args []string) {
 
 // Conf struct holds all the objects needed to install the operator
 type Conf struct {
-	NS                     *corev1.Namespace
-	SA                     *corev1.ServiceAccount
-	SAEndpoint             *corev1.ServiceAccount
-	SACore                 *corev1.ServiceAccount
-	SABgExecutors          *corev1.ServiceAccount
-	SAUI                   *corev1.ServiceAccount
-	Role                   *rbacv1.Role
-	RoleEndpoint           *rbacv1.Role
-	RoleCore               *rbacv1.Role
-	RoleBgExecutors        *rbacv1.Role
-	RoleUI                 *rbacv1.ClusterRole
-	RoleBinding            *rbacv1.RoleBinding
-	RoleBindingEndpoint    *rbacv1.RoleBinding
-	RoleBindingCore        *rbacv1.RoleBinding
-	RoleBindingBgExecutors *rbacv1.RoleBinding
-	ClusterRole            *rbacv1.ClusterRole
-	ClusterRoleBinding     *rbacv1.ClusterRoleBinding
-	Deployment             *appsv1.Deployment
-	WebhookConfiguration   *admissionv1.ValidatingWebhookConfiguration
-	WebhookSecret          *corev1.Secret
-	WebhookService         *corev1.Service
+	NS                   *corev1.Namespace
+	SA                   *corev1.ServiceAccount
+	SAEndpoint           *corev1.ServiceAccount
+	SACore               *corev1.ServiceAccount
+	SAUI                 *corev1.ServiceAccount
+	Role                 *rbacv1.Role
+	RoleEndpoint         *rbacv1.Role
+	RoleCore             *rbacv1.Role
+	RoleUI               *rbacv1.ClusterRole
+	RoleBinding          *rbacv1.RoleBinding
+	RoleBindingEndpoint  *rbacv1.RoleBinding
+	RoleBindingCore      *rbacv1.RoleBinding
+	ClusterRole          *rbacv1.ClusterRole
+	ClusterRoleBinding   *rbacv1.ClusterRoleBinding
+	Deployment           *appsv1.Deployment
+	WebhookConfiguration *admissionv1.ValidatingWebhookConfiguration
+	WebhookSecret        *corev1.Secret
+	WebhookService       *corev1.Service
 }
 
 // LoadOperatorConf loads and initializes all the objects needed to install the operator
@@ -499,17 +501,14 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.SA = util.KubeObject(bundle.File_deploy_service_account_yaml).(*corev1.ServiceAccount)
 	c.SACore = util.KubeObject(bundle.File_deploy_service_account_core_yaml).(*corev1.ServiceAccount)
 	c.SAEndpoint = util.KubeObject(bundle.File_deploy_service_account_endpoint_yaml).(*corev1.ServiceAccount)
-	c.SABgExecutors = util.KubeObject(bundle.File_deploy_service_account_bg_executors_yaml).(*corev1.ServiceAccount)
 	c.SAUI = util.KubeObject(bundle.File_deploy_service_account_ui_yaml).(*corev1.ServiceAccount)
 	c.Role = util.KubeObject(bundle.File_deploy_role_yaml).(*rbacv1.Role)
 	c.RoleCore = util.KubeObject(bundle.File_deploy_role_core_yaml).(*rbacv1.Role)
 	c.RoleEndpoint = util.KubeObject(bundle.File_deploy_role_endpoint_yaml).(*rbacv1.Role)
-	c.RoleBgExecutors = util.KubeObject(bundle.File_deploy_role_bg_executors_yaml).(*rbacv1.Role)
 	c.RoleUI = util.KubeObject(bundle.File_deploy_role_ui_yaml).(*rbacv1.ClusterRole)
 	c.RoleBinding = util.KubeObject(bundle.File_deploy_role_binding_yaml).(*rbacv1.RoleBinding)
 	c.RoleBindingCore = util.KubeObject(bundle.File_deploy_role_binding_core_yaml).(*rbacv1.RoleBinding)
 	c.RoleBindingEndpoint = util.KubeObject(bundle.File_deploy_role_binding_endpoint_yaml).(*rbacv1.RoleBinding)
-	c.RoleBindingBgExecutors = util.KubeObject(bundle.File_deploy_role_binding_bg_executors_yaml).(*rbacv1.RoleBinding)
 	c.ClusterRole = util.KubeObject(bundle.File_deploy_cluster_role_yaml).(*rbacv1.ClusterRole)
 	c.ClusterRoleBinding = util.KubeObject(bundle.File_deploy_cluster_role_binding_yaml).(*rbacv1.ClusterRoleBinding)
 	c.Deployment = util.KubeObject(bundle.File_deploy_operator_yaml).(*appsv1.Deployment)
@@ -518,15 +517,12 @@ func LoadOperatorConf(cmd *cobra.Command) *Conf {
 	c.SA.Namespace = options.Namespace
 	c.SAEndpoint.Namespace = options.Namespace
 	c.SACore.Namespace = options.Namespace
-	c.SABgExecutors.Namespace = options.Namespace
 	c.Role.Namespace = options.Namespace
 	c.RoleEndpoint.Namespace = options.Namespace
 	c.RoleCore.Namespace = options.Namespace
-	c.RoleBgExecutors.Namespace = options.Namespace
 	c.RoleBinding.Namespace = options.Namespace
 	c.RoleBindingEndpoint.Namespace = options.Namespace
 	c.RoleBindingCore.Namespace = options.Namespace
-	c.RoleBindingBgExecutors.Namespace = options.Namespace
 	c.ClusterRole.Namespace = options.Namespace
 	c.Deployment.Namespace = options.Namespace
 
@@ -580,12 +576,6 @@ func DetectRole(c *Conf) {
 				s.Namespace == c.SACore.Namespace {
 				c.RoleCore.Name = b.RoleRef.Name
 				c.RoleBindingCore.Name = b.Name
-			}
-			if s.Kind == "ServiceAccount" &&
-				s.Name == c.SABgExecutors.Name &&
-				s.Namespace == c.SABgExecutors.Namespace {
-				c.RoleBgExecutors.Name = b.RoleRef.Name
-				c.RoleBindingBgExecutors.Name = b.Name
 			}
 		}
 	}

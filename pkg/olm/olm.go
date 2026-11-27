@@ -311,11 +311,16 @@ func GenerateCSV(opConf *operator.Conf, csvParams *generateCSVParams) *operv1.Cl
 			ServiceAccountName: opConf.SACore.Name,
 			Rules:              opConf.RoleCore.Rules,
 		})
-	csv.Spec.InstallStrategy.StrategySpec.Permissions = append(csv.Spec.InstallStrategy.StrategySpec.Permissions,
-		operv1.StrategyDeploymentPermissions{
-			ServiceAccountName: opConf.SABgExecutors.Name,
-			Rules:              opConf.RoleBgExecutors.Rules,
-		})
+	// bg-executors RBAC is intentionally not part of the CSV: the CSV is static, so OLM would
+	// always create the ServiceAccount/Role/RoleBinding. They are opt-in (ENABLE_BG_EXECUTORS on
+	// the operator) and created by the system reconciler (reconcileBgExecutorsRBAC) instead.
+	// To ship them in the CSV, restore SABgExecutors/RoleBgExecutors in operator.Conf and add:
+	//
+	// csv.Spec.InstallStrategy.StrategySpec.Permissions = append(csv.Spec.InstallStrategy.StrategySpec.Permissions,
+	// 	operv1.StrategyDeploymentPermissions{
+	// 		ServiceAccountName: opConf.SABgExecutors.Name,
+	// 		Rules:              opConf.RoleBgExecutors.Rules,
+	// 	})
 	csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs = []operv1.StrategyDeploymentSpec{}
 	csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs = append(csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs,
 		operv1.StrategyDeploymentSpec{
