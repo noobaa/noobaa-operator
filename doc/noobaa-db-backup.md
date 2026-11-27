@@ -59,7 +59,9 @@ By default the `Backup` resource and volume snapshot names are `noobaa-db-pg-clu
 ## Technical Details
 ### Backup Process
 When a backup configuration is specified, noobaa-operator will create a `ScheduledBackup` resource in the operator's namespace. This resource is managed by the cnpg controller, which creates a volume-snapshot `Backup` resource based on the configured schedule.
-The backup is an offline backup taken from the secondary DB instance. During the backup process, the secondary DB instance is fenced, and the volume snapshot is taken after the PostgreSQL server on the secondary instance is stopped to ensure data consistency. After the backup is completed, the secondary DB instance is unfenced. Since the backup is taken from the secondary, the data is not as up to date as the primary and is missing any changes that have not yet been replicated to the secondary instance.
+The backup is an online (hot) backup taken from the secondary DB instance. The secondary keeps running and replicating during the backup: CNPG puts PostgreSQL in backup mode (`pg_backup_start`), takes the volume snapshot, and ends the backup mode (`pg_backup_stop`). The secondary is not fenced or stopped. If the secondary is not available, the backup is taken from the primary, also without stopping it. Since the backup is taken from the secondary, the data is not as up to date as the primary and is missing any changes that have not yet been replicated to the secondary instance.
+There is no WAL archive, so the backup does not wait for WAL archiving (`waitForArchive: false`). The snapshot is still consistent: data and WAL are on the same volume, and the volume snapshot is atomic. On recovery, PostgreSQL runs crash recovery from the snapshot, replaying the WAL stored in it.
+Versions before the change took offline backups, which fenced the secondary and stopped PostgreSQL during the snapshot. After an upgrade, the operator switches the `Cluster` and `ScheduledBackup` resources to online backups without restarting the DB pods. Snapshots taken offline before the upgrade are restored the same way.
 The backup details and status are shown in the NooBaa CR's `status.dbStatus.backupStatus` field. e.g.:
 ```yaml
 status:
@@ -92,5 +94,5 @@ When the maximum number of snapshots is exceeded, the noobaa-operator will delet
 
 ### On-demand Backup
 On-demand backups complement the scheduled backup feature. Using on-demand backups requires a `dbBackup` configuration in the NooBaa CR.
-The NooBaa CLI command to take an on-demand backup creates a `Backup` resource. The backup settings are identical to those of the scheduled backup (offline backup from the secondary).  
+The NooBaa CLI command to take an on-demand backup creates a `Backup` resource. The backup settings are identical to those of the scheduled backup (online backup from the secondary).  
 On-demand backups are not counted toward the maximum number of snapshots to retain and are not deleted automatically as part of the automatic cleanup of old snapshots.
