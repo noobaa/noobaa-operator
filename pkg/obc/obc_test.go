@@ -2,6 +2,7 @@ package obc
 
 import (
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
+	"github.com/noobaa/noobaa-operator/v5/pkg/nb"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
@@ -365,5 +366,100 @@ var _ = Describe("GetQuotaConfig", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(quota.Quantity).NotTo(BeNil())
 		Expect(quota.Quantity.Value).To(Equal(1000))
+		Expect(quota.Mode).To(BeEmpty())
+	})
+
+	It("sets mode strict when the OBC mode is strict and a limit is set", func() {
+		bcSpec := &nbv1.BucketClassSpec{}
+		obConfig := map[string]string{
+			"maxObjects": "1000",
+			"mode":       nb.QuotaModeStrict,
+		}
+		log := logrus.NewEntry(logrus.New())
+
+		quota, err := GetQuotaConfig("test-bucket", bcSpec, obConfig, log)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(quota.Mode).To(Equal(nb.QuotaModeStrict))
+		Expect(quota.Quantity.Value).To(Equal(1000))
+	})
+
+	It("sets mode strict when the BucketClass mode is strict", func() {
+		bcSpec := &nbv1.BucketClassSpec{
+			Quota: &nbv1.Quota{
+				MaxSize: "1Gi",
+				Mode:    nb.QuotaModeStrict,
+			},
+		}
+		log := logrus.NewEntry(logrus.New())
+
+		quota, err := GetQuotaConfig("test-bucket", bcSpec, nil, log)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(quota.Mode).To(Equal(nb.QuotaModeStrict))
+		Expect(quota.Size).NotTo(BeNil())
+	})
+
+	It("keeps BucketClass strict mode when the OBC does not set a mode", func() {
+		bcSpec := &nbv1.BucketClassSpec{
+			Quota: &nbv1.Quota{
+				MaxObjects: "10",
+				Mode:       nb.QuotaModeStrict,
+			},
+		}
+		log := logrus.NewEntry(logrus.New())
+
+		quota, err := GetQuotaConfig("test-bucket", bcSpec, map[string]string{}, log)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(quota.Mode).To(Equal(nb.QuotaModeStrict))
+	})
+
+	It("clears BucketClass strict mode when the OBC mode is async", func() {
+		bcSpec := &nbv1.BucketClassSpec{
+			Quota: &nbv1.Quota{
+				MaxObjects: "10",
+				Mode:       nb.QuotaModeStrict,
+			},
+		}
+		obConfig := map[string]string{
+			"mode": nb.QuotaModeAsync,
+		}
+		log := logrus.NewEntry(logrus.New())
+
+		quota, err := GetQuotaConfig("test-bucket", bcSpec, obConfig, log)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(quota.Mode).To(Equal(nb.QuotaModeAsync))
+	})
+
+	It("returns an error when strict quota is set without a positive limit", func() {
+		bcSpec := &nbv1.BucketClassSpec{}
+		obConfig := map[string]string{
+			"mode": nb.QuotaModeStrict,
+		}
+		log := logrus.NewEntry(logrus.New())
+
+		quota, err := GetQuotaConfig("test-bucket", bcSpec, obConfig, log)
+
+		Expect(quota).To(BeNil())
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("strict quota requires maxSize and/or maxObjects"))
+	})
+})
+
+var _ = Describe("bucketClassHasStrictQuotaLimit", func() {
+	It("is false when the class has no strict quota limit", func() {
+		Expect(bucketClassHasStrictQuotaLimit(nil)).To(BeFalse())
+		Expect(bucketClassHasStrictQuotaLimit(&nbv1.BucketClass{})).To(BeFalse())
+		Expect(bucketClassHasStrictQuotaLimit(&nbv1.BucketClass{
+			Spec: nbv1.BucketClassSpec{Quota: &nbv1.Quota{MaxObjects: "5"}},
+		})).To(BeFalse())
+	})
+
+	It("is true when the class is strict and has a size or object limit", func() {
+		Expect(bucketClassHasStrictQuotaLimit(&nbv1.BucketClass{
+			Spec: nbv1.BucketClassSpec{Quota: &nbv1.Quota{Mode: nb.QuotaModeStrict, MaxObjects: "5"}},
+		})).To(BeTrue())
 	})
 })

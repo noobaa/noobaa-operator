@@ -79,6 +79,8 @@ func CmdCreatePlacementBucketClass() *cobra.Command {
 		"Set quota max objects quantity config to requested bucket")
 	cmd.Flags().String("max-size", "",
 		"Set quota max size config to requested bucket")
+	cmd.Flags().Bool("strict-quota", false,
+		"Enable synchronous quota checks. Requires max-size and/or max-objects")
 	cmd.Flags().String("deep-archive-resource", "",
 		"Set an s3-compatible ibm-deep-archive NamespaceStore for the archive policy (IBM Deep Archive cold-storage)")
 
@@ -429,10 +431,18 @@ func PopulatePlacementBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1.Buck
 
 	maxSize, _ := cmd.Flags().GetString("max-size")
 	maxObjects, _ := cmd.Flags().GetString("max-objects")
-	if maxSize != "" || maxObjects != "" {
+	mode, err := nb.QuotaModeChange("", quotaModeFromFlag(cmd))
+	if err != nil {
+		log.Fatalf(`❌ %s`, err)
+	}
+	if mode == nb.QuotaModeStrict && maxSize == "" && maxObjects == "" {
+		log.Fatalf(`❌ Must provide max-size and/or max-objects when using --strict-quota`)
+	}
+	if maxSize != "" || maxObjects != "" || mode != "" {
 		bucketClassSpec.Quota = &nbv1.Quota{
 			MaxSize:    maxSize,
 			MaxObjects: maxObjects,
+			Mode:       mode,
 		}
 	}
 
@@ -446,6 +456,19 @@ func PopulatePlacementBucketClass(cmd *cobra.Command, bucketClassSpec *nbv1.Buck
 	}
 
 	return namespaceStoresArr, backingStores
+}
+
+// quotaModeFromFlag returns strict or async when --strict-quota was passed.
+// Commands that do not define the flag, such as COSI placement classes, get an empty mode.
+func quotaModeFromFlag(cmd *cobra.Command) string {
+	if cmd.Flags().Lookup("strict-quota") == nil || !cmd.Flags().Changed("strict-quota") {
+		return ""
+	}
+	strictQuota, err := cmd.Flags().GetBool("strict-quota")
+	if err != nil {
+		return ""
+	}
+	return nb.QuotaModeForFlag(strictQuota)
 }
 
 // PopulateVectorBucketClass populates vector bucketclass spec

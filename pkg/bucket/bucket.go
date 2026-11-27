@@ -46,6 +46,8 @@ func CmdCreate() *cobra.Command {
 		"Set quota max objects quantity config to requested bucket")
 	cmd.Flags().String("max-size", "",
 		"Set quota max size config to requested bucket")
+	cmd.Flags().Bool("strict-quota", false,
+		"Enable synchronous quota checks. Requires max-size and/or max-objects")
 	return cmd
 }
 
@@ -61,6 +63,8 @@ func CmdUpdate() *cobra.Command {
 		"Set quota max objects quantity config to requested bucket")
 	cmd.Flags().String("max-size", "",
 		"Set quota max size config to requested bucket")
+	cmd.Flags().Bool("strict-quota", false,
+		"Enable synchronous quota checks. --strict-quota=false clears strict mode when it is already set")
 	cmd.Flags().String("deep-archive-resource", "",
 		"Set or update the deep archive NamespaceStore resource for the bucket's archive policy")
 	cmd.Flags().Bool("remove-archive-policy", false,
@@ -188,6 +192,16 @@ func RunCreate(cmd *cobra.Command, args []string) {
 		log.Fatalf(`Missing expected arguments: <bucket-name> %s`, cmd.UsageString())
 	}
 	bucketName := args[0]
+	maxSize, _ := cmd.Flags().GetString("max-size")
+	maxObjects, _ := cmd.Flags().GetString("max-objects")
+	quotaMode, err := nb.QuotaModeChange("", quotaModeFromFlag(cmd))
+	if err != nil {
+		log.Fatalf(`❌ %s`, err)
+	}
+	if quotaMode == nb.QuotaModeStrict && maxSize == "" && maxObjects == "" {
+		log.Fatalf(`❌ Must provide max-size and/or max-objects when using --strict-quota`)
+	}
+
 	nbClient := system.GetNBClient()
 
 	bucketClass, err := bucketclass.GetDefaultBucketClass(options.Namespace)
@@ -204,11 +218,11 @@ func RunCreate(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	maxSize, _ := cmd.Flags().GetString("max-size")
-	maxObjects, _ := cmd.Flags().GetString("max-objects")
-
 	quota, err := prepareQuotaConfig(bucketName, maxSize, maxObjects)
 	if err != nil {
+		log.Fatalf(`❌ Could not create bucket "%q" quota validation failed %q`, bucketName, err)
+	}
+	if err = applyQuotaMode(&quota, quotaMode); err != nil {
 		log.Fatalf(`❌ Could not create bucket "%q" quota validation failed %q`, bucketName, err)
 	}
 
@@ -240,6 +254,7 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 	}
 	maxSize, _ := cmd.Flags().GetString("max-size")
 	maxObjects, _ := cmd.Flags().GetString("max-objects")
+	quotaMode := quotaModeFromFlag(cmd)
 	deepArchiveResource, _ := cmd.Flags().GetString("deep-archive-resource")
 	removeArchivePolicy, _ := cmd.Flags().GetBool("remove-archive-policy")
 
@@ -252,7 +267,7 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 		ForceMd5Etag: forceMd5EtagPtr,
 	}
 
-	needBucketRead := maxSize != "" || maxObjects != ""
+	needBucketRead := maxSize != "" || maxObjects != "" || quotaMode != ""
 	var bucketInfo nb.BucketInfo
 	if needBucketRead {
 		bucketInfo, err = nbClient.ReadBucketAPI(nb.ReadBucketParams{Name: bucketName})
@@ -261,10 +276,26 @@ func RunUpdate(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if maxSize != "" || maxObjects != "" {
+	if maxSize != "" || maxObjects != "" || quotaMode != "" {
+		currentMode := ""
+		if bucketInfo.Quota != nil {
+			currentMode = bucketInfo.Quota.Mode
+		}
+		requestedMode := quotaMode
+		quotaMode, err = nb.QuotaModeChange(currentMode, quotaMode)
+		if err != nil {
+			log.Fatalf(`❌ Could not update bucket %q: %s`, bucketName, err)
+		}
 		quota, err := mergeQuotaForUpdate(bucketInfo.Quota, bucketName, maxSize, maxObjects)
 		if err != nil {
 			log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %q`, bucketName, err)
+		}
+		// Both limits cleared removes the quota. Do not reapply a preserved strict mode.
+		// An explicit --strict-quota still requires a limit.
+		if quota.Size != nil || quota.Quantity != nil || requestedMode == nb.QuotaModeStrict {
+			if err = applyQuotaMode(&quota, quotaMode); err != nil {
+				log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %q`, bucketName, err)
+			}
 		}
 		if err := nb.ValidateQuotaAgainstBucketUsage(&bucketInfo, &quota); err != nil {
 			log.Fatalf(`❌ Could not update bucket "%q" quota validation failed %v`, bucketName, err)
@@ -434,6 +465,7 @@ func mergeQuotaForUpdate(existing *nb.QuotaConfig, bucketName string, maxSize st
 		return mergedQuota, err
 	}
 	if existing != nil {
+		mergedQuota.Mode = existing.Mode
 		if existing.Size != nil {
 			mergedQuota.Size = &nb.SizeQuotaConfig{
 				Value: existing.Size.Value,
@@ -470,5 +502,42 @@ func mergeQuotaForUpdate(existing *nb.QuotaConfig, bucketName string, maxSize st
 			mergedQuota.Quantity = nil
 		}
 	}
+	// A quota with no limits has no mode. RunUpdate sends this empty quota to remove it.
+	if mergedQuota.Size == nil && mergedQuota.Quantity == nil {
+		mergedQuota.Mode = ""
+	}
 	return mergedQuota, nil
+}
+
+// quotaModeFromFlag returns strict or async when --strict-quota was passed.
+// An empty result means the flag was left unset, so the existing mode is kept.
+func quotaModeFromFlag(cmd *cobra.Command) string {
+	if cmd.Flags().Lookup("strict-quota") == nil || !cmd.Flags().Changed("strict-quota") {
+		return ""
+	}
+	strictQuota, err := cmd.Flags().GetBool("strict-quota")
+	if err != nil {
+		return ""
+	}
+	return nb.QuotaModeForFlag(strictQuota)
+}
+
+// applyQuotaMode sets quota mode when the CLI selected one.
+// Strict mode requires a positive size or object limit. Async mode does not.
+func applyQuotaMode(quota *nb.QuotaConfig, mode string) error {
+	if mode == "" || quota == nil {
+		return nil
+	}
+	if mode == nb.QuotaModeAsync {
+		quota.Mode = nb.QuotaModeAsync
+		return nil
+	}
+	if mode != nb.QuotaModeStrict {
+		return fmt.Errorf("quota mode must be strict or async")
+	}
+	if quota.Size == nil && quota.Quantity == nil {
+		return fmt.Errorf("strict quota requires max-size and/or max-objects")
+	}
+	quota.Mode = nb.QuotaModeStrict
+	return nil
 }

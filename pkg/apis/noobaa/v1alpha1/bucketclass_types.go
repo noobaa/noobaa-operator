@@ -170,6 +170,11 @@ type Quota struct {
 
 	//limits the max total quantity of objects per bucket
 	MaxObjects string `json:"maxObjects,omitempty"`
+
+	// Mode sets quota enforcement to strict or async.
+	// +optional
+	// +kubebuilder:validation:Enum=strict;async
+	Mode string `json:"mode,omitempty"`
 }
 
 // CacheSpec specifies the cache specifications for the bucket class

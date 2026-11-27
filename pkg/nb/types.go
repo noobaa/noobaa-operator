@@ -353,10 +353,18 @@ type CreateBucketParams struct {
 	RemoveArchivePolicy bool                 `json:"remove_archive_policy,omitempty"`
 }
 
+// Quota mode values for quota.mode. Async is the default and is stored by omitting mode.
+const (
+	QuotaModeStrict = "strict"
+	QuotaModeAsync  = "async"
+)
+
 // QuotaConfig quota configuration
 type QuotaConfig struct {
 	Size     *SizeQuotaConfig     `json:"size,omitempty"`
 	Quantity *QuantityQuotaConfig `json:"quantity,omitempty"`
+	// Mode is "strict" or "async". Empty means async and is omitted from the API payload.
+	Mode string `json:"mode,omitempty"`
 }
 
 // SizeQuotaConfig size quota configuration
@@ -378,11 +386,26 @@ func (q *QuotaConfig) IsEqual(q2 *QuotaConfig) bool {
 	if q == nil && q2 == nil {
 		return true
 	}
-	if (q == nil && q2.Size == nil && q2.Quantity == nil) ||
-		(q2 == nil && q.Size == nil && q.Quantity == nil) {
+	// A nil quota matches an empty one. Async and an omitted mode are the same value.
+	if (q == nil && q2.Size == nil && q2.Quantity == nil && NormalizeQuotaMode(q2.Mode) == QuotaModeAsync) ||
+		(q2 == nil && q.Size == nil && q.Quantity == nil && NormalizeQuotaMode(q.Mode) == QuotaModeAsync) {
 		return true
 	}
-	return reflect.DeepEqual(q, q2)
+	if q == nil || q2 == nil {
+		return false
+	}
+	if NormalizeQuotaMode(q.Mode) != NormalizeQuotaMode(q2.Mode) {
+		return false
+	}
+	return reflect.DeepEqual(q.Size, q2.Size) && reflect.DeepEqual(q.Quantity, q2.Quantity)
+}
+
+// NormalizeQuotaMode treats an omitted mode as async.
+func NormalizeQuotaMode(mode string) string {
+	if mode == "" || mode == QuotaModeAsync {
+		return QuotaModeAsync
+	}
+	return mode
 }
 
 // NamespaceBucketInfo is the information needed for creating namespace bucket
